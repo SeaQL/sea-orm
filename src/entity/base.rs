@@ -1,4 +1,5 @@
 use super::{Column, Identity, Relation};
+use crate::Select;
 use sea_query::Iden;
 use std::fmt::Debug;
 use strum::IntoEnumIterator;
@@ -10,11 +11,13 @@ pub trait Entity: Iden + Default + Debug {
 
     type Relation: Relation + IntoEnumIterator;
 
-    fn table_name() -> Self;
-
     fn primary_key() -> Identity;
 
     fn auto_increment() -> bool {
         true
+    }
+
+    fn find<'s>() -> Select<'s, Self> {
+        Select::new(Self::default())
     }
 }

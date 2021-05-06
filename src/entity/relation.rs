@@ -11,19 +11,19 @@ pub enum RelationType {
 }
 
 pub trait Relation {
-    fn rel_def() -> RelationDef;
+    fn rel_def(&self) -> RelationDef;
 }
 
 pub struct RelationDef {
-    rel_type: RelationType,
-    from_tbl: Rc<dyn Iden>,
-    from_col: Identity,
-    to_col: Identity,
+    pub rel_type: RelationType,
+    pub to_tbl: Rc<dyn Iden>,
+    pub from_col: Identity,
+    pub to_col: Identity,
 }
 
 pub struct RelationBuilder {
     rel_type: RelationType,
-    from_tbl: Rc<dyn Iden>,
+    to_tbl: Rc<dyn Iden>,
     from_col: Option<Identity>,
     to_col: Option<Identity>,
 }
@@ -56,7 +56,7 @@ impl RelationBuilder {
     {
         Self {
             rel_type,
-            from_tbl: entity.into_iden(),
+            to_tbl: entity.into_iden(),
             from_col: None,
             to_col: None,
         }
@@ -83,7 +83,7 @@ impl From<RelationBuilder> for RelationDef {
     fn from(b: RelationBuilder) -> Self {
         RelationDef {
             rel_type: b.rel_type,
-            from_tbl: b.from_tbl,
+            to_tbl: b.to_tbl,
             from_col: b.from_col.unwrap(),
             to_col: b.to_col.unwrap(),
         }

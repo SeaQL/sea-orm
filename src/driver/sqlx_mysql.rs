@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use sqlx::{mysql::MySqlRow, MySqlPool};
 
+use sea_query::MysqlQueryBuilder;
 sea_query::sea_query_driver_mysql!();
 use sea_query_driver_mysql::bind_query;
 
@@ -12,6 +13,8 @@ pub struct SqlxMySqlExecutor {
 
 #[async_trait]
 impl Executor for SqlxMySqlExecutor {
+    type QueryBuilder = MysqlQueryBuilder;
+
     async fn query_one(&self, stmt: Statement) -> Result<QueryResult, ExecErr> {
         debug_print!("{}, {:?}", sql, values);
 

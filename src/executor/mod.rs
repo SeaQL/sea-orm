@@ -1,6 +1,10 @@
+mod query;
+
+pub use query::*;
+
 use crate::QueryResult;
 use async_trait::async_trait;
-use sea_query::Values;
+use sea_query::{GenericBuilder, Values};
 use std::{error::Error, fmt};
 
 pub struct Statement {
@@ -10,6 +14,8 @@ pub struct Statement {
 
 #[async_trait]
 pub trait Executor {
+    type QueryBuilder: GenericBuilder;
+
     async fn query_one(&self, stmt: Statement) -> Result<QueryResult, ExecErr>;
 
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, ExecErr>;
