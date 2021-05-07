@@ -53,8 +53,8 @@ impl Relation for CakeRelation {
 impl Model for CakeModel {
     fn from_query_result(row: QueryResult) -> Result<Self, TypeErr> {
         Ok(Self {
-            id: row.try_get_i32("id")?,
-            name: row.try_get_string("name")?,
+            id: row.try_get("id")?,
+            name: row.try_get("name")?,
         })
     }
 }

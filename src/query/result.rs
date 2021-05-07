@@ -14,35 +14,44 @@ pub(crate) enum QueryResultRow {
 #[derive(Debug)]
 pub struct TypeErr;
 
-// QueryResult //
+pub trait TryGetable {
+    fn try_get(res: &QueryResult, col: &str) -> Result<Self, TypeErr>
+    where
+        Self: std::marker::Sized;
+}
 
-impl QueryResult {
-    pub fn try_get_i32(&self, col: &str) -> Result<i32, TypeErr> {
-        match &self.row {
+// TryGetable //
+
+impl TryGetable for i32 {
+    fn try_get(res: &QueryResult, col: &str) -> Result<Self, TypeErr> {
+        match &res.row {
             QueryResultRow::SqlxMySql(row) => {
                 use sqlx::Row;
-
-                if let Ok(val) = row.try_get(col) {
-                    Ok(val)
-                } else {
-                    Err(TypeErr)
-                }
+                Ok(row.try_get(col)?)
             }
         }
     }
+}
 
-    pub fn try_get_string(&self, col: &str) -> Result<String, TypeErr> {
-        match &self.row {
+impl TryGetable for String {
+    fn try_get(res: &QueryResult, col: &str) -> Result<Self, TypeErr> {
+        match &res.row {
             QueryResultRow::SqlxMySql(row) => {
                 use sqlx::Row;
-
-                if let Ok(val) = row.try_get(col) {
-                    Ok(val)
-                } else {
-                    Err(TypeErr)
-                }
+                Ok(row.try_get(col)?)
             }
         }
+    }
+}
+
+// QueryResult //
+
+impl QueryResult {
+    pub fn try_get<T>(&self, col: &str) -> Result<T, TypeErr>
+    where
+        T: TryGetable,
+    {
+        T::try_get(self, col)
     }
 }
 
@@ -53,5 +62,11 @@ impl Error for TypeErr {}
 impl fmt::Display for TypeErr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
+    }
+}
+
+impl From<sqlx::Error> for TypeErr {
+    fn from(_: sqlx::Error) -> TypeErr {
+        TypeErr
     }
 }
