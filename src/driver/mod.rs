@@ -1,1 +1,3 @@
-pub mod sqlx_mysql;
+mod sqlx_mysql;
+
+pub use sqlx_mysql::*;

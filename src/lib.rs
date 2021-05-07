@@ -1,10 +1,12 @@
+mod connector;
+mod database;
 mod driver;
 mod entity;
-mod executor;
 mod query;
 mod util;
 
+pub use connector::*;
+pub use database::*;
 pub use driver::*;
 pub use entity::*;
-pub use executor::*;
 pub use query::*;

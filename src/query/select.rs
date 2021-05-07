@@ -1,8 +1,9 @@
+use crate::Statement;
 use crate::{entity::*, RelationDef};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{Expr, Iden, IntoIden, SelectStatement};
+use sea_query::{Expr, Iden, IntoIden, QueryBuilder, SelectStatement};
 use std::rc::Rc;
 use strum::IntoEnumIterator;
 
@@ -71,7 +72,18 @@ where
         &mut self.select
     }
 
+    pub fn as_query(&self) -> &SelectStatement {
+        &self.select
+    }
+
     pub fn into_query(self) -> SelectStatement {
         self.select
+    }
+
+    pub fn build<B>(&self, builder: B) -> Statement
+    where
+        B: QueryBuilder,
+    {
+        self.as_query().build(builder).into()
     }
 }
