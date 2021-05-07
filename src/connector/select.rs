@@ -1,16 +1,22 @@
-use crate::{Connection, Database, Entity, QueryErr, QueryResult, Select};
+use crate::{Connection, Database, Entity, Model, QueryErr, Select};
 
 impl<E: 'static> Select<'_, E>
 where
     E: Entity,
 {
-    pub async fn one(self, db: &Database) -> Result<QueryResult, QueryErr> {
+    pub async fn one(self, db: &Database) -> Result<E::Model, QueryErr> {
         let builder = db.get_query_builder_backend();
-        db.get_connection().query_one(self.build(builder)).await
+        let row = db.get_connection().query_one(self.build(builder)).await?;
+        Ok(<E as Entity>::Model::from_query_result(row)?)
     }
 
-    pub async fn all(self, db: &Database) -> Result<Vec<QueryResult>, QueryErr> {
+    pub async fn all(self, db: &Database) -> Result<Vec<E::Model>, QueryErr> {
         let builder = db.get_query_builder_backend();
-        db.get_connection().query_all(self.build(builder)).await
+        let rows = db.get_connection().query_all(self.build(builder)).await?;
+        let mut models = Vec::new();
+        for row in rows.into_iter() {
+            models.push(<E as Entity>::Model::from_query_result(row)?);
+        }
+        Ok(models)
     }
 }

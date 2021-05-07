@@ -1,11 +1,11 @@
-use super::{Column, Identity, Relation};
+use super::{Column, Identity, Model, Relation};
 use crate::Select;
 use sea_query::Iden;
 use std::fmt::Debug;
 use strum::IntoEnumIterator;
 
 pub trait Entity: Iden + Default + Debug {
-    type Model;
+    type Model: Model;
 
     type Column: Column + IntoEnumIterator;
 

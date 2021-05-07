@@ -1,4 +1,7 @@
-use crate::{Column, ColumnType, Entity, Identity, IntoIdentity, Relation, RelationDef};
+use crate::{
+    Column, ColumnType, Entity, Identity, IntoIdentity, Model, QueryResult, Relation, RelationDef,
+    TypeErr,
+};
 use sea_query::Iden;
 use strum::EnumIter;
 
@@ -7,8 +10,8 @@ pub struct Cake;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct CakeModel {
-    pub id: Option<i32>,
-    pub name: Option<String>,
+    pub id: i32,
+    pub name: String,
 }
 
 #[derive(Iden, EnumIter)]
@@ -44,5 +47,14 @@ impl Column for CakeColumn {
 impl Relation for CakeRelation {
     fn rel_def(&self) -> RelationDef {
         panic!()
+    }
+}
+
+impl Model for CakeModel {
+    fn from_query_result(row: QueryResult) -> Result<Self, TypeErr> {
+        Ok(Self {
+            id: row.try_get_i32("id")?,
+            name: row.try_get_string("name")?,
+        })
     }
 }

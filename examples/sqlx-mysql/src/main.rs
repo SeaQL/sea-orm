@@ -7,12 +7,12 @@ async fn main() {
         .await
         .unwrap();
     println!("{:?}", db);
-    println!("");
+    println!();
 
-    let rows = cake::Cake::find().all(&db).await.unwrap();
+    let cakes = cake::Cake::find().all(&db).await.unwrap();
 
-    for row in rows.iter() {
-        println!("{:?}", row);
-        println!("");
+    for cc in cakes.iter() {
+        println!("{:?}", cc);
+        println!();
     }
 }

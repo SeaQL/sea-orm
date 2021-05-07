@@ -2,7 +2,7 @@ mod select;
 
 pub use select::*;
 
-use crate::{DatabaseConnection, QueryResult};
+use crate::{DatabaseConnection, QueryResult, TypeErr};
 use async_trait::async_trait;
 use sea_query::{inject_parameters, MySqlQueryBuilder, Values};
 use std::{error::Error, fmt};
@@ -61,6 +61,12 @@ impl Error for QueryErr {}
 impl fmt::Display for QueryErr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
+    }
+}
+
+impl From<TypeErr> for QueryErr {
+    fn from(_: TypeErr) -> QueryErr {
+        QueryErr
     }
 }
 
