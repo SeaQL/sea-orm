@@ -1,11 +1,9 @@
-use crate::Statement;
-use crate::{entity::*, RelationDef};
+use crate::{entity::*, Iterable, RelationDef, Statement};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
 use sea_query::{Expr, Iden, IntoIden, QueryBuilder, SelectStatement};
 use std::rc::Rc;
-use strum::IntoEnumIterator;
 
 #[derive(Debug)]
 pub struct Select<'s, E: 'static>

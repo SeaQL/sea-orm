@@ -2,14 +2,14 @@ use super::{Column, Identity, Model, Relation};
 use crate::Select;
 use sea_query::Iden;
 use std::fmt::Debug;
-use strum::IntoEnumIterator;
+pub use strum::IntoEnumIterator as Iterable;
 
 pub trait Entity: Iden + Default + Debug {
     type Model: Model;
 
-    type Column: Column + IntoEnumIterator;
+    type Column: Column + Iterable;
 
-    type Relation: Relation + IntoEnumIterator;
+    type Relation: Relation + Iterable;
 
     fn primary_key() -> Identity;
 
