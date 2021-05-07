@@ -43,7 +43,7 @@ API to make working with databases in Rust a first-class experience.
 
 We are ready to embrace Rocket 0.5 to make building web services in Rust productive and enjoyable.
 
-3. Strong typed and dynamic
+3. Typed and dynamic
 
 SeaORM construct queries at runtime, allowing you to develop flexible and powerful queries. While
 the expressive Rust type system would help you in maintaining a complex codebase.
