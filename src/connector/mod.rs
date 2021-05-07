@@ -41,8 +41,11 @@ impl From<(String, Values)> for Statement {
 
 impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let builder = MySqlQueryBuilder::default();
-        let string = inject_parameters(&self.sql, self.values.0.clone(), &builder);
+        let string = inject_parameters(
+            &self.sql,
+            self.values.0.clone(),
+            &MySqlQueryBuilder::default(),
+        );
         write!(f, "{}", &string)
     }
 }

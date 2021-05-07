@@ -87,3 +87,20 @@ where
         self.as_query().build(builder).into()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_cfg::cake;
+    use crate::Entity;
+    use sea_query::MySqlQueryBuilder;
+
+    #[test]
+    fn test_1() {
+        assert_eq!(
+            cake::Cake::find()
+                .build(MySqlQueryBuilder::default())
+                .to_string(),
+            "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+        );
+    }
+}
