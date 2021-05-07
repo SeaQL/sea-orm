@@ -1,4 +1,5 @@
 use crate::{Connection, ConnectionErr, Connector, SqlxMySqlConnector, SqlxMySqlPoolConnection};
+use sea_query::{GenericBuilder, MySqlQueryBuilder};
 
 #[derive(Debug, Default)]
 pub struct Database {
@@ -45,6 +46,13 @@ impl Database {
     pub fn get_connection(&self) -> impl Connection + '_ {
         match &self.connection {
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn,
+            DatabaseConnection::Disconnected => panic!("Disconnected"),
+        }
+    }
+
+    pub fn get_query_builder_backend(&self) -> impl GenericBuilder {
+        match &self.connection {
+            DatabaseConnection::SqlxMySqlPoolConnection(_) => MySqlQueryBuilder::default(),
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
     }

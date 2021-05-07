@@ -1,0 +1,10 @@
+[package]
+name = "sea-orm-sqlx-mysql-example"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+async-std = { version = "^1.9", features = [ "attributes" ] }
+sea-orm = { path = "../../", features = [ "sqlx-mysql", "runtime-async-std-native-tls" ] }
+# sea-query = { path = "../../../sea-query" }

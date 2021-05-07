@@ -1,6 +1,7 @@
 [workspace]
 members = [
     ".",
+    "examples/sqlx-mysql",
 ]
 
 [package]

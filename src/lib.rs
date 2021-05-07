@@ -3,7 +3,7 @@ mod database;
 mod driver;
 mod entity;
 mod query;
-pub(crate) mod tests_cfg;
+pub mod tests_cfg;
 mod util;
 
 pub use connector::*;
