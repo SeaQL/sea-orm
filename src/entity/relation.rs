@@ -1,6 +1,6 @@
 use super::{Identity, IntoIdentity};
-use crate::EntityTrait;
 use sea_query::{Iden, IntoIden};
+use std::fmt::Debug;
 use std::rc::Rc;
 
 #[derive(Debug)]
@@ -10,12 +10,13 @@ pub enum RelationType {
     BelongsTo,
 }
 
-pub trait RelationTrait {
+pub trait RelationTrait: Debug + 'static {
     fn rel_def(&self) -> RelationDef;
 }
 
 pub struct RelationDef {
     pub rel_type: RelationType,
+    pub from_tbl: Rc<dyn Iden>,
     pub to_tbl: Rc<dyn Iden>,
     pub from_col: Identity,
     pub to_col: Identity,
@@ -23,40 +24,22 @@ pub struct RelationDef {
 
 pub struct RelationBuilder {
     rel_type: RelationType,
+    from_tbl: Rc<dyn Iden>,
     to_tbl: Rc<dyn Iden>,
     from_col: Option<Identity>,
     to_col: Option<Identity>,
 }
 
 impl RelationBuilder {
-    pub fn has_one<E: 'static>(entity: E) -> Self
+    pub(crate) fn new<E, T>(rel_type: RelationType, from: E, to: T) -> Self
     where
-        E: EntityTrait,
-    {
-        Self::new(RelationType::HasOne, entity)
-    }
-
-    pub fn has_many<E: 'static>(entity: E) -> Self
-    where
-        E: EntityTrait,
-    {
-        Self::new(RelationType::HasMany, entity)
-    }
-
-    pub fn belongs_to<E: 'static>(entity: E) -> Self
-    where
-        E: EntityTrait,
-    {
-        Self::new(RelationType::BelongsTo, entity)
-    }
-
-    fn new<E: 'static>(rel_type: RelationType, entity: E) -> Self
-    where
-        E: EntityTrait,
+        E: IntoIden,
+        T: IntoIden,
     {
         Self {
             rel_type,
-            to_tbl: entity.into_iden(),
+            from_tbl: from.into_iden(),
+            to_tbl: to.into_iden(),
             from_col: None,
             to_col: None,
         }
@@ -83,6 +66,7 @@ impl From<RelationBuilder> for RelationDef {
     fn from(b: RelationBuilder) -> Self {
         RelationDef {
             rel_type: b.rel_type,
+            from_tbl: b.from_tbl,
             to_tbl: b.to_tbl,
             from_col: b.from_col.unwrap(),
             to_col: b.to_col.unwrap(),

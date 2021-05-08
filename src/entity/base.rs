@@ -1,10 +1,10 @@
-use super::{ColumnTrait, Identity, ModelTrait, RelationTrait};
+use super::{ColumnTrait, Identity, ModelTrait, RelationBuilder, RelationTrait, RelationType};
 use crate::Select;
-use sea_query::{Expr, Iden, Value};
+use sea_query::{Expr, Iden, IntoIden, Value};
 use std::fmt::Debug;
 pub use strum::IntoEnumIterator as Iterable;
 
-pub trait EntityTrait: Iden + Default + Debug {
+pub trait EntityTrait: Iden + Default + Debug + 'static {
     type Model: ModelTrait;
 
     type Column: ColumnTrait + Iterable;
@@ -15,6 +15,27 @@ pub trait EntityTrait: Iden + Default + Debug {
 
     fn auto_increment() -> bool {
         true
+    }
+
+    fn has_one<E>(entity: E) -> RelationBuilder
+    where
+        E: IntoIden,
+    {
+        RelationBuilder::new(RelationType::HasOne, Self::default(), entity)
+    }
+
+    fn has_many<E>(entity: E) -> RelationBuilder
+    where
+        E: IntoIden,
+    {
+        RelationBuilder::new(RelationType::HasMany, Self::default(), entity)
+    }
+
+    fn belongs_to<E>(entity: E) -> RelationBuilder
+    where
+        E: IntoIden,
+    {
+        RelationBuilder::new(RelationType::BelongsTo, Self::default(), entity)
     }
 
     /// ```

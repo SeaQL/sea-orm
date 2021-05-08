@@ -14,14 +14,14 @@ pub struct Model {
     pub cake_id: Option<i32>,
 }
 
-#[derive(Copy, Clone, Iden, EnumIter)]
+#[derive(Copy, Clone, Debug, Iden, EnumIter)]
 pub enum Column {
     Id,
     Name,
     CakeId,
 }
 
-#[derive(Copy, Clone, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {}
 
 impl EntityTrait for Entity {

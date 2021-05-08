@@ -1,6 +1,6 @@
 use crate::{
     ColumnTrait, ColumnType, EntityTrait, EnumIter, Iden, Identity, IntoIdentity, ModelTrait,
-    QueryResult, RelationBuilder, RelationDef, RelationTrait, TypeErr,
+    QueryResult, RelationDef, RelationTrait, TypeErr,
 };
 
 #[derive(Default, Debug, Iden)]
@@ -13,13 +13,13 @@ pub struct Model {
     pub name: String,
 }
 
-#[derive(Copy, Clone, Iden, EnumIter)]
+#[derive(Copy, Clone, Debug, Iden, EnumIter)]
 pub enum Column {
     Id,
     Name,
 }
 
-#[derive(Copy, Clone, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Fruit,
 }
@@ -59,7 +59,7 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn rel_def(&self) -> RelationDef {
         match self {
-            Self::Fruit => RelationBuilder::has_many(super::fruit::Entity)
+            Self::Fruit => Entity::has_many(super::fruit::Entity)
                 .from(Column::Id)
                 .to(super::fruit::Column::CakeId)
                 .into(),

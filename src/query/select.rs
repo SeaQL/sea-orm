@@ -42,25 +42,9 @@ where
         self
     }
 
-    fn prepare_join(self, join: JoinType, rel: RelationDef) -> Self {
+    fn prepare_join(mut self, join: JoinType, rel: RelationDef) -> Self {
         let own_tbl = E::default().into_iden();
         let to_tbl = rel.to_tbl.clone();
-        self.prepare_join_impl(join, rel, own_tbl, to_tbl)
-    }
-
-    fn prepare_join_inverse(self, join: JoinType, rel: RelationDef) -> Self {
-        let own_tbl = E::default().into_iden();
-        let to_tbl = rel.to_tbl.clone();
-        self.prepare_join_impl(join, rel, to_tbl, own_tbl)
-    }
-
-    fn prepare_join_impl(
-        mut self,
-        join: JoinType,
-        rel: RelationDef,
-        own_tbl: Rc<dyn Iden>,
-        to_tbl: Rc<dyn Iden>,
-    ) -> Self {
         let owner_keys = rel.from_col;
         let foreign_keys = rel.to_col;
         let condition = match (owner_keys, foreign_keys) {
@@ -69,6 +53,25 @@ where
             } // _ => panic!("Owner key and foreign key mismatch"),
         };
         self.query.join(join, Rc::clone(&to_tbl), condition);
+        self
+    }
+
+    pub fn reverse_join<R>(mut self, rel: R) -> Self
+    where
+        R: RelationTrait,
+    {
+        let rel = rel.rel_def();
+        let from_tbl = rel.from_tbl.clone();
+        let to_tbl = rel.to_tbl.clone();
+        let owner_keys = rel.from_col;
+        let foreign_keys = rel.to_col;
+        let condition = match (owner_keys, foreign_keys) {
+            (Identity::Unary(o1), Identity::Unary(f1)) => {
+                Expr::tbl(Rc::clone(&from_tbl), o1).equals(Rc::clone(&to_tbl), f1)
+            } // _ => panic!("Owner key and foreign key mismatch"),
+        };
+        self.query
+            .join(JoinType::InnerJoin, Rc::clone(&from_tbl), condition);
         self
     }
 
@@ -132,13 +135,6 @@ where
         self.prepare_join(JoinType::InnerJoin, E::Relation::rel_def(&rel))
     }
 
-    pub fn reverse_join<R>(self, rel: R) -> Self
-    where
-        R: RelationTrait,
-    {
-        self
-    }
-
     /// Get a mutable ref to the query builder
     pub fn query(&mut self) -> &mut SelectStatement {
         &mut self.query
@@ -176,7 +172,11 @@ mod tests {
                 .left_join(cake::Relation::Fruit)
                 .build(MysqlQueryBuilder)
                 .to_string(),
-            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`"
+            [
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`",
+            ]
+            .join(" ")
         );
     }
 
@@ -206,7 +206,7 @@ mod tests {
                 .to_string(),
             [
                 "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
-                "INNER JOIN `cake` ON `fruit`.`cake_id` = `cake`.`id`",
+                "INNER JOIN `cake` ON `cake`.`id` = `fruit`.`cake_id`",
             ]
             .join(" ")
         );
