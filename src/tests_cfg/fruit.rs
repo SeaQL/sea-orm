@@ -1,28 +1,28 @@
 use crate::{
     ColumnTrait, ColumnType, EntityTrait, EnumIter, Iden, Identity, IntoIdentity, ModelTrait,
-    QueryResult, RelationBuilder, RelationDef, RelationTrait, TypeErr,
+    QueryResult, RelationDef, RelationTrait, TypeErr,
 };
 
 #[derive(Default, Debug, Iden)]
-#[iden = "cake"]
+#[iden = "fruit"]
 pub struct Entity;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct Model {
     pub id: i32,
     pub name: String,
+    pub cake_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Iden, EnumIter)]
 pub enum Column {
     Id,
     Name,
+    CakeId,
 }
 
 #[derive(Copy, Clone, EnumIter)]
-pub enum Relation {
-    Fruit,
-}
+pub enum Relation {}
 
 impl EntityTrait for Entity {
     type Model = Model;
@@ -41,6 +41,7 @@ impl ModelTrait for Model {
         Ok(Self {
             id: row.try_get("id")?,
             name: row.try_get("name")?,
+            cake_id: row.try_get_option("cake_id")?,
         })
     }
 }
@@ -52,17 +53,13 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer(None),
             Self::Name => ColumnType::String(None),
+            Self::CakeId => ColumnType::Integer(None),
         }
     }
 }
 
 impl RelationTrait for Relation {
     fn rel_def(&self) -> RelationDef {
-        match self {
-            Self::Fruit => RelationBuilder::has_many(super::fruit::Entity)
-                .from(Column::Id)
-                .to(super::fruit::Column::CakeId)
-                .into(),
-        }
+        panic!()
     }
 }

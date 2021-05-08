@@ -53,6 +53,17 @@ impl QueryResult {
     {
         T::try_get(self, col)
     }
+
+    pub fn try_get_option<T>(&self, col: &str) -> Result<Option<T>, TypeErr>
+    where
+        T: TryGetable,
+    {
+        if let Ok(v) = T::try_get(self, col) {
+            Ok(Some(v))
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 // TypeErr //

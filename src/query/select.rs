@@ -69,16 +69,16 @@ where
         self
     }
 
-    pub fn left_join(self, relation: RelationDef) -> Self {
-        self.prepare_join(JoinType::LeftJoin, relation)
+    pub fn left_join(self, rel: E::Relation) -> Self {
+        self.prepare_join(JoinType::LeftJoin, E::Relation::rel_def(&rel))
     }
 
-    pub fn right_join(self, relation: RelationDef) -> Self {
-        self.prepare_join(JoinType::RightJoin, relation)
+    pub fn right_join(self, rel: E::Relation) -> Self {
+        self.prepare_join(JoinType::RightJoin, E::Relation::rel_def(&rel))
     }
 
-    pub fn inner_join(self, relation: RelationDef) -> Self {
-        self.prepare_join(JoinType::InnerJoin, relation)
+    pub fn inner_join(self, rel: E::Relation) -> Self {
+        self.prepare_join(JoinType::InnerJoin, E::Relation::rel_def(&rel))
     }
 
     pub fn query(&mut self) -> &mut SelectStatement {
@@ -103,7 +103,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_cfg::cake;
+    use crate::tests_cfg::{cake, fruit};
     use crate::{ColumnTrait, EntityTrait};
     use sea_query::MysqlQueryBuilder;
 
