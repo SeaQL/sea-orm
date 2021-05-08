@@ -49,7 +49,7 @@ impl ModelTrait for Model {
 impl ColumnTrait for Column {
     type Entity = Entity;
 
-    fn col_type(&self) -> ColumnType {
+    fn def(&self) -> ColumnType {
         match self {
             Self::Id => ColumnType::Integer(None),
             Self::Name => ColumnType::String(None),
@@ -59,7 +59,7 @@ impl ColumnTrait for Column {
 }
 
 impl RelationTrait for Relation {
-    fn rel_def(&self) -> RelationDef {
+    fn def(&self) -> RelationDef {
         panic!()
     }
 }

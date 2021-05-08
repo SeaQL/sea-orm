@@ -120,22 +120,22 @@ where
     }
 
     pub fn left_join(self, rel: E::Relation) -> Self {
-        self.prepare_join(JoinType::LeftJoin, E::Relation::rel_def(&rel))
+        self.prepare_join(JoinType::LeftJoin, E::Relation::def(&rel))
     }
 
     pub fn right_join(self, rel: E::Relation) -> Self {
-        self.prepare_join(JoinType::RightJoin, E::Relation::rel_def(&rel))
+        self.prepare_join(JoinType::RightJoin, E::Relation::def(&rel))
     }
 
     pub fn inner_join(self, rel: E::Relation) -> Self {
-        self.prepare_join(JoinType::InnerJoin, E::Relation::rel_def(&rel))
+        self.prepare_join(JoinType::InnerJoin, E::Relation::def(&rel))
     }
 
     pub fn reverse_join<R>(self, rel: R) -> Self
     where
         R: RelationTrait,
     {
-        self.prepare_reverse_join(rel.rel_def())
+        self.prepare_reverse_join(rel.def())
     }
 
     /// Get a mutable ref to the query builder

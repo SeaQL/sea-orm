@@ -18,7 +18,7 @@ macro_rules! bind_oper {
 pub trait ColumnTrait: Iden + Copy + Debug + 'static {
     type Entity: EntityTrait;
 
-    fn col_type(&self) -> ColumnType;
+    fn def(&self) -> ColumnType;
 
     fn entity_iden(&self) -> Rc<dyn Iden> {
         Rc::new(Self::Entity::default()) as Rc<dyn Iden>

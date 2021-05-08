@@ -48,7 +48,7 @@ impl ModelTrait for Model {
 impl ColumnTrait for Column {
     type Entity = Entity;
 
-    fn col_type(&self) -> ColumnType {
+    fn def(&self) -> ColumnType {
         match self {
             Self::Id => ColumnType::Integer(None),
             Self::Name => ColumnType::String(None),
@@ -57,7 +57,7 @@ impl ColumnTrait for Column {
 }
 
 impl RelationTrait for Relation {
-    fn rel_def(&self) -> RelationDef {
+    fn def(&self) -> RelationDef {
         match self {
             Self::Fruit => Entity::has_many(super::fruit::Entity)
                 .from(Column::Id)
@@ -68,8 +68,8 @@ impl RelationTrait for Relation {
 }
 
 impl Related<super::fruit::Entity> for Entity {
-    fn via() -> RelationDef {
-        Relation::Fruit.rel_def()
+    fn to() -> RelationDef {
+        Relation::Fruit.def()
     }
 }
 

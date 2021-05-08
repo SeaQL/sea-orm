@@ -11,17 +11,21 @@ pub enum RelationType {
 }
 
 pub trait RelationTrait: Debug + 'static {
-    fn rel_def(&self) -> RelationDef;
+    fn def(&self) -> RelationDef;
 }
 
 pub trait Related<R>
 where
     R: EntityTrait,
 {
-    fn via() -> RelationDef;
+    fn to() -> RelationDef;
+
+    fn via() -> Option<RelationDef> {
+        None
+    }
 
     fn find_related() -> Select<R> {
-        Select::<R>::new().prepare_reverse_join(Self::via())
+        Select::<R>::new().prepare_reverse_join(Self::to())
     }
 }
 
