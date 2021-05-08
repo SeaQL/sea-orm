@@ -1,4 +1,4 @@
-use crate::{EntityTrait, Identity, Iterable, RelationDef, Statement};
+use crate::{EntityTrait, Identity, Iterable, RelationDef, RelationTrait, Statement};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
@@ -54,16 +54,49 @@ where
         self
     }
 
+    /// ```
+    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.eq(5))
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 5"
+    /// );
+    /// ```
     pub fn filter(mut self, expr: SimpleExpr) -> Self {
         self.select.and_where(expr);
         self
     }
 
+    /// ```
+    /// use sea_orm::{EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .order_by(cake::Column::Id)
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` ASC"
+    /// );
+    /// ```
     pub fn order_by(mut self, col: E::Column) -> Self {
         self.select.order_by((E::default(), col), Order::Asc);
         self
     }
 
+    /// ```
+    /// use sea_orm::{EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .order_by_desc(cake::Column::Id)
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` DESC"
+    /// );
+    /// ```
     pub fn order_by_desc(mut self, col: E::Column) -> Self {
         self.select.order_by((E::default(), col), Order::Desc);
         self
@@ -81,18 +114,22 @@ where
         self.prepare_join(JoinType::InnerJoin, E::Relation::rel_def(&rel))
     }
 
+    /// Get a mutable ref to the query builder
     pub fn query(&mut self) -> &mut SelectStatement {
         &mut self.select
     }
 
+    /// Get a immutable ref to the query builder
     pub fn as_query(&self) -> &SelectStatement {
         &self.select
     }
 
+    /// Take ownership of the query builder
     pub fn into_query(self) -> SelectStatement {
         self.select
     }
 
+    /// Build the query as [`Statement`]
     pub fn build<B>(&self, builder: B) -> Statement
     where
         B: QueryBuilder,
@@ -108,91 +145,30 @@ mod tests {
     use sea_query::MysqlQueryBuilder;
 
     #[test]
-    fn test_1() {
+    fn join_1() {
         assert_eq!(
-            cake::Entity::find().build(MysqlQueryBuilder).to_string(),
-            "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+            cake::Entity::find()
+                .left_join(cake::Relation::Fruit)
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`"
         );
     }
 
     #[test]
-    fn test_2() {
+    fn join_2() {
         assert_eq!(
             cake::Entity::find()
-                .filter(cake::Column::Id.eq(5))
+                .inner_join(cake::Relation::Fruit)
+                .filter(fruit::Column::Name.contains("cherry"))
                 .build(MysqlQueryBuilder)
                 .to_string(),
-            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 5"
-        );
-    }
-
-    #[test]
-    fn test_3() {
-        assert_eq!(
-            cake::Entity::find()
-                .filter(cake::Column::Name.like("cheese"))
-                .build(MysqlQueryBuilder)
-                .to_string(),
-            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE 'cheese'"
-        );
-        assert_eq!(
-            cake::Entity::find()
-                .filter(cake::Column::Name.starts_with("cheese"))
-                .build(MysqlQueryBuilder)
-                .to_string(),
-            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE 'cheese%'"
-        );
-        assert_eq!(
-            cake::Entity::find()
-                .filter(cake::Column::Name.ends_with("cheese"))
-                .build(MysqlQueryBuilder)
-                .to_string(),
-            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese'"
-        );
-        assert_eq!(
-            cake::Entity::find()
-                .filter(cake::Column::Name.contains("cheese"))
-                .build(MysqlQueryBuilder)
-                .to_string(),
-            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese%'"
-        );
-    }
-
-    #[test]
-    fn test_4() {
-        assert_eq!(
-            cake::Entity::find_one()
-                .build(MysqlQueryBuilder)
-                .to_string(),
-            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 1"
-        );
-    }
-
-    #[test]
-    fn test_5() {
-        assert_eq!(
-            cake::Entity::find_one_by(11)
-                .build(MysqlQueryBuilder)
-                .to_string(),
-            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 11 LIMIT 1"
-        );
-    }
-
-    #[test]
-    fn test_6() {
-        assert_eq!(
-            cake::Entity::find()
-                .order_by(cake::Column::Id)
-                .build(MysqlQueryBuilder)
-                .to_string(),
-            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` ASC"
-        );
-        assert_eq!(
-            cake::Entity::find()
-                .order_by_desc(cake::Column::Id)
-                .build(MysqlQueryBuilder)
-                .to_string(),
-            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` DESC"
+            [
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "INNER JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`",
+                "WHERE `fruit`.`name` LIKE \'%cherry%\'"
+            ]
+            .join(" ")
         );
     }
 }
