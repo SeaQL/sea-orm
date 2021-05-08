@@ -10,7 +10,7 @@ pub struct Select<E: 'static>
 where
     E: EntityTrait,
 {
-    select: SelectStatement,
+    query: SelectStatement,
     entity: PhantomData<E>,
 }
 
@@ -20,7 +20,7 @@ where
 {
     pub(crate) fn new(_: E) -> Self {
         Self {
-            select: SelectStatement::new(),
+            query: SelectStatement::new(),
             entity: PhantomData,
         }
         .prepare_select()
@@ -28,29 +28,47 @@ where
     }
 
     fn prepare_select(mut self) -> Self {
-        let table = E::default().into_iden();
-        let columns: Vec<(Rc<dyn Iden>, E::Column)> =
-            E::Column::iter().map(|c| (Rc::clone(&table), c)).collect();
-        self.select.columns(columns);
+        self.query.columns(self.column_list());
         self
+    }
+
+    fn column_list(&self) -> Vec<(Rc<dyn Iden>, E::Column)> {
+        let table = Rc::new(E::default()) as Rc<dyn Iden>;
+        E::Column::iter().map(|col| (table.clone(), col)).collect()
     }
 
     fn prepare_from(mut self) -> Self {
-        self.select.from(E::default().into_iden());
+        self.query.from(E::default().into_iden());
         self
     }
 
-    fn prepare_join(mut self, join: JoinType, relation: RelationDef) -> Self {
+    fn prepare_join(self, join: JoinType, rel: RelationDef) -> Self {
         let own_tbl = E::default().into_iden();
-        let to_tbl = &relation.to_tbl;
-        let owner_keys = relation.from_col;
-        let foreign_keys = relation.to_col;
+        let to_tbl = rel.to_tbl.clone();
+        self.prepare_join_impl(join, rel, own_tbl, to_tbl)
+    }
+
+    fn prepare_join_inverse(self, join: JoinType, rel: RelationDef) -> Self {
+        let own_tbl = E::default().into_iden();
+        let to_tbl = rel.to_tbl.clone();
+        self.prepare_join_impl(join, rel, to_tbl, own_tbl)
+    }
+
+    fn prepare_join_impl(
+        mut self,
+        join: JoinType,
+        rel: RelationDef,
+        own_tbl: Rc<dyn Iden>,
+        to_tbl: Rc<dyn Iden>,
+    ) -> Self {
+        let owner_keys = rel.from_col;
+        let foreign_keys = rel.to_col;
         let condition = match (owner_keys, foreign_keys) {
             (Identity::Unary(o1), Identity::Unary(f1)) => {
-                Expr::tbl(Rc::clone(&own_tbl), o1).equals(Rc::clone(to_tbl), f1)
+                Expr::tbl(Rc::clone(&own_tbl), o1).equals(Rc::clone(&to_tbl), f1)
             } // _ => panic!("Owner key and foreign key mismatch"),
         };
-        self.select.join(join, Rc::clone(to_tbl), condition);
+        self.query.join(join, Rc::clone(&to_tbl), condition);
         self
     }
 
@@ -66,7 +84,7 @@ where
     /// );
     /// ```
     pub fn filter(mut self, expr: SimpleExpr) -> Self {
-        self.select.and_where(expr);
+        self.query.and_where(expr);
         self
     }
 
@@ -82,7 +100,7 @@ where
     /// );
     /// ```
     pub fn order_by(mut self, col: E::Column) -> Self {
-        self.select.order_by((E::default(), col), Order::Asc);
+        self.query.order_by((E::default(), col), Order::Asc);
         self
     }
 
@@ -98,7 +116,7 @@ where
     /// );
     /// ```
     pub fn order_by_desc(mut self, col: E::Column) -> Self {
-        self.select.order_by((E::default(), col), Order::Desc);
+        self.query.order_by((E::default(), col), Order::Desc);
         self
     }
 
@@ -114,19 +132,26 @@ where
         self.prepare_join(JoinType::InnerJoin, E::Relation::rel_def(&rel))
     }
 
+    pub fn reverse_join<R>(self, rel: R) -> Self
+    where
+        R: RelationTrait,
+    {
+        self
+    }
+
     /// Get a mutable ref to the query builder
     pub fn query(&mut self) -> &mut SelectStatement {
-        &mut self.select
+        &mut self.query
     }
 
     /// Get a immutable ref to the query builder
     pub fn as_query(&self) -> &SelectStatement {
-        &self.select
+        &self.query
     }
 
     /// Take ownership of the query builder
     pub fn into_query(self) -> SelectStatement {
-        self.select
+        self.query
     }
 
     /// Build the query as [`Statement`]
@@ -167,6 +192,21 @@ mod tests {
                 "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
                 "INNER JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`",
                 "WHERE `fruit`.`name` LIKE \'%cherry%\'"
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_3() {
+        assert_eq!(
+            fruit::Entity::find()
+                .reverse_join(cake::Relation::Fruit)
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            [
+                "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
+                "INNER JOIN `cake` ON `fruit`.`cake_id` = `cake`.`id`",
             ]
             .join(" ")
         );
