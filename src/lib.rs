@@ -12,5 +12,6 @@ pub use driver::*;
 pub use entity::*;
 pub use query::*;
 
+pub use sea_query;
 pub use sea_query::Iden;
 pub use strum::EnumIter;

@@ -1,9 +1,9 @@
 use crate::{
-    ColumnTrait, ColumnType, EntityTrait, Identity, IntoIdentity, ModelTrait, QueryResult, RelationDef,
-    RelationTrait, TypeErr, EnumIter, Iden
+    ColumnTrait, ColumnType, EntityTrait, EnumIter, Iden, Identity, IntoIdentity, ModelTrait,
+    QueryResult, RelationDef, RelationTrait, TypeErr,
 };
 
-#[derive(Iden, Default, Debug)]
+#[derive(Default, Debug, Iden)]
 #[iden = "cake"]
 pub struct Entity;
 
@@ -13,13 +13,13 @@ pub struct Model {
     pub name: String,
 }
 
-#[derive(Iden, EnumIter)]
+#[derive(Copy, Clone, Iden, EnumIter)]
 pub enum Column {
     Id,
     Name,
 }
 
-#[derive(EnumIter)]
+#[derive(Copy, Clone, EnumIter)]
 pub enum Relation {}
 
 impl EntityTrait for Entity {
@@ -44,6 +44,8 @@ impl ModelTrait for Model {
 }
 
 impl ColumnTrait for Column {
+    type Entity = Entity;
+
     fn col_type(&self) -> ColumnType {
         match self {
             Self::Id => ColumnType::Integer(None),

@@ -12,6 +12,14 @@ pub trait IntoIdentity {
     fn into_identity(self) -> Identity;
 }
 
+impl Identity {
+    pub fn into_iden(self) -> Rc<dyn Iden> {
+        match self {
+            Self::Unary(iden) => iden,
+        }
+    }
+}
+
 impl<T> IntoIdentity for T
 where
     T: IntoIden,

@@ -2,7 +2,7 @@ use crate::{EntityTrait, Identity, Iterable, RelationDef, Statement};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{Expr, Iden, IntoIden, QueryBuilder, SelectStatement};
+use sea_query::{Expr, Iden, IntoIden, QueryBuilder, SelectStatement, SimpleExpr};
 use std::rc::Rc;
 
 #[derive(Debug)]
@@ -54,6 +54,11 @@ where
         self
     }
 
+    pub fn filter(mut self, expr: SimpleExpr) -> Self {
+        self.select.and_where(expr);
+        self
+    }
+
     pub fn left_join(self, relation: RelationDef) -> Self {
         self.prepare_join(JoinType::LeftJoin, relation)
     }
@@ -89,16 +94,77 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::cake;
-    use crate::EntityTrait;
-    use sea_query::MySqlQueryBuilder;
+    use crate::{ColumnTrait, EntityTrait};
+    use sea_query::MysqlQueryBuilder;
 
     #[test]
     fn test_1() {
         assert_eq!(
-            cake::Entity::find()
-                .build(MySqlQueryBuilder::default())
-                .to_string(),
+            cake::Entity::find().build(MysqlQueryBuilder).to_string(),
             "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+        );
+    }
+
+    #[test]
+    fn test_2() {
+        assert_eq!(
+            cake::Entity::find()
+                .filter(cake::Column::Id.eq(5))
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 5"
+        );
+    }
+
+    #[test]
+    fn test_3() {
+        assert_eq!(
+            cake::Entity::find()
+                .filter(cake::Column::Name.like("cheese"))
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE 'cheese'"
+        );
+        assert_eq!(
+            cake::Entity::find()
+                .filter(cake::Column::Name.starts_with("cheese"))
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE 'cheese%'"
+        );
+        assert_eq!(
+            cake::Entity::find()
+                .filter(cake::Column::Name.ends_with("cheese"))
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese'"
+        );
+        assert_eq!(
+            cake::Entity::find()
+                .filter(cake::Column::Name.contains("cheese"))
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese%'"
+        );
+    }
+
+    #[test]
+    fn test_4() {
+        assert_eq!(
+            cake::Entity::find_one()
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 1"
+        );
+    }
+
+    #[test]
+    fn test_5() {
+        assert_eq!(
+            cake::Entity::find_one_by(11)
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 11 LIMIT 1"
         );
     }
 }
