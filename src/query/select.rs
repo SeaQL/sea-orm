@@ -18,7 +18,7 @@ impl<E: 'static> Select<E>
 where
     E: EntityTrait,
 {
-    pub(crate) fn new(_: E) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             query: SelectStatement::new(),
             entity: PhantomData,
@@ -56,11 +56,7 @@ where
         self
     }
 
-    pub fn reverse_join<R>(mut self, rel: R) -> Self
-    where
-        R: RelationTrait,
-    {
-        let rel = rel.rel_def();
+    pub(crate) fn prepare_reverse_join(mut self, rel: RelationDef) -> Self {
         let from_tbl = rel.from_tbl.clone();
         let to_tbl = rel.to_tbl.clone();
         let owner_keys = rel.from_col;
@@ -135,6 +131,13 @@ where
         self.prepare_join(JoinType::InnerJoin, E::Relation::rel_def(&rel))
     }
 
+    pub fn reverse_join<R>(self, rel: R) -> Self
+    where
+        R: RelationTrait,
+    {
+        self.prepare_reverse_join(rel.rel_def())
+    }
+
     /// Get a mutable ref to the query builder
     pub fn query(&mut self) -> &mut SelectStatement {
         &mut self.query
@@ -207,6 +210,22 @@ mod tests {
             [
                 "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
                 "INNER JOIN `cake` ON `cake`.`id` = `fruit`.`cake_id`",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_4() {
+        assert_eq!(
+            cake::Entity::find_fruit()
+                .filter(cake::Column::Id.eq(11))
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            [
+                "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
+                "INNER JOIN `cake` ON `cake`.`id` = `fruit`.`cake_id`",
+                "WHERE `cake`.`id` = 11",
             ]
             .join(" ")
         );

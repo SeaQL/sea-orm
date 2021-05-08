@@ -49,7 +49,7 @@ pub trait EntityTrait: Iden + Default + Debug + 'static {
     /// );
     /// ```
     fn find() -> Select<Self> {
-        Select::new(Self::default())
+        Select::<Self>::new()
     }
 
     /// ```

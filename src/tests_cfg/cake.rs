@@ -1,6 +1,6 @@
 use crate::{
     ColumnTrait, ColumnType, EntityTrait, EnumIter, Iden, Identity, IntoIdentity, ModelTrait,
-    QueryResult, RelationDef, RelationTrait, TypeErr,
+    QueryResult, Related, RelationDef, RelationTrait, Select, TypeErr,
 };
 
 #[derive(Default, Debug, Iden)]
@@ -64,5 +64,17 @@ impl RelationTrait for Relation {
                 .to(super::fruit::Column::CakeId)
                 .into(),
         }
+    }
+}
+
+impl Related<super::fruit::Entity> for Entity {
+    fn via() -> RelationDef {
+        Relation::Fruit.rel_def()
+    }
+}
+
+impl Entity {
+    pub fn find_fruit() -> Select<super::fruit::Entity> {
+        Self::find_related()
     }
 }

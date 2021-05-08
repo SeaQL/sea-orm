@@ -1,4 +1,4 @@
-use super::{Identity, IntoIdentity};
+use crate::{EntityTrait, Identity, IntoIdentity, Select};
 use sea_query::{Iden, IntoIden};
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -12,6 +12,17 @@ pub enum RelationType {
 
 pub trait RelationTrait: Debug + 'static {
     fn rel_def(&self) -> RelationDef;
+}
+
+pub trait Related<R>
+where
+    R: EntityTrait,
+{
+    fn via() -> RelationDef;
+
+    fn find_related() -> Select<R> {
+        Select::<R>::new().prepare_reverse_join(Self::via())
+    }
 }
 
 pub struct RelationDef {
