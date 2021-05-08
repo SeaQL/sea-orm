@@ -2,7 +2,7 @@ use crate::{EntityTrait, Identity, Iterable, RelationDef, Statement};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{Expr, Iden, IntoIden, QueryBuilder, SelectStatement, SimpleExpr};
+use sea_query::{Expr, Iden, IntoIden, Order, QueryBuilder, SelectStatement, SimpleExpr};
 use std::rc::Rc;
 
 #[derive(Debug)]
@@ -56,6 +56,16 @@ where
 
     pub fn filter(mut self, expr: SimpleExpr) -> Self {
         self.select.and_where(expr);
+        self
+    }
+
+    pub fn order_by(mut self, col: E::Column) -> Self {
+        self.select.order_by((E::default(), col), Order::Asc);
+        self
+    }
+
+    pub fn order_by_desc(mut self, col: E::Column) -> Self {
+        self.select.order_by((E::default(), col), Order::Desc);
         self
     }
 
@@ -165,6 +175,24 @@ mod tests {
                 .build(MysqlQueryBuilder)
                 .to_string(),
             "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 11 LIMIT 1"
+        );
+    }
+
+    #[test]
+    fn test_6() {
+        assert_eq!(
+            cake::Entity::find()
+                .order_by(cake::Column::Id)
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` ASC"
+        );
+        assert_eq!(
+            cake::Entity::find()
+                .order_by_desc(cake::Column::Id)
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` DESC"
         );
     }
 }
