@@ -1,5 +1,5 @@
 use super::{Identity, IntoIdentity};
-use crate::Entity;
+use crate::EntityTrait;
 use sea_query::{Iden, IntoIden};
 use std::rc::Rc;
 
@@ -10,7 +10,7 @@ pub enum RelationType {
     BelongsTo,
 }
 
-pub trait Relation {
+pub trait RelationTrait {
     fn rel_def(&self) -> RelationDef;
 }
 
@@ -31,28 +31,28 @@ pub struct RelationBuilder {
 impl RelationBuilder {
     pub fn has_one<E: 'static>(entity: E) -> Self
     where
-        E: Entity,
+        E: EntityTrait,
     {
         Self::new(RelationType::HasOne, entity)
     }
 
     pub fn has_many<E: 'static>(entity: E) -> Self
     where
-        E: Entity,
+        E: EntityTrait,
     {
         Self::new(RelationType::HasMany, entity)
     }
 
     pub fn belongs_to<E: 'static>(entity: E) -> Self
     where
-        E: Entity,
+        E: EntityTrait,
     {
         Self::new(RelationType::BelongsTo, entity)
     }
 
     fn new<E: 'static>(rel_type: RelationType, entity: E) -> Self
     where
-        E: Entity,
+        E: EntityTrait,
     {
         Self {
             rel_type,

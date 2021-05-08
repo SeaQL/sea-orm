@@ -1,4 +1,4 @@
-use crate::{entity::*, Iterable, RelationDef, Statement};
+use crate::{EntityTrait, Identity, Iterable, RelationDef, Statement};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
@@ -8,7 +8,7 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub struct Select<'s, E: 'static>
 where
-    E: Entity,
+    E: EntityTrait,
 {
     select: SelectStatement,
     entity: PhantomData<&'s E>,
@@ -16,7 +16,7 @@ where
 
 impl<E: 'static> Select<'_, E>
 where
-    E: Entity,
+    E: EntityTrait,
 {
     pub(crate) fn new(_: E) -> Self {
         Self {
@@ -89,13 +89,13 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::cake;
-    use crate::Entity;
+    use crate::EntityTrait;
     use sea_query::MySqlQueryBuilder;
 
     #[test]
     fn test_1() {
         assert_eq!(
-            cake::Cake::find()
+            cake::Entity::find()
                 .build(MySqlQueryBuilder::default())
                 .to_string(),
             "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"

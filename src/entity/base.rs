@@ -1,15 +1,15 @@
-use super::{Column, Identity, Model, Relation};
+use super::{ColumnTrait, Identity, ModelTrait, RelationTrait};
 use crate::Select;
 use sea_query::Iden;
 use std::fmt::Debug;
 pub use strum::IntoEnumIterator as Iterable;
 
-pub trait Entity: Iden + Default + Debug {
-    type Model: Model;
+pub trait EntityTrait: Iden + Default + Debug {
+    type Model: ModelTrait;
 
-    type Column: Column + Iterable;
+    type Column: ColumnTrait + Iterable;
 
-    type Relation: Relation + Iterable;
+    type Relation: RelationTrait + Iterable;
 
     fn primary_key() -> Identity;
 

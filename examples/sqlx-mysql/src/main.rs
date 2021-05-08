@@ -1,4 +1,4 @@
-use sea_orm::{tests_cfg::*, Database, Entity};
+use sea_orm::{tests_cfg::*, Database, EntityTrait};
 
 #[async_std::main]
 async fn main() {
@@ -9,7 +9,7 @@ async fn main() {
     println!("{:?}", db);
     println!();
 
-    let cakes = cake::Cake::find().all(&db).await.unwrap();
+    let cakes = cake::Entity::find().all(&db).await.unwrap();
 
     for cc in cakes.iter() {
         println!("{:?}", cc);
