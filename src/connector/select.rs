@@ -1,6 +1,6 @@
 use crate::{Connection, Database, EntityTrait, ModelTrait, QueryErr, Select};
 
-impl<E: 'static> Select<'_, E>
+impl<E: 'static> Select<E>
 where
     E: EntityTrait,
 {

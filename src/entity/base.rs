@@ -27,7 +27,7 @@ pub trait EntityTrait: Iden + Default + Debug {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
     /// );
     /// ```
-    fn find<'s>() -> Select<'s, Self> {
+    fn find() -> Select<Self> {
         Select::new(Self::default())
     }
 
@@ -41,7 +41,7 @@ pub trait EntityTrait: Iden + Default + Debug {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 1"
     /// );
     /// ```
-    fn find_one<'s>() -> Select<'s, Self> {
+    fn find_one() -> Select<Self> {
         let mut select = Self::find();
         select.query().limit(1);
         select
@@ -57,7 +57,7 @@ pub trait EntityTrait: Iden + Default + Debug {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 11 LIMIT 1"
     /// );
     /// ```
-    fn find_one_by<'s, V>(v: V) -> Select<'s, Self>
+    fn find_one_by<V>(v: V) -> Select<Self>
     where
         V: Into<Value>,
     {

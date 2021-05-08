@@ -6,15 +6,15 @@ use sea_query::{Expr, Iden, IntoIden, Order, QueryBuilder, SelectStatement, Simp
 use std::rc::Rc;
 
 #[derive(Debug)]
-pub struct Select<'s, E: 'static>
+pub struct Select<E: 'static>
 where
     E: EntityTrait,
 {
     select: SelectStatement,
-    entity: PhantomData<&'s E>,
+    entity: PhantomData<E>,
 }
 
-impl<E: 'static> Select<'_, E>
+impl<E: 'static> Select<E>
 where
     E: EntityTrait,
 {
