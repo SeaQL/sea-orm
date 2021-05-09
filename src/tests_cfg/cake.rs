@@ -35,6 +35,40 @@ impl EntityTrait for Entity {
     type Relation = Relation;
 }
 
+impl ColumnTrait for Column {
+    type EntityName = Entity;
+
+    fn def(&self) -> ColumnType {
+        match self {
+            Self::Id => ColumnType::Integer(None),
+            Self::Name => ColumnType::String(None),
+        }
+    }
+}
+
+impl RelationTrait for Relation {
+    fn def(&self) -> RelationDef {
+        match self {
+            Self::Fruit => Entity::has_many(super::fruit::Entity)
+                .from(Column::Id)
+                .to(super::fruit::Column::CakeId)
+                .into(),
+        }
+    }
+}
+
+impl Related<super::fruit::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Fruit.def()
+    }
+}
+
+impl Model {
+    pub fn find_fruit(&self) -> Select<super::fruit::Entity> {
+        Entity::find_related().belongs_to::<Entity>(self)
+    }
+}
+
 // TODO: implement with derive macro
 impl EntityName for Entity {}
 
@@ -95,17 +129,6 @@ impl IdenStatic for Column {
     }
 }
 
-impl ColumnTrait for Column {
-    type EntityName = Entity;
-
-    fn def(&self) -> ColumnType {
-        match self {
-            Self::Id => ColumnType::Integer(None),
-            Self::Name => ColumnType::String(None),
-        }
-    }
-}
-
 // TODO: implement with derive macro
 impl Iden for PrimaryKey {
     fn unquoted(&self, s: &mut dyn std::fmt::Write) {
@@ -131,28 +154,5 @@ impl PrimaryKeyOfModel<Model> for PrimaryKey {
         match self {
             Self::Id => Column::Id,
         }
-    }
-}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        match self {
-            Self::Fruit => Entity::has_many(super::fruit::Entity)
-                .from(Column::Id)
-                .to(super::fruit::Column::CakeId)
-                .into(),
-        }
-    }
-}
-
-impl Related<super::fruit::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Fruit.def()
-    }
-}
-
-impl Model {
-    pub fn find_fruit(&self) -> Select<super::fruit::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
     }
 }

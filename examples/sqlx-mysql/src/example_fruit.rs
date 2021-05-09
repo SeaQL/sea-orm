@@ -35,6 +35,24 @@ impl EntityTrait for Entity {
     type Relation = Relation;
 }
 
+impl ColumnTrait for Column {
+    type EntityName = Entity;
+
+    fn def(&self) -> ColumnType {
+        match self {
+            Self::Id => ColumnType::Integer(None),
+            Self::Name => ColumnType::String(None),
+            Self::CakeId => ColumnType::Integer(None),
+        }
+    }
+}
+
+impl RelationTrait for Relation {
+    fn def(&self) -> RelationDef {
+        panic!()
+    }
+}
+
 // TODO: implement with derive macro
 impl EntityName for Entity {}
 
@@ -99,17 +117,6 @@ impl IdenStatic for Column {
     }
 }
 
-impl ColumnTrait for Column {
-    type EntityName = Entity;
-
-    fn def(&self) -> ColumnType {
-        match self {
-            Self::Id => ColumnType::Integer(None),
-            Self::Name => ColumnType::String(None),
-            Self::CakeId => ColumnType::Integer(None),
-        }
-    }
-}
 
 // TODO: implement with derive macro
 impl Iden for PrimaryKey {
@@ -136,11 +143,5 @@ impl PrimaryKeyOfModel<Model> for PrimaryKey {
         match self {
             Self::Id => Column::Id,
         }
-    }
-}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        panic!()
     }
 }
