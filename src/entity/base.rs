@@ -39,13 +39,13 @@ pub trait EntityTrait: EntityName {
     }
 
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(PostgresQueryBuilder)
     ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake""#
     /// );
     /// ```
     fn find() -> Select<Self> {
@@ -54,13 +54,13 @@ pub trait EntityTrait: EntityName {
 
     /// Find a model by primary key
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find_by(11)
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(PostgresQueryBuilder)
     ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 11"
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = 11"#
     /// );
     /// ```
     fn find_by<V>(v: V) -> Select<Self>
