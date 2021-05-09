@@ -1,4 +1,4 @@
-use crate::{EntityTrait, Identity, Iterable, RelationDef, RelationTrait, Statement};
+use crate::{EntityTrait, Identity, Iterable, RelationDef, RelationTrait, Statement, Related};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
@@ -84,6 +84,16 @@ where
     /// ```
     pub fn filter(mut self, expr: SimpleExpr) -> Self {
         self.query.and_where(expr);
+        self
+    }
+
+    pub fn belongs_to<R>(self, model: &R::Model) -> Self
+        where R: EntityTrait + Related<E> {
+        // match R::primary_key() {
+        //     Identity::Unary(iden) => {
+        //         model.get(iden)
+        //     }
+        // };
         self
     }
 
@@ -217,8 +227,11 @@ mod tests {
 
     #[test]
     fn join_4() {
+        use crate::{Related, Select};
+
+        let find_fruit: Select<fruit::Entity> = cake::Entity::find_related();
         assert_eq!(
-            cake::Entity::find_fruit()
+            find_fruit
                 .filter(cake::Column::Id.eq(11))
                 .build(MysqlQueryBuilder)
                 .to_string(),

@@ -9,10 +9,21 @@ async fn main() {
     println!("{:?}", db);
     println!();
 
+    println!("find all");
+    println!();
+
     let cakes = cake::Entity::find().all(&db).await.unwrap();
 
     for cc in cakes.iter() {
         println!("{:?}", cc);
         println!();
     }
+
+    println!("find one by primary key");
+    println!();
+
+    let cheese = cake::Entity::find_one(&db, 1).await.unwrap();
+
+    println!("{:?}", cheese);
+    println!();
 }

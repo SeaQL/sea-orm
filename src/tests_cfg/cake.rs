@@ -100,8 +100,8 @@ impl Related<super::fruit::Entity> for Entity {
     }
 }
 
-impl Entity {
-    pub fn find_fruit() -> Select<super::fruit::Entity> {
-        Self::find_related()
+impl Model {
+    pub fn find_fruit(&self) -> Select<super::fruit::Entity> {
+        Entity::find_related().belongs_to::<Entity>(self)
     }
 }

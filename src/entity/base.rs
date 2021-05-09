@@ -1,9 +1,13 @@
-use super::{ColumnTrait, Identity, ModelTrait, RelationBuilder, RelationTrait, RelationType};
-use crate::Select;
+use crate::{
+    ColumnTrait, Connection, Database, Identity, ModelTrait, QueryErr, RelationBuilder,
+    RelationTrait, RelationType, Select,
+};
+use async_trait::async_trait;
 use sea_query::{Expr, Iden, IntoIden, Value};
 use std::fmt::Debug;
 pub use strum::IntoEnumIterator as Iterable;
 
+#[async_trait]
 pub trait EntityTrait: Iden + Default + Debug + 'static {
     type Model: ModelTrait;
 
@@ -52,39 +56,21 @@ pub trait EntityTrait: Iden + Default + Debug + 'static {
         Select::<Self>::new()
     }
 
-    /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find_one()
-    ///         .build(MysqlQueryBuilder)
-    ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 1"
-    /// );
-    /// ```
-    fn find_one() -> Select<Self> {
-        let mut select = Self::find();
-        select.query().limit(1);
-        select
-    }
-
-    /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find_one_by(11)
-    ///         .build(MysqlQueryBuilder)
-    ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 11 LIMIT 1"
-    /// );
-    /// ```
-    fn find_one_by<V>(v: V) -> Select<Self>
+    async fn find_one<V>(db: &Database, v: V) -> Result<Self::Model, QueryErr>
     where
-        V: Into<Value>,
+        V: Into<Value> + Send,
     {
-        let select = Self::find_one();
-        let select =
-            select.filter(Expr::tbl(Self::default(), Self::primary_key().into_iden()).eq(v));
-        select
+        let builder = db.get_query_builder_backend();
+        let stmt = {
+            let mut select = Self::find();
+            match Self::primary_key() {
+                Identity::Unary(iden) => {
+                    select = select.filter(Expr::tbl(Self::default(), iden).eq(v));
+                }
+            }
+            select.build(builder)
+        };
+        let row = db.get_connection().query_one(stmt).await?;
+        Ok(Self::Model::from_query_result(row)?)
     }
 }
