@@ -1,24 +1,22 @@
-use crate::{
+use sea_orm::{
     ColumnTrait, ColumnType, EntityTrait, EnumIter, Iden, IdenStatic,
-    ModelTrait, QueryResult, RelationDef, RelationTrait, TypeErr, Value, PrimaryKeyTrait
+    ModelTrait, QueryResult, Related, RelationDef, RelationTrait, Select, TypeErr, Value, PrimaryKeyTrait
 };
 
 #[derive(Default, Debug, Iden)]
-#[iden = "fruit"]
+#[iden = "cake"]
 pub struct Entity;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Model {
     pub id: i32,
     pub name: String,
-    pub cake_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, Iden, EnumIter)]
 pub enum Column {
     Id,
     Name,
-    CakeId,
 }
 
 #[derive(Copy, Clone, Debug, Iden, EnumIter)]
@@ -27,7 +25,9 @@ pub enum PrimaryKey {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
-pub enum Relation {}
+pub enum Relation {
+    Fruit,
+}
 
 impl EntityTrait for Entity {
     type Model = Model;
@@ -47,7 +47,6 @@ impl ModelTrait for Model {
         match c {
             Column::Id => self.id.clone().into(),
             Column::Name => self.name.clone().into(),
-            Column::CakeId => self.cake_id.clone().into(),
         }
     }
 
@@ -55,7 +54,6 @@ impl ModelTrait for Model {
         match c {
             Column::Id => self.id = v.unwrap(),
             Column::Name => self.name = v.unwrap(),
-            Column::CakeId => self.cake_id = v.unwrap(),
         }
     }
 
@@ -63,7 +61,6 @@ impl ModelTrait for Model {
         Ok(Self {
             id: row.try_get(Column::Id.as_str())?,
             name: row.try_get(Column::Name.as_str())?,
-            cake_id: row.try_get(Column::CakeId.as_str())?,
         })
     }
 }
@@ -74,7 +71,6 @@ impl IdenStatic for Column {
         match self {
             Self::Id => "id",
             Self::Name => "name",
-            Self::CakeId => "cake_id",
         }
     }
 }
@@ -86,7 +82,6 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer(None),
             Self::Name => ColumnType::String(None),
-            Self::CakeId => ColumnType::Integer(None),
         }
     }
 }
@@ -105,6 +100,23 @@ impl PrimaryKeyTrait for PrimaryKey {}
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
-        panic!()
+        match self {
+            Self::Fruit => Entity::has_many(super::fruit::Entity)
+                .from(Column::Id)
+                .to(super::fruit::Column::CakeId)
+                .into(),
+        }
+    }
+}
+
+impl Related<super::fruit::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Fruit.def()
+    }
+}
+
+impl Model {
+    pub fn find_fruit(&self) -> Select<super::fruit::Entity> {
+        Entity::find_related().belongs_to::<Entity>(self)
     }
 }

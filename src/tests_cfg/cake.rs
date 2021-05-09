@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, ColumnType, EntityTrait, EnumIter, Iden, IdenStatic, Identity, IntoIdentity,
-    ModelTrait, QueryResult, Related, RelationDef, RelationTrait, Select, TypeErr, Value,
+    ColumnTrait, ColumnType, EntityTrait, EnumIter, Iden, IdenStatic,
+    ModelTrait, QueryResult, Related, RelationDef, RelationTrait, Select, TypeErr, Value, PrimaryKeyTrait
 };
 
 #[derive(Default, Debug, Iden)]
@@ -19,6 +19,11 @@ pub enum Column {
     Name,
 }
 
+#[derive(Copy, Clone, Debug, Iden, EnumIter)]
+pub enum PrimaryKey {
+    Id,
+}
+
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Fruit,
@@ -29,11 +34,9 @@ impl EntityTrait for Entity {
 
     type Column = Column;
 
-    type Relation = Relation;
+    type PrimaryKey = PrimaryKey;
 
-    fn primary_key() -> Identity {
-        Column::Id.into_identity()
-    }
+    type Relation = Relation;
 }
 
 // TODO: implement with derive macro
@@ -66,8 +69,8 @@ impl ModelTrait for Model {
 impl IdenStatic for Column {
     fn as_str(&self) -> &str {
         match self {
-            Column::Id => "id",
-            Column::Name => "name",
+            Self::Id => "id",
+            Self::Name => "name",
         }
     }
 }
@@ -82,6 +85,18 @@ impl ColumnTrait for Column {
         }
     }
 }
+
+// TODO: implement with derive macro
+impl IdenStatic for PrimaryKey {
+    fn as_str(&self) -> &str {
+        match self {
+            Self::Id => "id",
+        }
+    }
+}
+
+// TODO: implement with derive macro
+impl PrimaryKeyTrait for PrimaryKey {}
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {

@@ -1,4 +1,4 @@
-use crate::{
+use sea_orm::{
     ColumnTrait, ColumnType, EntityTrait, EnumIter, Iden, IdenStatic,
     ModelTrait, QueryResult, RelationDef, RelationTrait, TypeErr, Value, PrimaryKeyTrait
 };

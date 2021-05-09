@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, Connection, Database, Identity, ModelTrait, QueryErr, RelationBuilder,
-    RelationTrait, RelationType, Select,
+    ColumnTrait, Connection, Database, ModelTrait, QueryErr, RelationBuilder,
+    RelationTrait, RelationType, Select, PrimaryKeyTrait
 };
 use async_trait::async_trait;
 use sea_query::{Expr, Iden, IntoIden, Value};
@@ -15,7 +15,7 @@ pub trait EntityTrait: Iden + Default + Debug + 'static {
 
     type Relation: RelationTrait + Iterable;
 
-    fn primary_key() -> Identity;
+    type PrimaryKey: PrimaryKeyTrait + Iterable;
 
     fn auto_increment() -> bool {
         true
@@ -63,10 +63,11 @@ pub trait EntityTrait: Iden + Default + Debug + 'static {
         let builder = db.get_query_builder_backend();
         let stmt = {
             let mut select = Self::find();
-            match Self::primary_key() {
-                Identity::Unary(iden) => {
-                    select = select.filter(Expr::tbl(Self::default(), iden).eq(v));
-                }
+            if let Some(key) = Self::PrimaryKey::iter().next() {
+                // TODO: supporting composite primary key
+                select = select.filter(Expr::tbl(Self::default(), key).eq(v));
+            } else {
+                panic!("undefined primary key");
             }
             select.build(builder)
         };
