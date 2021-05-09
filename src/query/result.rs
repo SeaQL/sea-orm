@@ -17,32 +17,52 @@ pub struct TypeErr;
 pub trait TryGetable {
     fn try_get(res: &QueryResult, col: &str) -> Result<Self, TypeErr>
     where
-        Self: std::marker::Sized;
+        Self: Sized;
 }
 
 // TryGetable //
 
-impl TryGetable for i32 {
-    fn try_get(res: &QueryResult, col: &str) -> Result<Self, TypeErr> {
-        match &res.row {
-            QueryResultRow::SqlxMySql(row) => {
-                use sqlx::Row;
-                Ok(row.try_get(col)?)
+macro_rules! try_getable {
+    ( $type: ty ) => {
+        impl TryGetable for $type {
+            fn try_get(res: &QueryResult, col: &str) -> Result<Self, TypeErr> {
+                match &res.row {
+                    QueryResultRow::SqlxMySql(row) => {
+                        use sqlx::Row;
+                        Ok(row.try_get(col)?)
+                    }
+                }
             }
         }
-    }
+
+        impl TryGetable for Option<$type> {
+            fn try_get(res: &QueryResult, col: &str) -> Result<Self, TypeErr> {
+                match &res.row {
+                    QueryResultRow::SqlxMySql(row) => {
+                        use sqlx::Row;
+                        match row.try_get(col) {
+                            Ok(v) => Ok(Some(v)),
+                            Err(_) => Ok(None),
+                        }
+                    }
+                }
+            }
+        }
+    };
 }
 
-impl TryGetable for String {
-    fn try_get(res: &QueryResult, col: &str) -> Result<Self, TypeErr> {
-        match &res.row {
-            QueryResultRow::SqlxMySql(row) => {
-                use sqlx::Row;
-                Ok(row.try_get(col)?)
-            }
-        }
-    }
-}
+try_getable!(bool);
+try_getable!(i8);
+try_getable!(i16);
+try_getable!(i32);
+try_getable!(i64);
+try_getable!(u8);
+try_getable!(u16);
+try_getable!(u32);
+try_getable!(u64);
+try_getable!(f32);
+try_getable!(f64);
+try_getable!(String);
 
 // QueryResult //
 
@@ -52,17 +72,6 @@ impl QueryResult {
         T: TryGetable,
     {
         T::try_get(self, col)
-    }
-
-    pub fn try_get_option<T>(&self, col: &str) -> Result<Option<T>, TypeErr>
-    where
-        T: TryGetable,
-    {
-        if let Ok(v) = T::try_get(self, col) {
-            Ok(Some(v))
-        } else {
-            Ok(None)
-        }
     }
 }
 

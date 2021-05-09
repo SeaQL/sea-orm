@@ -1,13 +1,13 @@
 use crate::{
-    ColumnTrait, ColumnType, EntityTrait, EnumIter, Iden, Identity, IntoIdentity, ModelTrait,
-    QueryResult, RelationDef, RelationTrait, TypeErr,
+    ColumnTrait, ColumnType, EntityTrait, EnumIter, Iden, IdenStatic, Identity, IntoIdentity,
+    ModelTrait, QueryResult, RelationDef, RelationTrait, TypeErr, Value,
 };
 
 #[derive(Default, Debug, Iden)]
 #[iden = "fruit"]
 pub struct Entity;
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Model {
     pub id: i32,
     pub name: String,
@@ -36,13 +36,43 @@ impl EntityTrait for Entity {
     }
 }
 
+// TODO: implement with derive macro
 impl ModelTrait for Model {
+    type Column = Column;
+
+    fn get(&self, c: Self::Column) -> Value {
+        match c {
+            Column::Id => self.id.clone().into(),
+            Column::Name => self.name.clone().into(),
+            Column::CakeId => self.cake_id.clone().into(),
+        }
+    }
+
+    fn set(&mut self, c: Self::Column, v: Value) {
+        match c {
+            Column::Id => self.id = v.unwrap(),
+            Column::Name => self.name = v.unwrap(),
+            Column::CakeId => self.cake_id = v.unwrap(),
+        }
+    }
+
     fn from_query_result(row: QueryResult) -> Result<Self, TypeErr> {
         Ok(Self {
-            id: row.try_get("id")?,
-            name: row.try_get("name")?,
-            cake_id: row.try_get_option("cake_id")?,
+            id: row.try_get(Column::Id.as_str())?,
+            name: row.try_get(Column::Name.as_str())?,
+            cake_id: row.try_get(Column::CakeId.as_str())?,
         })
+    }
+}
+
+// TODO: implement with derive macro
+impl IdenStatic for Column {
+    fn as_str(&self) -> &str {
+        match self {
+            Column::Id => "id",
+            Column::Name => "name",
+            Column::CakeId => "cake_id",
+        }
     }
 }
 
