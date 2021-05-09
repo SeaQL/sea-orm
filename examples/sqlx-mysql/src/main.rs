@@ -32,4 +32,14 @@ async fn main() {
     println!();
     println!("{:?}", cheese);
     println!();
+
+    println!("find models belongs to");
+
+    let fruits = cheese.find_fruit().all(&db).await.unwrap();
+
+    println!();
+    for ff in fruits.iter() {
+        println!("{:?}", ff);
+        println!();
+    }
 }

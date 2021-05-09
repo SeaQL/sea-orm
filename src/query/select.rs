@@ -1,4 +1,4 @@
-use crate::{EntityTrait, Identity, Iterable, RelationDef, RelationTrait, Statement, Related};
+use crate::{EntityTrait, Identity, Iterable, PrimaryKeyOfModel, RelationDef, RelationTrait, Statement, Related};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
@@ -88,13 +88,16 @@ where
     }
 
     pub fn belongs_to<R>(self, model: &R::Model) -> Self
-        where R: EntityTrait + Related<E> {
-        // match R::primary_key() {
-        //     Identity::Unary(iden) => {
-        //         model.get(iden)
-        //     }
-        // };
-        self
+        where R: EntityTrait + Related<E>, R::PrimaryKey: PrimaryKeyOfModel<R::Model> {
+        use crate::{ColumnTrait, ModelTrait};
+
+        if let Some(key) = R::PrimaryKey::iter().next() {
+            // TODO: supporting composite primary key
+            let col = key.into_column();
+            self.filter(col.eq(model.get(col)))
+        } else {
+            panic!("undefined primary key");
+        }
     }
 
     /// ```
@@ -239,6 +242,27 @@ mod tests {
                 "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
                 "INNER JOIN `cake` ON `cake`.`id` = `fruit`.`cake_id`",
                 "WHERE `cake`.`id` = 11",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_5() {
+
+        let cake_model = cake::Model {
+            id: 12,
+            name: "".to_owned(),
+        };
+
+        assert_eq!(
+            cake_model.find_fruit()
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            [
+                "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
+                "INNER JOIN `cake` ON `cake`.`id` = `fruit`.`cake_id`",
+                "WHERE `cake`.`id` = 12",
             ]
             .join(" ")
         );

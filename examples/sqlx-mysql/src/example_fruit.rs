@@ -1,5 +1,5 @@
 use sea_orm::{
-    ColumnTrait, ColumnType, EntityTrait, EnumIter, Iden, IdenStatic,
+    ColumnTrait, ColumnType, EntityTrait, EnumIter, Iden, IdenStatic, PrimaryKeyOfModel,
     ModelTrait, QueryResult, RelationDef, RelationTrait, TypeErr, Value, PrimaryKeyTrait
 };
 
@@ -102,6 +102,15 @@ impl IdenStatic for PrimaryKey {
 
 // TODO: implement with derive macro
 impl PrimaryKeyTrait for PrimaryKey {}
+
+// TODO: implement with derive macro
+impl PrimaryKeyOfModel<Model> for PrimaryKey {
+    fn into_column(self) -> <Model as ModelTrait>::Column {
+        match self {
+            Self::Id => Column::Id,
+        }
+    }
+}
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
