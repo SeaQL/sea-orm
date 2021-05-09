@@ -1,7 +1,6 @@
 use crate::{
     ColumnTrait, ModelTrait, PrimaryKeyTrait, RelationBuilder, RelationTrait, RelationType, Select,
 };
-use async_trait::async_trait;
 use sea_query::{Expr, Iden, IntoIden, Value};
 use std::fmt::Debug;
 pub use strum::IntoEnumIterator as Iterable;
@@ -12,7 +11,6 @@ pub trait IdenStatic: Iden + Copy + Debug + 'static {
 
 pub trait EntityName: IdenStatic + Default {}
 
-#[async_trait]
 pub trait EntityTrait: EntityName {
     type Model: ModelTrait;
 
