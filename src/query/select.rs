@@ -13,8 +13,8 @@ pub struct Select<E: 'static>
 where
     E: EntityTrait,
 {
-    query: SelectStatement,
-    entity: PhantomData<E>,
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<E>,
 }
 
 impl<E: 'static> Select<E>
@@ -162,7 +162,7 @@ where
         &mut self.query
     }
 
-    /// Get a immutable ref to the query builder
+    /// Get an immutable ref to the query builder
     pub fn as_query(&self) -> &SelectStatement {
         &self.query
     }

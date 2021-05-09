@@ -11,5 +11,20 @@ pub trait ModelTrait: Clone + Debug + Default {
 
     fn from_query_result(row: QueryResult) -> Result<Self, TypeErr>
     where
-        Self: std::marker::Sized;
+        Self: Sized;
+}
+
+pub trait FromQueryResult {
+    fn from_query_result(row: QueryResult) -> Result<Self, TypeErr>
+    where
+        Self: Sized;
+}
+
+impl<M> FromQueryResult for M
+where
+    M: ModelTrait + Sized,
+{
+    fn from_query_result(row: QueryResult) -> Result<M, TypeErr> {
+        <Self as ModelTrait>::from_query_result(row)
+    }
 }
