@@ -15,7 +15,7 @@ async fn main() {
     println!("{:?}", db);
     println!();
 
-    print!("find all: ");
+    print!("find all cakes: ");
 
     let cakes = cake::Entity::find().all(&db).await.unwrap();
 
@@ -24,6 +24,8 @@ async fn main() {
         println!("{:?}", cc);
         println!();
     }
+
+    print!("find all fruits: ");
 
     let fruits = fruit::Entity::find().all(&db).await.unwrap();
 

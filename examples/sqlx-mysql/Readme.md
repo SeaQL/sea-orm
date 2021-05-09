@@ -9,7 +9,27 @@ Example output:
 ```sh
 Database { connection: SqlxMySqlPoolConnection }
 
-CakeModel { id: 1, name: "New York Cheese" }
+find all cakes: SELECT `cake`.`id`, `cake`.`name` FROM `cake`
 
-CakeModel { id: 2, name: "Chocolate Fudge" }
+Model { id: 1, name: "New York Cheese" }
+
+Model { id: 2, name: "Chocolate Fudge" }
+
+find all fruits: SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`
+
+Model { id: 1, name: "Blueberry", cake_id: Some(1) }
+
+Model { id: 2, name: "Rasberry", cake_id: Some(1) }
+
+Model { id: 3, name: "Strawberry", cake_id: Some(2) }
+
+find one by primary key: SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 1 LIMIT 1
+
+Model { id: 1, name: "New York Cheese" }
+
+find models belong to: SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` INNER JOIN `cake` ON `cake`.`id` = `fruit`.`cake_id` WHERE `cake`.`id` = 1
+
+Model { id: 1, name: "Blueberry", cake_id: Some(1) }
+
+Model { id: 2, name: "Rasberry", cake_id: Some(1) }
 ```
