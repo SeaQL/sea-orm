@@ -1,4 +1,4 @@
-use crate::{IdenStatic, EntityTrait};
+use crate::{EntityName, IdenStatic};
 pub use sea_query::ColumnType;
 use sea_query::{Expr, Iden, SimpleExpr, Value};
 
@@ -16,12 +16,12 @@ macro_rules! bind_oper {
 }
 
 pub trait ColumnTrait: IdenStatic {
-    type Entity: EntityTrait;
+    type EntityName: EntityName;
 
     fn def(&self) -> ColumnType;
 
     fn as_iden(&self) -> Rc<dyn Iden> {
-        Rc::new(Self::Entity::default()) as Rc<dyn Iden>
+        Rc::new(Self::EntityName::default()) as Rc<dyn Iden>
     }
 
     bind_oper!(eq);

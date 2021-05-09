@@ -1,7 +1,4 @@
-use sea_orm::{
-    ColumnTrait, ColumnType, EntityTrait, EnumIter, Iden, IdenStatic, PrimaryKeyOfModel,
-    ModelTrait, QueryResult, Related, RelationDef, RelationTrait, Select, TypeErr, Value, PrimaryKeyTrait
-};
+use sea_orm::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Entity;
@@ -39,16 +36,19 @@ impl EntityTrait for Entity {
 }
 
 // TODO: implement with derive macro
-impl Iden for Entity {
-    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-        write!(s, "{}", self.as_str()).unwrap();
-    }
-}
+impl EntityName for Entity {}
 
 // TODO: implement with derive macro
 impl IdenStatic for Entity {
     fn as_str(&self) -> &str {
         "cake"
+    }
+}
+
+// TODO: implement with derive macro
+impl Iden for Entity {
+    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+        write!(s, "{}", self.as_str()).unwrap();
     }
 }
 
@@ -96,7 +96,7 @@ impl IdenStatic for Column {
 }
 
 impl ColumnTrait for Column {
-    type Entity = Entity;
+    type EntityName = Entity;
 
     fn def(&self) -> ColumnType {
         match self {
@@ -105,7 +105,6 @@ impl ColumnTrait for Column {
         }
     }
 }
-
 
 // TODO: implement with derive macro
 impl Iden for PrimaryKey {

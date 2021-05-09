@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, Connection, Database, ModelTrait, QueryErr, RelationBuilder,
-    RelationTrait, RelationType, Select, PrimaryKeyTrait
+    ColumnTrait, Connection, Database, ModelTrait, PrimaryKeyTrait, QueryErr, RelationBuilder,
+    RelationTrait, RelationType, Select,
 };
 use async_trait::async_trait;
 use sea_query::{Expr, Iden, IntoIden, Value};
@@ -11,8 +11,10 @@ pub trait IdenStatic: Iden + Copy + Debug + 'static {
     fn as_str(&self) -> &str;
 }
 
+pub trait EntityName: IdenStatic + Default {}
+
 #[async_trait]
-pub trait EntityTrait: IdenStatic + Default {
+pub trait EntityTrait: EntityName {
     type Model: ModelTrait;
 
     type Column: ColumnTrait + Iterable;

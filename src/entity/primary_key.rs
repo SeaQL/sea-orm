@@ -1,4 +1,4 @@
-use super::{ModelTrait, IdenStatic};
+use super::{IdenStatic, ModelTrait};
 
 pub trait PrimaryKeyTrait: IdenStatic {}
 
