@@ -3,8 +3,7 @@ use sea_orm::{
     ModelTrait, QueryResult, Related, RelationDef, RelationTrait, Select, TypeErr, Value, PrimaryKeyTrait
 };
 
-#[derive(Default, Debug, Iden)]
-#[iden = "cake"]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct Entity;
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -13,13 +12,13 @@ pub struct Model {
     pub name: String,
 }
 
-#[derive(Copy, Clone, Debug, Iden, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Column {
     Id,
     Name,
 }
 
-#[derive(Copy, Clone, Debug, Iden, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter)]
 pub enum PrimaryKey {
     Id,
 }
@@ -37,6 +36,20 @@ impl EntityTrait for Entity {
     type PrimaryKey = PrimaryKey;
 
     type Relation = Relation;
+}
+
+// TODO: implement with derive macro
+impl Iden for Entity {
+    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+        write!(s, "{}", self.as_str()).unwrap();
+    }
+}
+
+// TODO: implement with derive macro
+impl IdenStatic for Entity {
+    fn as_str(&self) -> &str {
+        "cake"
+    }
 }
 
 // TODO: implement with derive macro
@@ -66,6 +79,13 @@ impl ModelTrait for Model {
 }
 
 // TODO: implement with derive macro
+impl Iden for Column {
+    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+        write!(s, "{}", self.as_str()).unwrap();
+    }
+}
+
+// TODO: implement with derive macro
 impl IdenStatic for Column {
     fn as_str(&self) -> &str {
         match self {
@@ -83,6 +103,14 @@ impl ColumnTrait for Column {
             Self::Id => ColumnType::Integer(None),
             Self::Name => ColumnType::String(None),
         }
+    }
+}
+
+
+// TODO: implement with derive macro
+impl Iden for PrimaryKey {
+    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+        write!(s, "{}", self.as_str()).unwrap();
     }
 }
 

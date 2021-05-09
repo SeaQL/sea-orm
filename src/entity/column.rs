@@ -1,7 +1,7 @@
-use crate::EntityTrait;
+use crate::{IdenStatic, EntityTrait};
 pub use sea_query::ColumnType;
 use sea_query::{Expr, Iden, SimpleExpr, Value};
-use std::fmt::Debug;
+
 use std::rc::Rc;
 
 macro_rules! bind_oper {
@@ -13,14 +13,6 @@ macro_rules! bind_oper {
             Expr::tbl(self.as_iden(), *self).$op(v)
         }
     };
-}
-
-pub trait IdenStatic: Iden + Copy + Debug + 'static {
-    fn as_str(&self) -> &str;
-
-    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-        write!(s, "{}", self.as_str()).unwrap();
-    }
 }
 
 pub trait ColumnTrait: IdenStatic {

@@ -7,8 +7,12 @@ use sea_query::{Expr, Iden, IntoIden, Value};
 use std::fmt::Debug;
 pub use strum::IntoEnumIterator as Iterable;
 
+pub trait IdenStatic: Iden + Copy + Debug + 'static {
+    fn as_str(&self) -> &str;
+}
+
 #[async_trait]
-pub trait EntityTrait: Iden + Default + Debug + 'static {
+pub trait EntityTrait: IdenStatic + Default {
     type Model: ModelTrait;
 
     type Column: ColumnTrait + Iterable;
