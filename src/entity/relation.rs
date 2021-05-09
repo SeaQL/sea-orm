@@ -7,7 +7,6 @@ use std::rc::Rc;
 pub enum RelationType {
     HasOne,
     HasMany,
-    BelongsTo,
 }
 
 pub trait RelationTrait: Debug + 'static {

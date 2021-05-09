@@ -117,7 +117,6 @@ impl IdenStatic for Column {
     }
 }
 
-
 // TODO: implement with derive macro
 impl Iden for PrimaryKey {
     fn unquoted(&self, s: &mut dyn std::fmt::Write) {

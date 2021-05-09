@@ -8,7 +8,7 @@ pub use sea_query::JoinType;
 use sea_query::{Expr, Iden, IntoIden, Order, QueryBuilder, SelectStatement, SimpleExpr};
 use std::rc::Rc;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Select<E: 'static>
 where
     E: EntityTrait,

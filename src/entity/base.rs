@@ -1,6 +1,5 @@
 use crate::{
-    ColumnTrait, Connection, Database, ModelTrait, PrimaryKeyTrait, QueryErr, RelationBuilder,
-    RelationTrait, RelationType, Select,
+    ColumnTrait, ModelTrait, PrimaryKeyTrait, RelationBuilder, RelationTrait, RelationType, Select,
 };
 use async_trait::async_trait;
 use sea_query::{Expr, Iden, IntoIden, Value};
@@ -41,13 +40,6 @@ pub trait EntityTrait: EntityName {
         RelationBuilder::new(RelationType::HasMany, Self::default(), entity)
     }
 
-    fn belongs_to<E>(entity: E) -> RelationBuilder
-    where
-        E: IntoIden,
-    {
-        RelationBuilder::new(RelationType::BelongsTo, Self::default(), entity)
-    }
-
     /// ```
     /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
@@ -62,22 +54,28 @@ pub trait EntityTrait: EntityName {
         Select::<Self>::new()
     }
 
-    async fn find_one<V>(db: &Database, v: V) -> Result<Self::Model, QueryErr>
+    /// Find a model by primary key
+    /// ```
+    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find_by(11)
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 11"
+    /// );
+    /// ```
+    fn find_by<V>(v: V) -> Select<Self>
     where
-        V: Into<Value> + Send,
+        V: Into<Value>,
     {
-        let builder = db.get_query_builder_backend();
-        let stmt = {
-            let mut select = Self::find();
-            if let Some(key) = Self::PrimaryKey::iter().next() {
-                // TODO: supporting composite primary key
-                select = select.filter(Expr::tbl(Self::default(), key).eq(v));
-            } else {
-                panic!("undefined primary key");
-            }
-            select.build(builder)
-        };
-        let row = db.get_connection().query_one(stmt).await?;
-        Ok(Self::Model::from_query_result(row)?)
+        let mut select = Self::find();
+        if let Some(key) = Self::PrimaryKey::iter().next() {
+            // TODO: supporting composite primary key
+            select = select.filter(Expr::tbl(Self::default(), key).eq(v));
+        } else {
+            panic!("undefined primary key");
+        }
+        select
     }
 }

@@ -31,6 +31,17 @@ pub trait ColumnTrait: IdenStatic {
     bind_oper!(lt);
     bind_oper!(lte);
 
+    /// ```
+    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.between(2,3))
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` BETWEEN 2 AND 3"
+    /// );
+    /// ```
     fn between<V>(&self, a: V, b: V) -> SimpleExpr
     where
         V: Into<Value>,
@@ -38,6 +49,17 @@ pub trait ColumnTrait: IdenStatic {
         Expr::tbl(self.as_iden(), *self).between(a, b)
     }
 
+    /// ```
+    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.not_between(2,3))
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` NOT BETWEEN 2 AND 3"
+    /// );
+    /// ```
     fn not_between<V>(&self, a: V, b: V) -> SimpleExpr
     where
         V: Into<Value>,

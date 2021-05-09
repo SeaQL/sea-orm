@@ -15,7 +15,7 @@ async fn main() {
     println!("{:?}", db);
     println!();
 
-    println!("find all");
+    print!("find all: ");
 
     let cakes = cake::Entity::find().all(&db).await.unwrap();
 
@@ -25,15 +25,23 @@ async fn main() {
         println!();
     }
 
-    println!("find one by primary key");
+    let fruits = fruit::Entity::find().all(&db).await.unwrap();
 
-    let cheese = cake::Entity::find_one(&db, 1).await.unwrap();
+    println!();
+    for cc in fruits.iter() {
+        println!("{:?}", cc);
+        println!();
+    }
+
+    print!("find one by primary key: ");
+
+    let cheese = cake::Entity::find_by(1).one(&db).await.unwrap();
 
     println!();
     println!("{:?}", cheese);
     println!();
 
-    println!("find models belongs to");
+    print!("find models belong to: ");
 
     let fruits = cheese.find_fruit().all(&db).await.unwrap();
 

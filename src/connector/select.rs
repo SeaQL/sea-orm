@@ -4,8 +4,9 @@ impl<E: 'static> Select<E>
 where
     E: EntityTrait,
 {
-    pub async fn one(self, db: &Database) -> Result<E::Model, QueryErr> {
+    pub async fn one(mut self, db: &Database) -> Result<E::Model, QueryErr> {
         let builder = db.get_query_builder_backend();
+        self.query().limit(1);
         let row = db.get_connection().query_one(self.build(builder)).await?;
         Ok(<E as EntityTrait>::Model::from_query_result(row)?)
     }
