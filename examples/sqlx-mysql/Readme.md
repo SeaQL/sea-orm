@@ -32,4 +32,10 @@ find models belong to: SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FR
 Model { id: 1, name: "Blueberry", cake_id: Some(1) }
 
 Model { id: 2, name: "Rasberry", cake_id: Some(1) }
+
+count fruits by cake: SELECT `cake`.`name`, COUNT(`fruit`.`id`) AS `num_of_fruits` FROM `cake` LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id` GROUP BY `cake`.`name`
+
+SelectResult { name: "New York Cheese", num_of_fruits: 2 }
+
+SelectResult { name: "Chocolate Fudge", num_of_fruits: 1 }
 ```
