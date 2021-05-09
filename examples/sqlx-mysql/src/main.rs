@@ -1,4 +1,4 @@
-use sea_orm::{Database, EntityTrait, QueryErr};
+use sea_orm::{ColumnTrait, Database, EntityTrait, QueryErr};
 
 mod example_cake;
 mod example_fruit;
@@ -55,6 +55,17 @@ async fn find_one(db: &Database) -> Result<(), QueryErr> {
 
     println!();
     println!("{:?}", cheese);
+    println!();
+
+    print!("find one by like: ");
+
+    let chocolate = cake::Entity::find()
+        .filter(cake::Column::Name.contains("chocolate"))
+        .one(db)
+        .await?;
+
+    println!();
+    println!("{:?}", chocolate);
     println!();
 
     print!("find models belong to: ");
