@@ -104,22 +104,12 @@ async fn count_fruits_by_cake(db: &Database) -> Result<(), QueryErr> {
 
     print!("count fruits by cake: ");
 
-    let mut select = cake::Entity::find().left_join(cake::Relation::Fruit);
-    {
-        use sea_orm::sea_query::*;
-        type Cake = cake::Column;
-        type Fruit = fruit::Column;
-
-        select
-            .query()
-            .clear_selects()
-            .column((cake::Entity, Cake::Name))
-            .expr_as(
-                Expr::tbl(fruit::Entity, Fruit::Id).count(),
-                Alias::new("num_of_fruits"),
-            )
-            .group_by_col((cake::Entity, Cake::Name));
-    }
+    let select = cake::Entity::find()
+        .left_join(cake::Relation::Fruit)
+        .clear_selects()
+        .column(cake::Column::Name)
+        .expr_as(fruit::Column::Id.count(), "num_of_fruits")
+        .group_by(cake::Column::Name);
 
     let results = select.into_model::<SelectResult>().all(db).await?;
 

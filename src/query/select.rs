@@ -1,11 +1,13 @@
 use crate::{
-    EntityTrait, Identity, Iterable, PrimaryKeyOfModel, Related, RelationDef, RelationTrait,
-    Statement,
+    ColumnTrait, EntityTrait, Identity, Iterable, ModelTrait, PrimaryKeyOfModel, Related,
+    RelationDef, RelationTrait, Statement,
 };
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{Expr, Iden, IntoIden, Order, QueryBuilder, SelectStatement, SimpleExpr};
+use sea_query::{
+    Alias, Expr, Iden, IntoIden, Order, QueryBuilder, SelectExpr, SelectStatement, SimpleExpr,
+};
 use std::rc::Rc;
 
 #[derive(Clone, Debug)]
@@ -74,6 +76,72 @@ where
         self
     }
 
+    pub fn clear_selects(mut self) -> Self {
+        self.query.clear_selects();
+        self
+    }
+
+    /// ```
+    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .clear_selects()
+    ///         .column(cake::Column::Name)
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."name" FROM "cake""#
+    /// );
+    /// ```
+    pub fn column<C>(mut self, col: C) -> Self
+    where
+        C: ColumnTrait,
+    {
+        self.query.column(col.as_column_ref());
+        self
+    }
+
+    /// ```
+    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .clear_selects()
+    ///         .column(cake::Column::Name)
+    ///         .group_by(cake::Column::Name)
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."name" FROM "cake" GROUP BY "cake"."name""#
+    /// );
+    /// ```
+    pub fn group_by<C>(mut self, col: C) -> Self
+    where
+        C: ColumnTrait,
+    {
+        self.query.group_by_col(col.as_column_ref());
+        self
+    }
+
+    /// ```
+    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .clear_selects()
+    ///         .expr_as(cake::Column::Id.count(), "count")
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"SELECT COUNT("cake"."id") AS "count" FROM "cake""#
+    /// );
+    /// ```
+    pub fn expr_as(mut self, expr: SimpleExpr, alias: &str) -> Self {
+        self.query.expr(SelectExpr {
+            expr,
+            alias: Some(Rc::new(Alias::new(alias))),
+        });
+        self
+    }
+
     /// ```
     /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
@@ -95,8 +163,6 @@ where
         R: EntityTrait + Related<E>,
         R::PrimaryKey: PrimaryKeyOfModel<R::Model>,
     {
-        use crate::{ColumnTrait, ModelTrait};
-
         if let Some(key) = R::PrimaryKey::iter().next() {
             // TODO: supporting composite primary key
             let col = key.into_column();
