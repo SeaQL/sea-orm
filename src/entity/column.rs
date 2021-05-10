@@ -10,7 +10,7 @@ macro_rules! bind_oper {
         where
             V: Into<Value>,
         {
-            Expr::tbl(self.as_iden(), *self).$op(v)
+            Expr::tbl(self.entity_name(), *self).$op(v)
         }
     };
 }
@@ -20,7 +20,7 @@ pub trait ColumnTrait: IdenStatic {
 
     fn def(&self) -> ColumnType;
 
-    fn as_iden(&self) -> Rc<dyn Iden> {
+    fn entity_name(&self) -> Rc<dyn Iden> {
         Rc::new(Self::EntityName::default()) as Rc<dyn Iden>
     }
 
@@ -46,7 +46,7 @@ pub trait ColumnTrait: IdenStatic {
     where
         V: Into<Value>,
     {
-        Expr::tbl(self.as_iden(), *self).between(a, b)
+        Expr::tbl(self.entity_name(), *self).between(a, b)
     }
 
     /// ```
@@ -64,7 +64,7 @@ pub trait ColumnTrait: IdenStatic {
     where
         V: Into<Value>,
     {
-        Expr::tbl(self.as_iden(), *self).not_between(a, b)
+        Expr::tbl(self.entity_name(), *self).not_between(a, b)
     }
 
     /// ```
@@ -79,7 +79,7 @@ pub trait ColumnTrait: IdenStatic {
     /// );
     /// ```
     fn like(&self, s: &str) -> SimpleExpr {
-        Expr::tbl(self.as_iden(), *self).like(s)
+        Expr::tbl(self.entity_name(), *self).like(s)
     }
 
     /// ```
@@ -94,7 +94,7 @@ pub trait ColumnTrait: IdenStatic {
     /// );
     /// ```
     fn not_like(&self, s: &str) -> SimpleExpr {
-        Expr::tbl(self.as_iden(), *self).not_like(s)
+        Expr::tbl(self.entity_name(), *self).not_like(s)
     }
 
     /// ```
@@ -110,7 +110,7 @@ pub trait ColumnTrait: IdenStatic {
     /// ```
     fn starts_with(&self, s: &str) -> SimpleExpr {
         let pattern = format!("{}%", s);
-        Expr::tbl(self.as_iden(), *self).like(&pattern)
+        Expr::tbl(self.entity_name(), *self).like(&pattern)
     }
 
     /// ```
@@ -126,7 +126,7 @@ pub trait ColumnTrait: IdenStatic {
     /// ```
     fn ends_with(&self, s: &str) -> SimpleExpr {
         let pattern = format!("%{}", s);
-        Expr::tbl(self.as_iden(), *self).like(&pattern)
+        Expr::tbl(self.entity_name(), *self).like(&pattern)
     }
 
     /// ```
@@ -142,6 +142,6 @@ pub trait ColumnTrait: IdenStatic {
     /// ```
     fn contains(&self, s: &str) -> SimpleExpr {
         let pattern = format!("%{}%", s);
-        Expr::tbl(self.as_iden(), *self).like(&pattern)
+        Expr::tbl(self.entity_name(), *self).like(&pattern)
     }
 }
