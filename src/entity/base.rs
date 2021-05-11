@@ -1,7 +1,7 @@
 use crate::{
-    ColumnTrait, ModelTrait, PrimaryKeyTrait, RelationBuilder, RelationTrait, RelationType, Select,
+    ColumnTrait, ModelTrait, PrimaryKeyTrait, RelationBuilder, RelationTrait, RelationType, Select, PrimaryKeyOfModel
 };
-use sea_query::{Expr, Iden, IntoIden, Value};
+use sea_query::{Iden, IntoIden, Value};
 use std::fmt::Debug;
 pub use strum::IntoEnumIterator as Iterable;
 
@@ -65,12 +65,13 @@ pub trait EntityTrait: EntityName {
     /// ```
     fn find_by<V>(v: V) -> Select<Self>
     where
-        V: Into<Value>,
+        V: Into<Value>, Self::PrimaryKey: PrimaryKeyOfModel<Self::Model>
     {
         let mut select = Self::find();
         if let Some(key) = Self::PrimaryKey::iter().next() {
             // TODO: supporting composite primary key
-            select = select.filter(Expr::tbl(Self::default(), key).eq(v));
+            let col = key.into_column();
+            select = select.filter(col.eq(v));
         } else {
             panic!("undefined primary key");
         }
