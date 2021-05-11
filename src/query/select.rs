@@ -255,11 +255,11 @@ where
         self.prepare_join(JoinType::InnerJoin, E::Relation::def(&rel))
     }
 
-    pub fn reverse_join<R>(self, rel: R) -> Self
+    pub fn reverse_join<R>(self) -> Self
     where
-        R: RelationTrait,
+        R: EntityTrait + Related<E>,
     {
-        self.prepare_reverse_join(rel.def())
+        self.prepare_reverse_join(R::to())
     }
 
     /// Get a mutable ref to the query builder
@@ -328,7 +328,7 @@ mod tests {
     fn join_3() {
         assert_eq!(
             fruit::Entity::find()
-                .reverse_join(cake::Relation::Fruit)
+                .reverse_join::<cake::Entity>()
                 .build(MysqlQueryBuilder)
                 .to_string(),
             [
