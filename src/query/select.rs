@@ -6,7 +6,8 @@ use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
 use sea_query::{
-    Alias, Expr, Iden, IntoIden, Order, QueryBuilder, SelectExpr, SelectStatement, SimpleExpr,
+    Alias, Expr, Iden, IntoColumnRef, IntoIden, Order, QueryBuilder, SelectExpr, SelectStatement,
+    SimpleExpr,
 };
 use std::rc::Rc;
 
@@ -17,6 +18,25 @@ where
 {
     pub(crate) query: SelectStatement,
     pub(crate) entity: PhantomData<E>,
+}
+
+pub trait IntoSimpleExpr {
+    fn into_simple_expr(self) -> SimpleExpr;
+}
+
+impl<C> IntoSimpleExpr for C
+where
+    C: ColumnTrait,
+{
+    fn into_simple_expr(self) -> SimpleExpr {
+        SimpleExpr::Column(self.as_column_ref().into_column_ref())
+    }
+}
+
+impl IntoSimpleExpr for SimpleExpr {
+    fn into_simple_expr(self) -> SimpleExpr {
+        self
+    }
 }
 
 impl<E: 'static> Select<E>
@@ -96,51 +116,34 @@ where
     /// ```
     pub fn column<C>(mut self, col: C) -> Self
     where
-        C: ColumnTrait,
+        C: IntoSimpleExpr,
     {
-        self.query.column(col.as_column_ref());
+        self.query.expr(SelectExpr {
+            expr: col.into_simple_expr(),
+            alias: None,
+        });
         self
     }
 
-    /// Add a group by column
-    /// 
+    /// Add a select column with alias
     /// ```
     /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .select_only()
-    ///         .column(cake::Column::Name)
-    ///         .group_by(cake::Column::Name)
-    ///         .build(PostgresQueryBuilder)
-    ///         .to_string(),
-    ///     r#"SELECT "cake"."name" FROM "cake" GROUP BY "cake"."name""#
-    /// );
-    /// ```
-    pub fn group_by<C>(mut self, col: C) -> Self
-    where
-        C: ColumnTrait,
-    {
-        self.query.group_by_col(col.as_column_ref());
-        self
-    }
-
-    /// Add a select expression
-    /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .select_only()
-    ///         .expr_as(cake::Column::Id.count(), "count")
+    ///         .column_as(cake::Column::Id.count(), "count")
     ///         .build(PostgresQueryBuilder)
     ///         .to_string(),
     ///     r#"SELECT COUNT("cake"."id") AS "count" FROM "cake""#
     /// );
     /// ```
-    pub fn expr_as(mut self, expr: SimpleExpr, alias: &str) -> Self {
+    pub fn column_as<C>(mut self, col: C, alias: &str) -> Self
+    where
+        C: IntoSimpleExpr,
+    {
         self.query.expr(SelectExpr {
-            expr,
+            expr: col.into_simple_expr(),
             alias: Some(Rc::new(Alias::new(alias))),
         });
         self
@@ -177,6 +180,29 @@ where
         }
     }
 
+    /// Add a group by column
+    /// ```
+    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .column(cake::Column::Name)
+    ///         .group_by(cake::Column::Name)
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."name" FROM "cake" GROUP BY "cake"."name""#
+    /// );
+    /// ```
+    pub fn group_by<C>(mut self, col: C) -> Self
+    where
+        C: IntoSimpleExpr,
+    {
+        self.query.add_group_by(vec![col.into_simple_expr()]);
+        self
+    }
+
+    /// Add an order_by expression (ascending)
     /// ```
     /// use sea_orm::{EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
@@ -188,11 +214,15 @@ where
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` ASC"
     /// );
     /// ```
-    pub fn order_by(mut self, col: E::Column) -> Self {
-        self.query.order_by((E::default(), col), Order::Asc);
+    pub fn order_by<C>(mut self, col: C) -> Self
+    where
+        C: IntoSimpleExpr,
+    {
+        self.query.order_by_expr(col.into_simple_expr(), Order::Asc);
         self
     }
 
+    /// Add an order_by expression (descending)
     /// ```
     /// use sea_orm::{EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
@@ -204,8 +234,12 @@ where
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` DESC"
     /// );
     /// ```
-    pub fn order_by_desc(mut self, col: E::Column) -> Self {
-        self.query.order_by((E::default(), col), Order::Desc);
+    pub fn order_by_desc<C>(mut self, col: C) -> Self
+    where
+        C: IntoSimpleExpr,
+    {
+        self.query
+            .order_by_expr(col.into_simple_expr(), Order::Desc);
         self
     }
 

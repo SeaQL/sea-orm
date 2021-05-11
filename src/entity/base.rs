@@ -1,5 +1,6 @@
 use crate::{
-    ColumnTrait, ModelTrait, PrimaryKeyTrait, RelationBuilder, RelationTrait, RelationType, Select, PrimaryKeyOfModel
+    ColumnTrait, ModelTrait, PrimaryKeyOfModel, PrimaryKeyTrait, RelationBuilder, RelationTrait,
+    RelationType, Select,
 };
 use sea_query::{Iden, IntoIden, Value};
 use std::fmt::Debug;
@@ -65,7 +66,8 @@ pub trait EntityTrait: EntityName {
     /// ```
     fn find_by<V>(v: V) -> Select<Self>
     where
-        V: Into<Value>, Self::PrimaryKey: PrimaryKeyOfModel<Self::Model>
+        V: Into<Value>,
+        Self::PrimaryKey: PrimaryKeyOfModel<Self::Model>,
     {
         let mut select = Self::find();
         if let Some(key) = Self::PrimaryKey::iter().next() {

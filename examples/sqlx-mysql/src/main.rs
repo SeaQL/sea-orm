@@ -108,7 +108,7 @@ async fn count_fruits_by_cake(db: &Database) -> Result<(), QueryErr> {
         .left_join(cake::Relation::Fruit)
         .select_only()
         .column(cake::Column::Name)
-        .expr_as(fruit::Column::Id.count(), "num_of_fruits")
+        .column_as(fruit::Column::Id.count(), "num_of_fruits")
         .group_by(cake::Column::Name);
 
     let results = select.into_model::<SelectResult>().all(db).await?;
