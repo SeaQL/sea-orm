@@ -81,6 +81,7 @@ where
         self
     }
 
+    /// Add a select column
     /// ```
     /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
@@ -101,6 +102,8 @@ where
         self
     }
 
+    /// Add a group by column
+    /// 
     /// ```
     /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
@@ -122,6 +125,7 @@ where
         self
     }
 
+    /// Add a select expression
     /// ```
     /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
@@ -142,6 +146,7 @@ where
         self
     }
 
+    /// Add an AND WHERE expression
     /// ```
     /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
