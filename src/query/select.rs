@@ -76,7 +76,7 @@ where
         self
     }
 
-    pub fn clear_selects(mut self) -> Self {
+    pub fn select_only(mut self) -> Self {
         self.query.clear_selects();
         self
     }
@@ -86,7 +86,7 @@ where
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
-    ///         .clear_selects()
+    ///         .select_only()
     ///         .column(cake::Column::Name)
     ///         .build(PostgresQueryBuilder)
     ///         .to_string(),
@@ -106,7 +106,7 @@ where
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
-    ///         .clear_selects()
+    ///         .select_only()
     ///         .column(cake::Column::Name)
     ///         .group_by(cake::Column::Name)
     ///         .build(PostgresQueryBuilder)
@@ -127,7 +127,7 @@ where
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
-    ///         .clear_selects()
+    ///         .select_only()
     ///         .expr_as(cake::Column::Id.count(), "count")
     ///         .build(PostgresQueryBuilder)
     ///         .to_string(),
