@@ -1,5 +1,5 @@
 use crate::{EntityTrait, Identity, IntoIdentity, Select};
-use sea_query::{Iden, IntoIden};
+use sea_query::{Iden, IntoIden, JoinType};
 use std::fmt::Debug;
 use std::rc::Rc;
 
@@ -24,7 +24,7 @@ where
     }
 
     fn find_related() -> Select<R> {
-        Select::<R>::new().prepare_reverse_join(Self::to())
+        Select::<R>::new().join_rev(JoinType::InnerJoin, Self::to())
     }
 }
 

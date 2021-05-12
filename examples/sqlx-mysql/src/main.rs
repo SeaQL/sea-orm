@@ -105,7 +105,7 @@ async fn count_fruits_by_cake(db: &Database) -> Result<(), QueryErr> {
     print!("count fruits by cake: ");
 
     let select = cake::Entity::find()
-        .left_join(cake::Relation::Fruit)
+        .left_join(fruit::Entity)
         .select_only()
         .column(cake::Column::Name)
         .column_as(fruit::Column::Id.count(), "num_of_fruits")
