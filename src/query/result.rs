@@ -15,7 +15,7 @@ pub(crate) enum QueryResultRow {
 pub struct TypeErr;
 
 pub trait TryGetable {
-    fn try_get(res: &QueryResult, col: &str) -> Result<Self, TypeErr>
+    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TypeErr>
     where
         Self: Sized;
 }
@@ -25,22 +25,24 @@ pub trait TryGetable {
 macro_rules! try_getable {
     ( $type: ty ) => {
         impl TryGetable for $type {
-            fn try_get(res: &QueryResult, col: &str) -> Result<Self, TypeErr> {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TypeErr> {
+                let column = format!("{}{}", pre, col);
                 match &res.row {
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
-                        Ok(row.try_get(col)?)
+                        Ok(row.try_get(column.as_str())?)
                     }
                 }
             }
         }
 
         impl TryGetable for Option<$type> {
-            fn try_get(res: &QueryResult, col: &str) -> Result<Self, TypeErr> {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TypeErr> {
+                let column = format!("{}{}", pre, col);
                 match &res.row {
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
-                        match row.try_get(col) {
+                        match row.try_get(column.as_str()) {
                             Ok(v) => Ok(Some(v)),
                             Err(_) => Ok(None),
                         }
@@ -67,11 +69,11 @@ try_getable!(String);
 // QueryResult //
 
 impl QueryResult {
-    pub fn try_get<T>(&self, col: &str) -> Result<T, TypeErr>
+    pub fn try_get<T>(&self, pre: &str, col: &str) -> Result<T, TypeErr>
     where
         T: TryGetable,
     {
-        T::try_get(self, col)
+        T::try_get(self, pre, col)
     }
 }
 

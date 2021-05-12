@@ -93,10 +93,10 @@ async fn count_fruits_by_cake(db: &Database) -> Result<(), QueryErr> {
         use sea_orm::{FromQueryResult, QueryResult, TypeErr};
 
         impl FromQueryResult for SelectResult {
-            fn from_query_result(row: QueryResult) -> Result<Self, TypeErr> {
+            fn from_query_result(row: QueryResult, pre: &str) -> Result<Self, TypeErr> {
                 Ok(Self {
-                    name: row.try_get("name")?,
-                    num_of_fruits: row.try_get("num_of_fruits")?,
+                    name: row.try_get(pre, "name")?,
+                    num_of_fruits: row.try_get(pre, "num_of_fruits")?,
                 })
             }
         }

@@ -90,11 +90,11 @@ impl ModelTrait for Model {
         }
     }
 
-    fn from_query_result(row: QueryResult) -> Result<Self, TypeErr> {
+    fn from_query_result(row: QueryResult, pre: &str) -> Result<Self, TypeErr> {
         Ok(Self {
-            id: row.try_get(Column::Id.as_str())?,
-            name: row.try_get(Column::Name.as_str())?,
-            cake_id: row.try_get(Column::CakeId.as_str())?,
+            id: row.try_get(pre, Column::Id.as_str())?,
+            name: row.try_get(pre, Column::Name.as_str())?,
+            cake_id: row.try_get(pre, Column::CakeId.as_str())?,
         })
     }
 }
