@@ -1,4 +1,4 @@
-use sea_orm::{ColumnTrait, Database, EntityTrait, QueryErr};
+use sea_orm::{ColumnTrait, Database, EntityTrait, QueryErr, SelectQuery};
 
 mod example_cake;
 mod example_fruit;

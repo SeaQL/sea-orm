@@ -11,6 +11,16 @@ where
     model: PhantomData<M>,
 }
 
+#[derive(Clone, Debug)]
+pub struct DoubleSelect<M, N>
+where
+    M: FromQueryResult,
+    N: FromQueryResult,
+{
+    query: SelectStatement,
+    model: PhantomData<(M, N)>,
+}
+
 impl<E: 'static> Select<E>
 where
     E: EntityTrait,

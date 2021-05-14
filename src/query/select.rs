@@ -6,13 +6,13 @@ use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
 use sea_query::{
-    Alias, Expr, Iden, IntoColumnRef, IntoIden, Order, QueryBuilder, SelectExpr, SelectStatement,
-    SimpleExpr,
+    Alias, ColumnRef, Expr, Iden, IntoColumnRef, IntoIden, Order, QueryBuilder, SelectExpr,
+    SelectStatement, SimpleExpr,
 };
 use std::rc::Rc;
 
 #[derive(Clone, Debug)]
-pub struct Select<E: 'static>
+pub struct Select<E>
 where
     E: EntityTrait,
 {
@@ -39,7 +39,7 @@ impl IntoSimpleExpr for SimpleExpr {
     }
 }
 
-impl<E: 'static> Select<E>
+impl<E> Select<E>
 where
     E: EntityTrait,
 {
@@ -67,73 +67,26 @@ where
         self
     }
 
-    pub fn select_only(mut self) -> Self {
-        self.query.clear_selects();
-        self
-    }
-
-    /// Add a select column
-    /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .select_only()
-    ///         .column(cake::Column::Name)
-    ///         .build(PostgresQueryBuilder)
-    ///         .to_string(),
-    ///     r#"SELECT "cake"."name" FROM "cake""#
-    /// );
-    /// ```
-    pub fn column<C>(mut self, col: C) -> Self
-    where
-        C: IntoSimpleExpr,
-    {
-        self.query.expr(SelectExpr {
-            expr: col.into_simple_expr(),
-            alias: None,
+    fn apply_alias(mut self, pre: &str) -> Self {
+        self.query().exprs_mut_for_each(|sel| {
+            match &sel.alias {
+                Some(alias) => {
+                    let alias = format!("{}{}", pre, alias.to_string().as_str());
+                    sel.alias = Some(Rc::new(Alias::new(&alias)));
+                }
+                None => {
+                    let col = match &sel.expr {
+                        SimpleExpr::Column(col_ref) => match &col_ref {
+                            ColumnRef::Column(col) => col,
+                            ColumnRef::TableColumn(_, col) => col,
+                        },
+                        _ => panic!("cannot apply alias for expr other than Column"),
+                    };
+                    let alias = format!("{}{}", pre, col.to_string().as_str());
+                    sel.alias = Some(Rc::new(Alias::new(&alias)));
+                }
+            };
         });
-        self
-    }
-
-    /// Add a select column with alias
-    /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .select_only()
-    ///         .column_as(cake::Column::Id.count(), "count")
-    ///         .build(PostgresQueryBuilder)
-    ///         .to_string(),
-    ///     r#"SELECT COUNT("cake"."id") AS "count" FROM "cake""#
-    /// );
-    /// ```
-    pub fn column_as<C>(mut self, col: C, alias: &str) -> Self
-    where
-        C: IntoSimpleExpr,
-    {
-        self.query.expr(SelectExpr {
-            expr: col.into_simple_expr(),
-            alias: Some(Rc::new(Alias::new(alias))),
-        });
-        self
-    }
-
-    /// Add an AND WHERE expression
-    /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .filter(cake::Column::Id.eq(5))
-    ///         .build(MysqlQueryBuilder)
-    ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 5"
-    /// );
-    /// ```
-    pub fn filter(mut self, expr: SimpleExpr) -> Self {
-        self.query.and_where(expr);
         self
     }
 
@@ -149,69 +102,6 @@ where
         } else {
             panic!("undefined primary key");
         }
-    }
-
-    /// Add a group by column
-    /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .select_only()
-    ///         .column(cake::Column::Name)
-    ///         .group_by(cake::Column::Name)
-    ///         .build(PostgresQueryBuilder)
-    ///         .to_string(),
-    ///     r#"SELECT "cake"."name" FROM "cake" GROUP BY "cake"."name""#
-    /// );
-    /// ```
-    pub fn group_by<C>(mut self, col: C) -> Self
-    where
-        C: IntoSimpleExpr,
-    {
-        self.query.add_group_by(vec![col.into_simple_expr()]);
-        self
-    }
-
-    /// Add an order_by expression (ascending)
-    /// ```
-    /// use sea_orm::{EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .order_by(cake::Column::Id)
-    ///         .build(MysqlQueryBuilder)
-    ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` ASC"
-    /// );
-    /// ```
-    pub fn order_by<C>(mut self, col: C) -> Self
-    where
-        C: IntoSimpleExpr,
-    {
-        self.query.order_by_expr(col.into_simple_expr(), Order::Asc);
-        self
-    }
-
-    /// Add an order_by expression (descending)
-    /// ```
-    /// use sea_orm::{EntityTrait, tests_cfg::cake, sea_query::MysqlQueryBuilder};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .order_by_desc(cake::Column::Id)
-    ///         .build(MysqlQueryBuilder)
-    ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` DESC"
-    /// );
-    /// ```
-    pub fn order_by_desc<C>(mut self, col: C) -> Self
-    where
-        C: IntoSimpleExpr,
-    {
-        self.query
-            .order_by_expr(col.into_simple_expr(), Order::Desc);
-        self
     }
 
     /// Join via [`RelationDef`].
@@ -305,10 +195,154 @@ where
     }
 }
 
+pub trait SelectQuery: Sized {
+    fn query(&mut self) -> &mut SelectStatement;
+
+    fn select_only(mut self) -> Self {
+        self.query().clear_selects();
+        self
+    }
+
+    /// Add a select column
+    /// ```
+    /// use sea_orm::{ColumnTrait, EntityTrait, SelectQuery, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .column(cake::Column::Name)
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."name" FROM "cake""#
+    /// );
+    /// ```
+    fn column<C>(mut self, col: C) -> Self
+    where
+        C: ColumnTrait,
+    {
+        self.query().expr(col.into_simple_expr());
+        self
+    }
+
+    /// Add a select column with alias
+    /// ```
+    /// use sea_orm::{ColumnTrait, EntityTrait, SelectQuery, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .column_as(cake::Column::Id.count(), "count")
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"SELECT COUNT("cake"."id") AS "count" FROM "cake""#
+    /// );
+    /// ```
+    fn column_as<C>(mut self, col: C, alias: &str) -> Self
+    where
+        C: IntoSimpleExpr,
+    {
+        self.query().expr(SelectExpr {
+            expr: col.into_simple_expr(),
+            alias: Some(Rc::new(Alias::new(alias))),
+        });
+        self
+    }
+
+    /// Add an AND WHERE expression
+    /// ```
+    /// use sea_orm::{ColumnTrait, EntityTrait, SelectQuery, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.eq(5))
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 5"
+    /// );
+    /// ```
+    fn filter(mut self, expr: SimpleExpr) -> Self {
+        self.query().and_where(expr);
+        self
+    }
+
+    /// Add a group by column
+    /// ```
+    /// use sea_orm::{ColumnTrait, EntityTrait, SelectQuery, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .column(cake::Column::Name)
+    ///         .group_by(cake::Column::Name)
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."name" FROM "cake" GROUP BY "cake"."name""#
+    /// );
+    /// ```
+    fn group_by<C>(mut self, col: C) -> Self
+    where
+        C: IntoSimpleExpr,
+    {
+        self.query().add_group_by(vec![col.into_simple_expr()]);
+        self
+    }
+
+    /// Add an order_by expression (ascending)
+    /// ```
+    /// use sea_orm::{EntityTrait, SelectQuery, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .order_by(cake::Column::Id)
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` ASC"
+    /// );
+    /// ```
+    fn order_by<C>(mut self, col: C) -> Self
+    where
+        C: IntoSimpleExpr,
+    {
+        self.query()
+            .order_by_expr(col.into_simple_expr(), Order::Asc);
+        self
+    }
+
+    /// Add an order_by expression (descending)
+    /// ```
+    /// use sea_orm::{EntityTrait, SelectQuery, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .order_by_desc(cake::Column::Id)
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` DESC"
+    /// );
+    /// ```
+    fn order_by_desc<C>(mut self, col: C) -> Self
+    where
+        C: IntoSimpleExpr,
+    {
+        self.query()
+            .order_by_expr(col.into_simple_expr(), Order::Desc);
+        self
+    }
+}
+
+impl<E> SelectQuery for Select<E>
+where
+    E: EntityTrait,
+{
+    fn query(&mut self) -> &mut SelectStatement {
+        &mut self.query
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, fruit};
-    use crate::{ColumnTrait, EntityTrait};
+    use crate::{ColumnTrait, EntityTrait, SelectQuery};
     use sea_query::MysqlQueryBuilder;
 
     #[test]
@@ -392,6 +426,18 @@ mod tests {
                 "WHERE `cake`.`id` = 12",
             ]
             .join(" ")
+        );
+    }
+
+    #[test]
+    fn alias_1() {
+        assert_eq!(
+            cake::Entity::find()
+                .column_as(cake::Column::Id, "B")
+                .apply_alias("A_")
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`, `cake`.`id` AS `A_B` FROM `cake`",
         );
     }
 }
