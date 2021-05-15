@@ -3,7 +3,7 @@ use sea_query::{QueryBuilder, SelectStatement};
 use std::marker::PhantomData;
 
 #[derive(Clone, Debug)]
-pub struct SingleSelect<M>
+pub struct SelectModel<M>
 where
     M: FromQueryResult,
 {
@@ -12,7 +12,7 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub struct DoubleSelect<M, N>
+pub struct SelectTwoModel<M, N>
 where
     M: FromQueryResult,
     N: FromQueryResult,
@@ -25,11 +25,11 @@ impl<E: 'static> Select<E>
 where
     E: EntityTrait,
 {
-    pub fn into_model<M>(self) -> SingleSelect<M>
+    pub fn into_model<M>(self) -> SelectModel<M>
     where
         M: FromQueryResult,
     {
-        SingleSelect {
+        SelectModel {
             query: self.query,
             model: PhantomData,
         }
@@ -44,7 +44,7 @@ where
     }
 }
 
-impl<M> SingleSelect<M>
+impl<M> SelectModel<M>
 where
     M: FromQueryResult,
 {

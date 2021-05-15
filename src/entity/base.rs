@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, ModelTrait, PrimaryKeyOfModel, PrimaryKeyTrait, RelationBuilder, RelationTrait,
-    RelationType, Select, SelectQuery,
+    ColumnTrait, ModelTrait, PrimaryKeyOfModel, PrimaryKeyTrait, QueryHelper, RelationBuilder,
+    RelationTrait, RelationType, Select,
 };
 use sea_query::{Iden, IntoIden, Value};
 use std::fmt::Debug;
