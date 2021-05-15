@@ -58,7 +58,10 @@ async fn find_all(db: &Database) -> Result<(), QueryErr> {
 async fn find_together(db: &Database) -> Result<(), QueryErr> {
     print!("find cakes and fruits: ");
 
-    let both = cake::Entity::find().left_join_and_select(fruit::Entity).all(db).await?;
+    let both = cake::Entity::find()
+        .left_join_and_select(fruit::Entity)
+        .all(db)
+        .await?;
 
     println!();
     for bb in both.iter() {

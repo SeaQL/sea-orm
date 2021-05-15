@@ -7,6 +7,7 @@ use std::rc::Rc;
 pub trait QueryHelper: Sized {
     fn query(&mut self) -> &mut SelectStatement;
 
+    /// Clear the selection list
     fn select_only(mut self) -> Self {
         self.query().clear_selects();
         self

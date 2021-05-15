@@ -1,6 +1,6 @@
 use crate::{
     ColumnTrait, EntityTrait, Identity, Iterable, ModelTrait, PrimaryKeyOfModel, QueryHelper,
-    Related, RelationDef, Select, SelectTwo
+    Related, RelationDef, Select, SelectTwo,
 };
 
 pub use sea_query::JoinType;
@@ -11,6 +11,7 @@ impl<E> Select<E>
 where
     E: EntityTrait,
 {
+    /// Apply a where condition using the model's primary key
     pub fn belongs_to<R>(self, model: &R::Model) -> Self
     where
         R: EntityTrait + Related<E>,

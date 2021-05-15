@@ -1,5 +1,7 @@
 use crate::query::combine;
-use crate::{Connection, Database, EntityTrait, FromQueryResult, QueryErr, Select, SelectTwo, Statement};
+use crate::{
+    Connection, Database, EntityTrait, FromQueryResult, QueryErr, Select, SelectTwo, Statement,
+};
 use sea_query::{QueryBuilder, SelectStatement};
 use std::marker::PhantomData;
 
@@ -115,7 +117,10 @@ where
         let builder = db.get_query_builder_backend();
         self.query.limit(1);
         let row = db.get_connection().query_one(self.build(builder)).await?;
-        Ok((M::from_query_result(&row, combine::SELECT_A)?, N::from_query_result(&row, combine::SELECT_B)?))
+        Ok((
+            M::from_query_result(&row, combine::SELECT_A)?,
+            N::from_query_result(&row, combine::SELECT_B)?,
+        ))
     }
 
     pub async fn all(self, db: &Database) -> Result<Vec<(M, N)>, QueryErr> {
@@ -123,7 +128,10 @@ where
         let rows = db.get_connection().query_all(self.build(builder)).await?;
         let mut models = Vec::new();
         for row in rows.into_iter() {
-            models.push((M::from_query_result(&row, combine::SELECT_A)?, N::from_query_result(&row, combine::SELECT_B)?));
+            models.push((
+                M::from_query_result(&row, combine::SELECT_A)?,
+                N::from_query_result(&row, combine::SELECT_B)?,
+            ));
         }
         Ok(models)
     }
