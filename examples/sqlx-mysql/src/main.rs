@@ -14,12 +14,21 @@ async fn main() {
         .await
         .unwrap();
 
-    println!("{:?}", db);
-    println!();
+    println!("{:?}\n", db);
+
+    println!("===== =====\n");
 
     find_all(&db).await.unwrap();
 
+    println!("===== =====\n");
+
+    find_together(&db).await.unwrap();
+
+    println!("===== =====\n");
+
     find_one(&db).await.unwrap();
+
+    println!("===== =====\n");
 
     count_fruits_by_cake(&db).await.unwrap();
 }
@@ -31,8 +40,7 @@ async fn find_all(db: &Database) -> Result<(), QueryErr> {
 
     println!();
     for cc in cakes.iter() {
-        println!("{:?}", cc);
-        println!();
+        println!("{:?}\n", cc);
     }
 
     print!("find all fruits: ");
@@ -41,8 +49,20 @@ async fn find_all(db: &Database) -> Result<(), QueryErr> {
 
     println!();
     for ff in fruits.iter() {
-        println!("{:?}", ff);
-        println!();
+        println!("{:?}\n", ff);
+    }
+
+    Ok(())
+}
+
+async fn find_together(db: &Database) -> Result<(), QueryErr> {
+    print!("find cakes and fruits: ");
+
+    let both = cake::Entity::find().left_join_and_select(fruit::Entity).all(db).await?;
+
+    println!();
+    for bb in both.iter() {
+        println!("{:?}\n", bb);
     }
 
     Ok(())
@@ -74,8 +94,7 @@ async fn find_one(db: &Database) -> Result<(), QueryErr> {
 
     println!();
     for ff in fruits.iter() {
-        println!("{:?}", ff);
-        println!();
+        println!("{:?}\n", ff);
     }
 
     Ok(())
@@ -93,7 +112,7 @@ async fn count_fruits_by_cake(db: &Database) -> Result<(), QueryErr> {
         use sea_orm::{FromQueryResult, QueryResult, TypeErr};
 
         impl FromQueryResult for SelectResult {
-            fn from_query_result(row: QueryResult, pre: &str) -> Result<Self, TypeErr> {
+            fn from_query_result(row: &QueryResult, pre: &str) -> Result<Self, TypeErr> {
                 Ok(Self {
                     name: row.try_get(pre, "name")?,
                     num_of_fruits: row.try_get(pre, "num_of_fruits")?,
@@ -115,8 +134,7 @@ async fn count_fruits_by_cake(db: &Database) -> Result<(), QueryErr> {
 
     println!();
     for rr in results.iter() {
-        println!("{:?}", rr);
-        println!();
+        println!("{:?}\n", rr);
     }
 
     Ok(())

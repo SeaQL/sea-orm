@@ -1,6 +1,6 @@
 use crate::{
     ColumnTrait, EntityTrait, Identity, Iterable, ModelTrait, PrimaryKeyOfModel, QueryHelper,
-    Related, RelationDef, Select,
+    Related, RelationDef, Select, SelectTwo
 };
 
 pub use sea_query::JoinType;
@@ -91,6 +91,15 @@ where
     {
         self.join_rev(JoinType::InnerJoin, R::to())
     }
+
+    /// Left Join with a Related Entity and select both Entity.
+    pub fn left_join_and_select<R>(self, r: R) -> SelectTwo<E, R>
+    where
+        R: EntityTrait,
+        E: Related<R>,
+    {
+        self.left_join(r).select_also(r)
+    }
 }
 
 #[cfg(test)]
@@ -180,18 +189,6 @@ mod tests {
                 "WHERE `cake`.`id` = 12",
             ]
             .join(" ")
-        );
-    }
-
-    #[test]
-    fn alias_1() {
-        assert_eq!(
-            cake::Entity::find()
-                .column_as(cake::Column::Id, "B")
-                .apply_alias("A_")
-                .build(MysqlQueryBuilder)
-                .to_string(),
-            "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`, `cake`.`id` AS `A_B` FROM `cake`",
         );
     }
 }

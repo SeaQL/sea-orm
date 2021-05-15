@@ -2,9 +2,7 @@ use crate::{ColumnTrait, EntityTrait, Iterable, QueryHelper, Statement};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{
-    Alias, ColumnRef, Iden, IntoColumnRef, IntoIden, QueryBuilder, SelectStatement, SimpleExpr,
-};
+use sea_query::{Iden, IntoColumnRef, IntoIden, QueryBuilder, SelectStatement, SimpleExpr};
 use std::rc::Rc;
 
 #[derive(Clone, Debug)]
@@ -91,30 +89,12 @@ where
         self.query.from(E::default().into_iden());
         self
     }
+}
 
-    pub(crate) fn apply_alias(mut self, pre: &str) -> Self {
-        self.query().exprs_mut_for_each(|sel| {
-            match &sel.alias {
-                Some(alias) => {
-                    let alias = format!("{}{}", pre, alias.to_string().as_str());
-                    sel.alias = Some(Rc::new(Alias::new(&alias)));
-                }
-                None => {
-                    let col = match &sel.expr {
-                        SimpleExpr::Column(col_ref) => match &col_ref {
-                            ColumnRef::Column(col) => col,
-                            ColumnRef::TableColumn(_, col) => col,
-                        },
-                        _ => panic!("cannot apply alias for expr other than Column"),
-                    };
-                    let alias = format!("{}{}", pre, col.to_string().as_str());
-                    sel.alias = Some(Rc::new(Alias::new(&alias)));
-                }
-            };
-        });
-        self
-    }
-
+impl<E> Select<E>
+where
+    E: EntityTrait,
+{
     /// Get a mutable ref to the query builder
     pub fn query(&mut self) -> &mut SelectStatement {
         &mut self.query
@@ -139,21 +119,31 @@ where
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::tests_cfg::cake;
-    use crate::{EntityTrait, QueryHelper};
-    use sea_query::MysqlQueryBuilder;
+impl<E, F> SelectTwo<E, F>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+{
+    /// Get a mutable ref to the query builder
+    pub fn query(&mut self) -> &mut SelectStatement {
+        &mut self.query
+    }
 
-    #[test]
-    fn alias_1() {
-        assert_eq!(
-            cake::Entity::find()
-                .column_as(cake::Column::Id, "B")
-                .apply_alias("A_")
-                .build(MysqlQueryBuilder)
-                .to_string(),
-            "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`, `cake`.`id` AS `A_B` FROM `cake`",
-        );
+    /// Get an immutable ref to the query builder
+    pub fn as_query(&self) -> &SelectStatement {
+        &self.query
+    }
+
+    /// Take ownership of the query builder
+    pub fn into_query(self) -> SelectStatement {
+        self.query
+    }
+
+    /// Build the query as [`Statement`]
+    pub fn build<B>(&self, builder: B) -> Statement
+    where
+        B: QueryBuilder,
+    {
+        self.as_query().build(builder).into()
     }
 }

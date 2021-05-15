@@ -9,13 +9,13 @@ pub trait ModelTrait: Clone + Debug + Default {
 
     fn set(&mut self, c: Self::Column, v: Value);
 
-    fn from_query_result(row: QueryResult, pre: &str) -> Result<Self, TypeErr>
+    fn from_query_result(row: &QueryResult, pre: &str) -> Result<Self, TypeErr>
     where
         Self: Sized;
 }
 
 pub trait FromQueryResult {
-    fn from_query_result(row: QueryResult, pre: &str) -> Result<Self, TypeErr>
+    fn from_query_result(row: &QueryResult, pre: &str) -> Result<Self, TypeErr>
     where
         Self: Sized;
 }
@@ -24,7 +24,7 @@ impl<M> FromQueryResult for M
 where
     M: ModelTrait + Sized,
 {
-    fn from_query_result(row: QueryResult, pre: &str) -> Result<M, TypeErr> {
+    fn from_query_result(row: &QueryResult, pre: &str) -> Result<M, TypeErr> {
         <Self as ModelTrait>::from_query_result(row, pre)
     }
 }
