@@ -2,7 +2,7 @@ use crate::{
     ColumnTrait, ModelTrait, PrimaryKeyOfModel, PrimaryKeyTrait, QueryHelper, RelationBuilder,
     RelationTrait, RelationType, Select,
 };
-use sea_query::{Iden, IntoIden, Value};
+use sea_query::{Iden, Value};
 use std::fmt::Debug;
 pub use strum::IntoEnumIterator as Iterable;
 
@@ -25,16 +25,16 @@ pub trait EntityTrait: EntityName {
         true
     }
 
-    fn has_one<E>(entity: E) -> RelationBuilder
+    fn has_one<R>(entity: R) -> RelationBuilder<Self, R>
     where
-        E: IntoIden,
+        R: EntityTrait,
     {
         RelationBuilder::new(RelationType::HasOne, Self::default(), entity)
     }
 
-    fn has_many<E>(entity: E) -> RelationBuilder
+    fn has_many<R>(entity: R) -> RelationBuilder<Self, R>
     where
-        E: IntoIden,
+        R: EntityTrait,
     {
         RelationBuilder::new(RelationType::HasMany, Self::default(), entity)
     }

@@ -1,4 +1,5 @@
 use crate::{EntityTrait, Identity, IntoIdentity, Select};
+use core::marker::PhantomData;
 use sea_query::{Iden, IntoIden, JoinType};
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -36,7 +37,12 @@ pub struct RelationDef {
     pub to_col: Identity,
 }
 
-pub struct RelationBuilder {
+pub struct RelationBuilder<E, R>
+where
+    E: EntityTrait,
+    R: EntityTrait,
+{
+    entities: PhantomData<(E, R)>,
     rel_type: RelationType,
     from_tbl: Rc<dyn Iden>,
     to_tbl: Rc<dyn Iden>,
@@ -44,13 +50,14 @@ pub struct RelationBuilder {
     to_col: Option<Identity>,
 }
 
-impl RelationBuilder {
-    pub(crate) fn new<E, T>(rel_type: RelationType, from: E, to: T) -> Self
-    where
-        E: IntoIden,
-        T: IntoIden,
-    {
+impl<E, R> RelationBuilder<E, R>
+where
+    E: EntityTrait,
+    R: EntityTrait,
+{
+    pub(crate) fn new(rel_type: RelationType, from: E, to: R) -> Self {
         Self {
+            entities: PhantomData,
             rel_type,
             from_tbl: from.into_iden(),
             to_tbl: to.into_iden(),
@@ -59,25 +66,23 @@ impl RelationBuilder {
         }
     }
 
-    pub fn from<T>(mut self, identifier: T) -> Self
-    where
-        T: IntoIdentity,
-    {
+    pub fn from(mut self, identifier: E::Column) -> Self {
         self.from_col = Some(identifier.into_identity());
         self
     }
 
-    pub fn to<T>(mut self, identifier: T) -> Self
-    where
-        T: IntoIdentity,
-    {
+    pub fn to(mut self, identifier: R::Column) -> Self {
         self.to_col = Some(identifier.into_identity());
         self
     }
 }
 
-impl From<RelationBuilder> for RelationDef {
-    fn from(b: RelationBuilder) -> Self {
+impl<E, R> From<RelationBuilder<E, R>> for RelationDef
+where
+    E: EntityTrait,
+    R: EntityTrait,
+{
+    fn from(b: RelationBuilder<E, R>) -> Self {
         RelationDef {
             rel_type: b.rel_type,
             from_tbl: b.from_tbl,
