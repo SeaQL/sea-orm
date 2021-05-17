@@ -25,7 +25,7 @@ where
     }
 
     fn find_related() -> Select<R> {
-        Select::<R>::new().join_rev(JoinType::InnerJoin, Self::to())
+        Select::<R>::new().join_join_rev(JoinType::InnerJoin, Self::to(), Self::via())
     }
 }
 

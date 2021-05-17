@@ -173,4 +173,20 @@ mod tests {
             .join(" ")
         );
     }
+
+    #[test]
+    fn join_7() {
+        use crate::{Related, Select};
+
+        let find_filling: Select<filling::Entity> = cake::Entity::find_related();
+        assert_eq!(
+            find_filling.build(MysqlQueryBuilder).to_string(),
+            [
+                "SELECT `filling`.`id`, `filling`.`name` FROM `filling`",
+                "INNER JOIN `cake_filling` ON `cake_filling`.`filling_id` = `filling`.`id`",
+                "INNER JOIN `cake` ON `cake`.`id` = `cake_filling`.`cake_id`",
+            ]
+            .join(" ")
+        );
+    }
 }

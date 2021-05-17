@@ -147,6 +147,15 @@ pub trait QueryHelper: Sized {
         self.join(join, rel)
     }
 
+    #[doc(hidden)]
+    fn join_join_rev(mut self, join: JoinType, rel: RelationDef, via: Option<RelationDef>) -> Self {
+        self = self.join_rev(join, rel);
+        if let Some(via) = via {
+            self = self.join_rev(join, via)
+        }
+        self
+    }
+
     /// Join via [`RelationDef`].
     fn join(mut self, join: JoinType, rel: RelationDef) -> Self {
         self.query()
