@@ -1,24 +1,24 @@
 use heck::SnakeCase;
 use proc_macro2::{Ident, TokenStream};
-use syn::{Data, DataEnum, Fields, Variant};
 use quote::{quote, quote_spanned};
+use syn::{Data, DataEnum, Fields, Variant};
 
 pub fn expend_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenStream> {
     let variants = match data {
         syn::Data::Enum(DataEnum { variants, .. }) => variants,
-        _ => return Ok(quote_spanned! {
-            ident.span() => compile_error!("you can only derive DerivePrimaryKey on enums");
-        }),
+        _ => {
+            return Ok(quote_spanned! {
+                ident.span() => compile_error!("you can only derive DerivePrimaryKey on enums");
+            })
+        }
     };
 
     let variant: Vec<TokenStream> = variants
         .iter()
-        .map(|Variant { ident, fields, .. }| {
-            match fields {
-                Fields::Named(_) => quote! { #ident{..} },
-                Fields::Unnamed(_) => quote! { #ident(..) },
-                Fields::Unit => quote! { #ident },
-            }
+        .map(|Variant { ident, fields, .. }| match fields {
+            Fields::Named(_) => quote! { #ident{..} },
+            Fields::Unnamed(_) => quote! { #ident(..) },
+            Fields::Unit => quote! { #ident },
         })
         .collect();
 

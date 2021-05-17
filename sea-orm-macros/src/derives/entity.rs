@@ -1,7 +1,7 @@
 use heck::SnakeCase;
 use proc_macro2::{Ident, TokenStream};
-use syn::{Attribute, Meta};
 use quote::quote;
+use syn::{Attribute, Meta};
 
 fn get_entity_attr(attrs: &[Attribute]) -> Option<syn::Lit> {
     for attr in attrs {

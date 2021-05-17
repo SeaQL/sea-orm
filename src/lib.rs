@@ -12,13 +12,9 @@ pub use driver::*;
 pub use entity::*;
 pub use query::*;
 
+pub use sea_orm_macros::{
+    DeriveColumn, DeriveEntity, DeriveModel, DerivePrimaryKey, FromQueryResult,
+};
 pub use sea_query;
 pub use sea_query::Iden;
 pub use strum::EnumIter;
-pub use sea_orm_macros::{
-    DeriveEntity,
-    DerivePrimaryKey,
-    DeriveColumn,
-    DeriveModel,
-    FromQueryResult,
-};
