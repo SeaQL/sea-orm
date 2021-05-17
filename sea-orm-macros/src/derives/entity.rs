@@ -9,7 +9,7 @@ fn get_entity_attr(attrs: &[Attribute]) -> Option<syn::Lit> {
             Ok(Meta::NameValue(nv)) => nv,
             _ => continue,
         };
-        if name_value.path.is_ident("entity") {
+        if name_value.path.is_ident("table") {
             return Some(name_value.lit);
         }
     }

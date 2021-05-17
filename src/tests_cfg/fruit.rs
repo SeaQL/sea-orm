@@ -1,7 +1,7 @@
 use crate::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-#[entity = "fruit"]
+#[table = "fruit"]
 pub struct Entity;
 
 #[derive(Clone, Debug, Default, PartialEq, DeriveModel)]
