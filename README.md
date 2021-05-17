@@ -49,4 +49,4 @@ Balance between compile-time checking and compilation speed.
 
 3. Avoid 'symbol soup'
 
-Avoid procedural macro if possible, use derive macro where appropriate.
+Avoid function-like macros with DSL, use derive macros where appropriate. Be friendly with IDE tools.

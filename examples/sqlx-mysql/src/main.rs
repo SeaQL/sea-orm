@@ -1,4 +1,4 @@
-use sea_orm::{ColumnTrait, Database, EntityTrait, QueryErr, QueryHelper};
+use sea_orm::{ColumnTrait, Database, EntityTrait, QueryErr, QueryHelper, FromQueryResult};
 
 mod example_cake;
 mod example_fruit;
@@ -104,24 +104,10 @@ async fn find_one(db: &Database) -> Result<(), QueryErr> {
 }
 
 async fn count_fruits_by_cake(db: &Database) -> Result<(), QueryErr> {
-    #[derive(Debug)]
+    #[derive(Debug, FromQueryResult)]
     struct SelectResult {
         name: String,
         num_of_fruits: i32,
-    }
-
-    {
-        // TODO: implement with derive macro
-        use sea_orm::{FromQueryResult, QueryResult, TypeErr};
-
-        impl FromQueryResult for SelectResult {
-            fn from_query_result(row: &QueryResult, pre: &str) -> Result<Self, TypeErr> {
-                Ok(Self {
-                    name: row.try_get(pre, "name")?,
-                    num_of_fruits: row.try_get(pre, "num_of_fruits")?,
-                })
-            }
-        }
     }
 
     print!("count fruits by cake: ");

@@ -20,4 +20,5 @@ pub use sea_orm_macros::{
     DerivePrimaryKey,
     DeriveColumn,
     DeriveModel,
+    FromQueryResult,
 };
