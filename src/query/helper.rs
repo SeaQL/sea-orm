@@ -149,16 +149,8 @@ pub trait QueryHelper: Sized {
 
     /// Join via [`RelationDef`].
     fn join(mut self, join: JoinType, rel: RelationDef) -> Self {
-        let from_tbl = rel.from_tbl.clone();
-        let to_tbl = rel.to_tbl.clone();
-        let owner_keys = rel.from_col;
-        let foreign_keys = rel.to_col;
-        let condition = match (owner_keys, foreign_keys) {
-            (Identity::Unary(o1), Identity::Unary(f1)) => {
-                Expr::tbl(Rc::clone(&from_tbl), o1).equals(Rc::clone(&to_tbl), f1)
-            } // _ => panic!("Owner key and foreign key mismatch"),
-        };
-        self.query().join(join, Rc::clone(&to_tbl), condition);
+        self.query()
+            .join(join, rel.to_tbl.clone(), join_condition(rel));
         self
     }
 
@@ -166,16 +158,21 @@ pub trait QueryHelper: Sized {
     /// Assume when there exist a relation A -> B.
     /// You can reverse join B <- A.
     fn join_rev(mut self, join: JoinType, rel: RelationDef) -> Self {
-        let from_tbl = rel.from_tbl.clone();
-        let to_tbl = rel.to_tbl.clone();
-        let owner_keys = rel.from_col;
-        let foreign_keys = rel.to_col;
-        let condition = match (owner_keys, foreign_keys) {
-            (Identity::Unary(o1), Identity::Unary(f1)) => {
-                Expr::tbl(Rc::clone(&from_tbl), o1).equals(Rc::clone(&to_tbl), f1)
-            } // _ => panic!("Owner key and foreign key mismatch"),
-        };
-        self.query().join(join, Rc::clone(&from_tbl), condition);
+        self.query()
+            .join(join, rel.from_tbl.clone(), join_condition(rel));
         self
+    }
+}
+
+fn join_condition(rel: RelationDef) -> SimpleExpr {
+    let from_tbl = rel.from_tbl.clone();
+    let to_tbl = rel.to_tbl.clone();
+    let owner_keys = rel.from_col;
+    let foreign_keys = rel.to_col;
+
+    match (owner_keys, foreign_keys) {
+        (Identity::Unary(o1), Identity::Unary(f1)) => {
+            Expr::tbl(Rc::clone(&from_tbl), o1).equals(Rc::clone(&to_tbl), f1)
+        } // _ => panic!("Owner key and foreign key mismatch"),
     }
 }
