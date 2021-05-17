@@ -1,10 +1,14 @@
 use sea_orm::{ColumnTrait, Database, EntityTrait, FromQueryResult, QueryErr, QueryHelper};
 
 mod example_cake;
+mod example_cake_filling;
 mod example_fruit;
+mod example_filling;
 
 use example_cake as cake;
+use example_cake_filling as cake_filling;
 use example_fruit as fruit;
+use example_filling as filling;
 
 #[async_std::main]
 async fn main() {
@@ -31,6 +35,10 @@ async fn main() {
     println!("===== =====\n");
 
     count_fruits_by_cake(&db).await.unwrap();
+
+    println!("===== =====\n");
+
+    find_many_to_many(&db).await.unwrap();
 }
 
 async fn find_all(db: &Database) -> Result<(), QueryErr> {
@@ -124,6 +132,22 @@ async fn count_fruits_by_cake(db: &Database) -> Result<(), QueryErr> {
     println!();
     for rr in results.iter() {
         println!("{:?}\n", rr);
+    }
+
+    Ok(())
+}
+
+async fn find_many_to_many(db: &Database) -> Result<(), QueryErr> {
+    print!("find cakes and fillings: ");
+
+    let both = cake::Entity::find()
+        .left_join_and_select(filling::Entity)
+        .all(db)
+        .await?;
+
+    println!();
+    for bb in both.iter() {
+        println!("{:?}\n", bb);
     }
 
     Ok(())
