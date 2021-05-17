@@ -1,7 +1,7 @@
-use crate::{ColumnTrait, IntoSimpleExpr};
+use crate::{ColumnTrait, Identity, IntoSimpleExpr, RelationDef};
 
 pub use sea_query::JoinType;
-use sea_query::{Alias, Order, SelectExpr, SelectStatement, SimpleExpr};
+use sea_query::{Alias, Expr, Order, SelectExpr, SelectStatement, SimpleExpr};
 use std::rc::Rc;
 
 pub trait QueryHelper: Sized {
@@ -136,6 +136,46 @@ pub trait QueryHelper: Sized {
     {
         self.query()
             .order_by_expr(col.into_simple_expr(), Order::Desc);
+        self
+    }
+
+    #[doc(hidden)]
+    fn join_join(mut self, join: JoinType, rel: RelationDef, via: Option<RelationDef>) -> Self {
+        if let Some(via) = via {
+            self = self.join(join, via)
+        }
+        self.join(join, rel)
+    }
+
+    /// Join via [`RelationDef`].
+    fn join(mut self, join: JoinType, rel: RelationDef) -> Self {
+        let from_tbl = rel.from_tbl.clone();
+        let to_tbl = rel.to_tbl.clone();
+        let owner_keys = rel.from_col;
+        let foreign_keys = rel.to_col;
+        let condition = match (owner_keys, foreign_keys) {
+            (Identity::Unary(o1), Identity::Unary(f1)) => {
+                Expr::tbl(Rc::clone(&from_tbl), o1).equals(Rc::clone(&to_tbl), f1)
+            } // _ => panic!("Owner key and foreign key mismatch"),
+        };
+        self.query().join(join, Rc::clone(&to_tbl), condition);
+        self
+    }
+
+    /// Join via [`RelationDef`] but in reverse direction.
+    /// Assume when there exist a relation A -> B.
+    /// You can reverse join B <- A.
+    fn join_rev(mut self, join: JoinType, rel: RelationDef) -> Self {
+        let from_tbl = rel.from_tbl.clone();
+        let to_tbl = rel.to_tbl.clone();
+        let owner_keys = rel.from_col;
+        let foreign_keys = rel.to_col;
+        let condition = match (owner_keys, foreign_keys) {
+            (Identity::Unary(o1), Identity::Unary(f1)) => {
+                Expr::tbl(Rc::clone(&from_tbl), o1).equals(Rc::clone(&to_tbl), f1)
+            } // _ => panic!("Owner key and foreign key mismatch"),
+        };
+        self.query().join(join, Rc::clone(&from_tbl), condition);
         self
     }
 }

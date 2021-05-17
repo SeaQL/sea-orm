@@ -1,11 +1,8 @@
 use crate::{
-    ColumnTrait, EntityTrait, Identity, Iterable, ModelTrait, PrimaryKeyOfModel, QueryHelper,
-    Related, RelationDef, Select, SelectTwo,
+    ColumnTrait, EntityTrait, Iterable, ModelTrait, PrimaryKeyOfModel, QueryHelper, Related,
+    Select, SelectTwo,
 };
-
 pub use sea_query::JoinType;
-use sea_query::{Expr, IntoIden};
-use std::rc::Rc;
 
 impl<E> Select<E>
 where
@@ -26,45 +23,13 @@ where
         }
     }
 
-    /// Join via [`RelationDef`].
-    pub fn join(mut self, join: JoinType, rel: RelationDef) -> Self {
-        let own_tbl = E::default().into_iden();
-        let to_tbl = rel.to_tbl.clone();
-        let owner_keys = rel.from_col;
-        let foreign_keys = rel.to_col;
-        let condition = match (owner_keys, foreign_keys) {
-            (Identity::Unary(o1), Identity::Unary(f1)) => {
-                Expr::tbl(Rc::clone(&own_tbl), o1).equals(Rc::clone(&to_tbl), f1)
-            } // _ => panic!("Owner key and foreign key mismatch"),
-        };
-        self.query.join(join, Rc::clone(&to_tbl), condition);
-        self
-    }
-
-    /// Join via [`RelationDef`] but in reverse direction.
-    /// Assume when there exist a relation A -> B.
-    /// You can reverse join B <- A.
-    pub fn join_rev(mut self, join: JoinType, rel: RelationDef) -> Self {
-        let from_tbl = rel.from_tbl.clone();
-        let to_tbl = rel.to_tbl.clone();
-        let owner_keys = rel.from_col;
-        let foreign_keys = rel.to_col;
-        let condition = match (owner_keys, foreign_keys) {
-            (Identity::Unary(o1), Identity::Unary(f1)) => {
-                Expr::tbl(Rc::clone(&from_tbl), o1).equals(Rc::clone(&to_tbl), f1)
-            } // _ => panic!("Owner key and foreign key mismatch"),
-        };
-        self.query.join(join, Rc::clone(&from_tbl), condition);
-        self
-    }
-
     /// Left Join with a Related Entity.
     pub fn left_join<R>(self, _: R) -> Self
     where
         R: EntityTrait,
         E: Related<R>,
     {
-        self.join(JoinType::LeftJoin, E::to())
+        self.join_join(JoinType::LeftJoin, E::to(), E::via())
     }
 
     /// Right Join with a Related Entity.
@@ -73,7 +38,7 @@ where
         R: EntityTrait,
         E: Related<R>,
     {
-        self.join(JoinType::RightJoin, E::to())
+        self.join_join(JoinType::RightJoin, E::to(), E::via())
     }
 
     /// Inner Join with a Related Entity.
@@ -82,7 +47,7 @@ where
         R: EntityTrait,
         E: Related<R>,
     {
-        self.join(JoinType::InnerJoin, E::to())
+        self.join_join(JoinType::InnerJoin, E::to(), E::via())
     }
 
     /// Join with an Entity Related to me.
@@ -105,7 +70,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_cfg::{cake, fruit};
+    use crate::tests_cfg::{cake, filling, fruit};
     use crate::{ColumnTrait, EntityTrait, QueryHelper};
     use sea_query::MysqlQueryBuilder;
 
@@ -188,6 +153,22 @@ mod tests {
                 "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
                 "INNER JOIN `cake` ON `cake`.`id` = `fruit`.`cake_id`",
                 "WHERE `cake`.`id` = 12",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_6() {
+        assert_eq!(
+            cake::Entity::find()
+                .left_join(filling::Entity)
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "LEFT JOIN `cake_filling` ON `cake`.`id` = `cake_filling`.`cake_id`",
+                "LEFT JOIN `filling` ON `cake_filling`.`filling_id` = `filling`.`id`",
             ]
             .join(" ")
         );

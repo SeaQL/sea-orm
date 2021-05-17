@@ -1,4 +1,4 @@
-use crate::{EntityTrait, Identity, IntoIdentity, Select};
+use crate::{EntityTrait, Identity, IntoIdentity, QueryHelper, Select};
 use core::marker::PhantomData;
 use sea_query::{Iden, IntoIden, JoinType};
 use std::fmt::Debug;
