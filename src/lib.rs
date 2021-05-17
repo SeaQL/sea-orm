@@ -15,3 +15,9 @@ pub use query::*;
 pub use sea_query;
 pub use sea_query::Iden;
 pub use strum::EnumIter;
+pub use sea_orm_macros::{
+    DeriveEntity,
+    DerivePrimaryKey,
+    DeriveColumn,
+    DeriveModel,
+};

@@ -1,6 +1,7 @@
 [workspace]
 members = [
     ".",
+    "sea-orm-macros",
     "examples/sqlx-mysql",
 ]
 
@@ -25,6 +26,7 @@ path = "src/lib.rs"
 async-trait = "^0.1"
 futures = { version = "^0.3" }
 sea-query = { path = "../sea-query", version = "^0.10", features = [ "sqlx-mysql" ] }
+sea-orm-macros = { path = "sea-orm-macros", optional = true }
 # sea-schema = { path = "../sea-schema" }
 serde = { version = "^1.0", features = [ "derive" ] }
 sqlx = { version = "^0.5", optional = true }
@@ -32,7 +34,7 @@ strum = { version = "^0.20", features = [ "derive" ] }
 
 [features]
 debug-print = []
-default = [ "sqlx-mysql", "runtime-async-std-native-tls" ]
+default = [ "macros", "sqlx-mysql", "runtime-async-std-native-tls" ]
 sqlx-dep = [ "sqlx" ]
 sqlx-mysql = [ "sqlx-dep", "sea-query/sqlx-mysql", "sqlx/mysql" ]
 sqlx-postgres = [ "sqlx-dep", "sea-query/sqlx-postgres", "sqlx/postgres" ]
@@ -42,3 +44,4 @@ runtime-tokio-native-tls = [ "sqlx/runtime-tokio-native-tls" ]
 runtime-actix-rustls = [ "sqlx/runtime-actix-rustls" ]
 runtime-async-std-rustls = [ "sqlx/runtime-async-std-rustls" ]
 runtime-tokio-rustls = [ "sqlx/runtime-tokio-rustls" ]
+macros = [ "sea-orm-macros" ]
