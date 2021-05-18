@@ -10,7 +10,7 @@ pub fn expend_derive_from_query_result(ident: Ident, data: Data) -> syn::Result<
         }) => named.named,
         _ => {
             return Ok(quote_spanned! {
-                ident.span() => compile_error!("you can only derive DeriveModel on structs");
+                ident.span() => compile_error!("you can only derive FromQueryResult on structs");
             })
         }
     };
