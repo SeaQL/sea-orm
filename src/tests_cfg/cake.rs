@@ -1,4 +1,5 @@
 use crate::entity::prelude::*;
+use crate as sea_orm;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 #[table = "cake"]

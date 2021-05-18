@@ -31,13 +31,13 @@ pub fn expend_derive_column(ident: Ident, data: Data) -> syn::Result<TokenStream
         .collect();
 
     Ok(quote!(
-        impl Iden for #ident {
+        impl sea_orm::Iden for #ident {
             fn unquoted(&self, s: &mut dyn std::fmt::Write) {
                 write!(s, "{}", self.as_str()).unwrap();
             }
         }
 
-        impl IdenStatic for #ident {
+        impl sea_orm::IdenStatic for #ident {
             fn as_str(&self) -> &str {
                 match self {
                     #(Self::#variant => #name),*

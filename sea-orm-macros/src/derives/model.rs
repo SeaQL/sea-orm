@@ -28,22 +28,22 @@ pub fn expend_derive_model(ident: Ident, data: Data) -> syn::Result<TokenStream>
         .collect();
 
     Ok(quote!(
-        impl ModelTrait for #ident {
+        impl sea_orm::ModelTrait for #ident {
             type Column = Column;
 
-            fn get(&self, c: Self::Column) -> Value {
+            fn get(&self, c: Self::Column) -> sea_orm::Value {
                 match c {
                     #(Self::Column::#name => self.#field.clone().into()),*
                 }
             }
 
-            fn set(&mut self, c: Self::Column, v: Value) {
+            fn set(&mut self, c: Self::Column, v: sea_orm::Value) {
                 match c {
                     #(Self::Column::#name => self.#field = v.unwrap()),*
                 }
             }
 
-            fn from_query_result(row: &QueryResult, pre: &str) -> Result<Self, TypeErr> {
+            fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::TypeErr> {
                 Ok(Self {
                     #(#field: row.try_get(pre, Self::Column::#name.as_str().into())?),*
                 })

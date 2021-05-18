@@ -4,3 +4,4 @@ cp ../../src/tests_cfg/filling.rs src/example_filling.rs
 cp ../../src/tests_cfg/cake_filling.rs src/example_cake_filling.rs
 
 sed -i 's/^use crate::/use sea_orm::/g' src/*.rs
+sed -i '/^use crate as sea_orm;/d' src/*.rs
