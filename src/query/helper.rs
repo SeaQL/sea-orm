@@ -1,7 +1,7 @@
 use crate::{ColumnTrait, Identity, IntoSimpleExpr, RelationDef};
 
-pub use sea_query::JoinType;
-use sea_query::{Alias, Expr, Order, SelectExpr, SelectStatement, SimpleExpr};
+use sea_query::{Alias, Expr, SelectExpr, SelectStatement, SimpleExpr};
+pub use sea_query::{JoinType, Order};
 use std::rc::Rc;
 
 pub trait QueryHelper: Sized {
@@ -97,19 +97,40 @@ pub trait QueryHelper: Sized {
         self
     }
 
+    /// Add an order_by expression
+    /// ```
+    /// use sea_orm::{EntityTrait, Order, QueryHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .order_by(cake::Column::Id, Order::Asc)
+    ///         .order_by(cake::Column::Name, Order::Desc)
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` ASC, `cake`.`name` DESC"
+    /// );
+    /// ```
+    fn order_by<C>(mut self, col: C, ord: Order) -> Self
+    where
+        C: IntoSimpleExpr,
+    {
+        self.query().order_by_expr(col.into_simple_expr(), ord);
+        self
+    }
+
     /// Add an order_by expression (ascending)
     /// ```
     /// use sea_orm::{EntityTrait, QueryHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
-    ///         .order_by(cake::Column::Id)
+    ///         .order_by_asc(cake::Column::Id)
     ///         .build(MysqlQueryBuilder)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` ASC"
     /// );
     /// ```
-    fn order_by<C>(mut self, col: C) -> Self
+    fn order_by_asc<C>(mut self, col: C) -> Self
     where
         C: IntoSimpleExpr,
     {
@@ -164,8 +185,8 @@ pub trait QueryHelper: Sized {
     }
 
     /// Join via [`RelationDef`] but in reverse direction.
-    /// Assume when there exist a relation A -> B.
-    /// You can reverse join B <- A.
+    /// Assume when there exist a relation A to B.
+    /// You can reverse join B from A.
     fn join_rev(mut self, join: JoinType, rel: RelationDef) -> Self {
         self.query()
             .join(join, rel.from_tbl.clone(), join_condition(rel));
