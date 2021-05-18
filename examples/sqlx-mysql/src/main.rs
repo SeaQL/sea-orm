@@ -2,13 +2,13 @@ use sea_orm::{ColumnTrait, Database, EntityTrait, FromQueryResult, QueryErr, Que
 
 mod example_cake;
 mod example_cake_filling;
-mod example_fruit;
 mod example_filling;
+mod example_fruit;
 
 use example_cake as cake;
 use example_cake_filling as cake_filling;
-use example_fruit as fruit;
 use example_filling as filling;
+use example_fruit as fruit;
 
 #[async_std::main]
 async fn main() {
