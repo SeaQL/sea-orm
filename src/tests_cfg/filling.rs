@@ -41,3 +41,19 @@ impl RelationTrait for Relation {
         panic!()
     }
 }
+
+impl Related<super::cake::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::cake_filling::Relation::Cake.def()
+    }
+
+    fn via() -> Option<RelationDef> {
+        Some(super::cake_filling::Relation::Filling.def().rev())
+    }
+}
+
+impl Model {
+    pub fn find_cake(&self) -> Select<super::cake::Entity> {
+        Entity::find_related().belongs_to::<Entity>(self)
+    }
+}

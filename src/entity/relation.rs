@@ -50,6 +50,19 @@ where
     to_col: Option<Identity>,
 }
 
+impl RelationDef {
+    /// Reverse this relation (swap from and to)
+    pub fn rev(self) -> Self {
+        Self {
+            rel_type: self.rel_type,
+            from_tbl: self.to_tbl,
+            to_tbl: self.from_tbl,
+            from_col: self.to_col,
+            to_col: self.from_col,
+        }
+    }
+}
+
 impl<E, R> RelationBuilder<E, R>
 where
     E: EntityTrait,

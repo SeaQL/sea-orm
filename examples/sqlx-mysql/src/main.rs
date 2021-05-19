@@ -150,5 +150,27 @@ async fn find_many_to_many(db: &Database) -> Result<(), QueryErr> {
         println!("{:?}\n", bb);
     }
 
+    print!("find fillings for cheese cake: ");
+
+    let cheese = cake::Entity::find_by(1).one(db).await?;
+
+    let fillings: Vec<filling::Model> = cheese.find_filling().all(db).await?;
+
+    println!();
+    for ff in fillings.iter() {
+        println!("{:?}\n", ff);
+    }
+
+    print!("find cakes for lemon: ");
+
+    let lemon = filling::Entity::find_by(2).one(db).await?;
+
+    let cakes: Vec<cake::Model> = lemon.find_cake().all(db).await?;
+
+    println!();
+    for cc in cakes.iter() {
+        println!("{:?}\n", cc);
+    }
+
     Ok(())
 }
