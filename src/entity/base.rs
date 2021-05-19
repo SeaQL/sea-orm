@@ -1,8 +1,8 @@
 use crate::{
     ColumnTrait, ModelTrait, PrimaryKeyOfModel, PrimaryKeyTrait, QueryHelper, RelationBuilder,
-    RelationTrait, RelationType, Select,
+    RelationTrait, RelationType, Select
 };
-use sea_query::{Iden, Value};
+use sea_query::{Iden, IntoValueTuple};
 use std::fmt::Debug;
 pub use strum::IntoEnumIterator as Iterable;
 
@@ -20,10 +20,6 @@ pub trait EntityTrait: EntityName {
     type Relation: RelationTrait + Iterable;
 
     type PrimaryKey: PrimaryKeyTrait + Iterable;
-
-    fn auto_increment() -> bool {
-        true
-    }
 
     fn has_one<R>(entity: R) -> RelationBuilder<Self, R>
     where
@@ -64,18 +60,37 @@ pub trait EntityTrait: EntityName {
     ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = 11"#
     /// );
     /// ```
-    fn find_by<V>(v: V) -> Select<Self>
+    /// Find by composite key
+    /// ```
+    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake_filling, sea_query::PostgresQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake_filling::Entity::find_by((2, 3))
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     [
+    ///         r#"SELECT "cake_filling"."cake_id", "cake_filling"."filling_id" FROM "cake_filling""#,
+    ///         r#"WHERE "cake_filling"."cake_id" = 2 AND "cake_filling"."filling_id" = 3"#,
+    ///     ].join(" ")
+    /// );
+    /// ```
+    fn find_by<V>(values: V) -> Select<Self>
     where
-        V: Into<Value>,
+        V: IntoValueTuple,
         Self::PrimaryKey: PrimaryKeyOfModel<Self::Model>,
     {
         let mut select = Self::find();
-        if let Some(key) = Self::PrimaryKey::iter().next() {
-            // TODO: supporting composite primary key
-            let col = key.into_column();
-            select = select.filter(col.eq(v));
-        } else {
-            panic!("undefined primary key");
+        let mut keys = Self::PrimaryKey::iter();
+        for v in values.into_value_tuple() {
+            if let Some(key) = keys.next() {
+                let col = key.into_column();
+                select = select.filter(col.eq(v));
+            } else {
+                panic!("primary key arity mismatch");
+            }
+        }
+        if keys.next().is_some() {
+            panic!("primary key arity mismatch");
         }
         select
     }
