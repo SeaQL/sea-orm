@@ -1,5 +1,5 @@
+use crate::IdenStatic;
 use sea_query::{Iden, IntoIden};
-use crate::{IdenStatic};
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
