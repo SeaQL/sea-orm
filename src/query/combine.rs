@@ -1,4 +1,4 @@
-use crate::{EntityTrait, IntoSimpleExpr, Iterable, Select, SelectTwo};
+use crate::{EntityTrait, IntoSimpleExpr, Iterable, Select, SelectTwo, SelectState};
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
 use sea_query::{Alias, ColumnRef, Iden, SelectExpr, SelectStatement, SimpleExpr};
@@ -7,9 +7,10 @@ use std::rc::Rc;
 pub const SELECT_A: &str = "A_";
 pub const SELECT_B: &str = "B_";
 
-impl<E> Select<E>
+impl<E, S> Select<E, S>
 where
     E: EntityTrait,
+    S: SelectState,
 {
     fn apply_alias(mut self, pre: &str) -> Self {
         self.query().exprs_mut_for_each(|sel| {
@@ -34,7 +35,7 @@ where
         self
     }
 
-    pub fn select_also<F>(mut self, _: F) -> SelectTwo<E, F>
+    pub fn select_also<F>(mut self, _: F) -> SelectTwo<E, F, S>
     where
         F: EntityTrait,
     {
@@ -43,15 +44,17 @@ where
     }
 }
 
-impl<E, F> SelectTwo<E, F>
+impl<E, F, S> SelectTwo<E, F, S>
 where
     E: EntityTrait,
     F: EntityTrait,
+    S: SelectState,
 {
     pub(crate) fn new(query: SelectStatement) -> Self {
         let myself = Self {
             query,
             entity: PhantomData,
+            state: PhantomData,
         };
         myself.prepare_select()
     }

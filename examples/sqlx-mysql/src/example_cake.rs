@@ -80,7 +80,7 @@ impl Related<super::filling::Entity> for Entity {
 }
 
 impl Model {
-    pub fn find_fruit(&self) -> Select<super::fruit::Entity> {
+    pub fn find_fruit(&self) -> Select<super::fruit::Entity, SelectStateEmpty> {
         Entity::find_related().belongs_to::<Entity>(self)
     }
 }

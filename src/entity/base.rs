@@ -1,6 +1,6 @@
 use crate::{
     ColumnTrait, ModelTrait, PrimaryKeyOfModel, PrimaryKeyTrait, QueryHelper, RelationBuilder,
-    RelationTrait, RelationType, Select,
+    RelationTrait, RelationType, Select, SelectStateEmpty,
 };
 use sea_query::{Iden, Value};
 use std::fmt::Debug;
@@ -49,8 +49,8 @@ pub trait EntityTrait: EntityName {
     ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake""#
     /// );
     /// ```
-    fn find() -> Select<Self> {
-        Select::<Self>::new()
+    fn find() -> Select<Self, SelectStateEmpty> {
+        Select::<Self, SelectStateEmpty>::new()
     }
 
     /// Find a model by primary key
@@ -64,7 +64,7 @@ pub trait EntityTrait: EntityName {
     ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = 11"#
     /// );
     /// ```
-    fn find_by<V>(v: V) -> Select<Self>
+    fn find_by<V>(v: V) -> Select<Self, SelectStateEmpty>
     where
         V: Into<Value>,
         Self::PrimaryKey: PrimaryKeyOfModel<Self::Model>,

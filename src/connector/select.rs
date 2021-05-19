@@ -1,6 +1,6 @@
 use crate::query::combine;
 use crate::{
-    Connection, Database, EntityTrait, FromQueryResult, QueryErr, Select, SelectTwo, Statement,
+    Connection, Database, EntityTrait, FromQueryResult, QueryErr, Select, SelectState, SelectTwo, Statement,
 };
 use sea_query::{QueryBuilder, SelectStatement};
 use std::marker::PhantomData;
@@ -24,9 +24,10 @@ where
     model: PhantomData<(M, N)>,
 }
 
-impl<E> Select<E>
+impl<E, S> Select<E, S>
 where
     E: EntityTrait,
+    S: SelectState,
 {
     pub fn into_model<M>(self) -> SelectModel<M>
     where
@@ -47,10 +48,11 @@ where
     }
 }
 
-impl<E, F> SelectTwo<E, F>
+impl<E, F, S> SelectTwo<E, F, S>
 where
     E: EntityTrait,
     F: EntityTrait,
+    S: SelectState,
 {
     fn into_model<M, N>(self) -> SelectTwoModel<M, N>
     where

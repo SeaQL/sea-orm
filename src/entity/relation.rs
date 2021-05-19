@@ -1,4 +1,4 @@
-use crate::{EntityTrait, Identity, IntoIdentity, QueryHelper, Select};
+use crate::{EntityTrait, Identity, IntoIdentity, QueryHelper, Select, SelectStateEmpty};
 use core::marker::PhantomData;
 use sea_query::{Iden, IntoIden, JoinType};
 use std::fmt::Debug;
@@ -24,8 +24,8 @@ where
         None
     }
 
-    fn find_related() -> Select<R> {
-        Select::<R>::new().join_join_rev(JoinType::InnerJoin, Self::to(), Self::via())
+    fn find_related() -> Select<R, SelectStateEmpty> {
+        Select::<R, SelectStateEmpty>::new().join_join_rev(JoinType::InnerJoin, Self::to(), Self::via())
     }
 }
 

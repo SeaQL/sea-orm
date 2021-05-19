@@ -1,8 +1,13 @@
-use crate::{ColumnTrait, Identity, IntoSimpleExpr, RelationDef};
+use core::marker::PhantomData;
+use crate::{ColumnTrait, Select, SelectTwo, SelectStateEmpty, SelectStateHasCondition, EntityTrait, Identity, IntoSimpleExpr, RelationDef};
 
-use sea_query::{Alias, Expr, SelectExpr, SelectStatement, SimpleExpr};
+use sea_query::{Alias, ConditionWhere, Expr, SelectExpr, SelectStatement, SimpleExpr};
 pub use sea_query::{JoinType, Order};
 use std::rc::Rc;
+
+pub mod condition {
+    pub use sea_query::{any, all};
+}
 
 pub trait QueryHelper: Sized {
     fn query(&mut self) -> &mut SelectStatement;
@@ -191,6 +196,47 @@ pub trait QueryHelper: Sized {
         self.query()
             .join(join, rel.from_tbl.clone(), join_condition(rel));
         self
+    }
+}
+
+impl<E> Select<E, SelectStateEmpty>
+where
+    E: EntityTrait,
+{
+    /// Add a condition tree. This can be called once only.
+    /// ```
+    /// use sea_orm::{condition, ColumnTrait, EntityTrait, QueryHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .condition(condition::any().add(cake::Column::Id.eq(5)))
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 5"
+    /// );
+    /// ```
+    pub fn condition(mut self, cond: ConditionWhere) -> Select<E, SelectStateHasCondition> {
+        self.query.cond_where(cond);
+        Select {
+            query: self.query,
+            entity: PhantomData,
+            state: PhantomData,
+        }
+    }
+}
+
+impl<E, F> SelectTwo<E, F, SelectStateEmpty>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+{
+    pub fn condition(mut self, cond: ConditionWhere) -> SelectTwo<E, F, SelectStateHasCondition> {
+        self.query.cond_where(cond);
+        SelectTwo {
+            query: self.query,
+            entity: PhantomData,
+            state: PhantomData,
+        }
     }
 }
 

@@ -6,41 +6,57 @@ use sea_query::{Iden, IntoColumnRef, IntoIden, QueryBuilder, SelectStatement, Si
 use std::rc::Rc;
 
 #[derive(Clone, Debug)]
-pub struct Select<E>
+pub struct Select<E, S>
 where
     E: EntityTrait,
+    S: SelectState,
 {
     pub(crate) query: SelectStatement,
     pub(crate) entity: PhantomData<E>,
+    pub(crate) state: PhantomData<S>,
 }
 
 #[derive(Clone, Debug)]
-pub struct SelectTwo<E, F>
+pub struct SelectTwo<E, F, S>
 where
     E: EntityTrait,
     F: EntityTrait,
+    S: SelectState,
 {
     pub(crate) query: SelectStatement,
     pub(crate) entity: PhantomData<(E, F)>,
+    pub(crate) state: PhantomData<S>,
 }
+
+pub trait SelectState {}
+
+pub struct SelectStateEmpty;
+
+pub struct SelectStateHasCondition;
 
 pub trait IntoSimpleExpr {
     fn into_simple_expr(self) -> SimpleExpr;
 }
 
-impl<E> QueryHelper for Select<E>
+impl SelectState for SelectStateEmpty {}
+
+impl SelectState for SelectStateHasCondition {}
+
+impl<E, S> QueryHelper for Select<E, S>
 where
     E: EntityTrait,
+    S: SelectState,
 {
     fn query(&mut self) -> &mut SelectStatement {
         &mut self.query
     }
 }
 
-impl<E, F> QueryHelper for SelectTwo<E, F>
+impl<E, F, S> QueryHelper for SelectTwo<E, F, S>
 where
     E: EntityTrait,
     F: EntityTrait,
+    S: SelectState,
 {
     fn query(&mut self) -> &mut SelectStatement {
         &mut self.query
@@ -62,14 +78,16 @@ impl IntoSimpleExpr for SimpleExpr {
     }
 }
 
-impl<E> Select<E>
+impl<E, S> Select<E, S>
 where
     E: EntityTrait,
+    S: SelectState,
 {
     pub(crate) fn new() -> Self {
         Self {
             query: SelectStatement::new(),
             entity: PhantomData,
+            state: PhantomData,
         }
         .prepare_select()
         .prepare_from()
@@ -89,12 +107,7 @@ where
         self.query.from(E::default().into_iden());
         self
     }
-}
 
-impl<E> Select<E>
-where
-    E: EntityTrait,
-{
     /// Get a mutable ref to the query builder
     pub fn query(&mut self) -> &mut SelectStatement {
         &mut self.query
@@ -119,10 +132,11 @@ where
     }
 }
 
-impl<E, F> SelectTwo<E, F>
+impl<E, F, S> SelectTwo<E, F, S>
 where
     E: EntityTrait,
     F: EntityTrait,
+    S: SelectState,
 {
     /// Get a mutable ref to the query builder
     pub fn query(&mut self) -> &mut SelectStatement {

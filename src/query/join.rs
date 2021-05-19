@@ -1,10 +1,10 @@
 use crate::{
     ColumnTrait, EntityTrait, Iterable, ModelTrait, PrimaryKeyOfModel, QueryHelper, Related,
-    Select, SelectTwo,
+    Select, SelectTwo, SelectStateEmpty
 };
 pub use sea_query::JoinType;
 
-impl<E> Select<E>
+impl<E> Select<E, SelectStateEmpty>
 where
     E: EntityTrait,
 {
@@ -59,7 +59,7 @@ where
     }
 
     /// Left Join with a Related Entity and select both Entity.
-    pub fn left_join_and_select<R>(self, r: R) -> SelectTwo<E, R>
+    pub fn left_join_and_select<R>(self, r: R) -> SelectTwo<E, R, SelectStateEmpty>
     where
         R: EntityTrait,
         E: Related<R>,
