@@ -219,6 +219,12 @@ fn join_condition(rel: RelationDef) -> SimpleExpr {
     match (owner_keys, foreign_keys) {
         (Identity::Unary(o1), Identity::Unary(f1)) => {
             Expr::tbl(Rc::clone(&from_tbl), o1).equals(Rc::clone(&to_tbl), f1)
-        } // _ => panic!("Owner key and foreign key mismatch"),
+        }
+        (Identity::Binary(o1, o2), Identity::Binary(f1, f2)) => {
+            Expr::tbl(Rc::clone(&from_tbl), o1).equals(Rc::clone(&to_tbl), f1).and(
+                Expr::tbl(Rc::clone(&from_tbl), o2).equals(Rc::clone(&to_tbl), f2)
+            )
+        }
+        _ => panic!("Owner key and foreign key mismatch"),
     }
 }

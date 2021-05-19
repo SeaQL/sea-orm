@@ -1,30 +1,33 @@
 use sea_query::{Iden, IntoIden};
+use crate::{IdenStatic};
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub enum Identity {
     Unary(Rc<dyn Iden>),
-    // Binary((Rc<dyn Iden>, Rc<dyn Iden>)),
-    // Ternary((Rc<dyn Iden>, Rc<dyn Iden>, Rc<dyn Iden>)),
+    Binary(Rc<dyn Iden>, Rc<dyn Iden>),
+    // Ternary(Rc<dyn Iden>, Rc<dyn Iden>, Rc<dyn Iden>),
 }
 
 pub trait IntoIdentity {
     fn into_identity(self) -> Identity;
 }
 
-impl Identity {
-    pub fn into_iden(self) -> Rc<dyn Iden> {
-        match self {
-            Self::Unary(iden) => iden,
-        }
-    }
-}
-
 impl<T> IntoIdentity for T
 where
-    T: IntoIden,
+    T: IdenStatic,
 {
     fn into_identity(self) -> Identity {
         Identity::Unary(self.into_iden())
+    }
+}
+
+impl<T, C> IntoIdentity for (T, C)
+where
+    T: IdenStatic,
+    C: IdenStatic,
+{
+    fn into_identity(self) -> Identity {
+        Identity::Binary(self.0.into_iden(), self.1.into_iden())
     }
 }
