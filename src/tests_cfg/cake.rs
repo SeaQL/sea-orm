@@ -28,16 +28,6 @@ pub enum Relation {
     CakeFilling,
 }
 
-impl EntityTrait for Entity {
-    type Model = Model;
-
-    type Column = Column;
-
-    type PrimaryKey = PrimaryKey;
-
-    type Relation = Relation;
-}
-
 impl ColumnTrait for Column {
     type EntityName = Entity;
 

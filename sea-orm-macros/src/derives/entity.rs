@@ -39,5 +39,15 @@ pub fn expend_derive_entity(ident: Ident, attrs: Vec<Attribute>) -> syn::Result<
                 write!(s, "{}", self.as_str()).unwrap();
             }
         }
+
+        impl EntityTrait for #ident {
+            type Model = Model;
+        
+            type Column = Column;
+        
+            type PrimaryKey = PrimaryKey;
+        
+            type Relation = Relation;
+        }
     ))
 }
