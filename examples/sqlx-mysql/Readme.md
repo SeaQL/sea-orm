@@ -78,4 +78,18 @@ find cakes and fillings: SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`
 
 (Model { id: 2, name: "Chocolate Forest" }, Model { id: 3, name: "Mango" })
 
+find fillings for cheese cake: SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 1 LIMIT 1
+SELECT `filling`.`id`, `filling`.`name` FROM `filling` INNER JOIN `cake_filling` ON `cake_filling`.`filling_id` = `filling`.`id` INNER JOIN `cake` ON `cake`.`id` = `cake_filling`.`cake_id` WHERE `cake`.`id` = 1
+
+Model { id: 1, name: "Vanilla" }
+
+Model { id: 2, name: "Lemon" }
+
+find cakes for lemon: SELECT `filling`.`id`, `filling`.`name` FROM `filling` WHERE `filling`.`id` = 2 LIMIT 1
+SELECT `cake`.`id`, `cake`.`name` FROM `cake` INNER JOIN `cake_filling` ON `cake_filling`.`cake_id` = `cake`.`id` INNER JOIN `filling` ON `filling`.`id` = `cake_filling`.`filling_id` WHERE `filling`.`id` = 2
+
+Model { id: 1, name: "New York Cheese" }
+
+Model { id: 2, name: "Chocolate Forest" }
+
 ```
