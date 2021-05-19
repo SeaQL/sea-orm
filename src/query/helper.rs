@@ -1,8 +1,11 @@
 use crate::{ColumnTrait, Identity, IntoSimpleExpr, RelationDef};
-
-use sea_query::{Alias, Expr, SelectExpr, SelectStatement, SimpleExpr};
+use sea_query::{Alias, ConditionWhere, Expr, SelectExpr, SelectStatement, SimpleExpr};
 pub use sea_query::{JoinType, Order};
 use std::rc::Rc;
+
+pub mod condition {
+    pub use sea_query::{any, all};
+}
 
 pub trait QueryHelper: Sized {
     fn query(&mut self) -> &mut SelectStatement;
@@ -72,6 +75,23 @@ pub trait QueryHelper: Sized {
     /// ```
     fn filter(mut self, expr: SimpleExpr) -> Self {
         self.query().and_where(expr);
+        self
+    }
+
+    /// Add a condition tree. This can be called once only.
+    /// ```
+    /// use sea_orm::{condition, ColumnTrait, EntityTrait, QueryHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .condition(condition::any().add(cake::Column::Id.eq(5)))
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 5"
+    /// );
+    /// ```
+    fn condition(mut self, cond: ConditionWhere) -> Self {
+        self.query().cond_where(cond);
         self
     }
 
