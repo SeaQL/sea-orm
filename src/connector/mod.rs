@@ -2,15 +2,9 @@ mod select;
 
 pub use select::*;
 
-use crate::{DatabaseConnection, QueryResult, TypeErr};
+use crate::{Statement, DatabaseConnection, QueryResult, TypeErr};
 use async_trait::async_trait;
-use sea_query::{inject_parameters, MySqlQueryBuilder, Values};
 use std::{error::Error, fmt};
-
-pub struct Statement {
-    pub sql: String,
-    pub values: Values,
-}
 
 #[async_trait]
 pub trait Connector {
@@ -31,28 +25,6 @@ pub struct QueryErr;
 
 #[derive(Debug)]
 pub struct ConnectionErr;
-
-// Statement //
-
-impl From<(String, Values)> for Statement {
-    fn from(stmt: (String, Values)) -> Statement {
-        Statement {
-            sql: stmt.0,
-            values: stmt.1,
-        }
-    }
-}
-
-impl fmt::Display for Statement {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let string = inject_parameters(
-            &self.sql,
-            self.values.0.clone(),
-            &MySqlQueryBuilder::default(),
-        );
-        write!(f, "{}", &string)
-    }
-}
 
 // QueryErr //
 
