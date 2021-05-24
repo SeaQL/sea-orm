@@ -3,6 +3,10 @@ use sea_query::{Alias, Expr, SelectExpr, SelectStatement, SimpleExpr};
 pub use sea_query::{Condition, JoinType, Order};
 use std::rc::Rc;
 
+pub trait IntoCondition {
+    fn into_condition(self) -> Condition;
+}
+
 pub trait QueryHelper: Sized {
     fn query(&mut self) -> &mut SelectStatement;
 
@@ -63,31 +67,33 @@ pub trait QueryHelper: Sized {
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.eq(4))
     ///         .filter(cake::Column::Id.eq(5))
     ///         .build(MysqlQueryBuilder)
     ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 5"
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 4 AND (`cake`.`id` = 5)"
     /// );
     /// ```
-    fn filter(mut self, expr: SimpleExpr) -> Self {
-        self.query().and_where(expr);
-        self
-    }
-
-    /// Add a condition tree. This can be called once only.
+    /// 
+    /// Add a condition tree.
     /// ```
     /// use sea_orm::{Condition, ColumnTrait, EntityTrait, QueryHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
-    ///         .condition(Condition::any().add(cake::Column::Id.eq(5)))
+    ///         .filter(
+    ///             Condition::any()
+    ///                 .add(cake::Column::Id.eq(4))
+    ///                 .add(cake::Column::Id.eq(5))
+    ///         )
     ///         .build(MysqlQueryBuilder)
     ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 5"
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 4 OR `cake`.`id` = 5"
     /// );
     /// ```
-    fn condition(mut self, cond: Condition) -> Self {
-        self.query().cond_where(cond);
+    fn filter<F>(mut self, filter: F) -> Self
+        where F: IntoCondition {
+        self.query().cond_where(filter.into_condition());
         self
     }
 
@@ -206,6 +212,18 @@ pub trait QueryHelper: Sized {
     fn join_rev(mut self, join: JoinType, rel: RelationDef) -> Self {
         self.query()
             .join(join, rel.from_tbl.clone(), join_condition(rel));
+        self
+    }
+}
+
+impl IntoCondition for SimpleExpr {
+    fn into_condition(self) -> Condition {
+        Condition::all().add(self)
+    }
+}
+
+impl IntoCondition for Condition {
+    fn into_condition(self) -> Condition {
         self
     }
 }
