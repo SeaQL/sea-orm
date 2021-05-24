@@ -1,3 +1,4 @@
+mod active_model;
 mod base;
 mod column;
 mod identity;
@@ -6,6 +7,7 @@ pub mod prelude;
 mod primary_key;
 mod relation;
 
+pub use active_model::*;
 pub use base::*;
 pub use column::*;
 pub use identity::*;
