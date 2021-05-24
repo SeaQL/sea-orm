@@ -2,7 +2,7 @@ use crate::{ColumnTrait, QueryResult, TypeErr};
 pub use sea_query::Value;
 use std::fmt::Debug;
 
-pub trait ModelTrait: Clone + Debug + Default {
+pub trait ModelTrait: Clone + Debug {
     type Column: ColumnTrait;
 
     fn get(&self, c: Self::Column) -> Value;
