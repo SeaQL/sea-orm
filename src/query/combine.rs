@@ -116,7 +116,7 @@ mod tests {
                 "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
                 "`fruit`.`id` AS `B_id`, `fruit`.`name` AS `B_name`, `fruit`.`cake_id` AS `B_cake_id`",
                 "FROM `cake` LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`",
-                "WHERE `cake`.`id` = 1 AND `fruit`.`id` = 2",
+                "WHERE `cake`.`id` = 1 AND (`fruit`.`id` = 2)",
             ].join(" ")
         );
     }
