@@ -2,7 +2,7 @@ mod select;
 
 pub use select::*;
 
-use crate::{Statement, DatabaseConnection, QueryResult, TypeErr};
+use crate::{DatabaseConnection, QueryResult, Statement, TypeErr};
 use async_trait::async_trait;
 use std::{error::Error, fmt};
 

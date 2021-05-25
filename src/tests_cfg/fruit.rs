@@ -5,7 +5,7 @@ use crate::entity::prelude::*;
 #[table = "fruit"]
 pub struct Entity;
 
-#[derive(Clone, Debug, PartialEq, DeriveModel)]
+#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
     pub id: i32,
     pub name: String,

@@ -1,5 +1,5 @@
 use sea_query::{inject_parameters, MySqlQueryBuilder, Values};
-use std::{fmt};
+use std::fmt;
 
 pub struct Statement {
     pub sql: String,

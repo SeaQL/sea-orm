@@ -1,5 +1,5 @@
-use std::fmt::Debug;
 use crate::{ColumnTrait, ModelTrait, Value};
+use std::fmt::Debug;
 
 #[derive(Clone, Debug)]
 pub enum Action<V> {
@@ -7,7 +7,10 @@ pub enum Action<V> {
     Unset,
 }
 
-impl<V> Action<V> where V: Into<Value> {
+impl<V> Action<V>
+where
+    V: Into<Value>,
+{
     pub fn into_action_value(self) -> Action<Value> {
         match self {
             Self::Set(v) => Action::Set(v.into()),
