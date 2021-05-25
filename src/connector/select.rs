@@ -5,6 +5,9 @@ use crate::{
 use sea_query::{QueryBuilder, SelectStatement};
 use std::marker::PhantomData;
 
+#[cfg(feature = "serialize-query-result")]
+use crate::SelectJson;
+
 #[derive(Clone, Debug)]
 pub struct SelectModel<M>
 where
@@ -33,6 +36,14 @@ where
         M: FromQueryResult,
     {
         SelectModel {
+            query: self.query,
+            model: PhantomData,
+        }
+    }
+
+    #[cfg(feature = "serialize-query-result")]
+    pub fn as_json(self) -> SelectJson<E::Model> {
+        SelectJson {
             query: self.query,
             model: PhantomData,
         }

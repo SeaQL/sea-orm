@@ -4,6 +4,7 @@ use sea_orm::entity::prelude::*;
 #[table = "cake_filling"]
 pub struct Entity;
 
+#[derive(Serialize)]
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
     pub cake_id: i32,

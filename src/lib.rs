@@ -18,3 +18,4 @@ pub use sea_orm_macros::{
 pub use sea_query;
 pub use sea_query::Iden;
 pub use strum::EnumIter;
+pub use serde::Serialize;

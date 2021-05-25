@@ -39,6 +39,14 @@ async fn main() {
     println!("===== =====\n");
 
     find_many_to_many(&db).await.unwrap();
+
+    println!("===== =====\n");
+
+    find_all_json(&db).await.unwrap();
+
+    println!("===== =====\n");
+
+    find_one_json(&db).await.unwrap();
 }
 
 async fn find_all(db: &Database) -> Result<(), QueryErr> {
@@ -171,6 +179,42 @@ async fn find_many_to_many(db: &Database) -> Result<(), QueryErr> {
     for cc in cakes.iter() {
         println!("{:?}\n", cc);
     }
+
+    Ok(())
+}
+
+async fn find_all_json(db: &Database) -> Result<(), QueryErr> {
+    print!("find all cakes: ");
+
+    let cakes = cake::Entity::find().as_json().all(db).await?;
+
+    println!("\n{:?}\n", cakes);
+
+    print!("find all fruits: ");
+
+    let fruits = fruit::Entity::find().as_json().all(db).await?;
+
+    println!("\n{:?}\n", fruits);
+
+    Ok(())
+}
+
+async fn find_one_json(db: &Database) -> Result<(), QueryErr> {
+    print!("find one by primary key: ");
+
+    let cheese = cake::Entity::find_by(1).as_json().one(db).await?;
+
+    println!("\n{:?}\n", cheese);
+
+    print!("find one by like: ");
+
+    let chocolate = cake::Entity::find()
+        .filter(cake::Column::Name.contains("chocolate"))
+        .as_json()
+        .one(db)
+        .await?;
+
+    println!("\n{:?}\n", chocolate);
 
     Ok(())
 }

@@ -5,6 +5,8 @@ use crate::entity::prelude::*;
 #[table = "cake_filling"]
 pub struct Entity;
 
+// TODO: Can derive serde::Serialize in macro?
+#[cfg_attr(feature = "serialize-query-result", derive(serde::Serialize))]
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
     pub cake_id: i32,
