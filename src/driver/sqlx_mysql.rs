@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use sqlx::{mysql::MySqlRow, MySqlPool};
+use sqlx::{mysql::{MySqlRow, MySqlArguments, MySqlQueryResult}, MySql, MySqlPool};
 
 sea_query::sea_query_driver_mysql!();
 use sea_query_driver_mysql::bind_query;
@@ -31,10 +31,22 @@ impl Connector for SqlxMySqlConnector {
 
 #[async_trait]
 impl Connection for &SqlxMySqlPoolConnection {
+    async fn execute(&self, stmt: Statement) -> Result<ExecResult, ExecErr> {
+        debug_print!("{}", stmt);
+
+        let query = sqlx_query(&stmt);
+        if let Ok(conn) = &mut self.pool.acquire().await {
+            if let Ok(res) = query.execute(conn).await {
+                return Ok(res.into());
+            }
+        }
+        Err(ExecErr)
+    }
+
     async fn query_one(&self, stmt: Statement) -> Result<QueryResult, QueryErr> {
         debug_print!("{}", stmt);
 
-        let query = bind_query(sqlx::query(&stmt.sql), &stmt.values);
+        let query = sqlx_query(&stmt);
         if let Ok(conn) = &mut self.pool.acquire().await {
             if let Ok(row) = query.fetch_one(conn).await {
                 return Ok(row.into());
@@ -46,7 +58,7 @@ impl Connection for &SqlxMySqlPoolConnection {
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr> {
         debug_print!("{}", stmt);
 
-        let query = bind_query(sqlx::query(&stmt.sql), &stmt.values);
+        let query = sqlx_query(&stmt);
         if let Ok(conn) = &mut self.pool.acquire().await {
             if let Ok(rows) = query.fetch_all(conn).await {
                 return Ok(rows.into_iter().map(|r| r.into()).collect());
@@ -62,4 +74,20 @@ impl From<MySqlRow> for QueryResult {
             row: QueryResultRow::SqlxMySql(row),
         }
     }
+}
+
+impl From<MySqlQueryResult> for ExecResult {
+    fn from(result: MySqlQueryResult) -> ExecResult {
+        ExecResult {
+            result: ExecResultHolder::SqlxMySql(result),
+        }
+    }
+}
+
+fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, MySqlArguments> {
+    let mut query = sqlx::query(&stmt.sql);
+    if let Some(values) = &stmt.values {
+        query = bind_query(query, values);
+    }
+    query
 }
