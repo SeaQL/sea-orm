@@ -5,9 +5,6 @@ use crate::{
 use sea_query::{QueryBuilder, SelectStatement};
 use std::marker::PhantomData;
 
-#[cfg(feature = "with-json")]
-use super::select_json::{SelectJson, SelectTwoJson};
-
 #[derive(Clone, Debug)]
 pub struct SelectModel<M>
 where
@@ -42,8 +39,11 @@ where
     }
 
     #[cfg(feature = "with-json")]
-    pub fn as_json(self) -> SelectJson {
-        SelectJson { query: self.query }
+    pub fn into_json(self) -> SelectModel<serde_json::Value> {
+        SelectModel {
+            query: self.query,
+            model: PhantomData,
+        }
     }
 
     pub async fn one(self, db: &Database) -> Result<E::Model, QueryErr> {
@@ -72,8 +72,11 @@ where
     }
 
     #[cfg(feature = "with-json")]
-    pub fn as_json(self) -> SelectTwoJson {
-        SelectTwoJson { query: self.query }
+    pub fn into_json(self) -> SelectTwoModel<serde_json::Value, serde_json::Value> {
+        SelectTwoModel {
+            query: self.query,
+            model: PhantomData,
+        }
     }
 
     pub async fn one(self, db: &Database) -> Result<(E::Model, F::Model), QueryErr> {
