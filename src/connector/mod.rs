@@ -1,10 +1,10 @@
+mod executor;
 mod select;
-
 #[cfg(feature = "serialize-query-result")]
 mod select_json;
 
+pub use executor::*;
 pub use select::*;
-
 #[cfg(feature = "serialize-query-result")]
 pub use select_json::*;
 
@@ -21,6 +21,8 @@ pub trait Connector {
 
 #[async_trait]
 pub trait Connection {
+    async fn execute(&self, stmt: Statement) -> Result<ExecResult, ExecErr>;
+
     async fn query_one(&self, stmt: Statement) -> Result<QueryResult, QueryErr>;
 
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr>;

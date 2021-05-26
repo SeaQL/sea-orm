@@ -70,7 +70,7 @@ pub trait EntityTrait: EntityName {
     ///         .to_string(),
     ///     [
     ///         r#"SELECT "cake_filling"."cake_id", "cake_filling"."filling_id" FROM "cake_filling""#,
-    ///         r#"WHERE "cake_filling"."cake_id" = 2 AND ("cake_filling"."filling_id" = 3)"#,
+    ///         r#"WHERE "cake_filling"."cake_id" = 2 AND "cake_filling"."filling_id" = 3"#,
     ///     ].join(" ")
     /// );
     /// ```
