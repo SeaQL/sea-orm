@@ -19,17 +19,13 @@ pub struct ExecErr;
 impl ExecResult {
     pub fn last_insert_id(&self) -> u64 {
         match &self.result {
-            ExecResultHolder::SqlxMySql(result) => {
-                result.last_insert_id()
-            }
+            ExecResultHolder::SqlxMySql(result) => result.last_insert_id(),
         }
     }
 
     pub fn rows_affected(&self) -> u64 {
         match &self.result {
-            ExecResultHolder::SqlxMySql(result) => {
-                result.rows_affected()
-            }
+            ExecResultHolder::SqlxMySql(result) => result.rows_affected(),
         }
     }
 }

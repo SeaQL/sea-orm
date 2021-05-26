@@ -1,5 +1,8 @@
 use async_trait::async_trait;
-use sqlx::{mysql::{MySqlRow, MySqlArguments, MySqlQueryResult}, MySql, MySqlPool};
+use sqlx::{
+    mysql::{MySqlArguments, MySqlQueryResult, MySqlRow},
+    MySql, MySqlPool,
+};
 
 sea_query::sea_query_driver_mysql!();
 use sea_query_driver_mysql::bind_query;

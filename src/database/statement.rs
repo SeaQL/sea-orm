@@ -19,11 +19,8 @@ impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self.values {
             Some(values) => {
-                let string = inject_parameters(
-                    &self.sql,
-                    values.0.clone(),
-                    &MySqlQueryBuilder::default(),
-                );
+                let string =
+                    inject_parameters(&self.sql, values.0.clone(), &MySqlQueryBuilder::default());
                 write!(f, "{}", &string)
             }
             None => {
