@@ -5,6 +5,9 @@ use crate::{
 use sea_query::{QueryBuilder, SelectStatement};
 use std::marker::PhantomData;
 
+#[cfg(feature = "serialize-query-result")]
+use super::select_json::{SelectJson, SelectTwoJson};
+
 #[derive(Clone, Debug)]
 pub struct SelectModel<M>
 where
@@ -38,6 +41,13 @@ where
         }
     }
 
+    #[cfg(feature = "serialize-query-result")]
+    pub fn as_json(self) -> SelectJson {
+        SelectJson {
+            query: self.query,
+        }
+    }
+
     pub async fn one(self, db: &Database) -> Result<E::Model, QueryErr> {
         self.into_model::<E::Model>().one(db).await
     }
@@ -60,6 +70,13 @@ where
         SelectTwoModel {
             query: self.query,
             model: PhantomData,
+        }
+    }
+
+    #[cfg(feature = "serialize-query-result")]
+    pub fn as_json(self) -> SelectTwoJson {
+        SelectTwoJson {
+            query: self.query,
         }
     }
 

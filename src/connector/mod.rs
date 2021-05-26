@@ -1,8 +1,12 @@
 mod executor;
 mod select;
+#[cfg(feature = "serialize-query-result")]
+mod select_json;
 
 pub use executor::*;
 pub use select::*;
+#[cfg(feature = "serialize-query-result")]
+pub use select_json::*;
 
 use crate::{DatabaseConnection, QueryResult, Statement, TypeErr};
 use async_trait::async_trait;
