@@ -37,7 +37,7 @@ Use mock connections to write unit tests for your logic.
 
 Quickly build search models that help you filter, sort and paginate data in APIs.
 
-## Design goals
+## Design Goals
 
 1. Intuitive and ergonomic
 
@@ -50,3 +50,9 @@ Balance between compile-time checking and compilation speed.
 3. Avoid 'symbol soup'
 
 Avoid macros with DSL, use derive macros where appropriate. Be friendly with IDE tools.
+
+## Test Time
+
+After some bitterness we realized it is not possible to capture everything compile time. But we don't 
+want to encounter problems at run time either. The solution is to perform checking at 'test time' to
+uncover problems. These checks will be removed at production so there will be no run time penalty.
