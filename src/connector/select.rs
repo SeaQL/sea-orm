@@ -43,9 +43,7 @@ where
 
     #[cfg(feature = "with-json")]
     pub fn as_json(self) -> SelectJson {
-        SelectJson {
-            query: self.query,
-        }
+        SelectJson { query: self.query }
     }
 
     pub async fn one(self, db: &Database) -> Result<E::Model, QueryErr> {
@@ -75,9 +73,7 @@ where
 
     #[cfg(feature = "with-json")]
     pub fn as_json(self) -> SelectTwoJson {
-        SelectTwoJson {
-            query: self.query,
-        }
+        SelectTwoJson { query: self.query }
     }
 
     pub async fn one(self, db: &Database) -> Result<(E::Model, F::Model), QueryErr> {

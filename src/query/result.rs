@@ -78,14 +78,14 @@ impl QueryResult {
 
     #[cfg(feature = "with-json")]
     pub fn as_json(&self, pre: &str) -> Result<serde_json::Value, TypeErr> {
-        use serde_json::{Value, Map, json};
+        use serde_json::{json, Map, Value};
         match &self.row {
             QueryResultRow::SqlxMySql(row) => {
-                use sqlx::{Row, Column, Type, MySql};
+                use sqlx::{Column, MySql, Row, Type};
                 let mut map = Map::new();
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
-                        continue
+                        continue;
                     } else {
                         column.name().replacen(pre, "", 1)
                     };
@@ -93,8 +93,11 @@ impl QueryResult {
                     macro_rules! match_mysql_type {
                         ( $type: ty ) => {
                             if <$type as Type<MySql>>::type_info().eq(col_type) {
-                                map.insert(col.to_owned(), json!(self.try_get::<$type>(pre, &col)?));
-                                continue
+                                map.insert(
+                                    col.to_owned(),
+                                    json!(self.try_get::<$type>(pre, &col)?),
+                                );
+                                continue;
                             }
                         };
                     }
@@ -112,7 +115,7 @@ impl QueryResult {
                     match_mysql_type!(String);
                 }
                 Ok(Value::Object(map))
-            },
+            }
         }
     }
 }

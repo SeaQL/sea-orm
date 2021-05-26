@@ -20,7 +20,11 @@ impl SelectJson {
         let builder = db.get_query_builder_backend();
         self.query.limit(1);
         // TODO: Error handling
-        db.get_connection().query_one(self.build(builder)).await?.as_json("").map_err(|_e| QueryErr)
+        db.get_connection()
+            .query_one(self.build(builder))
+            .await?
+            .as_json("")
+            .map_err(|_e| QueryErr)
     }
 
     pub async fn all(self, db: &Database) -> Result<JsonValue, QueryErr> {
