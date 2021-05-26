@@ -1,11 +1,11 @@
 mod executor;
 mod select;
-#[cfg(feature = "serialize-query-result")]
+#[cfg(feature = "with-json")]
 mod select_json;
 
 pub use executor::*;
 pub use select::*;
-#[cfg(feature = "serialize-query-result")]
+#[cfg(feature = "with-json")]
 pub use select_json::*;
 
 use crate::{DatabaseConnection, QueryResult, Statement, TypeErr};

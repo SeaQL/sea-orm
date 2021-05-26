@@ -76,7 +76,7 @@ impl QueryResult {
         T::try_get(self, pre, col)
     }
 
-    #[cfg(feature = "serialize-query-result")]
+    #[cfg(feature = "with-json")]
     pub fn as_json(&self, pre: &str) -> Result<serde_json::Value, TypeErr> {
         use serde_json::{Value, Map, json};
         match &self.row {

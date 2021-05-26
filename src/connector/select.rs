@@ -5,7 +5,7 @@ use crate::{
 use sea_query::{QueryBuilder, SelectStatement};
 use std::marker::PhantomData;
 
-#[cfg(feature = "serialize-query-result")]
+#[cfg(feature = "with-json")]
 use super::select_json::{SelectJson, SelectTwoJson};
 
 #[derive(Clone, Debug)]
@@ -41,7 +41,7 @@ where
         }
     }
 
-    #[cfg(feature = "serialize-query-result")]
+    #[cfg(feature = "with-json")]
     pub fn as_json(self) -> SelectJson {
         SelectJson {
             query: self.query,
@@ -73,7 +73,7 @@ where
         }
     }
 
-    #[cfg(feature = "serialize-query-result")]
+    #[cfg(feature = "with-json")]
     pub fn as_json(self) -> SelectTwoJson {
         SelectTwoJson {
             query: self.query,
