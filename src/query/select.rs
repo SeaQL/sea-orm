@@ -91,32 +91,38 @@ where
     }
 }
 
+macro_rules! select_query {
+    () => {
+        /// Get a mutable ref to the query builder
+        pub fn query(&mut self) -> &mut SelectStatement {
+            &mut self.query
+        }
+
+        /// Get an immutable ref to the query builder
+        pub fn as_query(&self) -> &SelectStatement {
+            &self.query
+        }
+
+        /// Take ownership of the query builder
+        pub fn into_query(self) -> SelectStatement {
+            self.query
+        }
+
+        /// Build the query as [`Statement`]
+        pub fn build<B>(&self, builder: B) -> Statement
+        where
+            B: QueryBuilder,
+        {
+            self.as_query().build(builder).into()
+        }
+    };
+}
+
 impl<E> Select<E>
 where
     E: EntityTrait,
 {
-    /// Get a mutable ref to the query builder
-    pub fn query(&mut self) -> &mut SelectStatement {
-        &mut self.query
-    }
-
-    /// Get an immutable ref to the query builder
-    pub fn as_query(&self) -> &SelectStatement {
-        &self.query
-    }
-
-    /// Take ownership of the query builder
-    pub fn into_query(self) -> SelectStatement {
-        self.query
-    }
-
-    /// Build the query as [`Statement`]
-    pub fn build<B>(&self, builder: B) -> Statement
-    where
-        B: QueryBuilder,
-    {
-        self.as_query().build(builder).into()
-    }
+    select_query!();
 }
 
 impl<E, F> SelectTwo<E, F>
@@ -124,26 +130,5 @@ where
     E: EntityTrait,
     F: EntityTrait,
 {
-    /// Get a mutable ref to the query builder
-    pub fn query(&mut self) -> &mut SelectStatement {
-        &mut self.query
-    }
-
-    /// Get an immutable ref to the query builder
-    pub fn as_query(&self) -> &SelectStatement {
-        &self.query
-    }
-
-    /// Take ownership of the query builder
-    pub fn into_query(self) -> SelectStatement {
-        self.query
-    }
-
-    /// Build the query as [`Statement`]
-    pub fn build<B>(&self, builder: B) -> Statement
-    where
-        B: QueryBuilder,
-    {
-        self.as_query().build(builder).into()
-    }
+    select_query!();
 }
