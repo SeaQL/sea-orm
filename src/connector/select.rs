@@ -1,16 +1,29 @@
 use crate::{
     query::combine, Connection, Database, EntityTrait, FromQueryResult, JsonValue, QueryErr,
-    Select, SelectTwo, Statement,
+    QueryResult, Select, SelectTwo, Statement, TypeErr,
 };
 use sea_query::{QueryBuilder, SelectStatement};
 use std::marker::PhantomData;
 
 #[derive(Clone, Debug)]
+pub struct Selector<S>
+where
+    S: SelectorTrait,
+{
+    query: SelectStatement,
+    selector: S,
+}
+
+pub trait SelectorTrait {
+    type Item: Sized;
+
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, TypeErr>;
+}
+
 pub struct SelectModel<M>
 where
     M: FromQueryResult,
 {
-    query: SelectStatement,
     model: PhantomData<M>,
 }
 
@@ -20,29 +33,54 @@ where
     M: FromQueryResult,
     N: FromQueryResult,
 {
-    query: SelectStatement,
     model: PhantomData<(M, N)>,
+}
+
+impl<M> SelectorTrait for SelectModel<M>
+where
+    M: FromQueryResult + Sized,
+{
+    type Item = M;
+
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, TypeErr> {
+        Ok(M::from_query_result(&res, "")?)
+    }
+}
+
+impl<M, N> SelectorTrait for SelectTwoModel<M, N>
+where
+    M: FromQueryResult + Sized,
+    N: FromQueryResult + Sized,
+{
+    type Item = (M, N);
+
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, TypeErr> {
+        Ok((
+            M::from_query_result(&res, combine::SELECT_A)?,
+            N::from_query_result(&res, combine::SELECT_B)?,
+        ))
+    }
 }
 
 impl<E> Select<E>
 where
     E: EntityTrait,
 {
-    pub fn into_model<M>(self) -> SelectModel<M>
+    pub fn into_model<M>(self) -> Selector<SelectModel<M>>
     where
         M: FromQueryResult,
     {
-        SelectModel {
+        Selector {
             query: self.query,
-            model: PhantomData,
+            selector: SelectModel { model: PhantomData },
         }
     }
 
     #[cfg(feature = "with-json")]
-    pub fn into_json(self) -> SelectModel<JsonValue> {
-        SelectModel {
+    pub fn into_json(self) -> Selector<SelectModel<JsonValue>> {
+        Selector {
             query: self.query,
-            model: PhantomData,
+            selector: SelectModel { model: PhantomData },
         }
     }
 
@@ -60,22 +98,22 @@ where
     E: EntityTrait,
     F: EntityTrait,
 {
-    fn into_model<M, N>(self) -> SelectTwoModel<M, N>
+    fn into_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
     where
         M: FromQueryResult,
         N: FromQueryResult,
     {
-        SelectTwoModel {
+        Selector {
             query: self.query,
-            model: PhantomData,
+            selector: SelectTwoModel { model: PhantomData },
         }
     }
 
     #[cfg(feature = "with-json")]
-    pub fn into_json(self) -> SelectTwoModel<JsonValue, JsonValue> {
-        SelectTwoModel {
+    pub fn into_json(self) -> Selector<SelectTwoModel<JsonValue, JsonValue>> {
+        Selector {
             query: self.query,
-            model: PhantomData,
+            selector: SelectTwoModel { model: PhantomData },
         }
     }
 
@@ -88,9 +126,9 @@ where
     }
 }
 
-impl<M> SelectModel<M>
+impl<S> Selector<S>
 where
-    M: FromQueryResult,
+    S: SelectorTrait,
 {
     pub fn build<B>(&self, builder: B) -> Statement
     where
@@ -99,55 +137,19 @@ where
         self.query.build(builder).into()
     }
 
-    pub async fn one(mut self, db: &Database) -> Result<M, QueryErr> {
+    pub async fn one(mut self, db: &Database) -> Result<S::Item, QueryErr> {
         let builder = db.get_query_builder_backend();
         self.query.limit(1);
         let row = db.get_connection().query_one(self.build(builder)).await?;
-        Ok(M::from_query_result(&row, "")?)
+        Ok(S::from_raw_query_result(row)?)
     }
 
-    pub async fn all(self, db: &Database) -> Result<Vec<M>, QueryErr> {
+    pub async fn all(self, db: &Database) -> Result<Vec<S::Item>, QueryErr> {
         let builder = db.get_query_builder_backend();
         let rows = db.get_connection().query_all(self.build(builder)).await?;
         let mut models = Vec::new();
         for row in rows.into_iter() {
-            models.push(M::from_query_result(&row, "")?);
-        }
-        Ok(models)
-    }
-}
-
-impl<M, N> SelectTwoModel<M, N>
-where
-    M: FromQueryResult,
-    N: FromQueryResult,
-{
-    pub fn build<B>(&self, builder: B) -> Statement
-    where
-        B: QueryBuilder,
-    {
-        self.query.build(builder).into()
-    }
-
-    pub async fn one(mut self, db: &Database) -> Result<(M, N), QueryErr> {
-        let builder = db.get_query_builder_backend();
-        self.query.limit(1);
-        let row = db.get_connection().query_one(self.build(builder)).await?;
-        Ok((
-            M::from_query_result(&row, combine::SELECT_A)?,
-            N::from_query_result(&row, combine::SELECT_B)?,
-        ))
-    }
-
-    pub async fn all(self, db: &Database) -> Result<Vec<(M, N)>, QueryErr> {
-        let builder = db.get_query_builder_backend();
-        let rows = db.get_connection().query_all(self.build(builder)).await?;
-        let mut models = Vec::new();
-        for row in rows.into_iter() {
-            models.push((
-                M::from_query_result(&row, combine::SELECT_A)?,
-                N::from_query_result(&row, combine::SELECT_B)?,
-            ));
+            models.push(S::from_raw_query_result(row)?);
         }
         Ok(models)
     }
