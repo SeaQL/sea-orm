@@ -45,6 +45,18 @@ async fn main() {
 
         json_tests(&db).await.unwrap();
     }
+
+    println!("===== =====\n");
+
+    find_all_stream(&db).await.unwrap();
+
+    println!("===== =====\n");
+
+    find_first_page(&db).await.unwrap();
+
+    println!("===== =====\n");
+
+    find_num_page(&db).await.unwrap();
 }
 
 async fn find_all(db: &Database) -> Result<(), QueryErr> {
@@ -252,6 +264,69 @@ async fn count_fruits_by_cake_json(db: &Database) -> Result<(), QueryErr> {
         .await?;
 
     println!("\n{}\n", serde_json::to_string_pretty(&count).unwrap());
+
+    Ok(())
+}
+
+async fn find_all_stream(db: &Database) -> Result<(), QueryErr> {
+    use futures::TryStreamExt;
+    use std::time::Duration;
+    use async_std::task::sleep;
+
+    println!("find all cakes: ");
+    let mut cake_paginator = cake::Entity::find().paginate(db, 2);
+    while let Some(cake_res) = cake_paginator.fetch_and_next().await? {
+        for cake in cake_res {
+            println!("{:?}", cake);
+        }
+    }
+
+    println!();
+    println!("find all fruits: ");
+    let mut fruit_paginator = fruit::Entity::find().paginate(db, 2);
+    while let Some(fruit_res) = fruit_paginator.fetch_and_next().await? {
+        for fruit in fruit_res {
+            println!("{:?}", fruit);
+        }
+    }
+
+    println!();
+    println!("find all fruits with stream: ");
+    let mut fruit_stream = fruit::Entity::find().paginate(db, 2).into_stream();
+    while let Some(fruits) = fruit_stream.try_next().await? {
+        for fruit in fruits {
+            println!("{:?}", fruit);
+        }
+        sleep(Duration::from_millis(250)).await;
+    }
+
+    println!();
+    println!("find all fruits in json with stream: ");
+    let mut json_stream = fruit::Entity::find().into_json().paginate(db, 2).into_stream();
+    while let Some(jsons) = json_stream.try_next().await? {
+        for json in jsons {
+            println!("{:?}", json);
+        }
+        sleep(Duration::from_millis(250)).await;
+    }
+
+    Ok(())
+}
+
+async fn find_first_page(db: &Database) -> Result<(), QueryErr> {
+    println!("fruits first page: ");
+    let page = fruit::Entity::find().paginate(db, 2).fetch_page(0).await?;
+    for fruit in page {
+        println!("{:?}", fruit);
+    }
+
+    Ok(())
+}
+
+async fn find_num_page(db: &Database) -> Result<(), QueryErr> {
+    println!("fruits number of page: ");
+    let num_page = fruit::Entity::find().paginate(db, 2).count_page().await?;
+    println!("{:?}", num_page);
 
     Ok(())
 }

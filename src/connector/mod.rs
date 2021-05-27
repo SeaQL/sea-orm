@@ -1,9 +1,11 @@
 mod executor;
 mod insert;
+mod paginator;
 mod select;
 
 pub use executor::*;
 pub use insert::*;
+pub use paginator::*;
 pub use select::*;
 
 use crate::{DatabaseConnection, QueryResult, Statement, TypeErr};
