@@ -1,10 +1,16 @@
-use crate::{ColumnTrait, ModelTrait, Value};
+use crate::{ColumnTrait, EntityTrait, Value};
 use std::fmt::Debug;
 
 #[derive(Clone, Debug)]
 pub enum Action<V> {
     Set(V),
     Unset,
+}
+
+impl<V> Default for Action<V> {
+    fn default() -> Self {
+        Self::Unset
+    }
 }
 
 impl<V> Action<V>
@@ -19,15 +25,16 @@ where
     }
 }
 
-pub trait ActiveModelOf<M>
+pub trait ActiveModelOf<E>
 where
-    M: ModelTrait,
+    E: EntityTrait,
 {
-    fn from_model(m: M) -> Self;
 }
 
 pub trait ActiveModelTrait: Clone + Debug {
     type Column: ColumnTrait;
+
+    fn take(&mut self, c: Self::Column) -> Action<Value>;
 
     fn get(&self, c: Self::Column) -> Action<Value>;
 

@@ -36,11 +36,7 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
             #(pub #field: sea_orm::Action<#ty>),*
         }
 
-        impl sea_orm::ActiveModelOf<#ident> for ActiveModel {
-            fn from_model(m: #ident) -> Self {
-                Self::from(m)
-            }
-        }
+        impl sea_orm::ActiveModelOf<Entity> for ActiveModel {}
 
         impl From<#ident> for ActiveModel {
             fn from(m: #ident) -> Self {
@@ -52,6 +48,12 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
 
         impl sea_orm::ActiveModelTrait for ActiveModel {
             type Column = Column;
+
+            fn take(&mut self, c: Self::Column) -> sea_orm::Action<sea_orm::Value> {
+                match c {
+                    #(Self::Column::#name => std::mem::take(&mut self.#field).into_action_value()),*
+                }
+            }
 
             fn get(&self, c: Self::Column) -> sea_orm::Action<sea_orm::Value> {
                 match c {

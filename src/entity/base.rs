@@ -15,11 +15,11 @@ pub trait EntityName: IdenStatic + Default {}
 pub trait EntityTrait: EntityName {
     type Model: ModelTrait;
 
-    type Column: ColumnTrait + Iterable;
+    type Column: ColumnTrait;
 
-    type Relation: RelationTrait + Iterable;
+    type Relation: RelationTrait;
 
-    type PrimaryKey: PrimaryKeyTrait + Iterable;
+    type PrimaryKey: PrimaryKeyTrait;
 
     fn has_one<R>(entity: R) -> RelationBuilder<Self, R>
     where

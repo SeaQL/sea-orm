@@ -1,4 +1,4 @@
-use crate::{EntityName, IdenStatic};
+use crate::{EntityName, IdenStatic, Iterable};
 pub use sea_query::ColumnType;
 use sea_query::{Expr, Iden, SimpleExpr, Value};
 
@@ -36,7 +36,7 @@ macro_rules! bind_vec_func {
     };
 }
 
-pub trait ColumnTrait: IdenStatic {
+pub trait ColumnTrait: IdenStatic + Iterable {
     type EntityName: EntityName;
 
     fn def(&self) -> ColumnType;

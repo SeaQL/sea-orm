@@ -1,4 +1,4 @@
-use crate::{EntityTrait, Identity, IntoIdentity, QueryHelper, Select};
+use crate::{EntityTrait, Identity, IntoIdentity, Iterable, QueryHelper, Select};
 use core::marker::PhantomData;
 use sea_query::{Iden, IntoIden, JoinType};
 use std::fmt::Debug;
@@ -10,7 +10,7 @@ pub enum RelationType {
     HasMany,
 }
 
-pub trait RelationTrait: Debug + 'static {
+pub trait RelationTrait: Iterable + Debug + 'static {
     fn def(&self) -> RelationDef;
 }
 

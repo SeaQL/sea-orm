@@ -1,6 +1,6 @@
-use super::{IdenStatic, ModelTrait};
+use super::{IdenStatic, Iterable, ModelTrait};
 
-pub trait PrimaryKeyTrait: IdenStatic {}
+pub trait PrimaryKeyTrait: IdenStatic + Iterable {}
 
 pub trait PrimaryKeyOfModel<M>
 where

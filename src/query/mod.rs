@@ -6,7 +6,7 @@ mod json;
 mod result;
 mod select;
 
-pub use combine::*;
+// pub use combine::*;
 pub use helper::*;
 pub use join::*;
 #[cfg(feature = "with-json")]
