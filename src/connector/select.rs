@@ -1,6 +1,6 @@
-use crate::query::combine;
 use crate::{
-    Connection, Database, EntityTrait, FromQueryResult, QueryErr, Select, SelectTwo, Statement,
+    query::combine, Connection, Database, EntityTrait, FromQueryResult, JsonValue, QueryErr,
+    Select, SelectTwo, Statement,
 };
 use sea_query::{QueryBuilder, SelectStatement};
 use std::marker::PhantomData;
@@ -39,7 +39,7 @@ where
     }
 
     #[cfg(feature = "with-json")]
-    pub fn into_json(self) -> SelectModel<serde_json::Value> {
+    pub fn into_json(self) -> SelectModel<JsonValue> {
         SelectModel {
             query: self.query,
             model: PhantomData,
@@ -72,7 +72,7 @@ where
     }
 
     #[cfg(feature = "with-json")]
-    pub fn into_json(self) -> SelectTwoModel<serde_json::Value, serde_json::Value> {
+    pub fn into_json(self) -> SelectTwoModel<JsonValue, JsonValue> {
         SelectTwoModel {
             query: self.query,
             model: PhantomData,

@@ -1,7 +1,8 @@
 use crate::{FromQueryResult, QueryResult, QueryResultRow, TypeErr};
-use serde_json::{json, Map, Value};
+pub use serde_json::Value as JsonValue;
+use serde_json::{json, Map};
 
-impl FromQueryResult for Value {
+impl FromQueryResult for JsonValue {
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, TypeErr> {
         match &res.row {
             QueryResultRow::SqlxMySql(row) => {
@@ -35,7 +36,7 @@ impl FromQueryResult for Value {
                     match_mysql_type!(f64);
                     match_mysql_type!(String);
                 }
-                Ok(Value::Object(map))
+                Ok(JsonValue::Object(map))
             }
         }
     }
