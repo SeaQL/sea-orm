@@ -3,7 +3,7 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{Data, DataEnum, Fields, Variant};
 
-pub fn expend_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenStream> {
+pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenStream> {
     let variants = match data {
         syn::Data::Enum(DataEnum { variants, .. }) => variants,
         _ => {

@@ -16,7 +16,7 @@ fn get_entity_attr(attrs: &[Attribute]) -> Option<syn::Lit> {
     None
 }
 
-pub fn expend_derive_entity(ident: Ident, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
+pub fn expand_derive_entity(ident: Ident, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
     let entity_name = match get_entity_attr(&attrs) {
         Some(lit) => quote! { #lit },
         None => {

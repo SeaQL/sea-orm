@@ -3,7 +3,7 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{Data, DataStruct, Field, Fields, Type};
 
-pub fn expend_derive_active_model(ident: Ident, data: Data) -> syn::Result<TokenStream> {
+pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<TokenStream> {
     let fields = match data {
         Data::Struct(DataStruct {
             fields: Fields::Named(named),
