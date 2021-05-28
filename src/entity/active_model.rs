@@ -11,8 +11,9 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub enum ActiveValueState {
+enum ActiveValueState {
     Set,
+    Unchanged,
     Unset,
 }
 
@@ -20,6 +21,13 @@ impl Default for ActiveValueState {
     fn default() -> Self {
         Self::Unset
     }
+}
+
+pub fn unchanged_active_value_not_intended_for_public_use<V>(value: V) -> ActiveValue<V>
+where
+    V: Default,
+{
+    ActiveValue::unchanged(value)
 }
 
 impl<V> ActiveValue<V>
@@ -35,6 +43,13 @@ where
 
     pub fn is_set(&self) -> bool {
         matches!(self.state, ActiveValueState::Set)
+    }
+
+    pub(crate) fn unchanged(value: V) -> Self {
+        Self {
+            value,
+            state: ActiveValueState::Unchanged,
+        }
     }
 
     pub fn unset() -> Self {
@@ -58,6 +73,15 @@ where
     }
 }
 
+impl<V> std::convert::AsRef<V> for ActiveValue<V>
+where
+    V: Default,
+{
+    fn as_ref(&self) -> &V {
+        &self.value
+    }
+}
+
 impl<V> ActiveValue<V>
 where
     V: Default + Into<Value>,
@@ -69,6 +93,7 @@ where
     pub fn into_wrapped_value(self) -> ActiveValue<Value> {
         match self.state {
             ActiveValueState::Set => ActiveValue::set(self.into_value()),
+            ActiveValueState::Unchanged => ActiveValue::set(self.into_value()),
             ActiveValueState::Unset => ActiveValue::unset(),
         }
     }

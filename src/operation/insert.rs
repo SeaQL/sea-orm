@@ -37,7 +37,7 @@ where
         let mut values = Vec::new();
         for col in A::Column::iter() {
             let av = am.take(col);
-            if av.is_set() {
+            if !av.is_unset() {
                 columns.push(col);
                 values.push(av.into_value());
             }

@@ -41,7 +41,7 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
         impl From<#ident> for ActiveModel {
             fn from(m: #ident) -> Self {
                 Self {
-                    #(#field: sea_orm::ActiveValue::set(m.#field)),*
+                    #(#field: sea_orm::unchanged_active_value_not_intended_for_public_use(m.#field)),*
                 }
             }
         }
