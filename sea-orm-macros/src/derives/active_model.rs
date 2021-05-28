@@ -33,7 +33,7 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
     Ok(quote!(
         #[derive(Clone, Debug)]
         pub struct ActiveModel {
-            #(pub #field: sea_orm::Action<#ty>),*
+            #(pub #field: sea_orm::ActiveValue<#ty>),*
         }
 
         impl sea_orm::ActiveModelOf<Entity> for ActiveModel {}
@@ -41,7 +41,7 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
         impl From<#ident> for ActiveModel {
             fn from(m: #ident) -> Self {
                 Self {
-                    #(#field: sea_orm::Action::Set(m.#field)),*
+                    #(#field: sea_orm::ActiveValue::set(m.#field)),*
                 }
             }
         }
@@ -49,27 +49,27 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
         impl sea_orm::ActiveModelTrait for ActiveModel {
             type Column = Column;
 
-            fn take(&mut self, c: Self::Column) -> sea_orm::Action<sea_orm::Value> {
+            fn take(&mut self, c: Self::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 match c {
-                    #(Self::Column::#name => std::mem::take(&mut self.#field).into_action_value()),*
+                    #(Self::Column::#name => std::mem::take(&mut self.#field).into_wrapped_value()),*
                 }
             }
 
-            fn get(&self, c: Self::Column) -> sea_orm::Action<sea_orm::Value> {
+            fn get(&self, c: Self::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 match c {
-                    #(Self::Column::#name => self.#field.clone().into_action_value()),*
+                    #(Self::Column::#name => self.#field.clone().into_wrapped_value()),*
                 }
             }
 
             fn set(&mut self, c: Self::Column, v: sea_orm::Value) {
                 match c {
-                    #(Self::Column::#name => self.#field = sea_orm::Action::Set(v.unwrap())),*
+                    #(Self::Column::#name => self.#field = sea_orm::ActiveValue::set(v.unwrap())),*
                 }
             }
 
             fn unset(&mut self, c: Self::Column) {
                 match c {
-                    #(Self::Column::#name => self.#field = sea_orm::Action::Unset),*
+                    #(Self::Column::#name => self.#field = sea_orm::ActiveValue::unset()),*
                 }
             }
         }

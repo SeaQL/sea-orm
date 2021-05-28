@@ -1,4 +1,4 @@
-use crate::{Action, ActiveModelOf, ActiveModelTrait, EntityTrait, Iterable, Statement};
+use crate::{ActiveModelOf, ActiveModelTrait, EntityTrait, Iterable, Statement};
 use core::marker::PhantomData;
 use sea_query::{InsertStatement, IntoIden, QueryBuilder};
 
@@ -36,9 +36,10 @@ where
         let mut columns = Vec::new();
         let mut values = Vec::new();
         for col in A::Column::iter() {
-            if let Action::Set(val) = am.take(col) {
+            let av = am.take(col);
+            if av.is_set() {
                 columns.push(col);
-                values.push(val);
+                values.push(av.into_value());
             }
         }
         self.query.columns(columns);
@@ -73,7 +74,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::cake;
-    use crate::{Action, Insert};
+    use crate::{ActiveValue, Insert};
     use sea_query::PostgresQueryBuilder;
 
     #[test]
@@ -81,8 +82,8 @@ mod tests {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
                 .one(cake::ActiveModel {
-                    id: Action::Unset,
-                    name: Action::Set("Apple Pie".to_owned()),
+                    id: ActiveValue::unset(),
+                    name: ActiveValue::set("Apple Pie".to_owned()),
                 })
                 .build(PostgresQueryBuilder)
                 .to_string(),
@@ -95,8 +96,8 @@ mod tests {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
                 .one(cake::ActiveModel {
-                    id: Action::Set(1),
-                    name: Action::Set("Apple Pie".to_owned()),
+                    id: ActiveValue::set(1),
+                    name: ActiveValue::set("Apple Pie".to_owned()),
                 })
                 .build(PostgresQueryBuilder)
                 .to_string(),
