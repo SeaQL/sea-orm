@@ -1,6 +1,7 @@
 use crate::{
-    ColumnTrait, ModelTrait, PrimaryKeyOfModel, PrimaryKeyTrait, QueryHelper, RelationBuilder,
-    RelationTrait, RelationType, Select,
+    ActiveModelOf, ActiveModelTrait, ColumnTrait, Insert, ModelTrait, OneOrManyActiveModel,
+    PrimaryKeyOfModel, PrimaryKeyTrait, QueryHelper, RelationBuilder, RelationTrait, RelationType,
+    Select,
 };
 use sea_query::{Iden, IntoValueTuple};
 use std::fmt::Debug;
@@ -46,7 +47,7 @@ pub trait EntityTrait: EntityName {
     /// );
     /// ```
     fn find() -> Select<Self> {
-        Select::<Self>::new()
+        Select::new()
     }
 
     /// Find a model by primary key
@@ -93,5 +94,58 @@ pub trait EntityTrait: EntityName {
             panic!("primary key arity mismatch");
         }
         select
+    }
+
+    fn insert<A, C>(models: C) -> Insert<A>
+    where
+        A: ActiveModelTrait + ActiveModelOf<Self>,
+        C: OneOrManyActiveModel<A>,
+    {
+        if C::is_one() {
+            Insert::new().one(models.get_one())
+        } else if C::is_many() {
+            Insert::new().many(models.get_many())
+        } else {
+            unreachable!()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_cfg::cake;
+    use crate::{EntityTrait, Val};
+    use sea_query::PostgresQueryBuilder;
+
+    #[test]
+    fn insert_one() {
+        let apple = cake::ActiveModel {
+            name: Val::set("Apple Pie".to_owned()),
+            ..Default::default()
+        };
+        assert_eq!(
+            cake::Entity::insert(apple)
+                .build(PostgresQueryBuilder)
+                .to_string(),
+            r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie')"#,
+        );
+    }
+
+    #[test]
+    fn insert_many() {
+        let apple = cake::ActiveModel {
+            name: Val::set("Apple Pie".to_owned()),
+            ..Default::default()
+        };
+        let orange = cake::ActiveModel {
+            name: Val::set("Orange Scone".to_owned()),
+            ..Default::default()
+        };
+        assert_eq!(
+            cake::Entity::insert(vec![apple, orange])
+                .build(PostgresQueryBuilder)
+                .to_string(),
+            r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie'), ('Orange Scone')"#,
+        );
     }
 }

@@ -8,6 +8,7 @@ where
     A: ActiveModelTrait,
 {
     pub(crate) query: InsertStatement,
+    pub(crate) columns: Vec<bool>,
     pub(crate) model: PhantomData<A>,
 }
 
@@ -24,6 +25,7 @@ where
             query: InsertStatement::new()
                 .into_table(E::default().into_iden())
                 .to_owned(),
+            columns: Vec::new(),
             model: PhantomData,
         }
     }
@@ -35,8 +37,14 @@ where
         let mut am: A = m.into();
         let mut columns = Vec::new();
         let mut values = Vec::new();
-        for col in A::Column::iter() {
+        let columns_empty = self.columns.is_empty();
+        for (idx, col) in A::Column::iter().enumerate() {
             let av = am.take(col);
+            if columns_empty {
+                self.columns.push(av.is_set());
+            } else if self.columns[idx] != av.is_set() {
+                panic!("columns mismatch");
+            }
             if !av.is_unset() {
                 columns.push(col);
                 values.push(av.into_value());
@@ -44,6 +52,17 @@ where
         }
         self.query.columns(columns);
         self.query.values_panic(values);
+        self
+    }
+
+    pub fn many<M, I>(mut self, models: I) -> Self
+    where
+        M: Into<A>,
+        I: IntoIterator<Item = M>,
+    {
+        for model in models.into_iter() {
+            self = self.one(model);
+        }
         self
     }
 
@@ -74,7 +93,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::cake;
-    use crate::{ActiveValue, Insert};
+    use crate::{Insert, Val};
     use sea_query::PostgresQueryBuilder;
 
     #[test]
@@ -82,8 +101,8 @@ mod tests {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
                 .one(cake::ActiveModel {
-                    id: ActiveValue::unset(),
-                    name: ActiveValue::set("Apple Pie".to_owned()),
+                    id: Val::unset(),
+                    name: Val::set("Apple Pie".to_owned()),
                 })
                 .build(PostgresQueryBuilder)
                 .to_string(),
@@ -96,8 +115,8 @@ mod tests {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
                 .one(cake::ActiveModel {
-                    id: ActiveValue::set(1),
-                    name: ActiveValue::set("Apple Pie".to_owned()),
+                    id: Val::set(1),
+                    name: Val::set("Apple Pie".to_owned()),
                 })
                 .build(PostgresQueryBuilder)
                 .to_string(),
@@ -116,6 +135,46 @@ mod tests {
                 .build(PostgresQueryBuilder)
                 .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#,
+        );
+    }
+
+    #[test]
+    fn insert_4() {
+        assert_eq!(
+            Insert::<cake::ActiveModel>::new()
+                .many(vec![
+                    cake::Model {
+                        id: 1,
+                        name: "Apple Pie".to_owned(),
+                    },
+                    cake::Model {
+                        id: 2,
+                        name: "Orange Scone".to_owned(),
+                    }
+                ])
+                .build(PostgresQueryBuilder)
+                .to_string(),
+            r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie'), (2, 'Orange Scone')"#,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "columns mismatch")]
+    fn insert_5() {
+        let apple = cake::ActiveModel {
+            name: Val::set("Apple".to_owned()),
+            ..Default::default()
+        };
+        let orange = cake::ActiveModel {
+            id: Val::set(2),
+            name: Val::set("Orange".to_owned()),
+        };
+        assert_eq!(
+            Insert::<cake::ActiveModel>::new()
+                .many(vec![apple, orange])
+                .build(PostgresQueryBuilder)
+                .to_string(),
+            r#"INSERT INTO "cake" ("id", "name") VALUES (NULL, 'Apple'), (2, 'Orange')"#,
         );
     }
 }

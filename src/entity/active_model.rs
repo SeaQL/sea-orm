@@ -10,6 +10,8 @@ where
     state: ActiveValueState,
 }
 
+pub type Val<V> = ActiveValue<V>;
+
 #[derive(Clone, Debug)]
 enum ActiveValueState {
     Set,
@@ -23,11 +25,41 @@ impl Default for ActiveValueState {
     }
 }
 
+pub trait OneOrManyActiveModel<A>
+where
+    A: ActiveModelTrait,
+{
+    fn is_one() -> bool;
+    fn get_one(self) -> A;
+
+    fn is_many() -> bool;
+    fn get_many(self) -> Vec<A>;
+}
+
+#[doc(hidden)]
 pub fn unchanged_active_value_not_intended_for_public_use<V>(value: V) -> ActiveValue<V>
 where
     V: Default,
 {
     ActiveValue::unchanged(value)
+}
+
+pub trait ActiveModelOf<E>
+where
+    E: EntityTrait,
+{
+}
+
+pub trait ActiveModelTrait: Clone + Debug + Default {
+    type Column: ColumnTrait;
+
+    fn take(&mut self, c: Self::Column) -> ActiveValue<Value>;
+
+    fn get(&self, c: Self::Column) -> ActiveValue<Value>;
+
+    fn set(&mut self, c: Self::Column, v: Value);
+
+    fn unset(&mut self, c: Self::Column);
 }
 
 impl<V> ActiveValue<V>
@@ -99,20 +131,40 @@ where
     }
 }
 
-pub trait ActiveModelOf<E>
+impl<A> OneOrManyActiveModel<A> for A
 where
-    E: EntityTrait,
+    A: ActiveModelTrait,
 {
+    fn is_one() -> bool {
+        true
+    }
+    fn get_one(self) -> A {
+        self
+    }
+
+    fn is_many() -> bool {
+        false
+    }
+    fn get_many(self) -> Vec<A> {
+        panic!("not many")
+    }
 }
 
-pub trait ActiveModelTrait: Clone + Debug {
-    type Column: ColumnTrait;
+impl<A> OneOrManyActiveModel<A> for Vec<A>
+where
+    A: ActiveModelTrait,
+{
+    fn is_one() -> bool {
+        false
+    }
+    fn get_one(self) -> A {
+        panic!("not one")
+    }
 
-    fn take(&mut self, c: Self::Column) -> ActiveValue<Value>;
-
-    fn get(&self, c: Self::Column) -> ActiveValue<Value>;
-
-    fn set(&mut self, c: Self::Column, v: Value);
-
-    fn unset(&mut self, c: Self::Column);
+    fn is_many() -> bool {
+        true
+    }
+    fn get_many(self) -> Vec<A> {
+        self
+    }
 }
