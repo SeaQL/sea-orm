@@ -4,7 +4,7 @@ use std::fmt::Debug;
 #[derive(Clone, Debug, Default)]
 pub struct ActiveValue<V>
 where
-    V: Default,
+    V: Into<Value> + Default,
 {
     value: V,
     state: ActiveValueState,
@@ -39,7 +39,7 @@ where
 #[doc(hidden)]
 pub fn unchanged_active_value_not_intended_for_public_use<V>(value: V) -> ActiveValue<V>
 where
-    V: Default,
+    V: Into<Value> + Default,
 {
     ActiveValue::unchanged(value)
 }
@@ -64,7 +64,7 @@ pub trait ActiveModelTrait: Clone + Debug + Default {
 
 impl<V> ActiveValue<V>
 where
-    V: Default,
+    V: Into<Value> + Default,
 {
     pub fn set(value: V) -> Self {
         Self {
@@ -103,21 +103,7 @@ where
     pub fn unwrap(self) -> V {
         self.value
     }
-}
 
-impl<V> std::convert::AsRef<V> for ActiveValue<V>
-where
-    V: Default,
-{
-    fn as_ref(&self) -> &V {
-        &self.value
-    }
-}
-
-impl<V> ActiveValue<V>
-where
-    V: Default + Into<Value>,
-{
     pub fn into_value(self) -> Value {
         self.value.into()
     }
@@ -128,6 +114,15 @@ where
             ActiveValueState::Unchanged => ActiveValue::set(self.into_value()),
             ActiveValueState::Unset => ActiveValue::unset(),
         }
+    }
+}
+
+impl<V> std::convert::AsRef<V> for ActiveValue<V>
+where
+    V: Into<Value> + Default,
+{
+    fn as_ref(&self) -> &V {
+        &self.value
     }
 }
 
