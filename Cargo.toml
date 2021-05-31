@@ -25,7 +25,7 @@ path = "src/lib.rs"
 [dependencies]
 async-trait = "^0.1"
 futures = { version = "^0.3" }
-sea-query = { path = "../sea-query", version = "^0.11" }
+sea-query = { path = "../sea-query", version = "^0.12" }
 sea-orm-macros = { path = "sea-orm-macros", optional = true }
 # sea-schema = { path = "../sea-schema" }
 serde = { version = "^1.0", features = [ "derive" ] }
