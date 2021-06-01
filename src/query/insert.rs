@@ -71,7 +71,7 @@ impl<A> QueryTrait for Insert<A>
 where
     A: ActiveModelTrait,
 {
-    type QueryStatementBuilder = InsertStatement;
+    type QueryStatement = InsertStatement;
 
     fn query(&mut self) -> &mut InsertStatement {
         &mut self.query

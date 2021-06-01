@@ -2,16 +2,16 @@ use crate::Statement;
 use sea_query::{QueryBuilder, QueryStatementBuilder};
 
 pub trait QueryTrait {
-    type QueryStatementBuilder: QueryStatementBuilder;
+    type QueryStatement: QueryStatementBuilder;
 
     /// Get a mutable ref to the query builder
-    fn query(&mut self) -> &mut Self::QueryStatementBuilder;
+    fn query(&mut self) -> &mut Self::QueryStatement;
 
     /// Get an immutable ref to the query builder
-    fn as_query(&self) -> &Self::QueryStatementBuilder;
+    fn as_query(&self) -> &Self::QueryStatement;
 
     /// Take ownership of the query builder
-    fn into_query(self) -> Self::QueryStatementBuilder;
+    fn into_query(self) -> Self::QueryStatement;
 
     /// Build the query as [`Statement`]
     fn build<B>(&self, builder: B) -> Statement

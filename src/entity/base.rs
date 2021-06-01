@@ -1,7 +1,7 @@
 use crate::{
     ActiveModelOf, ActiveModelTrait, ColumnTrait, Insert, ModelTrait, OneOrManyActiveModel,
-    PrimaryKeyOfModel, PrimaryKeyTrait, RelationBuilder, RelationTrait, RelationType, Select,
-    SelectHelper,
+    PrimaryKeyOfModel, PrimaryKeyTrait, QueryFilter, RelationBuilder, RelationTrait, RelationType,
+    Select,
 };
 use sea_query::{Iden, IntoValueTuple};
 use std::fmt::Debug;

@@ -1,6 +1,9 @@
-use crate::{ColumnTrait, Identity, IntoSimpleExpr, RelationDef};
+use crate::{
+    ColumnTrait, EntityTrait, Identity, IntoSimpleExpr, Iterable, ModelTrait, PrimaryKeyOfModel,
+    RelationDef,
+};
 use sea_query::{Alias, Expr, IntoCondition, SelectExpr, SelectStatement, SimpleExpr};
-pub use sea_query::{Condition, JoinType, Order};
+pub use sea_query::{Condition, ConditionalStatement, JoinType, Order};
 use std::rc::Rc;
 
 pub trait SelectHelper: Sized {
@@ -14,7 +17,7 @@ pub trait SelectHelper: Sized {
 
     /// Add a select column
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -35,7 +38,7 @@ pub trait SelectHelper: Sized {
 
     /// Add a select column with alias
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -57,47 +60,9 @@ pub trait SelectHelper: Sized {
         self
     }
 
-    /// Add an AND WHERE expression
-    /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .filter(cake::Column::Id.eq(4))
-    ///         .filter(cake::Column::Id.eq(5))
-    ///         .build(MysqlQueryBuilder)
-    ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 4 AND `cake`.`id` = 5"
-    /// );
-    /// ```
-    ///
-    /// Add a condition tree.
-    /// ```
-    /// use sea_orm::{Condition, ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .filter(
-    ///             Condition::any()
-    ///                 .add(cake::Column::Id.eq(4))
-    ///                 .add(cake::Column::Id.eq(5))
-    ///         )
-    ///         .build(MysqlQueryBuilder)
-    ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 4 OR `cake`.`id` = 5"
-    /// );
-    /// ```
-    fn filter<F>(mut self, filter: F) -> Self
-    where
-        F: IntoCondition,
-    {
-        self.query().cond_where(filter.into_condition());
-        self
-    }
-
     /// Add a group by column
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -119,7 +84,7 @@ pub trait SelectHelper: Sized {
 
     /// Add an order_by expression
     /// ```
-    /// use sea_orm::{EntityTrait, Order, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -140,7 +105,7 @@ pub trait SelectHelper: Sized {
 
     /// Add an order_by expression (ascending)
     /// ```
-    /// use sea_orm::{EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -161,7 +126,7 @@ pub trait SelectHelper: Sized {
 
     /// Add an order_by expression (descending)
     /// ```
-    /// use sea_orm::{EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -210,6 +175,63 @@ pub trait SelectHelper: Sized {
     fn join_rev(mut self, join: JoinType, rel: RelationDef) -> Self {
         self.query()
             .join(join, rel.from_tbl.clone(), join_condition(rel));
+        self
+    }
+}
+
+pub trait QueryFilter: Sized {
+    type QueryStatement: ConditionalStatement;
+
+    fn query(&mut self) -> &mut Self::QueryStatement;
+
+    /// Add an AND WHERE expression
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.eq(4))
+    ///         .filter(cake::Column::Id.eq(5))
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 4 AND `cake`.`id` = 5"
+    /// );
+    /// ```
+    ///
+    /// Add a condition tree.
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(
+    ///             Condition::any()
+    ///                 .add(cake::Column::Id.eq(4))
+    ///                 .add(cake::Column::Id.eq(5))
+    ///         )
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 4 OR `cake`.`id` = 5"
+    /// );
+    /// ```
+    fn filter<F>(mut self, filter: F) -> Self
+    where
+        F: IntoCondition,
+    {
+        self.query().cond_where(filter.into_condition());
+        self
+    }
+
+    /// Apply a where condition using the model's primary key
+    fn belongs_to<E>(mut self, model: &E::Model) -> Self
+    where
+        E: EntityTrait,
+        E::PrimaryKey: PrimaryKeyOfModel<E::Model>,
+    {
+        for key in E::PrimaryKey::iter() {
+            let col = key.into_column();
+            self = self.filter(col.eq(model.get(col)));
+        }
         self
     }
 }

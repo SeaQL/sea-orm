@@ -2,7 +2,7 @@ mod connector;
 mod database;
 mod driver;
 pub mod entity;
-mod query;
+pub mod query;
 pub mod tests_cfg;
 mod util;
 

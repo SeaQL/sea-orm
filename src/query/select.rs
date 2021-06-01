@@ -1,4 +1,4 @@
-use crate::{ColumnTrait, EntityTrait, Iterable, QueryTrait, SelectHelper};
+use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryTrait, SelectHelper};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
@@ -37,11 +37,34 @@ where
     }
 }
 
+impl<E> QueryFilter for Select<E>
+where
+    E: EntityTrait,
+{
+    type QueryStatement = SelectStatement;
+
+    fn query(&mut self) -> &mut SelectStatement {
+        &mut self.query
+    }
+}
+
 impl<E, F> SelectHelper for SelectTwo<E, F>
 where
     E: EntityTrait,
     F: EntityTrait,
 {
+    fn query(&mut self) -> &mut SelectStatement {
+        &mut self.query
+    }
+}
+
+impl<E, F> QueryFilter for SelectTwo<E, F>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+{
+    type QueryStatement = SelectStatement;
+
     fn query(&mut self) -> &mut SelectStatement {
         &mut self.query
     }
@@ -95,7 +118,7 @@ impl<E> QueryTrait for Select<E>
 where
     E: EntityTrait,
 {
-    type QueryStatementBuilder = SelectStatement;
+    type QueryStatement = SelectStatement;
     fn query(&mut self) -> &mut SelectStatement {
         &mut self.query
     }
@@ -112,7 +135,7 @@ where
     E: EntityTrait,
     F: EntityTrait,
 {
-    type QueryStatementBuilder = SelectStatement;
+    type QueryStatement = SelectStatement;
     fn query(&mut self) -> &mut SelectStatement {
         &mut self.query
     }

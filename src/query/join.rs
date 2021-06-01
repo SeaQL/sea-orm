@@ -1,28 +1,10 @@
-use crate::{
-    ColumnTrait, EntityTrait, Iterable, ModelTrait, PrimaryKeyOfModel, Related, Select,
-    SelectHelper, SelectTwo,
-};
+use crate::{EntityTrait, Related, Select, SelectHelper, SelectTwo};
 pub use sea_query::JoinType;
 
 impl<E> Select<E>
 where
     E: EntityTrait,
 {
-    /// Apply a where condition using the model's primary key
-    pub fn belongs_to<R>(self, model: &R::Model) -> Self
-    where
-        R: EntityTrait + Related<E>,
-        R::PrimaryKey: PrimaryKeyOfModel<R::Model>,
-    {
-        if let Some(key) = R::PrimaryKey::iter().next() {
-            // TODO: supporting composite primary key
-            let col = key.into_column();
-            self.filter(col.eq(model.get(col)))
-        } else {
-            panic!("undefined primary key");
-        }
-    }
-
     /// Left Join with a Related Entity.
     pub fn left_join<R>(self, _: R) -> Self
     where
@@ -71,7 +53,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, filling, fruit};
-    use crate::{QueryTrait, ColumnTrait, EntityTrait, SelectHelper};
+    use crate::{ColumnTrait, EntityTrait, QueryFilter, QueryTrait};
     use sea_query::MysqlQueryBuilder;
 
     #[test]
