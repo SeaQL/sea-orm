@@ -14,7 +14,7 @@ pub trait SelectHelper: Sized {
 
     /// Add a select column
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, SelectHelper, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -35,7 +35,7 @@ pub trait SelectHelper: Sized {
 
     /// Add a select column with alias
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, SelectHelper, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -59,7 +59,7 @@ pub trait SelectHelper: Sized {
 
     /// Add an AND WHERE expression
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -73,7 +73,7 @@ pub trait SelectHelper: Sized {
     ///
     /// Add a condition tree.
     /// ```
-    /// use sea_orm::{Condition, ColumnTrait, EntityTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{Condition, ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -97,7 +97,7 @@ pub trait SelectHelper: Sized {
 
     /// Add a group by column
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, SelectHelper, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -119,7 +119,7 @@ pub trait SelectHelper: Sized {
 
     /// Add an order_by expression
     /// ```
-    /// use sea_orm::{EntityTrait, Order, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{EntityTrait, Order, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -140,7 +140,7 @@ pub trait SelectHelper: Sized {
 
     /// Add an order_by expression (ascending)
     /// ```
-    /// use sea_orm::{EntityTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -161,7 +161,7 @@ pub trait SelectHelper: Sized {
 
     /// Add an order_by expression (descending)
     /// ```
-    /// use sea_orm::{EntityTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()

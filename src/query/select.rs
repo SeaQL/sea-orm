@@ -1,8 +1,8 @@
-use crate::{ColumnTrait, EntityTrait, Iterable, SelectHelper, Statement};
+use crate::{ColumnTrait, EntityTrait, Iterable, QueryTrait, SelectHelper};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{Iden, IntoColumnRef, IntoIden, QueryBuilder, SelectStatement, SimpleExpr};
+use sea_query::{Iden, IntoColumnRef, IntoIden, SelectStatement, SimpleExpr};
 use std::rc::Rc;
 
 #[derive(Clone, Debug)]
@@ -91,44 +91,35 @@ where
     }
 }
 
-macro_rules! select_query {
-    () => {
-        /// Get a mutable ref to the query builder
-        pub fn query(&mut self) -> &mut SelectStatement {
-            &mut self.query
-        }
-
-        /// Get an immutable ref to the query builder
-        pub fn as_query(&self) -> &SelectStatement {
-            &self.query
-        }
-
-        /// Take ownership of the query builder
-        pub fn into_query(self) -> SelectStatement {
-            self.query
-        }
-
-        /// Build the query as [`Statement`]
-        pub fn build<B>(&self, builder: B) -> Statement
-        where
-            B: QueryBuilder,
-        {
-            self.as_query().build(builder).into()
-        }
-    };
-}
-
-impl<E> Select<E>
+impl<E> QueryTrait for Select<E>
 where
     E: EntityTrait,
 {
-    select_query!();
+    type QueryStatementBuilder = SelectStatement;
+    fn query(&mut self) -> &mut SelectStatement {
+        &mut self.query
+    }
+    fn as_query(&self) -> &SelectStatement {
+        &self.query
+    }
+    fn into_query(self) -> SelectStatement {
+        self.query
+    }
 }
 
-impl<E, F> SelectTwo<E, F>
+impl<E, F> QueryTrait for SelectTwo<E, F>
 where
     E: EntityTrait,
     F: EntityTrait,
 {
-    select_query!();
+    type QueryStatementBuilder = SelectStatement;
+    fn query(&mut self) -> &mut SelectStatement {
+        &mut self.query
+    }
+    fn as_query(&self) -> &SelectStatement {
+        &self.query
+    }
+    fn into_query(self) -> SelectStatement {
+        self.query
+    }
 }

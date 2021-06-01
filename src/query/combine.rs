@@ -1,4 +1,4 @@
-use crate::{EntityTrait, IntoSimpleExpr, Iterable, Select, SelectTwo};
+use crate::{EntityTrait, IntoSimpleExpr, Iterable, QueryTrait, Select, SelectTwo};
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
 use sea_query::{Alias, ColumnRef, Iden, SelectExpr, SelectStatement, SimpleExpr};
@@ -71,7 +71,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, fruit};
-    use crate::{ColumnTrait, EntityTrait, SelectHelper};
+    use crate::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper};
     use sea_query::MysqlQueryBuilder;
 
     #[test]

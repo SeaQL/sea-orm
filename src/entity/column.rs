@@ -57,7 +57,7 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     bind_oper!(lte);
 
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -75,7 +75,7 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -93,7 +93,7 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -108,7 +108,7 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -123,7 +123,7 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -139,7 +139,7 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -155,7 +155,7 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, SelectHelper, tests_cfg::cake, sea_query::MysqlQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()

@@ -37,7 +37,7 @@ pub trait EntityTrait: EntityName {
     }
 
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -52,7 +52,7 @@ pub trait EntityTrait: EntityName {
 
     /// Find a model by primary key
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake::Entity::find_by(11)
@@ -63,7 +63,7 @@ pub trait EntityTrait: EntityName {
     /// ```
     /// Find by composite key
     /// ```
-    /// use sea_orm::{ColumnTrait, EntityTrait, tests_cfg::cake_filling, sea_query::PostgresQueryBuilder};
+    /// use sea_orm::{ColumnTrait, EntityTrait, QueryTrait, tests_cfg::cake_filling, sea_query::PostgresQueryBuilder};
     ///
     /// assert_eq!(
     ///     cake_filling::Entity::find_by((2, 3))
