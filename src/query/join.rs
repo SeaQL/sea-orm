@@ -1,5 +1,5 @@
 use crate::{
-    ColumnTrait, EntityTrait, Iterable, ModelTrait, PrimaryKeyOfModel, QueryHelper, Related,
+    ColumnTrait, EntityTrait, Iterable, ModelTrait, PrimaryKeyOfModel, SelectHelper, Related,
     Select, SelectTwo,
 };
 pub use sea_query::JoinType;
@@ -71,7 +71,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, filling, fruit};
-    use crate::{ColumnTrait, EntityTrait, QueryHelper};
+    use crate::{ColumnTrait, EntityTrait, SelectHelper};
     use sea_query::MysqlQueryBuilder;
 
     #[test]

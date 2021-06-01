@@ -1,4 +1,4 @@
-use crate::{ColumnTrait, EntityTrait, Iterable, QueryHelper, Statement};
+use crate::{ColumnTrait, EntityTrait, Iterable, SelectHelper, Statement};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
@@ -28,7 +28,7 @@ pub trait IntoSimpleExpr {
     fn into_simple_expr(self) -> SimpleExpr;
 }
 
-impl<E> QueryHelper for Select<E>
+impl<E> SelectHelper for Select<E>
 where
     E: EntityTrait,
 {
@@ -37,7 +37,7 @@ where
     }
 }
 
-impl<E, F> QueryHelper for SelectTwo<E, F>
+impl<E, F> SelectHelper for SelectTwo<E, F>
 where
     E: EntityTrait,
     F: EntityTrait,
