@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, EntityTrait, Iterable, ModelTrait, PrimaryKeyOfModel, SelectHelper, Related,
-    Select, SelectTwo,
+    ColumnTrait, EntityTrait, Iterable, ModelTrait, PrimaryKeyOfModel, Related, Select,
+    SelectHelper, SelectTwo,
 };
 pub use sea_query::JoinType;
 

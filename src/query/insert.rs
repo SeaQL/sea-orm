@@ -1,6 +1,6 @@
-use crate::{ActiveModelOf, ActiveModelTrait, EntityTrait, Iterable, Statement};
+use crate::{ActiveModelOf, ActiveModelTrait, EntityTrait, Iterable, QueryTrait};
 use core::marker::PhantomData;
-use sea_query::{InsertStatement, IntoIden, QueryBuilder};
+use sea_query::{InsertStatement, IntoIden};
 
 #[derive(Clone, Debug)]
 pub struct Insert<A>
@@ -65,35 +65,31 @@ where
         }
         self
     }
+}
 
-    /// Get a mutable ref to the query builder
-    pub fn query(&mut self) -> &mut InsertStatement {
+impl<A> QueryTrait for Insert<A>
+where
+    A: ActiveModelTrait,
+{
+    type QueryStatementBuilder = InsertStatement;
+
+    fn query(&mut self) -> &mut InsertStatement {
         &mut self.query
     }
 
-    /// Get an immutable ref to the query builder
-    pub fn as_query(&self) -> &InsertStatement {
+    fn as_query(&self) -> &InsertStatement {
         &self.query
     }
 
-    /// Take ownership of the query builder
-    pub fn into_query(self) -> InsertStatement {
+    fn into_query(self) -> InsertStatement {
         self.query
-    }
-
-    /// Build the query as [`Statement`]
-    pub fn build<B>(&self, builder: B) -> Statement
-    where
-        B: QueryBuilder,
-    {
-        self.as_query().build(builder).into()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::cake;
-    use crate::{Insert, Val};
+    use crate::{Insert, QueryTrait, Val};
     use sea_query::PostgresQueryBuilder;
 
     #[test]

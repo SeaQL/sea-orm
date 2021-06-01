@@ -1,7 +1,7 @@
 use crate::{
     ActiveModelOf, ActiveModelTrait, ColumnTrait, Insert, ModelTrait, OneOrManyActiveModel,
-    PrimaryKeyOfModel, PrimaryKeyTrait, SelectHelper, RelationBuilder, RelationTrait, RelationType,
-    Select,
+    PrimaryKeyOfModel, PrimaryKeyTrait, RelationBuilder, RelationTrait, RelationType, Select,
+    SelectHelper,
 };
 use sea_query::{Iden, IntoValueTuple};
 use std::fmt::Debug;
@@ -120,7 +120,7 @@ pub trait EntityTrait: EntityName {
     fn insert_many<A, I>(models: I) -> Insert<A>
     where
         A: ActiveModelTrait + ActiveModelOf<Self>,
-        I: IntoIterator<Item = A>
+        I: IntoIterator<Item = A>,
     {
         Insert::new().many(models)
     }
@@ -129,7 +129,7 @@ pub trait EntityTrait: EntityName {
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::cake;
-    use crate::{EntityTrait, Val};
+    use crate::{EntityTrait, QueryTrait, Val};
     use sea_query::PostgresQueryBuilder;
 
     #[test]

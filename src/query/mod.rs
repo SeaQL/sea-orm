@@ -6,6 +6,7 @@ mod join;
 mod json;
 mod result;
 mod select;
+mod traits;
 
 // pub use combine::*;
 pub use helper::*;
@@ -15,3 +16,4 @@ pub use join::*;
 pub use json::*;
 pub use result::*;
 pub use select::*;
+pub use traits::*;
