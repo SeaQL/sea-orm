@@ -14,7 +14,7 @@ where
 
 impl<A> Default for Insert<A>
 where
-    A: ActiveModelTrait
+    A: ActiveModelTrait,
 {
     fn default() -> Self {
         Self::new()
@@ -50,7 +50,7 @@ where
             } else if self.columns[idx] != av.is_set() {
                 panic!("columns mismatch");
             }
-            if !av.is_unset() {
+            if av.is_set() {
                 columns.push(col);
                 values.push(av.into_value());
             }

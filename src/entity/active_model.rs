@@ -78,6 +78,10 @@ where
         }
     }
 
+    pub fn is_unchanged(&self) -> bool {
+        matches!(self.state, ActiveValueState::Unchanged)
+    }
+
     pub fn unset() -> Self {
         Self {
             value: V::default(),
