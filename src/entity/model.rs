@@ -8,23 +8,10 @@ pub trait ModelTrait: Clone + Debug {
     fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> Value;
 
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
-
-    fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, TypeErr>
-    where
-        Self: Sized;
 }
 
 pub trait FromQueryResult {
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, TypeErr>
     where
         Self: Sized;
-}
-
-impl<M> FromQueryResult for M
-where
-    M: ModelTrait + Sized,
-{
-    fn from_query_result(res: &QueryResult, pre: &str) -> Result<M, TypeErr> {
-        <Self as ModelTrait>::from_query_result(res, pre)
-    }
 }

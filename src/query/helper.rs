@@ -226,7 +226,6 @@ pub trait QueryFilter: Sized {
     fn belongs_to<E>(mut self, model: &E::Model) -> Self
     where
         E: EntityTrait,
-        E::PrimaryKey: PrimaryKeyToColumn<<E::Model as ModelTrait>::Entity>,
     {
         for key in E::PrimaryKey::iter() {
             let col = key.into_column();

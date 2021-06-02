@@ -1,4 +1,4 @@
-use super::{IdenStatic, Iterable, EntityTrait};
+use super::{EntityTrait, IdenStatic, Iterable};
 
 pub trait PrimaryKeyTrait: IdenStatic + Iterable {}
 

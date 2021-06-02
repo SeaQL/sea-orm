@@ -1,7 +1,7 @@
 use crate::{
-    ActiveModelOf, ActiveModelTrait, ColumnTrait, Insert, ModelTrait, OneOrManyActiveModel,
-    PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, RelationBuilder, RelationTrait, RelationType,
-    Select,
+    ActiveModelOf, ActiveModelTrait, ColumnTrait, FromQueryResult, Insert, ModelTrait,
+    OneOrManyActiveModel, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, RelationBuilder,
+    RelationTrait, RelationType, Select,
 };
 use sea_query::{Iden, IntoValueTuple};
 use std::fmt::Debug;
@@ -14,13 +14,13 @@ pub trait IdenStatic: Iden + Copy + Debug + 'static {
 pub trait EntityName: IdenStatic + Default {}
 
 pub trait EntityTrait: EntityName {
-    type Model: ModelTrait;
+    type Model: ModelTrait<Entity = Self> + FromQueryResult;
 
     type Column: ColumnTrait;
 
     type Relation: RelationTrait;
 
-    type PrimaryKey: PrimaryKeyTrait;
+    type PrimaryKey: PrimaryKeyTrait + PrimaryKeyToColumn<Self>;
 
     fn has_one<R>(entity: R) -> RelationBuilder<Self, R>
     where
