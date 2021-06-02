@@ -20,7 +20,7 @@ pub trait EntityTrait: EntityName {
 
     type Relation: RelationTrait;
 
-    type PrimaryKey: PrimaryKeyTrait + PrimaryKeyToColumn<Self>;
+    type PrimaryKey: PrimaryKeyTrait + PrimaryKeyToColumn<Column = Self::Column>;
 
     fn has_one<R>(entity: R) -> RelationBuilder<Self, R>
     where
@@ -78,7 +78,6 @@ pub trait EntityTrait: EntityName {
     fn find_by<V>(values: V) -> Select<Self>
     where
         V: IntoValueTuple,
-        Self::PrimaryKey: PrimaryKeyToColumn<Self>,
     {
         let mut select = Self::find();
         let mut keys = Self::PrimaryKey::iter();

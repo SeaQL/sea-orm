@@ -86,18 +86,18 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, fruit};
-    use crate::{Update, QueryTrait, Val};
+    use crate::{QueryTrait, Update, Val};
     use sea_query::PostgresQueryBuilder;
 
     #[test]
     fn update_1() {
         assert_eq!(
             Update::<cake::ActiveModel>::new(cake::ActiveModel {
-                    id: Val::set(1),
-                    name: Val::set("Apple Pie".to_owned()),
-                })
-                .build(PostgresQueryBuilder)
-                .to_string(),
+                id: Val::set(1),
+                name: Val::set("Apple Pie".to_owned()),
+            })
+            .build(PostgresQueryBuilder)
+            .to_string(),
             r#"UPDATE "cake" SET "name" = 'Apple Pie' WHERE "cake"."id" = 1"#,
         );
     }
@@ -106,12 +106,12 @@ mod tests {
     fn update_2() {
         assert_eq!(
             Update::<fruit::ActiveModel>::new(fruit::ActiveModel {
-                    id: Val::set(1),
-                    name: Val::set("Orange".to_owned()),
-                    cake_id: Val::unset(),
-                })
-                .build(PostgresQueryBuilder)
-                .to_string(),
+                id: Val::set(1),
+                name: Val::set("Orange".to_owned()),
+                cake_id: Val::unset(),
+            })
+            .build(PostgresQueryBuilder)
+            .to_string(),
             r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"#,
         );
     }
@@ -120,12 +120,12 @@ mod tests {
     fn update_3() {
         assert_eq!(
             Update::<fruit::ActiveModel>::new(fruit::ActiveModel {
-                    id: Val::set(2),
-                    name: Val::unset(),
-                    cake_id: Val::set(Some(3)),
-                })
-                .build(PostgresQueryBuilder)
-                .to_string(),
+                id: Val::set(2),
+                name: Val::unset(),
+                cake_id: Val::set(Some(3)),
+            })
+            .build(PostgresQueryBuilder)
+            .to_string(),
             r#"UPDATE "fruit" SET "cake_id" = 3 WHERE "fruit"."id" = 2"#,
         );
     }

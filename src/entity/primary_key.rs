@@ -1,12 +1,13 @@
-use super::{EntityTrait, IdenStatic, Iterable};
+use super::{ColumnTrait, IdenStatic, Iterable};
 
 pub trait PrimaryKeyTrait: IdenStatic + Iterable {}
 
-pub trait PrimaryKeyToColumn<E>
-where
-    E: EntityTrait,
-{
-    fn into_column(self) -> E::Column;
+pub trait PrimaryKeyToColumn {
+    type Column: ColumnTrait;
 
-    fn from_column(col: E::Column) -> Option<Self> where Self: std::marker::Sized;
+    fn into_column(self) -> Self::Column;
+
+    fn from_column(col: Self::Column) -> Option<Self>
+    where
+        Self: Sized;
 }
