@@ -1,13 +1,13 @@
-use crate::{ColumnTrait, QueryResult, TypeErr};
+use crate::{EntityTrait, QueryResult, TypeErr};
 pub use sea_query::Value;
 use std::fmt::Debug;
 
 pub trait ModelTrait: Clone + Debug {
-    type Column: ColumnTrait;
+    type Entity: EntityTrait;
 
-    fn get(&self, c: Self::Column) -> Value;
+    fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> Value;
 
-    fn set(&mut self, c: Self::Column, v: Value);
+    fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
 
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, TypeErr>
     where

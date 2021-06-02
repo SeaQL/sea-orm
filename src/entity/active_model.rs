@@ -1,4 +1,4 @@
-use crate::{ColumnTrait, EntityTrait, Value};
+use crate::{EntityTrait, Value};
 use std::fmt::Debug;
 
 #[derive(Clone, Debug, Default)]
@@ -51,15 +51,15 @@ where
 }
 
 pub trait ActiveModelTrait: Clone + Debug + Default {
-    type Column: ColumnTrait;
+    type Entity: EntityTrait;
 
-    fn take(&mut self, c: Self::Column) -> ActiveValue<Value>;
+    fn take(&mut self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value>;
 
-    fn get(&self, c: Self::Column) -> ActiveValue<Value>;
+    fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value>;
 
-    fn set(&mut self, c: Self::Column, v: Value);
+    fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
 
-    fn unset(&mut self, c: Self::Column);
+    fn unset(&mut self, c: <Self::Entity as EntityTrait>::Column);
 }
 
 impl<V> ActiveValue<V>

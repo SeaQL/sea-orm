@@ -1,5 +1,5 @@
 use crate::{
-    ColumnTrait, EntityTrait, Identity, IntoSimpleExpr, Iterable, ModelTrait, PrimaryKeyOfModel,
+    ColumnTrait, EntityTrait, Identity, IntoSimpleExpr, Iterable, ModelTrait, PrimaryKeyToColumn,
     RelationDef,
 };
 use sea_query::{Alias, Expr, IntoCondition, SelectExpr, SelectStatement, SimpleExpr};
@@ -226,7 +226,7 @@ pub trait QueryFilter: Sized {
     fn belongs_to<E>(mut self, model: &E::Model) -> Self
     where
         E: EntityTrait,
-        E::PrimaryKey: PrimaryKeyOfModel<E::Model>,
+        E::PrimaryKey: PrimaryKeyToColumn<<E::Model as ModelTrait>::Entity>,
     {
         for key in E::PrimaryKey::iter() {
             let col = key.into_column();

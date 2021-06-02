@@ -47,8 +47,8 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
 
         impl sea_orm::PrimaryKeyTrait for #ident {}
 
-        impl sea_orm::PrimaryKeyOfModel<Model> for #ident {
-            fn into_column(self) -> <Model as ModelTrait>::Column {
+        impl sea_orm::PrimaryKeyToColumn<Entity> for #ident {
+            fn into_column(self) -> <Entity as EntityTrait>::Column {
                 match self {
                     #(Self::#variant => Column::#variant),*
                 }

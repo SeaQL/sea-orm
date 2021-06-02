@@ -38,7 +38,7 @@ where
         let mut columns = Vec::new();
         let mut values = Vec::new();
         let columns_empty = self.columns.is_empty();
-        for (idx, col) in A::Column::iter().enumerate() {
+        for (idx, col) in <A::Entity as EntityTrait>::Column::iter().enumerate() {
             let av = am.take(col);
             if columns_empty {
                 self.columns.push(av.is_set());

@@ -1,10 +1,10 @@
-use super::{IdenStatic, Iterable, ModelTrait};
+use super::{IdenStatic, Iterable, EntityTrait};
 
 pub trait PrimaryKeyTrait: IdenStatic + Iterable {}
 
-pub trait PrimaryKeyOfModel<M>
+pub trait PrimaryKeyToColumn<E>
 where
-    M: ModelTrait,
+    E: EntityTrait,
 {
-    fn into_column(self) -> M::Column;
+    fn into_column(self) -> E::Column;
 }

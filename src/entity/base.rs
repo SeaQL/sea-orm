@@ -1,6 +1,6 @@
 use crate::{
     ActiveModelOf, ActiveModelTrait, ColumnTrait, Insert, ModelTrait, OneOrManyActiveModel,
-    PrimaryKeyOfModel, PrimaryKeyTrait, QueryFilter, RelationBuilder, RelationTrait, RelationType,
+    PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, RelationBuilder, RelationTrait, RelationType,
     Select,
 };
 use sea_query::{Iden, IntoValueTuple};
@@ -78,7 +78,7 @@ pub trait EntityTrait: EntityName {
     fn find_by<V>(values: V) -> Select<Self>
     where
         V: IntoValueTuple,
-        Self::PrimaryKey: PrimaryKeyOfModel<Self::Model>,
+        Self::PrimaryKey: PrimaryKeyToColumn<Self>,
     {
         let mut select = Self::find();
         let mut keys = Self::PrimaryKey::iter();
