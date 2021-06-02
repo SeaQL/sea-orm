@@ -44,12 +44,6 @@ where
     ActiveValue::unchanged(value)
 }
 
-pub trait ActiveModelOf<E>
-where
-    E: EntityTrait,
-{
-}
-
 pub trait ActiveModelTrait: Clone + Debug + Default {
     type Entity: EntityTrait;
 

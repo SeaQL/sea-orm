@@ -1,5 +1,5 @@
 use crate::{
-    ActiveModelOf, ActiveModelTrait, ColumnTrait, FromQueryResult, Insert, ModelTrait,
+    ActiveModelTrait, ColumnTrait, FromQueryResult, Insert, ModelTrait,
     OneOrManyActiveModel, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, RelationBuilder,
     RelationTrait, RelationType, Select,
 };
@@ -98,7 +98,7 @@ pub trait EntityTrait: EntityName {
 
     fn insert<A, C>(models: C) -> Insert<A>
     where
-        A: ActiveModelTrait + ActiveModelOf<Self>,
+        A: ActiveModelTrait<Entity = Self>,
         C: OneOrManyActiveModel<A>,
     {
         if C::is_one() {
@@ -112,14 +112,14 @@ pub trait EntityTrait: EntityName {
 
     fn insert_one<A>(model: A) -> Insert<A>
     where
-        A: ActiveModelTrait + ActiveModelOf<Self>,
+        A: ActiveModelTrait<Entity = Self>,
     {
         Insert::new().one(model)
     }
 
     fn insert_many<A, I>(models: I) -> Insert<A>
     where
-        A: ActiveModelTrait + ActiveModelOf<Self>,
+        A: ActiveModelTrait<Entity = Self>,
         I: IntoIterator<Item = A>,
     {
         Insert::new().many(models)

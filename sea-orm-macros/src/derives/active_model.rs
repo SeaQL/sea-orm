@@ -36,8 +36,6 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
             #(pub #field: sea_orm::ActiveValue<#ty>),*
         }
 
-        impl sea_orm::ActiveModelOf<Entity> for ActiveModel {}
-
         impl From<#ident> for ActiveModel {
             fn from(m: #ident) -> Self {
                 Self {
