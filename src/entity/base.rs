@@ -1,7 +1,7 @@
 use crate::{
     ActiveModelTrait, ColumnTrait, FromQueryResult, Insert, ModelTrait, OneOrManyActiveModel,
     PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, RelationBuilder, RelationTrait, RelationType,
-    Select,
+    Select, Update,
 };
 use sea_query::{Iden, IntoValueTuple};
 use std::fmt::Debug;
@@ -22,18 +22,18 @@ pub trait EntityTrait: EntityName {
 
     type PrimaryKey: PrimaryKeyTrait + PrimaryKeyToColumn<Column = Self::Column>;
 
-    fn has_one<R>(entity: R) -> RelationBuilder<Self, R>
+    fn has_one<R>(related: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait,
     {
-        RelationBuilder::new(RelationType::HasOne, Self::default(), entity)
+        RelationBuilder::new(RelationType::HasOne, Self::default(), related)
     }
 
-    fn has_many<R>(entity: R) -> RelationBuilder<Self, R>
+    fn has_many<R>(related: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait,
     {
-        RelationBuilder::new(RelationType::HasMany, Self::default(), entity)
+        RelationBuilder::new(RelationType::HasMany, Self::default(), related)
     }
 
     /// ```
@@ -113,7 +113,7 @@ pub trait EntityTrait: EntityName {
     /// Insert many
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
-    /// 
+    ///
     /// let apple = cake::ActiveModel {
     ///     name: Val::set("Apple Pie".to_owned()),
     ///     ..Default::default()
@@ -166,7 +166,7 @@ pub trait EntityTrait: EntityName {
 
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
-    /// 
+    ///
     /// let apple = cake::ActiveModel {
     ///     name: Val::set("Apple Pie".to_owned()),
     ///     ..Default::default()
@@ -188,5 +188,27 @@ pub trait EntityTrait: EntityName {
         I: IntoIterator<Item = A>,
     {
         Insert::new().many(models)
+    }
+
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::PostgresQueryBuilder};
+    ///
+    /// let orange = fruit::ActiveModel {
+    ///     id: Val::set(1),
+    ///     name: Val::set("Orange".to_owned()),
+    ///     ..Default::default()
+    /// };
+    /// assert_eq!(
+    ///     fruit::Entity::update(orange)
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"#,
+    /// );
+    /// ```
+    fn update<A>(model: A) -> Update<A>
+    where
+        A: ActiveModelTrait<Entity = Self>,
+    {
+        Update::new(model)
     }
 }
