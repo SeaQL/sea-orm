@@ -44,7 +44,7 @@ where
     ActiveValue::unchanged(value)
 }
 
-pub trait ActiveModelTrait: Clone + Debug + Default {
+pub trait ActiveModelTrait: Clone + Debug {
     type Entity: EntityTrait;
 
     fn take(&mut self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value>;
@@ -54,6 +54,16 @@ pub trait ActiveModelTrait: Clone + Debug + Default {
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
 
     fn unset(&mut self, c: <Self::Entity as EntityTrait>::Column);
+
+    fn default() -> Self;
+}
+
+pub trait ActiveModelBehavior: ActiveModelTrait {
+    type Entity: EntityTrait;
+
+    fn new() -> Self {
+        <Self as ActiveModelTrait>::default()
+    }
 }
 
 impl<V> ActiveValue<V>

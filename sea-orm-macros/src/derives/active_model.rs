@@ -31,9 +31,15 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
     let ty: Vec<Type> = fields.into_iter().map(|Field { ty, .. }| ty).collect();
 
     Ok(quote!(
-        #[derive(Clone, Debug, Default)]
+        #[derive(Clone, Debug)]
         pub struct ActiveModel {
             #(pub #field: sea_orm::ActiveValue<#ty>),*
+        }
+
+        impl Default for ActiveModel {
+            fn default() -> Self {
+                <Self as sea_orm::ActiveModelBehavior>::new()
+            }
         }
 
         impl From<#ident> for ActiveModel {
@@ -68,6 +74,12 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
             fn unset(&mut self, c: <Self::Entity as EntityTrait>::Column) {
                 match c {
                     #(<Self::Entity as EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::unset()),*
+                }
+            }
+
+            fn default() -> Self {
+                Self {
+                    #(#field: sea_orm::ActiveValue::unset()),*
                 }
             }
         }

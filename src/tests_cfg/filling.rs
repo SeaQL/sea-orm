@@ -57,3 +57,7 @@ impl Model {
         Entity::find_related().belongs_to::<Entity>(self)
     }
 }
+
+impl ActiveModelBehavior for ActiveModel {
+    type Entity = Entity;
+}

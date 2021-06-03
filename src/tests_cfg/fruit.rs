@@ -44,3 +44,7 @@ impl RelationTrait for Relation {
         panic!()
     }
 }
+
+impl ActiveModelBehavior for ActiveModel {
+    type Entity = Entity;
+}
