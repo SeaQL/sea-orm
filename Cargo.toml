@@ -3,6 +3,7 @@ members = [
     ".",
     "sea-orm-macros",
     "examples/sqlx-mysql",
+    "examples/entity-generator",
 ]
 
 [package]
@@ -27,7 +28,7 @@ async-trait = "^0.1"
 futures = { version = "^0.3" }
 sea-query = { path = "../sea-query", version = "^0.12" }
 sea-orm-macros = { path = "sea-orm-macros", optional = true }
-# sea-schema = { path = "../sea-schema" }
+sea-schema = { path = "../sea-schema", default-features = false, features = [ "sqlx-mysql", "runtime-async-std-native-tls", "discovery" ] }
 serde = { version = "^1.0", features = [ "derive" ] }
 sqlx = { version = "^0.5", optional = true }
 strum = { version = "^0.20", features = [ "derive" ] }

@@ -4,7 +4,7 @@ use sea_query::{Iden, IntoIden, JoinType};
 use std::fmt::Debug;
 use std::rc::Rc;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum RelationType {
     HasOne,
     HasMany,

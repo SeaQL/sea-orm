@@ -2,8 +2,8 @@ use sea_query::ColumnType;
 
 #[derive(Clone, Debug)]
 pub struct ColumnSpec {
-    name: String,
-    rs_type: String,
-    col_type: ColumnType,
-    is_primary_key: bool,
+    pub(crate) name: String,
+    pub(crate) rs_type: String,
+    pub(crate) col_type: ColumnType,
+    pub(crate) is_primary_key: bool,
 }
