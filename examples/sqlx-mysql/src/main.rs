@@ -56,7 +56,7 @@ async fn main() {
 
     println!("===== =====\n");
 
-    find_num_page(&db).await.unwrap();
+    find_num_pages(&db).await.unwrap();
 }
 
 async fn find_all(db: &Database) -> Result<(), QueryErr> {
@@ -323,10 +323,10 @@ async fn find_first_page(db: &Database) -> Result<(), QueryErr> {
     Ok(())
 }
 
-async fn find_num_page(db: &Database) -> Result<(), QueryErr> {
+async fn find_num_pages(db: &Database) -> Result<(), QueryErr> {
     println!("fruits number of page: ");
-    let num_page = fruit::Entity::find().paginate(db, 2).count_page().await?;
-    println!("{:?}", num_page);
+    let num_pages = fruit::Entity::find().paginate(db, 2).num_pages().await?;
+    println!("{:?}", num_pages);
 
     Ok(())
 }

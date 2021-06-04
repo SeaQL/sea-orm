@@ -1,5 +1,4 @@
-use crate::{Connection, Database, QueryErr, SelectorTrait, debug_print};
-use chrono::Local;
+use crate::{Connection, Database, QueryErr, SelectorTrait};
 use futures::Stream;
 use async_stream::stream;
 use std::{marker::PhantomData, pin::Pin};
@@ -27,14 +26,12 @@ where
         self.query.limit(self.page_size as u64).offset((self.page_size * page) as u64);
         let builder = self.db.get_query_builder_backend();
         let stmt = self.query.build(builder).into();
-        debug_print!("{} - fetch page {}: start", Local::now().format("%Y-%m-%d %H:%M:%S%.6f"), self.page);
         let rows = self.db.get_connection().query_all(stmt).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
             // TODO: Error handling
             buffer.push(S::from_raw_query_result(row).map_err(|_e| QueryErr)?);
         }
-        debug_print!("{} - fetch page {}: complete", Local::now().format("%Y-%m-%d %H:%M:%S%.6f"), self.page);
         Ok(buffer)
     }
 
@@ -42,7 +39,7 @@ where
         self.fetch_page(self.page).await
     }
 
-    pub async fn count_page(&mut self) -> Result<usize, QueryErr> {
+    pub async fn num_pages(&mut self) -> Result<usize, QueryErr> {
         let builder = self.db.get_query_builder_backend();
         let stmt = self.query.clone()
             .clear_selects()
