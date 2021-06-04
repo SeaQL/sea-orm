@@ -1,5 +1,5 @@
 [package]
-name = "sea-orm-entity-generator-example"
+name = "sea-orm-codegen-example"
 version = "0.1.0"
 edition = "2018"
 publish = false
@@ -7,8 +7,8 @@ publish = false
 [dependencies]
 async-std = { version = "^1.9", features = [ "attributes" ] }
 sea-orm = { path = "../../", features = [ "sqlx-mysql", "runtime-async-std-native-tls", "debug-print" ] }
+sea-orm-codegen = { path = "../../sea-orm-codegen" }
 # sea-query = { path = "../../../sea-query" }
 strum = { version = "^0.20", features = [ "derive" ] }
 serde_json = { version = "^1" }
 quote = "1"
-rustfmt = "*"

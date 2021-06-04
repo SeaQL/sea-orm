@@ -1,0 +1,26 @@
+[package]
+name = "sea-orm-codegen"
+version = "0.1.0"
+authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
+edition = "2018"
+description = ""
+license = "MIT OR Apache-2.0"
+documentation = "https://docs.rs/sea-orm"
+repository = "https://github.com/SeaQL/sea-orm"
+categories = [ "database" ]
+keywords = [ "orm", "database", "sql", "mysql", "postgres", "sqlite" ]
+publish = false
+
+[lib]
+name = "sea_orm_codegen"
+path = "src/lib.rs"
+
+[dependencies]
+sea-orm = { path = "../" }
+sea-schema = { path = "../../sea-schema", default-features = false, features = [ "sqlx-mysql", "runtime-async-std-native-tls", "discovery", "writer" ] }
+sea-query = { path = "../../sea-query", version = "^0.12" }
+sqlx = { version = "^0.5", features = [ "mysql", "runtime-async-std-native-tls" ] }
+syn = { version = "1", default-features = false, features = [ "derive", "parsing", "proc-macro", "printing" ] }
+quote = "1"
+heck = "0.3"
+proc-macro2 = "1"
