@@ -30,7 +30,7 @@ pub async fn insert_and_update(db: &Database) -> Result<(), ExecErr> {
     println!();
     println!("Pear: {:?}\n", pear);
 
-    let mut pear: fruit::ActiveModel = pear.into();
+    let mut pear: fruit::ActiveModel = pear.unwrap().into();
     pear.name = Val::set("Sweet pear".to_owned());
 
     let res = fruit::Entity::update(pear).exec(db).await?;

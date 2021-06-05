@@ -222,8 +222,11 @@ where
     if res.last_insert_id != 0 {
         let find = E::find_by(res.last_insert_id).one(db);
         let res = find.await;
-        let model: E::Model = res.map_err(|_| ExecErr)?;
-        Ok(model.into())
+        let model: Option<E::Model> = res.map_err(|_| ExecErr)?;
+        match model {
+            Some(model) => Ok(model.into()),
+            None => Err(ExecErr),
+        }
     } else {
         Ok(A::default())
     }

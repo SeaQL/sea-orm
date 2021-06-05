@@ -70,7 +70,8 @@ async fn find_together(db: &Database) -> Result<(), QueryErr> {
 async fn find_one(db: &Database) -> Result<(), QueryErr> {
     print!("find one by primary key: ");
 
-    let cheese = cake::Entity::find_by(1).one(db).await?;
+    let cheese: Option<cake::Model> = cake::Entity::find_by(1).one(db).await?;
+    let cheese = cheese.unwrap();
 
     println!();
     println!("{:?}", cheese);
@@ -142,22 +143,26 @@ async fn find_many_to_many(db: &Database) -> Result<(), QueryErr> {
 
     let cheese = cake::Entity::find_by(1).one(db).await?;
 
-    let fillings: Vec<filling::Model> = cheese.find_filling().all(db).await?;
+    if let Some(cheese) = cheese {
+        let fillings: Vec<filling::Model> = cheese.find_filling().all(db).await?;
 
-    println!();
-    for ff in fillings.iter() {
-        println!("{:?}\n", ff);
+        println!();
+        for ff in fillings.iter() {
+            println!("{:?}\n", ff);
+        }
     }
 
     print!("find cakes for lemon: ");
 
     let lemon = filling::Entity::find_by(2).one(db).await?;
 
-    let cakes: Vec<cake::Model> = lemon.find_cake().all(db).await?;
+    if let Some(lemon) = lemon {
+        let cakes: Vec<cake::Model> = lemon.find_cake().all(db).await?;
 
-    println!();
-    for cc in cakes.iter() {
-        println!("{:?}\n", cc);
+        println!();
+        for cc in cakes.iter() {
+            println!("{:?}\n", cc);
+        }
     }
 
     Ok(())

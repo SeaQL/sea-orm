@@ -46,16 +46,19 @@ impl Connection for &SqlxMySqlPoolConnection {
         Err(ExecErr)
     }
 
-    async fn query_one(&self, stmt: Statement) -> Result<QueryResult, QueryErr> {
+    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, QueryErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
         if let Ok(conn) = &mut self.pool.acquire().await {
             if let Ok(row) = query.fetch_one(conn).await {
-                return Ok(row.into());
+                Ok(Some(row.into()))
+            } else {
+                Ok(None)
             }
+        } else {
+            Err(QueryErr)
         }
-        Err(QueryErr)
     }
 
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr> {

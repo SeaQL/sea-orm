@@ -23,7 +23,7 @@ pub trait Connector {
 pub trait Connection {
     async fn execute(&self, stmt: Statement) -> Result<ExecResult, ExecErr>;
 
-    async fn query_one(&self, stmt: Statement) -> Result<QueryResult, QueryErr>;
+    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, QueryErr>;
 
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr>;
 }
