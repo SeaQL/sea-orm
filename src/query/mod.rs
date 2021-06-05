@@ -20,4 +20,4 @@ pub use select::*;
 pub use traits::*;
 pub use update::*;
 
-pub use crate::connector::{QueryErr, ExecErr};
+pub use crate::connector::{ExecErr, QueryErr};
