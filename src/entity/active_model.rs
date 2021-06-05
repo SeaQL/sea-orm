@@ -1,5 +1,4 @@
 use crate::{Database, EntityTrait, ExecErr, Iterable, PrimaryKeyToColumn, Value};
-use async_trait::async_trait;
 use std::fmt::Debug;
 
 #[derive(Clone, Debug, Default)]
@@ -45,7 +44,6 @@ where
     ActiveValue::unchanged(value)
 }
 
-#[async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
     type Entity: EntityTrait;
 
