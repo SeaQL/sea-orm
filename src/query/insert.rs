@@ -50,7 +50,7 @@ where
             } else if self.columns[idx] != av.is_set() {
                 panic!("columns mismatch");
             }
-            if av.is_set() {
+            if av.is_set() || av.is_unchanged() {
                 columns.push(col);
                 values.push(av.into_value());
             }

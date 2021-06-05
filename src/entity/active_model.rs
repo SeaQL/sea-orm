@@ -1,4 +1,5 @@
-use crate::{EntityTrait, Value};
+use crate::{Database, EntityTrait, ExecErr, Iterable, PrimaryKeyToColumn, Value};
+use async_trait::async_trait;
 use std::fmt::Debug;
 
 #[derive(Clone, Debug, Default)]
@@ -44,6 +45,7 @@ where
     ActiveValue::unchanged(value)
 }
 
+#[async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
     type Entity: EntityTrait;
 
@@ -55,14 +57,28 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     fn unset(&mut self, c: <Self::Entity as EntityTrait>::Column);
 
+    fn is_unset(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
+
     fn default() -> Self;
 }
 
+/// Behaviors for users to override
 pub trait ActiveModelBehavior: ActiveModelTrait {
     type Entity: EntityTrait;
 
+    /// Create a new ActiveModel with default values. Also used by `Default::default()`.
     fn new() -> Self {
         <Self as ActiveModelTrait>::default()
+    }
+
+    /// Will be called before saving to database
+    fn before_save(self) -> Self {
+        self
+    }
+
+    /// Will be called after saving to database
+    fn after_save(self) -> Self {
+        self
     }
 }
 
@@ -119,7 +135,7 @@ where
     pub fn into_wrapped_value(self) -> ActiveValue<Value> {
         match self.state {
             ActiveValueState::Set => ActiveValue::set(self.into_value()),
-            ActiveValueState::Unchanged => ActiveValue::set(self.into_value()),
+            ActiveValueState::Unchanged => ActiveValue::unchanged(self.into_value()),
             ActiveValueState::Unset => ActiveValue::unset(),
         }
     }
@@ -170,4 +186,54 @@ where
     fn get_many(self) -> Vec<A> {
         self
     }
+}
+
+/// Insert the model if primary key is unset, update otherwise
+pub async fn save_active_model<A, E>(mut am: A, db: &Database) -> Result<A, ExecErr>
+where
+    A: ActiveModelBehavior + ActiveModelTrait<Entity = E> + From<E::Model>,
+    E: EntityTrait,
+{
+    am = ActiveModelBehavior::before_save(am);
+    let mut is_update = true;
+    for key in E::PrimaryKey::iter() {
+        let col = key.into_column();
+        if am.is_unset(col) {
+            is_update = false;
+            break;
+        }
+    }
+    if !is_update {
+        am = insert_and_select_active_model::<A, E>(am, db).await?;
+    } else {
+        am = update_active_model::<A, E>(am, db).await?;
+    }
+    am = ActiveModelBehavior::after_save(am);
+    Ok(am)
+}
+
+async fn insert_and_select_active_model<A, E>(am: A, db: &Database) -> Result<A, ExecErr>
+where
+    A: ActiveModelTrait<Entity = E> + From<E::Model>,
+    E: EntityTrait,
+{
+    let exec = E::insert(am).exec(db);
+    let res = exec.await?;
+    if res.last_insert_id != 0 {
+        let find = E::find_by(res.last_insert_id).one(db);
+        let res = find.await;
+        let model: E::Model = res.map_err(|_| ExecErr)?;
+        Ok(model.into())
+    } else {
+        Ok(A::default())
+    }
+}
+
+async fn update_active_model<A, E>(am: A, db: &Database) -> Result<A, ExecErr>
+where
+    A: ActiveModelTrait<Entity = E>,
+    E: EntityTrait,
+{
+    let exec = E::update(am).exec(db);
+    exec.await
 }

@@ -1,10 +1,12 @@
 mod executor;
 mod insert;
 mod select;
+mod update;
 
 pub use executor::*;
 pub use insert::*;
 pub use select::*;
+pub use update::*;
 
 use crate::{DatabaseConnection, QueryResult, Statement, TypeErr};
 use async_trait::async_trait;

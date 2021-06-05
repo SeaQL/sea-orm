@@ -36,6 +36,12 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
             #(pub #field: sea_orm::ActiveValue<#ty>),*
         }
 
+        impl ActiveModel {
+            pub async fn save(self, db: &sea_orm::Database) -> Result<Self, sea_orm::ExecErr> {
+                sea_orm::save_active_model::<Self, Entity>(self, db).await
+            }
+        }
+
         impl Default for ActiveModel {
             fn default() -> Self {
                 <Self as sea_orm::ActiveModelBehavior>::new()
@@ -74,6 +80,12 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
             fn unset(&mut self, c: <Self::Entity as EntityTrait>::Column) {
                 match c {
                     #(<Self::Entity as EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::unset()),*
+                }
+            }
+
+            fn is_unset(&self, c: <Self::Entity as EntityTrait>::Column) -> bool {
+                match c {
+                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.is_unset()),*
                 }
             }
 
