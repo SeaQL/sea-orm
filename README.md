@@ -8,7 +8,7 @@
     <strong>An async ORM for Rust</strong>
   </p>
 
-  <sub>Built with ❤️ by 🌊🦀🐠</sub>
+  <sub>Built with 🔥 by 🌊🦀🐚</sub>
 
 </div>
 
