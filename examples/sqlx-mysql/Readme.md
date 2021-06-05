@@ -11,7 +11,7 @@ Running:
 cargo run
 ```
 
-Example output:
+All about selects:
 
 ```sh
 Database { connection: SqlxMySqlPoolConnection }
@@ -92,4 +92,38 @@ Model { id: 1, name: "New York Cheese" }
 
 Model { id: 2, name: "Chocolate Forest" }
 
+```
+
+All about operations:
+
+```sh
+INSERT INTO `fruit` (`name`) VALUES ('pear')
+
+Inserted: InsertResult { last_insert_id: 21 }
+
+SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`id` = 21 LIMIT 1
+
+Pear: Some(Model { id: 21, name: "pear", cake_id: None })
+
+UPDATE `fruit` SET `name` = 'Sweet pear' WHERE `fruit`.`id` = 21
+
+Updated: ActiveModel { id: ActiveValue { value: 21, state: Unchanged }, name: ActiveValue { value: "Sweet pear", state: Set }, cake_id: ActiveValue { value: None, state: Unchanged } }
+
+===== =====
+
+INSERT INTO `fruit` (`name`) VALUES ('banana')
+SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`id` = 22 LIMIT 1
+
+Inserted: ActiveModel { id: ActiveValue { value: 22, state: Unchanged }, name: ActiveValue { value: "banana", state: Unchanged }, cake_id: ActiveValue { value: None, state: Unchanged } }
+
+UPDATE `fruit` SET `name` = 'banana banana' WHERE `fruit`.`id` = 22
+
+Updated: ActiveModel { id: ActiveValue { value: 22, state: Unchanged }, name: ActiveValue { value: "banana banana", state: Set }, cake_id: ActiveValue { value: None, state: Unchanged } }
+
+===== =====
+
+INSERT INTO `fruit` (`name`) VALUES ('pineapple')
+SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`id` = 23 LIMIT 1
+
+Saved: ActiveModel { id: ActiveValue { value: 23, state: Unchanged }, name: ActiveValue { value: "pineapple", state: Unchanged } }
 ```

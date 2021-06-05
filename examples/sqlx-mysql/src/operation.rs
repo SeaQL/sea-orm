@@ -83,7 +83,7 @@ async fn save_custom_active_model(db: &Database) -> Result<(), ExecErr> {
     let pineapple = pineapple.save(db).await?;
 
     println!();
-    println!("Updated: {:?}\n", pineapple);
+    println!("Saved: {:?}\n", pineapple);
 
     Ok(())
 }
