@@ -1,8 +1,13 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-#[table = "cake"]
 pub struct Entity;
+
+impl EntityName for Entity {
+    fn table_name(&self) -> &str {
+        "cake"
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
@@ -72,4 +77,8 @@ impl Model {
     pub fn find_filling(&self) -> Select<super::filling::Entity> {
         Entity::find_related().belongs_to::<Entity>(self)
     }
+}
+
+impl ActiveModelBehavior for ActiveModel {
+    type Entity = Entity;
 }
