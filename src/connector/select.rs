@@ -1,7 +1,4 @@
-use crate::{
-    query::combine, Connection, Database, EntityTrait, FromQueryResult, JsonValue, QueryErr,
-    QueryResult, Select, SelectTwo, Statement, TypeErr,
-};
+use crate::{Connection, Database, EntityTrait, FromQueryResult, JsonValue, Paginator, QueryErr, QueryResult, Select, SelectTwo, Statement, TypeErr, query::combine};
 use sea_query::{QueryBuilder, SelectStatement};
 use std::marker::PhantomData;
 
@@ -91,6 +88,10 @@ where
     pub async fn all(self, db: &Database) -> Result<Vec<E::Model>, QueryErr> {
         self.into_model::<E::Model>().all(db).await
     }
+
+    pub fn paginate<'db>(self, db: &'db Database, page_size: usize) -> Paginator<'db, SelectModel<E::Model>> {
+        self.into_model::<E::Model>().paginate(db, page_size)
+    }
 }
 
 impl<E, F> SelectTwo<E, F>
@@ -155,5 +156,15 @@ where
             models.push(S::from_raw_query_result(row)?);
         }
         Ok(models)
+    }
+
+    pub fn paginate<'db>(self, db: &'db Database, page_size: usize) -> Paginator<'db, S> {
+        Paginator {
+            query: self.query,
+            page: 0,
+            page_size,
+            db,
+            selector: PhantomData,
+        }
     }
 }

@@ -1,10 +1,12 @@
 mod executor;
 mod insert;
+mod paginator;
 mod select;
 mod update;
 
 pub use executor::*;
 pub use insert::*;
+pub use paginator::*;
 pub use select::*;
 pub use update::*;
 
