@@ -50,6 +50,4 @@ impl RelationTrait for Relation {
     }
 }
 
-impl ActiveModelBehavior for ActiveModel {
-    type Entity = Entity;
-}
+impl ActiveModelBehavior for ActiveModel {}

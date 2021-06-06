@@ -62,8 +62,6 @@ pub trait ActiveModelTrait: Clone + Debug {
 
 /// Behaviors for users to override
 pub trait ActiveModelBehavior: ActiveModelTrait {
-    type Entity: EntityTrait;
-
     /// Create a new ActiveModel with default values. Also used by `Default::default()`.
     fn new() -> Self {
         <Self as ActiveModelTrait>::default()
