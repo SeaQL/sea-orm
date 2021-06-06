@@ -81,7 +81,7 @@ where
         }
     }
 
-    pub async fn one(self, db: &Database) -> Result<E::Model, QueryErr> {
+    pub async fn one(self, db: &Database) -> Result<Option<E::Model>, QueryErr> {
         self.into_model::<E::Model>().one(db).await
     }
 
@@ -118,7 +118,7 @@ where
         }
     }
 
-    pub async fn one(self, db: &Database) -> Result<(E::Model, F::Model), QueryErr> {
+    pub async fn one(self, db: &Database) -> Result<Option<(E::Model, F::Model)>, QueryErr> {
         self.into_model::<E::Model, F::Model>().one(db).await
     }
 
@@ -138,11 +138,14 @@ where
         self.query.build(builder).into()
     }
 
-    pub async fn one(mut self, db: &Database) -> Result<S::Item, QueryErr> {
+    pub async fn one(mut self, db: &Database) -> Result<Option<S::Item>, QueryErr> {
         let builder = db.get_query_builder_backend();
         self.query.limit(1);
         let row = db.get_connection().query_one(self.build(builder)).await?;
-        Ok(S::from_raw_query_result(row)?)
+        match row {
+            Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
+            None => Ok(None),
+        }
     }
 
     pub async fn all(self, db: &Database) -> Result<Vec<S::Item>, QueryErr> {

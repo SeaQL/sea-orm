@@ -19,3 +19,5 @@ pub use result::*;
 pub use select::*;
 pub use traits::*;
 pub use update::*;
+
+pub use crate::connector::{ExecErr, QueryErr};

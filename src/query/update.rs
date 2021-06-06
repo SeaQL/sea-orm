@@ -121,7 +121,7 @@ mod tests {
         assert_eq!(
             Update::<fruit::ActiveModel>::new(fruit::ActiveModel {
                 id: Val::set(2),
-                name: Val::unset(),
+                name: Val::unchanged("Apple".to_owned()),
                 cake_id: Val::set(Some(3)),
             })
             .build(PostgresQueryBuilder)

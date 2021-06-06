@@ -33,13 +33,15 @@ pub fn expand_derive_model(ident: Ident, data: Data) -> syn::Result<TokenStream>
 
             fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> sea_orm::Value {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.clone().into()),*
+                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.clone().into(),)*
+                    _ => panic!("This Model does not have this field"),
                 }
             }
 
             fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: sea_orm::Value) {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field = v.unwrap()),*
+                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field = v.unwrap(),)*
+                    _ => panic!("This Model does not have this field"),
                 }
             }
         }

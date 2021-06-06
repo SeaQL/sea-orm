@@ -11,7 +11,13 @@ pub trait IdenStatic: Iden + Copy + Debug + 'static {
     fn as_str(&self) -> &str;
 }
 
-pub trait EntityName: IdenStatic + Default {}
+pub trait EntityName: IdenStatic + Default {
+    fn table_name(&self) -> &str;
+
+    fn module_name(&self) -> &str {
+        Self::table_name(self)
+    }
+}
 
 pub trait EntityTrait: EntityName {
     type Model: ModelTrait<Entity = Self> + FromQueryResult;
