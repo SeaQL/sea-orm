@@ -2,7 +2,7 @@ use crate::{Connection, Database, QueryErr, SelectorTrait};
 use futures::Stream;
 use async_stream::stream;
 use std::{marker::PhantomData, pin::Pin};
-use sea_query::{Expr, SelectStatement};
+use sea_query::{Alias, Expr, SelectStatement};
 
 pub type PinBoxStream<'db, Item> = Pin<Box<dyn Stream<Item = Item> + 'db>>;
 
@@ -41,14 +41,18 @@ where
 
     pub async fn num_pages(&mut self) -> Result<usize, QueryErr> {
         let builder = self.db.get_query_builder_backend();
-        let stmt = self.query.clone()
-            .clear_selects()
+        let stmt = SelectStatement::new()
             .expr(Expr::cust("COUNT(*) AS num_rows"))
-            .reset_limit()
-            .reset_offset()
+            .from_subquery(
+                self.query.clone().reset_limit().reset_offset().to_owned(),
+                Alias::new("sub_query")
+            )
             .build(builder)
             .into();
-        let result = self.db.get_connection().query_one(stmt).await?;
+        let result = match self.db.get_connection().query_one(stmt).await? {
+            Some(res) => res,
+            None => return Ok(0),
+        };
         let num_rows = result.try_get::<i32>("", "num_rows").map_err(|_e| QueryErr)? as usize;
         let num_pages = (num_rows / self.page_size) + (num_rows % self.page_size > 0) as usize;
         Ok(num_pages)
