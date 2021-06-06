@@ -23,8 +23,9 @@ where
     S: SelectorTrait + 'db,
 {
     /// Fetch a specific page
-    pub async fn fetch_page(&mut self, page: usize) -> Result<Vec<S::Item>, QueryErr> {
+    pub async fn fetch_page(&self, page: usize) -> Result<Vec<S::Item>, QueryErr> {
         self.query
+            .clone()
             .limit(self.page_size as u64)
             .offset((self.page_size * page) as u64);
         let builder = self.db.get_query_builder_backend();
@@ -39,12 +40,12 @@ where
     }
 
     /// Fetch the current page
-    pub async fn fetch(&mut self) -> Result<Vec<S::Item>, QueryErr> {
+    pub async fn fetch(&self) -> Result<Vec<S::Item>, QueryErr> {
         self.fetch_page(self.page).await
     }
 
     /// Get the total number of pages
-    pub async fn num_pages(&mut self) -> Result<usize, QueryErr> {
+    pub async fn num_pages(&self) -> Result<usize, QueryErr> {
         let builder = self.db.get_query_builder_backend();
         let stmt = SelectStatement::new()
             .expr(Expr::cust("COUNT(*) AS num_rows"))
