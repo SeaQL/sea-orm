@@ -2,8 +2,13 @@ use crate as sea_orm;
 use crate::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-#[table = "filling"]
 pub struct Entity;
+
+impl EntityName for Entity {
+    fn table_name(&self) -> &str {
+        "filling"
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
@@ -23,46 +28,41 @@ pub enum PrimaryKey {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
-pub enum Relation {}
+pub enum Relation {
+    CakeFilling,
+}
 
 impl ColumnTrait for Column {
     type EntityName = Entity;
     fn def(&self) -> ColumnType {
-        match self {}
+        match self {
+            Self::Id => ColumnType::Custom(s),
+            Self::Name => ColumnType::Custom(s),
+        }
     }
 }
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Fruit => Entity::has_many(super::fruit::Entity)
+            Self::CakeFilling => Entity::has_Many(super::cake_filling::Entity)
                 .from(Column::Id)
-                .to(super::fruit::Column::CakeId)
+                .to(super::cake_filling::Column::FillingId)
                 .into(),
         }
     }
 }
 
-impl Related<super::fruit::Entity> for Entity {
+impl Related<super::cake_filling::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Fruit.def()
-    }
-}
-
-impl Related<super::filling::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::cake_filling::Relation::Filling.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(super::cake_filling::Relation::Cake.def().rev())
+        Relation::CakeFilling.def()
     }
 }
 
 impl Model {
-    pub fn find_fruit(&self) -> Select<super::fruit::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
-    }
-    pub fn find_filling(&self) -> Select<super::filling::Entity> {
+    pub fn find_cake_filling(&self) -> Select<super::cake_filling::Entity> {
         Entity::find_related().belongs_to::<Entity>(self)
     }
 }
+
+impl ActiveModelBehavior for ActiveModel {}

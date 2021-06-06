@@ -1,6 +1,6 @@
 use crate::{Column, Entity, Relation};
 use heck::{SnakeCase, CamelCase};
-use sea_orm::RelationType;
+use sea_orm::{ColumnType, RelationType};
 use sea_query::{ColumnSpec, TableStatement};
 use sea_schema::mysql::{def::Schema, discovery::SchemaDiscovery};
 use sqlx::MySqlPool;
@@ -104,6 +104,13 @@ impl EntityGenerator {
                 }
             }
         }
+        for (tbl_name, relations) in self.inverse_relations.iter() {
+            for ent in self.entities.iter_mut() {
+                if ent.table_name.eq(tbl_name) {
+                    ent.relations.append(relations.clone().as_mut());
+                }
+            }
+        }
         println!();
         println!("entities:");
         println!("{:#?}", self.entities);
@@ -177,16 +184,72 @@ impl EntityGenerator {
             })
             .collect();
 
-        // let col_type: Vec<TokenStream> = entity.columns
-        //     .clone()
-        //     .into_iter()
-        //     .map(|col| parse_quote!{ col.col_type })
-        //     .map(|Variant { ident, fields, .. }| match fields {
-        //         Fields::Named(_) => quote! { #ident{..} },
-        //         Fields::Unnamed(_) => quote! { #ident(..) },
-        //         Fields::Unit => quote! { #ident },
-        //     })
-        //     .collect();
+        let relation_name_snake: Vec<Ident> = entity.relations
+            .iter()
+            .map(|rel| {
+                format_ident!("{}", rel.ref_table.to_snake_case())
+            })
+            .collect();
+
+        let col_type: Vec<TokenStream> = entity.columns
+            .clone()
+            .into_iter()
+            .map(|col| {
+                match col.col_type {
+                    ColumnType::Char(s) => quote!{ ColumnType::Char(s) },
+                    ColumnType::String(s) => quote!{ ColumnType::String(s) },
+                    ColumnType::Text => quote!{ ColumnType::Text },
+                    ColumnType::TinyInteger(s) => quote!{ ColumnType::TinyInteger(s) },
+                    ColumnType::SmallInteger(s) => quote!{ ColumnType::SmallInteger(s) },
+                    ColumnType::Integer(s) => quote!{ ColumnType::Integer(s) },
+                    ColumnType::BigInteger(s) => quote!{ ColumnType::BigInteger(s) },
+                    ColumnType::Float(s) => quote!{ ColumnType::Float(s) },
+                    ColumnType::Double(s) => quote!{ ColumnType::Double(s) },
+                    ColumnType::Decimal(s) => quote!{ ColumnType::Decimal(s) },
+                    ColumnType::DateTime(s) => quote!{ ColumnType::DateTime(s) },
+                    ColumnType::Timestamp(s) => quote!{ ColumnType::Timestamp(s) },
+                    ColumnType::Time(s) => quote!{ ColumnType::Time(s) },
+                    ColumnType::Date => quote!{ ColumnType::Date },
+                    ColumnType::Binary(s) => quote!{ ColumnType::Binary(s) },
+                    ColumnType::Boolean => quote!{ ColumnType::Boolean },
+                    ColumnType::Money(s) => quote!{ ColumnType::Money(s) },
+                    ColumnType::Json => quote!{ ColumnType::Json },
+                    ColumnType::JsonBinary => quote!{ ColumnType::JsonBinary },
+                    ColumnType::Custom(s) => quote!{ ColumnType::Custom(s) },
+                }
+            })
+            .collect();
+
+        let relation_type: Vec<Ident> = entity.relations
+            .iter()
+            .map(|rel| {
+                match rel.rel_type {
+                    RelationType::HasOne => format_ident!("has_one"),
+                    RelationType::HasMany => format_ident!("has_Many"),
+                }
+            })
+            .collect();
+
+        let relation_col: Vec<Ident> = entity.relations
+            .iter()
+            .map(|rel| {
+                format_ident!("{}", rel.columns[0].to_camel_case())
+            })
+            .collect();
+
+        let relation_ref_col: Vec<Ident> = entity.relations
+            .iter()
+            .map(|rel| {
+                format_ident!("{}", rel.ref_columns[0].to_camel_case())
+            })
+            .collect();
+
+        let relation_find_helper: Vec<Ident> = entity.relations
+            .iter()
+            .map(|rel| {
+                format_ident!("find_{}", rel.ref_table.to_snake_case())
+            })
+            .collect();
 
         vec![
             quote! {
@@ -195,8 +258,14 @@ impl EntityGenerator {
             },
             quote! {
                 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-                #[table = #table_name_snake]
                 pub struct Entity;
+            },
+            quote! {
+                impl EntityName for Entity {
+                    fn table_name(&self) -> &str {
+                        #table_name_snake
+                    }
+                }
             },
             quote! {
                 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
@@ -228,7 +297,7 @@ impl EntityGenerator {
 
                     fn def(&self) -> ColumnType {
                         match self {
-                            // #(Self::#col_name_camel => #col_type),*
+                            #(Self::#col_name_camel => #col_type),*
                         }
                     }
                 }
@@ -237,43 +306,31 @@ impl EntityGenerator {
                 impl RelationTrait for Relation {
                     fn def(&self) -> RelationDef {
                         match self {
-                            Self::Fruit => Entity::has_many(super::fruit::Entity)
-                                .from(Column::Id)
-                                .to(super::fruit::Column::CakeId)
-                                .into(),
+                            #(Self::#relation_name_camel => Entity::#relation_type(super::#relation_name_snake::Entity)
+                                .from(Column::#relation_col)
+                                .to(super::#relation_name_snake::Column::#relation_ref_col)
+                                .into()),*
                         }
                     }
                 }
             },
             quote! {
-                impl Related<super::fruit::Entity> for Entity {
+                #(impl Related<super::#relation_name_snake::Entity> for Entity {
                     fn to() -> RelationDef {
-                        Relation::Fruit.def()
+                        Relation::#relation_name_camel.def()
                     }
-                }
-            },
-            quote! {
-                impl Related<super::filling::Entity> for Entity {
-                    fn to() -> RelationDef {
-                        super::cake_filling::Relation::Filling.def()
-                    }
-
-                    fn via() -> Option<RelationDef> {
-                        Some(super::cake_filling::Relation::Cake.def().rev())
-                    }
-                }
+                })*
             },
             quote! {
                 impl Model {
-                    pub fn find_fruit(&self) -> Select<super::fruit::Entity> {
+                    #(pub fn #relation_find_helper(&self) -> Select<super::#relation_name_snake::Entity> {
                         Entity::find_related().belongs_to::<Entity>(self)
-                    }
-
-                    pub fn find_filling(&self) -> Select<super::filling::Entity> {
-                        Entity::find_related().belongs_to::<Entity>(self)
-                    }
+                    })*
                 }
-            }
+            },
+            quote! {
+                impl ActiveModelBehavior for ActiveModel {}
+            },
         ]
     }
 }

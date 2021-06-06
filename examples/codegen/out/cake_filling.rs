@@ -2,8 +2,13 @@ use crate as sea_orm;
 use crate::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-#[table = "cake_filling"]
 pub struct Entity;
+
+impl EntityName for Entity {
+    fn table_name(&self) -> &str {
+        "cake_filling"
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
@@ -32,41 +37,46 @@ pub enum Relation {
 impl ColumnTrait for Column {
     type EntityName = Entity;
     fn def(&self) -> ColumnType {
-        match self {}
+        match self {
+            Self::CakeId => ColumnType::Custom(s),
+            Self::FillingId => ColumnType::Custom(s),
+        }
     }
 }
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Fruit => Entity::has_many(super::fruit::Entity)
-                .from(Column::Id)
-                .to(super::fruit::Column::CakeId)
+            Self::Cake => Entity::has_one(super::cake::Entity)
+                .from(Column::CakeId)
+                .to(super::cake::Column::Id)
+                .into(),
+            Self::Filling => Entity::has_one(super::filling::Entity)
+                .from(Column::FillingId)
+                .to(super::filling::Column::Id)
                 .into(),
         }
     }
 }
 
-impl Related<super::fruit::Entity> for Entity {
+impl Related<super::cake::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Fruit.def()
+        Relation::Cake.def()
     }
 }
-
 impl Related<super::filling::Entity> for Entity {
     fn to() -> RelationDef {
-        super::cake_filling::Relation::Filling.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(super::cake_filling::Relation::Cake.def().rev())
+        Relation::Filling.def()
     }
 }
 
 impl Model {
-    pub fn find_fruit(&self) -> Select<super::fruit::Entity> {
+    pub fn find_cake(&self) -> Select<super::cake::Entity> {
         Entity::find_related().belongs_to::<Entity>(self)
     }
     pub fn find_filling(&self) -> Select<super::filling::Entity> {
         Entity::find_related().belongs_to::<Entity>(self)
     }
 }
+
+impl ActiveModelBehavior for ActiveModel {}
