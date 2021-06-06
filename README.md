@@ -17,7 +17,7 @@
 Inspired by ActiveRecord, Eloquent and TypeORM, SeaORM aims to provide you an intuitive and ergonomic 
 API to make working with databases in Rust a first-class experience.
 
-> This is an early WIP of SeaORM, and is not yet published. See [example](examples/sqlx-mysql/src/main.rs) for demo usage.
+> This is an early WIP of SeaORM, and is not yet published. See [example](examples/sqlx-mysql/src) for demo usage.
 
 ## Features
 
