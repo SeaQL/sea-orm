@@ -22,6 +22,7 @@ impl<'db, S> Paginator<'db, S>
 where
     S: SelectorTrait + 'db,
 {
+    /// Fetch a specific page
     pub async fn fetch_page(&mut self, page: usize) -> Result<Vec<S::Item>, QueryErr> {
         self.query
             .limit(self.page_size as u64)
@@ -37,10 +38,12 @@ where
         Ok(buffer)
     }
 
+    /// Fetch the current page
     pub async fn fetch(&mut self) -> Result<Vec<S::Item>, QueryErr> {
         self.fetch_page(self.page).await
     }
 
+    /// Get the total number of pages
     pub async fn num_pages(&mut self) -> Result<usize, QueryErr> {
         let builder = self.db.get_query_builder_backend();
         let stmt = SelectStatement::new()
@@ -62,14 +65,17 @@ where
         Ok(num_pages)
     }
 
+    /// Increment the page counter
     pub fn next(&mut self) {
         self.page += 1;
     }
 
+    /// Get current page number
     pub fn cur_page(&self) -> usize {
         self.page
     }
 
+    /// Fetch one page and increment the page counter
     pub async fn fetch_and_next(&mut self) -> Result<Option<Vec<S::Item>>, QueryErr> {
         let vec = self.fetch().await?;
         self.next();
@@ -77,6 +83,7 @@ where
         Ok(opt)
     }
 
+    /// Convert self into an async stream
     pub fn into_stream(mut self) -> PinBoxStream<'db, Result<Vec<S::Item>, QueryErr>> {
         Box::pin(stream! {
             loop {
