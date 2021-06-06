@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="docs/SeaQL logo dual.png" width="320"/>
+  <img src="docs/SeaORM banner.png"/>
 
   <h1>SeaORM</h1>
 
