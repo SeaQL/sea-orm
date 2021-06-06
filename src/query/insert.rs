@@ -95,7 +95,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::cake;
-    use crate::{Insert, QueryTrait, ActiveValue};
+    use crate::{ActiveValue, Insert, QueryTrait};
     use sea_query::PostgresQueryBuilder;
 
     #[test]

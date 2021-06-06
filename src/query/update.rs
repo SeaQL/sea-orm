@@ -86,7 +86,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, fruit};
-    use crate::{QueryTrait, Update, ActiveValue};
+    use crate::{ActiveValue, QueryTrait, Update};
     use sea_query::PostgresQueryBuilder;
 
     #[test]
