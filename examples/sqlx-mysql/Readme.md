@@ -50,7 +50,7 @@ Model { id: 1, name: "New York Cheese" }
 
 find one by like: SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%chocolate%' LIMIT 1
 
-Model { id: 2, name: "Chocolate Forest" }
+Some(Model { id: 2, name: "Chocolate Forest" })
 
 find models belong to: SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` INNER JOIN `cake` ON `cake`.`id` = `fruit`.`cake_id` WHERE `cake`.`id` = 1
 

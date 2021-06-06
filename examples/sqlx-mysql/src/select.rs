@@ -1,5 +1,5 @@
-use crate::*;
 use sea_orm::{entity::*, query::*, Database, FromQueryResult};
+use super::*;
 
 pub async fn all_about_select(db: &Database) -> Result<(), QueryErr> {
     find_all(db).await?;
@@ -32,7 +32,7 @@ pub async fn all_about_select(db: &Database) -> Result<(), QueryErr> {
 async fn find_all(db: &Database) -> Result<(), QueryErr> {
     print!("find all cakes: ");
 
-    let cakes = cake::Entity::find().all(db).await?;
+    let cakes = Cake::find().all(db).await?;
 
     println!();
     for cc in cakes.iter() {
@@ -41,7 +41,7 @@ async fn find_all(db: &Database) -> Result<(), QueryErr> {
 
     print!("find all fruits: ");
 
-    let fruits = fruit::Entity::find().all(db).await?;
+    let fruits = Fruit::find().all(db).await?;
 
     println!();
     for ff in fruits.iter() {
@@ -54,8 +54,8 @@ async fn find_all(db: &Database) -> Result<(), QueryErr> {
 async fn find_together(db: &Database) -> Result<(), QueryErr> {
     print!("find cakes and fruits: ");
 
-    let both = cake::Entity::find()
-        .left_join_and_select(fruit::Entity)
+    let both = Cake::find()
+        .left_join_and_select(Fruit)
         .all(db)
         .await?;
 
@@ -70,7 +70,7 @@ async fn find_together(db: &Database) -> Result<(), QueryErr> {
 async fn find_one(db: &Database) -> Result<(), QueryErr> {
     print!("find one by primary key: ");
 
-    let cheese: Option<cake::Model> = cake::Entity::find_by(1).one(db).await?;
+    let cheese: Option<cake::Model> = Cake::find_by(1).one(db).await?;
     let cheese = cheese.unwrap();
 
     println!();
@@ -79,7 +79,7 @@ async fn find_one(db: &Database) -> Result<(), QueryErr> {
 
     print!("find one by like: ");
 
-    let chocolate = cake::Entity::find()
+    let chocolate = Cake::find()
         .filter(cake::Column::Name.contains("chocolate"))
         .one(db)
         .await?;
@@ -109,8 +109,8 @@ async fn count_fruits_by_cake(db: &Database) -> Result<(), QueryErr> {
 
     print!("count fruits by cake: ");
 
-    let select = cake::Entity::find()
-        .left_join(fruit::Entity)
+    let select = Cake::find()
+        .left_join(Fruit)
         .select_only()
         .column(cake::Column::Name)
         .column_as(fruit::Column::Id.count(), "num_of_fruits")
@@ -129,8 +129,8 @@ async fn count_fruits_by_cake(db: &Database) -> Result<(), QueryErr> {
 async fn find_many_to_many(db: &Database) -> Result<(), QueryErr> {
     print!("find cakes and fillings: ");
 
-    let both = cake::Entity::find()
-        .left_join_and_select(filling::Entity)
+    let both = Cake::find()
+        .left_join_and_select(Filling)
         .all(db)
         .await?;
 
@@ -141,7 +141,7 @@ async fn find_many_to_many(db: &Database) -> Result<(), QueryErr> {
 
     print!("find fillings for cheese cake: ");
 
-    let cheese = cake::Entity::find_by(1).one(db).await?;
+    let cheese = Cake::find_by(1).one(db).await?;
 
     if let Some(cheese) = cheese {
         let fillings: Vec<filling::Model> = cheese.find_filling().all(db).await?;
@@ -154,7 +154,7 @@ async fn find_many_to_many(db: &Database) -> Result<(), QueryErr> {
 
     print!("find cakes for lemon: ");
 
-    let lemon = filling::Entity::find_by(2).one(db).await?;
+    let lemon = Filling::find_by(2).one(db).await?;
 
     if let Some(lemon) = lemon {
         let cakes: Vec<cake::Model> = lemon.find_cake().all(db).await?;
@@ -185,13 +185,13 @@ async fn all_about_select_json(db: &Database) -> Result<(), QueryErr> {
 async fn find_all_json(db: &Database) -> Result<(), QueryErr> {
     print!("find all cakes: ");
 
-    let cakes = cake::Entity::find().into_json().all(db).await?;
+    let cakes = Cake::find().into_json().all(db).await?;
 
     println!("\n{}\n", serde_json::to_string_pretty(&cakes).unwrap());
 
     print!("find all fruits: ");
 
-    let fruits = fruit::Entity::find().into_json().all(db).await?;
+    let fruits = Fruit::find().into_json().all(db).await?;
 
     println!("\n{}\n", serde_json::to_string_pretty(&fruits).unwrap());
 
@@ -201,8 +201,8 @@ async fn find_all_json(db: &Database) -> Result<(), QueryErr> {
 async fn find_together_json(db: &Database) -> Result<(), QueryErr> {
     print!("find cakes and fruits: ");
 
-    let cakes_fruits = cake::Entity::find()
-        .left_join_and_select(fruit::Entity)
+    let cakes_fruits = Cake::find()
+        .left_join_and_select(Fruit)
         .into_json()
         .all(db)
         .await?;
@@ -218,8 +218,8 @@ async fn find_together_json(db: &Database) -> Result<(), QueryErr> {
 async fn count_fruits_by_cake_json(db: &Database) -> Result<(), QueryErr> {
     print!("count fruits by cake: ");
 
-    let count = cake::Entity::find()
-        .left_join(fruit::Entity)
+    let count = Cake::find()
+        .left_join(Fruit)
         .select_only()
         .column(cake::Column::Name)
         .column_as(fruit::Column::Id.count(), "num_of_fruits")

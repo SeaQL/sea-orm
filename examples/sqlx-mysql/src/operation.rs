@@ -1,5 +1,5 @@
-use crate::*;
 use sea_orm::{entity::*, query::*, Database};
+use super::*;
 
 pub async fn all_about_operation(db: &Database) -> Result<(), ExecErr> {
     insert_and_update(db).await?;
@@ -20,12 +20,12 @@ pub async fn insert_and_update(db: &Database) -> Result<(), ExecErr> {
         name: Val::set("pear".to_owned()),
         ..Default::default()
     };
-    let res = fruit::Entity::insert(pear).exec(db).await?;
+    let res = Fruit::insert(pear).exec(db).await?;
 
     println!();
     println!("Inserted: {:?}\n", res);
 
-    let pear = fruit::Entity::find_by(res.last_insert_id)
+    let pear = Fruit::find_by(res.last_insert_id)
         .one(db)
         .await
         .map_err(|_| ExecErr)?;
@@ -36,7 +36,7 @@ pub async fn insert_and_update(db: &Database) -> Result<(), ExecErr> {
     let mut pear: fruit::ActiveModel = pear.unwrap().into();
     pear.name = Val::set("Sweet pear".to_owned());
 
-    let res = fruit::Entity::update(pear).exec(db).await?;
+    let res = Fruit::update(pear).exec(db).await?;
 
     println!();
     println!("Updated: {:?}\n", res);
