@@ -2,8 +2,13 @@ use crate as sea_orm;
 use crate::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-#[table = "fruit"]
 pub struct Entity;
+
+impl EntityName for Entity {
+    fn table_name(&self) -> &str {
+        "fruit"
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
@@ -44,3 +49,5 @@ impl RelationTrait for Relation {
         panic!()
     }
 }
+
+impl ActiveModelBehavior for ActiveModel {}

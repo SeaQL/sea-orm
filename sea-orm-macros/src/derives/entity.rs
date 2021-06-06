@@ -17,7 +17,7 @@ fn get_entity_attr(attrs: &[Attribute]) -> Option<syn::Lit> {
 }
 
 pub fn expand_derive_entity(ident: Ident, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
-    let entity_name = match get_entity_attr(&attrs) {
+    let _entity_name = match get_entity_attr(&attrs) {
         Some(lit) => quote! { #lit },
         None => {
             let normalized = ident.to_string().to_snake_case();
@@ -26,17 +26,15 @@ pub fn expand_derive_entity(ident: Ident, attrs: Vec<Attribute>) -> syn::Result<
     };
 
     Ok(quote!(
-        impl sea_orm::EntityName for #ident {}
-
-        impl sea_orm::IdenStatic for #ident {
-            fn as_str(&self) -> &str {
-                #entity_name
-            }
-        }
-
         impl sea_orm::Iden for #ident {
             fn unquoted(&self, s: &mut dyn std::fmt::Write) {
                 write!(s, "{}", self.as_str()).unwrap();
+            }
+        }
+
+        impl sea_orm::IdenStatic for #ident {
+            fn as_str(&self) -> &str {
+                <Self as sea_orm::EntityName>::table_name(self)
             }
         }
 

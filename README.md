@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="docs/SeaQL logo dual.png" width="320"/>
+  <img src="docs/SeaORM banner.png"/>
 
   <h1>SeaORM</h1>
 
@@ -8,7 +8,7 @@
     <strong>An async ORM for Rust</strong>
   </p>
 
-  <sub>Built with ❤️ by 🌊🦀🐠</sub>
+  <sub>Built with 🔥 by 🌊🦀🐚</sub>
 
 </div>
 
@@ -17,7 +17,7 @@
 Inspired by ActiveRecord, Eloquent and TypeORM, SeaORM aims to provide you an intuitive and ergonomic 
 API to make working with databases in Rust a first-class experience.
 
-> This is an early WIP of SeaORM, and is not yet published. See [example](examples/sqlx-mysql/src/main.rs) for demo usage.
+> This is an early WIP of SeaORM, and is not yet published. See [example](examples/sqlx-mysql/src) for demo usage.
 
 ## Features
 

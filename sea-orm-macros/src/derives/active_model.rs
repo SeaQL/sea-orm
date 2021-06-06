@@ -11,7 +11,7 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
         }) => named.named,
         _ => {
             return Ok(quote_spanned! {
-                ident.span() => compile_error!("you can only derive DeriveModel on structs");
+                ident.span() => compile_error!("you can only derive DeriveActiveModel on structs");
             })
         }
     };
@@ -31,15 +31,25 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
     let ty: Vec<Type> = fields.into_iter().map(|Field { ty, .. }| ty).collect();
 
     Ok(quote!(
-        #[derive(Clone, Debug, Default)]
+        #[derive(Clone, Debug)]
         pub struct ActiveModel {
             #(pub #field: sea_orm::ActiveValue<#ty>),*
         }
 
-        impl sea_orm::ActiveModelOf<Entity> for ActiveModel {}
+        impl ActiveModel {
+            pub async fn save(self, db: &sea_orm::Database) -> Result<Self, sea_orm::ExecErr> {
+                sea_orm::save_active_model::<Self, Entity>(self, db).await
+            }
+        }
 
-        impl From<#ident> for ActiveModel {
-            fn from(m: #ident) -> Self {
+        impl Default for ActiveModel {
+            fn default() -> Self {
+                <Self as sea_orm::ActiveModelBehavior>::new()
+            }
+        }
+
+        impl From<<Entity as EntityTrait>::Model> for ActiveModel {
+            fn from(m: <Entity as EntityTrait>::Model) -> Self {
                 Self {
                     #(#field: sea_orm::unchanged_active_value_not_intended_for_public_use(m.#field)),*
                 }
@@ -51,25 +61,42 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
 
             fn take(&mut self, c: <Self::Entity as EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => std::mem::take(&mut self.#field).into_wrapped_value()),*
+                    #(<Self::Entity as EntityTrait>::Column::#name => std::mem::take(&mut self.#field).into_wrapped_value(),)*
+                    _ => sea_orm::ActiveValue::unset(),
                 }
             }
 
             fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.clone().into_wrapped_value()),*
+                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.clone().into_wrapped_value(),)*
+                    _ => sea_orm::ActiveValue::unset(),
                 }
             }
 
             fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: sea_orm::Value) {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::set(v.unwrap())),*
+                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::set(v.unwrap()),)*
+                    _ => panic!("This ActiveModel does not have this field"),
                 }
             }
 
             fn unset(&mut self, c: <Self::Entity as EntityTrait>::Column) {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::unset()),*
+                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::unset(),)*
+                    _ => {},
+                }
+            }
+
+            fn is_unset(&self, c: <Self::Entity as EntityTrait>::Column) -> bool {
+                match c {
+                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.is_unset(),)*
+                    _ => panic!("This ActiveModel does not have this field"),
+                }
+            }
+
+            fn default() -> Self {
+                Self {
+                    #(#field: sea_orm::ActiveValue::unset()),*
                 }
             }
         }

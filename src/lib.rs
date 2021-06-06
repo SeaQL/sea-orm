@@ -13,7 +13,8 @@ pub use entity::*;
 pub use query::*;
 
 pub use sea_orm_macros::{
-    DeriveActiveModel, DeriveColumn, DeriveEntity, DeriveModel, DerivePrimaryKey, FromQueryResult,
+    DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveEntity, DeriveModel,
+    DerivePrimaryKey, FromQueryResult,
 };
 pub use sea_query;
 pub use sea_query::Iden;

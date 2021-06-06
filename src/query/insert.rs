@@ -1,4 +1,4 @@
-use crate::{ActiveModelOf, ActiveModelTrait, EntityTrait, Iterable, QueryTrait};
+use crate::{ActiveModelTrait, EntityTrait, Iterable, QueryTrait};
 use core::marker::PhantomData;
 use sea_query::{InsertStatement, IntoIden};
 
@@ -12,18 +12,23 @@ where
     pub(crate) model: PhantomData<A>,
 }
 
+impl<A> Default for Insert<A>
+where
+    A: ActiveModelTrait,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<A> Insert<A>
 where
     A: ActiveModelTrait,
 {
-    pub fn new<E>() -> Self
-    where
-        E: EntityTrait,
-        A: ActiveModelOf<E>,
-    {
+    pub fn new() -> Self {
         Self {
             query: InsertStatement::new()
-                .into_table(E::default().into_iden())
+                .into_table(A::Entity::default().into_iden())
                 .to_owned(),
             columns: Vec::new(),
             model: PhantomData,
@@ -40,12 +45,13 @@ where
         let columns_empty = self.columns.is_empty();
         for (idx, col) in <A::Entity as EntityTrait>::Column::iter().enumerate() {
             let av = am.take(col);
+            let av_has_val = av.is_set() || av.is_unchanged();
             if columns_empty {
-                self.columns.push(av.is_set());
-            } else if self.columns[idx] != av.is_set() {
+                self.columns.push(av_has_val);
+            } else if self.columns[idx] != av_has_val {
                 panic!("columns mismatch");
             }
-            if !av.is_unset() {
+            if av_has_val {
                 columns.push(col);
                 values.push(av.into_value());
             }

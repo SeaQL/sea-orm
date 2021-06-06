@@ -1,10 +1,12 @@
 mod executor;
 mod insert;
 mod select;
+mod update;
 
 pub use executor::*;
 pub use insert::*;
 pub use select::*;
+pub use update::*;
 
 use crate::{DatabaseConnection, QueryResult, Statement, TypeErr};
 use async_trait::async_trait;
@@ -21,7 +23,7 @@ pub trait Connector {
 pub trait Connection {
     async fn execute(&self, stmt: Statement) -> Result<ExecResult, ExecErr>;
 
-    async fn query_one(&self, stmt: Statement) -> Result<QueryResult, QueryErr>;
+    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, QueryErr>;
 
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr>;
 }
