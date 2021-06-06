@@ -18,7 +18,10 @@ impl FromQueryResult for JsonValue {
                     macro_rules! match_mysql_type {
                         ( $type: ty ) => {
                             if <$type as Type<MySql>>::type_info().eq(col_type) {
-                                map.insert(col.to_owned(), json!(res.try_get::<Option<$type>>(pre, &col)?));
+                                map.insert(
+                                    col.to_owned(),
+                                    json!(res.try_get::<Option<$type>>(pre, &col)?),
+                                );
                                 continue;
                             }
                         };

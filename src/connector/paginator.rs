@@ -1,8 +1,8 @@
 use crate::{Connection, Database, QueryErr, SelectorTrait};
-use futures::Stream;
 use async_stream::stream;
-use std::{marker::PhantomData, pin::Pin};
+use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
+use std::{marker::PhantomData, pin::Pin};
 
 pub type PinBoxStream<'db, Item> = Pin<Box<dyn Stream<Item = Item> + 'db>>;
 
@@ -23,7 +23,9 @@ where
     S: SelectorTrait + 'db,
 {
     pub async fn fetch_page(&mut self, page: usize) -> Result<Vec<S::Item>, QueryErr> {
-        self.query.limit(self.page_size as u64).offset((self.page_size * page) as u64);
+        self.query
+            .limit(self.page_size as u64)
+            .offset((self.page_size * page) as u64);
         let builder = self.db.get_query_builder_backend();
         let stmt = self.query.build(builder).into();
         let rows = self.db.get_connection().query_all(stmt).await?;
@@ -45,7 +47,7 @@ where
             .expr(Expr::cust("COUNT(*) AS num_rows"))
             .from_subquery(
                 self.query.clone().reset_limit().reset_offset().to_owned(),
-                Alias::new("sub_query")
+                Alias::new("sub_query"),
             )
             .build(builder)
             .into();
@@ -53,7 +55,9 @@ where
             Some(res) => res,
             None => return Ok(0),
         };
-        let num_rows = result.try_get::<i32>("", "num_rows").map_err(|_e| QueryErr)? as usize;
+        let num_rows = result
+            .try_get::<i32>("", "num_rows")
+            .map_err(|_e| QueryErr)? as usize;
         let num_pages = (num_rows / self.page_size) + (num_rows % self.page_size > 0) as usize;
         Ok(num_pages)
     }
@@ -65,11 +69,7 @@ where
     pub async fn fetch_and_next(&mut self) -> Result<Option<Vec<S::Item>>, QueryErr> {
         let vec = self.fetch().await?;
         self.next();
-        let opt = if !vec.is_empty() {
-            Some(vec)
-        } else {
-            None
-        };
+        let opt = if !vec.is_empty() { Some(vec) } else { None };
         Ok(opt)
     }
 

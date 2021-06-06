@@ -1,4 +1,7 @@
-use crate::{Connection, Database, EntityTrait, FromQueryResult, JsonValue, Paginator, QueryErr, QueryResult, Select, SelectTwo, Statement, TypeErr, query::combine};
+use crate::{
+    query::combine, Connection, Database, EntityTrait, FromQueryResult, JsonValue, Paginator,
+    QueryErr, QueryResult, Select, SelectTwo, Statement, TypeErr,
+};
 use sea_query::{QueryBuilder, SelectStatement};
 use std::marker::PhantomData;
 
@@ -89,7 +92,11 @@ where
         self.into_model::<E::Model>().all(db).await
     }
 
-    pub fn paginate<'db>(self, db: &'db Database, page_size: usize) -> Paginator<'db, SelectModel<E::Model>> {
+    pub fn paginate<'db>(
+        self,
+        db: &'db Database,
+        page_size: usize,
+    ) -> Paginator<'db, SelectModel<E::Model>> {
         self.into_model::<E::Model>().paginate(db, page_size)
     }
 }
