@@ -66,6 +66,10 @@ where
         self.page += 1;
     }
 
+    pub fn cur_page(&self) -> usize {
+        self.page
+    }
+
     pub async fn fetch_and_next(&mut self) -> Result<Option<Vec<S::Item>>, QueryErr> {
         let vec = self.fetch().await?;
         self.next();
