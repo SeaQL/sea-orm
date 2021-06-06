@@ -86,15 +86,15 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, fruit};
-    use crate::{QueryTrait, Update, Val};
+    use crate::{QueryTrait, Update, ActiveValue};
     use sea_query::PostgresQueryBuilder;
 
     #[test]
     fn update_1() {
         assert_eq!(
             Update::<cake::ActiveModel>::new(cake::ActiveModel {
-                id: Val::set(1),
-                name: Val::set("Apple Pie".to_owned()),
+                id: ActiveValue::set(1),
+                name: ActiveValue::set("Apple Pie".to_owned()),
             })
             .build(PostgresQueryBuilder)
             .to_string(),
@@ -106,9 +106,9 @@ mod tests {
     fn update_2() {
         assert_eq!(
             Update::<fruit::ActiveModel>::new(fruit::ActiveModel {
-                id: Val::set(1),
-                name: Val::set("Orange".to_owned()),
-                cake_id: Val::unset(),
+                id: ActiveValue::set(1),
+                name: ActiveValue::set("Orange".to_owned()),
+                cake_id: ActiveValue::unset(),
             })
             .build(PostgresQueryBuilder)
             .to_string(),
@@ -120,9 +120,9 @@ mod tests {
     fn update_3() {
         assert_eq!(
             Update::<fruit::ActiveModel>::new(fruit::ActiveModel {
-                id: Val::set(2),
-                name: Val::unchanged("Apple".to_owned()),
-                cake_id: Val::set(Some(3)),
+                id: ActiveValue::set(2),
+                name: ActiveValue::unchanged("Apple".to_owned()),
+                cake_id: ActiveValue::set(Some(3)),
             })
             .build(PostgresQueryBuilder)
             .to_string(),

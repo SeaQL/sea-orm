@@ -106,7 +106,7 @@ pub trait EntityTrait: EntityName {
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// let apple = cake::ActiveModel {
-    ///     name: Val::set("Apple Pie".to_owned()),
+    ///     name: Set("Apple Pie".to_owned()),
     ///     ..Default::default()
     /// };
     /// assert_eq!(
@@ -121,11 +121,11 @@ pub trait EntityTrait: EntityName {
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// let apple = cake::ActiveModel {
-    ///     name: Val::set("Apple Pie".to_owned()),
+    ///     name: Set("Apple Pie".to_owned()),
     ///     ..Default::default()
     /// };
     /// let orange = cake::ActiveModel {
-    ///     name: Val::set("Orange Scone".to_owned()),
+    ///     name: Set("Orange Scone".to_owned()),
     ///     ..Default::default()
     /// };
     /// assert_eq!(
@@ -153,7 +153,7 @@ pub trait EntityTrait: EntityName {
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// let apple = cake::ActiveModel {
-    ///     name: Val::set("Apple Pie".to_owned()),
+    ///     name: Set("Apple Pie".to_owned()),
     ///     ..Default::default()
     /// };
     /// assert_eq!(
@@ -174,11 +174,11 @@ pub trait EntityTrait: EntityName {
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// let apple = cake::ActiveModel {
-    ///     name: Val::set("Apple Pie".to_owned()),
+    ///     name: Set("Apple Pie".to_owned()),
     ///     ..Default::default()
     /// };
     /// let orange = cake::ActiveModel {
-    ///     name: Val::set("Orange Scone".to_owned()),
+    ///     name: Set("Orange Scone".to_owned()),
     ///     ..Default::default()
     /// };
     /// assert_eq!(
@@ -200,8 +200,8 @@ pub trait EntityTrait: EntityName {
     /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::PostgresQueryBuilder};
     ///
     /// let orange = fruit::ActiveModel {
-    ///     id: Val::set(1),
-    ///     name: Val::set("Orange".to_owned()),
+    ///     id: Set(1),
+    ///     name: Set("Orange".to_owned()),
     ///     ..Default::default()
     /// };
     /// assert_eq!(

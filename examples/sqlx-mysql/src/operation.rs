@@ -17,7 +17,7 @@ pub async fn all_about_operation(db: &Database) -> Result<(), ExecErr> {
 
 pub async fn insert_and_update(db: &Database) -> Result<(), ExecErr> {
     let pear = fruit::ActiveModel {
-        name: Val::set("pear".to_owned()),
+        name: Set("pear".to_owned()),
         ..Default::default()
     };
     let res = Fruit::insert(pear).exec(db).await?;
@@ -34,7 +34,7 @@ pub async fn insert_and_update(db: &Database) -> Result<(), ExecErr> {
     println!("Pear: {:?}\n", pear);
 
     let mut pear: fruit::ActiveModel = pear.unwrap().into();
-    pear.name = Val::set("Sweet pear".to_owned());
+    pear.name = Set("Sweet pear".to_owned());
 
     let res = Fruit::update(pear).exec(db).await?;
 
@@ -46,7 +46,7 @@ pub async fn insert_and_update(db: &Database) -> Result<(), ExecErr> {
 
 pub async fn save_active_model(db: &Database) -> Result<(), ExecErr> {
     let banana = fruit::ActiveModel {
-        name: Val::set("banana".to_owned()),
+        name: Set("banana".to_owned()),
         ..Default::default()
     };
     let mut banana = banana.save(db).await?;
@@ -54,7 +54,7 @@ pub async fn save_active_model(db: &Database) -> Result<(), ExecErr> {
     println!();
     println!("Inserted: {:?}\n", banana);
 
-    banana.name = Val::set("banana banana".to_owned());
+    banana.name = Set("banana banana".to_owned());
 
     let banana = banana.save(db).await?;
 
@@ -79,8 +79,8 @@ mod form {
 
 async fn save_custom_active_model(db: &Database) -> Result<(), ExecErr> {
     let pineapple = form::ActiveModel {
-        id: Val::unset(),
-        name: Val::set("pineapple".to_owned()),
+        id: Unset(None),
+        name: Set("pineapple".to_owned()),
     };
 
     let pineapple = pineapple.save(db).await?;
