@@ -46,7 +46,7 @@ pub async fn insert_and_update(db: &Database) -> Result<(), ExecErr> {
 
 pub async fn save_active_model(db: &Database) -> Result<(), ExecErr> {
     let banana = fruit::ActiveModel {
-        name: Set("banana".to_owned()),
+        name: Set("Banana".to_owned()),
         ..Default::default()
     };
     let mut banana = banana.save(db).await?;
@@ -54,7 +54,7 @@ pub async fn save_active_model(db: &Database) -> Result<(), ExecErr> {
     println!();
     println!("Inserted: {:?}\n", banana);
 
-    banana.name = Set("banana banana".to_owned());
+    banana.name = Set("Banana Mongo".to_owned());
 
     let banana = banana.save(db).await?;
 
@@ -80,7 +80,7 @@ mod form {
 async fn save_custom_active_model(db: &Database) -> Result<(), ExecErr> {
     let pineapple = form::ActiveModel {
         id: Unset(None),
-        name: Set("pineapple".to_owned()),
+        name: Set("Pineapple".to_owned()),
     };
 
     let pineapple = pineapple.save(db).await?;
