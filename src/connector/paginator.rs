@@ -24,12 +24,13 @@ where
 {
     /// Fetch a specific page
     pub async fn fetch_page(&self, page: usize) -> Result<Vec<S::Item>, QueryErr> {
-        self.query
+        let query = self.query
             .clone()
             .limit(self.page_size as u64)
-            .offset((self.page_size * page) as u64);
+            .offset((self.page_size * page) as u64)
+            .to_owned();
         let builder = self.db.get_query_builder_backend();
-        let stmt = self.query.build(builder).into();
+        let stmt = query.build(builder).into();
         let rows = self.db.get_connection().query_all(stmt).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
