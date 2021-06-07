@@ -95,7 +95,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::cake;
-    use crate::{Insert, QueryTrait, Val};
+    use crate::{ActiveValue, Insert, QueryTrait};
     use sea_query::PostgresQueryBuilder;
 
     #[test]
@@ -103,8 +103,8 @@ mod tests {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
                 .one(cake::ActiveModel {
-                    id: Val::unset(),
-                    name: Val::set("Apple Pie".to_owned()),
+                    id: ActiveValue::unset(),
+                    name: ActiveValue::set("Apple Pie".to_owned()),
                 })
                 .build(PostgresQueryBuilder)
                 .to_string(),
@@ -117,8 +117,8 @@ mod tests {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
                 .one(cake::ActiveModel {
-                    id: Val::set(1),
-                    name: Val::set("Apple Pie".to_owned()),
+                    id: ActiveValue::set(1),
+                    name: ActiveValue::set("Apple Pie".to_owned()),
                 })
                 .build(PostgresQueryBuilder)
                 .to_string(),
@@ -164,12 +164,12 @@ mod tests {
     #[should_panic(expected = "columns mismatch")]
     fn insert_5() {
         let apple = cake::ActiveModel {
-            name: Val::set("Apple".to_owned()),
+            name: ActiveValue::set("Apple".to_owned()),
             ..Default::default()
         };
         let orange = cake::ActiveModel {
-            id: Val::set(2),
-            name: Val::set("Orange".to_owned()),
+            id: ActiveValue::set(2),
+            name: ActiveValue::set("Orange".to_owned()),
         };
         assert_eq!(
             Insert::<cake::ActiveModel>::new()

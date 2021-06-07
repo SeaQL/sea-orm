@@ -10,3 +10,6 @@ sea-orm = { path = "../../", features = [ "sqlx-mysql", "runtime-async-std-nativ
 # sea-query = { path = "../../../sea-query" }
 strum = { version = "^0.20", features = [ "derive" ] }
 serde_json = { version = "^1" }
+futures = { version = "^0.3" }
+async-stream = { version = "^0.3" }
+futures-util = { version = "^0.3" }

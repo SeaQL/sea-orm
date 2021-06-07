@@ -24,6 +24,14 @@ INSERT INTO `fruit` (`id`, `name`, `cake_id`) VALUES
   (2, 'Rasberry', 1),
   (3, 'Strawberry', 2);
 
+INSERT INTO `fruit` (`name`, `cake_id`) VALUES
+  ('Apple', NULL),
+  ('Banana', NULL),
+  ('Cherry', NULL),
+  ('Lemon', NULL),
+  ('Orange', NULL),
+  ('Pineapple', NULL);
+
 DROP TABLE IF EXISTS `filling`;
 
 CREATE TABLE `filling` (

@@ -10,7 +10,21 @@ where
     state: ActiveValueState,
 }
 
-pub type Val<V> = ActiveValue<V>;
+#[allow(non_snake_case)]
+pub fn Set<V>(v: V) -> ActiveValue<V>
+where
+    V: Into<Value> + Default,
+{
+    ActiveValue::set(v)
+}
+
+#[allow(non_snake_case)]
+pub fn Unset<V>(_: Option<bool>) -> ActiveValue<V>
+where
+    V: Into<Value> + Default,
+{
+    ActiveValue::unset()
+}
 
 #[derive(Clone, Debug)]
 enum ActiveValueState {
