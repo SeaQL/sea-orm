@@ -198,7 +198,8 @@ where
     }
 }
 
-/// Insert the model if primary key is unset, update otherwise
+/// Insert the model if primary key is unset, update otherwise.
+/// Only works if the entity has auto increment primary key.
 pub async fn save_active_model<A, E>(mut am: A, db: &Database) -> Result<A, ExecErr>
 where
     A: ActiveModelBehavior + ActiveModelTrait<Entity = E> + From<E::Model>,
@@ -229,6 +230,7 @@ where
 {
     let exec = E::insert(am).exec(db);
     let res = exec.await?;
+    // TODO: if the entity does not have auto increment primary key, then last_insert_id is a wrong value
     if res.last_insert_id != 0 {
         let find = E::find_by(res.last_insert_id).one(db);
         let res = find.await;
