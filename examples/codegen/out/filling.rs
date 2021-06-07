@@ -12,8 +12,8 @@ impl EntityName for Entity {
 
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
-    pub id: some_rust_type,
-    pub name: some_rust_type,
+    pub id: String,
+    pub name: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -36,8 +36,10 @@ impl ColumnTrait for Column {
     type EntityName = Entity;
     fn def(&self) -> ColumnType {
         match self {
-            Self::Id => ColumnType::Custom(s),
-            Self::Name => ColumnType::Custom(s),
+            Self::Id => ColumnType::Custom(std::rc::Rc::new(sea_query::Alias::new("INT(11)"))),
+            Self::Name => {
+                ColumnType::Custom(std::rc::Rc::new(sea_query::Alias::new("VARCHAR(255)")))
+            }
         }
     }
 }
@@ -45,7 +47,7 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::CakeFilling => Entity::has_Many(super::cake_filling::Entity)
+            Self::CakeFilling => Entity::has_many(super::cake_filling::Entity)
                 .from(Column::Id)
                 .to(super::cake_filling::Column::FillingId)
                 .into(),

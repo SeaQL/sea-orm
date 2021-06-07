@@ -4,7 +4,6 @@ use sea_orm::{ColumnType, RelationType};
 use sea_query::{ColumnSpec, TableStatement};
 use sea_schema::mysql::{def::Schema, discovery::SchemaDiscovery};
 use sqlx::MySqlPool;
-use syn::{Fields, Variant, parse_quote};
 use std::{collections::HashMap, fs, io::{self, Write}, mem::swap, path::Path, process::Command};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
@@ -38,7 +37,7 @@ impl EntityGenerator {
                 TableStatement::Create(stmt) => stmt,
                 _ => panic!("TableStatement should be create"),
             };
-            println!("{:#?}", table_create);
+            // println!("{:#?}", table_create);
             let table_name = match table_create.get_table_name() {
                 Some(s) => s,
                 None => panic!("Table name should not be empty"),
@@ -111,12 +110,12 @@ impl EntityGenerator {
                 }
             }
         }
-        println!();
-        println!("entities:");
-        println!("{:#?}", self.entities);
-        println!();
-        println!("inverse_relations:");
-        println!("{:#?}", self.inverse_relations);
+        // println!();
+        // println!("entities:");
+        // println!("{:#?}", self.entities);
+        // println!();
+        // println!("inverse_relations:");
+        // println!("{:#?}", self.inverse_relations);
         self
     }
 
@@ -146,7 +145,6 @@ impl EntityGenerator {
 
     pub fn generate_code(entity: &Entity) -> Vec<TokenStream> {
         let table_name_snake = entity.table_name.to_snake_case();
-        let table_name_camel = entity.table_name.to_camel_case();
 
         let model_field: Vec<Ident> = entity.columns
             .iter()
@@ -156,9 +154,31 @@ impl EntityGenerator {
             .collect();
 
         let model_field_type: Vec<Ident> = entity.columns
-            .iter()
+            .clone()
+            .into_iter()
             .map(|col| {
-                format_ident!("{}", col.rs_type)
+                match col.col_type {
+                    ColumnType::Char(_) => format_ident!("String"),
+                    ColumnType::String(_) => format_ident!("String"),
+                    ColumnType::Text => format_ident!("String"),
+                    ColumnType::TinyInteger(_) => format_ident!("u32"),
+                    ColumnType::SmallInteger(_) => format_ident!("u32"),
+                    ColumnType::Integer(_) => format_ident!("u32"),
+                    ColumnType::BigInteger(_) => format_ident!("u32"),
+                    ColumnType::Float(_) => format_ident!("f32"),
+                    ColumnType::Double(_) => format_ident!("f32"),
+                    ColumnType::Decimal(_) => format_ident!("f32"),
+                    ColumnType::DateTime(_) => format_ident!("String"),
+                    ColumnType::Timestamp(_) => format_ident!("String"),
+                    ColumnType::Time(_) => format_ident!("String"),
+                    ColumnType::Date => format_ident!("String"),
+                    ColumnType::Binary(_) => format_ident!("Vec<u8>"),
+                    ColumnType::Boolean => format_ident!("bool"),
+                    ColumnType::Money(_) => format_ident!("f32"),
+                    ColumnType::Json => format_ident!("String"),
+                    ColumnType::JsonBinary => format_ident!("String"),
+                    ColumnType::Custom(_) => format_ident!("String"),
+                }
             })
             .collect();
 
@@ -196,26 +216,71 @@ impl EntityGenerator {
             .into_iter()
             .map(|col| {
                 match col.col_type {
-                    ColumnType::Char(s) => quote!{ ColumnType::Char(s) },
-                    ColumnType::String(s) => quote!{ ColumnType::String(s) },
+                    ColumnType::Char(s) => match s {
+                        Some(s) => quote!{ ColumnType::Char(#s) },
+                        None => quote!{ ColumnType::Char(None) },
+                    },
+                    ColumnType::String(s) => match s {
+                        Some(s) => quote!{ ColumnType::String(#s) },
+                        None => quote!{ ColumnType::String(None) },
+                    },
                     ColumnType::Text => quote!{ ColumnType::Text },
-                    ColumnType::TinyInteger(s) => quote!{ ColumnType::TinyInteger(s) },
-                    ColumnType::SmallInteger(s) => quote!{ ColumnType::SmallInteger(s) },
-                    ColumnType::Integer(s) => quote!{ ColumnType::Integer(s) },
-                    ColumnType::BigInteger(s) => quote!{ ColumnType::BigInteger(s) },
-                    ColumnType::Float(s) => quote!{ ColumnType::Float(s) },
-                    ColumnType::Double(s) => quote!{ ColumnType::Double(s) },
-                    ColumnType::Decimal(s) => quote!{ ColumnType::Decimal(s) },
-                    ColumnType::DateTime(s) => quote!{ ColumnType::DateTime(s) },
-                    ColumnType::Timestamp(s) => quote!{ ColumnType::Timestamp(s) },
-                    ColumnType::Time(s) => quote!{ ColumnType::Time(s) },
+                    ColumnType::TinyInteger(s) => match s {
+                        Some(s) => quote!{ ColumnType::TinyInteger(#s) },
+                        None => quote!{ ColumnType::TinyInteger(None) },
+                    },
+                    ColumnType::SmallInteger(s) => match s {
+                        Some(s) => quote!{ ColumnType::SmallInteger(#s) },
+                        None => quote!{ ColumnType::SmallInteger(None) },
+                    },
+                    ColumnType::Integer(s) => match s {
+                        Some(s) => quote!{ ColumnType::Integer(#s) },
+                        None => quote!{ ColumnType::Integer(None) },
+                    },
+                    ColumnType::BigInteger(s) => match s {
+                        Some(s) => quote!{ ColumnType::BigInteger(#s) },
+                        None => quote!{ ColumnType::BigInteger(None) },
+                    },
+                    ColumnType::Float(s) => match s {
+                        Some(s) => quote!{ ColumnType::Float(#s) },
+                        None => quote!{ ColumnType::Float(None) },
+                    },
+                    ColumnType::Double(s) => match s {
+                        Some(s) => quote!{ ColumnType::Double(#s) },
+                        None => quote!{ ColumnType::Double(None) },
+                    },
+                    ColumnType::Decimal(s) => match s {
+                        Some((s1, s2)) => quote!{ ColumnType::Decimal((#s1, #s2)) },
+                        None => quote!{ ColumnType::Decimal(None) },
+                    },
+                    ColumnType::DateTime(s) => match s {
+                        Some(s) => quote!{ ColumnType::DateTime(#s) },
+                        None => quote!{ ColumnType::DateTime(None) },
+                    },
+                    ColumnType::Timestamp(s) => match s {
+                        Some(s) => quote!{ ColumnType::Timestamp(#s) },
+                        None => quote!{ ColumnType::Timestamp(None) },
+                    },
+                    ColumnType::Time(s) => match s {
+                        Some(s) => quote!{ ColumnType::Time(#s) },
+                        None => quote!{ ColumnType::Time(None) },
+                    },
                     ColumnType::Date => quote!{ ColumnType::Date },
-                    ColumnType::Binary(s) => quote!{ ColumnType::Binary(s) },
+                    ColumnType::Binary(s) => match s {
+                        Some(s) => quote!{ ColumnType::Binary(#s) },
+                        None => quote!{ ColumnType::Binary(None) },
+                    },
                     ColumnType::Boolean => quote!{ ColumnType::Boolean },
-                    ColumnType::Money(s) => quote!{ ColumnType::Money(s) },
+                    ColumnType::Money(s) => match s {
+                        Some((s1, s2)) => quote!{ ColumnType::Money((#s1, #s2)) },
+                        None => quote!{ ColumnType::Money(None) },
+                    },
                     ColumnType::Json => quote!{ ColumnType::Json },
                     ColumnType::JsonBinary => quote!{ ColumnType::JsonBinary },
-                    ColumnType::Custom(s) => quote!{ ColumnType::Custom(s) },
+                    ColumnType::Custom(s) => {
+                        let s = s.to_string();
+                        quote!{ ColumnType::Custom(std::rc::Rc::new(sea_query::Alias::new(#s))) }
+                    }
                 }
             })
             .collect();
@@ -225,7 +290,7 @@ impl EntityGenerator {
             .map(|rel| {
                 match rel.rel_type {
                     RelationType::HasOne => format_ident!("has_one"),
-                    RelationType::HasMany => format_ident!("has_Many"),
+                    RelationType::HasMany => format_ident!("has_many"),
                 }
             })
             .collect();
