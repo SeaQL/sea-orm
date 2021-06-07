@@ -2,8 +2,7 @@ use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryTrait, SelectH
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{Iden, IntoColumnRef, IntoIden, SelectStatement, SimpleExpr};
-use std::rc::Rc;
+use sea_query::{DynIden, IntoColumnRef, IntoIden, SeaRc, SelectStatement, SimpleExpr};
 
 #[derive(Clone, Debug)]
 pub struct Select<E>
@@ -103,8 +102,8 @@ where
         self
     }
 
-    fn column_list(&self) -> Vec<(Rc<dyn Iden>, E::Column)> {
-        let table = Rc::new(E::default()) as Rc<dyn Iden>;
+    fn column_list(&self) -> Vec<(DynIden, E::Column)> {
+        let table = SeaRc::new(E::default()) as DynIden;
         E::Column::iter().map(|col| (table.clone(), col)).collect()
     }
 

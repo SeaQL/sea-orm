@@ -1,12 +1,11 @@
 use crate::IdenStatic;
-use sea_query::{Iden, IntoIden};
-use std::rc::Rc;
+use sea_query::{DynIden, IntoIden};
 
 #[derive(Debug, Clone)]
 pub enum Identity {
-    Unary(Rc<dyn Iden>),
-    Binary(Rc<dyn Iden>, Rc<dyn Iden>),
-    // Ternary(Rc<dyn Iden>, Rc<dyn Iden>, Rc<dyn Iden>),
+    Unary(DynIden),
+    Binary(DynIden, DynIden),
+    // Ternary(DynIden, DynIden, DynIden),
 }
 
 pub trait IntoIdentity {

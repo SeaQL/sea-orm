@@ -1,8 +1,7 @@
 use crate::{EntityTrait, Identity, IntoIdentity, Iterable, Select, SelectHelper};
 use core::marker::PhantomData;
-use sea_query::{Iden, IntoIden, JoinType};
+use sea_query::{DynIden, IntoIden, JoinType};
 use std::fmt::Debug;
-use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum RelationType {
@@ -31,8 +30,8 @@ where
 
 pub struct RelationDef {
     pub rel_type: RelationType,
-    pub from_tbl: Rc<dyn Iden>,
-    pub to_tbl: Rc<dyn Iden>,
+    pub from_tbl: DynIden,
+    pub to_tbl: DynIden,
     pub from_col: Identity,
     pub to_col: Identity,
 }
@@ -44,8 +43,8 @@ where
 {
     entities: PhantomData<(E, R)>,
     rel_type: RelationType,
-    from_tbl: Rc<dyn Iden>,
-    to_tbl: Rc<dyn Iden>,
+    from_tbl: DynIden,
+    to_tbl: DynIden,
     from_col: Option<Identity>,
     to_col: Option<Identity>,
 }

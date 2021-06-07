@@ -24,7 +24,8 @@ where
 {
     /// Fetch a specific page
     pub async fn fetch_page(&self, page: usize) -> Result<Vec<S::Item>, QueryErr> {
-        let query = self.query
+        let query = self
+            .query
             .clone()
             .limit(self.page_size as u64)
             .offset((self.page_size * page) as u64)

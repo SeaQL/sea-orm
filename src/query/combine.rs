@@ -1,8 +1,7 @@
 use crate::{EntityTrait, IntoSimpleExpr, Iterable, QueryTrait, Select, SelectTwo};
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{Alias, ColumnRef, Iden, SelectExpr, SelectStatement, SimpleExpr};
-use std::rc::Rc;
+use sea_query::{Alias, ColumnRef, Iden, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
 
 pub const SELECT_A: &str = "A_";
 pub const SELECT_B: &str = "B_";
@@ -16,7 +15,7 @@ where
             match &sel.alias {
                 Some(alias) => {
                     let alias = format!("{}{}", pre, alias.to_string().as_str());
-                    sel.alias = Some(Rc::new(Alias::new(&alias)));
+                    sel.alias = Some(SeaRc::new(Alias::new(&alias)));
                 }
                 None => {
                     let col = match &sel.expr {
@@ -27,7 +26,7 @@ where
                         _ => panic!("cannot apply alias for expr other than Column"),
                     };
                     let alias = format!("{}{}", pre, col.to_string().as_str());
-                    sel.alias = Some(Rc::new(Alias::new(&alias)));
+                    sel.alias = Some(SeaRc::new(Alias::new(&alias)));
                 }
             };
         });
@@ -61,7 +60,7 @@ where
             let alias = format!("{}{}", SELECT_B, col.to_string().as_str());
             self.query.expr(SelectExpr {
                 expr: col.into_simple_expr(),
-                alias: Some(Rc::new(Alias::new(&alias))),
+                alias: Some(SeaRc::new(Alias::new(&alias))),
             });
         }
         self

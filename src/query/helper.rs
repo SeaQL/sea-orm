@@ -3,8 +3,7 @@ use crate::{
     RelationDef,
 };
 use sea_query::{Alias, Expr, IntoCondition, SelectExpr, SelectStatement, SimpleExpr};
-pub use sea_query::{Condition, ConditionalStatement, JoinType, Order};
-use std::rc::Rc;
+pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, SeaRc};
 
 pub trait SelectHelper: Sized {
     fn query(&mut self) -> &mut SelectStatement;
@@ -55,7 +54,7 @@ pub trait SelectHelper: Sized {
     {
         self.query().expr(SelectExpr {
             expr: col.into_simple_expr(),
-            alias: Some(Rc::new(Alias::new(alias))),
+            alias: Some(SeaRc::new(Alias::new(alias))),
         });
         self
     }
@@ -243,11 +242,11 @@ fn join_condition(rel: RelationDef) -> SimpleExpr {
 
     match (owner_keys, foreign_keys) {
         (Identity::Unary(o1), Identity::Unary(f1)) => {
-            Expr::tbl(Rc::clone(&from_tbl), o1).equals(Rc::clone(&to_tbl), f1)
+            Expr::tbl(SeaRc::clone(&from_tbl), o1).equals(SeaRc::clone(&to_tbl), f1)
         }
-        (Identity::Binary(o1, o2), Identity::Binary(f1, f2)) => Expr::tbl(Rc::clone(&from_tbl), o1)
-            .equals(Rc::clone(&to_tbl), f1)
-            .and(Expr::tbl(Rc::clone(&from_tbl), o2).equals(Rc::clone(&to_tbl), f2)),
+        (Identity::Binary(o1, o2), Identity::Binary(f1, f2)) => Expr::tbl(SeaRc::clone(&from_tbl), o1)
+            .equals(SeaRc::clone(&to_tbl), f1)
+            .and(Expr::tbl(SeaRc::clone(&from_tbl), o2).equals(SeaRc::clone(&to_tbl), f2)),
         _ => panic!("Owner key and foreign key mismatch"),
     }
 }
