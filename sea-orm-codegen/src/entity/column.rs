@@ -5,5 +5,4 @@ pub struct Column {
     pub(crate) name: String,
     pub(crate) rs_type: String,
     pub(crate) col_type: ColumnType,
-    pub(crate) is_primary_key: bool,
 }

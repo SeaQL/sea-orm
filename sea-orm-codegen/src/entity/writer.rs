@@ -1,146 +1,22 @@
-use crate::{Column, Entity, Relation};
+use crate::Entity;
 use heck::{SnakeCase, CamelCase};
 use sea_orm::{ColumnType, RelationType};
-use sea_query::{ColumnSpec, TableStatement};
-use sea_schema::mysql::{def::Schema, discovery::SchemaDiscovery};
-use sqlx::MySqlPool;
-use std::{collections::HashMap, fs, io::{self, Write}, mem::swap, path::Path, process::Command};
+use std::{fs, io::{self, Write}, path::Path, process::Command};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 
 #[derive(Clone, Debug)]
-pub struct EntityGenerator {
+pub struct EntityWriter {
     pub(crate) entities: Vec<Entity>,
-    pub(crate) inverse_relations: HashMap<String, Vec<Relation>>,
 }
 
-impl EntityGenerator {
-    pub fn new() -> Self {
-        Self {
-            entities: Vec::new(),
-            inverse_relations: HashMap::new(),
-        }
-    }
-
-    pub async fn discover(uri: &str, schema: &str) -> Schema {
-        let connection = MySqlPool::connect(uri).await.unwrap();
-        let schema_discovery = SchemaDiscovery::new(connection, schema);
-        schema_discovery.discover().await
-    }
-
-    pub async fn parse(mut self, uri: &str, schema: &str) -> Self {
-        let schema = Self::discover(uri, schema).await;
-        for table_ref in schema.tables.iter() {
-            let table_stmt = table_ref.write();
-            // TODO: why return TableStatement?
-            let table_create = match table_stmt {
-                TableStatement::Create(stmt) => stmt,
-                _ => panic!("TableStatement should be create"),
-            };
-            // println!("{:#?}", table_create);
-            let table_name = match table_create.get_table_name() {
-                Some(s) => s,
-                None => panic!("Table name should not be empty"),
-            };
-            let columns = table_create.get_columns()
-                .iter()
-                .map(|col| {
-                    let name = col.get_column_name();
-                    let rs_type = "some_rust_type".to_string();
-                    let col_type = match col.get_column_type() {
-                        Some(ty) => ty.clone(),
-                        None => panic!("ColumnType should not be empty"),
-                    };
-                    let is_primary_key = col.get_column_spec()
-                        .iter()
-                        .find(|s| {
-                            match s {
-                                ColumnSpec::PrimaryKey => true,
-                                _ => false,
-                            }
-                        })
-                        .is_some();
-                    Column {
-                        name,
-                        rs_type,
-                        col_type,
-                        is_primary_key,
-                    }
-                })
-                .collect();
-            let relations = table_create.get_foreign_key_create_stmts()
-                .iter()
-                .map(|fk_stmt| fk_stmt.get_foreign_key())
-                .map(|fk| {
-                    let ref_table = match fk.get_ref_table() {
-                        Some(s) => s,
-                        None => panic!("RefTable should not be empty"),
-                    };
-                    let columns = fk.get_columns();
-                    let ref_columns = fk.get_ref_columns();
-                    let rel_type = RelationType::HasOne;
-                    Relation {
-                        ref_table,
-                        columns,
-                        ref_columns,
-                        rel_type,
-                    }
-                });
-            self.entities.push(Entity {
-                table_name: table_name.clone(),
-                columns,
-                relations: relations.clone().collect(),
-            });
-            for mut rel in relations.into_iter() {
-                let ref_table = rel.ref_table;
-                swap(&mut rel.columns, &mut rel.ref_columns);
-                rel.rel_type = RelationType::HasMany;
-                rel.ref_table = table_name.clone();
-                if let Some(vec) = self.inverse_relations.get_mut(&ref_table) {
-                    vec.push(rel);
-                } else {
-                    self.inverse_relations.insert(ref_table, vec![rel]);
-                }
-            }
-        }
-        for (tbl_name, relations) in self.inverse_relations.iter() {
-            for ent in self.entities.iter_mut() {
-                if ent.table_name.eq(tbl_name) {
-                    ent.relations.append(relations.clone().as_mut());
-                }
-            }
-        }
-        // println!();
-        // println!("entities:");
-        // println!("{:#?}", self.entities);
-        // println!();
-        // println!("inverse_relations:");
-        // println!("{:#?}", self.inverse_relations);
-        self
-    }
-
-    pub fn write(self, path: &str) -> io::Result<Self> {
-        let dir_path = Path::new(path);
-        fs::create_dir_all(dir_path)?;
+impl EntityWriter {
+    pub fn generate(self, output_dir: &str) {
         for entity in self.entities.iter() {
-            let file_path = dir_path.join(format!("{}.rs", entity.table_name));
-            let mut file = fs::File::create(file_path)?;
-            for code_block in Self::generate_code(entity) {
-                file.write_all(code_block.to_string().as_bytes())?;
-                file.write_all(b"\n\n")?;
-            }
+            let code_blocks = Self::generate_code(entity);
+            Self::write(output_dir, entity, code_blocks).unwrap();
+            Self::format(output_dir, entity).unwrap();
         }
-        self.format(path)
-    }
-
-    pub fn format(self, path: &str) -> io::Result<Self> {
-        for entity in self.entities.iter() {
-            Command::new("rustfmt")
-                .arg(Path::new(path).join(format!("{}.rs", entity.table_name)))
-                .spawn()?
-                .wait()?;
-        }
-        Ok(self)
     }
 
     pub fn generate_code(entity: &Entity) -> Vec<TokenStream> {
@@ -189,11 +65,10 @@ impl EntityGenerator {
             })
             .collect();
 
-        let primary_key_camel: Vec<Ident> = entity.columns
+        let primary_key_camel: Vec<Ident> = entity.primary_keys
             .iter()
-            .filter(|col| col.is_primary_key)
-            .map(|col| {
-                format_ident!("{}", col.name.to_camel_case())
+            .map(|primary_key| {
+                format_ident!("{}", primary_key.name.to_camel_case())
             })
             .collect();
 
@@ -397,5 +272,25 @@ impl EntityGenerator {
                 impl ActiveModelBehavior for ActiveModel {}
             },
         ]
+    }
+
+    pub fn write(output_dir: &str, entity: &Entity, code_blocks: Vec<TokenStream>) -> io::Result<()> {
+        let dir = Path::new(output_dir);
+        fs::create_dir_all(dir)?;
+        let file_path = dir.join(format!("{}.rs", entity.table_name));
+        let mut file = fs::File::create(file_path)?;
+        for code_block in code_blocks {
+            file.write_all(code_block.to_string().as_bytes())?;
+            file.write_all(b"\n\n")?;
+        }
+        Ok(())
+    }
+
+    pub fn format(output_dir: &str, entity: &Entity) -> io::Result<()> {
+        Command::new("rustfmt")
+            .arg(Path::new(output_dir).join(format!("{}.rs", entity.table_name)))
+            .spawn()?
+            .wait()?;
+        Ok(())
     }
 }
