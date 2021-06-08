@@ -3,9 +3,13 @@ use crate::{
     RelationDef,
 };
 use sea_query::{Alias, Expr, IntoCondition, SelectExpr, SelectStatement, SimpleExpr};
-pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, SeaRc};
+pub use sea_query::{
+    Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement, SeaRc,
+};
 
-pub trait SelectHelper: Sized {
+pub trait QuerySelect: Sized {
+    type QueryStatement;
+
     fn query(&mut self) -> &mut SelectStatement;
 
     /// Clear the selection list
@@ -81,6 +85,45 @@ pub trait SelectHelper: Sized {
         self
     }
 
+    #[doc(hidden)]
+    fn join_join(mut self, join: JoinType, rel: RelationDef, via: Option<RelationDef>) -> Self {
+        if let Some(via) = via {
+            self = self.join(join, via)
+        }
+        self.join(join, rel)
+    }
+
+    #[doc(hidden)]
+    fn join_join_rev(mut self, join: JoinType, rel: RelationDef, via: Option<RelationDef>) -> Self {
+        self = self.join_rev(join, rel);
+        if let Some(via) = via {
+            self = self.join_rev(join, via)
+        }
+        self
+    }
+
+    /// Join via [`RelationDef`].
+    fn join(mut self, join: JoinType, rel: RelationDef) -> Self {
+        self.query()
+            .join(join, rel.to_tbl.clone(), join_condition(rel));
+        self
+    }
+
+    /// Join via [`RelationDef`] but in reverse direction.
+    /// Assume when there exist a relation A to B.
+    /// You can reverse join B from A.
+    fn join_rev(mut self, join: JoinType, rel: RelationDef) -> Self {
+        self.query()
+            .join(join, rel.from_tbl.clone(), join_condition(rel));
+        self
+    }
+}
+
+pub trait QueryOrder: Sized {
+    type QueryStatement: OrderedStatement;
+
+    fn query(&mut self) -> &mut SelectStatement;
+
     /// Add an order_by expression
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
@@ -141,39 +184,6 @@ pub trait SelectHelper: Sized {
     {
         self.query()
             .order_by_expr(col.into_simple_expr(), Order::Desc);
-        self
-    }
-
-    #[doc(hidden)]
-    fn join_join(mut self, join: JoinType, rel: RelationDef, via: Option<RelationDef>) -> Self {
-        if let Some(via) = via {
-            self = self.join(join, via)
-        }
-        self.join(join, rel)
-    }
-
-    #[doc(hidden)]
-    fn join_join_rev(mut self, join: JoinType, rel: RelationDef, via: Option<RelationDef>) -> Self {
-        self = self.join_rev(join, rel);
-        if let Some(via) = via {
-            self = self.join_rev(join, via)
-        }
-        self
-    }
-
-    /// Join via [`RelationDef`].
-    fn join(mut self, join: JoinType, rel: RelationDef) -> Self {
-        self.query()
-            .join(join, rel.to_tbl.clone(), join_condition(rel));
-        self
-    }
-
-    /// Join via [`RelationDef`] but in reverse direction.
-    /// Assume when there exist a relation A to B.
-    /// You can reverse join B from A.
-    fn join_rev(mut self, join: JoinType, rel: RelationDef) -> Self {
-        self.query()
-            .join(join, rel.from_tbl.clone(), join_condition(rel));
         self
     }
 }
@@ -244,9 +254,11 @@ fn join_condition(rel: RelationDef) -> SimpleExpr {
         (Identity::Unary(o1), Identity::Unary(f1)) => {
             Expr::tbl(SeaRc::clone(&from_tbl), o1).equals(SeaRc::clone(&to_tbl), f1)
         }
-        (Identity::Binary(o1, o2), Identity::Binary(f1, f2)) => Expr::tbl(SeaRc::clone(&from_tbl), o1)
-            .equals(SeaRc::clone(&to_tbl), f1)
-            .and(Expr::tbl(SeaRc::clone(&from_tbl), o2).equals(SeaRc::clone(&to_tbl), f2)),
+        (Identity::Binary(o1, o2), Identity::Binary(f1, f2)) => {
+            Expr::tbl(SeaRc::clone(&from_tbl), o1)
+                .equals(SeaRc::clone(&to_tbl), f1)
+                .and(Expr::tbl(SeaRc::clone(&from_tbl), o2).equals(SeaRc::clone(&to_tbl), f2))
+        }
         _ => panic!("Owner key and foreign key mismatch"),
     }
 }
