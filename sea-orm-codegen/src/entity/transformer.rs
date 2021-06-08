@@ -1,4 +1,4 @@
-use crate::{Column, Entity, EntityWriter, PrimaryKey, Relation};
+use crate::{Entity, EntityWriter, PrimaryKey, Relation};
 use sea_orm::RelationType;
 use sea_query::TableStatement;
 use sea_schema::mysql::def::Schema;
@@ -13,53 +13,24 @@ impl EntityTransformer {
     pub fn transform(self) -> EntityWriter {
         let mut inverse_relations: HashMap<String, Vec<Relation>> = HashMap::new();
         let mut entities = Vec::new();
-
         for table_ref in self.schema.tables.iter() {
             let table_stmt = table_ref.write();
-            // TODO: why return TableStatement?
             let table_create = match table_stmt {
                 TableStatement::Create(stmt) => stmt,
                 _ => panic!("TableStatement should be create"),
             };
-            // println!("{:#?}", table_create);
             let table_name = match table_create.get_table_name() {
                 Some(s) => s,
                 None => panic!("Table name should not be empty"),
             };
             let columns = table_create.get_columns()
                 .iter()
-                .map(|col| {
-                    let name = col.get_column_name();
-                    let rs_type = "some_rust_type".to_string();
-                    let col_type = match col.get_column_type() {
-                        Some(ty) => ty.clone(),
-                        None => panic!("ColumnType should not be empty"),
-                    };
-                    Column {
-                        name,
-                        rs_type,
-                        col_type,
-                    }
-                })
+                .map(|col_def| col_def.into())
                 .collect();
             let relations = table_create.get_foreign_key_create_stmts()
                 .iter()
-                .map(|fk_stmt| fk_stmt.get_foreign_key())
-                .map(|fk| {
-                    let ref_table = match fk.get_ref_table() {
-                        Some(s) => s,
-                        None => panic!("RefTable should not be empty"),
-                    };
-                    let columns = fk.get_columns();
-                    let ref_columns = fk.get_ref_columns();
-                    let rel_type = RelationType::HasOne;
-                    Relation {
-                        ref_table,
-                        columns,
-                        ref_columns,
-                        rel_type,
-                    }
-                });
+                .map(|fk_create_stmt| fk_create_stmt.get_foreign_key())
+                .map(|tbl_fk| tbl_fk.into());
             let primary_keys = table_create.get_indexes()
                 .iter()
                 .filter(|index| index.is_primary_key())
@@ -71,12 +42,13 @@ impl EntityTransformer {
                 )
                 .flatten()
                 .collect();
-            entities.push(Entity {
+            let entity = Entity {
                 table_name: table_name.clone(),
                 columns,
                 relations: relations.clone().collect(),
                 primary_keys,
-            });
+            };
+            entities.push(entity);
             for mut rel in relations.into_iter() {
                 let ref_table = rel.ref_table;
                 swap(&mut rel.columns, &mut rel.ref_columns);
@@ -96,12 +68,6 @@ impl EntityTransformer {
                 }
             }
         }
-        // println!();
-        // println!("entities:");
-        // println!("{:#?}", entities);
-        // println!();
-        // println!("inverse_relations:");
-        // println!("{:#?}", inverse_relations);
         EntityWriter {
             entities,
         }
