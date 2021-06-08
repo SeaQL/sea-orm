@@ -85,6 +85,27 @@ pub trait QuerySelect: Sized {
         self
     }
 
+    /// Add an AND HAVING expression
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .having(cake::Column::Id.eq(4))
+    ///         .having(cake::Column::Id.eq(5))
+    ///         .build(MysqlQueryBuilder)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` HAVING `cake`.`id` = 4 AND `cake`.`id` = 5"
+    /// );
+    /// ```
+    fn having<F>(mut self, filter: F) -> Self
+    where
+        F: IntoCondition,
+    {
+        self.query().cond_having(filter.into_condition());
+        self
+    }
+
     #[doc(hidden)]
     fn join_join(mut self, join: JoinType, rel: RelationDef, via: Option<RelationDef>) -> Self {
         if let Some(via) = via {
