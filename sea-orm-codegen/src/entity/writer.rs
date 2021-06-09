@@ -66,8 +66,7 @@ impl EntityWriter {
 
     pub fn gen_import() -> TokenStream {
         quote! {
-            use crate as sea_orm;
-            use crate::entity::prelude::*;
+            use sea_orm::entity::prelude::*;
         }
     }
 

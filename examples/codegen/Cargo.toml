@@ -8,7 +8,7 @@ publish = false
 async-std = { version = "^1.9", features = [ "attributes" ] }
 sea-orm = { path = "../../", features = [ "sqlx-mysql", "runtime-async-std-native-tls", "debug-print" ] }
 sea-orm-codegen = { path = "../../sea-orm-codegen" }
-# sea-query = { path = "../../../sea-query" }
+sea-query = { path = "../../../sea-query" }
 strum = { version = "^0.20", features = [ "derive" ] }
 serde_json = { version = "^1" }
 quote = "1"

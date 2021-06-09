@@ -1,48 +1,46 @@
-use crate as sea_orm;
-use crate::entity::prelude::*;
+use sea_orm::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "fruit"
+        "cake_filling"
     }
 }
 
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
-    pub id: String,
-    pub name: String,
     pub cake_id: String,
+    pub filling_id: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
-    Id,
-    Name,
     CakeId,
+    FillingId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
 pub enum PrimaryKey {
-    Id,
+    CakeId,
+    FillingId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Cake,
+    Filling,
 }
 
 impl ColumnTrait for Column {
     type EntityName = Entity;
     fn def(&self) -> ColumnType {
         match self {
-            Self::Id => ColumnType::Custom(std::rc::Rc::new(sea_query::Alias::new("INT(11)"))),
-            Self::Name => {
-                ColumnType::Custom(std::rc::Rc::new(sea_query::Alias::new("VARCHAR(255)")))
-            }
             Self::CakeId => ColumnType::Custom(std::rc::Rc::new(sea_query::Alias::new("INT(11)"))),
+            Self::FillingId => {
+                ColumnType::Custom(std::rc::Rc::new(sea_query::Alias::new("INT(11)")))
+            }
         }
     }
 }
@@ -54,6 +52,10 @@ impl RelationTrait for Relation {
                 .from(Column::CakeId)
                 .to(super::cake::Column::Id)
                 .into(),
+            Self::Filling => Entity::has_one(super::filling::Entity)
+                .from(Column::FillingId)
+                .to(super::filling::Column::Id)
+                .into(),
         }
     }
 }
@@ -63,9 +65,17 @@ impl Related<super::cake::Entity> for Entity {
         Relation::Cake.def()
     }
 }
+impl Related<super::filling::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Filling.def()
+    }
+}
 
 impl Model {
     pub fn find_cake(&self) -> Select<super::cake::Entity> {
+        Entity::find_related().belongs_to::<Entity>(self)
+    }
+    pub fn find_filling(&self) -> Select<super::filling::Entity> {
         Entity::find_related().belongs_to::<Entity>(self)
     }
 }

@@ -1,5 +1,4 @@
-use crate as sea_orm;
-use crate::entity::prelude::*;
+use sea_orm::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 pub struct Entity;

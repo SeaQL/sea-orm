@@ -46,62 +46,62 @@ impl Column {
     pub fn get_type(&self) -> TokenStream {
         match &self.col_type {
             ColumnType::Char(s) => match s {
-                Some(s) => quote! { ColumnType::Char(#s) },
+                Some(s) => quote! { ColumnType::Char(Some(#s)) },
                 None => quote! { ColumnType::Char(None) },
             },
             ColumnType::String(s) => match s {
-                Some(s) => quote! { ColumnType::String(#s) },
+                Some(s) => quote! { ColumnType::String(Some(#s)) },
                 None => quote! { ColumnType::String(None) },
             },
             ColumnType::Text => quote! { ColumnType::Text },
             ColumnType::TinyInteger(s) => match s {
-                Some(s) => quote! { ColumnType::TinyInteger(#s) },
+                Some(s) => quote! { ColumnType::TinyInteger(Some(#s)) },
                 None => quote! { ColumnType::TinyInteger(None) },
             },
             ColumnType::SmallInteger(s) => match s {
-                Some(s) => quote! { ColumnType::SmallInteger(#s) },
+                Some(s) => quote! { ColumnType::SmallInteger(Some(#s)) },
                 None => quote! { ColumnType::SmallInteger(None) },
             },
             ColumnType::Integer(s) => match s {
-                Some(s) => quote! { ColumnType::Integer(#s) },
+                Some(s) => quote! { ColumnType::Integer(Some(#s)) },
                 None => quote! { ColumnType::Integer(None) },
             },
             ColumnType::BigInteger(s) => match s {
-                Some(s) => quote! { ColumnType::BigInteger(#s) },
+                Some(s) => quote! { ColumnType::BigInteger(Some(#s)) },
                 None => quote! { ColumnType::BigInteger(None) },
             },
             ColumnType::Float(s) => match s {
-                Some(s) => quote! { ColumnType::Float(#s) },
+                Some(s) => quote! { ColumnType::Float(Some(#s)) },
                 None => quote! { ColumnType::Float(None) },
             },
             ColumnType::Double(s) => match s {
-                Some(s) => quote! { ColumnType::Double(#s) },
+                Some(s) => quote! { ColumnType::Double(Some(#s)) },
                 None => quote! { ColumnType::Double(None) },
             },
             ColumnType::Decimal(s) => match s {
-                Some((s1, s2)) => quote! { ColumnType::Decimal((#s1, #s2)) },
+                Some((s1, s2)) => quote! { ColumnType::Decimal(Some((#s1, #s2))) },
                 None => quote! { ColumnType::Decimal(None) },
             },
             ColumnType::DateTime(s) => match s {
-                Some(s) => quote! { ColumnType::DateTime(#s) },
+                Some(s) => quote! { ColumnType::DateTime(Some(#s)) },
                 None => quote! { ColumnType::DateTime(None) },
             },
             ColumnType::Timestamp(s) => match s {
-                Some(s) => quote! { ColumnType::Timestamp(#s) },
+                Some(s) => quote! { ColumnType::Timestamp(Some(#s)) },
                 None => quote! { ColumnType::Timestamp(None) },
             },
             ColumnType::Time(s) => match s {
-                Some(s) => quote! { ColumnType::Time(#s) },
+                Some(s) => quote! { ColumnType::Time(Some(#s)) },
                 None => quote! { ColumnType::Time(None) },
             },
             ColumnType::Date => quote! { ColumnType::Date },
             ColumnType::Binary(s) => match s {
-                Some(s) => quote! { ColumnType::Binary(#s) },
+                Some(s) => quote! { ColumnType::Binary(Some(#s)) },
                 None => quote! { ColumnType::Binary(None) },
             },
             ColumnType::Boolean => quote! { ColumnType::Boolean },
             ColumnType::Money(s) => match s {
-                Some((s1, s2)) => quote! { ColumnType::Money((#s1, #s2)) },
+                Some((s1, s2)) => quote! { ColumnType::Money(Some((#s1, #s2))) },
                 None => quote! { ColumnType::Money(None) },
             },
             ColumnType::Json => quote! { ColumnType::Json },
