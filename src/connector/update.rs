@@ -1,4 +1,6 @@
-use crate::{ActiveModelTrait, Connection, Database, ExecErr, Statement, UpdateOne};
+use crate::{
+    ActiveModelTrait, Connection, Database, EntityTrait, ExecErr, Statement, UpdateMany, UpdateOne,
+};
 use sea_query::{QueryBuilder, UpdateStatement};
 use std::future::Future;
 
@@ -22,6 +24,19 @@ where
     }
 }
 
+impl<'a, E> UpdateMany<E>
+where
+    E: EntityTrait,
+{
+    pub fn exec(
+        self,
+        db: &'a Database,
+    ) -> impl Future<Output = Result<UpdateResult, ExecErr>> + 'a {
+        // so that self is dropped before entering await
+        exec_update_only(self.query, db)
+    }
+}
+
 impl Updater {
     pub fn new(query: UpdateStatement) -> Self {
         Self { query }
@@ -38,6 +53,10 @@ impl Updater {
         let builder = db.get_query_builder_backend();
         exec_update(self.build(builder), db)
     }
+}
+
+async fn exec_update_only(query: UpdateStatement, db: &Database) -> Result<UpdateResult, ExecErr> {
+    Updater::new(query).exec(db).await
 }
 
 async fn exec_update_and_return_original<A>(
