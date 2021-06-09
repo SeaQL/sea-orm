@@ -35,6 +35,38 @@ where
         }
     }
 
+    /// Insert one Model or ActiveModel
+    /// 
+    /// Model
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// 
+    /// assert_eq!(
+    ///     Insert::<cake::ActiveModel>::new()
+    ///         .one(cake::Model {
+    ///             id: 1,
+    ///             name: "Apple Pie".to_owned(),
+    ///         })
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#,
+    /// );
+    /// ```
+    /// ActiveModel
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// 
+    /// assert_eq!(
+    ///     Insert::<cake::ActiveModel>::new()
+    ///         .one(cake::ActiveModel {
+    ///             id: Unset(None),
+    ///             name: Set("Apple Pie".to_owned()),
+    ///         })
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie')"#,
+    /// );
+    /// ```
     pub fn one<M>(mut self, m: M) -> Self
     where
         M: Into<A>,
@@ -61,6 +93,28 @@ where
         self
     }
 
+    /// Insert many Model or ActiveModel
+    /// 
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// 
+    /// assert_eq!(
+    ///     Insert::<cake::ActiveModel>::new()
+    ///         .many(vec![
+    ///             cake::Model {
+    ///                 id: 1,
+    ///                 name: "Apple Pie".to_owned(),
+    ///             },
+    ///             cake::Model {
+    ///                 id: 2,
+    ///                 name: "Orange Scone".to_owned(),
+    ///             }
+    ///         ])
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie'), (2, 'Orange Scone')"#,
+    /// );
+    /// ```
     pub fn many<M, I>(mut self, models: I) -> Self
     where
         M: Into<A>,
