@@ -1,4 +1,4 @@
-use crate::{ActiveModelTrait, Connection, Database, ExecErr, Statement, Update};
+use crate::{ActiveModelTrait, Connection, Database, ExecErr, Statement, UpdateOne};
 use sea_query::{QueryBuilder, UpdateStatement};
 use std::future::Future;
 
@@ -12,7 +12,7 @@ pub struct UpdateResult {
     pub rows_affected: u64,
 }
 
-impl<'a, A: 'a> Update<A>
+impl<'a, A: 'a> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {

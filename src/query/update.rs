@@ -2,10 +2,14 @@ use crate::{
     ActiveModelTrait, ColumnTrait, EntityTrait, Iterable, PrimaryKeyToColumn, QueryFilter,
     QueryTrait,
 };
-use sea_query::{IntoIden, UpdateStatement};
+use sea_query::{IntoIden, SimpleExpr, UpdateStatement};
+use core::marker::PhantomData;
 
 #[derive(Clone, Debug)]
-pub struct Update<A>
+pub struct Update;
+
+#[derive(Clone, Debug)]
+pub struct UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
@@ -13,23 +17,47 @@ where
     pub(crate) model: A,
 }
 
-impl<A> Update<A>
+#[derive(Clone, Debug)]
+pub struct UpdateMany<E>
 where
-    A: ActiveModelTrait,
+    E: EntityTrait,
 {
-    pub fn new<M>(model: M) -> Self
+    pub(crate) query: UpdateStatement,
+    pub(crate) entity: PhantomData<E>,
+}
+
+impl Update {
+    pub fn one<E, A>(model: A) -> UpdateOne<A>
     where
-        M: Into<A>,
+        E: EntityTrait,
+        A: ActiveModelTrait<Entity = E>,
     {
-        let myself = Self {
+        let myself = UpdateOne {
             query: UpdateStatement::new()
                 .table(A::Entity::default().into_iden())
                 .to_owned(),
-            model: model.into(),
+            model,
         };
         myself.prepare()
     }
 
+    pub fn many<E>(entity: E) -> UpdateMany<E>
+    where
+        E: EntityTrait,
+    {
+        UpdateMany {
+            query: UpdateStatement::new()
+                .table(entity.into_iden())
+                .to_owned(),
+            entity: PhantomData,
+        }
+    }
+}
+
+impl<A> UpdateOne<A>
+where
+    A: ActiveModelTrait,
+{
     pub(crate) fn prepare(mut self) -> Self {
         for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
@@ -53,7 +81,7 @@ where
     }
 }
 
-impl<A> QueryFilter for Update<A>
+impl<A> QueryFilter for UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
@@ -64,7 +92,18 @@ where
     }
 }
 
-impl<A> QueryTrait for Update<A>
+impl<E> QueryFilter for UpdateMany<E>
+where
+    E: EntityTrait,
+{
+    type QueryStatement = UpdateStatement;
+
+    fn query(&mut self) -> &mut UpdateStatement {
+        &mut self.query
+    }
+}
+
+impl<A> QueryTrait for UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
@@ -83,16 +122,48 @@ where
     }
 }
 
+impl<E> QueryTrait for UpdateMany<E>
+where
+    E: EntityTrait,
+{
+    type QueryStatement = UpdateStatement;
+
+    fn query(&mut self) -> &mut UpdateStatement {
+        &mut self.query
+    }
+
+    fn as_query(&self) -> &UpdateStatement {
+        &self.query
+    }
+
+    fn into_query(self) -> UpdateStatement {
+        self.query
+    }
+}
+
+impl<E> UpdateMany<E>
+where
+    E: EntityTrait,
+{
+    pub fn col_expr<T>(mut self, col: T, expr: SimpleExpr) -> Self
+    where
+        T: IntoIden,
+    {
+        self.query.col_expr(col, expr);
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, fruit};
-    use crate::{ActiveValue, QueryTrait, Update};
-    use sea_query::PostgresQueryBuilder;
+    use crate::{entity::*, query::*};
+    use sea_query::{PostgresQueryBuilder, Expr, Value};
 
     #[test]
     fn update_1() {
         assert_eq!(
-            Update::<cake::ActiveModel>::new(cake::ActiveModel {
+            Update::one(cake::ActiveModel {
                 id: ActiveValue::set(1),
                 name: ActiveValue::set("Apple Pie".to_owned()),
             })
@@ -105,7 +176,7 @@ mod tests {
     #[test]
     fn update_2() {
         assert_eq!(
-            Update::<fruit::ActiveModel>::new(fruit::ActiveModel {
+            Update::one(fruit::ActiveModel {
                 id: ActiveValue::set(1),
                 name: ActiveValue::set("Orange".to_owned()),
                 cake_id: ActiveValue::unset(),
@@ -119,7 +190,7 @@ mod tests {
     #[test]
     fn update_3() {
         assert_eq!(
-            Update::<fruit::ActiveModel>::new(fruit::ActiveModel {
+            Update::one(fruit::ActiveModel {
                 id: ActiveValue::set(2),
                 name: ActiveValue::unchanged("Apple".to_owned()),
                 cake_id: ActiveValue::set(Some(3)),
@@ -127,6 +198,18 @@ mod tests {
             .build(PostgresQueryBuilder)
             .to_string(),
             r#"UPDATE "fruit" SET "cake_id" = 3 WHERE "fruit"."id" = 2"#,
+        );
+    }
+
+    #[test]
+    fn update_4() {
+        assert_eq!(
+            Update::many(fruit::Entity)
+            .col_expr(fruit::Column::CakeId, Expr::value(Value::Null))
+            .filter(fruit::Column::Name.contains("Apple"))
+            .build(PostgresQueryBuilder)
+            .to_string(),
+            r#"UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."name" LIKE '%Apple%'"#,
         );
     }
 }

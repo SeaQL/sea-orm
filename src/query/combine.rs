@@ -70,7 +70,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, fruit};
-    use crate::{ColumnTrait, EntityTrait, QueryFilter, QueryTrait, SelectHelper};
+    use crate::{ColumnTrait, EntityTrait, QueryFilter, QueryTrait, QuerySelect};
     use sea_query::MysqlQueryBuilder;
 
     #[test]

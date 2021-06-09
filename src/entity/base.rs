@@ -1,7 +1,7 @@
 use crate::{
     ActiveModelTrait, ColumnTrait, FromQueryResult, Insert, ModelTrait, OneOrManyActiveModel,
     PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, RelationBuilder, RelationTrait, RelationType,
-    Select, Update,
+    Select, Update, UpdateOne,
 };
 use sea_query::{Iden, IntoValueTuple};
 use std::fmt::Debug;
@@ -211,10 +211,10 @@ pub trait EntityTrait: EntityName {
     ///     r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"#,
     /// );
     /// ```
-    fn update<A>(model: A) -> Update<A>
+    fn update<A>(model: A) -> UpdateOne<A>
     where
         A: ActiveModelTrait<Entity = Self>,
     {
-        Update::new(model)
+        Update::one(model)
     }
 }
