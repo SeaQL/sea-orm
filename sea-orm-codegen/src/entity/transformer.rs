@@ -17,29 +17,42 @@ impl EntityTransformer {
             let table_stmt = table_ref.write();
             let table_create = match table_stmt {
                 TableStatement::Create(stmt) => stmt,
-                _ => return Err(Error::TransformError("TableStatement should be create".into())),
+                _ => {
+                    return Err(Error::TransformError(
+                        "TableStatement should be create".into(),
+                    ))
+                }
             };
             let table_name = match table_create.get_table_name() {
                 Some(s) => s,
-                None => return Err(Error::TransformError("Table name should not be empty".into())),
+                None => {
+                    return Err(Error::TransformError(
+                        "Table name should not be empty".into(),
+                    ))
+                }
             };
-            let columns = table_create.get_columns()
+            let columns = table_create
+                .get_columns()
                 .iter()
                 .map(|col_def| col_def.into())
                 .collect();
-            let relations = table_create.get_foreign_key_create_stmts()
+            let relations = table_create
+                .get_foreign_key_create_stmts()
                 .iter()
                 .map(|fk_create_stmt| fk_create_stmt.get_foreign_key())
                 .map(|tbl_fk| tbl_fk.into());
-            let primary_keys = table_create.get_indexes()
+            let primary_keys = table_create
+                .get_indexes()
                 .iter()
                 .filter(|index| index.is_primary_key())
-                .map(|index| index.get_index_spec()
-                    .get_column_names()
-                    .into_iter()
-                    .map(|name| PrimaryKey { name })
-                    .collect::<Vec<_>>()
-                )
+                .map(|index| {
+                    index
+                        .get_index_spec()
+                        .get_column_names()
+                        .into_iter()
+                        .map(|name| PrimaryKey { name })
+                        .collect::<Vec<_>>()
+                })
                 .flatten()
                 .collect();
             let entity = Entity {
@@ -68,8 +81,6 @@ impl EntityTransformer {
                 }
             }
         }
-        Ok(EntityWriter {
-            entities,
-        })
+        Ok(EntityWriter { entities })
     }
 }

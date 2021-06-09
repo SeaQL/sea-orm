@@ -1,7 +1,12 @@
 use crate::{Entity, Error};
-use std::{fs, io::{self, Write}, path::Path, process::Command};
 use proc_macro2::TokenStream;
 use quote::quote;
+use std::{
+    fs,
+    io::{self, Write},
+    path::Path,
+    process::Command,
+};
 
 #[derive(Clone, Debug)]
 pub struct EntityWriter {
@@ -18,7 +23,11 @@ impl EntityWriter {
         Ok(())
     }
 
-    pub fn write(output_dir: &str, entity: &Entity, code_blocks: Vec<TokenStream>) -> io::Result<()> {
+    pub fn write(
+        output_dir: &str,
+        entity: &Entity,
+        code_blocks: Vec<TokenStream>,
+    ) -> io::Result<()> {
         let dir = Path::new(output_dir);
         fs::create_dir_all(dir)?;
         let file_path = dir.join(format!("{}.rs", entity.table_name));

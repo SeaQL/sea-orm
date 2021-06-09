@@ -5,7 +5,8 @@ async fn main() -> Result<(), Error> {
     let uri = "mysql://sea:sea@localhost/bakery";
     let schema = "bakery";
 
-    let _generator = EntityGenerator::discover(uri, schema).await?
+    let _generator = EntityGenerator::discover(uri, schema)
+        .await?
         .transform()?
         .generate("out")?;
 

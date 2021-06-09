@@ -1,8 +1,8 @@
-use sea_orm::RelationType;
-use sea_query::TableForeignKey;
-use heck::{SnakeCase, CamelCase};
+use heck::{CamelCase, SnakeCase};
 use proc_macro2::Ident;
 use quote::format_ident;
+use sea_orm::RelationType;
+use sea_query::TableForeignKey;
 
 #[derive(Clone, Debug)]
 pub struct Relation {
@@ -11,7 +11,6 @@ pub struct Relation {
     pub(crate) ref_columns: Vec<String>,
     pub(crate) rel_type: RelationType,
 }
-
 
 impl Relation {
     pub fn get_ref_table_snake_case(&self) -> Ident {
@@ -41,7 +40,6 @@ impl Relation {
         format_ident!("find_{}", self.ref_table.to_snake_case())
     }
 }
-
 
 impl From<&TableForeignKey> for Relation {
     fn from(tbl_fk: &TableForeignKey) -> Self {

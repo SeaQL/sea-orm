@@ -80,7 +80,6 @@ impl Entity {
             .collect()
     }
 
-
     pub fn get_relation_columns_camel_case(&self) -> Vec<Ident> {
         self.relations
             .iter()

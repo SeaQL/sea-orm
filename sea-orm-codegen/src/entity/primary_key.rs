@@ -1,4 +1,4 @@
-use heck::{SnakeCase, CamelCase};
+use heck::{CamelCase, SnakeCase};
 use proc_macro2::Ident;
 use quote::format_ident;
 
