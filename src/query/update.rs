@@ -2,8 +2,8 @@ use crate::{
     ActiveModelTrait, ColumnTrait, EntityTrait, Iterable, PrimaryKeyToColumn, QueryFilter,
     QueryTrait,
 };
-use sea_query::{IntoIden, SimpleExpr, UpdateStatement};
 use core::marker::PhantomData;
+use sea_query::{IntoIden, SimpleExpr, UpdateStatement};
 
 #[derive(Clone, Debug)]
 pub struct Update;
@@ -46,9 +46,7 @@ impl Update {
         E: EntityTrait,
     {
         UpdateMany {
-            query: UpdateStatement::new()
-                .table(entity.into_iden())
-                .to_owned(),
+            query: UpdateStatement::new().table(entity.into_iden()).to_owned(),
             entity: PhantomData,
         }
     }
@@ -158,7 +156,7 @@ where
 mod tests {
     use crate::tests_cfg::{cake, fruit};
     use crate::{entity::*, query::*};
-    use sea_query::{PostgresQueryBuilder, Expr, Value};
+    use sea_query::{Expr, PostgresQueryBuilder, Value};
 
     #[test]
     fn update_1() {
@@ -205,10 +203,10 @@ mod tests {
     fn update_4() {
         assert_eq!(
             Update::many(fruit::Entity)
-            .col_expr(fruit::Column::CakeId, Expr::value(Value::Null))
-            .filter(fruit::Column::Name.contains("Apple"))
-            .build(PostgresQueryBuilder)
-            .to_string(),
+                .col_expr(fruit::Column::CakeId, Expr::value(Value::Null))
+                .filter(fruit::Column::Name.contains("Apple"))
+                .build(PostgresQueryBuilder)
+                .to_string(),
             r#"UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."name" LIKE '%Apple%'"#,
         );
     }

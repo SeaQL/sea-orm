@@ -167,7 +167,7 @@ pub trait EntityTrait: EntityName {
     where
         A: ActiveModelTrait<Entity = Self>,
     {
-        Insert::new().one(model)
+        Insert::one(model)
     }
 
     /// ```
@@ -193,7 +193,7 @@ pub trait EntityTrait: EntityName {
         A: ActiveModelTrait<Entity = Self>,
         I: IntoIterator<Item = A>,
     {
-        Insert::new().many(models)
+        Insert::many(models)
     }
 
     /// ```
