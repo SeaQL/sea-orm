@@ -20,26 +20,26 @@ impl Column {
 
     pub fn get_rs_type(&self) -> Ident {
         match self.col_type {
-            ColumnType::Char(_) => format_ident!("String"),
-            ColumnType::String(_) => format_ident!("String"),
-            ColumnType::Text => format_ident!("String"),
-            ColumnType::TinyInteger(_) => format_ident!("u32"),
-            ColumnType::SmallInteger(_) => format_ident!("u32"),
-            ColumnType::Integer(_) => format_ident!("u32"),
-            ColumnType::BigInteger(_) => format_ident!("u32"),
-            ColumnType::Float(_) => format_ident!("f32"),
-            ColumnType::Double(_) => format_ident!("f32"),
-            ColumnType::Decimal(_) => format_ident!("f32"),
-            ColumnType::DateTime(_) => format_ident!("String"),
-            ColumnType::Timestamp(_) => format_ident!("String"),
-            ColumnType::Time(_) => format_ident!("String"),
-            ColumnType::Date => format_ident!("String"),
             ColumnType::Binary(_) => format_ident!("Vec<u8>"),
             ColumnType::Boolean => format_ident!("bool"),
-            ColumnType::Money(_) => format_ident!("f32"),
-            ColumnType::Json => format_ident!("String"),
-            ColumnType::JsonBinary => format_ident!("String"),
-            ColumnType::Custom(_) => format_ident!("String"),
+            ColumnType::Char(_)
+            | ColumnType::String(_)
+            | ColumnType::Text
+            | ColumnType::DateTime(_)
+            | ColumnType::Timestamp(_)
+            | ColumnType::Time(_)
+            | ColumnType::Date
+            | ColumnType::Json
+            | ColumnType::JsonBinary
+            | ColumnType::Custom(_) => format_ident!("String"),
+            ColumnType::TinyInteger(_)
+            | ColumnType::SmallInteger(_)
+            | ColumnType::Integer(_)
+            | ColumnType::BigInteger(_) => format_ident!("u32"),
+            ColumnType::Float(_)
+            | ColumnType::Double(_)
+            | ColumnType::Decimal(_)
+            | ColumnType::Money(_) => format_ident!("f32"),
         }
     }
 
