@@ -12,7 +12,7 @@ First off, perhaps the number one requested feature, async Rust support. While u
 
 Under the hood, SeaORM together with SQLx offers you a pure Rust technology stack. While Diesel is tied to native drivers. Each side has their pros and cons, so it's up to your preference.
 
-SeaORM has an open core design. If you don't like the idea of ORM, you'll definitely still want to use SeaQuery, the underlying query builder. It is light weight and can be easily integrated into any project. The SeaQuery API is also available to you when using SeaORM, so you receive the benefits of high level abstraction while still having the power of a flexible query builder when you need it.
+SeaORM has a modular design. If you don't like the idea of ORM, you'll definitely still want to use SeaQuery, the underlying query builder. It is light weight and can be easily integrated into any project. The SeaQuery API is also available to you when using SeaORM, so you receive the benefits of high level abstraction while still having the power of a flexible query builder when you need it.
 
 SeaSchema is our schema discovery library, but it is not sealed inside SeaORM. So you can reuse our data structures for developing libraries inter-operating with SeaORM.
 
