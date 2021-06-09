@@ -27,6 +27,21 @@ where
 }
 
 impl Update {
+    /// Update one ActiveModel
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     Update::one(cake::ActiveModel {
+    ///         id: ActiveValue::set(1),
+    ///         name: ActiveValue::set("Apple Pie".to_owned()),
+    ///     })
+    ///     .build(PostgresQueryBuilder)
+    ///     .to_string(),
+    ///     r#"UPDATE "cake" SET "name" = 'Apple Pie' WHERE "cake"."id" = 1"#,
+    /// );
+    /// ```
     pub fn one<E, A>(model: A) -> UpdateOne<A>
     where
         E: EntityTrait,
@@ -41,6 +56,20 @@ impl Update {
         myself.prepare()
     }
 
+    /// Update many ActiveModel
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::{Expr, PostgresQueryBuilder}};
+    ///
+    /// assert_eq!(
+    ///     Update::many(fruit::Entity)
+    ///         .col_expr(fruit::Column::Name, Expr::value("Golden Apple"))
+    ///         .filter(fruit::Column::Name.contains("Apple"))
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"UPDATE "fruit" SET "name" = 'Golden Apple' WHERE "fruit"."name" LIKE '%Apple%'"#,
+    /// );
+    /// ```
     pub fn many<E>(entity: E) -> UpdateMany<E>
     where
         E: EntityTrait,
@@ -204,10 +233,10 @@ mod tests {
         assert_eq!(
             Update::many(fruit::Entity)
                 .col_expr(fruit::Column::CakeId, Expr::value(Value::Null))
-                .filter(fruit::Column::Name.contains("Apple"))
+                .filter(fruit::Column::Id.eq(2))
                 .build(PostgresQueryBuilder)
                 .to_string(),
-            r#"UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."name" LIKE '%Apple%'"#,
+            r#"UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."id" = 2"#,
         );
     }
 }
