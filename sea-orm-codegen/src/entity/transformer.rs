@@ -1,4 +1,4 @@
-use crate::{Entity, EntityWriter, PrimaryKey, Relation};
+use crate::{Entity, EntityWriter, Error, PrimaryKey, Relation};
 use sea_orm::RelationType;
 use sea_query::TableStatement;
 use sea_schema::mysql::def::Schema;
@@ -10,18 +10,18 @@ pub struct EntityTransformer {
 }
 
 impl EntityTransformer {
-    pub fn transform(self) -> EntityWriter {
+    pub fn transform(self) -> Result<EntityWriter, Error> {
         let mut inverse_relations: HashMap<String, Vec<Relation>> = HashMap::new();
         let mut entities = Vec::new();
         for table_ref in self.schema.tables.iter() {
             let table_stmt = table_ref.write();
             let table_create = match table_stmt {
                 TableStatement::Create(stmt) => stmt,
-                _ => panic!("TableStatement should be create"),
+                _ => return Err(Error::TransformError("TableStatement should be create".into())),
             };
             let table_name = match table_create.get_table_name() {
                 Some(s) => s,
-                None => panic!("Table name should not be empty"),
+                None => return Err(Error::TransformError("Table name should not be empty".into())),
             };
             let columns = table_create.get_columns()
                 .iter()
@@ -68,8 +68,8 @@ impl EntityTransformer {
                 }
             }
         }
-        EntityWriter {
+        Ok(EntityWriter {
             entities,
-        }
+        })
     }
 }

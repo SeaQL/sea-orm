@@ -1,4 +1,4 @@
-use crate::Entity;
+use crate::{Entity, Error};
 use std::{fs, io::{self, Write}, path::Path, process::Command};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -9,12 +9,13 @@ pub struct EntityWriter {
 }
 
 impl EntityWriter {
-    pub fn generate(self, output_dir: &str) {
+    pub fn generate(self, output_dir: &str) -> Result<(), Error> {
         for entity in self.entities.iter() {
             let code_blocks = Self::gen_code_blocks(entity);
-            Self::write(output_dir, entity, code_blocks).unwrap();
-            Self::format(output_dir, entity).unwrap();
+            Self::write(output_dir, entity, code_blocks)?;
+            Self::format(output_dir, entity)?;
         }
+        Ok(())
     }
 
     pub fn write(output_dir: &str, entity: &Entity, code_blocks: Vec<TokenStream>) -> io::Result<()> {

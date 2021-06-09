@@ -1,4 +1,4 @@
-use crate::EntityTransformer;
+use crate::{EntityTransformer, Error};
 use sea_schema::mysql::{discovery::SchemaDiscovery};
 use sqlx::MySqlPool;
 
@@ -6,12 +6,12 @@ use sqlx::MySqlPool;
 pub struct EntityGenerator {}
 
 impl EntityGenerator {
-    pub async fn discover(uri: &str, schema: &str) -> EntityTransformer {
-        let connection = MySqlPool::connect(uri).await.unwrap();
+    pub async fn discover(uri: &str, schema: &str) -> Result<EntityTransformer, Error> {
+        let connection = MySqlPool::connect(uri).await?;
         let schema_discovery = SchemaDiscovery::new(connection, schema);
         let schema = schema_discovery.discover().await;
-        EntityTransformer {
+        Ok(EntityTransformer {
             schema
-        }
+        })
     }
 }
