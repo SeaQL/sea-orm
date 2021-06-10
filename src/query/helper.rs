@@ -7,6 +7,9 @@ pub use sea_query::{
     Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement, SeaRc,
 };
 
+// LINT: when the column does not appear in tables selected from
+// LINT: when there is a group by clause, but some columns don't have aggregate functions
+// LINT: when the join table or column does not exists
 pub trait QuerySelect: Sized {
     type QueryStatement;
 
@@ -140,6 +143,7 @@ pub trait QuerySelect: Sized {
     }
 }
 
+// LINT: when the column does not appear in tables selected from
 pub trait QueryOrder: Sized {
     type QueryStatement: OrderedStatement;
 
@@ -209,6 +213,8 @@ pub trait QueryOrder: Sized {
     }
 }
 
+// LINT: when the column does not appear in tables selected from
+// LINT: when the operand value does not match column type
 pub trait QueryFilter: Sized {
     type QueryStatement: ConditionalStatement;
 
