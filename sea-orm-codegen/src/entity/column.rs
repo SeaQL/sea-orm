@@ -30,14 +30,14 @@ impl Column {
             | ColumnType::Json
             | ColumnType::JsonBinary
             | ColumnType::Custom(_) => format_ident!("String"),
-            ColumnType::TinyInteger(_)
-            | ColumnType::SmallInteger(_)
-            | ColumnType::Integer(_)
-            | ColumnType::BigInteger(_) => format_ident!("u32"),
+            ColumnType::TinyInteger(_) => format_ident!("i8"),
+            ColumnType::SmallInteger(_) => format_ident!("i16"),
+            ColumnType::Integer(_) => format_ident!("i32"),
+            ColumnType::BigInteger(_) => format_ident!("i64"),
             ColumnType::Float(_)
-            | ColumnType::Double(_)
             | ColumnType::Decimal(_)
             | ColumnType::Money(_) => format_ident!("f32"),
+            ColumnType::Double(_) => format_ident!("f64"),
             ColumnType::Binary(_) => format_ident!("Vec<u8>"),
             ColumnType::Boolean => format_ident!("bool"),
         }
