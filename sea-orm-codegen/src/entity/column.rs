@@ -20,8 +20,6 @@ impl Column {
 
     pub fn get_rs_type(&self) -> Ident {
         match self.col_type {
-            ColumnType::Binary(_) => format_ident!("Vec<u8>"),
-            ColumnType::Boolean => format_ident!("bool"),
             ColumnType::Char(_)
             | ColumnType::String(_)
             | ColumnType::Text
@@ -40,6 +38,8 @@ impl Column {
             | ColumnType::Double(_)
             | ColumnType::Decimal(_)
             | ColumnType::Money(_) => format_ident!("f32"),
+            ColumnType::Binary(_) => format_ident!("Vec<u8>"),
+            ColumnType::Boolean => format_ident!("bool"),
         }
     }
 
