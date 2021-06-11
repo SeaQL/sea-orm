@@ -1,0 +1,1 @@
+# SeaORM Codegen
