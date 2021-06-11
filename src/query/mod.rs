@@ -1,4 +1,5 @@
 pub(crate) mod combine;
+mod delete;
 mod helper;
 mod insert;
 mod join;
@@ -10,6 +11,7 @@ mod traits;
 mod update;
 
 // pub use combine::*;
+pub use delete::*;
 pub use helper::*;
 pub use insert::*;
 pub use join::*;
