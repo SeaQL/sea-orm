@@ -34,9 +34,7 @@ impl Connector for SqlxMySqlConnector {
 
 impl SqlxMySqlConnector {
     pub fn from_sqlx_mysql_pool(pool: MySqlPool) -> DatabaseConnection {
-        DatabaseConnection::SqlxMySqlPoolConnection(
-            SqlxMySqlPoolConnection { pool },
-        )
+        DatabaseConnection::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection { pool })
     }
 }
 

@@ -92,11 +92,7 @@ where
         self.into_model::<E::Model>().all(db).await
     }
 
-    pub fn paginate(
-        self,
-        db: &Database,
-        page_size: usize,
-    ) -> Paginator<'_, SelectModel<E::Model>> {
+    pub fn paginate(self, db: &Database, page_size: usize) -> Paginator<'_, SelectModel<E::Model>> {
         self.into_model::<E::Model>().paginate(db, page_size)
     }
 }
