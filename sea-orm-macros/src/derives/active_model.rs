@@ -40,6 +40,10 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
             pub async fn save(self, db: &sea_orm::Database) -> Result<Self, sea_orm::ExecErr> {
                 sea_orm::save_active_model::<Self, Entity>(self, db).await
             }
+
+            pub async fn delete(self, db: &sea_orm::Database) -> Result<sea_orm::DeleteResult, sea_orm::ExecErr> {
+                sea_orm::delete_active_model::<Self, Entity>(self, db).await
+            }
         }
 
         impl Default for ActiveModel {
@@ -56,7 +60,7 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
             }
         }
 
-        impl sea_orm::IntoActiveModel<ActiveModel> for Model {
+        impl sea_orm::IntoActiveModel<ActiveModel> for <Entity as EntityTrait>::Model {
             fn into_active_model(self) -> ActiveModel {
                 self.into()
             }

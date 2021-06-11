@@ -1,4 +1,4 @@
-use crate::{Database, EntityTrait, ExecErr, Iterable, PrimaryKeyToColumn, Value};
+use crate::{Database, DeleteResult, EntityTrait, ExecErr, Iterable, PrimaryKeyToColumn, Value};
 use std::fmt::Debug;
 
 #[derive(Clone, Debug, Default)]
@@ -266,5 +266,14 @@ where
     E: EntityTrait,
 {
     let exec = E::update(am).exec(db);
+    exec.await
+}
+
+pub async fn delete_active_model<A, E>(am: A, db: &Database) -> Result<DeleteResult, ExecErr>
+where
+    A: ActiveModelTrait<Entity = E>,
+    E: EntityTrait,
+{
+    let exec = E::delete(am).exec(db);
     exec.await
 }

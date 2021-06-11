@@ -120,6 +120,10 @@ UPDATE `fruit` SET `name` = 'banana banana' WHERE `fruit`.`id` = 22
 
 Updated: ActiveModel { id: ActiveValue { value: 22, state: Unchanged }, name: ActiveValue { value: "banana banana", state: Set }, cake_id: ActiveValue { value: None, state: Unchanged } }
 
+DELETE FROM `fruit` WHERE `fruit`.`id` = 22
+
+Deleted: DeleteResult { rows_affected: 1 }
+
 ===== =====
 
 INSERT INTO `fruit` (`name`) VALUES ('pineapple')

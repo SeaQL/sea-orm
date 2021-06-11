@@ -1,9 +1,11 @@
+mod delete;
 mod executor;
 mod insert;
 mod paginator;
 mod select;
 mod update;
 
+pub use delete::*;
 pub use executor::*;
 pub use insert::*;
 pub use paginator::*;

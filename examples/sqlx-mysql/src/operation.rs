@@ -61,6 +61,11 @@ pub async fn save_active_model(db: &Database) -> Result<(), ExecErr> {
     println!();
     println!("Updated: {:?}\n", banana);
 
+    let result = banana.delete(db).await?;
+
+    println!();
+    println!("Deleted: {:?}\n", result);
+
     Ok(())
 }
 
