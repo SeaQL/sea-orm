@@ -23,6 +23,49 @@ pub trait TryGetable {
         Self: Sized;
 }
 
+// QueryResult //
+
+impl QueryResult {
+    pub fn try_get<T>(&self, pre: &str, col: &str) -> Result<T, TypeErr>
+    where
+        T: TryGetable,
+    {
+        T::try_get(self, pre, col)
+    }
+}
+
+// QueryErr //
+
+impl Error for QueryErr {}
+
+impl fmt::Display for QueryErr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl From<TypeErr> for QueryErr {
+    fn from(_: TypeErr) -> QueryErr {
+        QueryErr
+    }
+}
+
+// TypeErr //
+
+impl Error for TypeErr {}
+
+impl fmt::Display for TypeErr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl From<sqlx::Error> for TypeErr {
+    fn from(_: sqlx::Error) -> TypeErr {
+        TypeErr
+    }
+}
+
 // TryGetable //
 
 macro_rules! try_getable {
@@ -68,46 +111,3 @@ try_getable!(u64);
 try_getable!(f32);
 try_getable!(f64);
 try_getable!(String);
-
-// QueryResult //
-
-impl QueryResult {
-    pub fn try_get<T>(&self, pre: &str, col: &str) -> Result<T, TypeErr>
-    where
-        T: TryGetable,
-    {
-        T::try_get(self, pre, col)
-    }
-}
-
-// QueryErr //
-
-impl Error for QueryErr {}
-
-impl fmt::Display for QueryErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl From<TypeErr> for QueryErr {
-    fn from(_: TypeErr) -> QueryErr {
-        QueryErr
-    }
-}
-
-// TypeErr //
-
-impl Error for TypeErr {}
-
-impl fmt::Display for TypeErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl From<sqlx::Error> for TypeErr {
-    fn from(_: sqlx::Error) -> TypeErr {
-        TypeErr
-    }
-}
