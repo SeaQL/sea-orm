@@ -72,6 +72,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     fn is_unset(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
 
     fn default() -> Self;
+
+    // below is not yet possible. right now we define these methods in DeriveActiveModel
+    // fn save(self, db: &Database) -> impl Future<Output = Result<Self, ExecErr>>;
+    // fn delete(self, db: &Database) -> impl Future<Output = Result<DeleteResult, ExecErr>>;
 }
 
 /// Behaviors for users to override
@@ -81,13 +85,18 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         <Self as ActiveModelTrait>::default()
     }
 
-    /// Will be called before saving to database
+    /// Will be called before saving
     fn before_save(self) -> Self {
         self
     }
 
-    /// Will be called after saving to database
+    /// Will be called after saving
     fn after_save(self) -> Self {
+        self
+    }
+
+    /// Will be called before deleting
+    fn before_delete(self) -> Self {
         self
     }
 }
@@ -218,7 +227,8 @@ where
 /// Only works if the entity has auto increment primary key.
 pub async fn save_active_model<A, E>(mut am: A, db: &Database) -> Result<A, ExecErr>
 where
-    A: ActiveModelBehavior + ActiveModelTrait<Entity = E> + From<E::Model>,
+    A: ActiveModelBehavior + ActiveModelTrait<Entity = E>,
+    E::Model: IntoActiveModel<A>,
     E: EntityTrait,
 {
     am = ActiveModelBehavior::before_save(am);
@@ -241,7 +251,8 @@ where
 
 async fn insert_and_select_active_model<A, E>(am: A, db: &Database) -> Result<A, ExecErr>
 where
-    A: ActiveModelTrait<Entity = E> + From<E::Model>,
+    A: ActiveModelTrait<Entity = E>,
+    E::Model: IntoActiveModel<A>,
     E: EntityTrait,
 {
     let exec = E::insert(am).exec(db);
@@ -252,7 +263,7 @@ where
         let res = find.await;
         let model: Option<E::Model> = res.map_err(|_| ExecErr)?;
         match model {
-            Some(model) => Ok(model.into()),
+            Some(model) => Ok(model.into_active_model()),
             None => Err(ExecErr),
         }
     } else {
@@ -269,11 +280,12 @@ where
     exec.await
 }
 
-pub async fn delete_active_model<A, E>(am: A, db: &Database) -> Result<DeleteResult, ExecErr>
+pub async fn delete_active_model<A, E>(mut am: A, db: &Database) -> Result<DeleteResult, ExecErr>
 where
-    A: ActiveModelTrait<Entity = E>,
+    A: ActiveModelBehavior + ActiveModelTrait<Entity = E>,
     E: EntityTrait,
 {
+    am = ActiveModelBehavior::before_delete(am);
     let exec = E::delete(am).exec(db);
     exec.await
 }
