@@ -1,4 +1,7 @@
-use crate::{Database, DeleteResult, EntityTrait, ExecErr, Iterable, PrimaryKeyToColumn, Value};
+use crate::{
+    Database, DeleteResult, EntityTrait, ExecErr, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait,
+    Value,
+};
 use std::fmt::Debug;
 
 #[derive(Clone, Debug, Default)]
@@ -258,7 +261,7 @@ where
     let exec = E::insert(am).exec(db);
     let res = exec.await?;
     // TODO: if the entity does not have auto increment primary key, then last_insert_id is a wrong value
-    if res.last_insert_id != 0 {
+    if <E::PrimaryKey as PrimaryKeyTrait>::auto_increment() && res.last_insert_id != 0 {
         let find = E::find_by(res.last_insert_id).one(db);
         let res = find.await;
         let model: Option<E::Model> = res.map_err(|_| ExecErr)?;

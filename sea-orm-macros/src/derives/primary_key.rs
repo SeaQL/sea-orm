@@ -45,8 +45,6 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
             }
         }
 
-        impl sea_orm::PrimaryKeyTrait for #ident {}
-
         impl sea_orm::PrimaryKeyToColumn for #ident {
             type Column = Column;
 

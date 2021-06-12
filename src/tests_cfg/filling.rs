@@ -27,6 +27,12 @@ pub enum PrimaryKey {
     Id,
 }
 
+impl PrimaryKeyTrait for PrimaryKey {
+    fn auto_increment() -> bool {
+        true
+    }
+}
+
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {}
 
