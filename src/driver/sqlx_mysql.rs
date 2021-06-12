@@ -7,7 +7,7 @@ use sqlx::{
 sea_query::sea_query_driver_mysql!();
 use sea_query_driver_mysql::bind_query;
 
-use crate::{connector::*, debug_print, query::*, DatabaseConnection, Statement};
+use crate::{connector::*, debug_print, DatabaseConnection, Statement};
 
 pub struct SqlxMySqlConnector;
 

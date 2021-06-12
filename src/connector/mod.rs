@@ -2,6 +2,7 @@ mod delete;
 mod executor;
 mod insert;
 mod paginator;
+mod query;
 mod select;
 mod update;
 
@@ -9,10 +10,11 @@ pub use delete::*;
 pub use executor::*;
 pub use insert::*;
 pub use paginator::*;
+pub use query::*;
 pub use select::*;
 pub use update::*;
 
-use crate::{DatabaseConnection, QueryResult, Statement, TypeErr};
+use crate::{DatabaseConnection, Statement};
 use async_trait::async_trait;
 use std::{error::Error, fmt};
 
