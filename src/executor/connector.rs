@@ -1,19 +1,4 @@
-mod delete;
-mod executor;
-mod insert;
-mod paginator;
-mod query;
-mod select;
-mod update;
-
-pub use delete::*;
-pub use executor::*;
-pub use insert::*;
-pub use paginator::*;
-pub use query::*;
-pub use select::*;
-pub use update::*;
-
+use super::{ExecErr, ExecResult, QueryErr, QueryResult};
 use crate::{DatabaseConnection, Statement};
 use async_trait::async_trait;
 use std::{error::Error, fmt};
@@ -35,26 +20,7 @@ pub trait Connection {
 }
 
 #[derive(Debug)]
-pub struct QueryErr;
-
-#[derive(Debug)]
 pub struct ConnectionErr;
-
-// QueryErr //
-
-impl Error for QueryErr {}
-
-impl fmt::Display for QueryErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl From<TypeErr> for QueryErr {
-    fn from(_: TypeErr) -> QueryErr {
-        QueryErr
-    }
-}
 
 // ConnectionErr //
 

@@ -12,6 +12,9 @@ pub(crate) enum QueryResultRow {
 }
 
 #[derive(Debug)]
+pub struct QueryErr;
+
+#[derive(Debug)]
 pub struct TypeErr;
 
 pub trait TryGetable {
@@ -74,6 +77,22 @@ impl QueryResult {
         T: TryGetable,
     {
         T::try_get(self, pre, col)
+    }
+}
+
+// QueryErr //
+
+impl Error for QueryErr {}
+
+impl fmt::Display for QueryErr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl From<TypeErr> for QueryErr {
+    fn from(_: TypeErr) -> QueryErr {
+        QueryErr
     }
 }
 
