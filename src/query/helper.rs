@@ -214,7 +214,6 @@ pub trait QueryOrder: Sized {
 }
 
 // LINT: when the column does not appear in tables selected from
-// LINT: when the operand value does not match column type
 pub trait QueryFilter: Sized {
     type QueryStatement: ConditionalStatement;
 

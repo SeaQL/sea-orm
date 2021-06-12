@@ -34,10 +34,15 @@ macro_rules! bind_vec_func {
     };
 }
 
+// LINT: when the operand value does not match column type
 pub trait ColumnTrait: IdenStatic + Iterable {
     type EntityName: EntityName;
 
     fn def(&self) -> ColumnType;
+
+    // we may add more:
+    // fn indexed(&self) -> bool;
+    // fn unique(&self) -> bool;
 
     fn entity_name(&self) -> DynIden {
         SeaRc::new(Self::EntityName::default()) as DynIden
