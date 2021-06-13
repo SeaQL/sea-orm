@@ -10,13 +10,15 @@ pub struct EntityWriter {
 
 impl EntityWriter {
     pub fn generate(self, output_dir: &str) -> Result<(), Error> {
-        self.write_mod(output_dir)?;
-        self.write_prelude(output_dir)?;
         for entity in self.entities.iter() {
             let code_blocks = Self::gen_code_blocks(entity);
             Self::write(output_dir, entity, code_blocks)?;
+        }
+        for entity in self.entities.iter() {
             Self::format_entity(output_dir, entity)?;
         }
+        self.write_mod(output_dir)?;
+        self.write_prelude(output_dir)?;
         Ok(())
     }
 
