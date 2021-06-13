@@ -45,6 +45,10 @@ impl MockDatabase {
         self.query_results.append(&mut vec);
         self
     }
+
+    pub fn into_transaction_log(self) -> Vec<Statement> {
+        self.transaction_log
+    }
 }
 
 impl MockDatabaseTrait for MockDatabase {
