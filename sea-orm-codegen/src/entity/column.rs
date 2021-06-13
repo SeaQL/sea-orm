@@ -1,12 +1,13 @@
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
-use sea_query::{ColumnDef, ColumnType};
+use sea_query::{ColumnDef, ColumnSpec, ColumnType};
 
 #[derive(Clone, Debug)]
 pub struct Column {
     pub(crate) name: String,
     pub(crate) col_type: ColumnType,
+    pub(crate) auto_increment: bool,
 }
 
 impl Column {
@@ -121,6 +122,14 @@ impl From<&ColumnDef> for Column {
             Some(ty) => ty.clone(),
             None => panic!("ColumnType should not be empty"),
         };
-        Self { name, col_type }
+        let auto_increments: Vec<bool> = col_def.get_column_spec()
+            .iter()
+            .filter_map(|spec| match spec {
+                ColumnSpec::AutoIncrement => Some(true),
+                _ => None,
+            })
+            .collect();
+        let auto_increment = !auto_increments.is_empty();
+        Self { name, col_type, auto_increment }
     }
 }

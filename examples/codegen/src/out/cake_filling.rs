@@ -29,6 +29,12 @@ pub enum PrimaryKey {
     FillingId,
 }
 
+impl PrimaryKeyTrait for PrimaryKey {
+    fn auto_increment() -> bool {
+        false
+    }
+}
+
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Cake,

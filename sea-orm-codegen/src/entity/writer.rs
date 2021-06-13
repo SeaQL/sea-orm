@@ -104,6 +104,7 @@ impl EntityWriter {
             Self::gen_model_struct(entity),
             Self::gen_column_enum(entity),
             Self::gen_primary_key_enum(entity),
+            Self::gen_impl_primary_key(entity),
             Self::gen_relation_enum(entity),
             Self::gen_impl_column_trait(entity),
             Self::gen_impl_relation_trait(entity),
@@ -164,6 +165,17 @@ impl EntityWriter {
             #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
             pub enum PrimaryKey {
                 #(#primary_key_names_camel_case),*
+            }
+        }
+    }
+
+    pub fn gen_impl_primary_key(entity: &Entity) -> TokenStream {
+        let primary_key_auto_increment = entity.get_primary_key_auto_increment();
+        quote! {
+            impl PrimaryKeyTrait for PrimaryKey {
+                fn auto_increment() -> bool {
+                    #primary_key_auto_increment
+                }
             }
         }
     }
