@@ -7,7 +7,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "fruit"
+        "fruit_copy"
     }
 }
 
@@ -31,9 +31,7 @@ pub enum PrimaryKey {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
-pub enum Relation {
-    Cake,
-}
+pub enum Relation {}
 
 impl ColumnTrait for Column {
     type EntityName = Entity;
@@ -53,24 +51,11 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Cake => Entity::has_one(super::cake::Entity)
-                .from(Column::CakeId)
-                .to(super::cake::Column::Id)
-                .into(),
+            _ => panic!("No RelationDef"),
         }
     }
 }
 
-impl Related<super::cake::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Cake.def()
-    }
-}
-
-impl Model {
-    pub fn find_cake(&self) -> Select<super::cake::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
-    }
-}
+impl Model {}
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -1,6 +1,7 @@
 use crate::{Column, PrimaryKey, Relation};
-use heck::SnakeCase;
+use heck::{SnakeCase, CamelCase};
 use proc_macro2::{Ident, TokenStream};
+use quote::format_ident;
 
 #[derive(Clone, Debug)]
 pub struct Entity {
@@ -13,6 +14,18 @@ pub struct Entity {
 impl Entity {
     pub fn get_table_name_snake_case(&self) -> String {
         self.table_name.to_snake_case()
+    }
+
+    pub fn get_table_name_camel_case(&self) -> String {
+        self.table_name.to_camel_case()
+    }
+
+    pub fn get_table_name_snake_case_ident(&self) -> Ident {
+        format_ident!("{}", self.get_table_name_snake_case())
+    }
+
+    pub fn get_table_name_camel_case_ident(&self) -> Ident {
+        format_ident!("{}", self.get_table_name_camel_case())
     }
 
     pub fn get_column_names_snake_case(&self) -> Vec<Ident> {

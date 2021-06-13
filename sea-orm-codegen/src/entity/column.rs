@@ -108,7 +108,7 @@ impl Column {
             ColumnType::JsonBinary => quote! { ColumnType::JsonBinary },
             ColumnType::Custom(s) => {
                 let s = s.to_string();
-                quote! { ColumnType::Custom(std::rc::Rc::new(sea_query::Alias::new(#s))) }
+                quote! { ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(#s))) }
             }
         }
     }
