@@ -1,11 +1,13 @@
 use crate::{FromQueryResult, QueryResult, QueryResultRow, TypeErr};
+use serde_json::Map;
 pub use serde_json::Value as JsonValue;
-use serde_json::{json, Map};
 
 impl FromQueryResult for JsonValue {
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, TypeErr> {
         match &res.row {
+            #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(row) => {
+                use serde_json::json;
                 use sqlx::{Column, MySql, Row, Type};
                 let mut map = Map::new();
                 for column in row.columns() {
@@ -38,6 +40,19 @@ impl FromQueryResult for JsonValue {
                     match_mysql_type!(f32);
                     match_mysql_type!(f64);
                     match_mysql_type!(String);
+                }
+                Ok(JsonValue::Object(map))
+            }
+            #[cfg(feature = "mock")]
+            QueryResultRow::Mock(row) => {
+                let mut map = Map::new();
+                for (column, value) in row.clone().into_column_value_tuples() {
+                    let col = if !column.starts_with(pre) {
+                        continue;
+                    } else {
+                        column.replacen(pre, "", 1)
+                    };
+                    map.insert(col, sea_query::sea_value_to_json_value(&value));
                 }
                 Ok(JsonValue::Object(map))
             }

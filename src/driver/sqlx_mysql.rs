@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use sqlx::{
     mysql::{MySqlArguments, MySqlQueryResult, MySqlRow},
     MySql, MySqlPool,
@@ -7,7 +6,7 @@ use sqlx::{
 sea_query::sea_query_driver_mysql!();
 use sea_query_driver_mysql::bind_query;
 
-use crate::{debug_print, executor::*, DatabaseConnection, Statement};
+use crate::{debug_print, executor::*, DatabaseConnection, Statement, ConnectionErr};
 
 pub struct SqlxMySqlConnector;
 
@@ -15,13 +14,12 @@ pub struct SqlxMySqlPoolConnection {
     pool: MySqlPool,
 }
 
-#[async_trait]
-impl Connector for SqlxMySqlConnector {
-    fn accepts(string: &str) -> bool {
+impl SqlxMySqlConnector {
+    pub fn accepts(string: &str) -> bool {
         string.starts_with("mysql://")
     }
 
-    async fn connect(string: &str) -> Result<DatabaseConnection, ConnectionErr> {
+    pub async fn connect(string: &str) -> Result<DatabaseConnection, ConnectionErr> {
         if let Ok(pool) = MySqlPool::connect(string).await {
             Ok(DatabaseConnection::SqlxMySqlPoolConnection(
                 SqlxMySqlPoolConnection { pool },
@@ -38,9 +36,8 @@ impl SqlxMySqlConnector {
     }
 }
 
-#[async_trait]
-impl Connection for &SqlxMySqlPoolConnection {
-    async fn execute(&self, stmt: Statement) -> Result<ExecResult, ExecErr> {
+impl SqlxMySqlPoolConnection {
+    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, ExecErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
@@ -52,7 +49,7 @@ impl Connection for &SqlxMySqlPoolConnection {
         Err(ExecErr)
     }
 
-    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, QueryErr> {
+    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, QueryErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
@@ -67,7 +64,7 @@ impl Connection for &SqlxMySqlPoolConnection {
         }
     }
 
-    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr> {
+    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
@@ -93,6 +90,18 @@ impl From<MySqlQueryResult> for ExecResult {
         ExecResult {
             result: ExecResultHolder::SqlxMySql(result),
         }
+    }
+}
+
+impl From<sqlx::Error> for TypeErr {
+    fn from(_: sqlx::Error) -> TypeErr {
+        TypeErr
+    }
+}
+
+impl From<sqlx::Error> for ExecErr {
+    fn from(_: sqlx::Error) -> ExecErr {
+        ExecErr
     }
 }
 

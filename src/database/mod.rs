@@ -1,63 +1,38 @@
+mod connection;
+#[cfg(feature = "mock")]
+mod mock;
 mod statement;
 
+pub use connection::*;
+#[cfg(feature = "mock")]
+pub use mock::*;
 pub use statement::*;
-
-use crate::{Connection, ConnectionErr, Connector, SqlxMySqlConnector, SqlxMySqlPoolConnection};
-use sea_query::{GenericBuilder, MySqlQueryBuilder};
 
 #[derive(Debug, Default)]
 pub struct Database {
     connection: DatabaseConnection,
 }
 
-pub enum DatabaseConnection {
-    SqlxMySqlPoolConnection(SqlxMySqlPoolConnection),
-    Disconnected,
-}
-
-// DatabaseConnection //
-
-impl Default for DatabaseConnection {
-    fn default() -> Self {
-        Self::Disconnected
-    }
-}
-
-impl std::fmt::Debug for DatabaseConnection {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::SqlxMySqlPoolConnection(_) => "SqlxMySqlPoolConnection",
-                Self::Disconnected => "Disconnected",
-            }
-        )
-    }
-}
-
-// Database //
-
 impl Database {
     pub async fn connect(&mut self, string: &str) -> Result<(), ConnectionErr> {
-        if SqlxMySqlConnector::accepts(string) {
-            self.connection = SqlxMySqlConnector::connect(string).await?;
+        #[cfg(feature = "sqlx-mysql")]
+        if crate::SqlxMySqlConnector::accepts(string) {
+            self.connection = crate::SqlxMySqlConnector::connect(string).await?;
+            return Ok(());
+        }
+        #[cfg(feature = "mock")]
+        if crate::MockDatabaseConnector::accepts(string) {
+            self.connection = crate::MockDatabaseConnector::connect(string).await?;
             return Ok(());
         }
         Err(ConnectionErr)
     }
 
-    pub fn get_connection(&self) -> impl Connection + '_ {
-        match &self.connection {
-            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn,
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
-        }
+    pub fn get_connection(&self) -> &DatabaseConnection {
+        &self.connection
     }
 
-    pub fn get_query_builder_backend(&self) -> impl GenericBuilder {
-        match &self.connection {
-            DatabaseConnection::SqlxMySqlPoolConnection(_) => MySqlQueryBuilder::default(),
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
-        }
+    pub fn get_query_builder_backend(&self) -> QueryBuilderBackend {
+        self.connection.get_query_builder_backend()
     }
 }

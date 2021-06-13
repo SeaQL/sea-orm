@@ -1,5 +1,7 @@
-use crate::{ActiveModelTrait, Connection, Database, ExecErr, Insert, QueryTrait, Statement};
-use sea_query::{InsertStatement, QueryBuilder};
+use crate::{
+    ActiveModelTrait, Database, ExecErr, Insert, QueryBuilderBackend, QueryTrait, Statement,
+};
+use sea_query::InsertStatement;
 use std::future::Future;
 
 #[derive(Clone, Debug)]
@@ -27,11 +29,8 @@ impl Inserter {
         Self { query }
     }
 
-    pub fn build<B>(&self, builder: B) -> Statement
-    where
-        B: QueryBuilder,
-    {
-        self.query.build(builder).into()
+    pub fn build(&self, builder: QueryBuilderBackend) -> Statement {
+        builder.build_insert_statement(&self.query)
     }
 
     pub fn exec(self, db: &Database) -> impl Future<Output = Result<InsertResult, ExecErr>> + '_ {

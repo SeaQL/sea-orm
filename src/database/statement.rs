@@ -1,6 +1,7 @@
 use sea_query::{inject_parameters, MySqlQueryBuilder, Values};
 use std::fmt;
 
+#[derive(Debug, Clone)]
 pub struct Statement {
     pub sql: String,
     pub values: Option<Values>,

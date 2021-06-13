@@ -1,4 +1,4 @@
-use crate::{Connection, Database, QueryErr, SelectorTrait};
+use crate::{Database, QueryErr, SelectorTrait};
 use async_stream::stream;
 use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
@@ -31,7 +31,7 @@ where
             .offset((self.page_size * page) as u64)
             .to_owned();
         let builder = self.db.get_query_builder_backend();
-        let stmt = query.build(builder).into();
+        let stmt = builder.build_select_statement(&query);
         let rows = self.db.get_connection().query_all(stmt).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
@@ -49,14 +49,14 @@ where
     /// Get the total number of pages
     pub async fn num_pages(&self) -> Result<usize, QueryErr> {
         let builder = self.db.get_query_builder_backend();
-        let stmt = SelectStatement::new()
-            .expr(Expr::cust("COUNT(*) AS num_rows"))
-            .from_subquery(
-                self.query.clone().reset_limit().reset_offset().to_owned(),
-                Alias::new("sub_query"),
-            )
-            .build(builder)
-            .into();
+        let stmt = builder.build_select_statement(
+            SelectStatement::new()
+                .expr(Expr::cust("COUNT(*) AS num_rows"))
+                .from_subquery(
+                    self.query.clone().reset_limit().reset_offset().to_owned(),
+                    Alias::new("sub_query"),
+                ),
+        );
         let result = match self.db.get_connection().query_one(stmt).await? {
             Some(res) => res,
             None => return Ok(0),

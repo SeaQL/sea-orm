@@ -1,4 +1,3 @@
-use sqlx::mysql::MySqlRow;
 use std::{error::Error, fmt};
 
 #[derive(Debug)]
@@ -8,7 +7,10 @@ pub struct QueryResult {
 
 #[derive(Debug)]
 pub(crate) enum QueryResultRow {
-    SqlxMySql(MySqlRow),
+    #[cfg(feature = "sqlx-mysql")]
+    SqlxMySql(sqlx::mysql::MySqlRow),
+    #[cfg(feature = "mock")]
+    Mock(crate::MockRow),
 }
 
 #[derive(Debug)]
@@ -60,12 +62,6 @@ impl fmt::Display for TypeErr {
     }
 }
 
-impl From<sqlx::Error> for TypeErr {
-    fn from(_: sqlx::Error) -> TypeErr {
-        TypeErr
-    }
-}
-
 // TryGetable //
 
 macro_rules! try_getable {
@@ -74,10 +70,13 @@ macro_rules! try_getable {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TypeErr> {
                 let column = format!("{}{}", pre, col);
                 match &res.row {
+                    #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
                         Ok(row.try_get(column.as_str())?)
                     }
+                    #[cfg(feature = "mock")]
+                    QueryResultRow::Mock(row) => Ok(row.try_get(column.as_str())?),
                 }
             }
         }
@@ -86,6 +85,7 @@ macro_rules! try_getable {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TypeErr> {
                 let column = format!("{}{}", pre, col);
                 match &res.row {
+                    #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
                         match row.try_get(column.as_str()) {
@@ -93,6 +93,11 @@ macro_rules! try_getable {
                             Err(_) => Ok(None),
                         }
                     }
+                    #[cfg(feature = "mock")]
+                    QueryResultRow::Mock(row) => match row.try_get(column.as_str()) {
+                        Ok(v) => Ok(Some(v)),
+                        Err(_) => Ok(None),
+                    },
                 }
             }
         }
