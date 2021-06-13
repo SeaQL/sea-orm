@@ -1,4 +1,7 @@
-use crate::{Database, EntityTrait, ExecErr, Iterable, PrimaryKeyToColumn, Value};
+use crate::{
+    Database, DeleteResult, EntityTrait, ExecErr, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait,
+    Value,
+};
 use std::fmt::Debug;
 
 #[derive(Clone, Debug, Default)]
@@ -72,6 +75,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     fn is_unset(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
 
     fn default() -> Self;
+
+    // below is not yet possible. right now we define these methods in DeriveActiveModel
+    // fn save(self, db: &Database) -> impl Future<Output = Result<Self, ExecErr>>;
+    // fn delete(self, db: &Database) -> impl Future<Output = Result<DeleteResult, ExecErr>>;
 }
 
 /// Behaviors for users to override
@@ -81,13 +88,34 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         <Self as ActiveModelTrait>::default()
     }
 
-    /// Will be called before saving to database
+    /// Will be called before saving
     fn before_save(self) -> Self {
         self
     }
 
-    /// Will be called after saving to database
+    /// Will be called after saving
     fn after_save(self) -> Self {
+        self
+    }
+
+    /// Will be called before deleting
+    fn before_delete(self) -> Self {
+        self
+    }
+}
+
+pub trait IntoActiveModel<A>
+where
+    A: ActiveModelTrait,
+{
+    fn into_active_model(self) -> A;
+}
+
+impl<A> IntoActiveModel<A> for A
+where
+    A: ActiveModelTrait,
+{
+    fn into_active_model(self) -> A {
         self
     }
 }
@@ -198,10 +226,12 @@ where
     }
 }
 
-/// Insert the model if primary key is unset, update otherwise
+/// Insert the model if primary key is unset, update otherwise.
+/// Only works if the entity has auto increment primary key.
 pub async fn save_active_model<A, E>(mut am: A, db: &Database) -> Result<A, ExecErr>
 where
-    A: ActiveModelBehavior + ActiveModelTrait<Entity = E> + From<E::Model>,
+    A: ActiveModelBehavior + ActiveModelTrait<Entity = E>,
+    E::Model: IntoActiveModel<A>,
     E: EntityTrait,
 {
     am = ActiveModelBehavior::before_save(am);
@@ -224,17 +254,19 @@ where
 
 async fn insert_and_select_active_model<A, E>(am: A, db: &Database) -> Result<A, ExecErr>
 where
-    A: ActiveModelTrait<Entity = E> + From<E::Model>,
+    A: ActiveModelTrait<Entity = E>,
+    E::Model: IntoActiveModel<A>,
     E: EntityTrait,
 {
     let exec = E::insert(am).exec(db);
     let res = exec.await?;
-    if res.last_insert_id != 0 {
+    // TODO: if the entity does not have auto increment primary key, then last_insert_id is a wrong value
+    if <E::PrimaryKey as PrimaryKeyTrait>::auto_increment() && res.last_insert_id != 0 {
         let find = E::find_by(res.last_insert_id).one(db);
         let res = find.await;
         let model: Option<E::Model> = res.map_err(|_| ExecErr)?;
         match model {
-            Some(model) => Ok(model.into()),
+            Some(model) => Ok(model.into_active_model()),
             None => Err(ExecErr),
         }
     } else {
@@ -248,5 +280,15 @@ where
     E: EntityTrait,
 {
     let exec = E::update(am).exec(db);
+    exec.await
+}
+
+pub async fn delete_active_model<A, E>(mut am: A, db: &Database) -> Result<DeleteResult, ExecErr>
+where
+    A: ActiveModelBehavior + ActiveModelTrait<Entity = E>,
+    E: EntityTrait,
+{
+    am = ActiveModelBehavior::before_delete(am);
+    let exec = E::delete(am).exec(db);
     exec.await
 }

@@ -43,7 +43,7 @@ where
     type Item = M;
 
     fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, TypeErr> {
-        Ok(M::from_query_result(&res, "")?)
+        M::from_query_result(&res, "")
     }
 }
 
@@ -92,11 +92,7 @@ where
         self.into_model::<E::Model>().all(db).await
     }
 
-    pub fn paginate<'db>(
-        self,
-        db: &'db Database,
-        page_size: usize,
-    ) -> Paginator<'db, SelectModel<E::Model>> {
+    pub fn paginate(self, db: &Database, page_size: usize) -> Paginator<'_, SelectModel<E::Model>> {
         self.into_model::<E::Model>().paginate(db, page_size)
     }
 }
@@ -165,7 +161,7 @@ where
         Ok(models)
     }
 
-    pub fn paginate<'db>(self, db: &'db Database, page_size: usize) -> Paginator<'db, S> {
+    pub fn paginate(self, db: &Database, page_size: usize) -> Paginator<'_, S> {
         Paginator {
             query: self.query,
             page: 0,

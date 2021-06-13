@@ -1,4 +1,4 @@
-use crate::{EntityTrait, Related, Select, SelectHelper, SelectTwo};
+use crate::{EntityTrait, QuerySelect, Related, Select, SelectTwo};
 pub use sea_query::JoinType;
 
 impl<E> Select<E>

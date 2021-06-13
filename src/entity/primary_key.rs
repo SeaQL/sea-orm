@@ -1,6 +1,8 @@
 use super::{ColumnTrait, IdenStatic, Iterable};
 
-pub trait PrimaryKeyTrait: IdenStatic + Iterable {}
+pub trait PrimaryKeyTrait: IdenStatic + Iterable {
+    fn auto_increment() -> bool;
+}
 
 pub trait PrimaryKeyToColumn {
     type Column: ColumnTrait;

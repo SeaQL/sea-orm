@@ -1,5 +1,5 @@
 mod active_model;
-mod base;
+mod base_entity;
 mod column;
 mod identity;
 mod model;
@@ -8,7 +8,7 @@ mod primary_key;
 mod relation;
 
 pub use active_model::*;
-pub use base::*;
+pub use base_entity::*;
 pub use column::*;
 pub use identity::*;
 pub use model::*;

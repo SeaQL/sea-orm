@@ -1,4 +1,4 @@
-use crate::{ActiveModelTrait, EntityTrait, Iterable, QueryTrait};
+use crate::{ActiveModelTrait, EntityTrait, IntoActiveModel, Iterable, QueryTrait};
 use core::marker::PhantomData;
 use sea_query::{InsertStatement, IntoIden};
 
@@ -35,11 +35,78 @@ where
         }
     }
 
-    pub fn one<M>(mut self, m: M) -> Self
+    /// Insert one Model or ActiveModel
+    ///
+    /// Model
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     Insert::one(cake::Model {
+    ///             id: 1,
+    ///             name: "Apple Pie".to_owned(),
+    ///         })
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#,
+    /// );
+    /// ```
+    /// ActiveModel
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     Insert::one(cake::ActiveModel {
+    ///             id: Unset(None),
+    ///             name: Set("Apple Pie".to_owned()),
+    ///         })
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie')"#,
+    /// );
+    /// ```
+    pub fn one<M>(m: M) -> Insert<A>
     where
-        M: Into<A>,
+        M: IntoActiveModel<A>,
     {
-        let mut am: A = m.into();
+        Self::new().add(m)
+    }
+
+    /// Insert many Model or ActiveModel
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    ///
+    /// assert_eq!(
+    ///     Insert::many(vec![
+    ///             cake::Model {
+    ///                 id: 1,
+    ///                 name: "Apple Pie".to_owned(),
+    ///             },
+    ///             cake::Model {
+    ///                 id: 2,
+    ///                 name: "Orange Scone".to_owned(),
+    ///             }
+    ///         ])
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie'), (2, 'Orange Scone')"#,
+    /// );
+    /// ```
+    pub fn many<M, I>(models: I) -> Self
+    where
+        M: IntoActiveModel<A>,
+        I: IntoIterator<Item = M>,
+    {
+        Self::new().add_many(models)
+    }
+
+    #[allow(clippy::should_implement_trait)]
+    pub fn add<M>(mut self, m: M) -> Self
+    where
+        M: IntoActiveModel<A>,
+    {
+        let mut am: A = m.into_active_model();
         let mut columns = Vec::new();
         let mut values = Vec::new();
         let columns_empty = self.columns.is_empty();
@@ -61,13 +128,13 @@ where
         self
     }
 
-    pub fn many<M, I>(mut self, models: I) -> Self
+    pub fn add_many<M, I>(mut self, models: I) -> Self
     where
-        M: Into<A>,
+        M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
     {
         for model in models.into_iter() {
-            self = self.one(model);
+            self = self.add(model);
         }
         self
     }
@@ -102,7 +169,7 @@ mod tests {
     fn insert_1() {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
-                .one(cake::ActiveModel {
+                .add(cake::ActiveModel {
                     id: ActiveValue::unset(),
                     name: ActiveValue::set("Apple Pie".to_owned()),
                 })
@@ -116,7 +183,7 @@ mod tests {
     fn insert_2() {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
-                .one(cake::ActiveModel {
+                .add(cake::ActiveModel {
                     id: ActiveValue::set(1),
                     name: ActiveValue::set("Apple Pie".to_owned()),
                 })
@@ -130,7 +197,7 @@ mod tests {
     fn insert_3() {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
-                .one(cake::Model {
+                .add(cake::Model {
                     id: 1,
                     name: "Apple Pie".to_owned(),
                 })
@@ -144,7 +211,7 @@ mod tests {
     fn insert_4() {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
-                .many(vec![
+                .add_many(vec![
                     cake::Model {
                         id: 1,
                         name: "Apple Pie".to_owned(),
@@ -173,7 +240,7 @@ mod tests {
         };
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
-                .many(vec![apple, orange])
+                .add_many(vec![apple, orange])
                 .build(PostgresQueryBuilder)
                 .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (NULL, 'Apple'), (2, 'Orange')"#,

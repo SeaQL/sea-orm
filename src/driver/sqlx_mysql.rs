@@ -7,7 +7,7 @@ use sqlx::{
 sea_query::sea_query_driver_mysql!();
 use sea_query_driver_mysql::bind_query;
 
-use crate::{connector::*, debug_print, query::*, DatabaseConnection, Statement};
+use crate::{debug_print, executor::*, DatabaseConnection, Statement};
 
 pub struct SqlxMySqlConnector;
 
@@ -22,13 +22,19 @@ impl Connector for SqlxMySqlConnector {
     }
 
     async fn connect(string: &str) -> Result<DatabaseConnection, ConnectionErr> {
-        if let Ok(conn) = MySqlPool::connect(string).await {
+        if let Ok(pool) = MySqlPool::connect(string).await {
             Ok(DatabaseConnection::SqlxMySqlPoolConnection(
-                SqlxMySqlPoolConnection { pool: conn },
+                SqlxMySqlPoolConnection { pool },
             ))
         } else {
             Err(ConnectionErr)
         }
+    }
+}
+
+impl SqlxMySqlConnector {
+    pub fn from_sqlx_mysql_pool(pool: MySqlPool) -> DatabaseConnection {
+        DatabaseConnection::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection { pool })
     }
 }
 

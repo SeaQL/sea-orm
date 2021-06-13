@@ -1,7 +1,7 @@
 use crate::{
-    ActiveModelTrait, ColumnTrait, FromQueryResult, Insert, ModelTrait, OneOrManyActiveModel,
-    PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, RelationBuilder, RelationTrait, RelationType,
-    Select, Update,
+    ActiveModelTrait, ColumnTrait, Delete, DeleteOne, FromQueryResult, Insert, ModelTrait,
+    OneOrManyActiveModel, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, RelationBuilder,
+    RelationTrait, RelationType, Select, Update, UpdateOne,
 };
 use sea_query::{Iden, IntoValueTuple};
 use std::fmt::Debug;
@@ -167,7 +167,7 @@ pub trait EntityTrait: EntityName {
     where
         A: ActiveModelTrait<Entity = Self>,
     {
-        Insert::new().one(model)
+        Insert::one(model)
     }
 
     /// ```
@@ -193,7 +193,7 @@ pub trait EntityTrait: EntityName {
         A: ActiveModelTrait<Entity = Self>,
         I: IntoIterator<Item = A>,
     {
-        Insert::new().many(models)
+        Insert::many(models)
     }
 
     /// ```
@@ -211,10 +211,31 @@ pub trait EntityTrait: EntityName {
     ///     r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"#,
     /// );
     /// ```
-    fn update<A>(model: A) -> Update<A>
+    fn update<A>(model: A) -> UpdateOne<A>
     where
         A: ActiveModelTrait<Entity = Self>,
     {
-        Update::new(model)
+        Update::one(model)
+    }
+
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::PostgresQueryBuilder};
+    ///
+    /// let orange = fruit::ActiveModel {
+    ///     id: Set(3),
+    ///     ..Default::default()
+    /// };
+    /// assert_eq!(
+    ///     fruit::Entity::delete(orange)
+    ///         .build(PostgresQueryBuilder)
+    ///         .to_string(),
+    ///     r#"DELETE FROM "fruit" WHERE "fruit"."id" = 3"#,
+    /// );
+    /// ```
+    fn delete<A>(model: A) -> DeleteOne<A>
+    where
+        A: ActiveModelTrait<Entity = Self>,
+    {
+        Delete::one(model)
     }
 }

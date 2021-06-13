@@ -1,8 +1,6 @@
 use crate::{EntityName, IdenStatic, Iterable};
 pub use sea_query::ColumnType;
-use sea_query::{Expr, Iden, SimpleExpr, Value};
-
-use std::rc::Rc;
+use sea_query::{DynIden, Expr, SeaRc, SimpleExpr, Value};
 
 macro_rules! bind_oper {
     ( $op: ident ) => {
@@ -36,17 +34,22 @@ macro_rules! bind_vec_func {
     };
 }
 
+// LINT: when the operand value does not match column type
 pub trait ColumnTrait: IdenStatic + Iterable {
     type EntityName: EntityName;
 
     fn def(&self) -> ColumnType;
 
-    fn entity_name(&self) -> Rc<dyn Iden> {
-        Rc::new(Self::EntityName::default()) as Rc<dyn Iden>
+    // we may add more:
+    // fn indexed(&self) -> bool;
+    // fn unique(&self) -> bool;
+
+    fn entity_name(&self) -> DynIden {
+        SeaRc::new(Self::EntityName::default()) as DynIden
     }
 
-    fn as_column_ref(&self) -> (Rc<dyn Iden>, Rc<dyn Iden>) {
-        (self.entity_name(), Rc::new(*self) as Rc<dyn Iden>)
+    fn as_column_ref(&self) -> (DynIden, DynIden) {
+        (self.entity_name(), SeaRc::new(*self) as DynIden)
     }
 
     bind_oper!(eq);
