@@ -62,10 +62,7 @@ impl DatabaseConnection {
         }
     }
 
-    pub async fn execute(
-        &self,
-        stmt: Statement,
-    ) -> Result<ExecResult, ExecErr> {
+    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, ExecErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.execute(stmt).await,
@@ -75,10 +72,7 @@ impl DatabaseConnection {
         }
     }
 
-    pub async fn query_one(
-        &self,
-        stmt: Statement,
-    ) -> Result<Option<QueryResult>, QueryErr> {
+    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, QueryErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_one(stmt).await,
@@ -88,10 +82,7 @@ impl DatabaseConnection {
         }
     }
 
-    pub async fn query_all(
-        &self,
-        stmt: Statement,
-    ) -> Result<Vec<QueryResult>, QueryErr> {
+    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_all(stmt).await,

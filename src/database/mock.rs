@@ -1,15 +1,18 @@
-use crate::{ExecErr, ExecResult, MockDatabaseTrait, QueryErr, QueryResult, Statement, TypeErr};
+use crate::{
+    Database, DatabaseConnection, ExecErr, ExecResult, ExecResultHolder, MockDatabaseConnection,
+    MockDatabaseTrait, QueryErr, QueryResult, QueryResultRow, Statement, TypeErr,
+};
 use sea_query::{Value, ValueType};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Default)]
 pub struct MockDatabase {
     transaction_log: Vec<Statement>,
-    exec_results: Vec<ExecResult>,
-    query_results: Vec<Vec<QueryResult>>,
+    exec_results: Vec<MockExecResult>,
+    query_results: Vec<Vec<MockRow>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct MockExecResult {
     pub last_insert_id: u64,
     pub rows_affected: u64,
@@ -24,14 +27,33 @@ impl MockDatabase {
     pub fn new() -> Self {
         Default::default()
     }
+
+    pub fn into_database(self) -> Database {
+        Database {
+            connection: DatabaseConnection::MockDatabaseConnection(MockDatabaseConnection::new(
+                self,
+            )),
+        }
+    }
+
+    pub fn append_exec_results(mut self, mut vec: Vec<MockExecResult>) -> Self {
+        self.exec_results.append(&mut vec);
+        self
+    }
+
+    pub fn append_query_results(mut self, mut vec: Vec<Vec<MockRow>>) -> Self {
+        self.query_results.append(&mut vec);
+        self
+    }
 }
 
 impl MockDatabaseTrait for MockDatabase {
     fn execute(&mut self, counter: usize, statement: Statement) -> Result<ExecResult, ExecErr> {
         self.transaction_log.push(statement);
         if counter < self.exec_results.len() {
-            Err(ExecErr)
-            // Ok(self.exec_results[counter].clone())
+            Ok(ExecResult {
+                result: ExecResultHolder::Mock(std::mem::take(&mut self.exec_results[counter])),
+            })
         } else {
             Err(ExecErr)
         }
@@ -44,8 +66,12 @@ impl MockDatabaseTrait for MockDatabase {
     ) -> Result<Vec<QueryResult>, QueryErr> {
         self.transaction_log.push(statement);
         if counter < self.query_results.len() {
-            Err(QueryErr)
-            // Ok(self.query_results[counter].clone())
+            Ok(std::mem::take(&mut self.query_results[counter])
+                .into_iter()
+                .map(|row| QueryResult {
+                    row: QueryResultRow::Mock(row),
+                })
+                .collect())
         } else {
             Err(QueryErr)
         }
@@ -62,5 +88,13 @@ impl MockRow {
 
     pub fn into_column_value_tuples(self) -> impl Iterator<Item = (String, Value)> {
         self.values.into_iter()
+    }
+}
+
+impl From<BTreeMap<&str, Value>> for MockRow {
+    fn from(values: BTreeMap<&str, Value>) -> Self {
+        Self {
+            values: values.into_iter().map(|(k, v)| (k.to_owned(), v)).collect(),
+        }
     }
 }

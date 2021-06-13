@@ -21,8 +21,8 @@ pub trait MockDatabaseTrait: Send {
 }
 
 impl MockDatabaseConnector {
-    pub fn accepts(_string: &str) -> bool {
-        true
+    pub fn accepts(string: &str) -> bool {
+        string.starts_with("mock://")
     }
 
     pub async fn connect(_string: &str) -> Result<DatabaseConnection, ConnectionErr> {
@@ -47,30 +47,20 @@ impl MockDatabaseConnection {
 impl MockDatabaseConnection {
     pub async fn execute(&self, statement: Statement) -> Result<ExecResult, ExecErr> {
         debug_print!("{}", statement);
-        self.counter.fetch_add(1, Ordering::SeqCst);
-        self.mocker
-            .lock()
-            .unwrap()
-            .execute(self.counter.load(Ordering::SeqCst), statement)
+        let counter = self.counter.fetch_add(1, Ordering::SeqCst);
+        self.mocker.lock().unwrap().execute(counter, statement)
     }
 
     pub async fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, QueryErr> {
         debug_print!("{}", statement);
-        self.counter.fetch_add(1, Ordering::SeqCst);
-        let result = self
-            .mocker
-            .lock()
-            .unwrap()
-            .query(self.counter.load(Ordering::SeqCst), statement)?;
+        let counter = self.counter.fetch_add(1, Ordering::SeqCst);
+        let result = self.mocker.lock().unwrap().query(counter, statement)?;
         Ok(result.into_iter().next())
     }
 
     pub async fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, QueryErr> {
         debug_print!("{}", statement);
-        self.counter.fetch_add(1, Ordering::SeqCst);
-        self.mocker
-            .lock()
-            .unwrap()
-            .query(self.counter.load(Ordering::SeqCst), statement)
+        let counter = self.counter.fetch_add(1, Ordering::SeqCst);
+        self.mocker.lock().unwrap().query(counter, statement)
     }
 }
