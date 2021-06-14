@@ -154,21 +154,18 @@ mod tests {
                     .into_iter()
                     .map(|model| Into::<MockRow>::into(model))
                     .collect(),
+                Vec::<fruit::Model>::new()
+                    .into_iter()
+                    .map(|model| Into::<MockRow>::into(model))
+                    .collect(),
             ])
             .into_database();
 
         let mut fruit_stream = fruit::Entity::find().paginate(&db, 2).into_stream();
 
         assert_eq!(fruit_stream.try_next().await?, Some(page1));
-
         assert_eq!(fruit_stream.try_next().await?, Some(page2));
-
-        assert!(fruit_stream.try_next().await.is_err());
-        // Should return None in live connection
-        // assert_eq!(
-        //     fruit_stream.try_next().await?,
-        //     None
-        // );
+        assert_eq!(fruit_stream.try_next().await?, None);
 
         Ok(())
     }
