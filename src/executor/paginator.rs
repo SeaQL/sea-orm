@@ -99,3 +99,77 @@ where
         })
     }
 }
+
+#[cfg(test)]
+#[cfg(feature = "mock")]
+mod tests {
+    use crate::tests_cfg::fruit;
+    use crate::{entity::*, MockDatabase, MockRow, QueryErr};
+    use futures::TryStreamExt;
+    use sea_query::Value;
+
+    #[async_std::test]
+    async fn into_stream() -> Result<(), QueryErr> {
+        // TODO: auto impl
+        impl From<fruit::Model> for MockRow {
+            fn from(model: fruit::Model) -> Self {
+                let map = maplit::btreemap! {
+                    "id" => Into::<Value>::into(model.id),
+                    "name" => Into::<Value>::into(model.name),
+                    "cake_id" => Into::<Value>::into(model.cake_id),
+                };
+                map.into()
+            }
+        }
+
+        let page1 = vec![
+            fruit::Model {
+                id: 1,
+                name: "Blueberry".into(),
+                cake_id: Some(1),
+            },
+            fruit::Model {
+                id: 2,
+                name: "Rasberry".into(),
+                cake_id: Some(1),
+            },
+        ];
+
+        let page2 = vec![fruit::Model {
+            id: 3,
+            name: "Strawberry".into(),
+            cake_id: Some(2),
+        }];
+
+        let db = MockDatabase::new()
+            .append_query_results(vec![
+                // TODO: take any IntoMockRow
+                page1
+                    .clone()
+                    .into_iter()
+                    .map(|model| Into::<MockRow>::into(model))
+                    .collect(),
+                page2
+                    .clone()
+                    .into_iter()
+                    .map(|model| Into::<MockRow>::into(model))
+                    .collect(),
+            ])
+            .into_database();
+
+        let mut fruit_stream = fruit::Entity::find().paginate(&db, 2).into_stream();
+
+        assert_eq!(fruit_stream.try_next().await?, Some(page1));
+
+        assert_eq!(fruit_stream.try_next().await?, Some(page2));
+
+        assert!(fruit_stream.try_next().await.is_err());
+        // Should return None in live connection
+        // assert_eq!(
+        //     fruit_stream.try_next().await?,
+        //     None
+        // );
+
+        Ok(())
+    }
+}
