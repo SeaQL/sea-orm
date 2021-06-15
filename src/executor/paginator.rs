@@ -104,12 +104,11 @@ where
 #[cfg(feature = "mock")]
 mod tests {
     use crate::tests_cfg::fruit;
-    use crate::{entity::*, MockDatabase, MockRow, QueryErr};
+    use crate::{entity::*, Database, MockDatabase, MockRow, QueryErr};
     use futures::TryStreamExt;
     use sea_query::Value;
 
-    #[async_std::test]
-    async fn into_stream() -> Result<(), QueryErr> {
+    fn setup() -> (Database, Vec<Vec<fruit::Model>>) {
         // TODO: auto impl
         impl From<fruit::Model> for MockRow {
             fn from(model: fruit::Model) -> Self {
@@ -161,10 +160,108 @@ mod tests {
             ])
             .into_database();
 
+        (db, vec![page1, page2, vec![]])
+    }
+
+    fn setup_num_rows() -> (Database, i32) {
+        let num_rows = 3;
+        let db = MockDatabase::new()
+            .append_query_results(vec![vec![maplit::btreemap! {
+                "num_rows" => Into::<Value>::into(num_rows),
+            }
+            .into()]])
+            .into_database();
+
+        (db, num_rows)
+    }
+
+    #[async_std::test]
+    async fn fetch_page() -> Result<(), QueryErr> {
+        let (db, pages) = setup();
+
+        let paginator = fruit::Entity::find().paginate(&db, 2);
+
+        assert_eq!(paginator.fetch_page(0).await?, pages[0].clone());
+        assert_eq!(paginator.fetch_page(1).await?, pages[1].clone());
+        assert_eq!(paginator.fetch_page(2).await?, pages[2].clone());
+
+        Ok(())
+    }
+
+    #[async_std::test]
+    async fn fetch() -> Result<(), QueryErr> {
+        let (db, pages) = setup();
+
+        let mut paginator = fruit::Entity::find().paginate(&db, 2);
+
+        assert_eq!(paginator.fetch().await?, pages[0].clone());
+        paginator.next();
+
+        assert_eq!(paginator.fetch().await?, pages[1].clone());
+        paginator.next();
+
+        assert_eq!(paginator.fetch().await?, pages[2].clone());
+
+        Ok(())
+    }
+
+    #[async_std::test]
+    async fn num_pages() -> Result<(), QueryErr> {
+        let (db, num_rows) = setup_num_rows();
+
+        let num_rows = num_rows as usize;
+        let page_size = 2_usize;
+        let num_pages = (num_rows / page_size) + (num_rows % page_size > 0) as usize;
+        let paginator = fruit::Entity::find().paginate(&db, page_size);
+
+        assert_eq!(paginator.num_pages().await?, num_pages);
+
+        Ok(())
+    }
+
+    #[async_std::test]
+    async fn next_and_cur_page() -> Result<(), QueryErr> {
+        let (db, _) = setup();
+
+        let mut paginator = fruit::Entity::find().paginate(&db, 2);
+
+        assert_eq!(paginator.cur_page(), 0);
+        paginator.next();
+
+        assert_eq!(paginator.cur_page(), 1);
+        paginator.next();
+
+        assert_eq!(paginator.cur_page(), 2);
+
+        Ok(())
+    }
+
+    #[async_std::test]
+    async fn fetch_and_next() -> Result<(), QueryErr> {
+        let (db, pages) = setup();
+
+        let mut paginator = fruit::Entity::find().paginate(&db, 2);
+
+        assert_eq!(paginator.cur_page(), 0);
+        assert_eq!(paginator.fetch_and_next().await?, Some(pages[0].clone()));
+
+        assert_eq!(paginator.cur_page(), 1);
+        assert_eq!(paginator.fetch_and_next().await?, Some(pages[1].clone()));
+
+        assert_eq!(paginator.cur_page(), 2);
+        assert_eq!(paginator.fetch_and_next().await?, None);
+
+        Ok(())
+    }
+
+    #[async_std::test]
+    async fn into_stream() -> Result<(), QueryErr> {
+        let (db, pages) = setup();
+
         let mut fruit_stream = fruit::Entity::find().paginate(&db, 2).into_stream();
 
-        assert_eq!(fruit_stream.try_next().await?, Some(page1));
-        assert_eq!(fruit_stream.try_next().await?, Some(page2));
+        assert_eq!(fruit_stream.try_next().await?, Some(pages[0].clone()));
+        assert_eq!(fruit_stream.try_next().await?, Some(pages[1].clone()));
         assert_eq!(fruit_stream.try_next().await?, None);
 
         Ok(())
