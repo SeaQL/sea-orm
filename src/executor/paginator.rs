@@ -104,9 +104,11 @@ where
 #[cfg(feature = "mock")]
 mod tests {
     use crate::tests_cfg::fruit;
-    use crate::{entity::*, Database, MockDatabase, MockRow, QueryErr};
+    use crate::{
+        entity::*, Database, DatabaseConnection, MockDatabase, MockRow, QueryErr, Statement,
+    };
     use futures::TryStreamExt;
-    use sea_query::Value;
+    use sea_query::{Alias, Expr, PostgresQueryBuilder, SelectStatement, Value};
 
     fn setup() -> (Database, Vec<Vec<fruit::Model>>) {
         // TODO: auto impl
@@ -175,6 +177,21 @@ mod tests {
         (db, num_rows)
     }
 
+    fn match_transaction_log(db: Database, selects: Vec<SelectStatement>) {
+        let mock_conn = match db.get_connection() {
+            DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
+            _ => unreachable!(),
+        };
+
+        let mut mocker = mock_conn.mocker.lock().unwrap();
+
+        for (i, stmt) in mocker.into_transaction_log().into_iter().enumerate() {
+            let query_builder = db.get_query_builder_backend();
+            let statement = query_builder.build_select_statement(&selects[i]);
+            assert_eq!(stmt.to_string(), statement.to_string());
+        }
+    }
+
     #[async_std::test]
     async fn fetch_page() -> Result<(), QueryErr> {
         let (db, pages) = setup();
@@ -184,6 +201,22 @@ mod tests {
         assert_eq!(paginator.fetch_page(0).await?, pages[0].clone());
         assert_eq!(paginator.fetch_page(1).await?, pages[1].clone());
         assert_eq!(paginator.fetch_page(2).await?, pages[2].clone());
+
+        let select = SelectStatement::new()
+            .exprs(vec![
+                Expr::tbl(fruit::Entity, fruit::Column::Id),
+                Expr::tbl(fruit::Entity, fruit::Column::Name),
+                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            ])
+            .from(fruit::Entity)
+            .to_owned();
+
+        let transaction_log = vec![
+            select.clone().offset(0).limit(2).to_owned(),
+            select.clone().offset(2).limit(2).to_owned(),
+            select.clone().offset(4).limit(2).to_owned(),
+        ];
+        match_transaction_log(db, transaction_log);
 
         Ok(())
     }
@@ -202,6 +235,22 @@ mod tests {
 
         assert_eq!(paginator.fetch().await?, pages[2].clone());
 
+        let select = SelectStatement::new()
+            .exprs(vec![
+                Expr::tbl(fruit::Entity, fruit::Column::Id),
+                Expr::tbl(fruit::Entity, fruit::Column::Name),
+                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            ])
+            .from(fruit::Entity)
+            .to_owned();
+
+        let transaction_log = vec![
+            select.clone().offset(0).limit(2).to_owned(),
+            select.clone().offset(2).limit(2).to_owned(),
+            select.clone().offset(4).limit(2).to_owned(),
+        ];
+        match_transaction_log(db, transaction_log);
+
         Ok(())
     }
 
@@ -215,6 +264,23 @@ mod tests {
         let paginator = fruit::Entity::find().paginate(&db, page_size);
 
         assert_eq!(paginator.num_pages().await?, num_pages);
+
+        let sub_query = SelectStatement::new()
+            .exprs(vec![
+                Expr::tbl(fruit::Entity, fruit::Column::Id),
+                Expr::tbl(fruit::Entity, fruit::Column::Name),
+                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            ])
+            .from(fruit::Entity)
+            .to_owned();
+
+        let select = SelectStatement::new()
+            .expr(Expr::cust("COUNT(*) AS num_rows"))
+            .from_subquery(sub_query, Alias::new("sub_query"))
+            .to_owned();
+
+        let transaction_log = vec![select];
+        match_transaction_log(db, transaction_log);
 
         Ok(())
     }
@@ -232,6 +298,22 @@ mod tests {
         paginator.next();
 
         assert_eq!(paginator.cur_page(), 2);
+
+        let select = SelectStatement::new()
+            .exprs(vec![
+                Expr::tbl(fruit::Entity, fruit::Column::Id),
+                Expr::tbl(fruit::Entity, fruit::Column::Name),
+                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            ])
+            .from(fruit::Entity)
+            .to_owned();
+
+        let transaction_log = vec![
+            select.clone().offset(0).limit(2).to_owned(),
+            select.clone().offset(2).limit(2).to_owned(),
+            select.clone().offset(4).limit(2).to_owned(),
+        ];
+        match_transaction_log(db, transaction_log);
 
         Ok(())
     }
@@ -251,6 +333,22 @@ mod tests {
         assert_eq!(paginator.cur_page(), 2);
         assert_eq!(paginator.fetch_and_next().await?, None);
 
+        let select = SelectStatement::new()
+            .exprs(vec![
+                Expr::tbl(fruit::Entity, fruit::Column::Id),
+                Expr::tbl(fruit::Entity, fruit::Column::Name),
+                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            ])
+            .from(fruit::Entity)
+            .to_owned();
+
+        let transaction_log = vec![
+            select.clone().offset(0).limit(2).to_owned(),
+            select.clone().offset(2).limit(2).to_owned(),
+            select.clone().offset(4).limit(2).to_owned(),
+        ];
+        match_transaction_log(db, transaction_log);
+
         Ok(())
     }
 
@@ -263,6 +361,24 @@ mod tests {
         assert_eq!(fruit_stream.try_next().await?, Some(pages[0].clone()));
         assert_eq!(fruit_stream.try_next().await?, Some(pages[1].clone()));
         assert_eq!(fruit_stream.try_next().await?, None);
+
+        drop(fruit_stream);
+
+        let select = SelectStatement::new()
+            .exprs(vec![
+                Expr::tbl(fruit::Entity, fruit::Column::Id),
+                Expr::tbl(fruit::Entity, fruit::Column::Name),
+                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            ])
+            .from(fruit::Entity)
+            .to_owned();
+
+        let transaction_log = vec![
+            select.clone().offset(0).limit(2).to_owned(),
+            select.clone().offset(2).limit(2).to_owned(),
+            select.clone().offset(4).limit(2).to_owned(),
+        ];
+        match_transaction_log(db, transaction_log);
 
         Ok(())
     }

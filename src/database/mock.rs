@@ -80,6 +80,10 @@ impl MockDatabaseTrait for MockDatabase {
             Err(QueryErr)
         }
     }
+
+    fn into_transaction_log(&mut self) -> Vec<Statement> {
+        std::mem::take(&mut self.transaction_log)
+    }
 }
 
 impl MockRow {
