@@ -76,6 +76,12 @@ async fn find_together(db: &Database) -> Result<(), QueryErr> {
     Ok(())
 }
 
+impl Cake {
+    fn find_by_name(name: &str) -> Select<Self> {
+        Self::find().filter(cake::Column::Name.contains(name))
+    }
+}
+
 async fn find_one(db: &Database) -> Result<(), QueryErr> {
     print!("find one by primary key: ");
 
@@ -86,12 +92,9 @@ async fn find_one(db: &Database) -> Result<(), QueryErr> {
     println!("{:?}", cheese);
     println!();
 
-    print!("find one by like: ");
+    print!("find one by name: ");
 
-    let chocolate = Cake::find()
-        .filter(cake::Column::Name.contains("chocolate"))
-        .one(db)
-        .await?;
+    let chocolate = Cake::find_by_name("chocolate").one(db).await?;
 
     println!();
     println!("{:?}", chocolate);
