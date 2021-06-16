@@ -85,7 +85,7 @@ impl Cake {
 async fn find_one(db: &Database) -> Result<(), QueryErr> {
     print!("find one by primary key: ");
 
-    let cheese: Option<cake::Model> = Cake::find_by(1).one(db).await?;
+    let cheese: Option<cake::Model> = Cake::find_by_id(1).one(db).await?;
     let cheese = cheese.unwrap();
 
     println!();
@@ -150,7 +150,7 @@ async fn find_many_to_many(db: &Database) -> Result<(), QueryErr> {
 
     print!("find fillings for cheese cake: ");
 
-    let cheese = Cake::find_by(1).one(db).await?;
+    let cheese = Cake::find_by_id(1).one(db).await?;
 
     if let Some(cheese) = cheese {
         let fillings: Vec<filling::Model> = cheese.find_filling().all(db).await?;
@@ -163,7 +163,7 @@ async fn find_many_to_many(db: &Database) -> Result<(), QueryErr> {
 
     print!("find cakes for lemon: ");
 
-    let lemon = Filling::find_by(2).one(db).await?;
+    let lemon = Filling::find_by_id(2).one(db).await?;
 
     if let Some(lemon) = lemon {
         let cakes: Vec<cake::Model> = lemon.find_cake().all(db).await?;

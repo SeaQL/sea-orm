@@ -61,7 +61,7 @@ pub trait EntityTrait: EntityName {
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
     /// assert_eq!(
-    ///     cake::Entity::find_by(11)
+    ///     cake::Entity::find_by_id(11)
     ///         .build(PostgresQueryBuilder)
     ///         .to_string(),
     ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = 11"#
@@ -72,7 +72,7 @@ pub trait EntityTrait: EntityName {
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake_filling, sea_query::PostgresQueryBuilder};
     ///
     /// assert_eq!(
-    ///     cake_filling::Entity::find_by((2, 3))
+    ///     cake_filling::Entity::find_by_id((2, 3))
     ///         .build(PostgresQueryBuilder)
     ///         .to_string(),
     ///     [
@@ -81,7 +81,7 @@ pub trait EntityTrait: EntityName {
     ///     ].join(" ")
     /// );
     /// ```
-    fn find_by<V>(values: V) -> Select<Self>
+    fn find_by_id<V>(values: V) -> Select<Self>
     where
         V: IntoValueTuple,
     {

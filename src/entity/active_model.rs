@@ -262,7 +262,7 @@ where
     let res = exec.await?;
     // TODO: if the entity does not have auto increment primary key, then last_insert_id is a wrong value
     if <E::PrimaryKey as PrimaryKeyTrait>::auto_increment() && res.last_insert_id != 0 {
-        let find = E::find_by(res.last_insert_id).one(db);
+        let find = E::find_by_id(res.last_insert_id).one(db);
         let res = find.await;
         let model: Option<E::Model> = res.map_err(|_| ExecErr)?;
         match model {
