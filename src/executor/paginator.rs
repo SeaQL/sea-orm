@@ -173,9 +173,9 @@ mod tests {
             select.clone().offset(2).limit(2).to_owned(),
             select.clone().offset(4).limit(2).to_owned(),
         ];
-        let query_builder = &db.get_query_builder_backend();
+        let query_builder = db.get_query_builder_backend();
         let mut logs = get_mock_transaction_log(db);
-        logs = match_transaction_log(logs, stmts, query_builder);
+        logs = match_transaction_log(logs, stmts, &query_builder);
 
         Ok(())
     }
@@ -208,9 +208,9 @@ mod tests {
             select.clone().offset(2).limit(2).to_owned(),
             select.clone().offset(4).limit(2).to_owned(),
         ];
-        let query_builder = &db.get_query_builder_backend();
+        let query_builder = db.get_query_builder_backend();
         let mut logs = get_mock_transaction_log(db);
-        logs = match_transaction_log(logs, stmts, query_builder);
+        logs = match_transaction_log(logs, stmts, &query_builder);
 
         Ok(())
     }
@@ -241,9 +241,9 @@ mod tests {
             .to_owned();
 
         let stmts = vec![select];
-        let query_builder = &db.get_query_builder_backend();
+        let query_builder = db.get_query_builder_backend();
         let mut logs = get_mock_transaction_log(db);
-        logs = match_transaction_log(logs, stmts, query_builder);
+        logs = match_transaction_log(logs, stmts, &query_builder);
 
         Ok(())
     }
@@ -294,9 +294,9 @@ mod tests {
             select.clone().offset(2).limit(2).to_owned(),
             select.clone().offset(4).limit(2).to_owned(),
         ];
-        let query_builder = &db.get_query_builder_backend();
+        let query_builder = db.get_query_builder_backend();
         let mut logs = get_mock_transaction_log(db);
-        logs = match_transaction_log(logs, stmts, query_builder);
+        logs = match_transaction_log(logs, stmts, &query_builder);
 
         Ok(())
     }
@@ -327,10 +327,10 @@ mod tests {
             select.clone().offset(2).limit(2).to_owned(),
             select.clone().offset(4).limit(2).to_owned(),
         ];
-        let query_builder = &db.get_query_builder_backend();
+        let query_builder = db.get_query_builder_backend();
         let mut logs = get_mock_transaction_log(db);
-        logs = match_transaction_log(logs, stmts[0..1].to_vec(), query_builder);
-        logs = match_transaction_log(logs, stmts[1..].to_vec(), query_builder);
+        logs = match_transaction_log(logs, stmts[0..1].to_vec(), &query_builder);
+        logs = match_transaction_log(logs, stmts[1..].to_vec(), &query_builder);
 
         Ok(())
     }

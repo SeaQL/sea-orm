@@ -1,4 +1,4 @@
-use crate::{Database, IntoMockRow, MockRow, QueryBuilderBackend, Statement, tests_cfg::*};
+use crate::{Database, IntoMockRow, MockDatabaseConnection, MockRow, QueryBuilderBackend, Statement, tests_cfg::*};
 use sea_query::{SelectStatement, Value};
 
 impl From<cake_filling::Model> for MockRow {
@@ -42,11 +42,15 @@ impl From<fruit::Model> for MockRow {
     }
 }
 
-pub fn get_mock_transaction_log(db: Database) -> Vec<Statement> {
-    let mock_conn = match db.get_connection() {
+pub fn get_mock_db_connection(db: &Database) -> &MockDatabaseConnection {
+    match db.get_connection() {
         crate::DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
         _ => unreachable!(),
-    };
+    }
+}
+
+pub fn get_mock_transaction_log(db: Database) -> Vec<Statement> {
+    let mock_conn = get_mock_db_connection(&db);
     let mut mocker = mock_conn.mocker.lock().unwrap();
     mocker.into_transaction_log()
 }
