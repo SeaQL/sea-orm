@@ -111,18 +111,6 @@ mod tests {
     use sea_query::{Alias, Expr, SelectStatement, Value};
 
     fn setup() -> (Database, Vec<Vec<fruit::Model>>) {
-        // TODO: auto impl
-        impl From<fruit::Model> for MockRow {
-            fn from(model: fruit::Model) -> Self {
-                let map = maplit::btreemap! {
-                    "id" => Into::<Value>::into(model.id),
-                    "name" => Into::<Value>::into(model.name),
-                    "cake_id" => Into::<Value>::into(model.cake_id),
-                };
-                map.into()
-            }
-        }
-
         let page1 = vec![
             fruit::Model {
                 id: 1,
@@ -142,27 +130,13 @@ mod tests {
             cake_id: Some(2),
         }];
 
+        let page3 = Vec::<fruit::Model>::new();
+
         let db = MockDatabase::new()
-            .append_query_results(vec![
-                // TODO: take any IntoMockRow
-                page1
-                    .clone()
-                    .into_iter()
-                    .map(|model| Into::<MockRow>::into(model))
-                    .collect(),
-                page2
-                    .clone()
-                    .into_iter()
-                    .map(|model| Into::<MockRow>::into(model))
-                    .collect(),
-                Vec::<fruit::Model>::new()
-                    .into_iter()
-                    .map(|model| Into::<MockRow>::into(model))
-                    .collect(),
-            ])
+            .append_query_results(vec![page1.clone(), page2.clone(), page3.clone()])
             .into_database();
 
-        (db, vec![page1, page2, vec![]])
+        (db, vec![page1, page2, page3])
     }
 
     fn setup_num_rows() -> (Database, i32) {
@@ -170,8 +144,7 @@ mod tests {
         let db = MockDatabase::new()
             .append_query_results(vec![vec![maplit::btreemap! {
                 "num_rows" => Into::<Value>::into(num_rows),
-            }
-            .into()]])
+            }]])
             .into_database();
 
         (db, num_rows)
