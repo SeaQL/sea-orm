@@ -106,8 +106,8 @@ mod tests {
     use crate::entity::prelude::*;
     use crate::tests_cfg::*;
     use crate::util::get_mock_transaction_log;
-    use crate::{match_transaction_log, Database, MockDatabase, MockRow, QueryErr};
-    use futures::{StreamExt, TryStreamExt};
+    use crate::{match_transaction_log, Database, MockDatabase, QueryErr};
+    use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};
 
     fn setup() -> (Database, Vec<Vec<fruit::Model>>) {

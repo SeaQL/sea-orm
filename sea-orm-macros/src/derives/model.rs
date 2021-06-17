@@ -22,12 +22,6 @@ pub fn expand_derive_model(ident: Ident, data: Data) -> syn::Result<TokenStream>
         .map(|Field { ident, .. }| format_ident!("{}", ident.unwrap().to_string()))
         .collect();
 
-    let field_quoted: Vec<String> = fields
-        .clone()
-        .into_iter()
-        .map(|Field { ident, .. }| ident.unwrap().to_string())
-        .collect();
-
     let name: Vec<Ident> = fields
         .into_iter()
         .map(|Field { ident, .. }| format_ident!("{}", ident.unwrap().to_string().to_camel_case()))
@@ -57,17 +51,6 @@ pub fn expand_derive_model(ident: Ident, data: Data) -> syn::Result<TokenStream>
                 Ok(Self {
                     #(#field: row.try_get(pre, <<Self as ModelTrait>::Entity as EntityTrait>::Column::#name.as_str().into())?),*
                 })
-            }
-        }
-
-        #[cfg(test)]
-        #[cfg(feature = "mock")]
-        impl From<#ident> for sea_orm::MockRow {
-            fn from(model: #ident) -> Self {
-                let map = maplit::btreemap! {
-                    #(#field_quoted => Into::<sea_query::Value>::into(model.#field)),*
-                };
-                map.into()
             }
         }
     ))

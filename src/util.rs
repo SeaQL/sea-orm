@@ -1,5 +1,3 @@
-use crate::{Database, DatabaseConnection, Statement};
-
 #[macro_export]
 #[cfg(feature = "debug-print")]
 macro_rules! debug_print {
@@ -15,10 +13,11 @@ macro_rules! debug_print {
     };
 }
 
+#[cfg(test)]
 #[cfg(feature = "mock")]
-pub(crate) fn get_mock_transaction_log(db: Database) -> Vec<Statement> {
+pub(crate) fn get_mock_transaction_log(db: crate::Database) -> Vec<crate::Statement> {
     let mock_conn = match db.get_connection() {
-        DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
+        crate::DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
         _ => unreachable!(),
     };
     let mut mocker = mock_conn.mocker.lock().unwrap();
@@ -26,6 +25,7 @@ pub(crate) fn get_mock_transaction_log(db: Database) -> Vec<Statement> {
 }
 
 #[macro_export]
+#[cfg(test)]
 #[cfg(feature = "mock")]
 macro_rules! match_transaction_log {
     ($logs:expr, $stmts:expr, $query_builder:expr, $build_method:ident) => {
