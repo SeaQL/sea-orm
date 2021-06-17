@@ -15,6 +15,7 @@ macro_rules! debug_print {
     };
 }
 
+#[cfg(feature = "mock")]
 pub(crate) fn get_mock_transaction_log(db: Database) -> Vec<Statement> {
     let mock_conn = match db.get_connection() {
         DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
@@ -25,6 +26,7 @@ pub(crate) fn get_mock_transaction_log(db: Database) -> Vec<Statement> {
 }
 
 #[macro_export]
+#[cfg(feature = "mock")]
 macro_rules! match_transaction_log {
     ($logs:expr, $stmts:expr, $query_builder:expr, $build_method:ident) => {
         for stmt in $stmts.iter() {
