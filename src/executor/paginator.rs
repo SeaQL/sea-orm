@@ -103,12 +103,12 @@ where
 #[cfg(test)]
 #[cfg(feature = "mock")]
 mod tests {
-    use crate::tests_cfg::fruit;
-    use crate::{
-        entity::*, Database, DatabaseConnection, MockDatabase, MockRow, QueryErr, Statement,
-    };
-    use futures::TryStreamExt;
-    use sea_query::{Alias, Expr, PostgresQueryBuilder, SelectStatement, Value};
+    use crate::entity::prelude::*;
+    use crate::tests_cfg::*;
+    use crate::util::get_mock_transaction_log;
+    use crate::{match_transaction_log, Database, MockDatabase, MockRow, QueryErr};
+    use futures::{StreamExt, TryStreamExt};
+    use sea_query::{Alias, Expr, SelectStatement, Value};
 
     fn setup() -> (Database, Vec<Vec<fruit::Model>>) {
         // TODO: auto impl
@@ -177,21 +177,6 @@ mod tests {
         (db, num_rows)
     }
 
-    fn match_transaction_log(db: Database, selects: Vec<SelectStatement>) {
-        let mock_conn = match db.get_connection() {
-            DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
-            _ => unreachable!(),
-        };
-
-        let mut mocker = mock_conn.mocker.lock().unwrap();
-
-        for (i, stmt) in mocker.into_transaction_log().into_iter().enumerate() {
-            let query_builder = db.get_query_builder_backend();
-            let statement = query_builder.build_select_statement(&selects[i]);
-            assert_eq!(stmt.to_string(), statement.to_string());
-        }
-    }
-
     #[async_std::test]
     async fn fetch_page() -> Result<(), QueryErr> {
         let (db, pages) = setup();
@@ -211,12 +196,14 @@ mod tests {
             .from(fruit::Entity)
             .to_owned();
 
-        let transaction_log = vec![
+        let stmts = vec![
             select.clone().offset(0).limit(2).to_owned(),
             select.clone().offset(2).limit(2).to_owned(),
             select.clone().offset(4).limit(2).to_owned(),
         ];
-        match_transaction_log(db, transaction_log);
+        let query_builder = db.get_query_builder_backend();
+        let mut logs = get_mock_transaction_log(db);
+        match_transaction_log!(logs, stmts, query_builder, build_select_statement);
 
         Ok(())
     }
@@ -244,12 +231,14 @@ mod tests {
             .from(fruit::Entity)
             .to_owned();
 
-        let transaction_log = vec![
+        let stmts = vec![
             select.clone().offset(0).limit(2).to_owned(),
             select.clone().offset(2).limit(2).to_owned(),
             select.clone().offset(4).limit(2).to_owned(),
         ];
-        match_transaction_log(db, transaction_log);
+        let query_builder = db.get_query_builder_backend();
+        let mut logs = get_mock_transaction_log(db);
+        match_transaction_log!(logs, stmts, query_builder, build_select_statement);
 
         Ok(())
     }
@@ -279,8 +268,10 @@ mod tests {
             .from_subquery(sub_query, Alias::new("sub_query"))
             .to_owned();
 
-        let transaction_log = vec![select];
-        match_transaction_log(db, transaction_log);
+        let stmts = vec![select];
+        let query_builder = db.get_query_builder_backend();
+        let mut logs = get_mock_transaction_log(db);
+        match_transaction_log!(logs, stmts, query_builder, build_select_statement);
 
         Ok(())
     }
@@ -298,22 +289,6 @@ mod tests {
         paginator.next();
 
         assert_eq!(paginator.cur_page(), 2);
-
-        let select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
-            ])
-            .from(fruit::Entity)
-            .to_owned();
-
-        let transaction_log = vec![
-            select.clone().offset(0).limit(2).to_owned(),
-            select.clone().offset(2).limit(2).to_owned(),
-            select.clone().offset(4).limit(2).to_owned(),
-        ];
-        match_transaction_log(db, transaction_log);
 
         Ok(())
     }
@@ -342,12 +317,14 @@ mod tests {
             .from(fruit::Entity)
             .to_owned();
 
-        let transaction_log = vec![
+        let stmts = vec![
             select.clone().offset(0).limit(2).to_owned(),
             select.clone().offset(2).limit(2).to_owned(),
             select.clone().offset(4).limit(2).to_owned(),
         ];
-        match_transaction_log(db, transaction_log);
+        let query_builder = db.get_query_builder_backend();
+        let mut logs = get_mock_transaction_log(db);
+        match_transaction_log!(logs, stmts, query_builder, build_select_statement);
 
         Ok(())
     }
@@ -373,12 +350,15 @@ mod tests {
             .from(fruit::Entity)
             .to_owned();
 
-        let transaction_log = vec![
+        let stmts = vec![
             select.clone().offset(0).limit(2).to_owned(),
             select.clone().offset(2).limit(2).to_owned(),
             select.clone().offset(4).limit(2).to_owned(),
         ];
-        match_transaction_log(db, transaction_log);
+        let query_builder = db.get_query_builder_backend();
+        let mut logs = get_mock_transaction_log(db);
+        match_transaction_log!(logs, stmts[0..1], query_builder, build_select_statement);
+        match_transaction_log!(logs, stmts[1..], query_builder, build_select_statement);
 
         Ok(())
     }
