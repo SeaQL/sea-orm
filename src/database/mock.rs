@@ -90,6 +90,15 @@ impl MockDatabaseTrait for MockDatabase {
     fn into_transaction_log(&mut self) -> Vec<Statement> {
         std::mem::take(&mut self.transaction_log)
     }
+
+    fn assert_transaction_log(&mut self, stmts: Vec<Statement>) {
+        for stmt in stmts.iter() {
+            assert!(!self.transaction_log.is_empty());
+            let log = self.transaction_log.first().unwrap();
+            assert_eq!(log.to_string(), stmt.to_string());
+            self.transaction_log = self.transaction_log.drain(1..).collect();
+        }
+    }
 }
 
 impl MockRow {
