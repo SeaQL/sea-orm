@@ -159,7 +159,7 @@ mod tests {
         assert_eq!(paginator.fetch_page(1).await?, pages[1].clone());
         assert_eq!(paginator.fetch_page(2).await?, pages[2].clone());
 
-        let select = SelectStatement::new()
+        let mut select = SelectStatement::new()
             .exprs(vec![
                 Expr::tbl(fruit::Entity, fruit::Column::Id),
                 Expr::tbl(fruit::Entity, fruit::Column::Name),
@@ -172,7 +172,7 @@ mod tests {
         let stmts = vec![
             query_builder.build_select_statement(select.clone().offset(0).limit(2)),
             query_builder.build_select_statement(select.clone().offset(2).limit(2)),
-            query_builder.build_select_statement(select.clone().offset(4).limit(2)),
+            query_builder.build_select_statement(select.offset(4).limit(2)),
         ];
         let mut mocker = db
             .get_connection()
@@ -180,8 +180,8 @@ mod tests {
             .get_mocker_mutex()
             .lock()
             .unwrap();
-        assert_eq!(mocker.drain_transaction_log(), stmts);
 
+        assert_eq!(mocker.drain_transaction_log(), stmts);
         Ok(())
     }
 
@@ -199,7 +199,7 @@ mod tests {
 
         assert_eq!(paginator.fetch().await?, pages[2].clone());
 
-        let select = SelectStatement::new()
+        let mut select = SelectStatement::new()
             .exprs(vec![
                 Expr::tbl(fruit::Entity, fruit::Column::Id),
                 Expr::tbl(fruit::Entity, fruit::Column::Name),
@@ -212,7 +212,7 @@ mod tests {
         let stmts = vec![
             query_builder.build_select_statement(select.clone().offset(0).limit(2)),
             query_builder.build_select_statement(select.clone().offset(2).limit(2)),
-            query_builder.build_select_statement(select.clone().offset(4).limit(2)),
+            query_builder.build_select_statement(select.offset(4).limit(2)),
         ];
         let mut mocker = db
             .get_connection()
@@ -220,8 +220,8 @@ mod tests {
             .get_mocker_mutex()
             .lock()
             .unwrap();
-        assert_eq!(mocker.drain_transaction_log(), stmts);
 
+        assert_eq!(mocker.drain_transaction_log(), stmts);
         Ok(())
     }
 
@@ -258,8 +258,8 @@ mod tests {
             .get_mocker_mutex()
             .lock()
             .unwrap();
-        assert_eq!(mocker.drain_transaction_log(), stmts);
 
+        assert_eq!(mocker.drain_transaction_log(), stmts);
         Ok(())
     }
 
@@ -276,7 +276,6 @@ mod tests {
         paginator.next();
 
         assert_eq!(paginator.cur_page(), 2);
-
         Ok(())
     }
 
@@ -295,7 +294,7 @@ mod tests {
         assert_eq!(paginator.cur_page(), 2);
         assert_eq!(paginator.fetch_and_next().await?, None);
 
-        let select = SelectStatement::new()
+        let mut select = SelectStatement::new()
             .exprs(vec![
                 Expr::tbl(fruit::Entity, fruit::Column::Id),
                 Expr::tbl(fruit::Entity, fruit::Column::Name),
@@ -308,7 +307,7 @@ mod tests {
         let stmts = vec![
             query_builder.build_select_statement(select.clone().offset(0).limit(2)),
             query_builder.build_select_statement(select.clone().offset(2).limit(2)),
-            query_builder.build_select_statement(select.clone().offset(4).limit(2)),
+            query_builder.build_select_statement(select.offset(4).limit(2)),
         ];
         let mut mocker = db
             .get_connection()
@@ -316,8 +315,8 @@ mod tests {
             .get_mocker_mutex()
             .lock()
             .unwrap();
-        assert_eq!(mocker.drain_transaction_log(), stmts);
 
+        assert_eq!(mocker.drain_transaction_log(), stmts);
         Ok(())
     }
 
@@ -333,7 +332,7 @@ mod tests {
 
         drop(fruit_stream);
 
-        let select = SelectStatement::new()
+        let mut select = SelectStatement::new()
             .exprs(vec![
                 Expr::tbl(fruit::Entity, fruit::Column::Id),
                 Expr::tbl(fruit::Entity, fruit::Column::Name),
@@ -346,7 +345,7 @@ mod tests {
         let stmts = vec![
             query_builder.build_select_statement(select.clone().offset(0).limit(2)),
             query_builder.build_select_statement(select.clone().offset(2).limit(2)),
-            query_builder.build_select_statement(select.clone().offset(4).limit(2)),
+            query_builder.build_select_statement(select.offset(4).limit(2)),
         ];
         let mut mocker = db
             .get_connection()
@@ -354,8 +353,8 @@ mod tests {
             .get_mocker_mutex()
             .lock()
             .unwrap();
-        assert_eq!(mocker.drain_transaction_log(), stmts);
 
+        assert_eq!(mocker.drain_transaction_log(), stmts);
         Ok(())
     }
 }
