@@ -1,6 +1,4 @@
-use crate::{
-    tests_cfg::*, Database, DatabaseConnection, IntoMockRow, MockDatabaseConnection, MockRow,
-};
+use crate::{tests_cfg::*, IntoMockRow, MockRow};
 use sea_query::Value;
 
 impl From<cake_filling::Model> for MockRow {
@@ -41,12 +39,5 @@ impl From<fruit::Model> for MockRow {
             "cake_id" => Into::<Value>::into(model.cake_id),
         };
         map.into_mock_row()
-    }
-}
-
-pub fn get_mock_db_connection(db: &Database) -> &MockDatabaseConnection {
-    match db.get_connection() {
-        DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
-        _ => unreachable!(),
     }
 }

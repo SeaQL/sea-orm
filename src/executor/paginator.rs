@@ -104,7 +104,7 @@ where
 #[cfg(feature = "mock")]
 mod tests {
     use crate::entity::prelude::*;
-    use crate::tests_cfg::{util::*, *};
+    use crate::tests_cfg::*;
     use crate::{Database, MockDatabase, QueryErr};
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};
@@ -174,8 +174,13 @@ mod tests {
             query_builder.build_select_statement(select.clone().offset(2).limit(2)),
             query_builder.build_select_statement(select.clone().offset(4).limit(2)),
         ];
-        let mut mocker = get_mock_db_connection(&db).mocker.lock().unwrap();
-        mocker.assert_transaction_log(stmts);
+        let mut mocker = db
+            .get_connection()
+            .as_mock_connection()
+            .get_mocker_mutex()
+            .lock()
+            .unwrap();
+        assert_eq!(mocker.drain_transaction_log(), stmts);
 
         Ok(())
     }
@@ -209,8 +214,13 @@ mod tests {
             query_builder.build_select_statement(select.clone().offset(2).limit(2)),
             query_builder.build_select_statement(select.clone().offset(4).limit(2)),
         ];
-        let mut mocker = get_mock_db_connection(&db).mocker.lock().unwrap();
-        mocker.assert_transaction_log(stmts);
+        let mut mocker = db
+            .get_connection()
+            .as_mock_connection()
+            .get_mocker_mutex()
+            .lock()
+            .unwrap();
+        assert_eq!(mocker.drain_transaction_log(), stmts);
 
         Ok(())
     }
@@ -242,8 +252,13 @@ mod tests {
 
         let query_builder = db.get_query_builder_backend();
         let stmts = vec![query_builder.build_select_statement(&select)];
-        let mut mocker = get_mock_db_connection(&db).mocker.lock().unwrap();
-        mocker.assert_transaction_log(stmts);
+        let mut mocker = db
+            .get_connection()
+            .as_mock_connection()
+            .get_mocker_mutex()
+            .lock()
+            .unwrap();
+        assert_eq!(mocker.drain_transaction_log(), stmts);
 
         Ok(())
     }
@@ -295,8 +310,13 @@ mod tests {
             query_builder.build_select_statement(select.clone().offset(2).limit(2)),
             query_builder.build_select_statement(select.clone().offset(4).limit(2)),
         ];
-        let mut mocker = get_mock_db_connection(&db).mocker.lock().unwrap();
-        mocker.assert_transaction_log(stmts);
+        let mut mocker = db
+            .get_connection()
+            .as_mock_connection()
+            .get_mocker_mutex()
+            .lock()
+            .unwrap();
+        assert_eq!(mocker.drain_transaction_log(), stmts);
 
         Ok(())
     }
@@ -328,9 +348,13 @@ mod tests {
             query_builder.build_select_statement(select.clone().offset(2).limit(2)),
             query_builder.build_select_statement(select.clone().offset(4).limit(2)),
         ];
-        let mut mocker = get_mock_db_connection(&db).mocker.lock().unwrap();
-        mocker.assert_transaction_log(stmts[0..1].to_vec());
-        mocker.assert_transaction_log(stmts[1..].to_vec());
+        let mut mocker = db
+            .get_connection()
+            .as_mock_connection()
+            .get_mocker_mutex()
+            .lock()
+            .unwrap();
+        assert_eq!(mocker.drain_transaction_log(), stmts);
 
         Ok(())
     }

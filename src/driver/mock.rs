@@ -10,8 +10,8 @@ use std::sync::{
 pub struct MockDatabaseConnector;
 
 pub struct MockDatabaseConnection {
-    pub(crate) counter: AtomicUsize,
-    pub(crate) mocker: Mutex<Box<dyn MockDatabaseTrait>>,
+    counter: AtomicUsize,
+    mocker: Mutex<Box<dyn MockDatabaseTrait>>,
 }
 
 pub trait MockDatabaseTrait: Send {
@@ -19,9 +19,7 @@ pub trait MockDatabaseTrait: Send {
 
     fn query(&mut self, counter: usize, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr>;
 
-    fn into_transaction_log(&mut self) -> Vec<Statement>;
-
-    fn assert_transaction_log(&mut self, stmts: Vec<Statement>);
+    fn drain_transaction_log(&mut self) -> Vec<Statement>;
 }
 
 impl MockDatabaseConnector {
@@ -46,9 +44,11 @@ impl MockDatabaseConnection {
             mocker: Mutex::new(Box::new(m)),
         }
     }
-}
 
-impl MockDatabaseConnection {
+    pub fn get_mocker_mutex(&self) -> &Mutex<Box<dyn MockDatabaseTrait>> {
+        &self.mocker
+    }
+
     pub async fn execute(&self, statement: Statement) -> Result<ExecResult, ExecErr> {
         debug_print!("{}", statement);
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
