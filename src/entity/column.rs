@@ -2,6 +2,14 @@ use crate::{EntityName, IdenStatic, Iterable};
 pub use sea_query::ColumnType;
 use sea_query::{DynIden, Expr, SeaRc, SimpleExpr, Value};
 
+// TODO: ColumnDef with builder API to replace sea_query::ColumnType in Entity def
+pub struct ColumnDef {
+    pub(crate) col_type: ColumnType,
+    pub(crate) not_null: bool,
+    pub(crate) unique: bool,
+    pub(crate) indexed: bool,
+}
+
 macro_rules! bind_oper {
     ( $op: ident ) => {
         fn $op<V>(&self, v: V) -> SimpleExpr
@@ -39,10 +47,6 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     type EntityName: EntityName;
 
     fn def(&self) -> ColumnType;
-
-    // we may add more:
-    // fn indexed(&self) -> bool;
-    // fn unique(&self) -> bool;
 
     fn entity_name(&self) -> DynIden {
         SeaRc::new(Self::EntityName::default()) as DynIden

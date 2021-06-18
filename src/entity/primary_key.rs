@@ -1,5 +1,6 @@
 use super::{ColumnTrait, IdenStatic, Iterable};
 
+//LINT: composite primary key cannot auto increment
 pub trait PrimaryKeyTrait: IdenStatic + Iterable {
     fn auto_increment() -> bool;
 }

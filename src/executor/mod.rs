@@ -1,4 +1,3 @@
-mod connector;
 mod delete;
 mod execute;
 mod insert;
@@ -7,7 +6,6 @@ mod query;
 mod select;
 mod update;
 
-pub use connector::*;
 pub use delete::*;
 pub use execute::*;
 pub use insert::*;

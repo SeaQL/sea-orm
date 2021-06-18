@@ -1,4 +1,3 @@
-use sqlx::mysql::MySqlQueryResult;
 use std::{error::Error, fmt};
 
 #[derive(Debug)]
@@ -8,7 +7,10 @@ pub struct ExecResult {
 
 #[derive(Debug)]
 pub(crate) enum ExecResultHolder {
-    SqlxMySql(MySqlQueryResult),
+    #[cfg(feature = "sqlx-mysql")]
+    SqlxMySql(sqlx::mysql::MySqlQueryResult),
+    #[cfg(feature = "mock")]
+    Mock(crate::MockExecResult),
 }
 
 #[derive(Debug)]
@@ -19,13 +21,19 @@ pub struct ExecErr;
 impl ExecResult {
     pub fn last_insert_id(&self) -> u64 {
         match &self.result {
+            #[cfg(feature = "sqlx-mysql")]
             ExecResultHolder::SqlxMySql(result) => result.last_insert_id(),
+            #[cfg(feature = "mock")]
+            ExecResultHolder::Mock(result) => result.last_insert_id,
         }
     }
 
     pub fn rows_affected(&self) -> u64 {
         match &self.result {
+            #[cfg(feature = "sqlx-mysql")]
             ExecResultHolder::SqlxMySql(result) => result.rows_affected(),
+            #[cfg(feature = "mock")]
+            ExecResultHolder::Mock(result) => result.rows_affected,
         }
     }
 }
@@ -37,11 +45,5 @@ impl Error for ExecErr {}
 impl fmt::Display for ExecErr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
-    }
-}
-
-impl From<sqlx::Error> for ExecErr {
-    fn from(_: sqlx::Error) -> ExecErr {
-        ExecErr
     }
 }

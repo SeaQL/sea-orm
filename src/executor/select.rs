@@ -1,8 +1,8 @@
 use crate::{
-    query::combine, Connection, Database, EntityTrait, FromQueryResult, JsonValue, Paginator,
-    QueryErr, QueryResult, Select, SelectTwo, Statement, TypeErr,
+    query::combine, Database, EntityTrait, FromQueryResult, JsonValue, Paginator,
+    QueryBuilderBackend, QueryErr, QueryResult, Select, SelectTwo, Statement, TypeErr,
 };
-use sea_query::{QueryBuilder, SelectStatement};
+use sea_query::SelectStatement;
 use std::marker::PhantomData;
 
 #[derive(Clone, Debug)]
@@ -134,11 +134,8 @@ impl<S> Selector<S>
 where
     S: SelectorTrait,
 {
-    pub fn build<B>(&self, builder: B) -> Statement
-    where
-        B: QueryBuilder,
-    {
-        self.query.build(builder).into()
+    pub fn build(&self, builder: QueryBuilderBackend) -> Statement {
+        builder.build_select_statement(&self.query)
     }
 
     pub async fn one(mut self, db: &Database) -> Result<Option<S::Item>, QueryErr> {

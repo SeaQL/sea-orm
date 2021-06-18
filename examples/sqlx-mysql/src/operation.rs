@@ -25,7 +25,7 @@ pub async fn insert_and_update(db: &Database) -> Result<(), ExecErr> {
     println!();
     println!("Inserted: {:?}\n", res);
 
-    let pear = Fruit::find_by(res.last_insert_id)
+    let pear = Fruit::find_by_id(res.last_insert_id)
         .one(db)
         .await
         .map_err(|_| ExecErr)?;
