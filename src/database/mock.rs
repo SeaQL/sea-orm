@@ -1,6 +1,7 @@
 use crate::{
-    Database, DatabaseConnection, ExecErr, ExecResult, ExecResultHolder, MockDatabaseConnection,
-    MockDatabaseTrait, QueryErr, QueryResult, QueryResultRow, Statement, TypeErr,
+    Database, DatabaseConnection, EntityTrait, ExecErr, ExecResult, ExecResultHolder, Iden,
+    Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryErr, QueryResult,
+    QueryResultRow, Statement, TypeErr,
 };
 use sea_query::{Value, ValueType};
 use std::collections::BTreeMap;
@@ -21,6 +22,23 @@ pub struct MockExecResult {
 #[derive(Clone, Debug)]
 pub struct MockRow {
     values: BTreeMap<String, Value>,
+}
+
+pub trait IntoMockRow {
+    fn into_mock_row(self) -> MockRow;
+}
+
+impl<M> IntoMockRow for M
+where
+    M: ModelTrait,
+{
+    fn into_mock_row(self) -> MockRow {
+        let mut values = BTreeMap::new();
+        for col in <<M::Entity as EntityTrait>::Column>::iter() {
+            values.insert(col.to_string(), self.get(col));
+        }
+        MockRow { values }
+    }
 }
 
 impl MockDatabase {
@@ -101,23 +119,10 @@ impl MockRow {
     }
 }
 
-impl From<BTreeMap<&str, Value>> for MockRow {
-    fn from(values: BTreeMap<&str, Value>) -> Self {
-        Self {
-            values: values.into_iter().map(|(k, v)| (k.to_owned(), v)).collect(),
-        }
-    }
-}
-
-pub trait IntoMockRow {
-    fn into_mock_row(self) -> MockRow;
-}
-
-impl<T> IntoMockRow for T
-where
-    T: Into<MockRow>,
-{
+impl IntoMockRow for BTreeMap<&str, Value> {
     fn into_mock_row(self) -> MockRow {
-        self.into()
+        MockRow {
+            values: self.into_iter().map(|(k, v)| (k.to_owned(), v)).collect(),
+        }
     }
 }
