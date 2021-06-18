@@ -127,7 +127,8 @@ impl From<&ColumnDef> for Column {
             Some(ty) => ty.clone(),
             None => panic!("ColumnType should not be empty"),
         };
-        let auto_increments: Vec<bool> = col_def.get_column_spec()
+        let auto_increments: Vec<bool> = col_def
+            .get_column_spec()
             .iter()
             .filter_map(|spec| match spec {
                 ColumnSpec::AutoIncrement => Some(true),
@@ -135,7 +136,8 @@ impl From<&ColumnDef> for Column {
             })
             .collect();
         let auto_increment = !auto_increments.is_empty();
-        let not_nulls: Vec<bool> = col_def.get_column_spec()
+        let not_nulls: Vec<bool> = col_def
+            .get_column_spec()
             .iter()
             .filter_map(|spec| match spec {
                 ColumnSpec::NotNull => Some(true),
@@ -143,6 +145,11 @@ impl From<&ColumnDef> for Column {
             })
             .collect();
         let not_null = !not_nulls.is_empty();
-        Self { name, col_type, auto_increment, not_null }
+        Self {
+            name,
+            col_type,
+            auto_increment,
+            not_null,
+        }
     }
 }

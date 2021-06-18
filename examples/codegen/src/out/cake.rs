@@ -70,6 +70,7 @@ impl Related<super::cake_filling::Entity> for Entity {
         Relation::CakeFilling.def()
     }
 }
+
 impl Related<super::fruit::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Fruit.def()

@@ -1,5 +1,5 @@
 use crate::{Column, PrimaryKey, Relation};
-use heck::{SnakeCase, CamelCase};
+use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::format_ident;
 
@@ -115,9 +115,7 @@ impl Entity {
     }
 
     pub fn get_primary_key_auto_increment(&self) -> Ident {
-        let auto_increment = self.columns
-            .iter()
-            .any(|col| col.auto_increment);
+        let auto_increment = self.columns.iter().any(|col| col.auto_increment);
         format_ident!("{}", auto_increment)
     }
 }
