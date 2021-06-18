@@ -41,8 +41,14 @@ impl MockDatabase {
         self
     }
 
-    pub fn append_query_results(mut self, mut vec: Vec<Vec<MockRow>>) -> Self {
-        self.query_results.append(&mut vec);
+    pub fn append_query_results<T>(mut self, vec: Vec<Vec<T>>) -> Self
+    where
+        T: IntoMockRow,
+    {
+        for row in vec.into_iter() {
+            let row = row.into_iter().map(|vec| vec.into_mock_row()).collect();
+            self.query_results.push(row);
+        }
         self
     }
 
@@ -80,6 +86,19 @@ impl MockDatabaseTrait for MockDatabase {
             Err(QueryErr)
         }
     }
+
+    fn into_transaction_log(&mut self) -> Vec<Statement> {
+        std::mem::take(&mut self.transaction_log)
+    }
+
+    fn assert_transaction_log(&mut self, stmts: Vec<Statement>) {
+        for stmt in stmts.iter() {
+            assert!(!self.transaction_log.is_empty());
+            let log = self.transaction_log.first().unwrap();
+            assert_eq!(log.to_string(), stmt.to_string());
+            self.transaction_log = self.transaction_log.drain(1..).collect();
+        }
+    }
 }
 
 impl MockRow {
@@ -100,5 +119,18 @@ impl From<BTreeMap<&str, Value>> for MockRow {
         Self {
             values: values.into_iter().map(|(k, v)| (k.to_owned(), v)).collect(),
         }
+    }
+}
+
+pub trait IntoMockRow {
+    fn into_mock_row(self) -> MockRow;
+}
+
+impl<T> IntoMockRow for T
+where
+    T: Into<MockRow>,
+{
+    fn into_mock_row(self) -> MockRow {
+        self.into()
     }
 }

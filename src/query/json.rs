@@ -72,8 +72,7 @@ mod tests {
         let db = MockDatabase::new()
             .append_query_results(vec![vec![maplit::btreemap! {
                 "id" => Into::<Value>::into(128), "name" => Into::<Value>::into("apple")
-            }
-            .into()]])
+            }]])
             .into_database();
 
         assert_eq!(

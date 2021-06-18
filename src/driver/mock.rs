@@ -10,14 +10,18 @@ use std::sync::{
 pub struct MockDatabaseConnector;
 
 pub struct MockDatabaseConnection {
-    counter: AtomicUsize,
-    mocker: Mutex<Box<dyn MockDatabaseTrait>>,
+    pub(crate) counter: AtomicUsize,
+    pub(crate) mocker: Mutex<Box<dyn MockDatabaseTrait>>,
 }
 
 pub trait MockDatabaseTrait: Send {
     fn execute(&mut self, counter: usize, stmt: Statement) -> Result<ExecResult, ExecErr>;
 
     fn query(&mut self, counter: usize, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr>;
+
+    fn into_transaction_log(&mut self) -> Vec<Statement>;
+
+    fn assert_transaction_log(&mut self, stmts: Vec<Statement>);
 }
 
 impl MockDatabaseConnector {
