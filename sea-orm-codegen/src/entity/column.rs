@@ -8,6 +8,7 @@ pub struct Column {
     pub(crate) name: String,
     pub(crate) col_type: ColumnType,
     pub(crate) auto_increment: bool,
+    pub(crate) not_null: bool,
 }
 
 impl Column {
@@ -19,8 +20,8 @@ impl Column {
         format_ident!("{}", self.name.to_camel_case())
     }
 
-    pub fn get_rs_type(&self) -> Ident {
-        match self.col_type {
+    pub fn get_rs_type(&self) -> TokenStream {
+        let ident = match self.col_type {
             ColumnType::Char(_)
             | ColumnType::String(_)
             | ColumnType::Text
@@ -41,6 +42,10 @@ impl Column {
             ColumnType::Double(_) => format_ident!("f64"),
             ColumnType::Binary(_) => format_ident!("Vec<u8>"),
             ColumnType::Boolean => format_ident!("bool"),
+        };
+        match self.not_null {
+            true => quote! { #ident },
+            false => quote! { Option<#ident> },
         }
     }
 
@@ -130,6 +135,14 @@ impl From<&ColumnDef> for Column {
             })
             .collect();
         let auto_increment = !auto_increments.is_empty();
-        Self { name, col_type, auto_increment }
+        let not_nulls: Vec<bool> = col_def.get_column_spec()
+            .iter()
+            .filter_map(|spec| match spec {
+                ColumnSpec::NotNull => Some(true),
+                _ => None,
+            })
+            .collect();
+        let not_null = !not_nulls.is_empty();
+        Self { name, col_type, auto_increment, not_null }
     }
 }

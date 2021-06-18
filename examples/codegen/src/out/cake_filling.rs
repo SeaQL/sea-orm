@@ -13,8 +13,8 @@ impl EntityName for Entity {
 
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
-    pub cake_id: String,
-    pub filling_id: String,
+    pub cake_id: i32,
+    pub filling_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -45,12 +45,8 @@ impl ColumnTrait for Column {
     type EntityName = Entity;
     fn def(&self) -> ColumnType {
         match self {
-            Self::CakeId => {
-                ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new("INT(11)")))
-            }
-            Self::FillingId => {
-                ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new("INT(11)")))
-            }
+            Self::CakeId => ColumnType::Integer(Some(11u32)),
+            Self::FillingId => ColumnType::Integer(Some(11u32)),
         }
     }
 }

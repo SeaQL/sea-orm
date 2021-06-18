@@ -13,8 +13,8 @@ impl EntityName for Entity {
 
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
-    pub id: String,
-    pub name: String,
+    pub id: i32,
+    pub name: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -44,10 +44,8 @@ impl ColumnTrait for Column {
     type EntityName = Entity;
     fn def(&self) -> ColumnType {
         match self {
-            Self::Id => ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new("INT(11)"))),
-            Self::Name => {
-                ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new("VARCHAR(255)")))
-            }
+            Self::Id => ColumnType::Integer(Some(11u32)),
+            Self::Name => ColumnType::String(Some(255u32)),
         }
     }
 }

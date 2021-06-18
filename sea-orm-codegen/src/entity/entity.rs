@@ -42,7 +42,7 @@ impl Entity {
             .collect()
     }
 
-    pub fn get_column_rs_types(&self) -> Vec<Ident> {
+    pub fn get_column_rs_types(&self) -> Vec<TokenStream> {
         self.columns
             .clone()
             .into_iter()
