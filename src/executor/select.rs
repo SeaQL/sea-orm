@@ -1,6 +1,6 @@
 use crate::{
-    query::combine, Database, EntityTrait, FromQueryResult, JsonValue, Paginator, QueryErr,
-    QueryResult, Select, SelectTwo, TypeErr,
+    query::combine, DatabaseConnection, EntityTrait, FromQueryResult, JsonValue, Paginator,
+    QueryErr, QueryResult, Select, SelectTwo, TypeErr,
 };
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
@@ -84,15 +84,19 @@ where
         }
     }
 
-    pub async fn one(self, db: &Database) -> Result<Option<E::Model>, QueryErr> {
+    pub async fn one(self, db: &DatabaseConnection) -> Result<Option<E::Model>, QueryErr> {
         self.into_model::<E::Model>().one(db).await
     }
 
-    pub async fn all(self, db: &Database) -> Result<Vec<E::Model>, QueryErr> {
+    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<E::Model>, QueryErr> {
         self.into_model::<E::Model>().all(db).await
     }
 
-    pub fn paginate(self, db: &Database, page_size: usize) -> Paginator<'_, SelectModel<E::Model>> {
+    pub fn paginate(
+        self,
+        db: &DatabaseConnection,
+        page_size: usize,
+    ) -> Paginator<'_, SelectModel<E::Model>> {
         self.into_model::<E::Model>().paginate(db, page_size)
     }
 }
@@ -121,11 +125,14 @@ where
         }
     }
 
-    pub async fn one(self, db: &Database) -> Result<Option<(E::Model, F::Model)>, QueryErr> {
+    pub async fn one(
+        self,
+        db: &DatabaseConnection,
+    ) -> Result<Option<(E::Model, F::Model)>, QueryErr> {
         self.into_model::<E::Model, F::Model>().one(db).await
     }
 
-    pub async fn all(self, db: &Database) -> Result<Vec<(E::Model, F::Model)>, QueryErr> {
+    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<(E::Model, F::Model)>, QueryErr> {
         self.into_model::<E::Model, F::Model>().all(db).await
     }
 }
@@ -134,25 +141,19 @@ impl<S> Selector<S>
 where
     S: SelectorTrait,
 {
-    pub async fn one(mut self, db: &Database) -> Result<Option<S::Item>, QueryErr> {
+    pub async fn one(mut self, db: &DatabaseConnection) -> Result<Option<S::Item>, QueryErr> {
         let builder = db.get_query_builder_backend();
         self.query.limit(1);
-        let row = db
-            .get_connection()
-            .query_one(builder.build(&self.query))
-            .await?;
+        let row = db.query_one(builder.build(&self.query)).await?;
         match row {
             Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
             None => Ok(None),
         }
     }
 
-    pub async fn all(self, db: &Database) -> Result<Vec<S::Item>, QueryErr> {
+    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, QueryErr> {
         let builder = db.get_query_builder_backend();
-        let rows = db
-            .get_connection()
-            .query_all(builder.build(&self.query))
-            .await?;
+        let rows = db.query_all(builder.build(&self.query)).await?;
         let mut models = Vec::new();
         for row in rows.into_iter() {
             models.push(S::from_raw_query_result(row)?);
@@ -160,7 +161,7 @@ where
         Ok(models)
     }
 
-    pub fn paginate(self, db: &Database, page_size: usize) -> Paginator<'_, S> {
+    pub fn paginate(self, db: &DatabaseConnection, page_size: usize) -> Paginator<'_, S> {
         Paginator {
             query: self.query,
             page: 0,

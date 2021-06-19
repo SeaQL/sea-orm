@@ -18,9 +18,7 @@ use select::*;
 
 #[async_std::main]
 async fn main() {
-    let mut db = Database::default();
-
-    db.connect("mysql://sea:sea@localhost/bakery")
+    let db = Database::connect("mysql://sea:sea@localhost/bakery")
         .await
         .unwrap();
 

@@ -1,6 +1,6 @@
 use crate::{
-    Database, DeleteResult, EntityTrait, ExecErr, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait,
-    Value,
+    DatabaseConnection, DeleteResult, EntityTrait, ExecErr, Iterable, PrimaryKeyToColumn,
+    PrimaryKeyTrait, Value,
 };
 use std::fmt::Debug;
 
@@ -77,8 +77,8 @@ pub trait ActiveModelTrait: Clone + Debug {
     fn default() -> Self;
 
     // below is not yet possible. right now we define these methods in DeriveActiveModel
-    // fn save(self, db: &Database) -> impl Future<Output = Result<Self, ExecErr>>;
-    // fn delete(self, db: &Database) -> impl Future<Output = Result<DeleteResult, ExecErr>>;
+    // fn save(self, db: &DatabaseConnection) -> impl Future<Output = Result<Self, ExecErr>>;
+    // fn delete(self, db: &DatabaseConnection) -> impl Future<Output = Result<DeleteResult, ExecErr>>;
 }
 
 /// Behaviors for users to override
@@ -228,7 +228,7 @@ where
 
 /// Insert the model if primary key is unset, update otherwise.
 /// Only works if the entity has auto increment primary key.
-pub async fn save_active_model<A, E>(mut am: A, db: &Database) -> Result<A, ExecErr>
+pub async fn save_active_model<A, E>(mut am: A, db: &DatabaseConnection) -> Result<A, ExecErr>
 where
     A: ActiveModelBehavior + ActiveModelTrait<Entity = E>,
     E::Model: IntoActiveModel<A>,
@@ -252,7 +252,7 @@ where
     Ok(am)
 }
 
-async fn insert_and_select_active_model<A, E>(am: A, db: &Database) -> Result<A, ExecErr>
+async fn insert_and_select_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, ExecErr>
 where
     A: ActiveModelTrait<Entity = E>,
     E::Model: IntoActiveModel<A>,
@@ -274,7 +274,7 @@ where
     }
 }
 
-async fn update_active_model<A, E>(am: A, db: &Database) -> Result<A, ExecErr>
+async fn update_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, ExecErr>
 where
     A: ActiveModelTrait<Entity = E>,
     E: EntityTrait,
@@ -283,7 +283,10 @@ where
     exec.await
 }
 
-pub async fn delete_active_model<A, E>(mut am: A, db: &Database) -> Result<DeleteResult, ExecErr>
+pub async fn delete_active_model<A, E>(
+    mut am: A,
+    db: &DatabaseConnection,
+) -> Result<DeleteResult, ExecErr>
 where
     A: ActiveModelBehavior + ActiveModelTrait<Entity = E>,
     E: EntityTrait,

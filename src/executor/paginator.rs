@@ -1,4 +1,4 @@
-use crate::{Database, QueryErr, SelectorTrait};
+use crate::{DatabaseConnection, QueryErr, SelectorTrait};
 use async_stream::stream;
 use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
@@ -14,7 +14,7 @@ where
     pub(crate) query: SelectStatement,
     pub(crate) page: usize,
     pub(crate) page_size: usize,
-    pub(crate) db: &'db Database,
+    pub(crate) db: &'db DatabaseConnection,
     pub(crate) selector: PhantomData<S>,
 }
 
@@ -32,7 +32,7 @@ where
             .to_owned();
         let builder = self.db.get_query_builder_backend();
         let stmt = builder.build(&query);
-        let rows = self.db.get_connection().query_all(stmt).await?;
+        let rows = self.db.query_all(stmt).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
             // TODO: Error handling
@@ -57,7 +57,7 @@ where
                     Alias::new("sub_query"),
                 ),
         );
-        let result = match self.db.get_connection().query_one(stmt).await? {
+        let result = match self.db.query_one(stmt).await? {
             Some(res) => res,
             None => return Ok(0),
         };
@@ -105,11 +105,11 @@ where
 mod tests {
     use crate::entity::prelude::*;
     use crate::tests_cfg::*;
-    use crate::{Database, MockDatabase, QueryErr, Transaction};
+    use crate::{DatabaseConnection, MockDatabase, QueryErr, Transaction};
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};
 
-    fn setup() -> (Database, Vec<Vec<fruit::Model>>) {
+    fn setup() -> (DatabaseConnection, Vec<Vec<fruit::Model>>) {
         let page1 = vec![
             fruit::Model {
                 id: 1,
@@ -133,18 +133,18 @@ mod tests {
 
         let db = MockDatabase::new()
             .append_query_results(vec![page1.clone(), page2.clone(), page3.clone()])
-            .into_database();
+            .into_connection();
 
         (db, vec![page1, page2, page3])
     }
 
-    fn setup_num_rows() -> (Database, i32) {
+    fn setup_num_rows() -> (DatabaseConnection, i32) {
         let num_rows = 3;
         let db = MockDatabase::new()
             .append_query_results(vec![vec![maplit::btreemap! {
                 "num_rows" => Into::<Value>::into(num_rows),
             }]])
-            .into_database();
+            .into_connection();
 
         (db, num_rows)
     }
@@ -175,12 +175,7 @@ mod tests {
             query_builder.build(select.offset(4).limit(2)),
         ];
 
-        let mut mocker = db
-            .get_connection()
-            .as_mock_connection()
-            .get_mocker_mutex()
-            .lock()
-            .unwrap();
+        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
 
         assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
         Ok(())
@@ -216,12 +211,7 @@ mod tests {
             query_builder.build(select.offset(4).limit(2)),
         ];
 
-        let mut mocker = db
-            .get_connection()
-            .as_mock_connection()
-            .get_mocker_mutex()
-            .lock()
-            .unwrap();
+        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
 
         assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
         Ok(())
@@ -254,12 +244,7 @@ mod tests {
 
         let query_builder = db.get_query_builder_backend();
         let stmts = vec![query_builder.build(&select)];
-        let mut mocker = db
-            .get_connection()
-            .as_mock_connection()
-            .get_mocker_mutex()
-            .lock()
-            .unwrap();
+        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
 
         assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
         Ok(())
@@ -312,12 +297,7 @@ mod tests {
             query_builder.build(select.offset(4).limit(2)),
         ];
 
-        let mut mocker = db
-            .get_connection()
-            .as_mock_connection()
-            .get_mocker_mutex()
-            .lock()
-            .unwrap();
+        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
 
         assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
         Ok(())
@@ -351,12 +331,7 @@ mod tests {
             query_builder.build(select.offset(4).limit(2)),
         ];
 
-        let mut mocker = db
-            .get_connection()
-            .as_mock_connection()
-            .get_mocker_mutex()
-            .lock()
-            .unwrap();
+        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
 
         assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
         Ok(())

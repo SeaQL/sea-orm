@@ -11,30 +11,18 @@ pub use statement::*;
 pub use transaction::*;
 
 #[derive(Debug, Default)]
-pub struct Database {
-    connection: DatabaseConnection,
-}
+pub struct Database;
 
 impl Database {
-    pub async fn connect(&mut self, string: &str) -> Result<(), ConnectionErr> {
+    pub async fn connect(string: &str) -> Result<DatabaseConnection, ConnectionErr> {
         #[cfg(feature = "sqlx-mysql")]
         if crate::SqlxMySqlConnector::accepts(string) {
-            self.connection = crate::SqlxMySqlConnector::connect(string).await?;
-            return Ok(());
+            return Ok(crate::SqlxMySqlConnector::connect(string).await?);
         }
         #[cfg(feature = "mock")]
         if crate::MockDatabaseConnector::accepts(string) {
-            self.connection = crate::MockDatabaseConnector::connect(string).await?;
-            return Ok(());
+            return Ok(crate::MockDatabaseConnector::connect(string).await?);
         }
         Err(ConnectionErr)
-    }
-
-    pub fn get_connection(&self) -> &DatabaseConnection {
-        &self.connection
-    }
-
-    pub fn get_query_builder_backend(&self) -> QueryBuilderBackend {
-        self.connection.get_query_builder_backend()
     }
 }

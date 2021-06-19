@@ -1,7 +1,7 @@
 use crate::{
-    Database, DatabaseConnection, EntityTrait, ExecErr, ExecResult, ExecResultHolder, Iden,
-    Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryErr, QueryResult,
-    QueryResultRow, Statement, Transaction, TypeErr,
+    DatabaseConnection, EntityTrait, ExecErr, ExecResult, ExecResultHolder, Iden, Iterable,
+    MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryErr, QueryResult, QueryResultRow,
+    Statement, Transaction, TypeErr,
 };
 use sea_query::{Value, ValueType};
 use std::collections::BTreeMap;
@@ -46,12 +46,8 @@ impl MockDatabase {
         Default::default()
     }
 
-    pub fn into_database(self) -> Database {
-        Database {
-            connection: DatabaseConnection::MockDatabaseConnection(MockDatabaseConnection::new(
-                self,
-            )),
-        }
+    pub fn into_connection(self) -> DatabaseConnection {
+        DatabaseConnection::MockDatabaseConnection(MockDatabaseConnection::new(self))
     }
 
     pub fn append_exec_results(mut self, mut vec: Vec<MockExecResult>) -> Self {

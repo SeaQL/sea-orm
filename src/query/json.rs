@@ -73,7 +73,7 @@ mod tests {
             .append_query_results(vec![vec![maplit::btreemap! {
                 "id" => Into::<Value>::into(128), "name" => Into::<Value>::into("apple")
             }]])
-            .into_database();
+            .into_connection();
 
         assert_eq!(
             cake::Entity::find().into_json().one(&db).await.unwrap(),

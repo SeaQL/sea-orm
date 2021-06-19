@@ -1,8 +1,5 @@
 use crate::{ExecErr, ExecResult, QueryErr, QueryResult, Statement};
-use sea_query::{
-    DeleteStatement, InsertStatement, MysqlQueryBuilder, PostgresQueryBuilder,
-    QueryStatementBuilder, SelectStatement, UpdateStatement,
-};
+use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryStatementBuilder};
 use std::{error::Error, fmt};
 
 pub enum DatabaseConnection {
