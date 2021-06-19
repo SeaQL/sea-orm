@@ -10,6 +10,8 @@ pub enum DatabaseConnection {
     Disconnected,
 }
 
+pub type DbConn = DatabaseConnection;
+
 pub enum QueryBuilderBackend {
     MySql,
     Postgres,
