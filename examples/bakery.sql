@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS `cake`;
 
 CREATE TABLE `cake` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -14,9 +14,10 @@ DROP TABLE IF EXISTS `fruit`;
 
 CREATE TABLE `fruit` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
   `cake_id` int DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk-fruit-cake` FOREIGN KEY (`cake_id`) REFERENCES `cake` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `fruit` (`id`, `name`, `cake_id`) VALUES
@@ -36,7 +37,7 @@ DROP TABLE IF EXISTS `filling`;
 
 CREATE TABLE `filling` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -50,7 +51,9 @@ DROP TABLE IF EXISTS `cake_filling`;
 CREATE TABLE `cake_filling` (
   `cake_id` int NOT NULL,
   `filling_id` int NOT NULL,
-  PRIMARY KEY (`cake_id`, `filling_id`)
+  PRIMARY KEY (`cake_id`, `filling_id`),
+  CONSTRAINT `fk-cake_filling-cake` FOREIGN KEY (`cake_id`) REFERENCES `cake` (`id`),
+  CONSTRAINT `fk-cake_filling-filling` FOREIGN KEY (`filling_id`) REFERENCES `filling` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `cake_filling` (`cake_id`, `filling_id`) VALUES

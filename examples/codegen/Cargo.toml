@@ -11,4 +11,4 @@ sea-orm-codegen = { path = "../../sea-orm-codegen" }
 sea-query = { path = "../../../sea-query" }
 strum = { version = "^0.20", features = [ "derive" ] }
 serde_json = { version = "^1" }
-quote = "1"
+quote = { version = "^1" }

@@ -45,8 +45,8 @@ impl ColumnTrait for Column {
 
     fn def(&self) -> ColumnDef {
         match self {
-            Self::CakeId => ColumnType::Integer.into(),
-            Self::FillingId => ColumnType::Integer.into(),
+            Self::CakeId => ColumnType::Integer.def(),
+            Self::FillingId => ColumnType::Integer.def(),
         }
     }
 }

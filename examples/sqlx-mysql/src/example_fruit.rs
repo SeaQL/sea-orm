@@ -40,11 +40,11 @@ pub enum Relation {}
 impl ColumnTrait for Column {
     type EntityName = Entity;
 
-    fn def(&self) -> ColumnType {
+    fn def(&self) -> ColumnDef {
         match self {
-            Self::Id => ColumnType::Integer(None),
-            Self::Name => ColumnType::String(None),
-            Self::CakeId => ColumnType::Integer(None),
+            Self::Id => ColumnType::Integer.def(),
+            Self::Name => ColumnType::String(None).def(),
+            Self::CakeId => ColumnType::Integer.def(),
         }
     }
 }

@@ -41,8 +41,8 @@ impl ColumnTrait for Column {
 
     fn def(&self) -> ColumnDef {
         match self {
-            Self::Id => ColumnType::Integer.into(),
-            Self::Name => ColumnType::String.into(),
+            Self::Id => ColumnType::Integer.def(),
+            Self::Name => ColumnType::String(None).def(),
         }
     }
 }

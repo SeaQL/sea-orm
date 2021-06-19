@@ -20,7 +20,7 @@ sea-orm = { path = "../", features = [ "sqlx-mysql", "runtime-async-std-native-t
 sea-schema = { path = "../../sea-schema", default-features = false, features = [ "sqlx-mysql", "runtime-async-std-native-tls", "discovery", "writer" ] }
 sea-query = { path = "../../sea-query", version = "^0.12" }
 sqlx = { version = "^0.5", features = [ "mysql", "runtime-async-std-native-tls" ] }
-syn = { version = "1", default-features = false, features = [ "derive", "parsing", "proc-macro", "printing" ] }
-quote = "1"
-heck = "0.3"
-proc-macro2 = "1"
+syn = { version = "^1", default-features = false, features = [ "derive", "parsing", "proc-macro", "printing" ] }
+quote = "^1"
+heck = "^0.3"
+proc-macro2 = "^1"

@@ -14,7 +14,7 @@ impl EntityName for Entity {
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
     pub id: i32,
-    pub name: Option<String>,
+    pub name: String,
     pub cake_id: Option<i32>,
 }
 
@@ -43,11 +43,11 @@ pub enum Relation {
 
 impl ColumnTrait for Column {
     type EntityName = Entity;
-    fn def(&self) -> ColumnType {
+    fn def(&self) -> ColumnDef {
         match self {
-            Self::Id => ColumnType::Integer(Some(11u32)),
-            Self::Name => ColumnType::String(Some(255u32)),
-            Self::CakeId => ColumnType::Integer(Some(11u32)),
+            Self::Id => ColumnType::Integer.def(),
+            Self::Name => ColumnType::String(Some(255u32)).def(),
+            Self::CakeId => ColumnType::Integer.def(),
         }
     }
 }

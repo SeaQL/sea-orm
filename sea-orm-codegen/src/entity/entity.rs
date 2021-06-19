@@ -50,11 +50,11 @@ impl Entity {
             .collect()
     }
 
-    pub fn get_column_types(&self) -> Vec<TokenStream> {
+    pub fn get_column_defs(&self) -> Vec<TokenStream> {
         self.columns
             .clone()
             .into_iter()
-            .map(|col| col.get_type())
+            .map(|col| col.get_def())
             .collect()
     }
 

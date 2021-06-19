@@ -201,14 +201,14 @@ impl EntityWriter {
 
     pub fn gen_impl_column_trait(entity: &Entity) -> TokenStream {
         let column_names_camel_case = entity.get_column_names_camel_case();
-        let column_types = entity.get_column_types();
+        let column_defs = entity.get_column_defs();
         quote! {
             impl ColumnTrait for Column {
                 type EntityName = Entity;
 
-                fn def(&self) -> ColumnType {
+                fn def(&self) -> ColumnDef {
                     match self {
-                        #(Self::#column_names_camel_case => #column_types),*
+                        #(Self::#column_names_camel_case => #column_defs),*
                     }
                 }
             }
