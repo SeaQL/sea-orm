@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use sea_query::{DynIden, IntoIden, JoinType};
 use std::fmt::Debug;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum RelationType {
     HasOne,
     HasMany,
