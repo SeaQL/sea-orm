@@ -227,6 +227,23 @@ impl ColumnType {
     }
 }
 
+impl ColumnDef {
+    pub fn unique(mut self) -> Self {
+        self.unique = true;
+        self
+    }
+
+    pub fn null(mut self) -> Self {
+        self.null = true;
+        self
+    }
+
+    pub fn indexed(mut self) -> Self {
+        self.indexed = true;
+        self
+    }
+}
+
 impl Into<sea_query::ColumnType> for ColumnType {
     fn into(self) -> sea_query::ColumnType {
         match self {
