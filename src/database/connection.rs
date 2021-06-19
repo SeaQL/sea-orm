@@ -1,7 +1,7 @@
 use crate::{ExecErr, ExecResult, MockDatabaseConnection, QueryErr, QueryResult, Statement};
 use sea_query::{
-    DeleteStatement, InsertStatement, MysqlQueryBuilder, PostgresQueryBuilder, SelectStatement,
-    UpdateStatement,
+    DeleteStatement, InsertStatement, MysqlQueryBuilder, PostgresQueryBuilder,
+    QueryStatementBuilder, SelectStatement, UpdateStatement,
 };
 use std::{error::Error, fmt};
 
@@ -102,31 +102,10 @@ impl DatabaseConnection {
 }
 
 impl QueryBuilderBackend {
-    pub fn build_select_statement(&self, statement: &SelectStatement) -> Statement {
-        match self {
-            Self::MySql => statement.build(MysqlQueryBuilder),
-            Self::Postgres => statement.build(PostgresQueryBuilder),
-        }
-        .into()
-    }
-
-    pub fn build_insert_statement(&self, statement: &InsertStatement) -> Statement {
-        match self {
-            Self::MySql => statement.build(MysqlQueryBuilder),
-            Self::Postgres => statement.build(PostgresQueryBuilder),
-        }
-        .into()
-    }
-
-    pub fn build_update_statement(&self, statement: &UpdateStatement) -> Statement {
-        match self {
-            Self::MySql => statement.build(MysqlQueryBuilder),
-            Self::Postgres => statement.build(PostgresQueryBuilder),
-        }
-        .into()
-    }
-
-    pub fn build_delete_statement(&self, statement: &DeleteStatement) -> Statement {
+    pub fn build<S>(&self, statement: &S) -> Statement
+    where
+        S: QueryStatementBuilder,
+    {
         match self {
             Self::MySql => statement.build(MysqlQueryBuilder),
             Self::Postgres => statement.build(PostgresQueryBuilder),

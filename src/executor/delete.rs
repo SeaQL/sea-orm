@@ -1,7 +1,4 @@
-use crate::{
-    ActiveModelTrait, Database, DeleteMany, DeleteOne, EntityTrait, ExecErr, QueryBuilderBackend,
-    Statement,
-};
+use crate::{ActiveModelTrait, Database, DeleteMany, DeleteOne, EntityTrait, ExecErr, Statement};
 use sea_query::DeleteStatement;
 use std::future::Future;
 
@@ -46,13 +43,9 @@ impl Deleter {
         Self { query }
     }
 
-    pub fn build(&self, builder: QueryBuilderBackend) -> Statement {
-        builder.build_delete_statement(&self.query)
-    }
-
     pub fn exec(self, db: &Database) -> impl Future<Output = Result<DeleteResult, ExecErr>> + '_ {
         let builder = db.get_query_builder_backend();
-        exec_delete(self.build(builder), db)
+        exec_delete(builder.build(&self.query), db)
     }
 }
 

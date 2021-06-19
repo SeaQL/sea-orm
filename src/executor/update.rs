@@ -1,7 +1,4 @@
-use crate::{
-    ActiveModelTrait, Database, EntityTrait, ExecErr, QueryBuilderBackend, Statement, UpdateMany,
-    UpdateOne,
-};
+use crate::{ActiveModelTrait, Database, EntityTrait, ExecErr, Statement, UpdateMany, UpdateOne};
 use sea_query::UpdateStatement;
 use std::future::Future;
 
@@ -43,13 +40,9 @@ impl Updater {
         Self { query }
     }
 
-    pub fn build(&self, builder: QueryBuilderBackend) -> Statement {
-        builder.build_update_statement(&self.query)
-    }
-
     pub fn exec(self, db: &Database) -> impl Future<Output = Result<UpdateResult, ExecErr>> + '_ {
         let builder = db.get_query_builder_backend();
-        exec_update(self.build(builder), db)
+        exec_update(builder.build(&self.query), db)
     }
 }
 

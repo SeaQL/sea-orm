@@ -1,6 +1,6 @@
 use crate::{
-    query::combine, Database, EntityTrait, FromQueryResult, JsonValue, Paginator,
-    QueryBuilderBackend, QueryErr, QueryResult, Select, SelectTwo, Statement, TypeErr,
+    query::combine, Database, EntityTrait, FromQueryResult, JsonValue, Paginator, QueryErr,
+    QueryResult, Select, SelectTwo, TypeErr,
 };
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
@@ -134,14 +134,13 @@ impl<S> Selector<S>
 where
     S: SelectorTrait,
 {
-    pub fn build(&self, builder: QueryBuilderBackend) -> Statement {
-        builder.build_select_statement(&self.query)
-    }
-
     pub async fn one(mut self, db: &Database) -> Result<Option<S::Item>, QueryErr> {
         let builder = db.get_query_builder_backend();
         self.query.limit(1);
-        let row = db.get_connection().query_one(self.build(builder)).await?;
+        let row = db
+            .get_connection()
+            .query_one(builder.build(&self.query))
+            .await?;
         match row {
             Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
             None => Ok(None),
@@ -150,7 +149,10 @@ where
 
     pub async fn all(self, db: &Database) -> Result<Vec<S::Item>, QueryErr> {
         let builder = db.get_query_builder_backend();
-        let rows = db.get_connection().query_all(self.build(builder)).await?;
+        let rows = db
+            .get_connection()
+            .query_all(builder.build(&self.query))
+            .await?;
         let mut models = Vec::new();
         for row in rows.into_iter() {
             models.push(S::from_raw_query_result(row)?);

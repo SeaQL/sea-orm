@@ -31,7 +31,7 @@ where
             .offset((self.page_size * page) as u64)
             .to_owned();
         let builder = self.db.get_query_builder_backend();
-        let stmt = builder.build_select_statement(&query);
+        let stmt = builder.build(&query);
         let rows = self.db.get_connection().query_all(stmt).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
@@ -49,7 +49,7 @@ where
     /// Get the total number of pages
     pub async fn num_pages(&self) -> Result<usize, QueryErr> {
         let builder = self.db.get_query_builder_backend();
-        let stmt = builder.build_select_statement(
+        let stmt = builder.build(
             SelectStatement::new()
                 .expr(Expr::cust("COUNT(*) AS num_rows"))
                 .from_subquery(
@@ -170,10 +170,11 @@ mod tests {
 
         let query_builder = db.get_query_builder_backend();
         let stmts = vec![
-            query_builder.build_select_statement(select.clone().offset(0).limit(2)),
-            query_builder.build_select_statement(select.clone().offset(2).limit(2)),
-            query_builder.build_select_statement(select.offset(4).limit(2)),
+            query_builder.build(select.clone().offset(0).limit(2)),
+            query_builder.build(select.clone().offset(2).limit(2)),
+            query_builder.build(select.offset(4).limit(2)),
         ];
+
         let mut mocker = db
             .get_connection()
             .as_mock_connection()
@@ -210,10 +211,11 @@ mod tests {
 
         let query_builder = db.get_query_builder_backend();
         let stmts = vec![
-            query_builder.build_select_statement(select.clone().offset(0).limit(2)),
-            query_builder.build_select_statement(select.clone().offset(2).limit(2)),
-            query_builder.build_select_statement(select.offset(4).limit(2)),
+            query_builder.build(select.clone().offset(0).limit(2)),
+            query_builder.build(select.clone().offset(2).limit(2)),
+            query_builder.build(select.offset(4).limit(2)),
         ];
+
         let mut mocker = db
             .get_connection()
             .as_mock_connection()
@@ -251,7 +253,7 @@ mod tests {
             .to_owned();
 
         let query_builder = db.get_query_builder_backend();
-        let stmts = vec![query_builder.build_select_statement(&select)];
+        let stmts = vec![query_builder.build(&select)];
         let mut mocker = db
             .get_connection()
             .as_mock_connection()
@@ -305,10 +307,11 @@ mod tests {
 
         let query_builder = db.get_query_builder_backend();
         let stmts = vec![
-            query_builder.build_select_statement(select.clone().offset(0).limit(2)),
-            query_builder.build_select_statement(select.clone().offset(2).limit(2)),
-            query_builder.build_select_statement(select.offset(4).limit(2)),
+            query_builder.build(select.clone().offset(0).limit(2)),
+            query_builder.build(select.clone().offset(2).limit(2)),
+            query_builder.build(select.offset(4).limit(2)),
         ];
+
         let mut mocker = db
             .get_connection()
             .as_mock_connection()
@@ -343,10 +346,11 @@ mod tests {
 
         let query_builder = db.get_query_builder_backend();
         let stmts = vec![
-            query_builder.build_select_statement(select.clone().offset(0).limit(2)),
-            query_builder.build_select_statement(select.clone().offset(2).limit(2)),
-            query_builder.build_select_statement(select.offset(4).limit(2)),
+            query_builder.build(select.clone().offset(0).limit(2)),
+            query_builder.build(select.clone().offset(2).limit(2)),
+            query_builder.build(select.offset(4).limit(2)),
         ];
+
         let mut mocker = db
             .get_connection()
             .as_mock_connection()
