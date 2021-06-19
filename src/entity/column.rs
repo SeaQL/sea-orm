@@ -1,13 +1,35 @@
 use crate::{EntityName, IdenStatic, Iterable};
-pub use sea_query::ColumnType;
 use sea_query::{DynIden, Expr, SeaRc, SimpleExpr, Value};
 
-// TODO: ColumnDef with builder API to replace sea_query::ColumnType in Entity def
+#[derive(Debug, Clone)]
 pub struct ColumnDef {
     pub(crate) col_type: ColumnType,
-    pub(crate) not_null: bool,
+    pub(crate) null: bool,
     pub(crate) unique: bool,
     pub(crate) indexed: bool,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum ColumnType {
+    Char,
+    String,
+    Text,
+    TinyInteger,
+    SmallInteger,
+    Integer,
+    BigInteger,
+    Float,
+    Double,
+    Decimal,
+    DateTime,
+    Timestamp,
+    Time,
+    Date,
+    Binary,
+    Boolean,
+    Money,
+    Json,
+    JsonBinary,
 }
 
 macro_rules! bind_oper {
@@ -46,7 +68,7 @@ macro_rules! bind_vec_func {
 pub trait ColumnTrait: IdenStatic + Iterable {
     type EntityName: EntityName;
 
-    fn def(&self) -> ColumnType;
+    fn def(&self) -> ColumnDef;
 
     fn entity_name(&self) -> DynIden {
         SeaRc::new(Self::EntityName::default()) as DynIden
@@ -191,4 +213,68 @@ pub trait ColumnTrait: IdenStatic + Iterable {
 
     bind_vec_func!(is_in);
     bind_vec_func!(is_not_in);
+}
+
+impl From<ColumnType> for ColumnDef {
+    fn from(col_type: ColumnType) -> Self {
+        Self {
+            col_type,
+            null: false,
+            unique: false,
+            indexed: false,
+        }
+    }
+}
+
+impl Into<sea_query::ColumnType> for ColumnType {
+    fn into(self) -> sea_query::ColumnType {
+        match self {
+            Self::Char => sea_query::ColumnType::Char(None),
+            Self::String => sea_query::ColumnType::String(None),
+            Self::Text => sea_query::ColumnType::Text,
+            Self::TinyInteger => sea_query::ColumnType::TinyInteger(None),
+            Self::SmallInteger => sea_query::ColumnType::SmallInteger(None),
+            Self::Integer => sea_query::ColumnType::Integer(None),
+            Self::BigInteger => sea_query::ColumnType::BigInteger(None),
+            Self::Float => sea_query::ColumnType::Float(None),
+            Self::Double => sea_query::ColumnType::Double(None),
+            Self::Decimal => sea_query::ColumnType::Decimal(None),
+            Self::DateTime => sea_query::ColumnType::DateTime(None),
+            Self::Timestamp => sea_query::ColumnType::Timestamp(None),
+            Self::Time => sea_query::ColumnType::Time(None),
+            Self::Date => sea_query::ColumnType::Date,
+            Self::Binary => sea_query::ColumnType::Binary(None),
+            Self::Boolean => sea_query::ColumnType::Boolean,
+            Self::Money => sea_query::ColumnType::Money(None),
+            Self::Json => sea_query::ColumnType::Json,
+            Self::JsonBinary => sea_query::ColumnType::JsonBinary,
+        }
+    }
+}
+
+impl From<sea_query::ColumnType> for ColumnType {
+    fn from(col_type: sea_query::ColumnType) -> Self {
+        match col_type {
+            sea_query::ColumnType::Char(_) => Self::Char,
+            sea_query::ColumnType::String(_) => Self::String,
+            sea_query::ColumnType::Text => Self::Text,
+            sea_query::ColumnType::TinyInteger(_) => Self::TinyInteger,
+            sea_query::ColumnType::SmallInteger(_) => Self::SmallInteger,
+            sea_query::ColumnType::Integer(_) => Self::Integer,
+            sea_query::ColumnType::BigInteger(_) => Self::BigInteger,
+            sea_query::ColumnType::Float(_) => Self::Float,
+            sea_query::ColumnType::Double(_) => Self::Double,
+            sea_query::ColumnType::Decimal(_) => Self::Decimal,
+            sea_query::ColumnType::DateTime(_) => Self::DateTime,
+            sea_query::ColumnType::Timestamp(_) => Self::Timestamp,
+            sea_query::ColumnType::Time(_) => Self::Time,
+            sea_query::ColumnType::Date => Self::Date,
+            sea_query::ColumnType::Binary(_) => Self::Binary,
+            sea_query::ColumnType::Boolean => Self::Boolean,
+            sea_query::ColumnType::Money(_) => Self::Money,
+            sea_query::ColumnType::Json => Self::Json,
+            sea_query::ColumnType::JsonBinary => Self::JsonBinary,
+            sea_query::ColumnType::Custom(_) => panic!("custom column type unsupported"),
+        }
+    }
 }

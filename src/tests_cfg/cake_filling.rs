@@ -43,10 +43,10 @@ pub enum Relation {
 impl ColumnTrait for Column {
     type EntityName = Entity;
 
-    fn def(&self) -> ColumnType {
+    fn def(&self) -> ColumnDef {
         match self {
-            Self::CakeId => ColumnType::Integer(None),
-            Self::FillingId => ColumnType::Integer(None),
+            Self::CakeId => ColumnType::Integer.into(),
+            Self::FillingId => ColumnType::Integer.into(),
         }
     }
 }
