@@ -1,4 +1,4 @@
-use crate::{ExecErr, ExecResult, MockDatabaseConnection, QueryErr, QueryResult, Statement};
+use crate::{ExecErr, ExecResult, QueryErr, QueryResult, Statement};
 use sea_query::{
     DeleteStatement, InsertStatement, MysqlQueryBuilder, PostgresQueryBuilder,
     QueryStatementBuilder, SelectStatement, UpdateStatement,
@@ -92,9 +92,9 @@ impl DatabaseConnection {
         }
     }
 
-    pub fn as_mock_connection(&self) -> &MockDatabaseConnection {
+    #[cfg(feature = "mock")]
+    pub fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
         match self {
-            #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
             _ => panic!("not mock connection"),
         }
