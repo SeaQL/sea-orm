@@ -1,6 +1,6 @@
 use crate::{
     debug_print, ConnectionErr, DatabaseConnection, ExecErr, ExecResult, MockDatabase, QueryErr,
-    QueryResult, Statement,
+    QueryResult, Statement, Transaction,
 };
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -19,7 +19,7 @@ pub trait MockDatabaseTrait: Send {
 
     fn query(&mut self, counter: usize, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr>;
 
-    fn drain_transaction_log(&mut self) -> Vec<Statement>;
+    fn drain_transaction_log(&mut self) -> Vec<Transaction>;
 }
 
 impl MockDatabaseConnector {

@@ -1,14 +1,14 @@
 use crate::{
     Database, DatabaseConnection, EntityTrait, ExecErr, ExecResult, ExecResultHolder, Iden,
     Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryErr, QueryResult,
-    QueryResultRow, Statement, TypeErr,
+    QueryResultRow, Statement, Transaction, TypeErr,
 };
 use sea_query::{Value, ValueType};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Default)]
 pub struct MockDatabase {
-    transaction_log: Vec<Statement>,
+    transaction_log: Vec<Transaction>,
     exec_results: Vec<MockExecResult>,
     query_results: Vec<Vec<MockRow>>,
 }
@@ -73,7 +73,7 @@ impl MockDatabase {
 
 impl MockDatabaseTrait for MockDatabase {
     fn execute(&mut self, counter: usize, statement: Statement) -> Result<ExecResult, ExecErr> {
-        self.transaction_log.push(statement);
+        self.transaction_log.push(Transaction::one(statement));
         if counter < self.exec_results.len() {
             Ok(ExecResult {
                 result: ExecResultHolder::Mock(std::mem::take(&mut self.exec_results[counter])),
@@ -88,7 +88,7 @@ impl MockDatabaseTrait for MockDatabase {
         counter: usize,
         statement: Statement,
     ) -> Result<Vec<QueryResult>, QueryErr> {
-        self.transaction_log.push(statement);
+        self.transaction_log.push(Transaction::one(statement));
         if counter < self.query_results.len() {
             Ok(std::mem::take(&mut self.query_results[counter])
                 .into_iter()
@@ -101,7 +101,7 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
-    fn drain_transaction_log(&mut self) -> Vec<Statement> {
+    fn drain_transaction_log(&mut self) -> Vec<Transaction> {
         std::mem::take(&mut self.transaction_log)
     }
 }

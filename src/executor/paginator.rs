@@ -105,7 +105,7 @@ where
 mod tests {
     use crate::entity::prelude::*;
     use crate::tests_cfg::*;
-    use crate::{Database, MockDatabase, QueryErr};
+    use crate::{Database, MockDatabase, QueryErr, Transaction};
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};
 
@@ -181,7 +181,7 @@ mod tests {
             .lock()
             .unwrap();
 
-        assert_eq!(mocker.drain_transaction_log(), stmts);
+        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 
@@ -221,7 +221,7 @@ mod tests {
             .lock()
             .unwrap();
 
-        assert_eq!(mocker.drain_transaction_log(), stmts);
+        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 
@@ -259,7 +259,7 @@ mod tests {
             .lock()
             .unwrap();
 
-        assert_eq!(mocker.drain_transaction_log(), stmts);
+        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 
@@ -316,7 +316,7 @@ mod tests {
             .lock()
             .unwrap();
 
-        assert_eq!(mocker.drain_transaction_log(), stmts);
+        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 
@@ -354,7 +354,7 @@ mod tests {
             .lock()
             .unwrap();
 
-        assert_eq!(mocker.drain_transaction_log(), stmts);
+        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 }

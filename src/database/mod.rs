@@ -2,11 +2,13 @@ mod connection;
 #[cfg(feature = "mock")]
 mod mock;
 mod statement;
+mod transaction;
 
 pub use connection::*;
 #[cfg(feature = "mock")]
 pub use mock::*;
 pub use statement::*;
+pub use transaction::*;
 
 #[derive(Debug, Default)]
 pub struct Database {

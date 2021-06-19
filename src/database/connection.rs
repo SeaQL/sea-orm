@@ -94,6 +94,7 @@ impl DatabaseConnection {
 
     pub fn as_mock_connection(&self) -> &MockDatabaseConnection {
         match self {
+            #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
             _ => panic!("not mock connection"),
         }
