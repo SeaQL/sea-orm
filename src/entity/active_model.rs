@@ -188,6 +188,15 @@ where
     }
 }
 
+impl<V> PartialEq for ActiveValue<V>
+where
+    V: Into<Value> + Default + std::cmp::PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
 impl<A> OneOrManyActiveModel<A> for A
 where
     A: ActiveModelTrait,

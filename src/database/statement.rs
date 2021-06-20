@@ -7,6 +7,15 @@ pub struct Statement {
     pub values: Option<Values>,
 }
 
+impl From<String> for Statement {
+    fn from(stmt: String) -> Statement {
+        Statement {
+            sql: stmt,
+            values: None,
+        }
+    }
+}
+
 impl From<(String, Values)> for Statement {
     fn from(stmt: (String, Values)) -> Statement {
         Statement {
