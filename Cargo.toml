@@ -29,7 +29,7 @@ path = "src/lib.rs"
 async-stream = { version = "^0.3" }
 futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
-sea-query = { path = "../sea-query", version = "^0.12" }
+sea-query = { version = "^0.12" }
 sea-orm-macros = { path = "sea-orm-macros", optional = true }
 serde = { version = "^1.0", features = [ "derive" ] }
 sqlx = { version = "^0.5", optional = true }
