@@ -98,6 +98,11 @@ impl DatabaseConnection {
             _ => panic!("not mock connection"),
         }
     }
+
+    #[cfg(not(feature = "mock"))]
+    pub fn as_mock_connection(&self) -> Option<bool> {
+        None
+    }
 }
 
 impl QueryBuilderBackend {
