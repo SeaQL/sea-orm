@@ -1,28 +1,28 @@
 use sqlx::{
-    mysql::{MySqlArguments, MySqlQueryResult, MySqlRow},
-    MySql, MySqlPool,
+    sqlite::{SqliteArguments, SqliteQueryResult, SqliteRow},
+    Sqlite, SqlitePool,
 };
 
-sea_query::sea_query_driver_mysql!();
-use sea_query_driver_mysql::bind_query;
+sea_query::sea_query_driver_sqlite!();
+use sea_query_driver_sqlite::bind_query;
 
 use crate::{debug_print, executor::*, ConnectionErr, DatabaseConnection, Statement};
 
-pub struct SqlxMySqlConnector;
+pub struct SqlxSqliteConnector;
 
-pub struct SqlxMySqlPoolConnection {
-    pool: MySqlPool,
+pub struct SqlxSqlitePoolConnection {
+    pool: SqlitePool,
 }
 
-impl SqlxMySqlConnector {
+impl SqlxSqliteConnector {
     pub fn accepts(string: &str) -> bool {
-        string.starts_with("mysql://")
+        string.starts_with("sqlite:")
     }
 
     pub async fn connect(string: &str) -> Result<DatabaseConnection, ConnectionErr> {
-        if let Ok(pool) = MySqlPool::connect(string).await {
-            Ok(DatabaseConnection::SqlxMySqlPoolConnection(
-                SqlxMySqlPoolConnection { pool },
+        if let Ok(pool) = SqlitePool::connect(string).await {
+            Ok(DatabaseConnection::SqlxSqlitePoolConnection(
+                SqlxSqlitePoolConnection { pool },
             ))
         } else {
             Err(ConnectionErr)
@@ -30,13 +30,13 @@ impl SqlxMySqlConnector {
     }
 }
 
-impl SqlxMySqlConnector {
-    pub fn from_sqlx_mysql_pool(pool: MySqlPool) -> DatabaseConnection {
-        DatabaseConnection::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection { pool })
+impl SqlxSqliteConnector {
+    pub fn from_sqlx_sqlite_pool(pool: SqlitePool) -> DatabaseConnection {
+        DatabaseConnection::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection { pool })
     }
 }
 
-impl SqlxMySqlPoolConnection {
+impl SqlxSqlitePoolConnection {
     pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, ExecErr> {
         debug_print!("{}", stmt);
 
@@ -77,23 +77,23 @@ impl SqlxMySqlPoolConnection {
     }
 }
 
-impl From<MySqlRow> for QueryResult {
-    fn from(row: MySqlRow) -> QueryResult {
+impl From<SqliteRow> for QueryResult {
+    fn from(row: SqliteRow) -> QueryResult {
         QueryResult {
-            row: QueryResultRow::SqlxMySql(row),
+            row: QueryResultRow::SqlxSqlite(row),
         }
     }
 }
 
-impl From<MySqlQueryResult> for ExecResult {
-    fn from(result: MySqlQueryResult) -> ExecResult {
+impl From<SqliteQueryResult> for ExecResult {
+    fn from(result: SqliteQueryResult) -> ExecResult {
         ExecResult {
-            result: ExecResultHolder::SqlxMySql(result),
+            result: ExecResultHolder::SqlxSqlite(result),
         }
     }
 }
 
-fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, MySqlArguments> {
+fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, SqliteArguments> {
     let mut query = sqlx::query(&stmt.sql);
     if let Some(values) = &stmt.values {
         query = bind_query(query, values);
