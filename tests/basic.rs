@@ -1,4 +1,4 @@
-use sea_orm::{DbConn, entity::*, query::*, sea_query, tests_cfg::*};
+use sea_orm::{entity::*, query::*, sea_query, tests_cfg::*, DbConn};
 
 mod setup;
 
@@ -82,10 +82,7 @@ async fn crud_cake(db: &DbConn) -> Result<(), ExecErr> {
         .await
         .map_err(|_| ExecErr)?;
 
-    assert_eq!(
-        None,
-        apple
-    );
+    assert_eq!(None, apple);
 
     Ok(())
 }

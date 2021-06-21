@@ -143,7 +143,9 @@ macro_rules! try_getable_mysql {
                         Ok(row.try_get(column.as_str())?)
                     }
                     #[cfg(feature = "sqlx-sqlite")]
-                    QueryResultRow::SqlxSqlite(_) => panic!("{} unsupported by sqlx-sqlite", stringify!($type)),
+                    QueryResultRow::SqlxSqlite(_) => {
+                        panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+                    }
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => Ok(row.try_get(column.as_str())?),
                 }
@@ -163,7 +165,9 @@ macro_rules! try_getable_mysql {
                         }
                     }
                     #[cfg(feature = "sqlx-sqlite")]
-                    QueryResultRow::SqlxSqlite(_) => panic!("{} unsupported by sqlx-sqlite", stringify!($type)),
+                    QueryResultRow::SqlxSqlite(_) => {
+                        panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+                    }
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => match row.try_get(column.as_str()) {
                         Ok(v) => Ok(Some(v)),

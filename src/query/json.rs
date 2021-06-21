@@ -46,7 +46,7 @@ impl FromQueryResult for JsonValue {
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => {
                 use serde_json::json;
-                use sqlx::{Column, Sqlite, Row, Type};
+                use sqlx::{Column, Row, Sqlite, Type};
                 let mut map = Map::new();
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
