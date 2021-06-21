@@ -1,7 +1,7 @@
 use crate::{
     ActiveModelTrait, ColumnTrait, Delete, DeleteOne, FromQueryResult, Insert, ModelTrait,
-    OneOrManyActiveModel, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, RelationBuilder,
-    RelationTrait, RelationType, Select, Update, UpdateOne,
+    OneOrManyActiveModel, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related,
+    RelationBuilder, RelationTrait, RelationType, Select, Update, UpdateOne,
 };
 use sea_query::{Iden, IntoValueTuple};
 use std::fmt::Debug;
@@ -35,11 +35,11 @@ pub trait EntityTrait: EntityName {
         RelationBuilder::new(RelationType::HasOne, Self::default(), related)
     }
 
-    fn has_many<R>(related: R) -> RelationBuilder<Self, R>
+    fn has_many<R>(_: R) -> RelationBuilder<Self, R>
     where
-        R: EntityTrait,
+        R: EntityTrait + Related<Self>,
     {
-        RelationBuilder::new(RelationType::HasMany, Self::default(), related)
+        RelationBuilder::from_rel_def(R::to().rev())
     }
 
     /// ```
