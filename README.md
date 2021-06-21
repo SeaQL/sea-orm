@@ -5,14 +5,14 @@
   <h1>SeaORM</h1>
 
   <p>
-    <strong>An async ORM for Rust</strong>
+    <strong>🐚 An async & dynamic ORM for Rust</strong>
   </p>
 
   <sub>Built with 🔥 by 🌊🦀🐚</sub>
 
 </div>
 
-# SeaORM - An async ORM for Rust
+# SeaORM
 
 Inspired by ActiveRecord, Eloquent and TypeORM, SeaORM aims to provide you an intuitive and ergonomic 
 API to make working with databases in Rust a first-class experience.
