@@ -9,6 +9,7 @@ pub struct Column {
     pub(crate) col_type: ColumnType,
     pub(crate) auto_increment: bool,
     pub(crate) not_null: bool,
+    pub(crate) unique: bool,
 }
 
 impl Column {
@@ -50,7 +51,7 @@ impl Column {
     }
 
     pub fn get_def(&self) -> TokenStream {
-        match &self.col_type {
+        let mut col_def = match &self.col_type {
             ColumnType::Char(s) => match s {
                 Some(s) => quote! { ColumnType::Char(Some(#s)).def() },
                 None => quote! { ColumnType::Char(None).def() },
@@ -86,7 +87,18 @@ impl Column {
                 let s = s.to_string();
                 quote! { ColumnType::Custom(#s.to_owned()).def() }
             }
+        };
+        if !self.not_null {
+            col_def.extend(quote! {
+                .null()
+            });
         }
+        if self.unique {
+            col_def.extend(quote! {
+                .unique()
+            });
+        }
+        col_def
     }
 }
 
@@ -115,11 +127,21 @@ impl From<&ColumnDef> for Column {
             })
             .collect();
         let not_null = !not_nulls.is_empty();
+        let uniques: Vec<bool> = col_def
+            .get_column_spec()
+            .iter()
+            .filter_map(|spec| match spec {
+                ColumnSpec::UniqueKey => Some(true),
+                _ => None,
+            })
+            .collect();
+        let unique = !uniques.is_empty();
         Self {
             name,
             col_type,
             auto_increment,
             not_null,
+            unique,
         }
     }
 }

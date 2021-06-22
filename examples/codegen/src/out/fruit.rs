@@ -47,7 +47,7 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(Some(255u32)).def(),
-            Self::CakeId => ColumnType::Integer.def(),
+            Self::CakeId => ColumnType::Integer.def().null(),
         }
     }
 }
