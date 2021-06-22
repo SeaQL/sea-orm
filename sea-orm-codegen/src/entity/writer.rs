@@ -217,20 +217,14 @@ impl EntityWriter {
 
     pub fn gen_impl_relation_trait(entity: &Entity) -> TokenStream {
         let relation_ref_tables_camel_case = entity.get_relation_ref_tables_camel_case();
-        let relation_rel_types = entity.get_relation_rel_types();
-        let relation_ref_tables_snake_case = entity.get_relation_ref_tables_snake_case();
-        let relation_columns_camel_case = entity.get_relation_columns_camel_case();
-        let relation_ref_columns_camel_case = entity.get_relation_ref_columns_camel_case();
+        let relation_defs = entity.get_relation_defs();
         let quoted = if relation_ref_tables_camel_case.is_empty() {
             quote! {
                 _ => panic!("No RelationDef"),
             }
         } else {
             quote! {
-                #(Self::#relation_ref_tables_camel_case => Entity::#relation_rel_types(super::#relation_ref_tables_snake_case::Entity)
-                    .from(Column::#relation_columns_camel_case)
-                    .to(super::#relation_ref_tables_snake_case::Column::#relation_ref_columns_camel_case)
-                    .into()),*
+                #(Self::#relation_ref_tables_camel_case => #relation_defs),*
             }
         };
         quote! {
