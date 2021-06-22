@@ -78,10 +78,10 @@ where
         }
     }
 
-    pub(crate) fn from_rel_def(rel: RelationDef) -> Self {
+    pub(crate) fn from_rel(rel_type: RelationType, rel: RelationDef) -> Self {
         Self {
             entities: PhantomData,
-            rel_type: rel.rel_type,
+            rel_type,
             from_tbl: rel.from_tbl,
             to_tbl: rel.to_tbl,
             from_col: Some(rel.from_col),

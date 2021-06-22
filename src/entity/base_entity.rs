@@ -28,18 +28,25 @@ pub trait EntityTrait: EntityName {
 
     type PrimaryKey: PrimaryKeyTrait + PrimaryKeyToColumn<Column = Self::Column>;
 
-    fn has_one<R>(related: R) -> RelationBuilder<Self, R>
+    fn belongs_to<R>(related: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait,
     {
         RelationBuilder::new(RelationType::HasOne, Self::default(), related)
     }
 
+    fn has_one<R>(_: R) -> RelationBuilder<Self, R>
+    where
+        R: EntityTrait + Related<Self>,
+    {
+        RelationBuilder::from_rel(RelationType::HasOne, R::to().rev())
+    }
+
     fn has_many<R>(_: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait + Related<Self>,
     {
-        RelationBuilder::from_rel_def(R::to().rev())
+        RelationBuilder::from_rel(RelationType::HasMany, R::to().rev())
     }
 
     /// ```
