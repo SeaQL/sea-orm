@@ -1,7 +1,7 @@
 use crate::{EntityTrait, IntoSimpleExpr, Iterable, QueryTrait, Select, SelectTwo};
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{Alias, ColumnRef, Iden, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
+use sea_query::{Alias, ColumnRef, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
 
 pub const SELECT_A: &str = "A_";
 pub const SELECT_B: &str = "B_";
@@ -48,11 +48,12 @@ where
     F: EntityTrait,
 {
     pub(crate) fn new(query: SelectStatement) -> Self {
-        let myself = Self {
+        Self {
             query,
             entity: PhantomData,
-        };
-        myself.prepare_select()
+        }
+        .prepare_select()
+        .prepare_order_by()
     }
 
     fn prepare_select(mut self) -> Self {
@@ -62,6 +63,13 @@ where
                 expr: col.into_simple_expr(),
                 alias: Some(SeaRc::new(Alias::new(&alias))),
             });
+        }
+        self
+    }
+
+    fn prepare_order_by(mut self) -> Self {
+        for col in <E::PrimaryKey as Iterable>::iter() {
+            self.query.order_by((E::default(), col), Order::Asc);
         }
         self
     }
@@ -97,6 +105,7 @@ mod tests {
                 "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
                 "`fruit`.`id` AS `B_id`, `fruit`.`name` AS `B_name`, `fruit`.`cake_id` AS `B_cake_id`",
                 "FROM `cake` LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`",
+                "ORDER BY `cake`.`id` ASC",
             ].join(" ")
         );
     }
@@ -116,6 +125,7 @@ mod tests {
                 "`fruit`.`id` AS `B_id`, `fruit`.`name` AS `B_name`, `fruit`.`cake_id` AS `B_cake_id`",
                 "FROM `cake` LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`",
                 "WHERE `cake`.`id` = 1 AND `fruit`.`id` = 2",
+                "ORDER BY `cake`.`id` ASC",
             ].join(" ")
         );
     }
