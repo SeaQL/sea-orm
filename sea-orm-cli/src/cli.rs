@@ -1,11 +1,11 @@
 use clap::{App, AppSettings, Arg, SubCommand};
 
 pub fn build_cli() -> App<'static, 'static> {
-    let entity_subcommand = SubCommand::with_name("entity")
-        .about("Entity related commands")
+    let entity_subcommand = SubCommand::with_name("generate")
+        .about("Codegen related commands")
         .setting(AppSettings::VersionlessSubcommands)
         .subcommand(
-            SubCommand::with_name("generate")
+            SubCommand::with_name("entity")
                 .about("Generate entity")
                 .arg(
                     Arg::with_name("DATABASE_URI")
@@ -13,7 +13,8 @@ pub fn build_cli() -> App<'static, 'static> {
                         .short("u")
                         .help("Database URI")
                         .takes_value(true)
-                        .required(true),
+                        .required(true)
+                        .env("DATABASE_URI"),
                 )
                 .arg(
                     Arg::with_name("DATABASE_SCHEMA")
@@ -21,7 +22,8 @@ pub fn build_cli() -> App<'static, 'static> {
                         .short("s")
                         .help("Database schema")
                         .takes_value(true)
-                        .required(true),
+                        .required(true)
+                        .env("DATABASE_SCHEMA"),
                 )
                 .arg(
                     Arg::with_name("OUTPUT_DIR")

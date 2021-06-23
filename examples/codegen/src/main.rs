@@ -1,4 +1,4 @@
-mod out;
+mod entity;
 
 use sea_orm_codegen::{EntityGenerator, Error};
 
@@ -10,7 +10,7 @@ async fn main() -> Result<(), Error> {
     let _generator = EntityGenerator::discover(uri, schema)
         .await?
         .transform()?
-        .generate("src/out")?;
+        .generate("src/entity")?;
 
     Ok(())
 }
