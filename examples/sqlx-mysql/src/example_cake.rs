@@ -51,10 +51,7 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Fruit => Entity::has_many(super::fruit::Entity)
-                .from(Column::Id)
-                .to(super::fruit::Column::CakeId)
-                .into(),
+            Self::Fruit => Entity::has_many(super::fruit::Entity).into(),
         }
     }
 }
