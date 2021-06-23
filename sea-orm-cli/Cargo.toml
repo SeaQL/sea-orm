@@ -12,10 +12,11 @@ keywords = [ "orm", "database", "sql", "mysql", "postgres", "sqlite", "cli" ]
 publish = false
 
 [[bin]]
-name = "sea-orm"
+name = "sea-orm-cli"
 path = "src/main.rs"
 
 [dependencies]
 clap = { version = "^2.33.3" }
+dotenv = { version = "^0.15" }
 async-std = { version = "^1.9", features = [ "attributes" ] }
 sea-orm-codegen = { path = "../sea-orm-codegen" }
