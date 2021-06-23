@@ -125,33 +125,6 @@ where
         }
     }
 
-    fn parse_query_result(rows: Vec<(E::Model, F::Model)>) -> Vec<(E::Model, Vec<F::Model>)> {
-        let mut acc = Vec::new();
-        for (l_model, r_model) in rows {
-            if acc.is_empty() {
-                acc.push((l_model, vec![r_model]));
-                continue;
-            }
-            let (last_l, last_r) = acc.last_mut().unwrap();
-            let mut l_equal = true;
-            for pk_col in <E::PrimaryKey as Iterable>::iter() {
-                let col = pk_col.into_column();
-                let curr_val = l_model.get(col);
-                let last_val = last_l.get(col);
-                if !curr_val.eq(&last_val) {
-                    l_equal = false;
-                    break;
-                }
-            }
-            if l_equal {
-                last_r.push(r_model);
-            } else {
-                acc.push((l_model, vec![r_model]));
-            }
-        }
-        acc
-    }
-
     pub async fn one(
         self,
         db: &DatabaseConnection,
@@ -164,7 +137,7 @@ where
         db: &DatabaseConnection,
     ) -> Result<Vec<(E::Model, Vec<F::Model>)>, QueryErr> {
         let rows = self.into_model::<E::Model, F::Model>().all(db).await?;
-        Ok(Self::parse_query_result(rows))
+        Ok(parse_query_result::<E, _>(rows))
     }
 }
 
@@ -202,3 +175,33 @@ where
         }
     }
 }
+
+fn parse_query_result<L, R>(rows: Vec<(L::Model, R)>) -> Vec<(L::Model, Vec<R>)>
+    where
+        L: EntityTrait,
+    {
+        let mut acc = Vec::new();
+        for (l_model, r_model) in rows {
+            if acc.is_empty() {
+                acc.push((l_model, vec![r_model]));
+                continue;
+            }
+            let (last_l, last_r) = acc.last_mut().unwrap();
+            let mut l_equal = true;
+            for pk_col in <L::PrimaryKey as Iterable>::iter() {
+                let col = pk_col.into_column();
+                let curr_val = l_model.get(col);
+                let last_val = last_l.get(col);
+                if !curr_val.eq(&last_val) {
+                    l_equal = false;
+                    break;
+                }
+            }
+            if l_equal {
+                last_r.push(r_model);
+            } else {
+                acc.push((l_model, vec![r_model]));
+            }
+        }
+        acc
+    }
