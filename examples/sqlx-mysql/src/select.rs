@@ -148,6 +148,19 @@ async fn find_many_to_many(db: &DbConn) -> Result<(), QueryErr> {
         println!("{:?}\n", bb);
     }
 
+    print!("find cakes, fruits and vendors: ");
+
+    let three = Cake::find()
+        .left_join_and_select(Fruit)
+        .left_join_and_select(Vendor)
+        .all(db)
+        .await?;
+
+    println!();
+    for tt in three.iter() {
+        println!("{:?}\n", tt);
+    }
+
     print!("find fillings for cheese cake: ");
 
     let cheese = Cake::find_by_id(1).one(db).await?;

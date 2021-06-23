@@ -37,6 +37,7 @@ impl PrimaryKeyTrait for PrimaryKey {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Cake,
+    Vendor,
 }
 
 impl ColumnTrait for Column {
@@ -58,6 +59,7 @@ impl RelationTrait for Relation {
                 .from(Column::CakeId)
                 .to(super::cake::Column::Id)
                 .into(),
+            Self::Vendor => Entity::has_many(super::vendor::Entity).into(),
         }
     }
 }
@@ -65,6 +67,12 @@ impl RelationTrait for Relation {
 impl Related<super::cake::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Cake.def()
+    }
+}
+
+impl Related<super::vendor::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Vendor.def()
     }
 }
 

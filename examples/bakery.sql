@@ -61,3 +61,19 @@ INSERT INTO `cake_filling` (`cake_id`, `filling_id`) VALUES
   (1, 2),
   (2, 2),
   (2, 3);
+
+CREATE TABLE `vendor` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL DEFAULT '',
+  `fruit_id` int DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fruit_id` (`fruit_id`),
+  CONSTRAINT `fk-vendor-cake` FOREIGN KEY (`fruit_id`) REFERENCES `fruit` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8;
+
+INSERT INTO `vendor` (`id`, `name`, `fruit_id`)
+VALUES
+	(1, 'Hong Kong Organic', 1),
+	(2, 'ABC Farm', 2),
+	(3, 'DEF Farming', 3),
+	(4, 'Hi There Farming Ltd', 3);

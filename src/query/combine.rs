@@ -1,10 +1,11 @@
-use crate::{EntityTrait, IntoSimpleExpr, Iterable, QueryTrait, Select, SelectTwo};
+use crate::{EntityTrait, IntoSimpleExpr, Iterable, QueryTrait, Select, SelectThree, SelectTwo};
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
 use sea_query::{Alias, ColumnRef, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
 
 pub const SELECT_A: &str = "A_";
 pub const SELECT_B: &str = "B_";
+pub const SELECT_C: &str = "C_";
 
 impl<E> Select<E>
 where
@@ -70,6 +71,47 @@ where
     fn prepare_order_by(mut self) -> Self {
         for col in <E::PrimaryKey as Iterable>::iter() {
             self.query.order_by((E::default(), col), Order::Asc);
+        }
+        self
+    }
+
+    pub fn select_also<G>(self, _: G) -> SelectThree<E, F, G>
+    where
+        G: EntityTrait,
+    {
+        SelectThree::new(self.into_query())
+    }
+}
+
+impl<E, F, G> SelectThree<E, F, G>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+{
+    pub(crate) fn new(query: SelectStatement) -> Self {
+        Self {
+            query,
+            entity: PhantomData,
+        }
+        .prepare_select()
+        .prepare_order_by()
+    }
+
+    fn prepare_select(mut self) -> Self {
+        for col in <G::Column as Iterable>::iter() {
+            let alias = format!("{}{}", SELECT_C, col.to_string().as_str());
+            self.query.expr(SelectExpr {
+                expr: col.into_simple_expr(),
+                alias: Some(SeaRc::new(Alias::new(&alias))),
+            });
+        }
+        self
+    }
+
+    fn prepare_order_by(mut self) -> Self {
+        for col in <F::PrimaryKey as Iterable>::iter() {
+            self.query.order_by((F::default(), col), Order::Asc);
         }
         self
     }

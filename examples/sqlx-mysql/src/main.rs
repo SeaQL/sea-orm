@@ -5,6 +5,7 @@ mod example_cake;
 mod example_cake_filling;
 mod example_filling;
 mod example_fruit;
+mod example_vendor;
 mod operation;
 mod select;
 
@@ -13,6 +14,7 @@ use example_cake as cake;
 use example_cake_filling as cake_filling;
 use example_filling as filling;
 use example_fruit as fruit;
+use example_vendor as vendor;
 use operation::*;
 use select::*;
 

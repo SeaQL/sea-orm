@@ -1,12 +1,11 @@
-use crate as sea_orm;
-use crate::entity::prelude::*;
+use sea_orm::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "fruit"
+        "vendor"
     }
 }
 
@@ -14,14 +13,14 @@ impl EntityName for Entity {
 pub struct Model {
     pub id: i32,
     pub name: String,
-    pub cake_id: Option<i32>,
+    pub fruit_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
     Name,
-    CakeId,
+    FruitId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -37,8 +36,7 @@ impl PrimaryKeyTrait for PrimaryKey {
 
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
-    Cake,
-    Vendor,
+    Fruit,
 }
 
 impl ColumnTrait for Column {
@@ -48,7 +46,7 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(None).def(),
-            Self::CakeId => ColumnType::Integer.def(),
+            Self::FruitId => ColumnType::Integer.def(),
         }
     }
 }
@@ -56,24 +54,17 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Cake => Entity::belongs_to(super::cake::Entity)
-                .from(Column::CakeId)
-                .to(super::cake::Column::Id)
+            Self::Fruit => Entity::belongs_to(super::fruit::Entity)
+                .from(Column::FruitId)
+                .to(super::fruit::Column::Id)
                 .into(),
-            Self::Vendor => Entity::has_many(super::vendor::Entity).into(),
         }
     }
 }
 
-impl Related<super::cake::Entity> for Entity {
+impl Related<super::fruit::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Cake.def()
-    }
-}
-
-impl Related<super::vendor::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Vendor.def()
+        Relation::Fruit.def()
     }
 }
 

@@ -23,6 +23,17 @@ where
     pub(crate) entity: PhantomData<(E, F)>,
 }
 
+#[derive(Clone, Debug)]
+pub struct SelectThree<E, F, G>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G)>,
+}
+
 pub trait IntoSimpleExpr {
     fn into_simple_expr(self) -> SimpleExpr;
 }
@@ -44,6 +55,19 @@ macro_rules! impl_trait {
         where
             E: EntityTrait,
             F: EntityTrait,
+        {
+            type QueryStatement = SelectStatement;
+
+            fn query(&mut self) -> &mut SelectStatement {
+                &mut self.query
+            }
+        }
+
+        impl<E, F, G> $trait for SelectThree<E, F, G>
+        where
+            E: EntityTrait,
+            F: EntityTrait,
+            G: EntityTrait,
         {
             type QueryStatement = SelectStatement;
 
@@ -122,6 +146,24 @@ impl<E, F> QueryTrait for SelectTwo<E, F>
 where
     E: EntityTrait,
     F: EntityTrait,
+{
+    type QueryStatement = SelectStatement;
+    fn query(&mut self) -> &mut SelectStatement {
+        &mut self.query
+    }
+    fn as_query(&self) -> &SelectStatement {
+        &self.query
+    }
+    fn into_query(self) -> SelectStatement {
+        self.query
+    }
+}
+
+impl<E, F, G> QueryTrait for SelectThree<E, F, G>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
 {
     type QueryStatement = SelectStatement;
     fn query(&mut self) -> &mut SelectStatement {

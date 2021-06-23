@@ -1,4 +1,4 @@
-use crate::{EntityTrait, QuerySelect, Related, Select, SelectTwo};
+use crate::{EntityTrait, QuerySelect, Related, Select, SelectThree, SelectTwo};
 pub use sea_query::JoinType;
 
 impl<E> Select<E>
@@ -45,6 +45,56 @@ where
     where
         R: EntityTrait,
         E: Related<R>,
+    {
+        self.left_join(r).select_also(r)
+    }
+}
+
+impl<E, F> SelectTwo<E, F>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+{
+    /// Left Join with a Related Entity.
+    pub fn left_join<R>(self, _: R) -> Self
+    where
+        R: EntityTrait,
+        F: Related<R>,
+    {
+        self.join_join(JoinType::LeftJoin, F::to(), F::via())
+    }
+
+    /// Right Join with a Related Entity.
+    pub fn right_join<R>(self, _: R) -> Self
+    where
+        R: EntityTrait,
+        F: Related<R>,
+    {
+        self.join_join(JoinType::RightJoin, F::to(), F::via())
+    }
+
+    /// Inner Join with a Related Entity.
+    pub fn inner_join<R>(self, _: R) -> Self
+    where
+        R: EntityTrait,
+        F: Related<R>,
+    {
+        self.join_join(JoinType::InnerJoin, F::to(), F::via())
+    }
+
+    /// Join with an Entity Related to me.
+    pub fn reverse_join<R>(self, _: R) -> Self
+    where
+        R: EntityTrait + Related<E>,
+    {
+        self.join_rev(JoinType::InnerJoin, R::to())
+    }
+
+    /// Left Join with a Related Entity and select both Entity.
+    pub fn left_join_and_select<R>(self, r: R) -> SelectThree<E, F, R>
+    where
+        R: EntityTrait,
+        F: Related<R>,
     {
         self.left_join(r).select_also(r)
     }

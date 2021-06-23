@@ -1,6 +1,7 @@
 use crate::{
     query::combine, DatabaseConnection, EntityTrait, FromQueryResult, Iterable, JsonValue,
-    ModelTrait, Paginator, PrimaryKeyToColumn, QueryErr, QueryResult, Select, SelectTwo, TypeErr,
+    ModelTrait, Paginator, PrimaryKeyToColumn, QueryErr, QueryResult, Select, SelectThree,
+    SelectTwo, TypeErr,
 };
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
@@ -36,6 +37,16 @@ where
     model: PhantomData<(M, N)>,
 }
 
+#[derive(Clone, Debug)]
+pub struct SelectThreeModel<M, N, O>
+where
+    M: FromQueryResult,
+    N: FromQueryResult,
+    O: FromQueryResult,
+{
+    model: PhantomData<(M, N, O)>,
+}
+
 impl<M> SelectorTrait for SelectModel<M>
 where
     M: FromQueryResult + Sized,
@@ -58,6 +69,25 @@ where
         Ok((
             M::from_query_result(&res, combine::SELECT_A)?,
             N::from_query_result(&res, combine::SELECT_B)?,
+        ))
+    }
+}
+
+impl<M, N, O> SelectorTrait for SelectThreeModel<M, N, O>
+where
+    M: FromQueryResult + Sized,
+    N: FromQueryResult + Sized,
+    O: FromQueryResult + Sized,
+{
+    type Item = (M, (N, O));
+
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, TypeErr> {
+        Ok((
+            M::from_query_result(&res, combine::SELECT_A)?,
+            (
+                N::from_query_result(&res, combine::SELECT_B)?,
+                O::from_query_result(&res, combine::SELECT_C)?,
+            ),
         ))
     }
 }
@@ -141,6 +171,60 @@ where
     }
 }
 
+impl<E, F, G> SelectThree<E, F, G>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+{
+    fn into_model<M, N, O>(self) -> Selector<SelectThreeModel<M, N, O>>
+    where
+        M: FromQueryResult,
+        N: FromQueryResult,
+        O: FromQueryResult,
+    {
+        Selector {
+            query: self.query,
+            selector: SelectThreeModel { model: PhantomData },
+        }
+    }
+
+    #[cfg(feature = "with-json")]
+    pub fn into_json(self) -> Selector<SelectThreeModel<JsonValue, JsonValue, JsonValue>> {
+        Selector {
+            query: self.query,
+            selector: SelectThreeModel { model: PhantomData },
+        }
+    }
+
+    pub async fn one(
+        self,
+        db: &DatabaseConnection,
+    ) -> Result<Option<(E::Model, (F::Model, G::Model))>, QueryErr> {
+        self.into_model::<E::Model, F::Model, G::Model>()
+            .one(db)
+            .await
+    }
+
+    pub async fn all(
+        self,
+        db: &DatabaseConnection,
+    ) -> Result<Vec<(E::Model, Vec<(F::Model, Vec<G::Model>)>)>, QueryErr> {
+        let rows = self
+            .into_model::<E::Model, F::Model, G::Model>()
+            .all(db)
+            .await?;
+        let res = parse_query_result::<E, _>(rows)
+            .into_iter()
+            .map(|(first_tbl, second_tbl)| {
+                let second_tbl_gp = parse_query_result::<F, _>(second_tbl);
+                (first_tbl, second_tbl_gp)
+            })
+            .collect();
+        Ok(res)
+    }
+}
+
 impl<S> Selector<S>
 where
     S: SelectorTrait,
@@ -177,31 +261,31 @@ where
 }
 
 fn parse_query_result<L, R>(rows: Vec<(L::Model, R)>) -> Vec<(L::Model, Vec<R>)>
-    where
-        L: EntityTrait,
-    {
-        let mut acc = Vec::new();
-        for (l_model, r_model) in rows {
-            if acc.is_empty() {
-                acc.push((l_model, vec![r_model]));
-                continue;
-            }
-            let (last_l, last_r) = acc.last_mut().unwrap();
-            let mut l_equal = true;
-            for pk_col in <L::PrimaryKey as Iterable>::iter() {
-                let col = pk_col.into_column();
-                let curr_val = l_model.get(col);
-                let last_val = last_l.get(col);
-                if !curr_val.eq(&last_val) {
-                    l_equal = false;
-                    break;
-                }
-            }
-            if l_equal {
-                last_r.push(r_model);
-            } else {
-                acc.push((l_model, vec![r_model]));
+where
+    L: EntityTrait,
+{
+    let mut acc = Vec::new();
+    for (l_model, r_model) in rows {
+        if acc.is_empty() {
+            acc.push((l_model, vec![r_model]));
+            continue;
+        }
+        let (last_l, last_r) = acc.last_mut().unwrap();
+        let mut l_equal = true;
+        for pk_col in <L::PrimaryKey as Iterable>::iter() {
+            let col = pk_col.into_column();
+            let curr_val = l_model.get(col);
+            let last_val = last_l.get(col);
+            if !curr_val.eq(&last_val) {
+                l_equal = false;
+                break;
             }
         }
-        acc
+        if l_equal {
+            last_r.push(r_model);
+        } else {
+            acc.push((l_model, vec![r_model]));
+        }
     }
+    acc
+}
