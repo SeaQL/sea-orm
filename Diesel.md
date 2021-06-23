@@ -24,9 +24,9 @@ Both libraries make heavy use of traits and generics, but SeaORM generate less t
 
 You don't have to use macros when using SeaORM. We provide some derive macros for convenience, but they are entirely optional.
 
-## Tooling
+## Schema Builder
 
-While in the Diesel ecosystem there are awesome libraries like barrel, SeaORM bundle and maintain the tooling for schema management. That means a familiar API and a more unified experience.
+While in the Diesel ecosystem there are awesome libraries like barrel, SeaQL maintain the tooling for schema building. That means a familiar API and a more unified experience.
 
 ## Similarities
 
