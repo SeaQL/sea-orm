@@ -42,7 +42,7 @@ where
     }
 }
 
-impl<M, N> IntoMockRow for (M, N)
+impl<M, N> IntoMockRow for (M, Option<N>)
 where
     M: ModelTrait,
     N: ModelTrait,
@@ -52,14 +52,16 @@ where
         for col in <<M::Entity as EntityTrait>::Column>::iter() {
             values.insert(format!("{}{}", SELECT_A, col.to_string()), self.0.get(col));
         }
-        for col in <<N::Entity as EntityTrait>::Column>::iter() {
-            values.insert(format!("{}{}", SELECT_B, col.to_string()), self.1.get(col));
+        if let Some(n) = self.1 {
+            for col in <<N::Entity as EntityTrait>::Column>::iter() {
+                values.insert(format!("{}{}", SELECT_B, col.to_string()), n.get(col));
+            }
         }
         MockRow { values }
     }
 }
 
-impl<M, N, O> IntoMockRow for (M, N, O)
+impl<M, N, O> IntoMockRow for (M, Option<(N, Option<O>)>)
 where
     M: ModelTrait,
     N: ModelTrait,
@@ -70,11 +72,15 @@ where
         for col in <<M::Entity as EntityTrait>::Column>::iter() {
             values.insert(format!("{}{}", SELECT_A, col.to_string()), self.0.get(col));
         }
-        for col in <<N::Entity as EntityTrait>::Column>::iter() {
-            values.insert(format!("{}{}", SELECT_B, col.to_string()), self.1.get(col));
-        }
-        for col in <<O::Entity as EntityTrait>::Column>::iter() {
-            values.insert(format!("{}{}", SELECT_C, col.to_string()), self.2.get(col));
+        if let Some((n, o_opt)) = self.1 {
+            for col in <<N::Entity as EntityTrait>::Column>::iter() {
+                values.insert(format!("{}{}", SELECT_B, col.to_string()), n.get(col));
+            }
+            if let Some(o) = o_opt {
+                for col in <<O::Entity as EntityTrait>::Column>::iter() {
+                    values.insert(format!("{}{}", SELECT_C, col.to_string()), o.get(col));
+                }
+            }
         }
         MockRow { values }
     }

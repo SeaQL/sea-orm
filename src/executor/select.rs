@@ -444,24 +444,24 @@ mod tests {
                 id: 3,
                 name: "Tiramisu".into(),
             },
-            vec![fruit::Model {
-                id: 30,
-                name: "Blueberry".into(),
-                cake_id: Some(3),
-            }],
+            vec![],
         )];
 
         let case3 = Vec::new();
 
         let map_mock_row =
-            |rows: &Vec<(cake::Model, Vec<fruit::Model>)>| -> Vec<(cake::Model, fruit::Model)> {
+            |rows: &Vec<(cake::Model, Vec<fruit::Model>)>| -> Vec<(cake::Model, Option<fruit::Model>)> {
                 rows.clone()
                     .into_iter()
                     .map(|(cake, second_vec)| {
-                        second_vec
-                            .into_iter()
-                            .map(|fruit| (cake.clone(), fruit))
-                            .collect::<Vec<_>>()
+                        if second_vec.is_empty() {
+                            vec![(cake.clone(), None)]
+                        } else {
+                            second_vec
+                                .into_iter()
+                                .map(|fruit| (cake.clone(), Some(fruit)))
+                                .collect::<Vec<_>>()
+                        }
                     })
                     .flatten()
                     .collect()
@@ -488,16 +488,18 @@ mod tests {
                 .left_join_and_select(fruit::Entity)
                 .one(&db)
                 .await?,
-            Some((case1_l.clone(), case1_r[0].clone()))
+            Some((case1_l.clone(), Some(case1_r[0].clone())))
         );
-        let (case2_l, case2_r) = &cases[1][0];
+
+        let (case2_l, _) = &cases[1][0];
         assert_eq!(
             cake::Entity::find()
                 .left_join_and_select(fruit::Entity)
                 .one(&db)
                 .await?,
-            Some((case2_l.clone(), case2_r[0].clone()))
+            Some((case2_l.clone(), None))
         );
+
         assert_eq!(
             cake::Entity::find()
                 .left_join_and_select(fruit::Entity)
@@ -553,6 +555,7 @@ mod tests {
                 .await?,
             cases[0]
         );
+
         assert_eq!(
             cake::Entity::find()
                 .left_join_and_select(fruit::Entity)
@@ -560,6 +563,7 @@ mod tests {
                 .await?,
             cases[1]
         );
+
         assert_eq!(
             cake::Entity::find()
                 .left_join_and_select(fruit::Entity)
@@ -644,11 +648,7 @@ mod tests {
                             name: "Apple".into(),
                             cake_id: Some(1),
                         },
-                        vec![vendor::Model {
-                            id: 102,
-                            name: "".into(),
-                            fruit_id: Some(12),
-                        }],
+                        vec![],
                     ),
                 ],
             ),
@@ -664,11 +664,7 @@ mod tests {
                             name: "Strawberry".into(),
                             cake_id: Some(2),
                         },
-                        vec![vendor::Model {
-                            id: 200,
-                            name: "".into(),
-                            fruit_id: Some(20),
-                        }],
+                        vec![],
                     ),
                     (
                         fruit::Model {
@@ -676,11 +672,7 @@ mod tests {
                             name: "King Strawberry".into(),
                             cake_id: Some(2),
                         },
-                        vec![vendor::Model {
-                            id: 201,
-                            name: "".into(),
-                            fruit_id: Some(21),
-                        }],
+                        vec![],
                     ),
                 ],
             ),
@@ -697,47 +689,62 @@ mod tests {
                     name: "Blueberry".into(),
                     cake_id: Some(3),
                 },
-                vec![vendor::Model {
-                    id: 300,
-                    name: "".into(),
-                    fruit_id: Some(30),
-                }],
+                vec![],
             )],
         )];
 
-        let case3 = Vec::new();
+        let case3 = vec![(
+            cake::Model {
+                id: 4,
+                name: "Vanilla Cake".into(),
+            },
+            vec![],
+        )];
 
-        let map_mock_row =
-            |rows: &Vec<(cake::Model, Vec<(fruit::Model, Vec<vendor::Model>)>)>| -> Vec<(cake::Model, fruit::Model, vendor::Model)> {
-                rows.clone()
-                    .into_iter()
-                    .map(|(cake, second_vec)| {
+        let case4 = Vec::new();
+
+        let map_mock_row = |rows: &Vec<(cake::Model, Vec<(fruit::Model, Vec<vendor::Model>)>)>| -> Vec<(
+            cake::Model,
+            Option<(fruit::Model, Option<vendor::Model>)>,
+        )> {
+            rows.clone()
+                .into_iter()
+                .map(|(cake, second_vec)| {
+                    if second_vec.is_empty() {
+                        vec![(cake.clone(), None)]
+                    } else {
                         second_vec
                             .into_iter()
                             .map(|(fruit, third_vec)| {
-                                third_vec
-                                    .into_iter()
-                                    .map(|vendor| {
-                                        (cake.clone(), fruit.clone(), vendor)
-                                    })
-                                    .collect::<Vec<_>>()
+                                if third_vec.is_empty() {
+                                    vec![(cake.clone(), Some((fruit.clone(), None)))]
+                                } else {
+                                    third_vec
+                                        .into_iter()
+                                        .map(|vendor| {
+                                            (cake.clone(), Some((fruit.clone(), Some(vendor))))
+                                        })
+                                        .collect::<Vec<_>>()
+                                }
                             })
                             .flatten()
                             .collect::<Vec<_>>()
-                    })
-                    .flatten()
-                    .collect::<Vec<_>>()
-            };
+                    }
+                })
+                .flatten()
+                .collect::<Vec<_>>()
+        };
 
         let db = MockDatabase::new()
             .append_query_results(vec![
                 map_mock_row(&case1),
                 map_mock_row(&case2),
                 map_mock_row(&case3),
+                map_mock_row(&case4),
             ])
             .into_connection();
 
-        (db, vec![case1, case2, case3])
+        (db, vec![case1, case2, case3, case4])
     }
 
     #[async_std::test]
@@ -755,23 +762,31 @@ mod tests {
                 .await?,
             Some((
                 case1_cake.clone(),
-                (case1_fruit.clone(), case1_vendor.clone())
+                Some((case1_fruit.clone(), Some(case1_vendor.clone())))
             ))
         );
+
         let (case2_cake, case2_fv) = &cases[1][0];
-        let (case2_fruit, case2_vendors) = &case2_fv[0];
-        let case2_vendor = &case2_vendors[0];
+        let (case2_fruit, _) = &case2_fv[0];
         assert_eq!(
             cake::Entity::find()
                 .left_join_and_select(fruit::Entity)
                 .left_join_and_select(vendor::Entity)
                 .one(&db)
                 .await?,
-            Some((
-                case2_cake.clone(),
-                (case2_fruit.clone(), case2_vendor.clone())
-            ))
+            Some((case2_cake.clone(), Some((case2_fruit.clone(), None))))
         );
+
+        let (case3_cake, _) = &cases[2][0];
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .left_join_and_select(vendor::Entity)
+                .one(&db)
+                .await?,
+            Some((case3_cake.clone(), None))
+        );
+
         assert_eq!(
             cake::Entity::find()
                 .left_join_and_select(fruit::Entity)
@@ -824,6 +839,7 @@ mod tests {
             query_builder.build(&select),
             query_builder.build(&select),
             query_builder.build(&select),
+            query_builder.build(&select),
         ];
 
         let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
@@ -844,6 +860,7 @@ mod tests {
                 .await?,
             cases[0]
         );
+
         assert_eq!(
             cake::Entity::find()
                 .left_join_and_select(fruit::Entity)
@@ -852,6 +869,7 @@ mod tests {
                 .await?,
             cases[1]
         );
+
         assert_eq!(
             cake::Entity::find()
                 .left_join_and_select(fruit::Entity)
@@ -859,6 +877,15 @@ mod tests {
                 .all(&db)
                 .await?,
             cases[2]
+        );
+
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .left_join_and_select(vendor::Entity)
+                .all(&db)
+                .await?,
+            cases[3]
         );
 
         let mut select = SelectStatement::new()
@@ -900,6 +927,7 @@ mod tests {
 
         let query_builder = db.get_query_builder_backend();
         let stmts = vec![
+            query_builder.build(&select),
             query_builder.build(&select),
             query_builder.build(&select),
             query_builder.build(&select),
