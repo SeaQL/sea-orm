@@ -63,12 +63,12 @@ where
     M: FromQueryResult + Sized,
     N: FromQueryResult + Sized,
 {
-    type Item = (M, N);
+    type Item = (M, Option<N>);
 
     fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, TypeErr> {
         Ok((
             M::from_query_result(&res, combine::SELECT_A)?,
-            N::from_query_result(&res, combine::SELECT_B)?,
+            N::from_query_result_opt(&res, combine::SELECT_B)?,
         ))
     }
 }
@@ -79,15 +79,15 @@ where
     N: FromQueryResult + Sized,
     O: FromQueryResult + Sized,
 {
-    type Item = (M, (N, O));
+    type Item = (M, Option<(N, Option<O>)>);
 
     fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, TypeErr> {
         Ok((
             M::from_query_result(&res, combine::SELECT_A)?,
-            (
-                N::from_query_result(&res, combine::SELECT_B)?,
-                O::from_query_result(&res, combine::SELECT_C)?,
-            ),
+            match N::from_query_result_opt(&res, combine::SELECT_B)? {
+                Some(n) => Some((n, O::from_query_result_opt(&res, combine::SELECT_C)?)),
+                None => None,
+            },
         ))
     }
 }
@@ -158,7 +158,7 @@ where
     pub async fn one(
         self,
         db: &DatabaseConnection,
-    ) -> Result<Option<(E::Model, F::Model)>, QueryErr> {
+    ) -> Result<Option<(E::Model, Option<F::Model>)>, QueryErr> {
         self.into_model::<E::Model, F::Model>().one(db).await
     }
 
@@ -200,7 +200,7 @@ where
     pub async fn one(
         self,
         db: &DatabaseConnection,
-    ) -> Result<Option<(E::Model, (F::Model, G::Model))>, QueryErr> {
+    ) -> Result<Option<(E::Model, Option<(F::Model, Option<G::Model>)>)>, QueryErr> {
         self.into_model::<E::Model, F::Model, G::Model>()
             .one(db)
             .await
@@ -260,31 +260,32 @@ where
     }
 }
 
-fn parse_query_result<L, R>(rows: Vec<(L::Model, R)>) -> Vec<(L::Model, Vec<R>)>
+fn parse_query_result<L, R>(rows: Vec<(L::Model, Option<R>)>) -> Vec<(L::Model, Vec<R>)>
 where
     L: EntityTrait,
 {
-    let mut acc = Vec::new();
-    for (l_model, r_model) in rows {
-        if acc.is_empty() {
-            acc.push((l_model, vec![r_model]));
-            continue;
-        }
-        let (last_l, last_r) = acc.last_mut().unwrap();
-        let mut l_equal = true;
-        for pk_col in <L::PrimaryKey as Iterable>::iter() {
-            let col = pk_col.into_column();
-            let curr_val = l_model.get(col);
-            let last_val = last_l.get(col);
-            if !curr_val.eq(&last_val) {
-                l_equal = false;
-                break;
+    let mut acc: Vec<(L::Model, Vec<R>)> = Vec::new();
+    for (l, r) in rows {
+        if let Some((last_l, last_r)) = acc.last_mut() {
+            let mut same_l = true;
+            for pk_col in <L::PrimaryKey as Iterable>::iter() {
+                let col = pk_col.into_column();
+                let val = l.get(col);
+                let last_val = last_l.get(col);
+                if !val.eq(&last_val) {
+                    same_l = false;
+                    break;
+                }
+            }
+            if same_l && r.is_some() {
+                last_r.push(r.unwrap());
+                continue;
             }
         }
-        if l_equal {
-            last_r.push(r_model);
+        if r.is_some() {
+            acc.push((l, vec![r.unwrap()]));
         } else {
-            acc.push((l_model, vec![r_model]));
+            acc.push((l, vec![]));
         }
     }
     acc
