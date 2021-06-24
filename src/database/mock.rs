@@ -146,7 +146,10 @@ impl MockRow {
     where
         T: ValueType,
     {
-        Ok(self.values.get(col).unwrap().clone().unwrap())
+        Ok(match self.values.get(col) {
+            Some(val) => val.clone().unwrap(),
+            None => return Err(TypeErr),
+        })
     }
 
     pub fn into_column_value_tuples(self) -> impl Iterator<Item = (String, Value)> {
