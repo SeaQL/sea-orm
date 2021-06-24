@@ -289,3 +289,624 @@ where
     }
     acc
 }
+
+#[cfg(test)]
+#[cfg(feature = "mock")]
+mod tests {
+    use crate::combine::{SELECT_A, SELECT_B, SELECT_C};
+    use crate::entity::prelude::*;
+    use crate::tests_cfg::*;
+    use crate::{DatabaseConnection, Iterable, MockDatabase, QueryErr, Transaction};
+    use sea_query::{Alias, Expr, Order, SelectStatement};
+
+    fn setup_select() -> (DatabaseConnection, Vec<Vec<cake::Model>>) {
+        let case1 = vec![
+            cake::Model {
+                id: 1,
+                name: "New York Cheese".into(),
+            },
+            cake::Model {
+                id: 2,
+                name: "Chocolate Forest".into(),
+            },
+        ];
+
+        let case2 = vec![cake::Model {
+            id: 3,
+            name: "Tiramisu".into(),
+        }];
+
+        let case3 = Vec::new();
+
+        let db = MockDatabase::new()
+            .append_query_results(vec![case1.clone(), case2.clone(), case3.clone()])
+            .into_connection();
+
+        (db, vec![case1, case2, case3])
+    }
+
+    #[async_std::test]
+    async fn select_one() -> Result<(), QueryErr> {
+        let (db, cases) = setup_select();
+
+        assert_eq!(
+            cake::Entity::find().one(&db).await?,
+            Some(cases[0][0].clone())
+        );
+        assert_eq!(
+            cake::Entity::find().one(&db).await?,
+            Some(cases[1][0].clone())
+        );
+        assert_eq!(cake::Entity::find().one(&db).await?, None);
+
+        let select = SelectStatement::new()
+            .exprs(vec![
+                Expr::tbl(cake::Entity, cake::Column::Id),
+                Expr::tbl(cake::Entity, cake::Column::Name),
+            ])
+            .from(cake::Entity)
+            .limit(1)
+            .to_owned();
+
+        let query_builder = db.get_query_builder_backend();
+        let stmts = vec![
+            query_builder.build(&select),
+            query_builder.build(&select),
+            query_builder.build(&select),
+        ];
+
+        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
+
+        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
+        Ok(())
+    }
+
+    #[async_std::test]
+    async fn select_all() -> Result<(), QueryErr> {
+        let (db, cases) = setup_select();
+
+        assert_eq!(cake::Entity::find().all(&db).await?, cases[0].clone());
+        assert_eq!(cake::Entity::find().all(&db).await?, cases[1].clone());
+        assert_eq!(cake::Entity::find().all(&db).await?, vec![]);
+
+        let select = SelectStatement::new()
+            .exprs(vec![
+                Expr::tbl(cake::Entity, cake::Column::Id),
+                Expr::tbl(cake::Entity, cake::Column::Name),
+            ])
+            .from(cake::Entity)
+            .to_owned();
+
+        let query_builder = db.get_query_builder_backend();
+        let stmts = vec![
+            query_builder.build(&select),
+            query_builder.build(&select),
+            query_builder.build(&select),
+        ];
+
+        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
+
+        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
+        Ok(())
+    }
+
+    fn setup_select_two() -> (
+        DatabaseConnection,
+        Vec<Vec<(cake::Model, Vec<fruit::Model>)>>,
+    ) {
+        let case1 = vec![
+            (
+                cake::Model {
+                    id: 1,
+                    name: "New York Cheese".into(),
+                },
+                vec![
+                    fruit::Model {
+                        id: 10,
+                        name: "Blueberry".into(),
+                        cake_id: Some(1),
+                    },
+                    fruit::Model {
+                        id: 11,
+                        name: "Rasberry".into(),
+                        cake_id: Some(1),
+                    },
+                    fruit::Model {
+                        id: 12,
+                        name: "Apple".into(),
+                        cake_id: Some(1),
+                    },
+                ],
+            ),
+            (
+                cake::Model {
+                    id: 2,
+                    name: "Chocolate Forest".into(),
+                },
+                vec![
+                    fruit::Model {
+                        id: 20,
+                        name: "Strawberry".into(),
+                        cake_id: Some(2),
+                    },
+                    fruit::Model {
+                        id: 21,
+                        name: "King Strawberry".into(),
+                        cake_id: Some(2),
+                    },
+                ],
+            ),
+        ];
+
+        let case2 = vec![(
+            cake::Model {
+                id: 3,
+                name: "Tiramisu".into(),
+            },
+            vec![fruit::Model {
+                id: 30,
+                name: "Blueberry".into(),
+                cake_id: Some(3),
+            }],
+        )];
+
+        let case3 = Vec::new();
+
+        let map_mock_row =
+            |rows: &Vec<(cake::Model, Vec<fruit::Model>)>| -> Vec<(cake::Model, fruit::Model)> {
+                rows.clone()
+                    .into_iter()
+                    .map(|(cake, second_vec)| {
+                        second_vec
+                            .into_iter()
+                            .map(|fruit| (cake.clone(), fruit))
+                            .collect::<Vec<_>>()
+                    })
+                    .flatten()
+                    .collect()
+            };
+
+        let db = MockDatabase::new()
+            .append_query_results(vec![
+                map_mock_row(&case1),
+                map_mock_row(&case2),
+                map_mock_row(&case3),
+            ])
+            .into_connection();
+
+        (db, vec![case1, case2, case3])
+    }
+
+    #[async_std::test]
+    async fn select_two_one() -> Result<(), QueryErr> {
+        let (db, cases) = setup_select_two();
+
+        let (case1_l, case1_r) = &cases[0][0];
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .one(&db)
+                .await?,
+            Some((case1_l.clone(), case1_r[0].clone()))
+        );
+        let (case2_l, case2_r) = &cases[1][0];
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .one(&db)
+                .await?,
+            Some((case2_l.clone(), case2_r[0].clone()))
+        );
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .one(&db)
+                .await?,
+            None
+        );
+
+        let mut select = SelectStatement::new()
+            .from(cake::Entity)
+            .left_join(
+                fruit::Entity,
+                Expr::tbl(cake::Entity, cake::Column::Id)
+                    .equals(fruit::Entity, fruit::Column::CakeId),
+            )
+            .order_by_expr(Expr::tbl(cake::Entity, cake::Column::Id).into(), Order::Asc)
+            .limit(1)
+            .to_owned();
+        for col in cake::Column::iter() {
+            select.expr_as(
+                Expr::tbl(cake::Entity, col),
+                Alias::new(&format!("{}{}", SELECT_A, col.to_string())),
+            );
+        }
+        for col in fruit::Column::iter() {
+            select.expr_as(
+                Expr::tbl(fruit::Entity, col),
+                Alias::new(&format!("{}{}", SELECT_B, col.to_string())),
+            );
+        }
+
+        let query_builder = db.get_query_builder_backend();
+        let stmts = vec![
+            query_builder.build(&select),
+            query_builder.build(&select),
+            query_builder.build(&select),
+        ];
+
+        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
+
+        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
+        Ok(())
+    }
+
+    #[async_std::test]
+    async fn select_two_all() -> Result<(), QueryErr> {
+        let (db, cases) = setup_select_two();
+
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .all(&db)
+                .await?,
+            cases[0]
+        );
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .all(&db)
+                .await?,
+            cases[1]
+        );
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .all(&db)
+                .await?,
+            cases[2]
+        );
+
+        let mut select = SelectStatement::new()
+            .from(cake::Entity)
+            .left_join(
+                fruit::Entity,
+                Expr::tbl(cake::Entity, cake::Column::Id)
+                    .equals(fruit::Entity, fruit::Column::CakeId),
+            )
+            .order_by_expr(Expr::tbl(cake::Entity, cake::Column::Id).into(), Order::Asc)
+            .to_owned();
+        for col in cake::Column::iter() {
+            select.expr_as(
+                Expr::tbl(cake::Entity, col),
+                Alias::new(&format!("{}{}", SELECT_A, col.to_string())),
+            );
+        }
+        for col in fruit::Column::iter() {
+            select.expr_as(
+                Expr::tbl(fruit::Entity, col),
+                Alias::new(&format!("{}{}", SELECT_B, col.to_string())),
+            );
+        }
+
+        let query_builder = db.get_query_builder_backend();
+        let stmts = vec![
+            query_builder.build(&select),
+            query_builder.build(&select),
+            query_builder.build(&select),
+        ];
+
+        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
+
+        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
+        Ok(())
+    }
+
+    fn setup_select_three() -> (
+        DatabaseConnection,
+        Vec<Vec<(cake::Model, Vec<(fruit::Model, Vec<vendor::Model>)>)>>,
+    ) {
+        let case1 = vec![
+            (
+                cake::Model {
+                    id: 1,
+                    name: "New York Cheese".into(),
+                },
+                vec![
+                    (
+                        fruit::Model {
+                            id: 10,
+                            name: "Blueberry".into(),
+                            cake_id: Some(1),
+                        },
+                        vec![vendor::Model {
+                            id: 100,
+                            name: "".into(),
+                            fruit_id: Some(10),
+                        }],
+                    ),
+                    (
+                        fruit::Model {
+                            id: 11,
+                            name: "Rasberry".into(),
+                            cake_id: Some(1),
+                        },
+                        vec![vendor::Model {
+                            id: 101,
+                            name: "".into(),
+                            fruit_id: Some(11),
+                        }],
+                    ),
+                    (
+                        fruit::Model {
+                            id: 12,
+                            name: "Apple".into(),
+                            cake_id: Some(1),
+                        },
+                        vec![vendor::Model {
+                            id: 102,
+                            name: "".into(),
+                            fruit_id: Some(12),
+                        }],
+                    ),
+                ],
+            ),
+            (
+                cake::Model {
+                    id: 2,
+                    name: "Chocolate Forest".into(),
+                },
+                vec![
+                    (
+                        fruit::Model {
+                            id: 20,
+                            name: "Strawberry".into(),
+                            cake_id: Some(2),
+                        },
+                        vec![vendor::Model {
+                            id: 200,
+                            name: "".into(),
+                            fruit_id: Some(20),
+                        }],
+                    ),
+                    (
+                        fruit::Model {
+                            id: 21,
+                            name: "King Strawberry".into(),
+                            cake_id: Some(2),
+                        },
+                        vec![vendor::Model {
+                            id: 201,
+                            name: "".into(),
+                            fruit_id: Some(21),
+                        }],
+                    ),
+                ],
+            ),
+        ];
+
+        let case2 = vec![(
+            cake::Model {
+                id: 3,
+                name: "Tiramisu".into(),
+            },
+            vec![(
+                fruit::Model {
+                    id: 30,
+                    name: "Blueberry".into(),
+                    cake_id: Some(3),
+                },
+                vec![vendor::Model {
+                    id: 300,
+                    name: "".into(),
+                    fruit_id: Some(30),
+                }],
+            )],
+        )];
+
+        let case3 = Vec::new();
+
+        let map_mock_row =
+            |rows: &Vec<(cake::Model, Vec<(fruit::Model, Vec<vendor::Model>)>)>| -> Vec<(cake::Model, fruit::Model, vendor::Model)> {
+                rows.clone()
+                    .into_iter()
+                    .map(|(cake, second_vec)| {
+                        second_vec
+                            .into_iter()
+                            .map(|(fruit, third_vec)| {
+                                third_vec
+                                    .into_iter()
+                                    .map(|vendor| {
+                                        (cake.clone(), fruit.clone(), vendor)
+                                    })
+                                    .collect::<Vec<_>>()
+                            })
+                            .flatten()
+                            .collect::<Vec<_>>()
+                    })
+                    .flatten()
+                    .collect::<Vec<_>>()
+            };
+
+        let db = MockDatabase::new()
+            .append_query_results(vec![
+                map_mock_row(&case1),
+                map_mock_row(&case2),
+                map_mock_row(&case3),
+            ])
+            .into_connection();
+
+        (db, vec![case1, case2, case3])
+    }
+
+    #[async_std::test]
+    async fn select_three_one() -> Result<(), QueryErr> {
+        let (db, cases) = setup_select_three();
+
+        let (case1_cake, case1_fv) = &cases[0][0];
+        let (case1_fruit, case1_vendors) = &case1_fv[0];
+        let case1_vendor = &case1_vendors[0];
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .left_join_and_select(vendor::Entity)
+                .one(&db)
+                .await?,
+            Some((
+                case1_cake.clone(),
+                (case1_fruit.clone(), case1_vendor.clone())
+            ))
+        );
+        let (case2_cake, case2_fv) = &cases[1][0];
+        let (case2_fruit, case2_vendors) = &case2_fv[0];
+        let case2_vendor = &case2_vendors[0];
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .left_join_and_select(vendor::Entity)
+                .one(&db)
+                .await?,
+            Some((
+                case2_cake.clone(),
+                (case2_fruit.clone(), case2_vendor.clone())
+            ))
+        );
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .left_join_and_select(vendor::Entity)
+                .one(&db)
+                .await?,
+            None
+        );
+
+        let mut select = SelectStatement::new()
+            .from(cake::Entity)
+            .left_join(
+                fruit::Entity,
+                Expr::tbl(cake::Entity, cake::Column::Id)
+                    .equals(fruit::Entity, fruit::Column::CakeId),
+            )
+            .left_join(
+                vendor::Entity,
+                Expr::tbl(fruit::Entity, fruit::Column::Id)
+                    .equals(vendor::Entity, vendor::Column::FruitId),
+            )
+            .order_by_expr(Expr::tbl(cake::Entity, cake::Column::Id).into(), Order::Asc)
+            .order_by_expr(
+                Expr::tbl(fruit::Entity, fruit::Column::Id).into(),
+                Order::Asc,
+            )
+            .limit(1)
+            .to_owned();
+        for col in cake::Column::iter() {
+            select.expr_as(
+                Expr::tbl(cake::Entity, col),
+                Alias::new(&format!("{}{}", SELECT_A, col.to_string())),
+            );
+        }
+        for col in fruit::Column::iter() {
+            select.expr_as(
+                Expr::tbl(fruit::Entity, col),
+                Alias::new(&format!("{}{}", SELECT_B, col.to_string())),
+            );
+        }
+        for col in vendor::Column::iter() {
+            select.expr_as(
+                Expr::tbl(vendor::Entity, col),
+                Alias::new(&format!("{}{}", SELECT_C, col.to_string())),
+            );
+        }
+
+        let query_builder = db.get_query_builder_backend();
+        let stmts = vec![
+            query_builder.build(&select),
+            query_builder.build(&select),
+            query_builder.build(&select),
+        ];
+
+        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
+
+        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
+        Ok(())
+    }
+
+    #[async_std::test]
+    async fn select_three_all() -> Result<(), QueryErr> {
+        let (db, cases) = setup_select_three();
+
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .left_join_and_select(vendor::Entity)
+                .all(&db)
+                .await?,
+            cases[0]
+        );
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .left_join_and_select(vendor::Entity)
+                .all(&db)
+                .await?,
+            cases[1]
+        );
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .left_join_and_select(vendor::Entity)
+                .all(&db)
+                .await?,
+            cases[2]
+        );
+
+        let mut select = SelectStatement::new()
+            .from(cake::Entity)
+            .left_join(
+                fruit::Entity,
+                Expr::tbl(cake::Entity, cake::Column::Id)
+                    .equals(fruit::Entity, fruit::Column::CakeId),
+            )
+            .left_join(
+                vendor::Entity,
+                Expr::tbl(fruit::Entity, fruit::Column::Id)
+                    .equals(vendor::Entity, vendor::Column::FruitId),
+            )
+            .order_by_expr(Expr::tbl(cake::Entity, cake::Column::Id).into(), Order::Asc)
+            .order_by_expr(
+                Expr::tbl(fruit::Entity, fruit::Column::Id).into(),
+                Order::Asc,
+            )
+            .to_owned();
+        for col in cake::Column::iter() {
+            select.expr_as(
+                Expr::tbl(cake::Entity, col),
+                Alias::new(&format!("{}{}", SELECT_A, col.to_string())),
+            );
+        }
+        for col in fruit::Column::iter() {
+            select.expr_as(
+                Expr::tbl(fruit::Entity, col),
+                Alias::new(&format!("{}{}", SELECT_B, col.to_string())),
+            );
+        }
+        for col in vendor::Column::iter() {
+            select.expr_as(
+                Expr::tbl(vendor::Entity, col),
+                Alias::new(&format!("{}{}", SELECT_C, col.to_string())),
+            );
+        }
+
+        let query_builder = db.get_query_builder_backend();
+        let stmts = vec![
+            query_builder.build(&select),
+            query_builder.build(&select),
+            query_builder.build(&select),
+        ];
+
+        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
+
+        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
+        Ok(())
+    }
+}

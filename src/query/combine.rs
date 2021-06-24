@@ -119,12 +119,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_cfg::{cake, fruit};
+    use crate::tests_cfg::{cake, fruit, vendor};
     use crate::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     use sea_query::MysqlQueryBuilder;
 
     #[test]
-    fn alias_1() {
+    fn select_alias_1() {
         assert_eq!(
             cake::Entity::find()
                 .column_as(cake::Column::Id, "B")
@@ -136,7 +136,7 @@ mod tests {
     }
 
     #[test]
-    fn select_also_1() {
+    fn select_select_also_1() {
         assert_eq!(
             cake::Entity::find()
                 .left_join(fruit::Entity)
@@ -153,7 +153,7 @@ mod tests {
     }
 
     #[test]
-    fn select_also_2() {
+    fn select_select_also_2() {
         assert_eq!(
             cake::Entity::find()
                 .left_join(fruit::Entity)
@@ -168,6 +168,54 @@ mod tests {
                 "FROM `cake` LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`",
                 "WHERE `cake`.`id` = 1 AND `fruit`.`id` = 2",
                 "ORDER BY `cake`.`id` ASC",
+            ].join(" ")
+        );
+    }
+
+    #[test]
+    fn select_two_select_also_1() {
+        assert_eq!(
+            cake::Entity::find()
+                .left_join(fruit::Entity)
+                .select_also(fruit::Entity)
+                .left_join(vendor::Entity)
+                .select_also(vendor::Entity)
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            [
+                "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
+                "`fruit`.`id` AS `B_id`, `fruit`.`name` AS `B_name`, `fruit`.`cake_id` AS `B_cake_id`,",
+                "`vendor`.`id` AS `C_id`, `vendor`.`name` AS `C_name`, `vendor`.`fruit_id` AS `C_fruit_id`",
+                "FROM `cake`",
+                "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`",
+                "LEFT JOIN `vendor` ON `fruit`.`id` = `vendor`.`fruit_id`",
+                "ORDER BY `cake`.`id` ASC, `fruit`.`id` ASC",
+            ].join(" ")
+        );
+    }
+
+    #[test]
+    fn select_two_select_also_2() {
+        assert_eq!(
+            cake::Entity::find()
+                .left_join(fruit::Entity)
+                .select_also(fruit::Entity)
+                .left_join(vendor::Entity)
+                .select_also(vendor::Entity)
+                .filter(cake::Column::Id.eq(1))
+                .filter(fruit::Column::Id.eq(2))
+                .filter(vendor::Column::Id.eq(3))
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            [
+                "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
+                "`fruit`.`id` AS `B_id`, `fruit`.`name` AS `B_name`, `fruit`.`cake_id` AS `B_cake_id`,",
+                "`vendor`.`id` AS `C_id`, `vendor`.`name` AS `C_name`, `vendor`.`fruit_id` AS `C_fruit_id`",
+                "FROM `cake`",
+                "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`",
+                "LEFT JOIN `vendor` ON `fruit`.`id` = `vendor`.`fruit_id`",
+                "WHERE `cake`.`id` = 1 AND `fruit`.`id` = 2 AND `vendor`.`id` = 3",
+                "ORDER BY `cake`.`id` ASC, `fruit`.`id` ASC",
             ].join(" ")
         );
     }

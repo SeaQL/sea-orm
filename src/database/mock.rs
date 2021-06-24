@@ -1,4 +1,5 @@
 use crate::{
+    combine::{SELECT_A, SELECT_B, SELECT_C},
     DatabaseConnection, EntityTrait, ExecErr, ExecResult, ExecResultHolder, Iden, Iterable,
     MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryErr, QueryResult, QueryResultRow,
     Statement, Transaction, TypeErr,
@@ -36,6 +37,44 @@ where
         let mut values = BTreeMap::new();
         for col in <<M::Entity as EntityTrait>::Column>::iter() {
             values.insert(col.to_string(), self.get(col));
+        }
+        MockRow { values }
+    }
+}
+
+impl<M, N> IntoMockRow for (M, N)
+where
+    M: ModelTrait,
+    N: ModelTrait,
+{
+    fn into_mock_row(self) -> MockRow {
+        let mut values = BTreeMap::new();
+        for col in <<M::Entity as EntityTrait>::Column>::iter() {
+            values.insert(format!("{}{}", SELECT_A, col.to_string()), self.0.get(col));
+        }
+        for col in <<N::Entity as EntityTrait>::Column>::iter() {
+            values.insert(format!("{}{}", SELECT_B, col.to_string()), self.1.get(col));
+        }
+        MockRow { values }
+    }
+}
+
+impl<M, N, O> IntoMockRow for (M, N, O)
+where
+    M: ModelTrait,
+    N: ModelTrait,
+    O: ModelTrait,
+{
+    fn into_mock_row(self) -> MockRow {
+        let mut values = BTreeMap::new();
+        for col in <<M::Entity as EntityTrait>::Column>::iter() {
+            values.insert(format!("{}{}", SELECT_A, col.to_string()), self.0.get(col));
+        }
+        for col in <<N::Entity as EntityTrait>::Column>::iter() {
+            values.insert(format!("{}{}", SELECT_B, col.to_string()), self.1.get(col));
+        }
+        for col in <<O::Entity as EntityTrait>::Column>::iter() {
+            values.insert(format!("{}{}", SELECT_C, col.to_string()), self.2.get(col));
         }
         MockRow { values }
     }

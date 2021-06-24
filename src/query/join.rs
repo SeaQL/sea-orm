@@ -102,12 +102,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_cfg::{cake, filling, fruit};
+    use crate::tests_cfg::{cake, filling, fruit, vendor};
     use crate::{ColumnTrait, EntityTrait, QueryFilter, QueryTrait};
     use sea_query::MysqlQueryBuilder;
 
     #[test]
-    fn join_1() {
+    fn select_join_1() {
         assert_eq!(
             cake::Entity::find()
                 .left_join(fruit::Entity)
@@ -122,7 +122,7 @@ mod tests {
     }
 
     #[test]
-    fn join_2() {
+    fn select_join_2() {
         assert_eq!(
             cake::Entity::find()
                 .inner_join(fruit::Entity)
@@ -139,7 +139,7 @@ mod tests {
     }
 
     #[test]
-    fn join_3() {
+    fn select_join_3() {
         assert_eq!(
             fruit::Entity::find()
                 .reverse_join(cake::Entity)
@@ -154,7 +154,7 @@ mod tests {
     }
 
     #[test]
-    fn join_4() {
+    fn select_join_4() {
         use crate::{Related, Select};
 
         let find_fruit: Select<fruit::Entity> = cake::Entity::find_related();
@@ -173,7 +173,7 @@ mod tests {
     }
 
     #[test]
-    fn join_5() {
+    fn select_join_5() {
         let cake_model = cake::Model {
             id: 12,
             name: "".to_owned(),
@@ -191,7 +191,7 @@ mod tests {
     }
 
     #[test]
-    fn join_6() {
+    fn select_join_6() {
         assert_eq!(
             cake::Entity::find()
                 .left_join(filling::Entity)
@@ -207,7 +207,7 @@ mod tests {
     }
 
     #[test]
-    fn join_7() {
+    fn select_join_7() {
         use crate::{Related, Select};
 
         let find_filling: Select<filling::Entity> = cake::Entity::find_related();
@@ -219,6 +219,156 @@ mod tests {
                 "INNER JOIN `cake` ON `cake`.`id` = `cake_filling`.`cake_id`",
             ]
             .join(" ")
+        );
+    }
+
+    #[test]
+    fn select_left_join_and_select_1() {
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            cake::Entity::find()
+                .left_join(fruit::Entity)
+                .select_also(fruit::Entity)
+                .build(MysqlQueryBuilder)
+                .to_string(),
+        );
+    }
+
+    #[test]
+    fn select_two_join_1() {
+        assert_eq!(
+            cake::Entity::find()
+                .left_join(fruit::Entity)
+                .select_also(fruit::Entity)
+                .left_join(vendor::Entity)
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            [
+                "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
+                "`fruit`.`id` AS `B_id`, `fruit`.`name` AS `B_name`, `fruit`.`cake_id` AS `B_cake_id`",
+                "FROM `cake`",
+                "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`",
+                "LEFT JOIN `vendor` ON `fruit`.`id` = `vendor`.`fruit_id`",
+                "ORDER BY `cake`.`id` ASC",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn select_two_join_2() {
+        assert_eq!(
+            cake::Entity::find()
+                .inner_join(fruit::Entity)
+                .select_also(fruit::Entity)
+                .filter(fruit::Column::Name.contains("cherry"))
+                .inner_join(vendor::Entity)
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            [
+                "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
+                "`fruit`.`id` AS `B_id`, `fruit`.`name` AS `B_name`, `fruit`.`cake_id` AS `B_cake_id`",
+                "FROM `cake`",
+                "INNER JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`",
+                "INNER JOIN `vendor` ON `fruit`.`id` = `vendor`.`fruit_id`",
+                "WHERE `fruit`.`name` LIKE \'%cherry%\'",
+                "ORDER BY `cake`.`id` ASC",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn select_two_join_3() {
+        assert_eq!(
+            fruit::Entity::find()
+                .inner_join(cake::Entity)
+                .select_also(cake::Entity)
+                .reverse_join(vendor::Entity)
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            [
+                "SELECT `fruit`.`id` AS `A_id`, `fruit`.`name` AS `A_name`, `fruit`.`cake_id` AS `A_cake_id`,",
+                "`cake`.`id` AS `B_id`, `cake`.`name` AS `B_name`",
+                "FROM `fruit`",
+                "INNER JOIN `cake` ON `fruit`.`cake_id` = `cake`.`id`",
+                "INNER JOIN `vendor` ON `vendor`.`fruit_id` = `fruit`.`id`",
+                "ORDER BY `fruit`.`id` ASC",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn select_two_join_4() {
+        use crate::{Related, Select};
+
+        let find_fruit: Select<fruit::Entity> = cake::Entity::find_related();
+        let find_fruit_vendor = find_fruit
+            .inner_join(vendor::Entity)
+            .select_also(vendor::Entity);
+        assert_eq!(
+            find_fruit_vendor
+                .filter(cake::Column::Id.eq(11))
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            [
+                "SELECT `fruit`.`id` AS `A_id`, `fruit`.`name` AS `A_name`, `fruit`.`cake_id` AS `A_cake_id`,",
+                "`vendor`.`id` AS `B_id`, `vendor`.`name` AS `B_name`, `vendor`.`fruit_id` AS `B_fruit_id`",
+                "FROM `fruit`",
+                "INNER JOIN `cake` ON `cake`.`id` = `fruit`.`cake_id`",
+                "INNER JOIN `vendor` ON `fruit`.`id` = `vendor`.`fruit_id`",
+                "WHERE `cake`.`id` = 11",
+                "ORDER BY `fruit`.`id` ASC",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn select_two_join_5() {
+        let cake_model = cake::Model {
+            id: 12,
+            name: "".to_owned(),
+        };
+        let find_fruit = cake_model.find_fruit();
+        let find_fruit_vendor = find_fruit
+            .inner_join(vendor::Entity)
+            .select_also(vendor::Entity);
+
+        assert_eq!(
+            find_fruit_vendor.build(MysqlQueryBuilder).to_string(),
+            [
+                "SELECT `fruit`.`id` AS `A_id`, `fruit`.`name` AS `A_name`, `fruit`.`cake_id` AS `A_cake_id`,",
+                "`vendor`.`id` AS `B_id`, `vendor`.`name` AS `B_name`, `vendor`.`fruit_id` AS `B_fruit_id`",
+                "FROM `fruit`",
+                "INNER JOIN `cake` ON `cake`.`id` = `fruit`.`cake_id`",
+                "INNER JOIN `vendor` ON `fruit`.`id` = `vendor`.`fruit_id`",
+                "WHERE `cake`.`id` = 12",
+                "ORDER BY `fruit`.`id` ASC",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn select_two_left_join_and_select_1() {
+        assert_eq!(
+            cake::Entity::find()
+                .left_join_and_select(fruit::Entity)
+                .left_join_and_select(vendor::Entity)
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            cake::Entity::find()
+                .left_join(fruit::Entity)
+                .select_also(fruit::Entity)
+                .left_join(vendor::Entity)
+                .select_also(vendor::Entity)
+                .build(MysqlQueryBuilder)
+                .to_string(),
         );
     }
 }
