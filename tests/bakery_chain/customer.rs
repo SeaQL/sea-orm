@@ -5,7 +5,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "bakery"
+        "customer"
     }
 }
 
@@ -13,14 +13,14 @@ impl EntityName for Entity {
 pub struct Model {
     pub id: i32,
     pub name: String,
-    pub profit_margin: f64,
+    pub notes: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
     Name,
-    ProfitMargin,
+    Notes,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -36,7 +36,6 @@ impl PrimaryKeyTrait for PrimaryKey {
 
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
-    Baker,
     Order,
 }
 
@@ -47,7 +46,7 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(None).def(),
-            Self::ProfitMargin => ColumnType::Float.def(),
+            Self::Notes => ColumnType::Text.def(),
         }
     }
 }
@@ -55,20 +54,22 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Baker => Entity::has_many(super::baker::Entity).into(),
-            Self::Order => Entity::has_many(super::order::Entity).into(),
+            Self::Order => Entity::has_many(super::order::Entity)
+                .from(Column::Id)
+                .to(super::order::Column::CustomerId)
+                .into(),
         }
     }
 }
 
-impl Related<super::baker::Entity> for Entity {
+impl Related<super::order::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Baker.def()
+        Relation::Order.def()
     }
 }
 
 impl Model {
-    pub fn find_bakers(&self) -> Select<super::baker::Entity> {
+    pub fn find_orders(&self) -> Select<super::order::Entity> {
         Entity::find_related().belongs_to::<Entity>(self)
     }
 }
