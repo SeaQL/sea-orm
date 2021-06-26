@@ -193,9 +193,11 @@ where
                     break;
                 }
             }
-            if same_l && r.is_some() {
-                last_r.push(r.unwrap());
-                continue;
+            if same_l {
+                if let Some(r) = r {
+                    last_r.push(r);
+                    continue;
+                }
             }
         }
         if r.is_some() {
