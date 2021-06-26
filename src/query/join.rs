@@ -41,7 +41,7 @@ where
     }
 
     /// Left Join with a Related Entity and select both Entity.
-    pub fn left_join_and_select<R>(self, r: R) -> SelectTwo<E, R>
+    pub fn left_join_and_select_also<R>(self, r: R) -> SelectTwo<E, R>
     where
         R: EntityTrait,
         E: Related<R>,

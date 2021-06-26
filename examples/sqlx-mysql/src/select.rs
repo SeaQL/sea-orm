@@ -66,7 +66,7 @@ async fn find_all(db: &DbConn) -> Result<(), QueryErr> {
 async fn find_together(db: &DbConn) -> Result<(), QueryErr> {
     print!("find cakes and fruits: ");
 
-    let both = Cake::find().left_join_and_select(Fruit).all(db).await?;
+    let both = Cake::find().left_join_and_select_also(Fruit).all(db).await?;
 
     println!();
     for bb in both.iter() {
@@ -141,7 +141,7 @@ async fn count_fruits_by_cake(db: &DbConn) -> Result<(), QueryErr> {
 async fn find_many_to_many(db: &DbConn) -> Result<(), QueryErr> {
     print!("find cakes and fillings: ");
 
-    let both = Cake::find().left_join_and_select(Filling).all(db).await?;
+    let both = Cake::find().left_join_and_select_also(Filling).all(db).await?;
 
     println!();
     for bb in both.iter() {
@@ -211,7 +211,7 @@ async fn find_together_json(db: &DbConn) -> Result<(), QueryErr> {
     print!("find cakes and fruits: ");
 
     let cakes_fruits = Cake::find()
-        .left_join_and_select(Fruit)
+        .left_join_and_select_also(Fruit)
         .into_json()
         .all(db)
         .await?;

@@ -132,12 +132,8 @@ where
         self.into_model::<E::Model, F::Model>().one(db).await
     }
 
-    pub async fn all(
-        self,
-        db: &DatabaseConnection,
-    ) -> Result<Vec<(E::Model, Vec<F::Model>)>, QueryErr> {
-        let rows = self.into_model::<E::Model, F::Model>().all(db).await?;
-        Ok(parse_query_result::<E, _>(rows))
+    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<(E::Model, Option<F::Model>)>, QueryErr> {
+        self.into_model::<E::Model, F::Model>().all(db).await
     }
 }
 
