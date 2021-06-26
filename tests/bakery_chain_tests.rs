@@ -1,26 +1,12 @@
 use sea_orm::{sea_query, DbConn, ExecErr, ExecResult};
-use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Iden, SqliteQueryBuilder};
+use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, SqliteQueryBuilder};
 
+pub mod bakery_chain;
 mod setup;
-
-#[derive(Iden)]
-enum Bakery {
-    Table,
-    Id,
-    Name,
-    ProfitMargin,
-}
-
-#[derive(Iden)]
-enum Baker {
-    Table,
-    Id,
-    Name,
-    BakeryId,
-}
+pub use bakery_chain::*;
 
 #[async_std::test]
-// cargo test --test bakery -- --nocapture
+// cargo test --test bakery_chain_tests -- --nocapture
 async fn main() {
     let db: DbConn = setup::setup().await;
     setup_schema(&db).await;
@@ -33,41 +19,43 @@ async fn setup_schema(db: &DbConn) {
 
 async fn create_bakery(db: &DbConn) -> Result<ExecResult, ExecErr> {
     let stmt = sea_query::Table::create()
-        .table(Bakery::Table)
+        .table(bakery::Entity)
         .if_not_exists()
         .col(
-            ColumnDef::new(Bakery::Id)
+            ColumnDef::new(bakery::Column::Id)
                 .integer()
                 .not_null()
                 .auto_increment()
                 .primary_key(),
         )
-        .col(ColumnDef::new(Bakery::Name).string())
-        .col(ColumnDef::new(Bakery::ProfitMargin).float())
+        .col(ColumnDef::new(bakery::Column::Name).string())
+        .col(ColumnDef::new(bakery::Column::ProfitMargin).float())
         .build(SqliteQueryBuilder);
+
     db.execute(stmt.into()).await
 }
 
 async fn create_baker(db: &DbConn) -> Result<ExecResult, ExecErr> {
     let stmt = sea_query::Table::create()
-        .table(Baker::Table)
+        .table(baker::Entity)
         .if_not_exists()
         .col(
-            ColumnDef::new(Baker::Id)
+            ColumnDef::new(baker::Column::Id)
                 .integer()
                 .not_null()
                 .auto_increment()
                 .primary_key(),
         )
-        .col(ColumnDef::new(Baker::Name).string())
-        // .foreign_key(
-        //     ForeignKey::create()
-        //         .name("FK_baker_bakery")
-        //         .from(Baker::Table, Baker::BakeryId)
-        //         .to(Bakery::Table, Bakery::Id)
-        //         .on_delete(ForeignKeyAction::Cascade)
-        //         .on_update(ForeignKeyAction::Cascade),
-        // )
+        .col(ColumnDef::new(baker::Column::Name).string())
+        .col(ColumnDef::new(baker::Column::BakeryId).integer().not_null())
+        .foreign_key(
+            ForeignKey::create()
+                .name("FK_baker_bakery")
+                .from(baker::Entity, baker::Column::BakeryId)
+                .to(bakery::Entity, bakery::Column::Id)
+                .on_delete(ForeignKeyAction::Cascade)
+                .on_update(ForeignKeyAction::Cascade),
+        )
         .build(SqliteQueryBuilder);
 
     db.execute(stmt.clone().into()).await
