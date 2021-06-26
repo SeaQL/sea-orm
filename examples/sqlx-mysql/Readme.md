@@ -32,15 +32,27 @@ Model { id: 2, name: "Rasberry", cake_id: Some(1) }
 
 Model { id: 3, name: "Strawberry", cake_id: Some(2) }
 
+Model { id: 4, name: "Apple", cake_id: None }
+
+Model { id: 5, name: "Banana", cake_id: None }
+
+Model { id: 6, name: "Cherry", cake_id: None }
+
+Model { id: 7, name: "Lemon", cake_id: None }
+
+Model { id: 8, name: "Orange", cake_id: None }
+
+Model { id: 9, name: "Pineapple", cake_id: None }
+
 ===== =====
 
 find cakes and fruits: SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`, `fruit`.`id` AS `B_id`, `fruit`.`name` AS `B_name`, `fruit`.`cake_id` AS `B_cake_id` FROM `cake` LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`
 
-(Model { id: 1, name: "New York Cheese" }, Model { id: 2, name: "Rasberry", cake_id: Some(1) })
+(Model { id: 1, name: "New York Cheese" }, Some(Model { id: 1, name: "Blueberry", cake_id: Some(1) }))
 
-(Model { id: 1, name: "New York Cheese" }, Model { id: 1, name: "Blueberry", cake_id: Some(1) })
+(Model { id: 1, name: "New York Cheese" }, Some(Model { id: 2, name: "Rasberry", cake_id: Some(1) }))
 
-(Model { id: 2, name: "Chocolate Forest" }, Model { id: 3, name: "Strawberry", cake_id: Some(2) })
+(Model { id: 2, name: "Chocolate Forest" }, Some(Model { id: 3, name: "Strawberry", cake_id: Some(2) }))
 
 ===== =====
 
@@ -48,7 +60,7 @@ find one by primary key: SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `ca
 
 Model { id: 1, name: "New York Cheese" }
 
-find one by like: SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%chocolate%' LIMIT 1
+find one by name: SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%chocolate%' LIMIT 1
 
 Some(Model { id: 2, name: "Chocolate Forest" })
 
@@ -68,15 +80,11 @@ SelectResult { name: "Chocolate Forest", num_of_fruits: 1 }
 
 ===== =====
 
-find cakes and fillings: SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`, `filling`.`id` AS `B_id`, `filling`.`name` AS `B_name` FROM `cake` LEFT JOIN `cake_filling` ON `cake`.`id` = `cake_filling`.`cake_id` LEFT JOIN `filling` ON `cake_filling`.`filling_id` = `filling`.`id`
+find cakes and fillings: SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`, `filling`.`id` AS `B_id`, `filling`.`name` AS `B_name` FROM `cake` LEFT JOIN `cake_filling` ON `cake`.`id` = `cake_filling`.`cake_id` LEFT JOIN `filling` ON `cake_filling`.`filling_id` = `filling`.`id` ORDER BY `cake`.`id` ASC
 
-(Model { id: 1, name: "New York Cheese" }, Model { id: 1, name: "Vanilla" })
+(Model { id: 1, name: "New York Cheese" }, [Model { id: 1, name: "Vanilla" }, Model { id: 2, name: "Lemon" }])
 
-(Model { id: 1, name: "New York Cheese" }, Model { id: 2, name: "Lemon" })
-
-(Model { id: 2, name: "Chocolate Forest" }, Model { id: 2, name: "Lemon" })
-
-(Model { id: 2, name: "Chocolate Forest" }, Model { id: 3, name: "Mango" })
+(Model { id: 2, name: "Chocolate Forest" }, [Model { id: 2, name: "Lemon" }, Model { id: 3, name: "Mango" }])
 
 find fillings for cheese cake: SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 1 LIMIT 1
 SELECT `filling`.`id`, `filling`.`name` FROM `filling` INNER JOIN `cake_filling` ON `cake_filling`.`filling_id` = `filling`.`id` INNER JOIN `cake` ON `cake`.`id` = `cake_filling`.`cake_id` WHERE `cake`.`id` = 1

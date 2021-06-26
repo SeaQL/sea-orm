@@ -1,4 +1,4 @@
-use crate::{EntityTrait, QuerySelect, Related, Select, SelectTwo};
+use crate::{EntityTrait, QuerySelect, Related, Select, SelectTwo, SelectTwoMany};
 pub use sea_query::JoinType;
 
 impl<E> Select<E>
@@ -47,6 +47,15 @@ where
         E: Related<R>,
     {
         self.left_join(r).select_also(r)
+    }
+
+    /// Left Join with a Related Entity and select the related Entity as a `Vec`
+    pub fn left_join_and_select_with<R>(self, r: R) -> SelectTwoMany<E, R>
+    where
+        R: EntityTrait,
+        E: Related<R>,
+    {
+        self.left_join(r).select_with(r)
     }
 }
 

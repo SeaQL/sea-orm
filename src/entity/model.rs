@@ -15,7 +15,7 @@ pub trait FromQueryResult {
     where
         Self: Sized;
 
-    fn from_query_result_opt(res: &QueryResult, pre: &str) -> Result<Option<Self>, TypeErr>
+    fn from_query_result_optional(res: &QueryResult, pre: &str) -> Result<Option<Self>, TypeErr>
     where
         Self: Sized,
     {

@@ -1,6 +1,7 @@
 use crate::{
     query::combine, DatabaseConnection, EntityTrait, FromQueryResult, Iterable, JsonValue,
-    ModelTrait, Paginator, PrimaryKeyToColumn, QueryErr, QueryResult, Select, SelectTwo, TypeErr,
+    ModelTrait, Paginator, PrimaryKeyToColumn, QueryErr, QueryResult, Select, SelectTwo,
+    SelectTwoMany, TypeErr,
 };
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
@@ -57,7 +58,7 @@ where
     fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, TypeErr> {
         Ok((
             M::from_query_result(&res, combine::SELECT_A)?,
-            N::from_query_result_opt(&res, combine::SELECT_B)?,
+            N::from_query_result_optional(&res, combine::SELECT_B)?,
         ))
     }
 }
@@ -132,8 +133,51 @@ where
         self.into_model::<E::Model, F::Model>().one(db).await
     }
 
-    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<(E::Model, Option<F::Model>)>, QueryErr> {
+    pub async fn all(
+        self,
+        db: &DatabaseConnection,
+    ) -> Result<Vec<(E::Model, Option<F::Model>)>, QueryErr> {
         self.into_model::<E::Model, F::Model>().all(db).await
+    }
+}
+
+impl<E, F> SelectTwoMany<E, F>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+{
+    fn into_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
+    where
+        M: FromQueryResult,
+        N: FromQueryResult,
+    {
+        Selector {
+            query: self.query,
+            selector: SelectTwoModel { model: PhantomData },
+        }
+    }
+
+    #[cfg(feature = "with-json")]
+    pub fn into_json(self) -> Selector<SelectTwoModel<JsonValue, JsonValue>> {
+        Selector {
+            query: self.query,
+            selector: SelectTwoModel { model: PhantomData },
+        }
+    }
+
+    pub async fn one(
+        self,
+        db: &DatabaseConnection,
+    ) -> Result<Option<(E::Model, Option<F::Model>)>, QueryErr> {
+        self.into_model::<E::Model, F::Model>().one(db).await
+    }
+
+    pub async fn all(
+        self,
+        db: &DatabaseConnection,
+    ) -> Result<Vec<(E::Model, Vec<F::Model>)>, QueryErr> {
+        let rows = self.into_model::<E::Model, F::Model>().all(db).await?;
+        Ok(consolidate_query_result::<E, F>(rows))
     }
 }
 
@@ -172,11 +216,14 @@ where
     }
 }
 
-fn parse_query_result<L, R>(rows: Vec<(L::Model, Option<R>)>) -> Vec<(L::Model, Vec<R>)>
+fn consolidate_query_result<L, R>(
+    rows: Vec<(L::Model, Option<R::Model>)>,
+) -> Vec<(L::Model, Vec<R::Model>)>
 where
     L: EntityTrait,
+    R: EntityTrait,
 {
-    let mut acc: Vec<(L::Model, Vec<R>)> = Vec::new();
+    let mut acc: Vec<(L::Model, Vec<R::Model>)> = Vec::new();
     for (l, r) in rows {
         if let Some((last_l, last_r)) = acc.last_mut() {
             let mut same_l = true;
