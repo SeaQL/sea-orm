@@ -44,7 +44,7 @@ pub async fn all_about_select(db: &DbConn) -> Result<(), QueryErr> {
 async fn find_all(db: &DbConn) -> Result<(), QueryErr> {
     print!("find all cakes: ");
 
-    let cakes = Cake::find().all(db).await?;
+    let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
 
     println!();
     for cc in cakes.iter() {
@@ -105,7 +105,7 @@ async fn find_one(db: &DbConn) -> Result<(), QueryErr> {
 
     print!("find models belong to: ");
 
-    let fruits = cheese.find_fruit().all(db).await?;
+    let fruits = cheese.find_related(Fruit).all(db).await?;
 
     println!();
     for ff in fruits.iter() {
@@ -144,7 +144,7 @@ async fn count_fruits_by_cake(db: &DbConn) -> Result<(), QueryErr> {
 async fn find_many_to_many(db: &DbConn) -> Result<(), QueryErr> {
     print!("find cakes and fillings: ");
 
-    let both = Cake::find()
+    let both: Vec<(cake::Model, Vec<filling::Model>)> = Cake::find()
         .left_join_and_select_with(Filling)
         .all(db)
         .await?;

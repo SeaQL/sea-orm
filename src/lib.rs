@@ -3,6 +3,7 @@ mod driver;
 pub mod entity;
 mod executor;
 pub mod query;
+#[doc(hidden)]
 pub mod tests_cfg;
 mod util;
 
