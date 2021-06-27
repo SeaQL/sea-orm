@@ -1,5 +1,5 @@
 use sea_orm::{sea_query, DbConn, ExecErr, ExecResult};
-use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, SqliteQueryBuilder};
+use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, SqliteQueryBuilder};
 
 pub mod bakery_chain;
 mod setup;
@@ -18,6 +18,7 @@ async fn setup_schema(db: &DbConn) {
     assert!(create_customer_table(db).await.is_ok());
     assert!(create_order_table(db).await.is_ok());
     assert!(create_lineitem_table(db).await.is_ok());
+    assert!(create_cakes_bakers_table(db).await.is_ok());
 }
 
 async fn create_bakery_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
@@ -151,6 +152,30 @@ async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
                 .to(order::Entity, order::Column::Id)
                 .on_delete(ForeignKeyAction::Cascade)
                 .on_update(ForeignKeyAction::Cascade),
+        )
+        .build(SqliteQueryBuilder);
+
+    db.execute(stmt.into()).await
+}
+
+async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
+    let stmt = sea_query::Table::create()
+        .table(cakes_bakers::Entity)
+        .if_not_exists()
+        .col(
+            ColumnDef::new(cakes_bakers::Column::CakeId)
+                .integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(cakes_bakers::Column::BakerId)
+                .integer()
+                .not_null(),
+        )
+        .primary_key(
+            Index::create()
+                .col(cakes_bakers::Column::CakeId)
+                .col(cakes_bakers::Column::BakerId),
         )
         .build(SqliteQueryBuilder);
 
