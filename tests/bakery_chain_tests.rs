@@ -17,6 +17,7 @@ async fn setup_schema(db: &DbConn) {
     assert!(create_baker_table(db).await.is_ok());
     assert!(create_customer_table(db).await.is_ok());
     assert!(create_order_table(db).await.is_ok());
+    assert!(create_lineitem_table(db).await.is_ok());
 }
 
 async fn create_bakery_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
@@ -117,6 +118,37 @@ async fn create_order_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
                 .name("FK_order_customer")
                 .from(order::Entity, baker::Column::BakeryId)
                 .to(customer::Entity, customer::Column::Id)
+                .on_delete(ForeignKeyAction::Cascade)
+                .on_update(ForeignKeyAction::Cascade),
+        )
+        .build(SqliteQueryBuilder);
+
+    db.execute(stmt.into()).await
+}
+
+async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
+    let stmt = sea_query::Table::create()
+        .table(lineitem::Entity)
+        .if_not_exists()
+        .col(
+            ColumnDef::new(lineitem::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(lineitem::Column::Price).float())
+        .col(ColumnDef::new(lineitem::Column::Quantity).integer())
+        .col(
+            ColumnDef::new(lineitem::Column::OrderId)
+                .integer()
+                .not_null(),
+        )
+        .foreign_key(
+            ForeignKey::create()
+                .name("FK_lineitem_order")
+                .from(lineitem::Entity, lineitem::Column::OrderId)
+                .to(order::Entity, order::Column::Id)
                 .on_delete(ForeignKeyAction::Cascade)
                 .on_update(ForeignKeyAction::Cascade),
         )

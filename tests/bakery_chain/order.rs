@@ -42,6 +42,7 @@ impl PrimaryKeyTrait for PrimaryKey {
 pub enum Relation {
     Bakery,
     Customer,
+    Lineitem,
 }
 
 impl ColumnTrait for Column {
@@ -69,6 +70,7 @@ impl RelationTrait for Relation {
                 .from(Column::CustomerId)
                 .to(super::customer::Column::Id)
                 .into(),
+            Self::Lineitem => Entity::has_many(super::lineitem::Entity).into(),
         }
     }
 }
@@ -82,6 +84,18 @@ impl Related<super::bakery::Entity> for Entity {
 impl Related<super::customer::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Customer.def()
+    }
+}
+
+impl Related<super::lineitem::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Lineitem.def()
+    }
+}
+
+impl Model {
+    pub fn find_lineitems(&self) -> Select<super::lineitem::Entity> {
+        Entity::find_related().belongs_to::<Entity>(self)
     }
 }
 
