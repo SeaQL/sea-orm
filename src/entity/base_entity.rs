@@ -1,7 +1,7 @@
 use crate::{
-    ActiveModelTrait, ColumnTrait, Delete, DeleteOne, FromQueryResult, Insert, ModelTrait,
-    PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related, RelationBuilder, RelationTrait,
-    RelationType, Select, Update, UpdateMany, UpdateOne,
+    ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne, FromQueryResult, Insert,
+    ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related, RelationBuilder,
+    RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
 };
 use sea_query::{Iden, IntoValueTuple};
 use std::fmt::Debug;
@@ -234,7 +234,7 @@ pub trait EntityTrait: EntityName {
     /// # use sea_orm::{MockDatabase, Transaction};
     /// # let db = MockDatabase::new().into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::{cake, fruit}, sea_query::{Expr, Value}};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::{Expr, Value}};
     ///
     /// # async_std::task::block_on(async {
     /// fruit::Entity::update_many()
@@ -281,5 +281,29 @@ pub trait EntityTrait: EntityName {
         A: ActiveModelTrait<Entity = Self>,
     {
         Delete::one(model)
+    }
+
+    /// ```
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{MockDatabase, Transaction};
+    /// # let db = MockDatabase::new().into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// # async_std::task::block_on(async {
+    /// fruit::Entity::delete_many()
+    ///     .filter(fruit::Column::Name.contains("Apple"))
+    ///     .exec(&db)
+    ///     .await;
+    /// # });
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         r#"DELETE FROM "fruit" WHERE "fruit"."name" LIKE $1"#, vec!["%Apple%".into()]
+    ///     )]);
+    /// ```
+    fn delete_many() -> DeleteMany<Self> {
+        Delete::many(Self::default())
     }
 }
