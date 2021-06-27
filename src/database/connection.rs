@@ -119,6 +119,7 @@ impl DatabaseConnection {
         None
     }
 
+    #[cfg(feature = "mock")]
     pub fn into_transaction_log(self) -> Vec<Transaction> {
         let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
         mocker.drain_transaction_log()

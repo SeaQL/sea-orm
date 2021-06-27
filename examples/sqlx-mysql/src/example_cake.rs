@@ -72,14 +72,4 @@ impl Related<super::filling::Entity> for Entity {
     }
 }
 
-impl Model {
-    pub fn find_fruit(&self) -> Select<super::fruit::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
-    }
-
-    pub fn find_filling(&self) -> Select<super::filling::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
-    }
-}
-
 impl ActiveModelBehavior for ActiveModel {}

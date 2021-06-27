@@ -62,7 +62,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, filling, fruit};
-    use crate::{ColumnTrait, EntityTrait, QueryFilter, QueryTrait};
+    use crate::{ColumnTrait, EntityTrait, QueryFilter, QueryTrait, ModelTrait};
     use sea_query::MysqlQueryBuilder;
 
     #[test]
@@ -139,7 +139,7 @@ mod tests {
         };
 
         assert_eq!(
-            cake_model.find_fruit().build(MysqlQueryBuilder).to_string(),
+            cake_model.find_related(fruit::Entity).build(MysqlQueryBuilder).to_string(),
             [
                 "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
                 "INNER JOIN `cake` ON `cake`.`id` = `fruit`.`cake_id`",

@@ -159,7 +159,7 @@ async fn find_many_to_many(db: &DbConn) -> Result<(), QueryErr> {
     let cheese = Cake::find_by_id(1).one(db).await?;
 
     if let Some(cheese) = cheese {
-        let fillings: Vec<filling::Model> = cheese.find_filling().all(db).await?;
+        let fillings: Vec<filling::Model> = cheese.find_related(Filling).all(db).await?;
 
         println!();
         for ff in fillings.iter() {
@@ -172,7 +172,7 @@ async fn find_many_to_many(db: &DbConn) -> Result<(), QueryErr> {
     let lemon = Filling::find_by_id(2).one(db).await?;
 
     if let Some(lemon) = lemon {
-        let cakes: Vec<cake::Model> = lemon.find_cake().all(db).await?;
+        let cakes: Vec<cake::Model> = lemon.find_related(Cake).all(db).await?;
 
         println!();
         for cc in cakes.iter() {

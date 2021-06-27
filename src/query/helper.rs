@@ -258,11 +258,11 @@ pub trait QueryFilter: Sized {
     }
 
     /// Apply a where condition using the model's primary key
-    fn belongs_to<E>(mut self, model: &E::Model) -> Self
+    fn belongs_to<M>(mut self, model: &M) -> Self
     where
-        E: EntityTrait,
+        M: ModelTrait,
     {
-        for key in E::PrimaryKey::iter() {
+        for key in <M::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
             self = self.filter(col.eq(model.get(col)));
         }
