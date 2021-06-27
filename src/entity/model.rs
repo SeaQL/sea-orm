@@ -1,4 +1,4 @@
-use crate::{Select, EntityTrait, Related, QueryFilter, QueryResult, TypeErr};
+use crate::{EntityTrait, QueryFilter, QueryResult, Related, Select, TypeErr};
 pub use sea_query::Value;
 use std::fmt::Debug;
 
@@ -12,7 +12,8 @@ pub trait ModelTrait: Clone + Debug {
     fn find_related<R>(&self, _: R) -> Select<R>
     where
         R: EntityTrait,
-        Self::Entity: Related<R> {
+        Self::Entity: Related<R>,
+    {
         <Self::Entity as Related<R>>::find_related().belongs_to(self)
     }
 }
