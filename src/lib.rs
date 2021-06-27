@@ -21,7 +21,7 @@
 //!
 //! // find related models (eager)
 //! let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> = Cake::find()
-//!     .left_join_and_select_with(Fruit)
+//!     .find_with_related(Fruit)
 //!     .all(db)
 //!     .await?;
 //!

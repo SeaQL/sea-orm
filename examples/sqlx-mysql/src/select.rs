@@ -67,7 +67,7 @@ async fn find_together(db: &DbConn) -> Result<(), QueryErr> {
     print!("find cakes and fruits: ");
 
     let both = Cake::find()
-        .left_join_and_select_also(Fruit)
+        .find_also_related(Fruit)
         .all(db)
         .await?;
 
@@ -145,7 +145,7 @@ async fn find_many_to_many(db: &DbConn) -> Result<(), QueryErr> {
     print!("find cakes and fillings: ");
 
     let both: Vec<(cake::Model, Vec<filling::Model>)> = Cake::find()
-        .left_join_and_select_with(Filling)
+        .find_with_related(Filling)
         .all(db)
         .await?;
 
@@ -217,7 +217,7 @@ async fn find_together_json(db: &DbConn) -> Result<(), QueryErr> {
     print!("find cakes and fruits: ");
 
     let cakes_fruits = Cake::find()
-        .left_join_and_select_with(Fruit)
+        .find_with_related(Fruit)
         .into_json()
         .all(db)
         .await?;

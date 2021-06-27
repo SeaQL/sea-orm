@@ -41,7 +41,7 @@ where
     }
 
     /// Left Join with a Related Entity and select both Entity.
-    pub fn left_join_and_select_also<R>(self, r: R) -> SelectTwo<E, R>
+    pub fn find_also_related<R>(self, r: R) -> SelectTwo<E, R>
     where
         R: EntityTrait,
         E: Related<R>,
@@ -50,7 +50,7 @@ where
     }
 
     /// Left Join with a Related Entity and select the related Entity as a `Vec`
-    pub fn left_join_and_select_with<R>(self, r: R) -> SelectTwoMany<E, R>
+    pub fn find_with_related<R>(self, r: R) -> SelectTwoMany<E, R>
     where
         R: EntityTrait,
         E: Related<R>,
