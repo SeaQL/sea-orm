@@ -1,7 +1,7 @@
 use crate::{
     ActiveModelTrait, ColumnTrait, Delete, DeleteOne, FromQueryResult, Insert, ModelTrait,
-    OneOrManyActiveModel, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related,
-    RelationBuilder, RelationTrait, RelationType, Select, Update, UpdateOne,
+    PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related, RelationBuilder, RelationTrait,
+    RelationType, Select, Update, UpdateMany, UpdateOne,
 };
 use sea_query::{Iden, IntoValueTuple};
 use std::fmt::Debug;
@@ -50,14 +50,27 @@ pub trait EntityTrait: EntityName {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{MockDatabase, Transaction};
+    /// # let db = MockDatabase::new().into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    ///
+    /// # async_std::task::block_on(async {
+    /// cake::Entity::find().one(&db).await;
+    /// cake::Entity::find().all(&db).await;
+    /// # });
     ///
     /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .build(PostgresQueryBuilder)
-    ///         .to_string(),
-    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake""#
-    /// );
+    ///     db.into_transaction_log(),
+    ///     vec![
+    ///     Transaction::from_sql_and_values(
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#, vec![1u64.into()]
+    ///     ),
+    ///     Transaction::from_sql_and_values(
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
+    ///     ),
+    /// ]);
     /// ```
     fn find() -> Select<Self> {
         Select::new()
@@ -65,28 +78,42 @@ pub trait EntityTrait: EntityName {
 
     /// Find a model by primary key
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{MockDatabase, Transaction};
+    /// # let db = MockDatabase::new().into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    ///
+    /// # async_std::task::block_on(async {
+    /// cake::Entity::find_by_id(11).all(&db).await;
+    /// # });
     ///
     /// assert_eq!(
-    ///     cake::Entity::find_by_id(11)
-    ///         .build(PostgresQueryBuilder)
-    ///         .to_string(),
-    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = 11"#
-    /// );
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = $1"#, vec![11i32.into()]
+    ///     )]);
     /// ```
     /// Find by composite key
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake_filling, sea_query::PostgresQueryBuilder};
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{MockDatabase, Transaction};
+    /// # let db = MockDatabase::new().into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake_filling};
+    ///
+    /// # async_std::task::block_on(async {
+    /// cake_filling::Entity::find_by_id((2, 3)).all(&db).await;
+    /// # });
     ///
     /// assert_eq!(
-    ///     cake_filling::Entity::find_by_id((2, 3))
-    ///         .build(PostgresQueryBuilder)
-    ///         .to_string(),
-    ///     [
-    ///         r#"SELECT "cake_filling"."cake_id", "cake_filling"."filling_id" FROM "cake_filling""#,
-    ///         r#"WHERE "cake_filling"."cake_id" = 2 AND "cake_filling"."filling_id" = 3"#,
-    ///     ].join(" ")
-    /// );
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values([
+    ///             r#"SELECT "cake_filling"."cake_id", "cake_filling"."filling_id" FROM "cake_filling""#,
+    ///             r#"WHERE "cake_filling"."cake_id" = $1 AND "cake_filling"."filling_id" = $2"#,
+    ///         ].join(" ").as_str(),
+    ///         vec![2i32.into(), 3i32.into()]
+    ///     )]);
     /// ```
     fn find_by_id<V>(values: V) -> Select<Self>
     where
@@ -108,69 +135,29 @@ pub trait EntityTrait: EntityName {
         select
     }
 
-    /// Insert one
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{MockDatabase, Transaction};
+    /// # let db = MockDatabase::new().into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
     /// let apple = cake::ActiveModel {
     ///     name: Set("Apple Pie".to_owned()),
     ///     ..Default::default()
     /// };
-    /// assert_eq!(
-    ///     cake::Entity::insert(apple)
-    ///         .build(PostgresQueryBuilder)
-    ///         .to_string(),
-    ///     r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie')"#,
-    /// );
-    /// ```
-    /// Insert many
-    /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
     ///
-    /// let apple = cake::ActiveModel {
-    ///     name: Set("Apple Pie".to_owned()),
-    ///     ..Default::default()
-    /// };
-    /// let orange = cake::ActiveModel {
-    ///     name: Set("Orange Scone".to_owned()),
-    ///     ..Default::default()
-    /// };
-    /// assert_eq!(
-    ///     cake::Entity::insert(vec![apple, orange])
-    ///         .build(PostgresQueryBuilder)
-    ///         .to_string(),
-    ///     r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie'), ('Orange Scone')"#,
-    /// );
-    /// ```
-    fn insert<A, C>(models: C) -> Insert<A>
-    where
-        A: ActiveModelTrait<Entity = Self>,
-        C: OneOrManyActiveModel<A>,
-    {
-        if C::is_one() {
-            Self::insert_one(models.get_one())
-        } else if C::is_many() {
-            Self::insert_many(models.get_many())
-        } else {
-            unreachable!()
-        }
-    }
-
-    /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// # async_std::task::block_on(async {
+    /// cake::Entity::insert(apple).exec(&db).await;
+    /// # });
     ///
-    /// let apple = cake::ActiveModel {
-    ///     name: Set("Apple Pie".to_owned()),
-    ///     ..Default::default()
-    /// };
     /// assert_eq!(
-    ///     cake::Entity::insert_one(apple)
-    ///         .build(PostgresQueryBuilder)
-    ///         .to_string(),
-    ///     r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie')"#,
-    /// );
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         r#"INSERT INTO "cake" ("name") VALUES ($1)"#, vec!["Apple Pie".into()]
+    ///     )]);
     /// ```
-    fn insert_one<A>(model: A) -> Insert<A>
+    fn insert<A>(model: A) -> Insert<A>
     where
         A: ActiveModelTrait<Entity = Self>,
     {
@@ -178,7 +165,11 @@ pub trait EntityTrait: EntityName {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{MockDatabase, Transaction};
+    /// # let db = MockDatabase::new().into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
     /// let apple = cake::ActiveModel {
     ///     name: Set("Apple Pie".to_owned()),
@@ -188,12 +179,17 @@ pub trait EntityTrait: EntityName {
     ///     name: Set("Orange Scone".to_owned()),
     ///     ..Default::default()
     /// };
+    ///
+    /// # async_std::task::block_on(async {
+    /// cake::Entity::insert_many(vec![apple, orange]).exec(&db).await;
+    /// # });
+    ///
     /// assert_eq!(
-    ///     cake::Entity::insert_many(vec![apple, orange])
-    ///         .build(PostgresQueryBuilder)
-    ///         .to_string(),
-    ///     r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie'), ('Orange Scone')"#,
-    /// );
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         r#"INSERT INTO "cake" ("name") VALUES ($1), ($2)"#,
+    ///         vec!["Apple Pie".into(), "Orange Scone".into()]
+    ///     )]);
     /// ```
     fn insert_many<A, I>(models: I) -> Insert<A>
     where
@@ -204,19 +200,27 @@ pub trait EntityTrait: EntityName {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::PostgresQueryBuilder};
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{MockDatabase, Transaction};
+    /// # let db = MockDatabase::new().into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
     ///
     /// let orange = fruit::ActiveModel {
     ///     id: Set(1),
     ///     name: Set("Orange".to_owned()),
     ///     ..Default::default()
     /// };
+    ///
+    /// # async_std::task::block_on(async {
+    /// fruit::Entity::update(orange).exec(&db).await;
+    /// # });
+    ///
     /// assert_eq!(
-    ///     fruit::Entity::update(orange)
-    ///         .build(PostgresQueryBuilder)
-    ///         .to_string(),
-    ///     r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"#,
-    /// );
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         r#"UPDATE "fruit" SET "name" = $1 WHERE "fruit"."id" = $2"#, vec!["Orange".into(), 1i32.into()]
+    ///     )]);
     /// ```
     fn update<A>(model: A) -> UpdateOne<A>
     where
@@ -226,18 +230,51 @@ pub trait EntityTrait: EntityName {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::PostgresQueryBuilder};
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{MockDatabase, Transaction};
+    /// # let db = MockDatabase::new().into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::{cake, fruit}, sea_query::{Expr, Value}};
+    ///
+    /// # async_std::task::block_on(async {
+    /// fruit::Entity::update_many()
+    ///     .col_expr(fruit::Column::CakeId, Expr::value(Value::Null))
+    ///     .filter(fruit::Column::Name.contains("Apple"))
+    ///     .exec(&db)
+    ///     .await;
+    /// # });
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         r#"UPDATE "fruit" SET "cake_id" = $1 WHERE "fruit"."name" LIKE $2"#, vec![Value::Null, "%Apple%".into()]
+    ///     )]);
+    /// ```
+    fn update_many() -> UpdateMany<Self> {
+        Update::many(Self::default())
+    }
+
+    /// ```
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{MockDatabase, Transaction};
+    /// # let db = MockDatabase::new().into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
     ///
     /// let orange = fruit::ActiveModel {
     ///     id: Set(3),
     ///     ..Default::default()
     /// };
+    ///
+    /// # async_std::task::block_on(async {
+    /// fruit::Entity::delete(orange).exec(&db).await;
+    /// # });
+    ///
     /// assert_eq!(
-    ///     fruit::Entity::delete(orange)
-    ///         .build(PostgresQueryBuilder)
-    ///         .to_string(),
-    ///     r#"DELETE FROM "fruit" WHERE "fruit"."id" = 3"#,
-    /// );
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         r#"DELETE FROM "fruit" WHERE "fruit"."id" = $1"#, vec![3i32.into()]
+    ///     )]);
     /// ```
     fn delete<A>(model: A) -> DeleteOne<A>
     where

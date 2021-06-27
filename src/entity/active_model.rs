@@ -42,17 +42,6 @@ impl Default for ActiveValueState {
     }
 }
 
-pub trait OneOrManyActiveModel<A>
-where
-    A: ActiveModelTrait,
-{
-    fn is_one() -> bool;
-    fn get_one(self) -> A;
-
-    fn is_many() -> bool;
-    fn get_many(self) -> Vec<A>;
-}
-
 #[doc(hidden)]
 pub fn unchanged_active_value_not_intended_for_public_use<V>(value: V) -> ActiveValue<V>
 where
@@ -194,44 +183,6 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         self.value == other.value
-    }
-}
-
-impl<A> OneOrManyActiveModel<A> for A
-where
-    A: ActiveModelTrait,
-{
-    fn is_one() -> bool {
-        true
-    }
-    fn get_one(self) -> A {
-        self
-    }
-
-    fn is_many() -> bool {
-        false
-    }
-    fn get_many(self) -> Vec<A> {
-        panic!("not many")
-    }
-}
-
-impl<A> OneOrManyActiveModel<A> for Vec<A>
-where
-    A: ActiveModelTrait,
-{
-    fn is_one() -> bool {
-        false
-    }
-    fn get_one(self) -> A {
-        panic!("not one")
-    }
-
-    fn is_many() -> bool {
-        true
-    }
-    fn get_many(self) -> Vec<A> {
-        self
     }
 }
 

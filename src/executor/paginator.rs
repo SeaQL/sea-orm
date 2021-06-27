@@ -175,9 +175,7 @@ mod tests {
             query_builder.build(select.offset(4).limit(2)),
         ];
 
-        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
-
-        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
+        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 
@@ -211,9 +209,7 @@ mod tests {
             query_builder.build(select.offset(4).limit(2)),
         ];
 
-        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
-
-        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
+        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 
@@ -244,9 +240,8 @@ mod tests {
 
         let query_builder = db.get_query_builder_backend();
         let stmts = vec![query_builder.build(&select)];
-        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
 
-        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
+        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 
@@ -297,9 +292,7 @@ mod tests {
             query_builder.build(select.offset(4).limit(2)),
         ];
 
-        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
-
-        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
+        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 
@@ -331,9 +324,7 @@ mod tests {
             query_builder.build(select.offset(4).limit(2)),
         ];
 
-        let mut mocker = db.as_mock_connection().get_mocker_mutex().lock().unwrap();
-
-        assert_eq!(mocker.drain_transaction_log(), Transaction::wrap(stmts));
+        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 }
