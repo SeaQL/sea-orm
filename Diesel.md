@@ -20,7 +20,7 @@ SeaSchema is our schema discovery library, but it is not sealed inside SeaORM. S
 
 In addition to the sync vs async foundation, the biggest distinction between Diesel and SeaORM is static vs dynamic. Diesel has an everything-compile-time design which has its pros and cons. SeaORM is dynamic, in which things are established runtime. It offers more flexibility. While you loses some compile-time guarantee, SeaORM helps you to prove correctness by unit testing instead.
 
-Both libraries make heavy use of traits and generics, but SeaORM generate less types. (Each column in Diesel is a struct, while each column in SeaORM is a enum variant). That probably means looser type/lifetime constraints and faster compilation.
+Both libraries make heavy use of traits and generics, but SeaORM generate less types (each column in Diesel is a struct, while each column in SeaORM is a enum variant) and less depthness (there won't be `A<B<C<D>>>`). That probably means looser type/lifetime constraints and faster compilation.
 
 You don't have to use macros when using SeaORM. We provide some derive macros for convenience, but they are entirely optional.
 

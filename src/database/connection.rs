@@ -1,4 +1,4 @@
-use crate::{ExecErr, ExecResult, QueryErr, QueryResult, Statement};
+use crate::{ExecErr, ExecResult, QueryErr, QueryResult, Statement, Transaction};
 use sea_query::{
     MysqlQueryBuilder, PostgresQueryBuilder, QueryStatementBuilder, SqliteQueryBuilder,
 };
@@ -117,6 +117,12 @@ impl DatabaseConnection {
     #[cfg(not(feature = "mock"))]
     pub fn as_mock_connection(&self) -> Option<bool> {
         None
+    }
+
+    #[cfg(feature = "mock")]
+    pub fn into_transaction_log(self) -> Vec<Transaction> {
+        let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
+        mocker.drain_transaction_log()
     }
 }
 

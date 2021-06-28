@@ -1,4 +1,5 @@
 use crate::Statement;
+use sea_query::{Value, Values};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Transaction {
@@ -6,6 +7,16 @@ pub struct Transaction {
 }
 
 impl Transaction {
+    pub fn from_sql_and_values<I>(sql: &str, values: I) -> Self
+    where
+        I: IntoIterator<Item = Value>,
+    {
+        Self::one(Statement {
+            sql: sql.to_owned(),
+            values: Some(Values(values.into_iter().collect())),
+        })
+    }
+
     /// Create a Transaction with one statement
     pub fn one(stmt: Statement) -> Self {
         Self { stmts: vec![stmt] }

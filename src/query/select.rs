@@ -23,6 +23,16 @@ where
     pub(crate) entity: PhantomData<(E, F)>,
 }
 
+#[derive(Clone, Debug)]
+pub struct SelectTwoMany<E, F>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F)>,
+}
+
 pub trait IntoSimpleExpr {
     fn into_simple_expr(self) -> SimpleExpr;
 }
@@ -41,6 +51,18 @@ macro_rules! impl_trait {
         }
 
         impl<E, F> $trait for SelectTwo<E, F>
+        where
+            E: EntityTrait,
+            F: EntityTrait,
+        {
+            type QueryStatement = SelectStatement;
+
+            fn query(&mut self) -> &mut SelectStatement {
+                &mut self.query
+            }
+        }
+
+        impl<E, F> $trait for SelectTwoMany<E, F>
         where
             E: EntityTrait,
             F: EntityTrait,
@@ -118,19 +140,26 @@ where
     }
 }
 
-impl<E, F> QueryTrait for SelectTwo<E, F>
-where
-    E: EntityTrait,
-    F: EntityTrait,
-{
-    type QueryStatement = SelectStatement;
-    fn query(&mut self) -> &mut SelectStatement {
-        &mut self.query
-    }
-    fn as_query(&self) -> &SelectStatement {
-        &self.query
-    }
-    fn into_query(self) -> SelectStatement {
-        self.query
-    }
+macro_rules! select_two {
+    ( $selector: ident ) => {
+        impl<E, F> QueryTrait for $selector<E, F>
+        where
+            E: EntityTrait,
+            F: EntityTrait,
+        {
+            type QueryStatement = SelectStatement;
+            fn query(&mut self) -> &mut SelectStatement {
+                &mut self.query
+            }
+            fn as_query(&self) -> &SelectStatement {
+                &self.query
+            }
+            fn into_query(self) -> SelectStatement {
+                self.query
+            }
+        }
+    };
 }
+
+select_two!(SelectTwo);
+select_two!(SelectTwoMany);

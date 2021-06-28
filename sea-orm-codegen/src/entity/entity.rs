@@ -86,6 +86,10 @@ impl Entity {
             .collect()
     }
 
+    pub fn get_relation_defs(&self) -> Vec<TokenStream> {
+        self.relations.iter().map(|rel| rel.get_def()).collect()
+    }
+
     pub fn get_relation_rel_types(&self) -> Vec<Ident> {
         self.relations
             .iter()

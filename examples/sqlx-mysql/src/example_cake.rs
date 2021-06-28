@@ -51,10 +51,7 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Fruit => Entity::has_many(super::fruit::Entity)
-                .from(Column::Id)
-                .to(super::fruit::Column::CakeId)
-                .into(),
+            Self::Fruit => Entity::has_many(super::fruit::Entity).into(),
         }
     }
 }
@@ -72,16 +69,6 @@ impl Related<super::filling::Entity> for Entity {
 
     fn via() -> Option<RelationDef> {
         Some(super::cake_filling::Relation::Cake.def().rev())
-    }
-}
-
-impl Model {
-    pub fn find_fruit(&self) -> Select<super::fruit::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
-    }
-
-    pub fn find_filling(&self) -> Select<super::filling::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
     }
 }
 

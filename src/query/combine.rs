@@ -1,7 +1,7 @@
-use crate::{EntityTrait, IntoSimpleExpr, Iterable, QueryTrait, Select, SelectTwo};
+use crate::{EntityTrait, IntoSimpleExpr, Iterable, QueryTrait, Select, SelectTwo, SelectTwoMany};
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{Alias, ColumnRef, Iden, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
+use sea_query::{Alias, ColumnRef, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
 
 pub const SELECT_A: &str = "A_";
 pub const SELECT_B: &str = "B_";
@@ -40,6 +40,14 @@ where
         self = self.apply_alias(SELECT_A);
         SelectTwo::new(self.into_query())
     }
+
+    pub fn select_with<F>(mut self, _: F) -> SelectTwoMany<E, F>
+    where
+        F: EntityTrait,
+    {
+        self = self.apply_alias(SELECT_A);
+        SelectTwoMany::new(self.into_query())
+    }
 }
 
 impl<E, F> SelectTwo<E, F>
@@ -48,22 +56,57 @@ where
     F: EntityTrait,
 {
     pub(crate) fn new(query: SelectStatement) -> Self {
-        let myself = Self {
+        Self {
             query,
             entity: PhantomData,
-        };
-        myself.prepare_select()
+        }
+        .prepare_select()
     }
 
     fn prepare_select(mut self) -> Self {
-        for col in <F::Column as Iterable>::iter() {
-            let alias = format!("{}{}", SELECT_B, col.to_string().as_str());
-            self.query.expr(SelectExpr {
-                expr: col.into_simple_expr(),
-                alias: Some(SeaRc::new(Alias::new(&alias))),
-            });
+        prepare_select_two::<F, Self>(&mut self);
+        self
+    }
+}
+
+impl<E, F> SelectTwoMany<E, F>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+{
+    pub(crate) fn new(query: SelectStatement) -> Self {
+        Self {
+            query,
+            entity: PhantomData,
+        }
+        .prepare_select()
+        .prepare_order_by()
+    }
+
+    fn prepare_select(mut self) -> Self {
+        prepare_select_two::<F, Self>(&mut self);
+        self
+    }
+
+    fn prepare_order_by(mut self) -> Self {
+        for col in <E::PrimaryKey as Iterable>::iter() {
+            self.query.order_by((E::default(), col), Order::Asc);
         }
         self
+    }
+}
+
+fn prepare_select_two<F, S>(selector: &mut S)
+where
+    F: EntityTrait,
+    S: QueryTrait<QueryStatement = SelectStatement>,
+{
+    for col in <F::Column as Iterable>::iter() {
+        let alias = format!("{}{}", SELECT_B, col.to_string().as_str());
+        selector.query().expr(SelectExpr {
+            expr: col.into_simple_expr(),
+            alias: Some(SeaRc::new(Alias::new(&alias))),
+        });
     }
 }
 
@@ -102,6 +145,23 @@ mod tests {
     }
 
     #[test]
+    fn select_with_1() {
+        assert_eq!(
+            cake::Entity::find()
+                .left_join(fruit::Entity)
+                .select_with(fruit::Entity)
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            [
+                "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
+                "`fruit`.`id` AS `B_id`, `fruit`.`name` AS `B_name`, `fruit`.`cake_id` AS `B_cake_id`",
+                "FROM `cake` LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`",
+                "ORDER BY `cake`.`id` ASC",
+            ].join(" ")
+        );
+    }
+
+    #[test]
     fn select_also_2() {
         assert_eq!(
             cake::Entity::find()
@@ -116,6 +176,26 @@ mod tests {
                 "`fruit`.`id` AS `B_id`, `fruit`.`name` AS `B_name`, `fruit`.`cake_id` AS `B_cake_id`",
                 "FROM `cake` LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`",
                 "WHERE `cake`.`id` = 1 AND `fruit`.`id` = 2",
+            ].join(" ")
+        );
+    }
+
+    #[test]
+    fn select_with_2() {
+        assert_eq!(
+            cake::Entity::find()
+                .left_join(fruit::Entity)
+                .select_with(fruit::Entity)
+                .filter(cake::Column::Id.eq(1))
+                .filter(fruit::Column::Id.eq(2))
+                .build(MysqlQueryBuilder)
+                .to_string(),
+            [
+                "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
+                "`fruit`.`id` AS `B_id`, `fruit`.`name` AS `B_name`, `fruit`.`cake_id` AS `B_cake_id`",
+                "FROM `cake` LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id`",
+                "WHERE `cake`.`id` = 1 AND `fruit`.`id` = 2",
+                "ORDER BY `cake`.`id` ASC",
             ].join(" ")
         );
     }

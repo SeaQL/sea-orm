@@ -1,4 +1,4 @@
-use crate::{EntityTrait, QuerySelect, Related, Select, SelectTwo};
+use crate::{EntityTrait, QuerySelect, Related, Select, SelectTwo, SelectTwoMany};
 pub use sea_query::JoinType;
 
 impl<E> Select<E>
@@ -41,19 +41,28 @@ where
     }
 
     /// Left Join with a Related Entity and select both Entity.
-    pub fn left_join_and_select<R>(self, r: R) -> SelectTwo<E, R>
+    pub fn find_also_related<R>(self, r: R) -> SelectTwo<E, R>
     where
         R: EntityTrait,
         E: Related<R>,
     {
         self.left_join(r).select_also(r)
     }
+
+    /// Left Join with a Related Entity and select the related Entity as a `Vec`
+    pub fn find_with_related<R>(self, r: R) -> SelectTwoMany<E, R>
+    where
+        R: EntityTrait,
+        E: Related<R>,
+    {
+        self.left_join(r).select_with(r)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, filling, fruit};
-    use crate::{ColumnTrait, EntityTrait, QueryFilter, QueryTrait};
+    use crate::{ColumnTrait, EntityTrait, ModelTrait, QueryFilter, QueryTrait};
     use sea_query::MysqlQueryBuilder;
 
     #[test]
@@ -130,7 +139,10 @@ mod tests {
         };
 
         assert_eq!(
-            cake_model.find_fruit().build(MysqlQueryBuilder).to_string(),
+            cake_model
+                .find_related(fruit::Entity)
+                .build(MysqlQueryBuilder)
+                .to_string(),
             [
                 "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
                 "INNER JOIN `cake` ON `cake`.`id` = `fruit`.`cake_id`",

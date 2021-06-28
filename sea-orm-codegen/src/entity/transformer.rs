@@ -1,5 +1,4 @@
-use crate::{Entity, EntityWriter, Error, PrimaryKey, Relation};
-use sea_orm::RelationType;
+use crate::{Column, Entity, EntityWriter, Error, PrimaryKey, Relation, RelationType};
 use sea_query::TableStatement;
 use sea_schema::mysql::def::Schema;
 use std::{collections::HashMap, mem::swap};
@@ -31,10 +30,15 @@ impl EntityTransformer {
                     ))
                 }
             };
-            let columns = table_create
+            let columns: Vec<Column> = table_create
                 .get_columns()
                 .iter()
                 .map(|col_def| col_def.into())
+                .collect();
+            let unique_columns: Vec<String> = columns
+                .iter()
+                .filter(|col| col.unique)
+                .map(|col| col.name.clone())
                 .collect();
             let relations = table_create
                 .get_foreign_key_create_stmts()
@@ -64,9 +68,22 @@ impl EntityTransformer {
             entities.push(entity);
             for mut rel in relations.into_iter() {
                 let ref_table = rel.ref_table;
-                swap(&mut rel.columns, &mut rel.ref_columns);
-                rel.rel_type = RelationType::HasMany;
+                let mut unique = true;
+                for col in rel.columns.iter() {
+                    if !unique_columns.contains(col) {
+                        unique = false;
+                        break;
+                    }
+                }
+                let rel_type = if unique {
+                    RelationType::HasOne
+                } else {
+                    RelationType::HasMany
+                };
+                rel.rel_type = rel_type;
                 rel.ref_table = table_name.clone();
+                rel.columns = Vec::new();
+                rel.ref_columns = Vec::new();
                 if let Some(vec) = inverse_relations.get_mut(&ref_table) {
                     vec.push(rel);
                 } else {

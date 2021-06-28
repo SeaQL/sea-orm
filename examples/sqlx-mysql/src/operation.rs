@@ -20,12 +20,12 @@ pub async fn insert_and_update(db: &DbConn) -> Result<(), ExecErr> {
         name: Set("pear".to_owned()),
         ..Default::default()
     };
-    let res = Fruit::insert(pear).exec(db).await?;
+    let res: InsertResult = Fruit::insert(pear).exec(db).await?;
 
     println!();
-    println!("Inserted: {:?}\n", res);
+    println!("Inserted: last_insert_id = {}\n", res.last_insert_id);
 
-    let pear = Fruit::find_by_id(res.last_insert_id)
+    let pear: Option<fruit::Model> = Fruit::find_by_id(res.last_insert_id)
         .one(db)
         .await
         .map_err(|_| ExecErr)?;
@@ -36,10 +36,10 @@ pub async fn insert_and_update(db: &DbConn) -> Result<(), ExecErr> {
     let mut pear: fruit::ActiveModel = pear.unwrap().into();
     pear.name = Set("Sweet pear".to_owned());
 
-    let res = Fruit::update(pear).exec(db).await?;
+    let pear: fruit::ActiveModel = Fruit::update(pear).exec(db).await?;
 
     println!();
-    println!("Updated: {:?}\n", res);
+    println!("Updated: {:?}\n", pear);
 
     Ok(())
 }
