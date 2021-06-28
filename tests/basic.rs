@@ -1,4 +1,4 @@
-use sea_orm::{entity::*, query::*, sea_query, tests_cfg::*, DbConn};
+use sea_orm::{entity::*, error::*, sea_query, tests_cfg::*, DbConn};
 
 mod setup;
 
@@ -31,7 +31,7 @@ async fn setup_schema(db: &DbConn) {
     println!("Create table cake: {:?}", result);
 }
 
-async fn crud_cake(db: &DbConn) -> Result<(), ExecErr> {
+async fn crud_cake(db: &DbConn) -> Result<(), OrmError> {
     let apple = cake::ActiveModel {
         name: Set("Apple Pie".to_owned()),
         ..Default::default()
@@ -57,10 +57,7 @@ async fn crud_cake(db: &DbConn) -> Result<(), ExecErr> {
     println!();
     println!("Updated: {:?}", apple);
 
-    let apple = cake::Entity::find_by_id(1)
-        .one(db)
-        .await
-        .map_err(|_| ExecErr)?;
+    let apple = cake::Entity::find_by_id(1).one(db).await?;
 
     assert_eq!(
         Some(cake::Model {
@@ -77,10 +74,7 @@ async fn crud_cake(db: &DbConn) -> Result<(), ExecErr> {
     println!();
     println!("Deleted: {:?}", result);
 
-    let apple = cake::Entity::find_by_id(1)
-        .one(db)
-        .await
-        .map_err(|_| ExecErr)?;
+    let apple = cake::Entity::find_by_id(1).one(db).await?;
 
     assert_eq!(None, apple);
 

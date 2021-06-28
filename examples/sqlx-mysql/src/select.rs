@@ -1,7 +1,7 @@
 use super::*;
-use sea_orm::{entity::*, query::*, DbConn, FromQueryResult};
+use sea_orm::{entity::*, error::*, query::*, DbConn, FromQueryResult};
 
-pub async fn all_about_select(db: &DbConn) -> Result<(), QueryErr> {
+pub async fn all_about_select(db: &DbConn) -> Result<(), OrmError> {
     find_all(db).await?;
 
     println!("===== =====\n");
@@ -41,7 +41,7 @@ pub async fn all_about_select(db: &DbConn) -> Result<(), QueryErr> {
     Ok(())
 }
 
-async fn find_all(db: &DbConn) -> Result<(), QueryErr> {
+async fn find_all(db: &DbConn) -> Result<(), OrmError> {
     print!("find all cakes: ");
 
     let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
@@ -63,7 +63,7 @@ async fn find_all(db: &DbConn) -> Result<(), QueryErr> {
     Ok(())
 }
 
-async fn find_together(db: &DbConn) -> Result<(), QueryErr> {
+async fn find_together(db: &DbConn) -> Result<(), OrmError> {
     print!("find cakes and fruits: ");
 
     let both = Cake::find().find_also_related(Fruit).all(db).await?;
@@ -82,7 +82,7 @@ impl Cake {
     }
 }
 
-async fn find_one(db: &DbConn) -> Result<(), QueryErr> {
+async fn find_one(db: &DbConn) -> Result<(), OrmError> {
     print!("find one by primary key: ");
 
     let cheese: Option<cake::Model> = Cake::find_by_id(1).one(db).await?;
@@ -112,7 +112,7 @@ async fn find_one(db: &DbConn) -> Result<(), QueryErr> {
     Ok(())
 }
 
-async fn count_fruits_by_cake(db: &DbConn) -> Result<(), QueryErr> {
+async fn count_fruits_by_cake(db: &DbConn) -> Result<(), OrmError> {
     #[derive(Debug, FromQueryResult)]
     struct SelectResult {
         name: String,
@@ -138,7 +138,7 @@ async fn count_fruits_by_cake(db: &DbConn) -> Result<(), QueryErr> {
     Ok(())
 }
 
-async fn find_many_to_many(db: &DbConn) -> Result<(), QueryErr> {
+async fn find_many_to_many(db: &DbConn) -> Result<(), OrmError> {
     print!("find cakes and fillings: ");
 
     let both: Vec<(cake::Model, Vec<filling::Model>)> =
@@ -178,7 +178,7 @@ async fn find_many_to_many(db: &DbConn) -> Result<(), QueryErr> {
     Ok(())
 }
 
-async fn all_about_select_json(db: &DbConn) -> Result<(), QueryErr> {
+async fn all_about_select_json(db: &DbConn) -> Result<(), OrmError> {
     find_all_json(&db).await?;
 
     println!("===== =====\n");
@@ -192,7 +192,7 @@ async fn all_about_select_json(db: &DbConn) -> Result<(), QueryErr> {
     Ok(())
 }
 
-async fn find_all_json(db: &DbConn) -> Result<(), QueryErr> {
+async fn find_all_json(db: &DbConn) -> Result<(), OrmError> {
     print!("find all cakes: ");
 
     let cakes = Cake::find().into_json().all(db).await?;
@@ -208,7 +208,7 @@ async fn find_all_json(db: &DbConn) -> Result<(), QueryErr> {
     Ok(())
 }
 
-async fn find_together_json(db: &DbConn) -> Result<(), QueryErr> {
+async fn find_together_json(db: &DbConn) -> Result<(), OrmError> {
     print!("find cakes and fruits: ");
 
     let cakes_fruits = Cake::find()
@@ -225,7 +225,7 @@ async fn find_together_json(db: &DbConn) -> Result<(), QueryErr> {
     Ok(())
 }
 
-async fn count_fruits_by_cake_json(db: &DbConn) -> Result<(), QueryErr> {
+async fn count_fruits_by_cake_json(db: &DbConn) -> Result<(), OrmError> {
     print!("count fruits by cake: ");
 
     let count = Cake::find()
@@ -243,7 +243,7 @@ async fn count_fruits_by_cake_json(db: &DbConn) -> Result<(), QueryErr> {
     Ok(())
 }
 
-async fn find_all_stream(db: &DbConn) -> Result<(), QueryErr> {
+async fn find_all_stream(db: &DbConn) -> Result<(), OrmError> {
     use async_std::task::sleep;
     use futures::TryStreamExt;
     use std::time::Duration;
@@ -291,7 +291,7 @@ async fn find_all_stream(db: &DbConn) -> Result<(), QueryErr> {
     Ok(())
 }
 
-async fn find_first_page(db: &DbConn) -> Result<(), QueryErr> {
+async fn find_first_page(db: &DbConn) -> Result<(), OrmError> {
     println!("fruits first page: ");
     let page = fruit::Entity::find().paginate(db, 2).fetch_page(0).await?;
     for fruit in page {
@@ -301,7 +301,7 @@ async fn find_first_page(db: &DbConn) -> Result<(), QueryErr> {
     Ok(())
 }
 
-async fn find_num_pages(db: &DbConn) -> Result<(), QueryErr> {
+async fn find_num_pages(db: &DbConn) -> Result<(), OrmError> {
     println!("fruits number of page: ");
     let num_pages = fruit::Entity::find().paginate(db, 2).num_pages().await?;
     println!("{:?}", num_pages);

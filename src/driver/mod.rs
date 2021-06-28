@@ -4,8 +4,6 @@ mod mock;
 mod sqlx_mysql;
 #[cfg(feature = "sqlx-sqlite")]
 mod sqlx_sqlite;
-#[cfg(feature = "sqlx-dep")]
-mod sqlx_types;
 
 #[cfg(feature = "mock")]
 pub use mock::*;
@@ -13,5 +11,3 @@ pub use mock::*;
 pub use sqlx_mysql::*;
 #[cfg(feature = "sqlx-sqlite")]
 pub use sqlx_sqlite::*;
-#[cfg(feature = "sqlx-dep")]
-pub use sqlx_types::*;

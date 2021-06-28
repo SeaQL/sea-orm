@@ -1,7 +1,7 @@
 use crate::{
-    query::combine, DatabaseConnection, EntityTrait, FromQueryResult, Iterable, JsonValue,
-    ModelTrait, Paginator, PrimaryKeyToColumn, QueryErr, QueryResult, Select, SelectTwo,
-    SelectTwoMany, TypeErr,
+    error::*, query::combine, DatabaseConnection, EntityTrait, FromQueryResult, Iterable,
+    JsonValue, ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectTwo,
+    SelectTwoMany,
 };
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
@@ -18,7 +18,7 @@ where
 pub trait SelectorTrait {
     type Item: Sized;
 
-    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, TypeErr>;
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, OrmError>;
 }
 
 pub struct SelectModel<M>
@@ -43,7 +43,7 @@ where
 {
     type Item = M;
 
-    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, TypeErr> {
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, OrmError> {
         M::from_query_result(&res, "")
     }
 }
@@ -55,7 +55,7 @@ where
 {
     type Item = (M, Option<N>);
 
-    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, TypeErr> {
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, OrmError> {
         Ok((
             M::from_query_result(&res, combine::SELECT_A)?,
             N::from_query_result_optional(&res, combine::SELECT_B)?,
@@ -85,11 +85,11 @@ where
         }
     }
 
-    pub async fn one(self, db: &DatabaseConnection) -> Result<Option<E::Model>, QueryErr> {
+    pub async fn one(self, db: &DatabaseConnection) -> Result<Option<E::Model>, OrmError> {
         self.into_model::<E::Model>().one(db).await
     }
 
-    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<E::Model>, QueryErr> {
+    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<E::Model>, OrmError> {
         self.into_model::<E::Model>().all(db).await
     }
 
@@ -129,14 +129,14 @@ where
     pub async fn one(
         self,
         db: &DatabaseConnection,
-    ) -> Result<Option<(E::Model, Option<F::Model>)>, QueryErr> {
+    ) -> Result<Option<(E::Model, Option<F::Model>)>, OrmError> {
         self.into_model::<E::Model, F::Model>().one(db).await
     }
 
     pub async fn all(
         self,
         db: &DatabaseConnection,
-    ) -> Result<Vec<(E::Model, Option<F::Model>)>, QueryErr> {
+    ) -> Result<Vec<(E::Model, Option<F::Model>)>, OrmError> {
         self.into_model::<E::Model, F::Model>().all(db).await
     }
 }
@@ -168,14 +168,14 @@ where
     pub async fn one(
         self,
         db: &DatabaseConnection,
-    ) -> Result<Option<(E::Model, Option<F::Model>)>, QueryErr> {
+    ) -> Result<Option<(E::Model, Option<F::Model>)>, OrmError> {
         self.into_model::<E::Model, F::Model>().one(db).await
     }
 
     pub async fn all(
         self,
         db: &DatabaseConnection,
-    ) -> Result<Vec<(E::Model, Vec<F::Model>)>, QueryErr> {
+    ) -> Result<Vec<(E::Model, Vec<F::Model>)>, OrmError> {
         let rows = self.into_model::<E::Model, F::Model>().all(db).await?;
         Ok(consolidate_query_result::<E, F>(rows))
     }
@@ -185,7 +185,7 @@ impl<S> Selector<S>
 where
     S: SelectorTrait,
 {
-    pub async fn one(mut self, db: &DatabaseConnection) -> Result<Option<S::Item>, QueryErr> {
+    pub async fn one(mut self, db: &DatabaseConnection) -> Result<Option<S::Item>, OrmError> {
         let builder = db.get_query_builder_backend();
         self.query.limit(1);
         let row = db.query_one(builder.build(&self.query)).await?;
@@ -195,7 +195,7 @@ where
         }
     }
 
-    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, QueryErr> {
+    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, OrmError> {
         let builder = db.get_query_builder_backend();
         let rows = db.query_all(builder.build(&self.query)).await?;
         let mut models = Vec::new();

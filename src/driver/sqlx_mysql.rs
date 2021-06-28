@@ -6,7 +6,7 @@ use sqlx::{
 sea_query::sea_query_driver_mysql!();
 use sea_query_driver_mysql::bind_query;
 
-use crate::{debug_print, executor::*, ConnectionErr, DatabaseConnection, Statement};
+use crate::{debug_print, error::*, executor::*, DatabaseConnection, Statement};
 
 pub struct SqlxMySqlConnector;
 
@@ -19,13 +19,13 @@ impl SqlxMySqlConnector {
         string.starts_with("mysql://")
     }
 
-    pub async fn connect(string: &str) -> Result<DatabaseConnection, ConnectionErr> {
+    pub async fn connect(string: &str) -> Result<DatabaseConnection, OrmError> {
         if let Ok(pool) = MySqlPool::connect(string).await {
             Ok(DatabaseConnection::SqlxMySqlPoolConnection(
                 SqlxMySqlPoolConnection { pool },
             ))
         } else {
-            Err(ConnectionErr)
+            Err(OrmError::Connection)
         }
     }
 }
@@ -37,7 +37,7 @@ impl SqlxMySqlConnector {
 }
 
 impl SqlxMySqlPoolConnection {
-    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, ExecErr> {
+    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, OrmError> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
@@ -46,10 +46,10 @@ impl SqlxMySqlPoolConnection {
                 return Ok(res.into());
             }
         }
-        Err(ExecErr)
+        Err(OrmError::Execution)
     }
 
-    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, QueryErr> {
+    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, OrmError> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
@@ -60,11 +60,11 @@ impl SqlxMySqlPoolConnection {
                 Ok(None)
             }
         } else {
-            Err(QueryErr)
+            Err(OrmError::Query)
         }
     }
 
-    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr> {
+    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, OrmError> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
@@ -73,7 +73,7 @@ impl SqlxMySqlPoolConnection {
                 return Ok(rows.into_iter().map(|r| r.into()).collect());
             }
         }
-        Err(QueryErr)
+        Err(OrmError::Query)
     }
 }
 

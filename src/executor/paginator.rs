@@ -1,4 +1,4 @@
-use crate::{DatabaseConnection, QueryErr, SelectorTrait};
+use crate::{error::*, DatabaseConnection, SelectorTrait};
 use async_stream::stream;
 use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
@@ -23,7 +23,7 @@ where
     S: SelectorTrait + 'db,
 {
     /// Fetch a specific page
-    pub async fn fetch_page(&self, page: usize) -> Result<Vec<S::Item>, QueryErr> {
+    pub async fn fetch_page(&self, page: usize) -> Result<Vec<S::Item>, OrmError> {
         let query = self
             .query
             .clone()
@@ -36,18 +36,18 @@ where
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
             // TODO: Error handling
-            buffer.push(S::from_raw_query_result(row).map_err(|_e| QueryErr)?);
+            buffer.push(S::from_raw_query_result(row)?);
         }
         Ok(buffer)
     }
 
     /// Fetch the current page
-    pub async fn fetch(&self) -> Result<Vec<S::Item>, QueryErr> {
+    pub async fn fetch(&self) -> Result<Vec<S::Item>, OrmError> {
         self.fetch_page(self.page).await
     }
 
     /// Get the total number of pages
-    pub async fn num_pages(&self) -> Result<usize, QueryErr> {
+    pub async fn num_pages(&self) -> Result<usize, OrmError> {
         let builder = self.db.get_query_builder_backend();
         let stmt = builder.build(
             SelectStatement::new()
@@ -61,9 +61,7 @@ where
             Some(res) => res,
             None => return Ok(0),
         };
-        let num_rows = result
-            .try_get::<i32>("", "num_rows")
-            .map_err(|_e| QueryErr)? as usize;
+        let num_rows = result.try_get::<i32>("", "num_rows")? as usize;
         let num_pages = (num_rows / self.page_size) + (num_rows % self.page_size > 0) as usize;
         Ok(num_pages)
     }
@@ -79,7 +77,7 @@ where
     }
 
     /// Fetch one page and increment the page counter
-    pub async fn fetch_and_next(&mut self) -> Result<Option<Vec<S::Item>>, QueryErr> {
+    pub async fn fetch_and_next(&mut self) -> Result<Option<Vec<S::Item>>, OrmError> {
         let vec = self.fetch().await?;
         self.next();
         let opt = if !vec.is_empty() { Some(vec) } else { None };
@@ -87,7 +85,7 @@ where
     }
 
     /// Convert self into an async stream
-    pub fn into_stream(mut self) -> PinBoxStream<'db, Result<Vec<S::Item>, QueryErr>> {
+    pub fn into_stream(mut self) -> PinBoxStream<'db, Result<Vec<S::Item>, OrmError>> {
         Box::pin(stream! {
             loop {
                 if let Some(vec) = self.fetch_and_next().await? {
@@ -105,7 +103,7 @@ where
 mod tests {
     use crate::entity::prelude::*;
     use crate::tests_cfg::*;
-    use crate::{DatabaseConnection, MockDatabase, QueryErr, Transaction};
+    use crate::{DatabaseConnection, MockDatabase, Transaction};
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};
 
@@ -150,7 +148,7 @@ mod tests {
     }
 
     #[async_std::test]
-    async fn fetch_page() -> Result<(), QueryErr> {
+    async fn fetch_page() -> Result<(), OrmError> {
         let (db, pages) = setup();
 
         let paginator = fruit::Entity::find().paginate(&db, 2);
@@ -180,7 +178,7 @@ mod tests {
     }
 
     #[async_std::test]
-    async fn fetch() -> Result<(), QueryErr> {
+    async fn fetch() -> Result<(), OrmError> {
         let (db, pages) = setup();
 
         let mut paginator = fruit::Entity::find().paginate(&db, 2);
@@ -214,7 +212,7 @@ mod tests {
     }
 
     #[async_std::test]
-    async fn num_pages() -> Result<(), QueryErr> {
+    async fn num_pages() -> Result<(), OrmError> {
         let (db, num_rows) = setup_num_rows();
 
         let num_rows = num_rows as usize;
@@ -246,7 +244,7 @@ mod tests {
     }
 
     #[async_std::test]
-    async fn next_and_cur_page() -> Result<(), QueryErr> {
+    async fn next_and_cur_page() -> Result<(), OrmError> {
         let (db, _) = setup();
 
         let mut paginator = fruit::Entity::find().paginate(&db, 2);
@@ -262,7 +260,7 @@ mod tests {
     }
 
     #[async_std::test]
-    async fn fetch_and_next() -> Result<(), QueryErr> {
+    async fn fetch_and_next() -> Result<(), OrmError> {
         let (db, pages) = setup();
 
         let mut paginator = fruit::Entity::find().paginate(&db, 2);
@@ -297,7 +295,7 @@ mod tests {
     }
 
     #[async_std::test]
-    async fn into_stream() -> Result<(), QueryErr> {
+    async fn into_stream() -> Result<(), OrmError> {
         let (db, pages) = setup();
 
         let mut fruit_stream = fruit::Entity::find().paginate(&db, 2).into_stream();

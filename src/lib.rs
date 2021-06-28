@@ -43,8 +43,8 @@
 //!
 //! ## Select
 //! ```
-//! # use sea_orm::{DbConn, entity::*, query::*, tests_cfg::*};
-//! # async fn function(db: &DbConn) -> Result<(), QueryErr> {
+//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # async fn function(db: &DbConn) -> Result<(), OrmError> {
 //! #
 //! // find all models
 //! let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
@@ -73,8 +73,8 @@
 //! ```
 //! ## Insert
 //! ```
-//! # use sea_orm::{DbConn, entity::*, query::*, tests_cfg::*};
-//! # async fn function(db: &DbConn) -> Result<(), ExecErr> {
+//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # async fn function(db: &DbConn) -> Result<(), OrmError> {
 //! #
 //! let apple = fruit::ActiveModel {
 //!     name: Set("Apple".to_owned()),
@@ -94,7 +94,7 @@
 //! # Ok(())
 //! # }
 //! #
-//! # async fn function2(db: &DbConn) -> Result<(), ExecErr> {
+//! # async fn function2(db: &DbConn) -> Result<(), OrmError> {
 //! # let apple = fruit::ActiveModel {
 //! #     name: Set("Apple".to_owned()),
 //! #     ..Default::default() // no need to set primary key
@@ -113,16 +113,16 @@
 //! ```
 //! ## Update
 //! ```
-//! # use sea_orm::{DbConn, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! #
 //! use sea_orm::sea_query::{Expr, Value};
 //!
-//! # async fn function(db: &DbConn) -> Result<(), QueryErr> {
+//! # async fn function(db: &DbConn) -> Result<(), OrmError> {
 //! let pear: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
 //! # Ok(())
 //! # }
 //! #
-//! # async fn function2(db: &DbConn) -> Result<(), ExecErr> {
+//! # async fn function2(db: &DbConn) -> Result<(), OrmError> {
 //! # let pear: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await.unwrap();
 //!
 //! let mut pear: fruit::ActiveModel = pear.unwrap().into();
@@ -143,9 +143,9 @@
 //! ```
 //! ## Save
 //! ```
-//! # use sea_orm::{DbConn, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! #
-//! # async fn function(db: &DbConn) -> Result<(), ExecErr> {
+//! # async fn function(db: &DbConn) -> Result<(), OrmError> {
 //! let banana = fruit::ActiveModel {
 //!     id: Unset(None),
 //!     name: Set("Banana".to_owned()),
@@ -165,14 +165,14 @@
 //! ```
 //! ## Delete
 //! ```
-//! # use sea_orm::{DbConn, entity::*, query::*, tests_cfg::*};
+//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! #
-//! # async fn function(db: &DbConn) -> Result<(), QueryErr> {
+//! # async fn function(db: &DbConn) -> Result<(), OrmError> {
 //! let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
 //! # Ok(())
 //! # }
 //! #
-//! # async fn function2(db: &DbConn) -> Result<(), ExecErr> {
+//! # async fn function2(db: &DbConn) -> Result<(), OrmError> {
 //! # let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await.unwrap();
 //! let orange: fruit::ActiveModel = orange.unwrap().into();
 //!
@@ -198,6 +198,7 @@
 mod database;
 mod driver;
 pub mod entity;
+pub mod error;
 mod executor;
 pub mod query;
 #[doc(hidden)]
@@ -207,6 +208,7 @@ mod util;
 pub use database::*;
 pub use driver::*;
 pub use entity::*;
+pub use error::*;
 pub use executor::*;
 pub use query::*;
 
