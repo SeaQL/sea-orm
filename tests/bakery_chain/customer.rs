@@ -54,10 +54,7 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Order => Entity::has_many(super::order::Entity)
-                .from(Column::Id)
-                .to(super::order::Column::CustomerId)
-                .into(),
+            Self::Order => Entity::has_many(super::order::Entity).into(),
         }
     }
 }
