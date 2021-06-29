@@ -67,10 +67,4 @@ impl Related<super::baker::Entity> for Entity {
     }
 }
 
-impl Model {
-    pub fn find_bakers(&self) -> Select<super::baker::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
-    }
-}
-
 impl ActiveModelBehavior for ActiveModel {}

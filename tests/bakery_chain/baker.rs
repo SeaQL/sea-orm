@@ -68,4 +68,14 @@ impl Related<super::bakery::Entity> for Entity {
     }
 }
 
+impl Related<super::cake::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::cakes_bakers::Relation::Cake.def()
+    }
+
+    fn via() -> Option<RelationDef> {
+        Some(super::cakes_bakers::Relation::Baker.def().rev())
+    }
+}
+
 impl ActiveModelBehavior for ActiveModel {}

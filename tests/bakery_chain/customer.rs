@@ -68,10 +68,4 @@ impl Related<super::order::Entity> for Entity {
     }
 }
 
-impl Model {
-    pub fn find_orders(&self) -> Select<super::order::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
-    }
-}
-
 impl ActiveModelBehavior for ActiveModel {}

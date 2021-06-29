@@ -93,10 +93,4 @@ impl Related<super::lineitem::Entity> for Entity {
     }
 }
 
-impl Model {
-    pub fn find_lineitems(&self) -> Select<super::lineitem::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
-    }
-}
-
 impl ActiveModelBehavior for ActiveModel {}
