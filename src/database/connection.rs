@@ -1,6 +1,7 @@
 use crate::{ExecErr, ExecResult, QueryErr, QueryResult, Statement, Transaction};
 use sea_query::{
-    MysqlQueryBuilder, PostgresQueryBuilder, QueryStatementBuilder, SqliteQueryBuilder,
+    MysqlQueryBuilder, PostgresQueryBuilder, QueryStatementBuilder, SchemaStatementBuilder,
+    SqliteQueryBuilder,
 };
 use std::{error::Error, fmt};
 
@@ -17,6 +18,12 @@ pub enum DatabaseConnection {
 pub type DbConn = DatabaseConnection;
 
 pub enum QueryBuilderBackend {
+    MySql,
+    Postgres,
+    Sqlite,
+}
+
+pub enum SchemaBuilderBackend {
     MySql,
     Postgres,
     Sqlite,
@@ -66,6 +73,18 @@ impl DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(_) => QueryBuilderBackend::Sqlite,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(_) => QueryBuilderBackend::Postgres,
+            DatabaseConnection::Disconnected => panic!("Disconnected"),
+        }
+    }
+
+    pub fn get_schema_builder_backend(&self) -> SchemaBuilderBackend {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(_) => SchemaBuilderBackend::MySql,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(_) => SchemaBuilderBackend::Sqlite,
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(_) => SchemaBuilderBackend::Postgres,
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
     }
@@ -130,6 +149,20 @@ impl QueryBuilderBackend {
     pub fn build<S>(&self, statement: &S) -> Statement
     where
         S: QueryStatementBuilder,
+    {
+        match self {
+            Self::MySql => statement.build(MysqlQueryBuilder),
+            Self::Postgres => statement.build(PostgresQueryBuilder),
+            Self::Sqlite => statement.build(SqliteQueryBuilder),
+        }
+        .into()
+    }
+}
+
+impl SchemaBuilderBackend {
+    pub fn build<S>(&self, statement: &S) -> Statement
+    where
+        S: SchemaStatementBuilder,
     {
         match self {
             Self::MySql => statement.build(MysqlQueryBuilder),
