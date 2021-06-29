@@ -1,5 +1,5 @@
 use sea_orm::{sea_query, DbConn, ExecErr, ExecResult};
-use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, SqliteQueryBuilder};
+use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, TableCreateStatement};
 
 pub mod bakery_chain;
 mod setup;
@@ -21,6 +21,11 @@ async fn setup_schema(db: &DbConn) {
     assert!(create_cakes_bakers_table(db).await.is_ok());
 }
 
+async fn create_table(db: &DbConn, stmt: &TableCreateStatement) -> Result<ExecResult, ExecErr> {
+    let builder = db.get_schema_builder_backend();
+    db.execute(builder.build(stmt)).await
+}
+
 async fn create_bakery_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
     let stmt = sea_query::Table::create()
         .table(bakery::Entity)
@@ -34,9 +39,9 @@ async fn create_bakery_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
         )
         .col(ColumnDef::new(bakery::Column::Name).string())
         .col(ColumnDef::new(bakery::Column::ProfitMargin).float())
-        .build(SqliteQueryBuilder);
+        .to_owned();
 
-    db.execute(stmt.into()).await
+    create_table(db, &stmt).await
 }
 
 async fn create_baker_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
@@ -60,9 +65,9 @@ async fn create_baker_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
                 .on_delete(ForeignKeyAction::Cascade)
                 .on_update(ForeignKeyAction::Cascade),
         )
-        .build(SqliteQueryBuilder);
+        .to_owned();
 
-    db.execute(stmt.into()).await
+    create_table(db, &stmt).await
 }
 
 async fn create_customer_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
@@ -78,9 +83,9 @@ async fn create_customer_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
         )
         .col(ColumnDef::new(customer::Column::Name).string())
         .col(ColumnDef::new(customer::Column::Notes).text())
-        .build(SqliteQueryBuilder);
+        .to_owned();
 
-    db.execute(stmt.into()).await
+    create_table(db, &stmt).await
 }
 
 async fn create_order_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
@@ -122,9 +127,9 @@ async fn create_order_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
                 .on_delete(ForeignKeyAction::Cascade)
                 .on_update(ForeignKeyAction::Cascade),
         )
-        .build(SqliteQueryBuilder);
+        .to_owned();
 
-    db.execute(stmt.into()).await
+    create_table(db, &stmt).await
 }
 
 async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
@@ -153,9 +158,9 @@ async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
                 .on_delete(ForeignKeyAction::Cascade)
                 .on_update(ForeignKeyAction::Cascade),
         )
-        .build(SqliteQueryBuilder);
+        .to_owned();
 
-    db.execute(stmt.into()).await
+    create_table(db, &stmt).await
 }
 
 async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
@@ -177,7 +182,7 @@ async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
                 .col(cakes_bakers::Column::CakeId)
                 .col(cakes_bakers::Column::BakerId),
         )
-        .build(SqliteQueryBuilder);
+        .to_owned();
 
-    db.execute(stmt.into()).await
+    create_table(db, &stmt).await
 }
