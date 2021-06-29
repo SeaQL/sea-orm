@@ -66,10 +66,7 @@ async fn find_all(db: &DbConn) -> Result<(), QueryErr> {
 async fn find_together(db: &DbConn) -> Result<(), QueryErr> {
     print!("find cakes and fruits: ");
 
-    let both = Cake::find()
-        .find_also_related(Fruit)
-        .all(db)
-        .await?;
+    let both = Cake::find().find_also_related(Fruit).all(db).await?;
 
     println!();
     for bb in both.iter() {
@@ -144,10 +141,8 @@ async fn count_fruits_by_cake(db: &DbConn) -> Result<(), QueryErr> {
 async fn find_many_to_many(db: &DbConn) -> Result<(), QueryErr> {
     print!("find cakes and fillings: ");
 
-    let both: Vec<(cake::Model, Vec<filling::Model>)> = Cake::find()
-        .find_with_related(Filling)
-        .all(db)
-        .await?;
+    let both: Vec<(cake::Model, Vec<filling::Model>)> =
+        Cake::find().find_with_related(Filling).all(db).await?;
 
     println!();
     for bb in both.iter() {
