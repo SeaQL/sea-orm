@@ -98,4 +98,10 @@ impl Related<super::baker::Entity> for Entity {
     }
 }
 
+impl Related<super::lineitem::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Lineitem.def()
+    }
+}
+
 impl ActiveModelBehavior for ActiveModel {}

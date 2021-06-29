@@ -39,6 +39,7 @@ impl PrimaryKeyTrait for PrimaryKey {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Order,
+    Cake,
 }
 
 impl ColumnTrait for Column {
@@ -61,6 +62,10 @@ impl RelationTrait for Relation {
                 .from(Column::Id)
                 .to(super::order::Column::CustomerId)
                 .into(),
+            Self::Cake => Entity::belongs_to(super::cake::Entity)
+                .from(Column::Id)
+                .to(super::cake::Column::LineitemId)
+                .into(),
         }
     }
 }
@@ -68,6 +73,12 @@ impl RelationTrait for Relation {
 impl Related<super::order::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Order.def()
+    }
+}
+
+impl Related<super::cake::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Cake.def()
     }
 }
 

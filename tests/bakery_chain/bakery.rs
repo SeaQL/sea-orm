@@ -38,6 +38,7 @@ impl PrimaryKeyTrait for PrimaryKey {
 pub enum Relation {
     Baker,
     Order,
+    Cake,
 }
 
 impl ColumnTrait for Column {
@@ -57,6 +58,7 @@ impl RelationTrait for Relation {
         match self {
             Self::Baker => Entity::has_many(super::baker::Entity).into(),
             Self::Order => Entity::has_many(super::order::Entity).into(),
+            Self::Cake => Entity::has_many(super::cake::Entity).into(),
         }
     }
 }
@@ -64,6 +66,18 @@ impl RelationTrait for Relation {
 impl Related<super::baker::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Baker.def()
+    }
+}
+
+impl Related<super::order::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Order.def()
+    }
+}
+
+impl Related<super::cake::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Cake.def()
     }
 }
 
