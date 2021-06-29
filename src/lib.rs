@@ -141,6 +141,28 @@
 //! # Ok(())
 //! # }
 //! ```
+//! ## Save
+//! ```
+//! # use sea_orm::{DbConn, entity::*, query::*, tests_cfg::*};
+//! #
+//! # async fn function(db: &DbConn) -> Result<(), ExecErr> {
+//! let banana = fruit::ActiveModel {
+//!     id: Unset(None),
+//!     name: Set("Banana".to_owned()),
+//!     ..Default::default()
+//! };
+//!
+//! // create, because primary key `id` is `Unset`
+//! let mut banana = banana.save(db).await?;
+//!
+//! banana.name = Set("Banana Mongo".to_owned());
+//!
+//! // update, because primary key `id` is `Set`
+//! let banana = banana.save(db).await?;
+//!
+//! # Ok(())
+//! # }
+//! ```
 //! ## Delete
 //! ```
 //! # use sea_orm::{DbConn, entity::*, query::*, tests_cfg::*};
