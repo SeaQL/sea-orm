@@ -178,6 +178,9 @@
 //!
 //! // delete one
 //! fruit::Entity::delete(orange).exec(db).await?;
+//! // or simply
+//! # let orange: fruit::ActiveModel = Fruit::find_by_id(1).one(db).await.unwrap().unwrap().into();
+//! orange.delete(db).await?;
 //!
 //! // delete many: DELETE FROM "fruit" WHERE "fruit"."name" LIKE 'Orange'
 //! fruit::Entity::delete_many()
