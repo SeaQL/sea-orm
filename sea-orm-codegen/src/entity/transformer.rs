@@ -1,7 +1,7 @@
 use crate::{Column, Entity, EntityWriter, Error, PrimaryKey, Relation, RelationType};
 use sea_query::TableStatement;
 use sea_schema::mysql::def::Schema;
-use std::{collections::HashMap, mem::swap};
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct EntityTransformer {
