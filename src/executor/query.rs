@@ -1,4 +1,4 @@
-use crate::OrmError;
+use crate::SeaErr;
 use std::fmt;
 
 #[derive(Debug)]
@@ -16,7 +16,7 @@ pub(crate) enum QueryResultRow {
 }
 
 pub trait TryGetable {
-    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, OrmError>
+    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, SeaErr>
     where
         Self: Sized;
 }
@@ -24,7 +24,7 @@ pub trait TryGetable {
 // QueryResult //
 
 impl QueryResult {
-    pub fn try_get<T>(&self, pre: &str, col: &str) -> Result<T, OrmError>
+    pub fn try_get<T>(&self, pre: &str, col: &str) -> Result<T, SeaErr>
     where
         T: TryGetable,
     {
@@ -50,7 +50,7 @@ impl fmt::Debug for QueryResultRow {
 macro_rules! try_getable_all {
     ( $type: ty ) => {
         impl TryGetable for $type {
-            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, OrmError> {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, SeaErr> {
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
@@ -70,7 +70,7 @@ macro_rules! try_getable_all {
         }
 
         impl TryGetable for Option<$type> {
-            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, OrmError> {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, SeaErr> {
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
@@ -103,7 +103,7 @@ macro_rules! try_getable_all {
 macro_rules! try_getable_mysql {
     ( $type: ty ) => {
         impl TryGetable for $type {
-            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, OrmError> {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, SeaErr> {
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
@@ -122,7 +122,7 @@ macro_rules! try_getable_mysql {
         }
 
         impl TryGetable for Option<$type> {
-            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, OrmError> {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, SeaErr> {
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]

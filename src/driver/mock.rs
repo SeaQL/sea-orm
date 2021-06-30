@@ -15,9 +15,9 @@ pub struct MockDatabaseConnection {
 }
 
 pub trait MockDatabaseTrait: Send {
-    fn execute(&mut self, counter: usize, stmt: Statement) -> Result<ExecResult, OrmError>;
+    fn execute(&mut self, counter: usize, stmt: Statement) -> Result<ExecResult, SeaErr>;
 
-    fn query(&mut self, counter: usize, stmt: Statement) -> Result<Vec<QueryResult>, OrmError>;
+    fn query(&mut self, counter: usize, stmt: Statement) -> Result<Vec<QueryResult>, SeaErr>;
 
     fn drain_transaction_log(&mut self) -> Vec<Transaction>;
 }
@@ -27,7 +27,7 @@ impl MockDatabaseConnector {
         string.starts_with("mock://")
     }
 
-    pub async fn connect(_string: &str) -> Result<DatabaseConnection, OrmError> {
+    pub async fn connect(_string: &str) -> Result<DatabaseConnection, SeaErr> {
         Ok(DatabaseConnection::MockDatabaseConnection(
             MockDatabaseConnection::new(MockDatabase::new()),
         ))
@@ -49,20 +49,20 @@ impl MockDatabaseConnection {
         &self.mocker
     }
 
-    pub async fn execute(&self, statement: Statement) -> Result<ExecResult, OrmError> {
+    pub async fn execute(&self, statement: Statement) -> Result<ExecResult, SeaErr> {
         debug_print!("{}", statement);
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
         self.mocker.lock().unwrap().execute(counter, statement)
     }
 
-    pub async fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, OrmError> {
+    pub async fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, SeaErr> {
         debug_print!("{}", statement);
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
         let result = self.mocker.lock().unwrap().query(counter, statement)?;
         Ok(result.into_iter().next())
     }
 
-    pub async fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, OrmError> {
+    pub async fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, SeaErr> {
         debug_print!("{}", statement);
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
         self.mocker.lock().unwrap().query(counter, statement)

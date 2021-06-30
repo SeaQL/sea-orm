@@ -1,7 +1,7 @@
 use super::*;
 use sea_orm::{entity::*, error::*, query::*, DbConn};
 
-pub async fn all_about_operation(db: &DbConn) -> Result<(), OrmError> {
+pub async fn all_about_operation(db: &DbConn) -> Result<(), SeaErr> {
     insert_and_update(db).await?;
 
     println!("===== =====\n");
@@ -15,7 +15,7 @@ pub async fn all_about_operation(db: &DbConn) -> Result<(), OrmError> {
     Ok(())
 }
 
-pub async fn insert_and_update(db: &DbConn) -> Result<(), OrmError> {
+pub async fn insert_and_update(db: &DbConn) -> Result<(), SeaErr> {
     let pear = fruit::ActiveModel {
         name: Set("pear".to_owned()),
         ..Default::default()
@@ -41,7 +41,7 @@ pub async fn insert_and_update(db: &DbConn) -> Result<(), OrmError> {
     Ok(())
 }
 
-pub async fn save_active_model(db: &DbConn) -> Result<(), OrmError> {
+pub async fn save_active_model(db: &DbConn) -> Result<(), SeaErr> {
     let banana = fruit::ActiveModel {
         name: Set("Banana".to_owned()),
         ..Default::default()
@@ -79,7 +79,7 @@ mod form {
     }
 }
 
-async fn save_custom_active_model(db: &DbConn) -> Result<(), OrmError> {
+async fn save_custom_active_model(db: &DbConn) -> Result<(), SeaErr> {
     let pineapple = form::ActiveModel {
         id: Unset(None),
         name: Set("Pineapple".to_owned()),

@@ -31,7 +31,7 @@ async fn setup_schema(db: &DbConn) {
     println!("Create table cake: {:?}", result);
 }
 
-async fn crud_cake(db: &DbConn) -> Result<(), OrmError> {
+async fn crud_cake(db: &DbConn) -> Result<(), SeaErr> {
     let apple = cake::ActiveModel {
         name: Set("Apple Pie".to_owned()),
         ..Default::default()

@@ -44,7 +44,7 @@
 //! ## Select
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
-//! # async fn function(db: &DbConn) -> Result<(), OrmError> {
+//! # async fn function(db: &DbConn) -> Result<(), SeaErr> {
 //! #
 //! // find all models
 //! let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
@@ -74,7 +74,7 @@
 //! ## Insert
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
-//! # async fn function(db: &DbConn) -> Result<(), OrmError> {
+//! # async fn function(db: &DbConn) -> Result<(), SeaErr> {
 //! #
 //! let apple = fruit::ActiveModel {
 //!     name: Set("Apple".to_owned()),
@@ -94,7 +94,7 @@
 //! # Ok(())
 //! # }
 //! #
-//! # async fn function2(db: &DbConn) -> Result<(), OrmError> {
+//! # async fn function2(db: &DbConn) -> Result<(), SeaErr> {
 //! # let apple = fruit::ActiveModel {
 //! #     name: Set("Apple".to_owned()),
 //! #     ..Default::default() // no need to set primary key
@@ -117,12 +117,12 @@
 //! #
 //! use sea_orm::sea_query::{Expr, Value};
 //!
-//! # async fn function(db: &DbConn) -> Result<(), OrmError> {
+//! # async fn function(db: &DbConn) -> Result<(), SeaErr> {
 //! let pear: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
 //! # Ok(())
 //! # }
 //! #
-//! # async fn function2(db: &DbConn) -> Result<(), OrmError> {
+//! # async fn function2(db: &DbConn) -> Result<(), SeaErr> {
 //! # let pear: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await.unwrap();
 //!
 //! let mut pear: fruit::ActiveModel = pear.unwrap().into();
@@ -145,7 +145,7 @@
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! #
-//! # async fn function(db: &DbConn) -> Result<(), OrmError> {
+//! # async fn function(db: &DbConn) -> Result<(), SeaErr> {
 //! let banana = fruit::ActiveModel {
 //!     id: Unset(None),
 //!     name: Set("Banana".to_owned()),
@@ -167,12 +167,12 @@
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! #
-//! # async fn function(db: &DbConn) -> Result<(), OrmError> {
+//! # async fn function(db: &DbConn) -> Result<(), SeaErr> {
 //! let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
 //! # Ok(())
 //! # }
 //! #
-//! # async fn function2(db: &DbConn) -> Result<(), OrmError> {
+//! # async fn function2(db: &DbConn) -> Result<(), SeaErr> {
 //! # let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await.unwrap();
 //! let orange: fruit::ActiveModel = orange.unwrap().into();
 //!
