@@ -2,8 +2,8 @@ use std::{error, fmt};
 
 #[derive(Debug)]
 pub enum DbErr {
-    Connection,
-    Execution,
+    Conn,
+    Exec,
     Query,
     #[cfg(feature = "sqlx-dep")]
     Sqlx(sqlx::Error),
@@ -12,8 +12,8 @@ pub enum DbErr {
 impl fmt::Display for DbErr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Connection => write!(f, "{:?}", "Connection Error"),
-            Self::Execution => write!(f, "{:?}", "Execution Error"),
+            Self::Conn => write!(f, "{:?}", "Connection Error"),
+            Self::Exec => write!(f, "{:?}", "Execution Error"),
             Self::Query => write!(f, "{:?}", "Query Error"),
             #[cfg(feature = "sqlx-dep")]
             Self::Sqlx(e) => write!(f, "{:?}", e),
@@ -24,8 +24,8 @@ impl fmt::Display for DbErr {
 impl error::Error for DbErr {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
-            Self::Connection => None,
-            Self::Execution => None,
+            Self::Conn => None,
+            Self::Exec => None,
             Self::Query => None,
             #[cfg(feature = "sqlx-dep")]
             Self::Sqlx(e) => Some(e),

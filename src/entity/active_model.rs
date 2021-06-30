@@ -227,7 +227,7 @@ where
         let model: Option<E::Model> = res?;
         match model {
             Some(model) => Ok(model.into_active_model()),
-            None => Err(DbErr::Execution),
+            None => Err(DbErr::Exec),
         }
     } else {
         Ok(A::default())

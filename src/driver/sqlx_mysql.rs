@@ -25,7 +25,7 @@ impl SqlxMySqlConnector {
                 SqlxMySqlPoolConnection { pool },
             ))
         } else {
-            Err(DbErr::Connection)
+            Err(DbErr::Conn)
         }
     }
 }
@@ -46,7 +46,7 @@ impl SqlxMySqlPoolConnection {
                 return Ok(res.into());
             }
         }
-        Err(DbErr::Execution)
+        Err(DbErr::Exec)
     }
 
     pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {

@@ -75,7 +75,7 @@ impl MockDatabaseTrait for MockDatabase {
                 result: ExecResultHolder::Mock(std::mem::take(&mut self.exec_results[counter])),
             })
         } else {
-            Err(DbErr::Execution)
+            Err(DbErr::Exec)
         }
     }
 

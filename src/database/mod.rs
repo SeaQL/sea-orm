@@ -29,6 +29,6 @@ impl Database {
         if crate::MockDatabaseConnector::accepts(string) {
             return Ok(crate::MockDatabaseConnector::connect(string).await?);
         }
-        Err(DbErr::Connection)
+        Err(DbErr::Conn)
     }
 }
