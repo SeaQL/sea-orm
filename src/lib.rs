@@ -35,9 +35,9 @@
 //!
 //! Use mock connections to write unit tests for your logic.
 //!
-//! 4. API oriented
+//! 4. Service oriented
 //!
-//! Quickly build search models that help you join, filter, sort and paginate data in APIs.
+//! Quickly build services that join, filter, sort and paginate data in APIs.
 //!
 //! # A quick taste of SeaORM
 //!
