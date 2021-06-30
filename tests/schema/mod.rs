@@ -168,3 +168,36 @@ pub async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, ExecEr
 
   create_table(db, &stmt).await
 }
+
+pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
+  let stmt = sea_query::Table::create()
+    .table(cake::Entity)
+    .if_not_exists()
+    .col(
+      ColumnDef::new(cake::Column::Id)
+        .integer()
+        .not_null()
+        .auto_increment()
+        .primary_key(),
+    )
+    .col(ColumnDef::new(cake::Column::Name).string())
+    .col(ColumnDef::new(cake::Column::Price).float())
+    .col(ColumnDef::new(cake::Column::BakeryId).integer().not_null())
+    .col(
+      ColumnDef::new(cake::Column::LineitemId)
+        .integer()
+        .not_null(),
+    )
+    .foreign_key(
+      ForeignKey::create()
+        .name("FK_cake_bakery")
+        .from(cake::Entity, cake::Column::BakeryId)
+        .to(bakery::Entity, bakery::Column::Id)
+        .on_delete(ForeignKeyAction::Cascade)
+        .on_update(ForeignKeyAction::Cascade),
+    )
+    .col(ColumnDef::new(cake::Column::GlutenFree).boolean())
+    .to_owned();
+
+  create_table(db, &stmt).await
+}

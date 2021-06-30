@@ -20,6 +20,7 @@ async fn setup_schema(db: &DbConn) {
     assert!(schema::create_customer_table(db).await.is_ok());
     assert!(schema::create_order_table(db).await.is_ok());
     assert!(schema::create_lineitem_table(db).await.is_ok());
+    assert!(schema::create_cake_table(db).await.is_ok());
     assert!(schema::create_cakes_bakers_table(db).await.is_ok());
 }
 

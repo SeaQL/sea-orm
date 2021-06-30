@@ -16,8 +16,6 @@ pub struct Model {
     pub price: f32,
     pub bakery_id: Option<i32>,
     pub lineitem_id: Option<i32>,
-    pub best_before: String,
-    pub produced_at: String,
     pub gluten_free: bool,
 }
 
@@ -28,8 +26,6 @@ pub enum Column {
     Price,
     BakeryId,
     LineitemId,
-    BestBefore,
-    ProducedAt,
     GlutenFree,
 }
 
@@ -60,8 +56,6 @@ impl ColumnTrait for Column {
             Self::Price => ColumnType::Money(Some((19, 4))).def(),
             Self::BakeryId => ColumnType::Integer.def(),
             Self::LineitemId => ColumnType::Integer.def(),
-            Self::BestBefore => ColumnType::Date.def(),
-            Self::ProducedAt => ColumnType::Timestamp.def(),
             Self::GlutenFree => ColumnType::Boolean.def(),
         }
     }
@@ -74,10 +68,7 @@ impl RelationTrait for Relation {
                 .from(Column::BakeryId)
                 .to(super::bakery::Column::Id)
                 .into(),
-            Self::Lineitem => Entity::belongs_to(super::lineitem::Entity)
-                .from(Column::LineitemId)
-                .to(super::lineitem::Column::Id)
-                .into(),
+            Self::Lineitem => Entity::has_many(super::lineitem::Entity).into(),
         }
     }
 }

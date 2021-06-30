@@ -8,7 +8,7 @@ pub async fn create_bakery(db: &DbConn) -> Result<(), ExecErr> {
         profit_margin: Set(10.4),
         ..Default::default()
     };
-    let res: InsertResult = Bakery::insert(seaside_bakery).exec(db).await?;
+    let _res: InsertResult = Bakery::insert(seaside_bakery).exec(db).await?;
 
     Ok(())
 }
