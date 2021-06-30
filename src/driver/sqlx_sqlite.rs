@@ -6,7 +6,7 @@ use sqlx::{
 sea_query::sea_query_driver_sqlite!();
 use sea_query_driver_sqlite::bind_query;
 
-use crate::{debug_print, executor::*, ConnectionErr, DatabaseConnection, Statement};
+use crate::{debug_print, error::*, executor::*, DatabaseConnection, Statement};
 
 pub struct SqlxSqliteConnector;
 
@@ -19,13 +19,13 @@ impl SqlxSqliteConnector {
         string.starts_with("sqlite:")
     }
 
-    pub async fn connect(string: &str) -> Result<DatabaseConnection, ConnectionErr> {
+    pub async fn connect(string: &str) -> Result<DatabaseConnection, SeaErr> {
         if let Ok(pool) = SqlitePool::connect(string).await {
             Ok(DatabaseConnection::SqlxSqlitePoolConnection(
                 SqlxSqlitePoolConnection { pool },
             ))
         } else {
-            Err(ConnectionErr)
+            Err(SeaErr::Connection)
         }
     }
 }
@@ -37,7 +37,7 @@ impl SqlxSqliteConnector {
 }
 
 impl SqlxSqlitePoolConnection {
-    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, ExecErr> {
+    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, SeaErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
@@ -46,10 +46,10 @@ impl SqlxSqlitePoolConnection {
                 return Ok(res.into());
             }
         }
-        Err(ExecErr)
+        Err(SeaErr::Execution)
     }
 
-    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, QueryErr> {
+    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, SeaErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
@@ -60,11 +60,11 @@ impl SqlxSqlitePoolConnection {
                 Ok(None)
             }
         } else {
-            Err(QueryErr)
+            Err(SeaErr::Query)
         }
     }
 
-    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr> {
+    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, SeaErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
@@ -73,7 +73,7 @@ impl SqlxSqlitePoolConnection {
                 return Ok(rows.into_iter().map(|r| r.into()).collect());
             }
         }
-        Err(QueryErr)
+        Err(SeaErr::Query)
     }
 }
 

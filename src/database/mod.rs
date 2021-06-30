@@ -10,11 +10,13 @@ pub use mock::*;
 pub use statement::*;
 pub use transaction::*;
 
+use crate::SeaErr;
+
 #[derive(Debug, Default)]
 pub struct Database;
 
 impl Database {
-    pub async fn connect(string: &str) -> Result<DatabaseConnection, ConnectionErr> {
+    pub async fn connect(string: &str) -> Result<DatabaseConnection, SeaErr> {
         #[cfg(feature = "sqlx-mysql")]
         if crate::SqlxMySqlConnector::accepts(string) {
             return Ok(crate::SqlxMySqlConnector::connect(string).await?);
@@ -27,6 +29,6 @@ impl Database {
         if crate::MockDatabaseConnector::accepts(string) {
             return Ok(crate::MockDatabaseConnector::connect(string).await?);
         }
-        Err(ConnectionErr)
+        Err(SeaErr::Connection)
     }
 }

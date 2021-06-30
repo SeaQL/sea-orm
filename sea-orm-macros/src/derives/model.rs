@@ -47,7 +47,7 @@ pub fn expand_derive_model(ident: Ident, data: Data) -> syn::Result<TokenStream>
         }
 
         impl sea_orm::FromQueryResult for #ident {
-            fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::TypeErr> {
+            fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::SeaErr> {
                 Ok(Self {
                     #(#field: row.try_get(pre, <<Self as ModelTrait>::Entity as EntityTrait>::Column::#name.as_str().into())?),*
                 })

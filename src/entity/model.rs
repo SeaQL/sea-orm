@@ -1,4 +1,4 @@
-use crate::{EntityTrait, QueryFilter, QueryResult, Related, Select, TypeErr};
+use crate::{EntityTrait, SeaErr, QueryFilter, QueryResult, Related, Select};
 pub use sea_query::Value;
 use std::fmt::Debug;
 
@@ -19,11 +19,11 @@ pub trait ModelTrait: Clone + Debug {
 }
 
 pub trait FromQueryResult {
-    fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, TypeErr>
+    fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, SeaErr>
     where
         Self: Sized;
 
-    fn from_query_result_optional(res: &QueryResult, pre: &str) -> Result<Option<Self>, TypeErr>
+    fn from_query_result_optional(res: &QueryResult, pre: &str) -> Result<Option<Self>, SeaErr>
     where
         Self: Sized,
     {
