@@ -66,8 +66,8 @@ pub trait ActiveModelTrait: Clone + Debug {
     fn default() -> Self;
 
     // below is not yet possible. right now we define these methods in DeriveActiveModel
-    // fn save(self, db: &DatabaseConnection) -> impl Future<Output = Result<Self, SeaErr>>;
-    // fn delete(self, db: &DatabaseConnection) -> impl Future<Output = Result<DeleteResult, SeaErr>>;
+    // fn save(self, db: &DatabaseConnection) -> impl Future<Output = Result<Self, DbErr>>;
+    // fn delete(self, db: &DatabaseConnection) -> impl Future<Output = Result<DeleteResult, DbErr>>;
 }
 
 /// Behaviors for users to override
@@ -188,7 +188,7 @@ where
 
 /// Insert the model if primary key is unset, update otherwise.
 /// Only works if the entity has auto increment primary key.
-pub async fn save_active_model<A, E>(mut am: A, db: &DatabaseConnection) -> Result<A, SeaErr>
+pub async fn save_active_model<A, E>(mut am: A, db: &DatabaseConnection) -> Result<A, DbErr>
 where
     A: ActiveModelBehavior + ActiveModelTrait<Entity = E>,
     E::Model: IntoActiveModel<A>,
@@ -212,7 +212,7 @@ where
     Ok(am)
 }
 
-async fn insert_and_select_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, SeaErr>
+async fn insert_and_select_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, DbErr>
 where
     A: ActiveModelTrait<Entity = E>,
     E::Model: IntoActiveModel<A>,
@@ -227,14 +227,14 @@ where
         let model: Option<E::Model> = res?;
         match model {
             Some(model) => Ok(model.into_active_model()),
-            None => Err(SeaErr::Execution),
+            None => Err(DbErr::Execution),
         }
     } else {
         Ok(A::default())
     }
 }
 
-async fn update_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, SeaErr>
+async fn update_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, DbErr>
 where
     A: ActiveModelTrait<Entity = E>,
     E: EntityTrait,
@@ -246,7 +246,7 @@ where
 pub async fn delete_active_model<A, E>(
     mut am: A,
     db: &DatabaseConnection,
-) -> Result<DeleteResult, SeaErr>
+) -> Result<DeleteResult, DbErr>
 where
     A: ActiveModelBehavior + ActiveModelTrait<Entity = E>,
     E: EntityTrait,

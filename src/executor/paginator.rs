@@ -23,7 +23,7 @@ where
     S: SelectorTrait + 'db,
 {
     /// Fetch a specific page
-    pub async fn fetch_page(&self, page: usize) -> Result<Vec<S::Item>, SeaErr> {
+    pub async fn fetch_page(&self, page: usize) -> Result<Vec<S::Item>, DbErr> {
         let query = self
             .query
             .clone()
@@ -42,12 +42,12 @@ where
     }
 
     /// Fetch the current page
-    pub async fn fetch(&self) -> Result<Vec<S::Item>, SeaErr> {
+    pub async fn fetch(&self) -> Result<Vec<S::Item>, DbErr> {
         self.fetch_page(self.page).await
     }
 
     /// Get the total number of pages
-    pub async fn num_pages(&self) -> Result<usize, SeaErr> {
+    pub async fn num_pages(&self) -> Result<usize, DbErr> {
         let builder = self.db.get_query_builder_backend();
         let stmt = builder.build(
             SelectStatement::new()
@@ -77,7 +77,7 @@ where
     }
 
     /// Fetch one page and increment the page counter
-    pub async fn fetch_and_next(&mut self) -> Result<Option<Vec<S::Item>>, SeaErr> {
+    pub async fn fetch_and_next(&mut self) -> Result<Option<Vec<S::Item>>, DbErr> {
         let vec = self.fetch().await?;
         self.next();
         let opt = if !vec.is_empty() { Some(vec) } else { None };
@@ -85,7 +85,7 @@ where
     }
 
     /// Convert self into an async stream
-    pub fn into_stream(mut self) -> PinBoxStream<'db, Result<Vec<S::Item>, SeaErr>> {
+    pub fn into_stream(mut self) -> PinBoxStream<'db, Result<Vec<S::Item>, DbErr>> {
         Box::pin(stream! {
             loop {
                 if let Some(vec) = self.fetch_and_next().await? {
@@ -148,7 +148,7 @@ mod tests {
     }
 
     #[async_std::test]
-    async fn fetch_page() -> Result<(), SeaErr> {
+    async fn fetch_page() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
         let paginator = fruit::Entity::find().paginate(&db, 2);
@@ -178,7 +178,7 @@ mod tests {
     }
 
     #[async_std::test]
-    async fn fetch() -> Result<(), SeaErr> {
+    async fn fetch() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
         let mut paginator = fruit::Entity::find().paginate(&db, 2);
@@ -212,7 +212,7 @@ mod tests {
     }
 
     #[async_std::test]
-    async fn num_pages() -> Result<(), SeaErr> {
+    async fn num_pages() -> Result<(), DbErr> {
         let (db, num_rows) = setup_num_rows();
 
         let num_rows = num_rows as usize;
@@ -244,7 +244,7 @@ mod tests {
     }
 
     #[async_std::test]
-    async fn next_and_cur_page() -> Result<(), SeaErr> {
+    async fn next_and_cur_page() -> Result<(), DbErr> {
         let (db, _) = setup();
 
         let mut paginator = fruit::Entity::find().paginate(&db, 2);
@@ -260,7 +260,7 @@ mod tests {
     }
 
     #[async_std::test]
-    async fn fetch_and_next() -> Result<(), SeaErr> {
+    async fn fetch_and_next() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
         let mut paginator = fruit::Entity::find().paginate(&db, 2);
@@ -295,7 +295,7 @@ mod tests {
     }
 
     #[async_std::test]
-    async fn into_stream() -> Result<(), SeaErr> {
+    async fn into_stream() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
         let mut fruit_stream = fruit::Entity::find().paginate(&db, 2).into_stream();

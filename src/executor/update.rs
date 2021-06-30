@@ -21,7 +21,7 @@ where
     pub fn exec(
         self,
         db: &'a DatabaseConnection,
-    ) -> impl Future<Output = Result<A, SeaErr>> + 'a {
+    ) -> impl Future<Output = Result<A, DbErr>> + 'a {
         // so that self is dropped before entering await
         exec_update_and_return_original(self.query, self.model, db)
     }
@@ -34,7 +34,7 @@ where
     pub fn exec(
         self,
         db: &'a DatabaseConnection,
-    ) -> impl Future<Output = Result<UpdateResult, SeaErr>> + 'a {
+    ) -> impl Future<Output = Result<UpdateResult, DbErr>> + 'a {
         // so that self is dropped before entering await
         exec_update_only(self.query, db)
     }
@@ -48,7 +48,7 @@ impl Updater {
     pub fn exec(
         self,
         db: &DatabaseConnection,
-    ) -> impl Future<Output = Result<UpdateResult, SeaErr>> + '_ {
+    ) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_ {
         let builder = db.get_query_builder_backend();
         exec_update(builder.build(&self.query), db)
     }
@@ -57,7 +57,7 @@ impl Updater {
 async fn exec_update_only(
     query: UpdateStatement,
     db: &DatabaseConnection,
-) -> Result<UpdateResult, SeaErr> {
+) -> Result<UpdateResult, DbErr> {
     Updater::new(query).exec(db).await
 }
 
@@ -65,7 +65,7 @@ async fn exec_update_and_return_original<A>(
     query: UpdateStatement,
     model: A,
     db: &DatabaseConnection,
-) -> Result<A, SeaErr>
+) -> Result<A, DbErr>
 where
     A: ActiveModelTrait,
 {
@@ -77,7 +77,7 @@ where
 async fn exec_update(
     statement: Statement,
     db: &DatabaseConnection,
-) -> Result<UpdateResult, SeaErr> {
+) -> Result<UpdateResult, DbErr> {
     let result = db.execute(statement).await?;
     Ok(UpdateResult {
         rows_affected: result.rows_affected(),

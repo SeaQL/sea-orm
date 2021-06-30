@@ -19,13 +19,13 @@ impl SqlxMySqlConnector {
         string.starts_with("mysql://")
     }
 
-    pub async fn connect(string: &str) -> Result<DatabaseConnection, SeaErr> {
+    pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
         if let Ok(pool) = MySqlPool::connect(string).await {
             Ok(DatabaseConnection::SqlxMySqlPoolConnection(
                 SqlxMySqlPoolConnection { pool },
             ))
         } else {
-            Err(SeaErr::Connection)
+            Err(DbErr::Connection)
         }
     }
 }
@@ -37,7 +37,7 @@ impl SqlxMySqlConnector {
 }
 
 impl SqlxMySqlPoolConnection {
-    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, SeaErr> {
+    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
@@ -46,10 +46,10 @@ impl SqlxMySqlPoolConnection {
                 return Ok(res.into());
             }
         }
-        Err(SeaErr::Execution)
+        Err(DbErr::Execution)
     }
 
-    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, SeaErr> {
+    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
@@ -60,11 +60,11 @@ impl SqlxMySqlPoolConnection {
                 Ok(None)
             }
         } else {
-            Err(SeaErr::Query)
+            Err(DbErr::Query)
         }
     }
 
-    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, SeaErr> {
+    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
@@ -73,7 +73,7 @@ impl SqlxMySqlPoolConnection {
                 return Ok(rows.into_iter().map(|r| r.into()).collect());
             }
         }
-        Err(SeaErr::Query)
+        Err(DbErr::Query)
     }
 }
 

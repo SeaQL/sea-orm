@@ -21,7 +21,7 @@ where
     pub fn exec(
         self,
         db: &'a DatabaseConnection,
-    ) -> impl Future<Output = Result<DeleteResult, SeaErr>> + 'a {
+    ) -> impl Future<Output = Result<DeleteResult, DbErr>> + 'a {
         // so that self is dropped before entering await
         exec_delete_only(self.query, db)
     }
@@ -34,7 +34,7 @@ where
     pub fn exec(
         self,
         db: &'a DatabaseConnection,
-    ) -> impl Future<Output = Result<DeleteResult, SeaErr>> + 'a {
+    ) -> impl Future<Output = Result<DeleteResult, DbErr>> + 'a {
         // so that self is dropped before entering await
         exec_delete_only(self.query, db)
     }
@@ -48,7 +48,7 @@ impl Deleter {
     pub fn exec(
         self,
         db: &DatabaseConnection,
-    ) -> impl Future<Output = Result<DeleteResult, SeaErr>> + '_ {
+    ) -> impl Future<Output = Result<DeleteResult, DbErr>> + '_ {
         let builder = db.get_query_builder_backend();
         exec_delete(builder.build(&self.query), db)
     }
@@ -57,7 +57,7 @@ impl Deleter {
 async fn exec_delete_only(
     query: DeleteStatement,
     db: &DatabaseConnection,
-) -> Result<DeleteResult, SeaErr> {
+) -> Result<DeleteResult, DbErr> {
     Deleter::new(query).exec(db).await
 }
 
@@ -65,7 +65,7 @@ async fn exec_delete_only(
 async fn exec_delete(
     statement: Statement,
     db: &DatabaseConnection,
-) -> Result<DeleteResult, SeaErr> {
+) -> Result<DeleteResult, DbErr> {
     let result = db.execute(statement).await?;
     Ok(DeleteResult {
         rows_affected: result.rows_affected(),

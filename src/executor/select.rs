@@ -18,7 +18,7 @@ where
 pub trait SelectorTrait {
     type Item: Sized;
 
-    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, SeaErr>;
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr>;
 }
 
 pub struct SelectModel<M>
@@ -43,7 +43,7 @@ where
 {
     type Item = M;
 
-    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, SeaErr> {
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr> {
         M::from_query_result(&res, "")
     }
 }
@@ -55,7 +55,7 @@ where
 {
     type Item = (M, Option<N>);
 
-    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, SeaErr> {
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr> {
         Ok((
             M::from_query_result(&res, combine::SELECT_A)?,
             N::from_query_result_optional(&res, combine::SELECT_B)?,
@@ -85,11 +85,11 @@ where
         }
     }
 
-    pub async fn one(self, db: &DatabaseConnection) -> Result<Option<E::Model>, SeaErr> {
+    pub async fn one(self, db: &DatabaseConnection) -> Result<Option<E::Model>, DbErr> {
         self.into_model::<E::Model>().one(db).await
     }
 
-    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<E::Model>, SeaErr> {
+    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<E::Model>, DbErr> {
         self.into_model::<E::Model>().all(db).await
     }
 
@@ -129,14 +129,14 @@ where
     pub async fn one(
         self,
         db: &DatabaseConnection,
-    ) -> Result<Option<(E::Model, Option<F::Model>)>, SeaErr> {
+    ) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr> {
         self.into_model::<E::Model, F::Model>().one(db).await
     }
 
     pub async fn all(
         self,
         db: &DatabaseConnection,
-    ) -> Result<Vec<(E::Model, Option<F::Model>)>, SeaErr> {
+    ) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr> {
         self.into_model::<E::Model, F::Model>().all(db).await
     }
 }
@@ -168,14 +168,14 @@ where
     pub async fn one(
         self,
         db: &DatabaseConnection,
-    ) -> Result<Option<(E::Model, Option<F::Model>)>, SeaErr> {
+    ) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr> {
         self.into_model::<E::Model, F::Model>().one(db).await
     }
 
     pub async fn all(
         self,
         db: &DatabaseConnection,
-    ) -> Result<Vec<(E::Model, Vec<F::Model>)>, SeaErr> {
+    ) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr> {
         let rows = self.into_model::<E::Model, F::Model>().all(db).await?;
         Ok(consolidate_query_result::<E, F>(rows))
     }
@@ -185,7 +185,7 @@ impl<S> Selector<S>
 where
     S: SelectorTrait,
 {
-    pub async fn one(mut self, db: &DatabaseConnection) -> Result<Option<S::Item>, SeaErr> {
+    pub async fn one(mut self, db: &DatabaseConnection) -> Result<Option<S::Item>, DbErr> {
         let builder = db.get_query_builder_backend();
         self.query.limit(1);
         let row = db.query_one(builder.build(&self.query)).await?;
@@ -195,7 +195,7 @@ where
         }
     }
 
-    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, SeaErr> {
+    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, DbErr> {
         let builder = db.get_query_builder_backend();
         let rows = db.query_all(builder.build(&self.query)).await?;
         let mut models = Vec::new();

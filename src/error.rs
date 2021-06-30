@@ -1,7 +1,7 @@
 use std::{error, fmt};
 
 #[derive(Debug)]
-pub enum SeaErr {
+pub enum DbErr {
     Connection,
     Execution,
     Query,
@@ -9,7 +9,7 @@ pub enum SeaErr {
     Sqlx(sqlx::Error),
 }
 
-impl fmt::Display for SeaErr {
+impl fmt::Display for DbErr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Connection => write!(f, "{:?}", "Connection Error"),
@@ -21,7 +21,7 @@ impl fmt::Display for SeaErr {
     }
 }
 
-impl error::Error for SeaErr {
+impl error::Error for DbErr {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
             Self::Connection => None,
@@ -34,7 +34,7 @@ impl error::Error for SeaErr {
 }
 
 #[cfg(feature = "sqlx-dep")]
-impl From<sqlx::Error> for SeaErr {
+impl From<sqlx::Error> for DbErr {
     fn from(sqlx_err: sqlx::Error) -> Self {
         Self::Sqlx(sqlx_err)
     }

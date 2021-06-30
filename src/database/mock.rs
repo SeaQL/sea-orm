@@ -68,14 +68,14 @@ impl MockDatabase {
 }
 
 impl MockDatabaseTrait for MockDatabase {
-    fn execute(&mut self, counter: usize, statement: Statement) -> Result<ExecResult, SeaErr> {
+    fn execute(&mut self, counter: usize, statement: Statement) -> Result<ExecResult, DbErr> {
         self.transaction_log.push(Transaction::one(statement));
         if counter < self.exec_results.len() {
             Ok(ExecResult {
                 result: ExecResultHolder::Mock(std::mem::take(&mut self.exec_results[counter])),
             })
         } else {
-            Err(SeaErr::Execution)
+            Err(DbErr::Execution)
         }
     }
 
@@ -83,7 +83,7 @@ impl MockDatabaseTrait for MockDatabase {
         &mut self,
         counter: usize,
         statement: Statement,
-    ) -> Result<Vec<QueryResult>, SeaErr> {
+    ) -> Result<Vec<QueryResult>, DbErr> {
         self.transaction_log.push(Transaction::one(statement));
         if counter < self.query_results.len() {
             Ok(std::mem::take(&mut self.query_results[counter])
@@ -93,7 +93,7 @@ impl MockDatabaseTrait for MockDatabase {
                 })
                 .collect())
         } else {
-            Err(SeaErr::Query)
+            Err(DbErr::Query)
         }
     }
 
@@ -103,7 +103,7 @@ impl MockDatabaseTrait for MockDatabase {
 }
 
 impl MockRow {
-    pub fn try_get<T>(&self, col: &str) -> Result<T, SeaErr>
+    pub fn try_get<T>(&self, col: &str) -> Result<T, DbErr>
     where
         T: ValueType,
     {

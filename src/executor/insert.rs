@@ -19,7 +19,7 @@ where
     pub fn exec(
         self,
         db: &DatabaseConnection,
-    ) -> impl Future<Output = Result<InsertResult, SeaErr>> + '_ {
+    ) -> impl Future<Output = Result<InsertResult, DbErr>> + '_ {
         // so that self is dropped before entering await
         Inserter::new(self.into_query()).exec(db)
     }
@@ -33,7 +33,7 @@ impl Inserter {
     pub fn exec(
         self,
         db: &DatabaseConnection,
-    ) -> impl Future<Output = Result<InsertResult, SeaErr>> + '_ {
+    ) -> impl Future<Output = Result<InsertResult, DbErr>> + '_ {
         let builder = db.get_query_builder_backend();
         exec_insert(builder.build(&self.query), db)
     }
@@ -43,7 +43,7 @@ impl Inserter {
 async fn exec_insert(
     statement: Statement,
     db: &DatabaseConnection,
-) -> Result<InsertResult, SeaErr> {
+) -> Result<InsertResult, DbErr> {
     let result = db.execute(statement).await?;
     // TODO: Postgres instead use query_one + returning clause
     Ok(InsertResult {
