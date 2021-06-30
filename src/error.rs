@@ -1,41 +1,16 @@
-use std::{error, fmt};
-
 #[derive(Debug)]
 pub enum DbErr {
-    Conn,
-    Exec,
-    Query,
-    #[cfg(feature = "sqlx-dep")]
-    Sqlx(sqlx::Error),
+    Conn(String),
+    Exec(String),
+    Query(String),
 }
 
-impl fmt::Display for DbErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl std::fmt::Display for DbErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::Conn => write!(f, "{:?}", "Connection Error"),
-            Self::Exec => write!(f, "{:?}", "Execution Error"),
-            Self::Query => write!(f, "{:?}", "Query Error"),
-            #[cfg(feature = "sqlx-dep")]
-            Self::Sqlx(e) => write!(f, "{:?}", e),
+            Self::Conn(s) => write!(f, "Connection Error: {}", s),
+            Self::Exec(s) => write!(f, "Execution Error: {}", s),
+            Self::Query(s) => write!(f, "Query Error: {}", s),
         }
-    }
-}
-
-impl error::Error for DbErr {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self {
-            Self::Conn => None,
-            Self::Exec => None,
-            Self::Query => None,
-            #[cfg(feature = "sqlx-dep")]
-            Self::Sqlx(e) => Some(e),
-        }
-    }
-}
-
-#[cfg(feature = "sqlx-dep")]
-impl From<sqlx::Error> for DbErr {
-    fn from(sqlx_err: sqlx::Error) -> Self {
-        Self::Sqlx(sqlx_err)
     }
 }

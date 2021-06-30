@@ -56,12 +56,12 @@ macro_rules! try_getable_all {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
-                        Ok(row.try_get(column.as_str())?)
+                        row.try_get(column.as_str()).map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => {
                         use sqlx::Row;
-                        Ok(row.try_get(column.as_str())?)
+                        row.try_get(column.as_str()).map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => Ok(row.try_get(column.as_str())?),
@@ -109,7 +109,7 @@ macro_rules! try_getable_mysql {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
-                        Ok(row.try_get(column.as_str())?)
+                        row.try_get(column.as_str()).map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(_) => {

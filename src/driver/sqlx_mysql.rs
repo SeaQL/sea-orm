@@ -8,6 +8,8 @@ use sea_query_driver_mysql::bind_query;
 
 use crate::{debug_print, error::*, executor::*, DatabaseConnection, Statement};
 
+use super::sqlx_common::*;
+
 pub struct SqlxMySqlConnector;
 
 pub struct SqlxMySqlPoolConnection {
@@ -25,7 +27,7 @@ impl SqlxMySqlConnector {
                 SqlxMySqlPoolConnection { pool },
             ))
         } else {
-            Err(DbErr::Conn)
+            Err(DbErr::Conn("Failed to connect.".to_owned()))
         }
     }
 }
@@ -42,11 +44,13 @@ impl SqlxMySqlPoolConnection {
 
         let query = sqlx_query(&stmt);
         if let Ok(conn) = &mut self.pool.acquire().await {
-            if let Ok(res) = query.execute(conn).await {
-                return Ok(res.into());
+            match query.execute(conn).await {
+                Ok(res) => Ok(res.into()),
+                Err(err) => Err(sqlx_error_to_exec_err(err)),
             }
+        } else {
+            Err(DbErr::Exec("Failed to acquire connection from pool.".to_owned()))
         }
-        Err(DbErr::Exec)
     }
 
     pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
@@ -54,13 +58,15 @@ impl SqlxMySqlPoolConnection {
 
         let query = sqlx_query(&stmt);
         if let Ok(conn) = &mut self.pool.acquire().await {
-            if let Ok(row) = query.fetch_one(conn).await {
-                Ok(Some(row.into()))
-            } else {
-                Ok(None)
+            match query.fetch_one(conn).await {
+                Ok(row) => Ok(Some(row.into())),
+                Err(err) => match err {
+                    sqlx::Error::RowNotFound => Ok(None),
+                    _ => Err(DbErr::Query(err.to_string())),
+                },
             }
         } else {
-            Err(DbErr::Query)
+            Err(DbErr::Query("Failed to acquire connection from pool.".to_owned()))
         }
     }
 
@@ -69,11 +75,13 @@ impl SqlxMySqlPoolConnection {
 
         let query = sqlx_query(&stmt);
         if let Ok(conn) = &mut self.pool.acquire().await {
-            if let Ok(rows) = query.fetch_all(conn).await {
-                return Ok(rows.into_iter().map(|r| r.into()).collect());
+            match query.fetch_all(conn).await {
+                Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
+                Err(err) => Err(sqlx_error_to_query_err(err)),
             }
+        } else {
+            Err(DbErr::Query("Failed to acquire connection from pool.".to_owned()))
         }
-        Err(DbErr::Query)
     }
 }
 

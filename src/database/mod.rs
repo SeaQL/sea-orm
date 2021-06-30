@@ -29,6 +29,6 @@ impl Database {
         if crate::MockDatabaseConnector::accepts(string) {
             return crate::MockDatabaseConnector::connect(string).await;
         }
-        Err(DbErr::Conn)
+        Err(DbErr::Conn(format!("The connection string '{}' has no supporting driver.", string)))
     }
 }
