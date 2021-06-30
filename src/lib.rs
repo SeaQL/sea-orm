@@ -95,6 +95,7 @@
 //! # }
 //! #
 //! # async fn function2(db: &DbConn) -> Result<(), DbErr> {
+//! #
 //! # let apple = fruit::ActiveModel {
 //! #     name: Set("Apple".to_owned()),
 //! #     ..Default::default() // no need to set primary key
@@ -118,14 +119,10 @@
 //! use sea_orm::sea_query::{Expr, Value};
 //!
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
-//! let pear: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
-//! # Ok(())
-//! # }
 //! #
-//! # async fn function2(db: &DbConn) -> Result<(), DbErr> {
-//! # let pear: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await.unwrap();
-//!
+//! let pear: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
 //! let mut pear: fruit::ActiveModel = pear.unwrap().into();
+//!
 //! pear.name = Set("Sweet pear".to_owned());
 //!
 //! // update one
@@ -146,6 +143,7 @@
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! #
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
+//! #
 //! let banana = fruit::ActiveModel {
 //!     id: Unset(None),
 //!     name: Set("Banana".to_owned()),
@@ -168,12 +166,8 @@
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! #
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
-//! let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
-//! # Ok(())
-//! # }
 //! #
-//! # async fn function2(db: &DbConn) -> Result<(), DbErr> {
-//! # let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await.unwrap();
+//! let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
 //! let orange: fruit::ActiveModel = orange.unwrap().into();
 //!
 //! // delete one
