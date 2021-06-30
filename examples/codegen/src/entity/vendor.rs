@@ -47,7 +47,7 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(Some(255u32)).def(),
-            Self::FruitId => ColumnType::Integer.def(),
+            Self::FruitId => ColumnType::Integer.def().null(),
         }
     }
 }
@@ -55,7 +55,7 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Fruit => Entity::has_one(super::fruit::Entity)
+            Self::Fruit => Entity::belongs_to(super::fruit::Entity)
                 .from(Column::FruitId)
                 .to(super::fruit::Column::Id)
                 .into(),
@@ -66,12 +66,6 @@ impl RelationTrait for Relation {
 impl Related<super::fruit::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Fruit.def()
-    }
-}
-
-impl Model {
-    pub fn find_fruit(&self) -> Select<super::fruit::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
     }
 }
 

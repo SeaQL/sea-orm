@@ -78,13 +78,4 @@ impl Related<super::filling::Entity> for Entity {
     }
 }
 
-impl Model {
-    pub fn find_cake(&self) -> Select<super::cake::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
-    }
-    pub fn find_filling(&self) -> Select<super::filling::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
-    }
-}
-
 impl ActiveModelBehavior for ActiveModel {}
