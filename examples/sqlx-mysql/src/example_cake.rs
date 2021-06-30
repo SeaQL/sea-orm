@@ -16,12 +16,14 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+#[strum(crate_path = "sea_orm::strum")]
 pub enum Column {
     Id,
     Name,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+#[strum(crate_path = "sea_orm::strum")]
 pub enum PrimaryKey {
     Id,
 }
@@ -33,6 +35,7 @@ impl PrimaryKeyTrait for PrimaryKey {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
+#[strum(crate_path = "sea_orm::strum")]
 pub enum Relation {
     Fruit,
 }
