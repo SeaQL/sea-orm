@@ -18,7 +18,7 @@ Inspired by ActiveRecord, Eloquent and TypeORM, SeaORM aims to provide you an in
 API to make working with databases in Rust a first-class experience.
 
 ```rust
-This is an early WIP of SeaORM, and is not yet released.
+This is a preview of SeaORM, and is not yet released.
 ```
 
 ## Features
@@ -29,7 +29,7 @@ Relying on SQLx, SeaORM is a new library with async support from day 1.
 
 2. Dynamic
 
-Built upon SeaQuery, a dynamic query builder, SeaORM allows you to build complex queries without 'fighting the ORM'.
+Under the hood, SeaQuery allows you to build complex, dynamic queries without 'fighting the ORM'.
 
 3. Testable
 
