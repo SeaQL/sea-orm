@@ -14,7 +14,7 @@ cargo run
 All about selects:
 
 ```sh
-Database { connection: SqlxMySqlPoolConnection }
+SqlxMySqlPoolConnection
 
 ===== =====
 
