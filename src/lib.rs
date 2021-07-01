@@ -18,7 +18,7 @@
 //! API to make working with databases in Rust a first-class experience.
 //!
 //! ```ignore
-//! This is an early WIP of SeaORM, and is not yet published. See [example](examples/sqlx-mysql/src) for demo usage.
+//! This is an early WIP of SeaORM, and is not yet released.
 //! ```
 //!
 //! ## Features
@@ -39,13 +39,12 @@
 //!
 //! Quickly build services that join, filter, sort and paginate data in APIs.
 //!
-//! # A quick taste of SeaORM
+//! ## A quick taste of SeaORM
 //!
-//! ## Select
+//! ### Select
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
-//! #
 //! // find all models
 //! let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
 //!
@@ -71,11 +70,10 @@
 //! # Ok(())
 //! # }
 //! ```
-//! ## Insert
+//! ### Insert
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
-//! #
 //! let apple = fruit::ActiveModel {
 //!     name: Set("Apple".to_owned()),
 //!     ..Default::default() // no need to set primary key
@@ -90,17 +88,13 @@
 //! let res: InsertResult = Fruit::insert(pear).exec(db).await?;
 //!
 //! println!("InsertResult: {}", res.last_insert_id);
-//! #
 //! # Ok(())
 //! # }
-//! #
 //! # async fn function2(db: &DbConn) -> Result<(), DbErr> {
-//! #
 //! # let apple = fruit::ActiveModel {
 //! #     name: Set("Apple".to_owned()),
 //! #     ..Default::default() // no need to set primary key
 //! # };
-//! #
 //! # let pear = fruit::ActiveModel {
 //! #     name: Set("Pear".to_owned()),
 //! #     ..Default::default()
@@ -108,18 +102,15 @@
 //!
 //! // insert many
 //! Fruit::insert_many(vec![apple, pear]).exec(db).await?;
-//! #
 //! # Ok(())
 //! # }
 //! ```
-//! ## Update
+//! ### Update
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
-//! #
 //! use sea_orm::sea_query::{Expr, Value};
 //!
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
-//! #
 //! let pear: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
 //! let mut pear: fruit::ActiveModel = pear.unwrap().into();
 //!
@@ -138,12 +129,10 @@
 //! # Ok(())
 //! # }
 //! ```
-//! ## Save
+//! ### Save
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
-//! #
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
-//! #
 //! let banana = fruit::ActiveModel {
 //!     id: Unset(None),
 //!     name: Set("Banana".to_owned()),
@@ -161,12 +150,10 @@
 //! # Ok(())
 //! # }
 //! ```
-//! ## Delete
+//! ### Delete
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
-//! #
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
-//! #
 //! let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
 //! let orange: fruit::ActiveModel = orange.unwrap().into();
 //!
@@ -185,6 +172,22 @@
 //! # Ok(())
 //! # }
 //! ```
+//! ## License
+//! 
+//! Licensed under either of
+//! 
+//! -   Apache License, Version 2.0
+//!     ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+//! -   MIT license
+//!     ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+//! 
+//! at your option.
+//! 
+//! ## Contribution
+//! 
+//! Unless you explicitly state otherwise, any contribution intentionally submitted
+//! for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
+//! dual licensed as above, without any additional terms or conditions.
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/SeaQL/sea-query/master/docs/SeaQL icon dark.png"
 )]
