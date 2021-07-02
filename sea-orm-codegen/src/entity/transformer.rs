@@ -98,6 +98,7 @@ impl EntityTransformer {
                 }
             }
         }
+        println!("{:#?}", entities);
         Ok(EntityWriter { entities })
     }
 }

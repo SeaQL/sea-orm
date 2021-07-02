@@ -37,6 +37,7 @@ futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 sea-query = { version = "^0.12" }
 sea-orm-macros = { path = "sea-orm-macros", optional = true }
+sea-orm-codegen = { path = "sea-orm-codegen", optional = true }
 serde = { version = "^1.0", features = [ "derive" ] }
 sqlx = { version = "^0.5", optional = true }
 strum = { git = "https://github.com/SeaQL/strum.git", branch = "sea-orm", version = "^0.21", features = [ "derive", "sea-orm" ] }
@@ -49,8 +50,9 @@ sea-orm = { path = ".", features = ["sqlx-sqlite", "sqlx-json", "sqlx-chrono", "
 
 [features]
 debug-print = []
-default = [ "macros", "with-json", "with-chrono", "with-rust_decimal", "mock" ]
+default = [ "macros", "codegen", "with-json", "with-chrono", "with-rust_decimal", "mock" ]
 macros = [ "sea-orm-macros" ]
+codegen = [ "sea-orm-codegen" ]
 mock = []
 with-json = [ "serde_json", "sea-query/with-json" ]
 with-chrono = [ "chrono", "sea-query/with-chrono" ]
