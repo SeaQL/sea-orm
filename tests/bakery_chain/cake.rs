@@ -15,7 +15,6 @@ pub struct Model {
     pub name: String,
     pub price: f32,
     pub bakery_id: Option<i32>,
-    pub lineitem_id: Option<i32>,
     pub gluten_free: bool,
 }
 
