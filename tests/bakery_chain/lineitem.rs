@@ -15,6 +15,7 @@ pub struct Model {
     pub price: f64,
     pub quantity: i32,
     pub order_id: Option<i32>,
+    pub cake_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -23,6 +24,7 @@ pub enum Column {
     Price,
     Quantity,
     OrderId,
+    CakeId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -51,6 +53,7 @@ impl ColumnTrait for Column {
             Self::Price => ColumnType::Money(Some((19, 4))).def(),
             Self::Quantity => ColumnType::Integer.def(),
             Self::OrderId => ColumnType::Integer.def(),
+            Self::CakeId => ColumnType::Integer.def(),
         }
     }
 }
