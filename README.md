@@ -29,7 +29,7 @@ Relying on SQLx, SeaORM is a new library with async support from day 1.
 
 2. Dynamic
 
-Under the hood, SeaQuery allows you to build complex, dynamic queries without 'fighting the ORM'.
+Built upon SeaQuery, SeaORM allows you to build complex queries without 'fighting the ORM'.
 
 3. Testable
 
