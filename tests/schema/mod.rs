@@ -1,14 +1,14 @@
-use sea_orm::{sea_query, DbConn, ExecErr, ExecResult};
+use sea_orm::{error::*, sea_query, DbConn, ExecResult};
 use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, TableCreateStatement};
 
 pub use super::bakery_chain::*;
 
-async fn create_table(db: &DbConn, stmt: &TableCreateStatement) -> Result<ExecResult, ExecErr> {
+async fn create_table(db: &DbConn, stmt: &TableCreateStatement) -> Result<ExecResult, DbErr> {
   let builder = db.get_schema_builder_backend();
   db.execute(builder.build(stmt)).await
 }
 
-pub async fn create_bakery_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
+pub async fn create_bakery_table(db: &DbConn) -> Result<ExecResult, DbErr> {
   let stmt = sea_query::Table::create()
     .table(bakery::Entity)
     .if_not_exists()
@@ -26,7 +26,7 @@ pub async fn create_bakery_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
   create_table(db, &stmt).await
 }
 
-pub async fn create_baker_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
+pub async fn create_baker_table(db: &DbConn) -> Result<ExecResult, DbErr> {
   let stmt = sea_query::Table::create()
     .table(baker::Entity)
     .if_not_exists()
@@ -52,7 +52,7 @@ pub async fn create_baker_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
   create_table(db, &stmt).await
 }
 
-pub async fn create_customer_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
+pub async fn create_customer_table(db: &DbConn) -> Result<ExecResult, DbErr> {
   let stmt = sea_query::Table::create()
     .table(customer::Entity)
     .if_not_exists()
@@ -70,7 +70,7 @@ pub async fn create_customer_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
   create_table(db, &stmt).await
 }
 
-pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
+pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
   let stmt = sea_query::Table::create()
     .table(order::Entity)
     .if_not_exists()
@@ -114,7 +114,7 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
   create_table(db, &stmt).await
 }
 
-pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
+pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
   let stmt = sea_query::Table::create()
     .table(lineitem::Entity)
     .if_not_exists()
@@ -145,7 +145,7 @@ pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
   create_table(db, &stmt).await
 }
 
-pub async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
+pub async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, DbErr> {
   let stmt = sea_query::Table::create()
     .table(cakes_bakers::Entity)
     .if_not_exists()
@@ -169,7 +169,7 @@ pub async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, ExecEr
   create_table(db, &stmt).await
 }
 
-pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, ExecErr> {
+pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
   let stmt = sea_query::Table::create()
     .table(cake::Entity)
     .if_not_exists()
