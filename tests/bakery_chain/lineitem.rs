@@ -12,7 +12,7 @@ impl EntityName for Entity {
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
     pub id: i32,
-    pub price: f32,
+    pub price: f64,
     pub quantity: i32,
     pub order_id: Option<i32>,
 }

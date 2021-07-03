@@ -13,7 +13,7 @@ impl EntityName for Entity {
 pub struct Model {
     pub id: i32,
     pub name: String,
-    pub price: f32,
+    pub price: f64,
     pub bakery_id: Option<i32>,
     pub gluten_free: bool,
 }
