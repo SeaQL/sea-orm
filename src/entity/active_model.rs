@@ -1,5 +1,5 @@
 use crate::{
-    DatabaseConnection, DeleteResult, EntityTrait, ExecErr, Iterable, PrimaryKeyToColumn,
+    error::*, DatabaseConnection, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn,
     PrimaryKeyTrait, Value,
 };
 use std::fmt::Debug;
@@ -66,8 +66,8 @@ pub trait ActiveModelTrait: Clone + Debug {
     fn default() -> Self;
 
     // below is not yet possible. right now we define these methods in DeriveActiveModel
-    // fn save(self, db: &DatabaseConnection) -> impl Future<Output = Result<Self, ExecErr>>;
-    // fn delete(self, db: &DatabaseConnection) -> impl Future<Output = Result<DeleteResult, ExecErr>>;
+    // fn save(self, db: &DatabaseConnection) -> impl Future<Output = Result<Self, DbErr>>;
+    // fn delete(self, db: &DatabaseConnection) -> impl Future<Output = Result<DeleteResult, DbErr>>;
 }
 
 /// Behaviors for users to override
@@ -188,7 +188,7 @@ where
 
 /// Insert the model if primary key is unset, update otherwise.
 /// Only works if the entity has auto increment primary key.
-pub async fn save_active_model<A, E>(mut am: A, db: &DatabaseConnection) -> Result<A, ExecErr>
+pub async fn save_active_model<A, E>(mut am: A, db: &DatabaseConnection) -> Result<A, DbErr>
 where
     A: ActiveModelBehavior + ActiveModelTrait<Entity = E>,
     E::Model: IntoActiveModel<A>,
@@ -212,7 +212,7 @@ where
     Ok(am)
 }
 
-async fn insert_and_select_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, ExecErr>
+async fn insert_and_select_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, DbErr>
 where
     A: ActiveModelTrait<Entity = E>,
     E::Model: IntoActiveModel<A>,
@@ -223,18 +223,18 @@ where
     // TODO: if the entity does not have auto increment primary key, then last_insert_id is a wrong value
     if <E::PrimaryKey as PrimaryKeyTrait>::auto_increment() && res.last_insert_id != 0 {
         let find = E::find_by_id(res.last_insert_id).one(db);
-        let res = find.await;
-        let model: Option<E::Model> = res.map_err(|_| ExecErr)?;
+        let found = find.await;
+        let model: Option<E::Model> = found?;
         match model {
             Some(model) => Ok(model.into_active_model()),
-            None => Err(ExecErr),
+            None => Err(DbErr::Exec(format!("Failed to find inserted item: {} {}", E::default().to_string(), res.last_insert_id))),
         }
     } else {
         Ok(A::default())
     }
 }
 
-async fn update_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, ExecErr>
+async fn update_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, DbErr>
 where
     A: ActiveModelTrait<Entity = E>,
     E: EntityTrait,
@@ -246,7 +246,7 @@ where
 pub async fn delete_active_model<A, E>(
     mut am: A,
     db: &DatabaseConnection,
-) -> Result<DeleteResult, ExecErr>
+) -> Result<DeleteResult, DbErr>
 where
     A: ActiveModelBehavior + ActiveModelTrait<Entity = E>,
     E: EntityTrait,

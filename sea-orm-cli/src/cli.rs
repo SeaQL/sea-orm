@@ -40,4 +40,5 @@ pub fn build_cli() -> App<'static, 'static> {
         .version(env!("CARGO_PKG_VERSION"))
         .setting(AppSettings::VersionlessSubcommands)
         .subcommand(entity_subcommand)
+        .setting(AppSettings::SubcommandRequiredElseHelp)
 }

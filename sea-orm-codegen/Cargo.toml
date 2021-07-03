@@ -16,7 +16,6 @@ name = "sea_orm_codegen"
 path = "src/lib.rs"
 
 [dependencies]
-sea-orm = { path = "../", features = [ "sqlx-mysql", "runtime-async-std-native-tls", "debug-print", "with-json", "macros" ], default-features = false }
 sea-schema = { version = "^0.2", default-features = false, features = [ "sqlx-mysql", "runtime-async-std-native-tls", "discovery", "writer" ] }
 sea-query = { version = "^0.12" }
 sqlx = { version = "^0.5", features = [ "mysql", "runtime-async-std-native-tls" ] }

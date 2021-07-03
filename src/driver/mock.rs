@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, ConnectionErr, DatabaseConnection, ExecErr, ExecResult, MockDatabase, QueryErr,
-    QueryResult, Statement, Transaction,
+    debug_print, error::*, DatabaseConnection, ExecResult, MockDatabase, QueryResult, Statement,
+    Transaction,
 };
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -15,9 +15,9 @@ pub struct MockDatabaseConnection {
 }
 
 pub trait MockDatabaseTrait: Send {
-    fn execute(&mut self, counter: usize, stmt: Statement) -> Result<ExecResult, ExecErr>;
+    fn execute(&mut self, counter: usize, stmt: Statement) -> Result<ExecResult, DbErr>;
 
-    fn query(&mut self, counter: usize, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr>;
+    fn query(&mut self, counter: usize, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
 
     fn drain_transaction_log(&mut self) -> Vec<Transaction>;
 }
@@ -27,7 +27,7 @@ impl MockDatabaseConnector {
         string.starts_with("mock://")
     }
 
-    pub async fn connect(_string: &str) -> Result<DatabaseConnection, ConnectionErr> {
+    pub async fn connect(_string: &str) -> Result<DatabaseConnection, DbErr> {
         Ok(DatabaseConnection::MockDatabaseConnection(
             MockDatabaseConnection::new(MockDatabase::new()),
         ))
@@ -49,20 +49,20 @@ impl MockDatabaseConnection {
         &self.mocker
     }
 
-    pub async fn execute(&self, statement: Statement) -> Result<ExecResult, ExecErr> {
+    pub async fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", statement);
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
         self.mocker.lock().unwrap().execute(counter, statement)
     }
 
-    pub async fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, QueryErr> {
+    pub async fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
         let result = self.mocker.lock().unwrap().query(counter, statement)?;
         Ok(result.into_iter().next())
     }
 
-    pub async fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, QueryErr> {
+    pub async fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
         self.mocker.lock().unwrap().query(counter, statement)

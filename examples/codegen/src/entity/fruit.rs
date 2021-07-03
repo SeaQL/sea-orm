@@ -48,7 +48,7 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(Some(255u32)).def(),
-            Self::CakeId => ColumnType::Integer.def(),
+            Self::CakeId => ColumnType::Integer.def().null(),
         }
     }
 }
@@ -56,14 +56,11 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Cake => Entity::has_one(super::cake::Entity)
+            Self::Cake => Entity::belongs_to(super::cake::Entity)
                 .from(Column::CakeId)
                 .to(super::cake::Column::Id)
                 .into(),
-            Self::Vendor => Entity::has_many(super::vendor::Entity)
-                .from(Column::Id)
-                .to(super::vendor::Column::FruitId)
-                .into(),
+            Self::Vendor => Entity::has_many(super::vendor::Entity).into(),
         }
     }
 }
@@ -77,15 +74,6 @@ impl Related<super::cake::Entity> for Entity {
 impl Related<super::vendor::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Vendor.def()
-    }
-}
-
-impl Model {
-    pub fn find_cake(&self) -> Select<super::cake::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
-    }
-    pub fn find_vendor(&self) -> Select<super::vendor::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
     }
 }
 

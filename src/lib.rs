@@ -18,7 +18,7 @@
 //! API to make working with databases in Rust a first-class experience.
 //!
 //! ```ignore
-//! This is an early WIP of SeaORM, and is not yet published. See [example](examples/sqlx-mysql/src) for demo usage.
+//! This is a preview of SeaORM, and is not yet released.
 //! ```
 //!
 //! ## Features
@@ -29,23 +29,22 @@
 //!
 //! 2. Dynamic
 //!
-//! Built upon SeaQuery, a dynamic query builder, SeaORM allows you to build complex queries without 'fighting the ORM'.
+//! Built upon SeaQuery, SeaORM allows you to build complex queries without 'fighting the ORM'.
 //!
 //! 3. Testable
 //!
 //! Use mock connections to write unit tests for your logic.
 //!
-//! 4. API oriented
+//! 4. Service oriented
 //!
-//! Quickly build search models that help you join, filter, sort and paginate data in APIs.
+//! Quickly build services that join, filter, sort and paginate data in APIs.
 //!
-//! # A quick taste of SeaORM
+//! ## A quick taste of SeaORM
 //!
-//! ## Select
+//! ### Select
 //! ```
-//! # use sea_orm::{DbConn, entity::*, query::*, tests_cfg::*};
-//! # async fn function(db: &DbConn) -> Result<(), QueryErr> {
-//! #
+//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! // find all models
 //! let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
 //!
@@ -71,11 +70,10 @@
 //! # Ok(())
 //! # }
 //! ```
-//! ## Insert
+//! ### Insert
 //! ```
-//! # use sea_orm::{DbConn, entity::*, query::*, tests_cfg::*};
-//! # async fn function(db: &DbConn) -> Result<(), ExecErr> {
-//! #
+//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! let apple = fruit::ActiveModel {
 //!     name: Set("Apple".to_owned()),
 //!     ..Default::default() // no need to set primary key
@@ -90,16 +88,13 @@
 //! let res: InsertResult = Fruit::insert(pear).exec(db).await?;
 //!
 //! println!("InsertResult: {}", res.last_insert_id);
-//! #
 //! # Ok(())
 //! # }
-//! #
-//! # async fn function2(db: &DbConn) -> Result<(), ExecErr> {
+//! # async fn function2(db: &DbConn) -> Result<(), DbErr> {
 //! # let apple = fruit::ActiveModel {
 //! #     name: Set("Apple".to_owned()),
 //! #     ..Default::default() // no need to set primary key
 //! # };
-//! #
 //! # let pear = fruit::ActiveModel {
 //! #     name: Set("Pear".to_owned()),
 //! #     ..Default::default()
@@ -107,25 +102,18 @@
 //!
 //! // insert many
 //! Fruit::insert_many(vec![apple, pear]).exec(db).await?;
-//! #
 //! # Ok(())
 //! # }
 //! ```
-//! ## Update
+//! ### Update
 //! ```
-//! # use sea_orm::{DbConn, entity::*, query::*, tests_cfg::*};
-//! #
+//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! use sea_orm::sea_query::{Expr, Value};
 //!
-//! # async fn function(db: &DbConn) -> Result<(), QueryErr> {
+//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! let pear: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
-//! # Ok(())
-//! # }
-//! #
-//! # async fn function2(db: &DbConn) -> Result<(), ExecErr> {
-//! # let pear: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await.unwrap();
-//!
 //! let mut pear: fruit::ActiveModel = pear.unwrap().into();
+//!
 //! pear.name = Set("Sweet pear".to_owned());
 //!
 //! // update one
@@ -141,21 +129,39 @@
 //! # Ok(())
 //! # }
 //! ```
-//! ## Delete
+//! ### Save
 //! ```
-//! # use sea_orm::{DbConn, entity::*, query::*, tests_cfg::*};
-//! #
-//! # async fn function(db: &DbConn) -> Result<(), QueryErr> {
-//! let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
+//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
+//! let banana = fruit::ActiveModel {
+//!     id: Unset(None),
+//!     name: Set("Banana".to_owned()),
+//!     ..Default::default()
+//! };
+//!
+//! // create, because primary key `id` is `Unset`
+//! let mut banana = banana.save(db).await?;
+//!
+//! banana.name = Set("Banana Mongo".to_owned());
+//!
+//! // update, because primary key `id` is `Set`
+//! let banana = banana.save(db).await?;
+//!
 //! # Ok(())
 //! # }
-//! #
-//! # async fn function2(db: &DbConn) -> Result<(), ExecErr> {
-//! # let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await.unwrap();
+//! ```
+//! ### Delete
+//! ```
+//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
+//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
+//! let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
 //! let orange: fruit::ActiveModel = orange.unwrap().into();
 //!
 //! // delete one
 //! fruit::Entity::delete(orange).exec(db).await?;
+//! // or simply
+//! # let orange: fruit::ActiveModel = Fruit::find_by_id(1).one(db).await.unwrap().unwrap().into();
+//! orange.delete(db).await?;
 //!
 //! // delete many: DELETE FROM "fruit" WHERE "fruit"."name" LIKE 'Orange'
 //! fruit::Entity::delete_many()
@@ -166,9 +172,30 @@
 //! # Ok(())
 //! # }
 //! ```
+//! ## License
+//! 
+//! Licensed under either of
+//! 
+//! -   Apache License, Version 2.0
+//!     ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+//! -   MIT license
+//!     ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+//! 
+//! at your option.
+//! 
+//! ## Contribution
+//! 
+//! Unless you explicitly state otherwise, any contribution intentionally submitted
+//! for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
+//! dual licensed as above, without any additional terms or conditions.
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/SeaQL/sea-query/master/docs/SeaQL icon dark.png"
+)]
+
 mod database;
 mod driver;
 pub mod entity;
+pub mod error;
 mod executor;
 pub mod query;
 #[doc(hidden)]
@@ -178,6 +205,7 @@ mod util;
 pub use database::*;
 pub use driver::*;
 pub use entity::*;
+pub use error::*;
 pub use executor::*;
 pub use query::*;
 
@@ -188,3 +216,4 @@ pub use sea_orm_macros::{
 pub use sea_query;
 pub use sea_query::Iden;
 pub use strum::EnumIter;
+pub use strum;

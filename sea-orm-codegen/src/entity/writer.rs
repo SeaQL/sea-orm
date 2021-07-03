@@ -117,7 +117,6 @@ impl EntityWriter {
         ];
         code_blocks.extend(Self::gen_impl_related(entity));
         code_blocks.extend(vec![
-            Self::gen_impl_model(entity),
             Self::gen_impl_active_model_behavior(),
         ]);
         code_blocks
@@ -254,18 +253,6 @@ impl EntityWriter {
                 }
             })
             .collect()
-    }
-
-    pub fn gen_impl_model(entity: &Entity) -> TokenStream {
-        let relation_ref_tables_snake_case = entity.get_relation_ref_tables_snake_case();
-        let relation_rel_find_helpers = entity.get_relation_rel_find_helpers();
-        quote! {
-            impl Model {
-                #(pub fn #relation_rel_find_helpers(&self) -> Select<super::#relation_ref_tables_snake_case::Entity> {
-                    Entity::find_related().belongs_to::<Entity>(self)
-                })*
-            }
-        }
     }
 
     pub fn gen_impl_active_model_behavior() -> TokenStream {

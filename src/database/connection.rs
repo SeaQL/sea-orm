@@ -1,9 +1,8 @@
-use crate::{ExecErr, ExecResult, QueryErr, QueryResult, Statement, Transaction};
+use crate::{error::*, ExecResult, QueryResult, Statement};
 use sea_query::{
     MysqlQueryBuilder, PostgresQueryBuilder, QueryStatementBuilder, SchemaStatementBuilder,
     SqliteQueryBuilder,
 };
-use std::{error::Error, fmt};
 
 pub enum DatabaseConnection {
     #[cfg(feature = "sqlx-mysql")]
@@ -27,17 +26,6 @@ pub enum SchemaBuilderBackend {
     MySql,
     Postgres,
     Sqlite,
-}
-
-#[derive(Debug)]
-pub struct ConnectionErr;
-
-impl Error for ConnectionErr {}
-
-impl fmt::Display for ConnectionErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
 }
 
 impl Default for DatabaseConnection {
@@ -89,7 +77,7 @@ impl DatabaseConnection {
         }
     }
 
-    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, ExecErr> {
+    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.execute(stmt).await,
@@ -101,7 +89,7 @@ impl DatabaseConnection {
         }
     }
 
-    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, QueryErr> {
+    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_one(stmt).await,
@@ -113,7 +101,7 @@ impl DatabaseConnection {
         }
     }
 
-    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr> {
+    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_all(stmt).await,
@@ -139,7 +127,7 @@ impl DatabaseConnection {
     }
 
     #[cfg(feature = "mock")]
-    pub fn into_transaction_log(self) -> Vec<Transaction> {
+    pub fn into_transaction_log(self) -> Vec<crate::Transaction> {
         let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
         mocker.drain_transaction_log()
     }

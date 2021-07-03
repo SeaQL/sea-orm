@@ -1,5 +1,3 @@
-use std::{error::Error, fmt};
-
 #[derive(Debug)]
 pub struct ExecResult {
     pub(crate) result: ExecResultHolder,
@@ -14,9 +12,6 @@ pub(crate) enum ExecResultHolder {
     #[cfg(feature = "mock")]
     Mock(crate::MockExecResult),
 }
-
-#[derive(Debug)]
-pub struct ExecErr;
 
 // ExecResult //
 
@@ -48,15 +43,5 @@ impl ExecResult {
             #[cfg(feature = "mock")]
             ExecResultHolder::Mock(result) => result.rows_affected,
         }
-    }
-}
-
-// ExecErr //
-
-impl Error for ExecErr {}
-
-impl fmt::Display for ExecErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
     }
 }

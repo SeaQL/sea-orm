@@ -6,7 +6,9 @@ use sqlx::{
 sea_query::sea_query_driver_sqlite!();
 use sea_query_driver_sqlite::bind_query;
 
-use crate::{debug_print, executor::*, ConnectionErr, DatabaseConnection, Statement};
+use crate::{debug_print, error::*, executor::*, DatabaseConnection, Statement};
+
+use super::sqlx_common::*;
 
 pub struct SqlxSqliteConnector;
 
@@ -19,13 +21,13 @@ impl SqlxSqliteConnector {
         string.starts_with("sqlite:")
     }
 
-    pub async fn connect(string: &str) -> Result<DatabaseConnection, ConnectionErr> {
+    pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
         if let Ok(pool) = SqlitePool::connect(string).await {
             Ok(DatabaseConnection::SqlxSqlitePoolConnection(
                 SqlxSqlitePoolConnection { pool },
             ))
         } else {
-            Err(ConnectionErr)
+            Err(DbErr::Conn("Failed to connect.".to_owned()))
         }
     }
 }
@@ -37,43 +39,49 @@ impl SqlxSqliteConnector {
 }
 
 impl SqlxSqlitePoolConnection {
-    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, ExecErr> {
+    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
         if let Ok(conn) = &mut self.pool.acquire().await {
-            if let Ok(res) = query.execute(conn).await {
-                return Ok(res.into());
-            }
-        }
-        Err(ExecErr)
-    }
-
-    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, QueryErr> {
-        debug_print!("{}", stmt);
-
-        let query = sqlx_query(&stmt);
-        if let Ok(conn) = &mut self.pool.acquire().await {
-            if let Ok(row) = query.fetch_one(conn).await {
-                Ok(Some(row.into()))
-            } else {
-                Ok(None)
+            match query.execute(conn).await {
+                Ok(res) => Ok(res.into()),
+                Err(err) => Err(sqlx_error_to_exec_err(err)),
             }
         } else {
-            Err(QueryErr)
+            Err(DbErr::Exec("Failed to acquire connection from pool.".to_owned()))
         }
     }
 
-    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, QueryErr> {
+    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
         if let Ok(conn) = &mut self.pool.acquire().await {
-            if let Ok(rows) = query.fetch_all(conn).await {
-                return Ok(rows.into_iter().map(|r| r.into()).collect());
+            match query.fetch_one(conn).await {
+                Ok(row) => Ok(Some(row.into())),
+                Err(err) => match err {
+                    sqlx::Error::RowNotFound => Ok(None),
+                    _ => Err(DbErr::Query(err.to_string())),
+                },
             }
+        } else {
+            Err(DbErr::Query("Failed to acquire connection from pool.".to_owned()))
         }
-        Err(QueryErr)
+    }
+
+    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
+        debug_print!("{}", stmt);
+
+        let query = sqlx_query(&stmt);
+        if let Ok(conn) = &mut self.pool.acquire().await {
+            match query.fetch_all(conn).await {
+                Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
+                Err(err) => Err(sqlx_error_to_query_err(err)),
+            }
+        } else {
+            Err(DbErr::Query("Failed to acquire connection from pool.".to_owned()))
+        }
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    ActiveModelTrait, DatabaseConnection, EntityTrait, ExecErr, Statement, UpdateMany, UpdateOne,
+    error::*, ActiveModelTrait, DatabaseConnection, EntityTrait, Statement, UpdateMany, UpdateOne,
 };
 use sea_query::UpdateStatement;
 use std::future::Future;
@@ -18,7 +18,10 @@ impl<'a, A: 'a> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
-    pub fn exec(self, db: &'a DatabaseConnection) -> impl Future<Output = Result<A, ExecErr>> + 'a {
+    pub fn exec(
+        self,
+        db: &'a DatabaseConnection,
+    ) -> impl Future<Output = Result<A, DbErr>> + 'a {
         // so that self is dropped before entering await
         exec_update_and_return_original(self.query, self.model, db)
     }
@@ -31,7 +34,7 @@ where
     pub fn exec(
         self,
         db: &'a DatabaseConnection,
-    ) -> impl Future<Output = Result<UpdateResult, ExecErr>> + 'a {
+    ) -> impl Future<Output = Result<UpdateResult, DbErr>> + 'a {
         // so that self is dropped before entering await
         exec_update_only(self.query, db)
     }
@@ -45,7 +48,7 @@ impl Updater {
     pub fn exec(
         self,
         db: &DatabaseConnection,
-    ) -> impl Future<Output = Result<UpdateResult, ExecErr>> + '_ {
+    ) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_ {
         let builder = db.get_query_builder_backend();
         exec_update(builder.build(&self.query), db)
     }
@@ -54,7 +57,7 @@ impl Updater {
 async fn exec_update_only(
     query: UpdateStatement,
     db: &DatabaseConnection,
-) -> Result<UpdateResult, ExecErr> {
+) -> Result<UpdateResult, DbErr> {
     Updater::new(query).exec(db).await
 }
 
@@ -62,7 +65,7 @@ async fn exec_update_and_return_original<A>(
     query: UpdateStatement,
     model: A,
     db: &DatabaseConnection,
-) -> Result<A, ExecErr>
+) -> Result<A, DbErr>
 where
     A: ActiveModelTrait,
 {
@@ -74,7 +77,7 @@ where
 async fn exec_update(
     statement: Statement,
     db: &DatabaseConnection,
-) -> Result<UpdateResult, ExecErr> {
+) -> Result<UpdateResult, DbErr> {
     let result = db.execute(statement).await?;
     Ok(UpdateResult {
         rows_affected: result.rows_affected(),

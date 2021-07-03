@@ -1,7 +1,7 @@
 use super::*;
-use sea_orm::{entity::*, query::*, DbConn};
+use sea_orm::{entity::*, error::*, query::*, DbConn};
 
-pub async fn all_about_operation(db: &DbConn) -> Result<(), ExecErr> {
+pub async fn all_about_operation(db: &DbConn) -> Result<(), DbErr> {
     insert_and_update(db).await?;
 
     println!("===== =====\n");
@@ -15,7 +15,7 @@ pub async fn all_about_operation(db: &DbConn) -> Result<(), ExecErr> {
     Ok(())
 }
 
-pub async fn insert_and_update(db: &DbConn) -> Result<(), ExecErr> {
+pub async fn insert_and_update(db: &DbConn) -> Result<(), DbErr> {
     let pear = fruit::ActiveModel {
         name: Set("pear".to_owned()),
         ..Default::default()
@@ -25,10 +25,7 @@ pub async fn insert_and_update(db: &DbConn) -> Result<(), ExecErr> {
     println!();
     println!("Inserted: last_insert_id = {}\n", res.last_insert_id);
 
-    let pear: Option<fruit::Model> = Fruit::find_by_id(res.last_insert_id)
-        .one(db)
-        .await
-        .map_err(|_| ExecErr)?;
+    let pear: Option<fruit::Model> = Fruit::find_by_id(res.last_insert_id).one(db).await?;
 
     println!();
     println!("Pear: {:?}\n", pear);
@@ -44,7 +41,7 @@ pub async fn insert_and_update(db: &DbConn) -> Result<(), ExecErr> {
     Ok(())
 }
 
-pub async fn save_active_model(db: &DbConn) -> Result<(), ExecErr> {
+pub async fn save_active_model(db: &DbConn) -> Result<(), DbErr> {
     let banana = fruit::ActiveModel {
         name: Set("Banana".to_owned()),
         ..Default::default()
@@ -82,7 +79,7 @@ mod form {
     }
 }
 
-async fn save_custom_active_model(db: &DbConn) -> Result<(), ExecErr> {
+async fn save_custom_active_model(db: &DbConn) -> Result<(), DbErr> {
     let pineapple = form::ActiveModel {
         id: Unset(None),
         name: Set("Pineapple".to_owned()),

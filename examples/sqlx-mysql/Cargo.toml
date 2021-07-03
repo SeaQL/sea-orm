@@ -6,8 +6,7 @@ publish = false
 
 [dependencies]
 async-std = { version = "^1.9", features = [ "attributes" ] }
-sea-orm = { path = "../../", features = [ "sqlx-mysql", "runtime-async-std-native-tls", "debug-print", "with-json", "macros" ], default-features = false }
-strum = { version = "^0.20", features = [ "derive" ] }
+sea-orm = { path = "../../", features = [ "sqlx-mysql", "runtime-async-std-native-tls", "debug-print", "sqlx-json", "macros" ], default-features = false }
 serde_json = { version = "^1" }
 futures = { version = "^0.3" }
 async-stream = { version = "^0.3" }

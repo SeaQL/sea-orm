@@ -1,4 +1,5 @@
-use std::{error::Error, fmt};
+use crate::DbErr;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct QueryResult {
@@ -14,14 +15,8 @@ pub(crate) enum QueryResultRow {
     Mock(crate::MockRow),
 }
 
-#[derive(Debug)]
-pub struct QueryErr;
-
-#[derive(Debug)]
-pub struct TypeErr;
-
 pub trait TryGetable {
-    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TypeErr>
+    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr>
     where
         Self: Sized;
 }
@@ -29,7 +24,7 @@ pub trait TryGetable {
 // QueryResult //
 
 impl QueryResult {
-    pub fn try_get<T>(&self, pre: &str, col: &str) -> Result<T, TypeErr>
+    pub fn try_get<T>(&self, pre: &str, col: &str) -> Result<T, DbErr>
     where
         T: TryGetable,
     {
@@ -50,49 +45,23 @@ impl fmt::Debug for QueryResultRow {
     }
 }
 
-// QueryErr //
-
-impl Error for QueryErr {}
-
-impl fmt::Display for QueryErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl From<TypeErr> for QueryErr {
-    fn from(_: TypeErr) -> QueryErr {
-        QueryErr
-    }
-}
-
-// TypeErr //
-
-impl Error for TypeErr {}
-
-impl fmt::Display for TypeErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
 // TryGetable //
 
 macro_rules! try_getable_all {
     ( $type: ty ) => {
         impl TryGetable for $type {
-            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TypeErr> {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr> {
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
-                        Ok(row.try_get(column.as_str())?)
+                        row.try_get(column.as_str()).map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => {
                         use sqlx::Row;
-                        Ok(row.try_get(column.as_str())?)
+                        row.try_get(column.as_str()).map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => Ok(row.try_get(column.as_str())?),
@@ -101,7 +70,7 @@ macro_rules! try_getable_all {
         }
 
         impl TryGetable for Option<$type> {
-            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TypeErr> {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr> {
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
@@ -134,13 +103,13 @@ macro_rules! try_getable_all {
 macro_rules! try_getable_mysql {
     ( $type: ty ) => {
         impl TryGetable for $type {
-            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TypeErr> {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr> {
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
-                        Ok(row.try_get(column.as_str())?)
+                        row.try_get(column.as_str()).map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(_) => {
@@ -153,7 +122,7 @@ macro_rules! try_getable_mysql {
         }
 
         impl TryGetable for Option<$type> {
-            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TypeErr> {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr> {
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]

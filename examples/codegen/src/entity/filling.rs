@@ -52,10 +52,7 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::CakeFilling => Entity::has_many(super::cake_filling::Entity)
-                .from(Column::Id)
-                .to(super::cake_filling::Column::FillingId)
-                .into(),
+            Self::CakeFilling => Entity::has_many(super::cake_filling::Entity).into(),
         }
     }
 }
@@ -63,12 +60,6 @@ impl RelationTrait for Relation {
 impl Related<super::cake_filling::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::CakeFilling.def()
-    }
-}
-
-impl Model {
-    pub fn find_cake_filling(&self) -> Select<super::cake_filling::Entity> {
-        Entity::find_related().belongs_to::<Entity>(self)
     }
 }
 

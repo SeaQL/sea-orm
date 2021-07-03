@@ -1,7 +1,7 @@
 use crate::{
-    DatabaseConnection, EntityTrait, ExecErr, ExecResult, ExecResultHolder, Iden, Iterable,
-    MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryErr, QueryResult, QueryResultRow,
-    Statement, Transaction, TypeErr,
+    error::*, DatabaseConnection, EntityTrait, ExecResult, ExecResultHolder, Iden, Iterable,
+    MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult, QueryResultRow, Statement,
+    Transaction,
 };
 use sea_query::{Value, ValueType};
 use std::collections::BTreeMap;
@@ -68,14 +68,14 @@ impl MockDatabase {
 }
 
 impl MockDatabaseTrait for MockDatabase {
-    fn execute(&mut self, counter: usize, statement: Statement) -> Result<ExecResult, ExecErr> {
+    fn execute(&mut self, counter: usize, statement: Statement) -> Result<ExecResult, DbErr> {
         self.transaction_log.push(Transaction::one(statement));
         if counter < self.exec_results.len() {
             Ok(ExecResult {
                 result: ExecResultHolder::Mock(std::mem::take(&mut self.exec_results[counter])),
             })
         } else {
-            Err(ExecErr)
+            Err(DbErr::Exec("`exec_results` buffer is empty.".to_owned()))
         }
     }
 
@@ -83,7 +83,7 @@ impl MockDatabaseTrait for MockDatabase {
         &mut self,
         counter: usize,
         statement: Statement,
-    ) -> Result<Vec<QueryResult>, QueryErr> {
+    ) -> Result<Vec<QueryResult>, DbErr> {
         self.transaction_log.push(Transaction::one(statement));
         if counter < self.query_results.len() {
             Ok(std::mem::take(&mut self.query_results[counter])
@@ -93,7 +93,7 @@ impl MockDatabaseTrait for MockDatabase {
                 })
                 .collect())
         } else {
-            Err(QueryErr)
+            Err(DbErr::Query("`query_results` buffer is empty.".to_owned()))
         }
     }
 
@@ -103,7 +103,7 @@ impl MockDatabaseTrait for MockDatabase {
 }
 
 impl MockRow {
-    pub fn try_get<T>(&self, col: &str) -> Result<T, TypeErr>
+    pub fn try_get<T>(&self, col: &str) -> Result<T, DbErr>
     where
         T: ValueType,
     {

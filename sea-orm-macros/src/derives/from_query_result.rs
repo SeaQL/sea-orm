@@ -30,7 +30,7 @@ pub fn expand_derive_from_query_result(ident: Ident, data: Data) -> syn::Result<
 
     Ok(quote!(
         impl sea_orm::FromQueryResult for #ident {
-            fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::TypeErr> {
+            fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::DbErr> {
                 Ok(Self {
                     #(#field: row.try_get(pre, #name)?),*
                 })

@@ -1,9 +1,9 @@
-use crate::{FromQueryResult, QueryResult, QueryResultRow, TypeErr};
+use crate::{FromQueryResult, DbErr, QueryResult, QueryResultRow};
 use serde_json::Map;
 pub use serde_json::Value as JsonValue;
 
 impl FromQueryResult for JsonValue {
-    fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, TypeErr> {
+    fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(row) => {
