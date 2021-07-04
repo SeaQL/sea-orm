@@ -96,7 +96,7 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     .foreign_key(
       ForeignKey::create()
         .name("FK_order_bakery")
-        .from(order::Entity, baker::Column::BakeryId)
+        .from(order::Entity, order::Column::BakeryId)
         .to(bakery::Entity, bakery::Column::Id)
         .on_delete(ForeignKeyAction::Cascade)
         .on_update(ForeignKeyAction::Cascade),
@@ -104,7 +104,7 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     .foreign_key(
       ForeignKey::create()
         .name("FK_order_customer")
-        .from(order::Entity, baker::Column::BakeryId)
+        .from(order::Entity, order::Column::CustomerId)
         .to(customer::Entity, customer::Column::Id)
         .on_delete(ForeignKeyAction::Cascade)
         .on_update(ForeignKeyAction::Cascade),
