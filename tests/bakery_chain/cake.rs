@@ -24,7 +24,6 @@ pub enum Column {
     Name,
     Price,
     BakeryId,
-    LineitemId,
     GlutenFree,
 }
 
@@ -54,7 +53,6 @@ impl ColumnTrait for Column {
             Self::Name => ColumnType::String(None).def(),
             Self::Price => ColumnType::Money(Some((19, 4))).def(),
             Self::BakeryId => ColumnType::Integer.def(),
-            Self::LineitemId => ColumnType::Integer.def(),
             Self::GlutenFree => ColumnType::Boolean.def(),
         }
     }
