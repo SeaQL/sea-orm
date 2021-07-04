@@ -62,12 +62,12 @@ impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
             Self::Order => Entity::belongs_to(super::order::Entity)
-                .from(Column::Id)
-                .to(super::order::Column::CustomerId)
+                .from(Column::OrderId)
+                .to(super::order::Column::Id)
                 .into(),
             Self::Cake => Entity::belongs_to(super::cake::Entity)
-                .from(Column::Id)
-                .to(super::cake::Column::LineitemId)
+                .from(Column::CakeId)
+                .to(super::cake::Column::Id)
                 .into(),
         }
     }

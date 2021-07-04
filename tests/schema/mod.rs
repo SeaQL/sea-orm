@@ -132,11 +132,24 @@ pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .integer()
         .not_null(),
     )
+    .col(
+      ColumnDef::new(lineitem::Column::CakeId)
+        .integer()
+        .not_null(),
+    )
     .foreign_key(
       ForeignKey::create()
         .name("FK_lineitem_order")
         .from(lineitem::Entity, lineitem::Column::OrderId)
         .to(order::Entity, order::Column::Id)
+        .on_delete(ForeignKeyAction::Cascade)
+        .on_update(ForeignKeyAction::Cascade),
+    )
+    .foreign_key(
+      ForeignKey::create()
+        .name("FK_lineitem_cake")
+        .from(lineitem::Entity, lineitem::Column::CakeId)
+        .to(cake::Entity, cake::Column::Id)
         .on_delete(ForeignKeyAction::Cascade)
         .on_update(ForeignKeyAction::Cascade),
     )
@@ -183,11 +196,6 @@ pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     .col(ColumnDef::new(cake::Column::Name).string())
     .col(ColumnDef::new(cake::Column::Price).float())
     .col(ColumnDef::new(cake::Column::BakeryId).integer().not_null())
-    .col(
-      ColumnDef::new(cake::Column::LineitemId)
-        .integer()
-        .not_null(),
-    )
     .foreign_key(
       ForeignKey::create()
         .name("FK_cake_bakery")
