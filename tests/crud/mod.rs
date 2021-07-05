@@ -78,3 +78,25 @@ pub async fn test_create_baker(db: &DbConn) {
     assert_eq!(related_bakers.len(), 1);
     assert_eq!(related_bakers[0].name, "Baker Bob")
 }
+
+pub async fn test_create_customer(db: &DbConn) {
+    let customer_kate = customer::ActiveModel {
+        name: Set("Kate".to_owned()),
+        notes: Set("Loves cheese cake".to_owned()),
+        ..Default::default()
+    };
+    let res: InsertResult = Customer::insert(customer_kate)
+        .exec(db)
+        .await
+        .expect("could not insert customer");
+
+    let customer: Option<customer::Model> = Customer::find_by_id(res.last_insert_id)
+        .one(db)
+        .await
+        .expect("could not find customer");
+
+    assert!(customer.is_some());
+    let customer_model = customer.unwrap();
+    assert_eq!(customer_model.name, "Kate");
+    assert_eq!(customer_model.notes, "Loves cheese cake");
+}
