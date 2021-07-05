@@ -38,7 +38,7 @@ pub async fn create_baker_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .primary_key(),
     )
     .col(ColumnDef::new(baker::Column::Name).string())
-    .col(ColumnDef::new(baker::Column::BakeryId).integer().not_null())
+    .col(ColumnDef::new(baker::Column::BakeryId).integer())
     .foreign_key(
       ForeignKey::create()
         .name("FK_baker_bakery")

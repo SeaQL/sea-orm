@@ -25,5 +25,6 @@ async fn setup_schema(db: &DbConn) {
 }
 
 async fn create_entities(db: &DbConn) {
-    assert!(crud::create_bakery(db).await.is_ok());
+    crud::test_create_bakery(db).await;
+    crud::test_create_baker(db).await;
 }
