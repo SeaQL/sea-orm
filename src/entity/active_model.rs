@@ -7,16 +7,16 @@ use std::fmt::Debug;
 #[derive(Clone, Debug, Default)]
 pub struct ActiveValue<V>
 where
-    V: Into<Value> + Default,
+    V: Into<Value>,
 {
-    value: V,
+    value: Option<V>,
     state: ActiveValueState,
 }
 
 #[allow(non_snake_case)]
 pub fn Set<V>(v: V) -> ActiveValue<V>
 where
-    V: Into<Value> + Default,
+    V: Into<Value>,
 {
     ActiveValue::set(v)
 }
@@ -24,7 +24,7 @@ where
 #[allow(non_snake_case)]
 pub fn Unset<V>(_: Option<bool>) -> ActiveValue<V>
 where
-    V: Into<Value> + Default,
+    V: Into<Value>,
 {
     ActiveValue::unset()
 }
@@ -45,7 +45,7 @@ impl Default for ActiveValueState {
 #[doc(hidden)]
 pub fn unchanged_active_value_not_intended_for_public_use<V>(value: V) -> ActiveValue<V>
 where
-    V: Into<Value> + Default,
+    V: Into<Value>,
 {
     ActiveValue::unchanged(value)
 }
@@ -111,11 +111,11 @@ where
 
 impl<V> ActiveValue<V>
 where
-    V: Into<Value> + Default,
+    V: Into<Value>,
 {
     pub fn set(value: V) -> Self {
         Self {
-            value,
+            value: Some(value),
             state: ActiveValueState::Set,
         }
     }
@@ -126,7 +126,7 @@ where
 
     pub(crate) fn unchanged(value: V) -> Self {
         Self {
-            value,
+            value: Some(value),
             state: ActiveValueState::Unchanged,
         }
     }
@@ -137,7 +137,7 @@ where
 
     pub fn unset() -> Self {
         Self {
-            value: V::default(),
+            value: None,
             state: ActiveValueState::Unset,
         }
     }
@@ -148,15 +148,15 @@ where
 
     pub fn take(&mut self) -> V {
         self.state = ActiveValueState::Unset;
-        std::mem::take(&mut self.value)
+        self.value.take().unwrap()
     }
 
     pub fn unwrap(self) -> V {
-        self.value
+        self.value.unwrap()
     }
 
     pub fn into_value(self) -> Value {
-        self.value.into()
+        self.value.unwrap().into()
     }
 
     pub fn into_wrapped_value(self) -> ActiveValue<Value> {
@@ -170,19 +170,19 @@ where
 
 impl<V> std::convert::AsRef<V> for ActiveValue<V>
 where
-    V: Into<Value> + Default,
+    V: Into<Value>,
 {
     fn as_ref(&self) -> &V {
-        &self.value
+        self.value.as_ref().unwrap()
     }
 }
 
 impl<V> PartialEq for ActiveValue<V>
 where
-    V: Into<Value> + Default + std::cmp::PartialEq,
+    V: Into<Value> + std::cmp::PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
+        self.value.as_ref() == other.value.as_ref()
     }
 }
 
