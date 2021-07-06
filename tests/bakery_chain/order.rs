@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use sea_orm::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
@@ -15,7 +16,7 @@ pub struct Model {
     pub total: f32,
     pub bakery_id: Option<i32>,
     pub customer_id: Option<i32>,
-    pub placed_at: String,
+    pub placed_at: NaiveDateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
