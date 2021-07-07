@@ -1,3 +1,4 @@
+use rust_decimal::prelude::*;
 use sea_orm::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
@@ -12,7 +13,7 @@ impl EntityName for Entity {
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
     pub id: i32,
-    pub price: f64,
+    pub price: Decimal,
     pub quantity: i32,
     pub order_id: Option<i32>,
     pub cake_id: Option<i32>,

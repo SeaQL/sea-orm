@@ -2,6 +2,8 @@ use sea_orm::{entity::*, DbConn, InsertResult};
 
 pub use super::bakery_chain::*;
 
+pub mod create_lineitem;
+
 pub async fn test_create_bakery(db: &DbConn) {
     let seaside_bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),

@@ -1,4 +1,5 @@
 use crate::DbErr;
+use rust_decimal::prelude::*;
 use std::fmt;
 
 #[derive(Debug)]
@@ -46,6 +47,25 @@ impl fmt::Debug for QueryResultRow {
 }
 
 // TryGetable //
+impl TryGetable for Decimal {
+    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr> {
+        let column = format!("{}{}", pre, col);
+        match &res.row {
+            #[cfg(feature = "sqlx-mysql")]
+            QueryResultRow::SqlxMySql(row) => {
+                use sqlx::Row;
+                row.try_get(column.as_str())
+                    .map_err(crate::sqlx_error_to_query_err)
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            QueryResultRow::SqlxSqlite(_) => {
+                panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+            }
+            #[cfg(feature = "mock")]
+            QueryResultRow::Mock(row) => Ok(row.try_get(column.as_str())?),
+        }
+    }
+}
 
 macro_rules! try_getable_all {
     ( $type: ty ) => {
@@ -56,12 +76,14 @@ macro_rules! try_getable_all {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
-                        row.try_get(column.as_str()).map_err(crate::sqlx_error_to_query_err)
+                        row.try_get(column.as_str())
+                            .map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => {
                         use sqlx::Row;
-                        row.try_get(column.as_str()).map_err(crate::sqlx_error_to_query_err)
+                        row.try_get(column.as_str())
+                            .map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => Ok(row.try_get(column.as_str())?),
@@ -109,7 +131,8 @@ macro_rules! try_getable_mysql {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
-                        row.try_get(column.as_str()).map_err(crate::sqlx_error_to_query_err)
+                        row.try_get(column.as_str())
+                            .map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(_) => {
