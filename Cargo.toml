@@ -45,18 +45,20 @@ serde_json = { version = "^1", optional = true }
 [dev-dependencies]
 async-std = { version = "^1.9", features = [ "attributes" ] }
 maplit = { version = "^1" }
-sea-orm = { path = ".", features = ["sqlx-sqlite", "sqlx-json", "sqlx-chrono", "runtime-async-std-native-tls"] }
+sea-orm = { path = ".", features = ["sqlx-sqlite", "sqlx-json", "sqlx-chrono", "sqlx-decimal", "runtime-async-std-native-tls"] }
 
 [features]
 debug-print = []
-default = [ "macros", "with-json", "with-chrono", "mock" ]
+default = [ "macros", "with-json", "with-chrono", "with-rust_decimal", "mock" ]
 macros = [ "sea-orm-macros" ]
 mock = []
 with-json = [ "serde_json", "sea-query/with-json" ]
 with-chrono = [ "chrono", "sea-query/with-chrono" ]
+with-rust_decimal = [ "sea-query/with-rust_decimal" ]
 sqlx-dep = [ "sqlx" ]
 sqlx-json = [ "sqlx/json", "with-json" ]
 sqlx-chrono = [ "sqlx/chrono", "with-chrono" ]
+sqlx-decimal = [ "sqlx/decimal", "with-rust_decimal" ]
 sqlx-mysql = [ "sqlx-dep", "sea-query/sqlx-mysql", "sqlx/mysql" ]
 sqlx-postgres = [ "sqlx-dep", "sea-query/sqlx-postgres", "sqlx/postgres" ]
 sqlx-sqlite = [ "sqlx-dep", "sea-query/sqlx-sqlite", "sqlx/sqlite" ]
