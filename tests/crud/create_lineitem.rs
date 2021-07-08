@@ -92,5 +92,24 @@ pub async fn test_create_lineitem(db: &DbConn) {
 
     assert!(lineitem.is_some());
     let lineitem_model = lineitem.unwrap();
-    // assert_eq!(lineitem_model.price, dec!(7.55));
+    assert_eq!(lineitem_model.price, dec!(7.55));
+
+    let cake: Option<cake::Model> = Cake::find_by_id(lineitem_model.cake_id)
+        .one(db)
+        .await
+        .expect("could not find cake");
+
+    let cake_model = cake.unwrap();
+    assert_eq!(cake_model.name, "Mud Cake");
+
+    let order: Option<order::Model> = Order::find_by_id(lineitem_model.order_id)
+        .one(db)
+        .await
+        .expect("could not find order");
+
+    let order_model = order.unwrap();
+    assert_eq!(
+        order_model.customer_id.unwrap(),
+        customer_insert_res.last_insert_id as i32
+    );
 }
