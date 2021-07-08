@@ -27,7 +27,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
     // Cake
     let mud_cake = cake::ActiveModel {
         name: Set("Mud Cake".to_owned()),
-        price: Set(10.25),
+        price: Set(dec!(10.25)),
         gluten_free: Set(false),
         bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
         ..Default::default()
