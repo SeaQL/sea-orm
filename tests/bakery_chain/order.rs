@@ -1,3 +1,4 @@
+use rust_decimal::prelude::*;
 use sea_orm::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
@@ -12,7 +13,7 @@ impl EntityName for Entity {
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
     pub id: i32,
-    pub total: f32,
+    pub total: Decimal,
     pub bakery_id: Option<i32>,
     pub customer_id: Option<i32>,
     pub placed_at: String,
@@ -51,7 +52,7 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::Id => ColumnType::Integer.def(),
-            Self::Total => ColumnType::Money(Some((19, 4))).def(),
+            Self::Total => ColumnType::Decimal(Some((19, 4))).def(),
             Self::BakeryId => ColumnType::Integer.def(),
             Self::CustomerId => ColumnType::Integer.def(),
             Self::PlacedAt => ColumnType::DateTime.def(),

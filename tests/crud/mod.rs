@@ -3,6 +3,7 @@ use sea_orm::{entity::*, DbConn, InsertResult};
 pub use super::bakery_chain::*;
 
 pub mod create_lineitem;
+pub mod create_order;
 
 pub async fn test_create_bakery(db: &DbConn) {
     let seaside_bakery = bakery::ActiveModel {

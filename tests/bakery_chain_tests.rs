@@ -30,4 +30,5 @@ async fn create_entities(db: &DbConn) {
     crud::test_create_customer(db).await;
     crud::test_create_cake(db).await;
     crud::create_lineitem::test_create_lineitem(db).await;
+    crud::create_order::test_create_order(db).await;
 }
