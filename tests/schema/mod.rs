@@ -125,7 +125,7 @@ pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .auto_increment()
         .primary_key(),
     )
-    .col(ColumnDef::new(lineitem::Column::Price).float())
+    .col(ColumnDef::new(lineitem::Column::Price).decimal())
     .col(ColumnDef::new(lineitem::Column::Quantity).integer())
     .col(
       ColumnDef::new(lineitem::Column::OrderId)
