@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use rust_decimal::prelude::*;
 use sea_orm::entity::prelude::*;
 
@@ -16,7 +17,7 @@ pub struct Model {
     pub total: Decimal,
     pub bakery_id: Option<i32>,
     pub customer_id: Option<i32>,
-    pub placed_at: String,
+    pub placed_at: Option<NaiveDateTime>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
