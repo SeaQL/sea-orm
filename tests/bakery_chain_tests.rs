@@ -34,4 +34,7 @@ async fn create_entities(db: &DbConn) {
 
     crud::updates::test_update_cake(db).await;
     crud::updates::test_update_bakery(db).await;
+
+    crud::deletes::test_delete_cake(db).await;
+    crud::deletes::test_delete_bakery(db).await;
 }

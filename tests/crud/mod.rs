@@ -5,6 +5,7 @@ pub use super::bakery_chain::*;
 pub mod create_cake;
 pub mod create_lineitem;
 pub mod create_order;
+pub mod deletes;
 pub mod updates;
 
 pub async fn test_create_bakery(db: &DbConn) {
