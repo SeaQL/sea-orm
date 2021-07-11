@@ -1,4 +1,4 @@
-use crate::{FromQueryResult, DbErr, QueryResult, QueryResultRow};
+use crate::{DbErr, FromQueryResult, QueryResult, QueryResultRow};
 use serde_json::Map;
 pub use serde_json::Value as JsonValue;
 

@@ -1,4 +1,4 @@
-use crate::{EntityTrait, DbErr, QueryFilter, QueryResult, Related, Select};
+use crate::{DbErr, EntityTrait, QueryFilter, QueryResult, Related, Select};
 pub use sea_query::Value;
 use std::fmt::Debug;
 
