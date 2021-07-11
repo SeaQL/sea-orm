@@ -88,7 +88,11 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .integer()
                 .not_null(),
         )
-        .col(ColumnDef::new(order::Column::PlacedAt).date_time())
+        .col(
+            ColumnDef::new(order::Column::PlacedAt)
+                .date_time()
+                .not_null(),
+        )
         .foreign_key(
             ForeignKey::create()
                 .name("FK_order_bakery")
