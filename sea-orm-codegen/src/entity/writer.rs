@@ -116,9 +116,7 @@ impl EntityWriter {
             Self::gen_impl_relation_trait(entity),
         ];
         code_blocks.extend(Self::gen_impl_related(entity));
-        code_blocks.extend(vec![
-            Self::gen_impl_active_model_behavior(),
-        ]);
+        code_blocks.extend(vec![Self::gen_impl_active_model_behavior()]);
         code_blocks
     }
 

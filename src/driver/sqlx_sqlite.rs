@@ -49,7 +49,9 @@ impl SqlxSqlitePoolConnection {
                 Err(err) => Err(sqlx_error_to_exec_err(err)),
             }
         } else {
-            Err(DbErr::Exec("Failed to acquire connection from pool.".to_owned()))
+            Err(DbErr::Exec(
+                "Failed to acquire connection from pool.".to_owned(),
+            ))
         }
     }
 
@@ -66,7 +68,9 @@ impl SqlxSqlitePoolConnection {
                 },
             }
         } else {
-            Err(DbErr::Query("Failed to acquire connection from pool.".to_owned()))
+            Err(DbErr::Query(
+                "Failed to acquire connection from pool.".to_owned(),
+            ))
         }
     }
 
@@ -80,7 +84,9 @@ impl SqlxSqlitePoolConnection {
                 Err(err) => Err(sqlx_error_to_query_err(err)),
             }
         } else {
-            Err(DbErr::Query("Failed to acquire connection from pool.".to_owned()))
+            Err(DbErr::Query(
+                "Failed to acquire connection from pool.".to_owned(),
+            ))
         }
     }
 }
