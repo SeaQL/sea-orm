@@ -65,7 +65,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
     let order_1 = order::ActiveModel {
         bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
         customer_id: Set(Some(customer_insert_res.last_insert_id as i32)),
-        placed_at: Set(Some(Utc::now().naive_utc())),
+        placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
     let order_insert_res: InsertResult = Order::insert(order_1)
