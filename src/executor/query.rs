@@ -1,4 +1,5 @@
 use crate::DbErr;
+use chrono::NaiveDateTime;
 use std::fmt;
 
 #[derive(Debug)]
@@ -163,6 +164,7 @@ try_getable_mysql!(u64);
 try_getable_all!(f32);
 try_getable_all!(f64);
 try_getable_all!(String);
+try_getable_all!(NaiveDateTime);
 
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;
