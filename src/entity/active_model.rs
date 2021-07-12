@@ -227,7 +227,11 @@ where
         let model: Option<E::Model> = found?;
         match model {
             Some(model) => Ok(model.into_active_model()),
-            None => Err(DbErr::Exec(format!("Failed to find inserted item: {} {}", E::default().to_string(), res.last_insert_id))),
+            None => Err(DbErr::Exec(format!(
+                "Failed to find inserted item: {} {}",
+                E::default().to_string(),
+                res.last_insert_id
+            ))),
         }
     } else {
         Ok(A::default())

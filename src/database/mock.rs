@@ -79,11 +79,7 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
-    fn query(
-        &mut self,
-        counter: usize,
-        statement: Statement,
-    ) -> Result<Vec<QueryResult>, DbErr> {
+    fn query(&mut self, counter: usize, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         self.transaction_log.push(Transaction::one(statement));
         if counter < self.query_results.len() {
             Ok(std::mem::take(&mut self.query_results[counter])

@@ -18,10 +18,7 @@ impl<'a, A: 'a> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
-    pub fn exec(
-        self,
-        db: &'a DatabaseConnection,
-    ) -> impl Future<Output = Result<A, DbErr>> + 'a {
+    pub fn exec(self, db: &'a DatabaseConnection) -> impl Future<Output = Result<A, DbErr>> + 'a {
         // so that self is dropped before entering await
         exec_update_and_return_original(self.query, self.model, db)
     }
@@ -74,10 +71,7 @@ where
 }
 
 // Only Statement impl Send
-async fn exec_update(
-    statement: Statement,
-    db: &DatabaseConnection,
-) -> Result<UpdateResult, DbErr> {
+async fn exec_update(statement: Statement, db: &DatabaseConnection) -> Result<UpdateResult, DbErr> {
     let result = db.execute(statement).await?;
     Ok(UpdateResult {
         rows_affected: result.rows_affected(),

@@ -62,10 +62,7 @@ async fn exec_delete_only(
 }
 
 // Only Statement impl Send
-async fn exec_delete(
-    statement: Statement,
-    db: &DatabaseConnection,
-) -> Result<DeleteResult, DbErr> {
+async fn exec_delete(statement: Statement, db: &DatabaseConnection) -> Result<DeleteResult, DbErr> {
     let result = db.execute(statement).await?;
     Ok(DeleteResult {
         rows_affected: result.rows_affected(),
