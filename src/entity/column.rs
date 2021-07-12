@@ -66,6 +66,7 @@ macro_rules! bind_vec_func {
 }
 
 // LINT: when the operand value does not match column type
+/// Wrapper of the identically named method in [`sea_query::Expr`]
 pub trait ColumnTrait: IdenStatic + Iterable {
     type EntityName: EntityName;
 
