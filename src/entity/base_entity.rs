@@ -18,7 +18,18 @@ pub trait EntityName: IdenStatic + Default {
         Self::table_name(self)
     }
 }
-
+/// Each table in database correspond to a Entity implemented [`EntityTrait`].
+///
+/// This trait provides an API for you to inspect it's properties
+/// - Column (implemented [`ColumnTrait`])
+/// - Relation (implemented [`RelationTrait`])
+/// - Primary Key (implemented [`PrimaryKeyTrait`] and [`PrimaryKeyToColumn`])
+///
+/// This trait also provides an API for CRUD actions
+/// - Select: `find`, `find_*`
+/// - Insert: `insert`, `insert_*`
+/// - Update: `update`, `update_*`
+/// - Delete: `delete`, `delete_*`
 pub trait EntityTrait: EntityName {
     type Model: ModelTrait<Entity = Self> + FromQueryResult;
 
@@ -49,6 +60,14 @@ pub trait EntityTrait: EntityName {
         RelationBuilder::from_rel(RelationType::HasMany, R::to().rev())
     }
 
+    /// Construct select statement to find one / all models
+    ///
+    /// - To select columns, join tables and group by expressions, see [`QuerySelect`](crate::query::QuerySelect)
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    /// - To apply order by expressions, see [`QueryOrder`](crate::query::QueryOrder)
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, MockDatabase, Transaction, tests_cfg::*};
@@ -119,6 +138,9 @@ pub trait EntityTrait: EntityName {
     }
 
     /// Find a model by primary key
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, MockDatabase, Transaction, tests_cfg::*};
@@ -215,6 +237,10 @@ pub trait EntityTrait: EntityName {
         select
     }
 
+    /// Insert an model into database
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, MockDatabase, MockExecResult, Transaction, tests_cfg::*};
@@ -258,6 +284,10 @@ pub trait EntityTrait: EntityName {
         Insert::one(model)
     }
 
+    /// Insert many models into database
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, MockDatabase, MockExecResult, Transaction, tests_cfg::*};
@@ -307,6 +337,12 @@ pub trait EntityTrait: EntityName {
         Insert::many(models)
     }
 
+    /// Update an model in database
+    ///
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, MockDatabase, MockExecResult, Transaction, tests_cfg::*};
@@ -351,6 +387,12 @@ pub trait EntityTrait: EntityName {
         Update::one(model)
     }
 
+    /// Update many models in database
+    ///
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, MockDatabase, MockExecResult, Transaction, tests_cfg::*};
@@ -389,6 +431,12 @@ pub trait EntityTrait: EntityName {
         Update::many(Self::default())
     }
 
+    /// Delete an model from database
+    ///
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, MockDatabase, MockExecResult, Transaction, tests_cfg::*};
@@ -431,6 +479,12 @@ pub trait EntityTrait: EntityName {
         Delete::one(model)
     }
 
+    /// Delete many models from database
+    ///
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, MockDatabase, MockExecResult, Transaction, tests_cfg::*};
