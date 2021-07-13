@@ -13,8 +13,7 @@ async fn main() {
 }
 
 pub async fn test_left_join() {
-    let ctx = TestContext::new().await;
-
+    let ctx = TestContext::new("mysql://root:@localhost", "test_left_join").await;
     let seaside_bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
         profit_margin: Set(10.4),
