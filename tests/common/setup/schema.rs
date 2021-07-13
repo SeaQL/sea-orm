@@ -20,7 +20,7 @@ pub async fn create_bakery_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .primary_key(),
     )
     .col(ColumnDef::new(bakery::Column::Name).string())
-    .col(ColumnDef::new(bakery::Column::ProfitMargin).float())
+    .col(ColumnDef::new(bakery::Column::ProfitMargin).double())
     .to_owned();
 
   create_table(db, &stmt).await
