@@ -13,7 +13,7 @@ impl EntityName for Entity {
 pub struct Model {
     pub id: i32,
     pub name: String,
-    pub profit_margin: f64,
+    pub profit_margin: f32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
