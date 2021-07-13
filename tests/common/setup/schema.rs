@@ -1,7 +1,7 @@
 use sea_orm::{error::*, sea_query, DbConn, ExecResult};
 use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, TableCreateStatement};
 
-pub use super::bakery_chain::*;
+pub use super::super::bakery_chain::*;
 
 async fn create_table(db: &DbConn, stmt: &TableCreateStatement) -> Result<ExecResult, DbErr> {
   let builder = db.get_schema_builder_backend();

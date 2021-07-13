@@ -1,8 +1,9 @@
-pub mod schema;
-use sea_orm::{Database, DatabaseConnection};
+pub mod setup;
+use sea_orm::{DatabaseConnection, Statement};
 pub mod bakery_chain;
 pub use bakery_chain::*;
 
+#[macro_export]
 macro_rules! function {
     () => {{
         fn f() {}
@@ -17,34 +18,28 @@ macro_rules! function {
 pub struct TestContext {
     base_url: String,
     db_name: String,
-    pub db_conn: DatabaseConnection,
+    pub db: DatabaseConnection,
 }
 
 impl TestContext {
     pub async fn new(base_url: &str, db_name: &str) -> Self {
-        let db_conn = Database::connect("sqlite::memory:").await.unwrap();
-        Self::setup_schema(&db_conn).await;
+        let db: DatabaseConnection = setup::setup().await;
+
+        // let stmt: Statement = Statement::from("BEGIN".to_string());
+        // let _ = db.execute(stmt).await;
 
         Self {
             base_url: base_url.to_string(),
             db_name: db_name.to_string(),
-            db_conn,
+            db,
         }
-    }
-
-    async fn setup_schema(db: &DatabaseConnection) {
-        assert!(schema::create_bakery_table(db).await.is_ok());
-        assert!(schema::create_baker_table(db).await.is_ok());
-        assert!(schema::create_customer_table(db).await.is_ok());
-        assert!(schema::create_order_table(db).await.is_ok());
-        assert!(schema::create_lineitem_table(db).await.is_ok());
-        assert!(schema::create_cake_table(db).await.is_ok());
-        assert!(schema::create_cakes_bakers_table(db).await.is_ok());
     }
 }
 
 impl Drop for TestContext {
     fn drop(&mut self) {
-        println!("dropping context");
+        // println!("dropping context");
+        // let stmt: Statement = Statement::from("ROLLBACK".to_string());
+        // let _ = self.db.execute(stmt);
     }
 }

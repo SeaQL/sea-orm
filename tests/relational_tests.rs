@@ -1,10 +1,10 @@
 use sea_orm::{entity::*, InsertResult};
 
-pub mod bakery_chain;
-pub use bakery_chain::*;
+// pub mod bakery_chain;
+// pub use bakery_chain::*;
 
 pub mod common;
-pub use common::TestContext;
+pub use common::{setup::*, TestContext};
 
 #[async_std::test]
 // cargo test --test realtional_tests -- --nocapture
@@ -13,7 +13,7 @@ async fn main() {
 }
 
 pub async fn test_left_join() {
-    let ctx = TestContext::new("test", "test").await;
+    let ctx = TestContext::new("test", function!()).await;
 
     let seaside_bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -21,12 +21,12 @@ pub async fn test_left_join() {
         ..Default::default()
     };
     let res: InsertResult = Bakery::insert(seaside_bakery)
-        .exec(&ctx.db_conn)
+        .exec(&ctx.db)
         .await
         .expect("could not insert bakery");
 
     let bakery: Option<bakery::Model> = Bakery::find_by_id(res.last_insert_id)
-        .one(&ctx.db_conn)
+        .one(&ctx.db)
         .await
         .expect("could not find bakery");
 
