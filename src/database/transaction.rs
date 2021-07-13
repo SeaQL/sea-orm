@@ -1,4 +1,4 @@
-use crate::Statement;
+use crate::{Statement, Syntax};
 use sea_query::{Value, Values};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -11,10 +11,10 @@ impl Transaction {
     where
         I: IntoIterator<Item = Value>,
     {
-        Self::one(Statement {
-            sql: sql.to_owned(),
-            values: Some(Values(values.into_iter().collect())),
-        })
+        Self::one(Statement::from_string_values_tuple(
+            Syntax::Postgres,
+            (sql.to_string(), Values(values.into_iter().collect())),
+        ))
     }
 
     /// Create a Transaction with one statement

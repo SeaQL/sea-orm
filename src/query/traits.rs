@@ -1,4 +1,4 @@
-use crate::Statement;
+use crate::{Statement, Syntax};
 use sea_query::{QueryBuilder, QueryStatementBuilder};
 
 pub trait QueryTrait {
@@ -16,8 +16,12 @@ pub trait QueryTrait {
     /// Build the query as [`Statement`]
     fn build<B>(&self, builder: B) -> Statement
     where
-        B: QueryBuilder,
+        B: QueryBuilderWithSyntax,
     {
-        self.as_query().build(builder).into()
+        Statement::from_string_values_tuple(builder.syntax(), self.as_query().build(builder))
     }
+}
+
+pub trait QueryBuilderWithSyntax: QueryBuilder {
+    fn syntax(&self) -> Syntax;
 }

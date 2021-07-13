@@ -71,7 +71,11 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
 
             fn take(&mut self, c: <Self::Entity as EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => std::mem::take(&mut self.#field).into_wrapped_value(),)*
+                    #(<Self::Entity as EntityTrait>::Column::#name => {
+                        let mut value = sea_orm::ActiveValue::unset();
+                        std::mem::swap(&mut value, &mut self.#field);
+                        value.into_wrapped_value()
+                    },)*
                     _ => sea_orm::ActiveValue::unset(),
                 }
             }

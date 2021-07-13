@@ -18,7 +18,18 @@ pub trait EntityName: IdenStatic + Default {
         Self::table_name(self)
     }
 }
-
+/// Each table in database correspond to a Entity implemented [`EntityTrait`].
+///
+/// This trait provides an API for you to inspect it's properties
+/// - Column (implemented [`ColumnTrait`])
+/// - Relation (implemented [`RelationTrait`])
+/// - Primary Key (implemented [`PrimaryKeyTrait`] and [`PrimaryKeyToColumn`])
+///
+/// This trait also provides an API for CRUD actions
+/// - Select: `find`, `find_*`
+/// - Insert: `insert`, `insert_*`
+/// - Update: `update`, `update_*`
+/// - Delete: `delete`, `delete_*`
 pub trait EntityTrait: EntityName {
     type Model: ModelTrait<Entity = Self> + FromQueryResult;
 
@@ -49,16 +60,66 @@ pub trait EntityTrait: EntityName {
         RelationBuilder::from_rel(RelationType::HasMany, R::to().rev())
     }
 
+    /// Construct select statement to find one / all models
+    ///
+    /// - To select columns, join tables and group by expressions, see [`QuerySelect`](crate::query::QuerySelect)
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    /// - To apply order by expressions, see [`QueryOrder`](crate::query::QueryOrder)
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{MockDatabase, Transaction};
-    /// # let db = MockDatabase::new().into_connection();
+    /// # use sea_orm::{error::*, MockDatabase, Transaction, tests_cfg::*};
+    /// #
+    /// # let db = MockDatabase::new()
+    /// #     .append_query_results(vec![
+    /// #         vec![
+    /// #             cake::Model {
+    /// #                 id: 1,
+    /// #                 name: "New York Cheese".to_owned(),
+    /// #             },
+    /// #         ],
+    /// #         vec![
+    /// #             cake::Model {
+    /// #                 id: 1,
+    /// #                 name: "New York Cheese".to_owned(),
+    /// #             },
+    /// #             cake::Model {
+    /// #                 id: 2,
+    /// #                 name: "Chocolate Forest".to_owned(),
+    /// #             },
+    /// #         ],
+    /// #     ])
+    /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
-    /// # async_std::task::block_on(async {
-    /// cake::Entity::find().one(&db).await;
-    /// cake::Entity::find().all(&db).await;
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// assert_eq!(
+    ///     cake::Entity::find().one(&db).await?,
+    ///     Some(cake::Model {
+    ///         id: 1,
+    ///         name: "New York Cheese".to_owned(),
+    ///     })
+    /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find().all(&db).await?,
+    ///     vec![
+    ///         cake::Model {
+    ///             id: 1,
+    ///             name: "New York Cheese".to_owned(),
+    ///         },
+    ///         cake::Model {
+    ///             id: 2,
+    ///             name: "Chocolate Forest".to_owned(),
+    ///         },
+    ///     ]
+    /// );
+    /// #
+    /// # Ok(())
     /// # });
     ///
     /// assert_eq!(
@@ -77,15 +138,37 @@ pub trait EntityTrait: EntityName {
     }
 
     /// Find a model by primary key
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{MockDatabase, Transaction};
-    /// # let db = MockDatabase::new().into_connection();
+    /// # use sea_orm::{error::*, MockDatabase, Transaction, tests_cfg::*};
+    /// #
+    /// # let db = MockDatabase::new()
+    /// #     .append_query_results(vec![
+    /// #         vec![
+    /// #             cake::Model {
+    /// #                 id: 11,
+    /// #                 name: "Sponge Cake".to_owned(),
+    /// #             },
+    /// #         ],
+    /// #     ])
+    /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
-    /// # async_std::task::block_on(async {
-    /// cake::Entity::find_by_id(11).all(&db).await;
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// assert_eq!(
+    ///     cake::Entity::find_by_id(11).all(&db).await?,
+    ///     vec![cake::Model {
+    ///         id: 11,
+    ///         name: "Sponge Cake".to_owned(),
+    ///     }]
+    /// );
+    /// #
+    /// # Ok(())
     /// # });
     ///
     /// assert_eq!(
@@ -97,13 +180,32 @@ pub trait EntityTrait: EntityName {
     /// Find by composite key
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{MockDatabase, Transaction};
-    /// # let db = MockDatabase::new().into_connection();
+    /// # use sea_orm::{error::*, MockDatabase, Transaction, tests_cfg::*};
+    /// #
+    /// # let db = MockDatabase::new()
+    /// #     .append_query_results(vec![
+    /// #         vec![
+    /// #             cake_filling::Model {
+    /// #                 cake_id: 2,
+    /// #                 filling_id: 3,
+    /// #             },
+    /// #         ],
+    /// #     ])
+    /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake_filling};
     ///
-    /// # async_std::task::block_on(async {
-    /// cake_filling::Entity::find_by_id((2, 3)).all(&db).await;
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// assert_eq!(
+    ///     cake_filling::Entity::find_by_id((2, 3)).all(&db).await?,
+    ///     vec![cake_filling::Model {
+    ///         cake_id: 2,
+    ///         filling_id: 3,
+    ///     }]
+    /// );
+    /// #
+    /// # Ok(())
     /// # });
     ///
     /// assert_eq!(
@@ -135,10 +237,22 @@ pub trait EntityTrait: EntityName {
         select
     }
 
+    /// Insert an model into database
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{MockDatabase, Transaction};
-    /// # let db = MockDatabase::new().into_connection();
+    /// # use sea_orm::{error::*, MockDatabase, MockExecResult, Transaction, tests_cfg::*};
+    /// #
+    /// # let db = MockDatabase::new()
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 15,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
@@ -147,8 +261,14 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # async_std::task::block_on(async {
-    /// cake::Entity::insert(apple).exec(&db).await;
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// let insert_result = cake::Entity::insert(apple).exec(&db).await?;
+    ///
+    /// assert_eq!(insert_result.last_insert_id, 15);
+    /// // assert_eq!(insert_result.rows_affected, 1);
+    /// #
+    /// # Ok(())
     /// # });
     ///
     /// assert_eq!(
@@ -164,10 +284,22 @@ pub trait EntityTrait: EntityName {
         Insert::one(model)
     }
 
+    /// Insert many models into database
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{MockDatabase, Transaction};
-    /// # let db = MockDatabase::new().into_connection();
+    /// # use sea_orm::{error::*, MockDatabase, MockExecResult, Transaction, tests_cfg::*};
+    /// #
+    /// # let db = MockDatabase::new()
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 28,
+    /// #             rows_affected: 2,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
@@ -180,8 +312,14 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # async_std::task::block_on(async {
-    /// cake::Entity::insert_many(vec![apple, orange]).exec(&db).await;
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// let insert_result = cake::Entity::insert_many(vec![apple, orange]).exec(&db).await?;
+    ///
+    /// assert_eq!(insert_result.last_insert_id, 28);
+    /// // assert_eq!(insert_result.rows_affected, 2);
+    /// #
+    /// # Ok(())
     /// # });
     ///
     /// assert_eq!(
@@ -199,10 +337,24 @@ pub trait EntityTrait: EntityName {
         Insert::many(models)
     }
 
+    /// Update an model in database
+    ///
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{MockDatabase, Transaction};
-    /// # let db = MockDatabase::new().into_connection();
+    /// # use sea_orm::{error::*, MockDatabase, MockExecResult, Transaction, tests_cfg::*};
+    /// #
+    /// # let db = MockDatabase::new()
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
     ///
@@ -212,8 +364,14 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # async_std::task::block_on(async {
-    /// fruit::Entity::update(orange).exec(&db).await;
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// assert_eq!(
+    ///     fruit::Entity::update(orange.clone()).exec(&db).await?, // Clone here because we need to assert_eq
+    ///     orange
+    /// );
+    /// #
+    /// # Ok(())
     /// # });
     ///
     /// assert_eq!(
@@ -229,19 +387,38 @@ pub trait EntityTrait: EntityName {
         Update::one(model)
     }
 
+    /// Update many models in database
+    ///
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{MockDatabase, Transaction};
-    /// # let db = MockDatabase::new().into_connection();
+    /// # use sea_orm::{error::*, MockDatabase, MockExecResult, Transaction, tests_cfg::*};
+    /// #
+    /// # let db = MockDatabase::new()
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 5,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::{Expr, Value}};
     ///
-    /// # async_std::task::block_on(async {
-    /// fruit::Entity::update_many()
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// let update_result = fruit::Entity::update_many()
     ///     .col_expr(fruit::Column::CakeId, Expr::value(Value::Null))
     ///     .filter(fruit::Column::Name.contains("Apple"))
     ///     .exec(&db)
-    ///     .await;
+    ///     .await?;
+    ///
+    /// assert_eq!(update_result.rows_affected, 5);
+    /// #
+    /// # Ok(())
     /// # });
     ///
     /// assert_eq!(
@@ -254,10 +431,24 @@ pub trait EntityTrait: EntityName {
         Update::many(Self::default())
     }
 
+    /// Delete an model from database
+    ///
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{MockDatabase, Transaction};
-    /// # let db = MockDatabase::new().into_connection();
+    /// # use sea_orm::{error::*, MockDatabase, MockExecResult, Transaction, tests_cfg::*};
+    /// #
+    /// # let db = MockDatabase::new()
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
     ///
@@ -266,8 +457,13 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # async_std::task::block_on(async {
-    /// fruit::Entity::delete(orange).exec(&db).await;
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// let delete_result = fruit::Entity::delete(orange).exec(&db).await?;
+    ///
+    /// assert_eq!(delete_result.rows_affected, 1);
+    /// #
+    /// # Ok(())
     /// # });
     ///
     /// assert_eq!(
@@ -283,18 +479,37 @@ pub trait EntityTrait: EntityName {
         Delete::one(model)
     }
 
+    /// Delete many models from database
+    ///
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    ///
+    /// # Example
+    ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{MockDatabase, Transaction};
-    /// # let db = MockDatabase::new().into_connection();
+    /// # use sea_orm::{error::*, MockDatabase, MockExecResult, Transaction, tests_cfg::*};
+    /// #
+    /// # let db = MockDatabase::new()
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 5,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
     ///
-    /// # async_std::task::block_on(async {
-    /// fruit::Entity::delete_many()
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// let delete_result = fruit::Entity::delete_many()
     ///     .filter(fruit::Column::Name.contains("Apple"))
     ///     .exec(&db)
-    ///     .await;
+    ///     .await?;
+    ///
+    /// assert_eq!(delete_result.rows_affected, 5);
+    /// #
+    /// # Ok(())
     /// # });
     ///
     /// assert_eq!(

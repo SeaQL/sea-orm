@@ -40,10 +40,7 @@ impl Inserter {
 }
 
 // Only Statement impl Send
-async fn exec_insert(
-    statement: Statement,
-    db: &DatabaseConnection,
-) -> Result<InsertResult, DbErr> {
+async fn exec_insert(statement: Statement, db: &DatabaseConnection) -> Result<InsertResult, DbErr> {
     let result = db.execute(statement).await?;
     // TODO: Postgres instead use query_one + returning clause
     Ok(InsertResult {

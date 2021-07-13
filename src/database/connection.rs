@@ -1,4 +1,4 @@
-use crate::{error::*, ExecResult, QueryResult, Statement};
+use crate::{error::*, ExecResult, QueryResult, Statement, Syntax};
 use sea_query::{
     MysqlQueryBuilder, PostgresQueryBuilder, QueryStatementBuilder, SchemaStatementBuilder,
     SqliteQueryBuilder,
@@ -134,29 +134,49 @@ impl DatabaseConnection {
 }
 
 impl QueryBuilderBackend {
+    pub fn syntax(&self) -> Syntax {
+        match self {
+            Self::MySql => Syntax::MySql,
+            Self::Postgres => Syntax::Postgres,
+            Self::Sqlite => Syntax::Sqlite,
+        }
+    }
+
     pub fn build<S>(&self, statement: &S) -> Statement
     where
         S: QueryStatementBuilder,
     {
-        match self {
-            Self::MySql => statement.build(MysqlQueryBuilder),
-            Self::Postgres => statement.build(PostgresQueryBuilder),
-            Self::Sqlite => statement.build(SqliteQueryBuilder),
-        }
-        .into()
+        Statement::from_string_values_tuple(
+            self.syntax(),
+            match self {
+                Self::MySql => statement.build(MysqlQueryBuilder),
+                Self::Postgres => statement.build(PostgresQueryBuilder),
+                Self::Sqlite => statement.build(SqliteQueryBuilder),
+            },
+        )
     }
 }
 
 impl SchemaBuilderBackend {
+    pub fn syntax(&self) -> Syntax {
+        match self {
+            Self::MySql => Syntax::MySql,
+            Self::Postgres => Syntax::Postgres,
+            Self::Sqlite => Syntax::Sqlite,
+        }
+    }
+
     pub fn build<S>(&self, statement: &S) -> Statement
     where
         S: SchemaStatementBuilder,
     {
-        match self {
-            Self::MySql => statement.build(MysqlQueryBuilder),
-            Self::Postgres => statement.build(PostgresQueryBuilder),
-            Self::Sqlite => statement.build(SqliteQueryBuilder),
-        }
-        .into()
+        Statement::from_string(
+            self.syntax(),
+            match self {
+                Self::MySql => statement.build(MysqlQueryBuilder),
+                Self::Postgres => statement.build(PostgresQueryBuilder),
+                Self::Sqlite => statement.build(SqliteQueryBuilder),
+            },
+        )
     }
 }
