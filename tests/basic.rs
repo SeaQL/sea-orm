@@ -1,4 +1,4 @@
-use sea_orm::{entity::*, error::*, sea_query, tests_cfg::*, DbConn};
+use sea_orm::{entity::*, error::*, sea_query, tests_cfg::*, DbConn, Statement, Syntax};
 
 mod setup;
 
@@ -27,7 +27,9 @@ async fn setup_schema(db: &DbConn) {
         .col(ColumnDef::new(cake::Column::Name).string())
         .build(SqliteQueryBuilder);
 
-    let result = db.execute(stmt.into()).await;
+    let result = db
+        .execute(Statement::from_string(Syntax::Sqlite, stmt))
+        .await;
     println!("Create table cake: {:?}", result);
 }
 
