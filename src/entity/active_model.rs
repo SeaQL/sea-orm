@@ -247,6 +247,7 @@ where
     exec.await
 }
 
+/// Delete an active model by its primary key
 pub async fn delete_active_model<A, E>(
     mut am: A,
     db: &DatabaseConnection,
