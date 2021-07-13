@@ -16,3 +16,28 @@ impl PrimaryKey {
         format_ident!("{}", self.name.to_camel_case())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::PrimaryKey;
+
+    fn setup() -> PrimaryKey {
+        PrimaryKey {
+            name: "cake_id".to_owned(),
+        }
+    }
+
+    #[test]
+    fn test_get_name_snake_case() {
+        let primary_key = setup();
+
+        assert_eq!(primary_key.get_name_snake_case(), "cake_id".to_owned());
+    }
+
+    #[test]
+    fn test_get_name_camel_case() {
+        let primary_key = setup();
+
+        assert_eq!(primary_key.get_name_camel_case(), "CakeId".to_owned());
+    }
+}

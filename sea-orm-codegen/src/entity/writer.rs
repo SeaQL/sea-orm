@@ -150,7 +150,7 @@ impl EntityWriter {
         quote! {
             #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
             pub struct Model {
-                #(pub #column_names_snake_case: #column_rs_types),*
+                #(pub #column_names_snake_case: #column_rs_types,)*
             }
         }
     }
@@ -160,7 +160,7 @@ impl EntityWriter {
         quote! {
             #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
             pub enum Column {
-                #(#column_names_camel_case),*
+                #(#column_names_camel_case,)*
             }
         }
     }
@@ -170,7 +170,7 @@ impl EntityWriter {
         quote! {
             #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
             pub enum PrimaryKey {
-                #(#primary_key_names_camel_case),*
+                #(#primary_key_names_camel_case,)*
             }
         }
     }
@@ -191,7 +191,7 @@ impl EntityWriter {
         quote! {
             #[derive(Copy, Clone, Debug, EnumIter)]
             pub enum Relation {
-                #(#relation_ref_tables_camel_case),*
+                #(#relation_ref_tables_camel_case,)*
             }
         }
     }
@@ -205,7 +205,7 @@ impl EntityWriter {
 
                 fn def(&self) -> ColumnDef {
                     match self {
-                        #(Self::#column_names_camel_case => #column_defs),*
+                        #(Self::#column_names_camel_case => #column_defs,)*
                     }
                 }
             }
@@ -221,7 +221,7 @@ impl EntityWriter {
             }
         } else {
             quote! {
-                #(Self::#relation_ref_tables_camel_case => #relation_defs),*
+                #(Self::#relation_ref_tables_camel_case => #relation_defs,)*
             }
         };
         quote! {
@@ -272,5 +272,241 @@ impl EntityWriter {
         quote! {
             pub use super::#table_name_snake_case_ident::Entity as #table_name_camel_case_ident;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Column, Entity, EntityWriter, PrimaryKey, Relation, RelationType};
+    use proc_macro2::TokenStream;
+    use sea_query::ColumnType;
+    use std::io::{self, BufRead, BufReader};
+
+    const ENTITY_FILES: [&'static str; 5] = [
+        include_str!("../../tests/entity/cake.rs"),
+        include_str!("../../tests/entity/cake_filling.rs"),
+        include_str!("../../tests/entity/filling.rs"),
+        include_str!("../../tests/entity/fruit.rs"),
+        include_str!("../../tests/entity/vendor.rs"),
+    ];
+
+    fn setup() -> Vec<Entity> {
+        vec![
+            Entity {
+                table_name: "cake".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "id".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "name".to_owned(),
+                        col_type: ColumnType::String(Some(255)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                ],
+                relations: vec![
+                    Relation {
+                        ref_table: "cake_filling".to_owned(),
+                        columns: vec![],
+                        ref_columns: vec![],
+                        rel_type: RelationType::HasMany,
+                    },
+                    Relation {
+                        ref_table: "fruit".to_owned(),
+                        columns: vec![],
+                        ref_columns: vec![],
+                        rel_type: RelationType::HasMany,
+                    },
+                ],
+                primary_keys: vec![PrimaryKey {
+                    name: "id".to_owned(),
+                }],
+            },
+            Entity {
+                table_name: "cake_filling".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "cake_id".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "filling_id".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                ],
+                relations: vec![
+                    Relation {
+                        ref_table: "cake".to_owned(),
+                        columns: vec!["cake_id".to_owned()],
+                        ref_columns: vec!["id".to_owned()],
+                        rel_type: RelationType::BelongsTo,
+                    },
+                    Relation {
+                        ref_table: "filling".to_owned(),
+                        columns: vec!["filling_id".to_owned()],
+                        ref_columns: vec!["id".to_owned()],
+                        rel_type: RelationType::BelongsTo,
+                    },
+                ],
+                primary_keys: vec![
+                    PrimaryKey {
+                        name: "cake_id".to_owned(),
+                    },
+                    PrimaryKey {
+                        name: "filling_id".to_owned(),
+                    },
+                ],
+            },
+            Entity {
+                table_name: "filling".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "id".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "name".to_owned(),
+                        col_type: ColumnType::String(Some(255)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                ],
+                relations: vec![Relation {
+                    ref_table: "cake_filling".to_owned(),
+                    columns: vec![],
+                    ref_columns: vec![],
+                    rel_type: RelationType::HasMany,
+                }],
+                primary_keys: vec![PrimaryKey {
+                    name: "id".to_owned(),
+                }],
+            },
+            Entity {
+                table_name: "fruit".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "id".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "name".to_owned(),
+                        col_type: ColumnType::String(Some(255)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "cake_id".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: false,
+                        unique: false,
+                    },
+                ],
+                relations: vec![
+                    Relation {
+                        ref_table: "cake".to_owned(),
+                        columns: vec!["cake_id".to_owned()],
+                        ref_columns: vec!["id".to_owned()],
+                        rel_type: RelationType::BelongsTo,
+                    },
+                    Relation {
+                        ref_table: "vendor".to_owned(),
+                        columns: vec![],
+                        ref_columns: vec![],
+                        rel_type: RelationType::HasMany,
+                    },
+                ],
+                primary_keys: vec![PrimaryKey {
+                    name: "id".to_owned(),
+                }],
+            },
+            Entity {
+                table_name: "vendor".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "id".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "name".to_owned(),
+                        col_type: ColumnType::String(Some(255)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "fruit_id".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: false,
+                        unique: false,
+                    },
+                ],
+                relations: vec![Relation {
+                    ref_table: "fruit".to_owned(),
+                    columns: vec!["fruit_id".to_owned()],
+                    ref_columns: vec!["id".to_owned()],
+                    rel_type: RelationType::BelongsTo,
+                }],
+                primary_keys: vec![PrimaryKey {
+                    name: "id".to_owned(),
+                }],
+            },
+        ]
+    }
+
+    #[test]
+    fn test_gen_code_blocks() -> io::Result<()> {
+        let entities = setup();
+
+        assert_eq!(entities.len(), ENTITY_FILES.len());
+
+        for (i, entity) in entities.iter().enumerate() {
+            let mut reader = BufReader::new(ENTITY_FILES[i].as_bytes());
+            let mut lines: Vec<String> = Vec::new();
+
+            reader.read_until(b';', &mut Vec::new())?;
+
+            let mut line = String::new();
+            while reader.read_line(&mut line)? > 0 {
+                lines.push(line.to_owned());
+                line.clear();
+            }
+            let content = lines.join("");
+            let expected: TokenStream = content.parse().unwrap();
+            let generated = EntityWriter::gen_code_blocks(entity)
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                });
+            assert_eq!(expected.to_string(), generated.to_string());
+        }
+
+        Ok(())
     }
 }
