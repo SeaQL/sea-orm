@@ -17,7 +17,7 @@
 Inspired by ActiveRecord, Eloquent and TypeORM, SeaORM aims to provide you an intuitive and ergonomic
 API to make working with databases in Rust a first-class experience.
 
-```rust
+```markdown
 This is a preview of SeaORM, and is not yet released.
 ```
 
@@ -145,9 +145,9 @@ fruit::Entity::delete_many()
 Licensed under either of
 
 -   Apache License, Version 2.0
-    ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+    ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
 -   MIT license
-    ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+    ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.
 
