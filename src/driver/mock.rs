@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, ExecResult, MockDatabase, QueryResult, Statement,
-    Transaction,
+    debug_print, error::*, DatabaseConnection, ExecResult, MockDatabase, QueryBuilderBackend,
+    QueryResult, SchemaBuilderBackend, Statement, Syntax, Transaction,
 };
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -20,17 +20,41 @@ pub trait MockDatabaseTrait: Send {
     fn query(&mut self, counter: usize, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
 
     fn drain_transaction_log(&mut self) -> Vec<Transaction>;
+
+    fn get_syntax(&self) -> Syntax;
 }
 
 impl MockDatabaseConnector {
     pub fn accepts(string: &str) -> bool {
-        string.starts_with("mock://")
+        #[cfg(feature = "sqlx-mysql")]
+        if crate::SqlxMySqlConnector::accepts(string) {
+            return true;
+        }
+        #[cfg(feature = "sqlx-sqlite")]
+        if crate::SqlxSqliteConnector::accepts(string) {
+            return true;
+        }
+        false
     }
 
-    pub async fn connect(_string: &str) -> Result<DatabaseConnection, DbErr> {
-        Ok(DatabaseConnection::MockDatabaseConnection(
-            MockDatabaseConnection::new(MockDatabase::new()),
-        ))
+    pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
+        macro_rules! connect_mock_db {
+            ( $syntax: expr ) => {
+                Ok(DatabaseConnection::MockDatabaseConnection(
+                    MockDatabaseConnection::new(MockDatabase::new($syntax)),
+                ))
+            };
+        }
+
+        #[cfg(feature = "sqlx-mysql")]
+        if crate::SqlxMySqlConnector::accepts(string) {
+            return connect_mock_db!(Syntax::MySql);
+        }
+        #[cfg(feature = "sqlx-sqlite")]
+        if crate::SqlxSqliteConnector::accepts(string) {
+            return connect_mock_db!(Syntax::Sqlite);
+        }
+        connect_mock_db!(Syntax::Postgres)
     }
 }
 
@@ -66,5 +90,21 @@ impl MockDatabaseConnection {
         debug_print!("{}", statement);
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
         self.mocker.lock().unwrap().query(counter, statement)
+    }
+
+    pub fn get_query_builder_backend(&self) -> QueryBuilderBackend {
+        self.mocker
+            .lock()
+            .unwrap()
+            .get_syntax()
+            .get_query_builder_backend()
+    }
+
+    pub fn get_schema_builder_backend(&self) -> SchemaBuilderBackend {
+        self.mocker
+            .lock()
+            .unwrap()
+            .get_syntax()
+            .get_schema_builder_backend()
     }
 }
