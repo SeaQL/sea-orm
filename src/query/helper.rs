@@ -23,13 +23,13 @@ pub trait QuerySelect: Sized {
 
     /// Add a select column
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .select_only()
     ///         .column(cake::Column::Name)
-    ///         .build(PostgresQueryBuilder)
+    ///         .build(Syntax::Postgres)
     ///         .to_string(),
     ///     r#"SELECT "cake"."name" FROM "cake""#
     /// );
@@ -44,13 +44,13 @@ pub trait QuerySelect: Sized {
 
     /// Add a select column with alias
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .select_only()
     ///         .column_as(cake::Column::Id.count(), "count")
-    ///         .build(PostgresQueryBuilder)
+    ///         .build(Syntax::Postgres)
     ///         .to_string(),
     ///     r#"SELECT COUNT("cake"."id") AS "count" FROM "cake""#
     /// );
@@ -68,14 +68,14 @@ pub trait QuerySelect: Sized {
 
     /// Add a group by column
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .select_only()
     ///         .column(cake::Column::Name)
     ///         .group_by(cake::Column::Name)
-    ///         .build(PostgresQueryBuilder)
+    ///         .build(Syntax::Postgres)
     ///         .to_string(),
     ///     r#"SELECT "cake"."name" FROM "cake" GROUP BY "cake"."name""#
     /// );
@@ -90,13 +90,13 @@ pub trait QuerySelect: Sized {
 
     /// Add an AND HAVING expression
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .having(cake::Column::Id.eq(4))
     ///         .having(cake::Column::Id.eq(5))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(Syntax::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` HAVING `cake`.`id` = 4 AND `cake`.`id` = 5"
     /// );
@@ -151,13 +151,13 @@ pub trait QueryOrder: Sized {
 
     /// Add an order_by expression
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .order_by(cake::Column::Id, Order::Asc)
     ///         .order_by(cake::Column::Name, Order::Desc)
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(Syntax::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` ASC, `cake`.`name` DESC"
     /// );
@@ -172,12 +172,12 @@ pub trait QueryOrder: Sized {
 
     /// Add an order_by expression (ascending)
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .order_by_asc(cake::Column::Id)
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(Syntax::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` ASC"
     /// );
@@ -193,12 +193,12 @@ pub trait QueryOrder: Sized {
 
     /// Add an order_by expression (descending)
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .order_by_desc(cake::Column::Id)
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(Syntax::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` ORDER BY `cake`.`id` DESC"
     /// );
@@ -221,13 +221,13 @@ pub trait QueryFilter: Sized {
 
     /// Add an AND WHERE expression
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Id.eq(4))
     ///         .filter(cake::Column::Id.eq(5))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(Syntax::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 4 AND `cake`.`id` = 5"
     /// );
@@ -235,7 +235,7 @@ pub trait QueryFilter: Sized {
     ///
     /// Add a condition tree.
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -244,7 +244,7 @@ pub trait QueryFilter: Sized {
     ///                 .add(cake::Column::Id.eq(4))
     ///                 .add(cake::Column::Id.eq(5))
     ///         )
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(Syntax::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 4 OR `cake`.`id` = 5"
     /// );

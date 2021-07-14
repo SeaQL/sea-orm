@@ -14,11 +14,12 @@ pub trait QueryTrait {
     fn into_query(self) -> Self::QueryStatement;
 
     /// Build the query as [`Statement`]
-    fn build<B>(&self, builder: B) -> Statement
-    where
-        B: QueryBuilderWithSyntax,
-    {
-        Statement::from_string_values_tuple(builder.syntax(), self.as_query().build(builder))
+    fn build(&self, syntax: Syntax) -> Statement {
+        let query_builder = syntax.get_query_builder();
+        Statement::from_string_values_tuple(
+            syntax,
+            self.as_query().build_any(query_builder.as_ref()),
+        )
     }
 }
 

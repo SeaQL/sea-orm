@@ -88,12 +88,12 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     bind_oper!(lte);
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Id.between(2,3))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(Syntax::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` BETWEEN 2 AND 3"
     /// );
@@ -106,12 +106,12 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Id.not_between(2,3))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(Syntax::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` NOT BETWEEN 2 AND 3"
     /// );
@@ -124,12 +124,12 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Name.like("cheese"))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(Syntax::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE 'cheese'"
     /// );
@@ -139,12 +139,12 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Name.not_like("cheese"))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(Syntax::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` NOT LIKE 'cheese'"
     /// );
@@ -154,12 +154,12 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Name.starts_with("cheese"))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(Syntax::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE 'cheese%'"
     /// );
@@ -170,12 +170,12 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Name.ends_with("cheese"))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(Syntax::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese'"
     /// );
@@ -186,12 +186,12 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, Syntax};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Name.contains("cheese"))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(Syntax::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese%'"
     /// );

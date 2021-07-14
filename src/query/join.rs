@@ -62,15 +62,14 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, filling, fruit};
-    use crate::{ColumnTrait, EntityTrait, ModelTrait, QueryFilter, QueryTrait};
-    use sea_query::MysqlQueryBuilder;
+    use crate::{ColumnTrait, EntityTrait, ModelTrait, QueryFilter, QueryTrait, Syntax};
 
     #[test]
     fn join_1() {
         assert_eq!(
             cake::Entity::find()
                 .left_join(fruit::Entity)
-                .build(MysqlQueryBuilder)
+                .build(Syntax::MySql)
                 .to_string(),
             [
                 "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
@@ -86,7 +85,7 @@ mod tests {
             cake::Entity::find()
                 .inner_join(fruit::Entity)
                 .filter(fruit::Column::Name.contains("cherry"))
-                .build(MysqlQueryBuilder)
+                .build(Syntax::MySql)
                 .to_string(),
             [
                 "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
@@ -102,7 +101,7 @@ mod tests {
         assert_eq!(
             fruit::Entity::find()
                 .reverse_join(cake::Entity)
-                .build(MysqlQueryBuilder)
+                .build(Syntax::MySql)
                 .to_string(),
             [
                 "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
@@ -120,7 +119,7 @@ mod tests {
         assert_eq!(
             find_fruit
                 .filter(cake::Column::Id.eq(11))
-                .build(MysqlQueryBuilder)
+                .build(Syntax::MySql)
                 .to_string(),
             [
                 "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
@@ -141,7 +140,7 @@ mod tests {
         assert_eq!(
             cake_model
                 .find_related(fruit::Entity)
-                .build(MysqlQueryBuilder)
+                .build(Syntax::MySql)
                 .to_string(),
             [
                 "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
@@ -157,7 +156,7 @@ mod tests {
         assert_eq!(
             cake::Entity::find()
                 .left_join(filling::Entity)
-                .build(MysqlQueryBuilder)
+                .build(Syntax::MySql)
                 .to_string(),
             [
                 "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
@@ -174,7 +173,7 @@ mod tests {
 
         let find_filling: Select<filling::Entity> = cake::Entity::find_related();
         assert_eq!(
-            find_filling.build(MysqlQueryBuilder).to_string(),
+            find_filling.build(Syntax::MySql).to_string(),
             [
                 "SELECT `filling`.`id`, `filling`.`name` FROM `filling`",
                 "INNER JOIN `cake_filling` ON `cake_filling`.`filling_id` = `filling`.`id`",
