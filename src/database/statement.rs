@@ -1,4 +1,4 @@
-use crate::QueryBuilderWithSyntax;
+use crate::{QueryBuilderBackend, QueryBuilderWithSyntax, SchemaBuilderBackend};
 use sea_query::{
     inject_parameters, MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder,
     Values,
@@ -61,6 +61,22 @@ impl Syntax {
             Self::MySql => Box::new(MysqlQueryBuilder),
             Self::Postgres => Box::new(PostgresQueryBuilder),
             Self::Sqlite => Box::new(SqliteQueryBuilder),
+        }
+    }
+
+    pub fn get_query_builder_backend(&self) -> QueryBuilderBackend {
+        match self {
+            Self::MySql => QueryBuilderBackend::MySql,
+            Self::Postgres => QueryBuilderBackend::Postgres,
+            Self::Sqlite => QueryBuilderBackend::Sqlite,
+        }
+    }
+
+    pub fn get_schema_builder_backend(&self) -> SchemaBuilderBackend {
+        match self {
+            Self::MySql => SchemaBuilderBackend::MySql,
+            Self::Postgres => SchemaBuilderBackend::Postgres,
+            Self::Sqlite => SchemaBuilderBackend::Sqlite,
         }
     }
 }

@@ -60,7 +60,7 @@ impl DatabaseConnection {
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(_) => QueryBuilderBackend::Sqlite,
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(_) => QueryBuilderBackend::Postgres,
+            DatabaseConnection::MockDatabaseConnection(conn) => conn.get_query_builder_backend(),
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
     }
@@ -72,7 +72,7 @@ impl DatabaseConnection {
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(_) => SchemaBuilderBackend::Sqlite,
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(_) => SchemaBuilderBackend::Postgres,
+            DatabaseConnection::MockDatabaseConnection(conn) => conn.get_schema_builder_backend(),
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
     }

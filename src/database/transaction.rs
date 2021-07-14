@@ -7,12 +7,12 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub fn from_sql_and_values<I>(sql: &str, values: I) -> Self
+    pub fn from_sql_and_values<I>(syntax: Syntax, sql: &str, values: I) -> Self
     where
         I: IntoIterator<Item = Value>,
     {
         Self::one(Statement::from_string_values_tuple(
-            Syntax::Postgres,
+            syntax,
             (sql.to_string(), Values(values.into_iter().collect())),
         ))
     }
