@@ -1,13 +1,14 @@
 use crate::{
     error::*, DatabaseConnection, EntityTrait, ExecResult, ExecResultHolder, Iden, Iterable,
     MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult, QueryResultRow, Statement,
-    Transaction,
+    Syntax, Transaction,
 };
 use sea_query::{Value, ValueType};
 use std::collections::BTreeMap;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct MockDatabase {
+    syntax: Syntax,
     transaction_log: Vec<Transaction>,
     exec_results: Vec<MockExecResult>,
     query_results: Vec<Vec<MockRow>>,
@@ -42,8 +43,13 @@ where
 }
 
 impl MockDatabase {
-    pub fn new() -> Self {
-        Default::default()
+    pub fn new(syntax: Syntax) -> Self {
+        Self {
+            syntax,
+            transaction_log: Vec::new(),
+            exec_results: Vec::new(),
+            query_results: Vec::new(),
+        }
     }
 
     pub fn into_connection(self) -> DatabaseConnection {
@@ -95,6 +101,10 @@ impl MockDatabaseTrait for MockDatabase {
 
     fn drain_transaction_log(&mut self) -> Vec<Transaction> {
         std::mem::take(&mut self.transaction_log)
+    }
+
+    fn get_syntax(&self) -> Syntax {
+        self.syntax
     }
 }
 
