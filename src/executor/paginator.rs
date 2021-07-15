@@ -30,7 +30,7 @@ where
             .limit(self.page_size as u64)
             .offset((self.page_size * page) as u64)
             .to_owned();
-        let builder = self.db.get_query_builder_backend();
+        let builder = self.db.get_database_backend();
         let stmt = builder.build(&query);
         let rows = self.db.query_all(stmt).await?;
         let mut buffer = Vec::with_capacity(rows.len());
@@ -48,7 +48,7 @@ where
 
     /// Get the total number of pages
     pub async fn num_pages(&self) -> Result<usize, DbErr> {
-        let builder = self.db.get_query_builder_backend();
+        let builder = self.db.get_database_backend();
         let stmt = builder.build(
             SelectStatement::new()
                 .expr(Expr::cust("COUNT(*) AS num_rows"))
@@ -103,7 +103,7 @@ where
 mod tests {
     use crate::entity::prelude::*;
     use crate::tests_cfg::*;
-    use crate::{DatabaseConnection, MockDatabase, Syntax, Transaction};
+    use crate::{DatabaseBackend, DatabaseConnection, MockDatabase, Transaction};
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};
 
@@ -129,7 +129,7 @@ mod tests {
 
         let page3 = Vec::<fruit::Model>::new();
 
-        let db = MockDatabase::new(Syntax::Postgres)
+        let db = MockDatabase::new(DatabaseBackend::Postgres)
             .append_query_results(vec![page1.clone(), page2.clone(), page3.clone()])
             .into_connection();
 
@@ -138,7 +138,7 @@ mod tests {
 
     fn setup_num_rows() -> (DatabaseConnection, i32) {
         let num_rows = 3;
-        let db = MockDatabase::new(Syntax::Postgres)
+        let db = MockDatabase::new(DatabaseBackend::Postgres)
             .append_query_results(vec![vec![maplit::btreemap! {
                 "num_rows" => Into::<Value>::into(num_rows),
             }]])
@@ -166,7 +166,7 @@ mod tests {
             .from(fruit::Entity)
             .to_owned();
 
-        let query_builder = db.get_query_builder_backend();
+        let query_builder = db.get_database_backend();
         let stmts = vec![
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
@@ -200,7 +200,7 @@ mod tests {
             .from(fruit::Entity)
             .to_owned();
 
-        let query_builder = db.get_query_builder_backend();
+        let query_builder = db.get_database_backend();
         let stmts = vec![
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
@@ -236,7 +236,7 @@ mod tests {
             .from_subquery(sub_query, Alias::new("sub_query"))
             .to_owned();
 
-        let query_builder = db.get_query_builder_backend();
+        let query_builder = db.get_database_backend();
         let stmts = vec![query_builder.build(&select)];
 
         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
@@ -283,7 +283,7 @@ mod tests {
             .from(fruit::Entity)
             .to_owned();
 
-        let query_builder = db.get_query_builder_backend();
+        let query_builder = db.get_database_backend();
         let stmts = vec![
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
@@ -315,7 +315,7 @@ mod tests {
             .from(fruit::Entity)
             .to_owned();
 
-        let query_builder = db.get_query_builder_backend();
+        let query_builder = db.get_database_backend();
         let stmts = vec![
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),

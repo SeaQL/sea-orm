@@ -2,7 +2,7 @@ mod entity;
 
 use entity::*;
 
-use sea_orm::{entity::*, error::*, MockDatabase, MockExecResult, Syntax, Transaction};
+use sea_orm::{entity::*, error::*, DatabaseBackend, MockDatabase, MockExecResult, Transaction};
 
 #[async_std::test]
 async fn test_insert() -> Result<(), DbErr> {
@@ -11,7 +11,7 @@ async fn test_insert() -> Result<(), DbErr> {
         rows_affected: 1,
     };
 
-    let db = MockDatabase::new(Syntax::Postgres)
+    let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_exec_results(vec![exec_result.clone()])
         .into_connection();
 
@@ -27,7 +27,7 @@ async fn test_insert() -> Result<(), DbErr> {
     assert_eq!(
         db.into_transaction_log(),
         vec![Transaction::from_sql_and_values(
-            Syntax::Postgres,
+            DatabaseBackend::Postgres,
             r#"INSERT INTO "cake" ("name") VALUES ($1)"#,
             vec!["Apple Pie".into()]
         )]
@@ -43,7 +43,7 @@ async fn test_select() -> Result<(), DbErr> {
         filling_id: 3,
     }];
 
-    let db = MockDatabase::new(Syntax::Postgres)
+    let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_query_results(vec![query_results.clone()])
         .into_connection();
 
@@ -54,7 +54,7 @@ async fn test_select() -> Result<(), DbErr> {
     assert_eq!(
         db.into_transaction_log(),
         vec![Transaction::from_sql_and_values(
-            Syntax::Postgres,
+            DatabaseBackend::Postgres,
             [
                 r#"SELECT "cake_filling"."cake_id", "cake_filling"."filling_id" FROM "cake_filling""#,
                 r#"WHERE "cake_filling"."cake_id" = $1 AND "cake_filling"."filling_id" = $2"#,
@@ -73,7 +73,7 @@ async fn test_update() -> Result<(), DbErr> {
         rows_affected: 1,
     };
 
-    let db = MockDatabase::new(Syntax::Postgres)
+    let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_exec_results(vec![exec_result.clone()])
         .into_connection();
 
@@ -90,7 +90,7 @@ async fn test_update() -> Result<(), DbErr> {
     assert_eq!(
         db.into_transaction_log(),
         vec![Transaction::from_sql_and_values(
-            Syntax::Postgres,
+            DatabaseBackend::Postgres,
             r#"UPDATE "fruit" SET "name" = $1 WHERE "fruit"."id" = $2"#,
             vec!["Orange".into(), 1i32.into()]
         )]
@@ -106,7 +106,7 @@ async fn test_delete() -> Result<(), DbErr> {
         rows_affected: 1,
     };
 
-    let db = MockDatabase::new(Syntax::Postgres)
+    let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_exec_results(vec![exec_result.clone()])
         .into_connection();
 
@@ -122,7 +122,7 @@ async fn test_delete() -> Result<(), DbErr> {
     assert_eq!(
         db.into_transaction_log(),
         vec![Transaction::from_sql_and_values(
-            Syntax::Postgres,
+            DatabaseBackend::Postgres,
             r#"DELETE FROM "fruit" WHERE "fruit"."id" = $1"#,
             vec![3i32.into()]
         )]

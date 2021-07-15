@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, ExecResult, MockDatabase, QueryBuilderBackend,
-    QueryResult, SchemaBuilderBackend, Statement, Syntax, Transaction,
+    debug_print, error::*, DatabaseBackend, DatabaseConnection, ExecResult, MockDatabase,
+    QueryResult, Statement, Transaction,
 };
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -21,7 +21,7 @@ pub trait MockDatabaseTrait: Send {
 
     fn drain_transaction_log(&mut self) -> Vec<Transaction>;
 
-    fn get_syntax(&self) -> Syntax;
+    fn get_database_backend(&self) -> DatabaseBackend;
 }
 
 impl MockDatabaseConnector {
@@ -48,13 +48,13 @@ impl MockDatabaseConnector {
 
         #[cfg(feature = "sqlx-mysql")]
         if crate::SqlxMySqlConnector::accepts(string) {
-            return connect_mock_db!(Syntax::MySql);
+            return connect_mock_db!(DatabaseBackend::MySql);
         }
         #[cfg(feature = "sqlx-sqlite")]
         if crate::SqlxSqliteConnector::accepts(string) {
-            return connect_mock_db!(Syntax::Sqlite);
+            return connect_mock_db!(DatabaseBackend::Sqlite);
         }
-        connect_mock_db!(Syntax::Postgres)
+        connect_mock_db!(DatabaseBackend::Postgres)
     }
 }
 
@@ -92,19 +92,7 @@ impl MockDatabaseConnection {
         self.mocker.lock().unwrap().query(counter, statement)
     }
 
-    pub fn get_query_builder_backend(&self) -> QueryBuilderBackend {
-        self.mocker
-            .lock()
-            .unwrap()
-            .get_syntax()
-            .get_query_builder_backend()
-    }
-
-    pub fn get_schema_builder_backend(&self) -> SchemaBuilderBackend {
-        self.mocker
-            .lock()
-            .unwrap()
-            .get_syntax()
-            .get_schema_builder_backend()
+    pub fn get_database_backend(&self) -> DatabaseBackend {
+        self.mocker.lock().unwrap().get_database_backend()
     }
 }
