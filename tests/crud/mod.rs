@@ -88,7 +88,7 @@ pub async fn test_create_baker(db: &DbConn) {
 pub async fn test_create_customer(db: &DbConn) {
     let customer_kate = customer::ActiveModel {
         name: Set("Kate".to_owned()),
-        notes: Set("Loves cheese cake".to_owned()),
+        notes: Set(Some("Loves cheese cake".to_owned())),
         ..Default::default()
     };
     let res: InsertResult = Customer::insert(customer_kate)
@@ -104,5 +104,5 @@ pub async fn test_create_customer(db: &DbConn) {
     assert!(customer.is_some());
     let customer_model = customer.unwrap();
     assert_eq!(customer_model.name, "Kate");
-    assert_eq!(customer_model.notes, "Loves cheese cake");
+    assert_eq!(customer_model.notes, Some("Loves cheese cake".to_owned()));
 }

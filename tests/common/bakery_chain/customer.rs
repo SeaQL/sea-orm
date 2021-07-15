@@ -13,7 +13,7 @@ impl EntityName for Entity {
 pub struct Model {
     pub id: i32,
     pub name: String,
-    pub notes: String,
+    pub notes: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]

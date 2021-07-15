@@ -53,7 +53,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
     // Customer
     let customer_kate = customer::ActiveModel {
         name: Set("Kate".to_owned()),
-        notes: Set("Loves cheese cake".to_owned()),
+        notes: Set(Some("Loves cheese cake".to_owned())),
         ..Default::default()
     };
     let customer_insert_res: InsertResult = Customer::insert(customer_kate)

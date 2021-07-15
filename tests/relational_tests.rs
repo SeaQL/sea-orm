@@ -1,3 +1,6 @@
+use chrono::offset::Utc;
+use rust_decimal::prelude::*;
+use rust_decimal_macros::dec;
 use sea_orm::{entity::*, query::*, FromQueryResult};
 
 pub mod common;
@@ -7,6 +10,7 @@ pub use common::{bakery_chain::*, setup::*, TestContext};
 // cargo test --test realtional_tests -- --nocapture
 async fn main() {
     test_left_join().await;
+    test_right_join().await;
 }
 
 pub async fn test_left_join() {
@@ -74,6 +78,85 @@ pub async fn test_left_join() {
         .unwrap()
         .unwrap();
     assert_eq!(result.bakery_name, None);
+
+    ctx.delete().await;
+}
+
+pub async fn test_right_join() {
+    let ctx = TestContext::new("mysql://root:@localhost", "test_right_join").await;
+
+    let bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert bakery");
+
+    let customer_kate = customer::ActiveModel {
+        name: Set("Kate".to_owned()),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert customer");
+
+    let _customer_jim = customer::ActiveModel {
+        name: Set("Jim".to_owned()),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert customer");
+
+    let _order = order::ActiveModel {
+        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        total: Set(dec!(15.10)),
+        placed_at: Set(Utc::now().naive_utc()),
+
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert order");
+
+    #[derive(Debug, FromQueryResult)]
+    struct SelectResult {
+        name: String,
+        order_total: Option<Decimal>,
+    }
+
+    let select = order::Entity::find()
+        .right_join(customer::Entity)
+        .select_only()
+        .column(customer::Column::Name)
+        .column_as(order::Column::Total, "order_total")
+        .filter(customer::Column::Name.contains("Kate"));
+
+    let result = select
+        .into_model::<SelectResult>()
+        .one(&ctx.db)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(result.order_total, Some(dec!(15.10)));
+
+    let select = order::Entity::find()
+        .right_join(customer::Entity)
+        .select_only()
+        .column(customer::Column::Name)
+        .column_as(order::Column::Total, "order_total")
+        .filter(customer::Column::Name.contains("Jim"));
+
+    let result = select
+        .into_model::<SelectResult>()
+        .one(&ctx.db)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(result.order_total, None);
 
     ctx.delete().await;
 }
