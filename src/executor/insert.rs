@@ -34,7 +34,7 @@ impl Inserter {
         self,
         db: &DatabaseConnection,
     ) -> impl Future<Output = Result<InsertResult, DbErr>> + '_ {
-        let builder = db.get_query_builder_backend();
+        let builder = db.get_database_backend();
         exec_insert(builder.build(&self.query), db)
     }
 }

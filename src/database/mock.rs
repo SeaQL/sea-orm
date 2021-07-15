@@ -1,14 +1,14 @@
 use crate::{
-    error::*, DatabaseConnection, EntityTrait, ExecResult, ExecResultHolder, Iden, Iterable,
-    MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult, QueryResultRow, Statement,
-    Syntax, Transaction,
+    error::*, DatabaseBackend, DatabaseConnection, EntityTrait, ExecResult, ExecResultHolder, Iden,
+    Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult, QueryResultRow,
+    Statement, Transaction,
 };
 use sea_query::{Value, ValueType};
 use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub struct MockDatabase {
-    syntax: Syntax,
+    db_backend: DatabaseBackend,
     transaction_log: Vec<Transaction>,
     exec_results: Vec<MockExecResult>,
     query_results: Vec<Vec<MockRow>>,
@@ -43,9 +43,9 @@ where
 }
 
 impl MockDatabase {
-    pub fn new(syntax: Syntax) -> Self {
+    pub fn new(db_backend: DatabaseBackend) -> Self {
         Self {
-            syntax,
+            db_backend,
             transaction_log: Vec::new(),
             exec_results: Vec::new(),
             query_results: Vec::new(),
@@ -103,8 +103,8 @@ impl MockDatabaseTrait for MockDatabase {
         std::mem::take(&mut self.transaction_log)
     }
 
-    fn get_syntax(&self) -> Syntax {
-        self.syntax
+    fn get_database_backend(&self) -> DatabaseBackend {
+        self.db_backend
     }
 }
 

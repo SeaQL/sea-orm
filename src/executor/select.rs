@@ -186,7 +186,7 @@ where
     S: SelectorTrait,
 {
     pub async fn one(mut self, db: &DatabaseConnection) -> Result<Option<S::Item>, DbErr> {
-        let builder = db.get_query_builder_backend();
+        let builder = db.get_database_backend();
         self.query.limit(1);
         let row = db.query_one(builder.build(&self.query)).await?;
         match row {
@@ -196,7 +196,7 @@ where
     }
 
     pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, DbErr> {
-        let builder = db.get_query_builder_backend();
+        let builder = db.get_database_backend();
         let rows = db.query_all(builder.build(&self.query)).await?;
         let mut models = Vec::new();
         for row in rows.into_iter() {
