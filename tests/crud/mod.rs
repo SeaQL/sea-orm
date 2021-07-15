@@ -1,6 +1,6 @@
 use sea_orm::{entity::*, DbConn, InsertResult};
 
-pub use super::bakery_chain::*;
+pub use super::common::bakery_chain::*;
 
 pub mod create_cake;
 pub mod create_lineitem;

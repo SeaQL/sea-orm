@@ -81,7 +81,7 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .auto_increment()
                 .primary_key(),
         )
-        .col(ColumnDef::new(order::Column::Total).float())
+        .col(ColumnDef::new(order::Column::Total).decimal_len(19, 4))
         .col(ColumnDef::new(order::Column::BakeryId).integer().not_null())
         .col(
             ColumnDef::new(order::Column::CustomerId)
@@ -125,7 +125,7 @@ pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .auto_increment()
                 .primary_key(),
         )
-        .col(ColumnDef::new(lineitem::Column::Price).decimal())
+        .col(ColumnDef::new(lineitem::Column::Price).decimal_len(19, 4))
         .col(ColumnDef::new(lineitem::Column::Quantity).integer())
         .col(
             ColumnDef::new(lineitem::Column::OrderId)
@@ -194,7 +194,7 @@ pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .primary_key(),
         )
         .col(ColumnDef::new(cake::Column::Name).string())
-        .col(ColumnDef::new(cake::Column::Price).float())
+        .col(ColumnDef::new(cake::Column::Price).decimal_len(19, 4))
         .col(ColumnDef::new(cake::Column::BakeryId).integer().not_null())
         .foreign_key(
             ForeignKey::create()
