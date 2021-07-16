@@ -14,8 +14,15 @@ async fn main() {
     let right_join_fut = test_right_join();
     let inner_join_fut = test_inner_join();
     let group_by_fut = test_group_by();
+    let having_fut = test_having();
 
-    join!(left_join_fut, right_join_fut, inner_join_fut, group_by_fut);
+    join!(
+        left_join_fut,
+        right_join_fut,
+        inner_join_fut,
+        group_by_fut,
+        having_fut
+    );
 }
 
 pub async fn test_left_join() {
@@ -344,4 +351,111 @@ pub async fn test_group_by() {
                 .max(kate_order_2.total.clone().unwrap())
         )
     );
+    ctx.delete().await;
+}
+
+pub async fn test_having() {
+    // customers with orders with total equal to $100
+    let ctx = TestContext::new("mysql://root:@localhost", "test_having").await;
+
+    let bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert bakery");
+
+    let customer_kate = customer::ActiveModel {
+        name: Set("Kate".to_owned()),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert customer");
+
+    let kate_order_1 = order::ActiveModel {
+        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        total: Set(dec!(100.00)),
+        placed_at: Set(Utc::now().naive_utc()),
+
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert order");
+
+    let _kate_order_2 = order::ActiveModel {
+        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        total: Set(dec!(12.00)),
+        placed_at: Set(Utc::now().naive_utc()),
+
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert order");
+
+    let customer_bob = customer::ActiveModel {
+        name: Set("Bob".to_owned()),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert customer");
+
+    let _bob_order_1 = order::ActiveModel {
+        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        customer_id: Set(Some(customer_bob.id.clone().unwrap())),
+        total: Set(dec!(50.0)),
+        placed_at: Set(Utc::now().naive_utc()),
+
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert order");
+
+    let _bob_order_2 = order::ActiveModel {
+        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        customer_id: Set(Some(customer_bob.id.clone().unwrap())),
+        total: Set(dec!(50.0)),
+        placed_at: Set(Utc::now().naive_utc()),
+
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert order");
+
+    #[derive(Debug, FromQueryResult)]
+    struct SelectResult {
+        name: String,
+        order_total: Option<Decimal>,
+    }
+
+    let results = customer::Entity::find()
+        .inner_join(order::Entity)
+        .select_only()
+        .column(customer::Column::Name)
+        .column_as(order::Column::Total, "order_total")
+        .group_by(customer::Column::Name)
+        .group_by(order::Column::Total)
+        .having(order::Column::Total.eq(dec!(100.00)))
+        .into_model::<SelectResult>()
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].name, customer_kate.name.clone().unwrap());
+    assert_eq!(
+        results[0].order_total,
+        Some(kate_order_1.total.clone().unwrap())
+    );
+
+    ctx.delete().await;
 }
