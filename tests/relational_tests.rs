@@ -296,14 +296,20 @@ pub async fn test_group_by() {
     #[derive(Debug, FromQueryResult)]
     struct SelectResult {
         name: String,
+        number_orders: Option<i32>,
         total_spent: Option<Decimal>,
+        min_spent: Option<Decimal>,
+        max_spent: Option<Decimal>,
     }
 
     let select = customer::Entity::find()
         .left_join(order::Entity)
         .select_only()
         .column(customer::Column::Name)
+        .column_as(order::Column::Total.count(), "number_orders")
         .column_as(order::Column::Total.sum(), "total_spent")
+        .column_as(order::Column::Total.min(), "min_spent")
+        .column_as(order::Column::Total.max(), "max_spent")
         .group_by(customer::Column::Name);
 
     let result = select
@@ -313,8 +319,29 @@ pub async fn test_group_by() {
         .unwrap()
         .unwrap();
 
+    assert_eq!(result.number_orders, Some(2));
     assert_eq!(
         result.total_spent,
-        Some(kate_order_1.total.unwrap() + kate_order_2.total.unwrap())
+        Some(kate_order_1.total.clone().unwrap() + kate_order_2.total.clone().unwrap())
+    );
+    assert_eq!(
+        result.min_spent,
+        Some(
+            kate_order_1
+                .total
+                .clone()
+                .unwrap()
+                .min(kate_order_2.total.clone().unwrap())
+        )
+    );
+    assert_eq!(
+        result.max_spent,
+        Some(
+            kate_order_1
+                .total
+                .clone()
+                .unwrap()
+                .max(kate_order_2.total.clone().unwrap())
+        )
     );
 }
