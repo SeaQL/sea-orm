@@ -18,7 +18,8 @@ pub trait EntityName: IdenStatic + Default {
         Self::table_name(self)
     }
 }
-/// Each table in database correspond to a Entity implemented [`EntityTrait`].
+
+/// An Entity implementing `EntityTrait` represents a table in a database.
 ///
 /// This trait provides an API for you to inspect it's properties
 /// - Column (implemented [`ColumnTrait`])
