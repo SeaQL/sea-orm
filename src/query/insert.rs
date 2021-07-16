@@ -25,7 +25,7 @@ impl<A> Insert<A>
 where
     A: ActiveModelTrait,
 {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             query: InsertStatement::new()
                 .into_table(A::Entity::default().into_iden())
