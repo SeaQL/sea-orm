@@ -1,4 +1,5 @@
 use chrono::offset::Utc;
+use futures::join;
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
 use sea_orm::{entity::*, query::*, FromQueryResult};
@@ -9,9 +10,12 @@ pub use common::{bakery_chain::*, setup::*, TestContext};
 #[async_std::test]
 // cargo test --test realtional_tests -- --nocapture
 async fn main() {
-    test_left_join().await;
-    test_right_join().await;
-    test_inner_join().await;
+    let left_join_fut = test_left_join();
+    let right_join_fut = test_right_join();
+    let inner_join_fut = test_inner_join();
+    let group_by_fut = test_group_by();
+
+    join!(left_join_fut, right_join_fut, inner_join_fut, group_by_fut);
 }
 
 pub async fn test_left_join() {
@@ -243,4 +247,74 @@ pub async fn test_inner_join() {
             && result.order_total == Some(kate_order_2.total.clone().unwrap())));
 
     ctx.delete().await;
+}
+
+pub async fn test_group_by() {
+    let ctx = TestContext::new("mysql://root:@localhost", "test_group_by").await;
+
+    let bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert bakery");
+
+    let customer_kate = customer::ActiveModel {
+        name: Set("Kate".to_owned()),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert customer");
+
+    let kate_order_1 = order::ActiveModel {
+        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        total: Set(dec!(99.95)),
+        placed_at: Set(Utc::now().naive_utc()),
+
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert order");
+
+    let kate_order_2 = order::ActiveModel {
+        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        total: Set(dec!(200.00)),
+        placed_at: Set(Utc::now().naive_utc()),
+
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert order");
+
+    #[derive(Debug, FromQueryResult)]
+    struct SelectResult {
+        name: String,
+        total_spent: Option<Decimal>,
+    }
+
+    let select = customer::Entity::find()
+        .left_join(order::Entity)
+        .select_only()
+        .column(customer::Column::Name)
+        .column_as(order::Column::Total.sum(), "total_spent")
+        .group_by(customer::Column::Name);
+
+    let result = select
+        .into_model::<SelectResult>()
+        .one(&ctx.db)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        result.total_spent,
+        Some(kate_order_1.total.unwrap() + kate_order_2.total.unwrap())
+    );
 }
