@@ -1,7 +1,7 @@
 use crate::{
     error::*, query::combine, DatabaseConnection, EntityTrait, FromQueryResult, Iterable,
     JsonValue, ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectTwo,
-    SelectTwoMany,
+    SelectTwoMany, Statement,
 };
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
@@ -12,6 +12,15 @@ where
     S: SelectorTrait,
 {
     query: SelectStatement,
+    selector: S,
+}
+
+#[derive(Clone, Debug)]
+pub struct SelectorRaw<S>
+where
+    S: SelectorTrait,
+{
+    stmt: Statement,
     selector: S,
 }
 
@@ -67,6 +76,13 @@ impl<E> Select<E>
 where
     E: EntityTrait,
 {
+    pub fn from_raw_sql(stmt: Statement) -> SelectorRaw<SelectModel<E::Model>> {
+        SelectorRaw {
+            stmt,
+            selector: SelectModel { model: PhantomData },
+        }
+    }
+
     pub fn into_model<M>(self) -> Selector<SelectModel<M>>
     where
         M: FromQueryResult,
@@ -213,6 +229,28 @@ where
             db,
             selector: PhantomData,
         }
+    }
+}
+
+impl<S> SelectorRaw<S>
+where
+    S: SelectorTrait,
+{
+    pub async fn one(self, db: &DatabaseConnection) -> Result<Option<S::Item>, DbErr> {
+        let row = db.query_one(self.stmt).await?;
+        match row {
+            Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
+            None => Ok(None),
+        }
+    }
+
+    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, DbErr> {
+        let rows = db.query_all(self.stmt).await?;
+        let mut models = Vec::new();
+        for row in rows.into_iter() {
+            models.push(S::from_raw_query_result(row)?);
+        }
+        Ok(models)
     }
 }
 
