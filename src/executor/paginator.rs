@@ -85,6 +85,26 @@ where
     }
 
     /// Fetch one page and increment the page counter
+    ///
+    /// ```rust
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{error::*, MockDatabase, DbBackend};
+    /// # let owned_db = MockDatabase::new(DbBackend::Postgres).into_connection();
+    /// # let db = &owned_db;
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    /// let mut cake_pages = cake::Entity::find()
+    ///     .order_by_asc(cake::Column::Id)
+    ///     .paginate(db, 50);
+    /// 
+    /// while let Some(cakes) = cake_pages.fetch_and_next().await? {
+    ///     // Do something on cakes: Vec<cake::Model>
+    /// }
+    /// #
+    /// # Ok(())
+    /// # });
+    /// ```
     pub async fn fetch_and_next(&mut self) -> Result<Option<Vec<S::Item>>, DbErr> {
         let vec = self.fetch().await?;
         self.next();
@@ -93,6 +113,28 @@ where
     }
 
     /// Convert self into an async stream
+    ///
+    /// ```rust
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{error::*, MockDatabase, DbBackend};
+    /// # let owned_db = MockDatabase::new(DbBackend::Postgres).into_connection();
+    /// # let db = &owned_db;
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// use futures::TryStreamExt;
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    /// let mut cake_stream = cake::Entity::find()
+    ///     .order_by_asc(cake::Column::Id)
+    ///     .paginate(db, 50)
+    ///     .into_stream();
+    /// 
+    /// while let Some(cakes) = cake_stream.try_next().await? {
+    ///     // Do something on cakes: Vec<cake::Model>
+    /// }
+    /// #
+    /// # Ok(())
+    /// # });
+    /// ```
     pub fn into_stream(mut self) -> PinBoxStream<'db, Result<Vec<S::Item>, DbErr>> {
         Box::pin(stream! {
             loop {
