@@ -11,8 +11,8 @@ pub struct Statement {
     pub db_backend: DatabaseBackend,
 }
 
-pub trait IntoStatement {
-    fn into_statement(&self, db_backend: &DatabaseBackend) -> Statement;
+pub trait StatementBuilder {
+    fn build(&self, db_backend: &DatabaseBackend) -> Statement;
 }
 
 impl Statement {
@@ -66,8 +66,8 @@ macro_rules! build_any_stmt {
 
 macro_rules! build_query_stmt {
     ($stmt: ty) => {
-        impl IntoStatement for $stmt {
-            fn into_statement(&self, db_backend: &DatabaseBackend) -> Statement {
+        impl StatementBuilder for $stmt {
+            fn build(&self, db_backend: &DatabaseBackend) -> Statement {
                 let stmt = build_any_stmt!(self, db_backend);
                 Statement::from_string_values_tuple(*db_backend, stmt)
             }
@@ -82,8 +82,8 @@ build_query_stmt!(sea_query::DeleteStatement);
 
 macro_rules! build_schema_stmt {
     ($stmt: ty) => {
-        impl IntoStatement for $stmt {
-            fn into_statement(&self, db_backend: &DatabaseBackend) -> Statement {
+        impl StatementBuilder for $stmt {
+            fn build(&self, db_backend: &DatabaseBackend) -> Statement {
                 let stmt = build_any_stmt!(self, db_backend);
                 Statement::from_string(*db_backend, stmt)
             }

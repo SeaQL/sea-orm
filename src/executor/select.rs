@@ -102,11 +102,11 @@ where
     }
 
     pub async fn one(self, db: &DatabaseConnection) -> Result<Option<E::Model>, DbErr> {
-        self.into_model::<E::Model>().one(db).await
+        self.into_model().one(db).await
     }
 
     pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<E::Model>, DbErr> {
-        self.into_model::<E::Model>().all(db).await
+        self.into_model().all(db).await
     }
 
     pub fn paginate(
@@ -114,7 +114,7 @@ where
         db: &DatabaseConnection,
         page_size: usize,
     ) -> Paginator<'_, SelectModel<E::Model>> {
-        self.into_model::<E::Model>().paginate(db, page_size)
+        self.into_model().paginate(db, page_size)
     }
 }
 
@@ -146,14 +146,14 @@ where
         self,
         db: &DatabaseConnection,
     ) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr> {
-        self.into_model::<E::Model, F::Model>().one(db).await
+        self.into_model().one(db).await
     }
 
     pub async fn all(
         self,
         db: &DatabaseConnection,
     ) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr> {
-        self.into_model::<E::Model, F::Model>().all(db).await
+        self.into_model().all(db).await
     }
 }
 
@@ -185,14 +185,14 @@ where
         self,
         db: &DatabaseConnection,
     ) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr> {
-        self.into_model::<E::Model, F::Model>().one(db).await
+        self.into_model().one(db).await
     }
 
     pub async fn all(
         self,
         db: &DatabaseConnection,
     ) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr> {
-        let rows = self.into_model::<E::Model, F::Model>().all(db).await?;
+        let rows = self.into_model().all(db).await?;
         Ok(consolidate_query_result::<E, F>(rows))
     }
 }

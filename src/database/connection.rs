@@ -1,4 +1,4 @@
-use crate::{error::*, ExecResult, IntoStatement, QueryResult, Statement};
+use crate::{error::*, ExecResult, QueryResult, Statement, StatementBuilder};
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 
 pub enum DatabaseConnection {
@@ -116,9 +116,9 @@ impl DatabaseConnection {
 impl DatabaseBackend {
     pub fn build<S>(&self, statement: &S) -> Statement
     where
-        S: IntoStatement,
+        S: StatementBuilder,
     {
-        statement.into_statement(self)
+        statement.build(self)
     }
 
     pub fn get_query_builder(&self) -> Box<dyn QueryBuilder> {
