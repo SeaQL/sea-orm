@@ -18,6 +18,8 @@ where
     pub(crate) selector: PhantomData<S>,
 }
 
+// LINT: warn if paginator is used without an order by clause
+
 impl<'db, S> Paginator<'db, S>
 where
     S: SelectorTrait + 'db,
@@ -46,12 +48,12 @@ where
         self.fetch_page(self.page).await
     }
 
-    /// Get the total number of pages
-    pub async fn num_pages(&self) -> Result<usize, DbErr> {
+    /// Get the total number of items
+    pub async fn num_items(&self) -> Result<usize, DbErr> {
         let builder = self.db.get_database_backend();
         let stmt = builder.build(
             SelectStatement::new()
-                .expr(Expr::cust("COUNT(*) AS num_rows"))
+                .expr(Expr::cust("COUNT(*) AS num_items"))
                 .from_subquery(
                     self.query.clone().reset_limit().reset_offset().to_owned(),
                     Alias::new("sub_query"),
@@ -61,8 +63,14 @@ where
             Some(res) => res,
             None => return Ok(0),
         };
-        let num_rows = result.try_get::<i32>("", "num_rows")? as usize;
-        let num_pages = (num_rows / self.page_size) + (num_rows % self.page_size > 0) as usize;
+        let num_items = result.try_get::<i32>("", "num_items")? as usize;
+        Ok(num_items)
+    }
+
+    /// Get the total number of pages
+    pub async fn num_pages(&self) -> Result<usize, DbErr> {
+        let num_items = self.num_items().await?;
+        let num_pages = (num_items / self.page_size) + (num_items % self.page_size > 0) as usize;
         Ok(num_pages)
     }
 
@@ -136,15 +144,15 @@ mod tests {
         (db, vec![page1, page2, page3])
     }
 
-    fn setup_num_rows() -> (DatabaseConnection, i32) {
-        let num_rows = 3;
+    fn setup_num_items() -> (DatabaseConnection, i32) {
+        let num_items = 3;
         let db = MockDatabase::new(DatabaseBackend::Postgres)
             .append_query_results(vec![vec![maplit::btreemap! {
-                "num_rows" => Into::<Value>::into(num_rows),
+                "num_items" => Into::<Value>::into(num_items),
             }]])
             .into_connection();
 
-        (db, num_rows)
+        (db, num_items)
     }
 
     #[async_std::test]
@@ -213,11 +221,11 @@ mod tests {
 
     #[async_std::test]
     async fn num_pages() -> Result<(), DbErr> {
-        let (db, num_rows) = setup_num_rows();
+        let (db, num_items) = setup_num_items();
 
-        let num_rows = num_rows as usize;
+        let num_items = num_items as usize;
         let page_size = 2_usize;
-        let num_pages = (num_rows / page_size) + (num_rows % page_size > 0) as usize;
+        let num_pages = (num_items / page_size) + (num_items % page_size > 0) as usize;
         let paginator = fruit::Entity::find().paginate(&db, page_size);
 
         assert_eq!(paginator.num_pages().await?, num_pages);
@@ -232,7 +240,7 @@ mod tests {
             .to_owned();
 
         let select = SelectStatement::new()
-            .expr(Expr::cust("COUNT(*) AS num_rows"))
+            .expr(Expr::cust("COUNT(*) AS num_items"))
             .from_subquery(sub_query, Alias::new("sub_query"))
             .to_owned();
 

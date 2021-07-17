@@ -59,6 +59,12 @@ async fn crud_cake(db: &DbConn) -> Result<(), DbErr> {
     println!();
     println!("Updated: {:?}", apple);
 
+    let count = cake::Entity::find().count(db).await?;
+
+    println!();
+    println!("Count: {:?}", count);
+    assert_eq!(count, 1);
+
     let apple = cake::Entity::find_by_id(1).one(db).await?;
 
     assert_eq!(
@@ -79,6 +85,12 @@ async fn crud_cake(db: &DbConn) -> Result<(), DbErr> {
     let apple = cake::Entity::find_by_id(1).one(db).await?;
 
     assert_eq!(None, apple);
+
+    let count = cake::Entity::find().count(db).await?;
+
+    println!();
+    println!("Count: {:?}", count);
+    assert_eq!(count, 0);
 
     Ok(())
 }

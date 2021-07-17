@@ -116,6 +116,10 @@ where
     ) -> Paginator<'_, SelectModel<E::Model>> {
         self.into_model().paginate(db, page_size)
     }
+
+    pub async fn count(self, db: &DatabaseConnection) -> Result<usize, DbErr> {
+        self.paginate(db, 1).num_items().await
+    }
 }
 
 impl<E, F> SelectTwo<E, F>
@@ -154,6 +158,18 @@ where
         db: &DatabaseConnection,
     ) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr> {
         self.into_model().all(db).await
+    }
+
+    pub fn paginate(
+        self,
+        db: &DatabaseConnection,
+        page_size: usize,
+    ) -> Paginator<'_, SelectTwoModel<E::Model, F::Model>> {
+        self.into_model().paginate(db, page_size)
+    }
+
+    pub async fn count(self, db: &DatabaseConnection) -> Result<usize, DbErr> {
+        self.paginate(db, 1).num_items().await
     }
 }
 
@@ -195,6 +211,15 @@ where
         let rows = self.into_model().all(db).await?;
         Ok(consolidate_query_result::<E, F>(rows))
     }
+
+    // pub fn paginate()
+    // we could not implement paginate easily, if the number of children for a
+    // parent is larger than one page, then we will end up splitting it in two pages
+    // so the correct way is actually perform query in two stages
+    // paginate the parent model and then populate the children
+
+    // pub fn count()
+    // we should only count the number of items of the parent model
 }
 
 impl<S> Selector<S>
