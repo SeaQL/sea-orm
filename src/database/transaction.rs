@@ -1,4 +1,4 @@
-use crate::{DatabaseBackend, Statement};
+use crate::{DbBackend, Statement};
 use sea_query::{Value, Values};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -7,7 +7,7 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub fn from_sql_and_values<I>(db_backend: DatabaseBackend, sql: &str, values: I) -> Self
+    pub fn from_sql_and_values<I>(db_backend: DbBackend, sql: &str, values: I) -> Self
     where
         I: IntoIterator<Item = Value>,
     {

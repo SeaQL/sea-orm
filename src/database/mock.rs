@@ -1,5 +1,5 @@
 use crate::{
-    error::*, DatabaseBackend, DatabaseConnection, EntityTrait, ExecResult, ExecResultHolder, Iden,
+    error::*, DbBackend, DatabaseConnection, EntityTrait, ExecResult, ExecResultHolder, Iden,
     Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult, QueryResultRow,
     Statement, Transaction,
 };
@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub struct MockDatabase {
-    db_backend: DatabaseBackend,
+    db_backend: DbBackend,
     transaction_log: Vec<Transaction>,
     exec_results: Vec<MockExecResult>,
     query_results: Vec<Vec<MockRow>>,
@@ -43,7 +43,7 @@ where
 }
 
 impl MockDatabase {
-    pub fn new(db_backend: DatabaseBackend) -> Self {
+    pub fn new(db_backend: DbBackend) -> Self {
         Self {
             db_backend,
             transaction_log: Vec::new(),
@@ -103,7 +103,7 @@ impl MockDatabaseTrait for MockDatabase {
         std::mem::take(&mut self.transaction_log)
     }
 
-    fn get_database_backend(&self) -> DatabaseBackend {
+    fn get_database_backend(&self) -> DbBackend {
         self.db_backend
     }
 }

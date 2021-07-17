@@ -31,28 +31,28 @@ impl Delete {
     ///
     /// Model
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DatabaseBackend};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     Delete::one(cake::Model {
     ///         id: 1,
     ///         name: "Apple Pie".to_owned(),
     ///     })
-    ///     .build(DatabaseBackend::Postgres)
+    ///     .build(DbBackend::Postgres)
     ///     .to_string(),
     ///     r#"DELETE FROM "cake" WHERE "cake"."id" = 1"#,
     /// );
     /// ```
     /// ActiveModel
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DatabaseBackend};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     Delete::one(cake::ActiveModel {
     ///         id: ActiveValue::set(1),
     ///         name: ActiveValue::set("Apple Pie".to_owned()),
     ///     })
-    ///     .build(DatabaseBackend::Postgres)
+    ///     .build(DbBackend::Postgres)
     ///     .to_string(),
     ///     r#"DELETE FROM "cake" WHERE "cake"."id" = 1"#,
     /// );
@@ -75,12 +75,12 @@ impl Delete {
     /// Delete many ActiveModel
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, DatabaseBackend};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, DbBackend};
     ///
     /// assert_eq!(
     ///     Delete::many(fruit::Entity)
     ///         .filter(fruit::Column::Name.contains("Apple"))
-    ///         .build(DatabaseBackend::Postgres)
+    ///         .build(DbBackend::Postgres)
     ///         .to_string(),
     ///     r#"DELETE FROM "fruit" WHERE "fruit"."name" LIKE '%Apple%'"#,
     /// );
@@ -179,7 +179,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, fruit};
-    use crate::{entity::*, query::*, DatabaseBackend};
+    use crate::{entity::*, query::*, DbBackend};
 
     #[test]
     fn delete_1() {
@@ -188,7 +188,7 @@ mod tests {
                 id: 1,
                 name: "Apple Pie".to_owned(),
             })
-            .build(DatabaseBackend::Postgres)
+            .build(DbBackend::Postgres)
             .to_string(),
             r#"DELETE FROM "cake" WHERE "cake"."id" = 1"#,
         );
@@ -197,7 +197,7 @@ mod tests {
                 id: ActiveValue::set(1),
                 name: ActiveValue::set("Apple Pie".to_owned()),
             })
-            .build(DatabaseBackend::Postgres)
+            .build(DbBackend::Postgres)
             .to_string(),
             r#"DELETE FROM "cake" WHERE "cake"."id" = 1"#,
         );
@@ -208,7 +208,7 @@ mod tests {
         assert_eq!(
             Delete::many(fruit::Entity)
                 .filter(fruit::Column::Name.contains("Cheese"))
-                .build(DatabaseBackend::Postgres)
+                .build(DbBackend::Postgres)
                 .to_string(),
             r#"DELETE FROM "fruit" WHERE "fruit"."name" LIKE '%Cheese%'"#,
         );

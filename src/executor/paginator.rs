@@ -111,7 +111,7 @@ where
 mod tests {
     use crate::entity::prelude::*;
     use crate::tests_cfg::*;
-    use crate::{DatabaseBackend, DatabaseConnection, MockDatabase, Transaction};
+    use crate::{DbBackend, DatabaseConnection, MockDatabase, Transaction};
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};
 
@@ -137,7 +137,7 @@ mod tests {
 
         let page3 = Vec::<fruit::Model>::new();
 
-        let db = MockDatabase::new(DatabaseBackend::Postgres)
+        let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results(vec![page1.clone(), page2.clone(), page3.clone()])
             .into_connection();
 
@@ -146,7 +146,7 @@ mod tests {
 
     fn setup_num_items() -> (DatabaseConnection, i32) {
         let num_items = 3;
-        let db = MockDatabase::new(DatabaseBackend::Postgres)
+        let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results(vec![vec![maplit::btreemap! {
                 "num_items" => Into::<Value>::into(num_items),
             }]])

@@ -1,4 +1,4 @@
-use crate::DatabaseBackend;
+use crate::DbBackend;
 use sea_query::{
     inject_parameters, MysqlQueryBuilder, PostgresQueryBuilder, SqliteQueryBuilder, Values,
 };
@@ -8,15 +8,15 @@ use std::fmt;
 pub struct Statement {
     pub sql: String,
     pub values: Option<Values>,
-    pub db_backend: DatabaseBackend,
+    pub db_backend: DbBackend,
 }
 
 pub trait StatementBuilder {
-    fn build(&self, db_backend: &DatabaseBackend) -> Statement;
+    fn build(&self, db_backend: &DbBackend) -> Statement;
 }
 
 impl Statement {
-    pub fn from_string(db_backend: DatabaseBackend, stmt: String) -> Statement {
+    pub fn from_string(db_backend: DbBackend, stmt: String) -> Statement {
         Statement {
             sql: stmt,
             values: None,
@@ -25,7 +25,7 @@ impl Statement {
     }
 
     pub fn from_string_values_tuple(
-        db_backend: DatabaseBackend,
+        db_backend: DbBackend,
         stmt: (String, Values),
     ) -> Statement {
         Statement {
@@ -57,9 +57,9 @@ impl fmt::Display for Statement {
 macro_rules! build_any_stmt {
     ($stmt: expr, $db_backend: expr) => {
         match $db_backend {
-            DatabaseBackend::MySql => $stmt.build(MysqlQueryBuilder),
-            DatabaseBackend::Postgres => $stmt.build(PostgresQueryBuilder),
-            DatabaseBackend::Sqlite => $stmt.build(SqliteQueryBuilder),
+            DbBackend::MySql => $stmt.build(MysqlQueryBuilder),
+            DbBackend::Postgres => $stmt.build(PostgresQueryBuilder),
+            DbBackend::Sqlite => $stmt.build(SqliteQueryBuilder),
         }
     };
 }
@@ -67,7 +67,7 @@ macro_rules! build_any_stmt {
 macro_rules! build_query_stmt {
     ($stmt: ty) => {
         impl StatementBuilder for $stmt {
-            fn build(&self, db_backend: &DatabaseBackend) -> Statement {
+            fn build(&self, db_backend: &DbBackend) -> Statement {
                 let stmt = build_any_stmt!(self, db_backend);
                 Statement::from_string_values_tuple(*db_backend, stmt)
             }
@@ -83,7 +83,7 @@ build_query_stmt!(sea_query::DeleteStatement);
 macro_rules! build_schema_stmt {
     ($stmt: ty) => {
         impl StatementBuilder for $stmt {
-            fn build(&self, db_backend: &DatabaseBackend) -> Statement {
+            fn build(&self, db_backend: &DbBackend) -> Statement {
                 let stmt = build_any_stmt!(self, db_backend);
                 Statement::from_string(*db_backend, stmt)
             }

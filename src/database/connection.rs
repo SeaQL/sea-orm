@@ -20,6 +20,8 @@ pub enum DatabaseBackend {
     Sqlite,
 }
 
+pub type DbBackend = DatabaseBackend;
+
 impl Default for DatabaseConnection {
     fn default() -> Self {
         Self::Disconnected
@@ -45,12 +47,12 @@ impl std::fmt::Debug for DatabaseConnection {
 }
 
 impl DatabaseConnection {
-    pub fn get_database_backend(&self) -> DatabaseBackend {
+    pub fn get_database_backend(&self) -> DbBackend {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(_) => DatabaseBackend::MySql,
+            DatabaseConnection::SqlxMySqlPoolConnection(_) => DbBackend::MySql,
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(_) => DatabaseBackend::Sqlite,
+            DatabaseConnection::SqlxSqlitePoolConnection(_) => DbBackend::Sqlite,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.get_database_backend(),
             DatabaseConnection::Disconnected => panic!("Disconnected"),
@@ -113,7 +115,7 @@ impl DatabaseConnection {
     }
 }
 
-impl DatabaseBackend {
+impl DbBackend {
     pub fn build<S>(&self, statement: &S) -> Statement
     where
         S: StatementBuilder,

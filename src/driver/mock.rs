@@ -1,5 +1,5 @@
 use crate::{
-    debug_print, error::*, DatabaseBackend, DatabaseConnection, ExecResult, MockDatabase,
+    debug_print, error::*, DbBackend, DatabaseConnection, ExecResult, MockDatabase,
     QueryResult, Statement, Transaction,
 };
 use std::sync::{
@@ -21,7 +21,7 @@ pub trait MockDatabaseTrait: Send {
 
     fn drain_transaction_log(&mut self) -> Vec<Transaction>;
 
-    fn get_database_backend(&self) -> DatabaseBackend;
+    fn get_database_backend(&self) -> DbBackend;
 }
 
 impl MockDatabaseConnector {
@@ -48,13 +48,13 @@ impl MockDatabaseConnector {
 
         #[cfg(feature = "sqlx-mysql")]
         if crate::SqlxMySqlConnector::accepts(string) {
-            return connect_mock_db!(DatabaseBackend::MySql);
+            return connect_mock_db!(DbBackend::MySql);
         }
         #[cfg(feature = "sqlx-sqlite")]
         if crate::SqlxSqliteConnector::accepts(string) {
-            return connect_mock_db!(DatabaseBackend::Sqlite);
+            return connect_mock_db!(DbBackend::Sqlite);
         }
-        connect_mock_db!(DatabaseBackend::Postgres)
+        connect_mock_db!(DbBackend::Postgres)
     }
 }
 
@@ -92,7 +92,7 @@ impl MockDatabaseConnection {
         self.mocker.lock().unwrap().query(counter, statement)
     }
 
-    pub fn get_database_backend(&self) -> DatabaseBackend {
+    pub fn get_database_backend(&self) -> DbBackend {
         self.mocker.lock().unwrap().get_database_backend()
     }
 }

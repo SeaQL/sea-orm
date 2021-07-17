@@ -39,28 +39,28 @@ where
     ///
     /// Model
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DatabaseBackend};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     Insert::one(cake::Model {
     ///             id: 1,
     ///             name: "Apple Pie".to_owned(),
     ///         })
-    ///         .build(DatabaseBackend::Postgres)
+    ///         .build(DbBackend::Postgres)
     ///         .to_string(),
     ///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#,
     /// );
     /// ```
     /// ActiveModel
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DatabaseBackend};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     Insert::one(cake::ActiveModel {
     ///             id: Unset(None),
     ///             name: Set("Apple Pie".to_owned()),
     ///         })
-    ///         .build(DatabaseBackend::Postgres)
+    ///         .build(DbBackend::Postgres)
     ///         .to_string(),
     ///     r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie')"#,
     /// );
@@ -75,7 +75,7 @@ where
     /// Insert many Model or ActiveModel
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DatabaseBackend};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     Insert::many(vec![
@@ -88,7 +88,7 @@ where
     ///                 name: "Orange Scone".to_owned(),
     ///             }
     ///         ])
-    ///         .build(DatabaseBackend::Postgres)
+    ///         .build(DbBackend::Postgres)
     ///         .to_string(),
     ///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie'), (2, 'Orange Scone')"#,
     /// );
@@ -162,7 +162,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::cake;
-    use crate::{ActiveValue, DatabaseBackend, Insert, QueryTrait};
+    use crate::{ActiveValue, DbBackend, Insert, QueryTrait};
 
     #[test]
     fn insert_1() {
@@ -172,7 +172,7 @@ mod tests {
                     id: ActiveValue::unset(),
                     name: ActiveValue::set("Apple Pie".to_owned()),
                 })
-                .build(DatabaseBackend::Postgres)
+                .build(DbBackend::Postgres)
                 .to_string(),
             r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie')"#,
         );
@@ -186,7 +186,7 @@ mod tests {
                     id: ActiveValue::set(1),
                     name: ActiveValue::set("Apple Pie".to_owned()),
                 })
-                .build(DatabaseBackend::Postgres)
+                .build(DbBackend::Postgres)
                 .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#,
         );
@@ -200,7 +200,7 @@ mod tests {
                     id: 1,
                     name: "Apple Pie".to_owned(),
                 })
-                .build(DatabaseBackend::Postgres)
+                .build(DbBackend::Postgres)
                 .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#,
         );
@@ -220,7 +220,7 @@ mod tests {
                         name: "Orange Scone".to_owned(),
                     }
                 ])
-                .build(DatabaseBackend::Postgres)
+                .build(DbBackend::Postgres)
                 .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie'), (2, 'Orange Scone')"#,
         );
@@ -240,7 +240,7 @@ mod tests {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
                 .add_many(vec![apple, orange])
-                .build(DatabaseBackend::Postgres)
+                .build(DbBackend::Postgres)
                 .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (NULL, 'Apple'), (2, 'Orange')"#,
         );

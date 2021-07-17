@@ -1,4 +1,4 @@
-use crate::{DatabaseBackend, Statement};
+use crate::{DbBackend, Statement};
 use sea_query::QueryStatementBuilder;
 
 pub trait QueryTrait {
@@ -14,7 +14,7 @@ pub trait QueryTrait {
     fn into_query(self) -> Self::QueryStatement;
 
     /// Build the query as [`Statement`]
-    fn build(&self, db_backend: DatabaseBackend) -> Statement {
+    fn build(&self, db_backend: DbBackend) -> Statement {
         let query_builder = db_backend.get_query_builder();
         Statement::from_string_values_tuple(
             db_backend,
