@@ -1,6 +1,6 @@
 use crate::DbBackend;
 use sea_query::{
-    inject_parameters, MysqlQueryBuilder, PostgresQueryBuilder, SqliteQueryBuilder, Values,
+    inject_parameters, MysqlQueryBuilder, PostgresQueryBuilder, SqliteQueryBuilder, Value, Values
 };
 use std::fmt;
 
@@ -24,7 +24,17 @@ impl Statement {
         }
     }
 
-    pub fn from_string_values_tuple(
+    pub fn from_sql_and_values<I>(db_backend: DbBackend, sql: &str, values: I) -> Self
+    where
+        I: IntoIterator<Item = Value>,
+    {
+        Self::from_string_values_tuple(
+            db_backend,
+            (sql.to_owned(), Values(values.into_iter().collect())),
+        )
+    }
+
+    pub(crate) fn from_string_values_tuple(
         db_backend: DbBackend,
         stmt: (String, Values),
     ) -> Statement {

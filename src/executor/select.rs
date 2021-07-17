@@ -76,7 +76,50 @@ impl<E> Select<E>
 where
     E: EntityTrait,
 {
-    pub fn from_raw_sql(stmt: Statement) -> SelectorRaw<SelectModel<E::Model>> {
+    /// ```
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![
+    /// #         vec![
+    /// #             cake::Model {
+    /// #                 id: 1,
+    /// #                 name: "New York Cheese".to_owned(),
+    /// #             },
+    /// #         ],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    ///
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// assert_eq!(
+    ///     cake::Entity::find().from_raw_sql(
+    ///         Statement::from_sql_and_values(
+    ///             DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
+    ///         )
+    ///     ).one(&db).await?,
+    ///     Some(cake::Model {
+    ///         id: 1,
+    ///         name: "New York Cheese".to_owned(),
+    ///     })
+    /// );
+    /// #
+    /// # Ok(())
+    /// # });
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![
+    ///     Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
+    ///     ),
+    /// ]);
+    /// ```
+    #[allow(clippy::wrong_self_convention)]
+    pub fn from_raw_sql(self, stmt: Statement) -> SelectorRaw<SelectModel<E::Model>> {
         SelectorRaw {
             stmt,
             selector: SelectModel { model: PhantomData },
