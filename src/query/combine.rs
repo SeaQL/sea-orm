@@ -113,8 +113,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, fruit};
-    use crate::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    use sea_query::MysqlQueryBuilder;
+    use crate::{ColumnTrait, DbBackend, EntityTrait, QueryFilter, QuerySelect, QueryTrait};
 
     #[test]
     fn alias_1() {
@@ -122,7 +121,7 @@ mod tests {
             cake::Entity::find()
                 .column_as(cake::Column::Id, "B")
                 .apply_alias("A_")
-                .build(MysqlQueryBuilder)
+                .build(DbBackend::MySql)
                 .to_string(),
             "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`, `cake`.`id` AS `A_B` FROM `cake`",
         );
@@ -134,7 +133,7 @@ mod tests {
             cake::Entity::find()
                 .left_join(fruit::Entity)
                 .select_also(fruit::Entity)
-                .build(MysqlQueryBuilder)
+                .build(DbBackend::MySql)
                 .to_string(),
             [
                 "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
@@ -150,7 +149,7 @@ mod tests {
             cake::Entity::find()
                 .left_join(fruit::Entity)
                 .select_with(fruit::Entity)
-                .build(MysqlQueryBuilder)
+                .build(DbBackend::MySql)
                 .to_string(),
             [
                 "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
@@ -169,7 +168,7 @@ mod tests {
                 .select_also(fruit::Entity)
                 .filter(cake::Column::Id.eq(1))
                 .filter(fruit::Column::Id.eq(2))
-                .build(MysqlQueryBuilder)
+                .build(DbBackend::MySql)
                 .to_string(),
             [
                 "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
@@ -188,7 +187,7 @@ mod tests {
                 .select_with(fruit::Entity)
                 .filter(cake::Column::Id.eq(1))
                 .filter(fruit::Column::Id.eq(2))
-                .build(MysqlQueryBuilder)
+                .build(DbBackend::MySql)
                 .to_string(),
             [
                 "SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",

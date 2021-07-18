@@ -88,12 +88,12 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     bind_oper!(lte);
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Id.between(2,3))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` BETWEEN 2 AND 3"
     /// );
@@ -106,12 +106,12 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Id.not_between(2,3))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` NOT BETWEEN 2 AND 3"
     /// );
@@ -124,12 +124,12 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Name.like("cheese"))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE 'cheese'"
     /// );
@@ -139,12 +139,12 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Name.not_like("cheese"))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` NOT LIKE 'cheese'"
     /// );
@@ -154,12 +154,12 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Name.starts_with("cheese"))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE 'cheese%'"
     /// );
@@ -170,12 +170,12 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Name.ends_with("cheese"))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese'"
     /// );
@@ -186,12 +186,12 @@ pub trait ColumnTrait: IdenStatic + Iterable {
     }
 
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::MysqlQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Name.contains("cheese"))
-    ///         .build(MysqlQueryBuilder)
+    ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese%'"
     /// );
@@ -245,29 +245,29 @@ impl ColumnDef {
     }
 }
 
-impl Into<sea_query::ColumnType> for ColumnType {
-    fn into(self) -> sea_query::ColumnType {
-        match self {
-            Self::Char(s) => sea_query::ColumnType::Char(s),
-            Self::String(s) => sea_query::ColumnType::String(s),
-            Self::Text => sea_query::ColumnType::Text,
-            Self::TinyInteger => sea_query::ColumnType::TinyInteger(None),
-            Self::SmallInteger => sea_query::ColumnType::SmallInteger(None),
-            Self::Integer => sea_query::ColumnType::Integer(None),
-            Self::BigInteger => sea_query::ColumnType::BigInteger(None),
-            Self::Float => sea_query::ColumnType::Float(None),
-            Self::Double => sea_query::ColumnType::Double(None),
-            Self::Decimal(s) => sea_query::ColumnType::Decimal(s),
-            Self::DateTime => sea_query::ColumnType::DateTime(None),
-            Self::Timestamp => sea_query::ColumnType::Timestamp(None),
-            Self::Time => sea_query::ColumnType::Time(None),
-            Self::Date => sea_query::ColumnType::Date,
-            Self::Binary => sea_query::ColumnType::Binary(None),
-            Self::Boolean => sea_query::ColumnType::Boolean,
-            Self::Money(s) => sea_query::ColumnType::Money(s),
-            Self::Json => sea_query::ColumnType::Json,
-            Self::JsonBinary => sea_query::ColumnType::JsonBinary,
-            Self::Custom(s) => {
+impl From<ColumnType> for sea_query::ColumnType {
+    fn from(col: ColumnType) -> Self {
+        match col {
+            ColumnType::Char(s) => sea_query::ColumnType::Char(s),
+            ColumnType::String(s) => sea_query::ColumnType::String(s),
+            ColumnType::Text => sea_query::ColumnType::Text,
+            ColumnType::TinyInteger => sea_query::ColumnType::TinyInteger(None),
+            ColumnType::SmallInteger => sea_query::ColumnType::SmallInteger(None),
+            ColumnType::Integer => sea_query::ColumnType::Integer(None),
+            ColumnType::BigInteger => sea_query::ColumnType::BigInteger(None),
+            ColumnType::Float => sea_query::ColumnType::Float(None),
+            ColumnType::Double => sea_query::ColumnType::Double(None),
+            ColumnType::Decimal(s) => sea_query::ColumnType::Decimal(s),
+            ColumnType::DateTime => sea_query::ColumnType::DateTime(None),
+            ColumnType::Timestamp => sea_query::ColumnType::Timestamp(None),
+            ColumnType::Time => sea_query::ColumnType::Time(None),
+            ColumnType::Date => sea_query::ColumnType::Date,
+            ColumnType::Binary => sea_query::ColumnType::Binary(None),
+            ColumnType::Boolean => sea_query::ColumnType::Boolean,
+            ColumnType::Money(s) => sea_query::ColumnType::Money(s),
+            ColumnType::Json => sea_query::ColumnType::Json,
+            ColumnType::JsonBinary => sea_query::ColumnType::JsonBinary,
+            ColumnType::Custom(s) => {
                 sea_query::ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(&s)))
             }
         }

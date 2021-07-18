@@ -20,4 +20,4 @@ pub use select::*;
 pub use traits::*;
 pub use update::*;
 
-pub use crate::executor::{InsertResult, UpdateResult};
+pub use crate::{Statement, InsertResult, UpdateResult};

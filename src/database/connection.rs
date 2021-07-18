@@ -1,8 +1,5 @@
-use crate::{error::*, ExecResult, QueryResult, Statement, Syntax};
-use sea_query::{
-    MysqlQueryBuilder, PostgresQueryBuilder, QueryStatementBuilder, SchemaStatementBuilder,
-    SqliteQueryBuilder,
-};
+use crate::{error::*, ExecResult, QueryResult, Statement, StatementBuilder};
+use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 
 pub enum DatabaseConnection {
     #[cfg(feature = "sqlx-mysql")]
@@ -16,17 +13,14 @@ pub enum DatabaseConnection {
 
 pub type DbConn = DatabaseConnection;
 
-pub enum QueryBuilderBackend {
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum DatabaseBackend {
     MySql,
     Postgres,
     Sqlite,
 }
 
-pub enum SchemaBuilderBackend {
-    MySql,
-    Postgres,
-    Sqlite,
-}
+pub type DbBackend = DatabaseBackend;
 
 impl Default for DatabaseConnection {
     fn default() -> Self {
@@ -53,26 +47,14 @@ impl std::fmt::Debug for DatabaseConnection {
 }
 
 impl DatabaseConnection {
-    pub fn get_query_builder_backend(&self) -> QueryBuilderBackend {
+    pub fn get_database_backend(&self) -> DbBackend {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(_) => QueryBuilderBackend::MySql,
+            DatabaseConnection::SqlxMySqlPoolConnection(_) => DbBackend::MySql,
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(_) => QueryBuilderBackend::Sqlite,
+            DatabaseConnection::SqlxSqlitePoolConnection(_) => DbBackend::Sqlite,
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn) => conn.get_query_builder_backend(),
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
-        }
-    }
-
-    pub fn get_schema_builder_backend(&self) -> SchemaBuilderBackend {
-        match self {
-            #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(_) => SchemaBuilderBackend::MySql,
-            #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(_) => SchemaBuilderBackend::Sqlite,
-            #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn) => conn.get_schema_builder_backend(),
+            DatabaseConnection::MockDatabaseConnection(conn) => conn.get_database_backend(),
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
     }
@@ -133,50 +115,19 @@ impl DatabaseConnection {
     }
 }
 
-impl QueryBuilderBackend {
-    pub fn syntax(&self) -> Syntax {
-        match self {
-            Self::MySql => Syntax::MySql,
-            Self::Postgres => Syntax::Postgres,
-            Self::Sqlite => Syntax::Sqlite,
-        }
-    }
-
+impl DbBackend {
     pub fn build<S>(&self, statement: &S) -> Statement
     where
-        S: QueryStatementBuilder,
+        S: StatementBuilder,
     {
-        Statement::from_string_values_tuple(
-            self.syntax(),
-            match self {
-                Self::MySql => statement.build(MysqlQueryBuilder),
-                Self::Postgres => statement.build(PostgresQueryBuilder),
-                Self::Sqlite => statement.build(SqliteQueryBuilder),
-            },
-        )
+        statement.build(self)
     }
-}
 
-impl SchemaBuilderBackend {
-    pub fn syntax(&self) -> Syntax {
+    pub fn get_query_builder(&self) -> Box<dyn QueryBuilder> {
         match self {
-            Self::MySql => Syntax::MySql,
-            Self::Postgres => Syntax::Postgres,
-            Self::Sqlite => Syntax::Sqlite,
+            Self::MySql => Box::new(MysqlQueryBuilder),
+            Self::Postgres => Box::new(PostgresQueryBuilder),
+            Self::Sqlite => Box::new(SqliteQueryBuilder),
         }
-    }
-
-    pub fn build<S>(&self, statement: &S) -> Statement
-    where
-        S: SchemaStatementBuilder,
-    {
-        Statement::from_string(
-            self.syntax(),
-            match self {
-                Self::MySql => statement.build(MysqlQueryBuilder),
-                Self::Postgres => statement.build(PostgresQueryBuilder),
-                Self::Sqlite => statement.build(SqliteQueryBuilder),
-            },
-        )
     }
 }

@@ -49,7 +49,7 @@ impl Deleter {
         self,
         db: &DatabaseConnection,
     ) -> impl Future<Output = Result<DeleteResult, DbErr>> + '_ {
-        let builder = db.get_query_builder_backend();
+        let builder = db.get_database_backend();
         exec_delete(builder.build(&self.query), db)
     }
 }

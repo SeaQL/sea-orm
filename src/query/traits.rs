@@ -1,5 +1,5 @@
-use crate::{Statement, Syntax};
-use sea_query::{QueryBuilder, QueryStatementBuilder};
+use crate::{DbBackend, Statement};
+use sea_query::QueryStatementBuilder;
 
 pub trait QueryTrait {
     type QueryStatement: QueryStatementBuilder;
@@ -14,14 +14,11 @@ pub trait QueryTrait {
     fn into_query(self) -> Self::QueryStatement;
 
     /// Build the query as [`Statement`]
-    fn build<B>(&self, builder: B) -> Statement
-    where
-        B: QueryBuilderWithSyntax,
-    {
-        Statement::from_string_values_tuple(builder.syntax(), self.as_query().build(builder))
+    fn build(&self, db_backend: DbBackend) -> Statement {
+        let query_builder = db_backend.get_query_builder();
+        Statement::from_string_values_tuple(
+            db_backend,
+            self.as_query().build_any(query_builder.as_ref()),
+        )
     }
-}
-
-pub trait QueryBuilderWithSyntax: QueryBuilder {
-    fn syntax(&self) -> Syntax;
 }

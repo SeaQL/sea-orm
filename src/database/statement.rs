@@ -1,38 +1,47 @@
-use crate::{QueryBuilderBackend, QueryBuilderWithSyntax, SchemaBuilderBackend};
+use crate::DbBackend;
 use sea_query::{
-    inject_parameters, MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder,
-    Values,
+    inject_parameters, MysqlQueryBuilder, PostgresQueryBuilder, SqliteQueryBuilder, Value, Values
 };
 use std::fmt;
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Syntax {
-    MySql,
-    Postgres,
-    Sqlite,
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Statement {
     pub sql: String,
     pub values: Option<Values>,
-    pub syntax: Syntax,
+    pub db_backend: DbBackend,
+}
+
+pub trait StatementBuilder {
+    fn build(&self, db_backend: &DbBackend) -> Statement;
 }
 
 impl Statement {
-    pub fn from_string(syntax: Syntax, stmt: String) -> Statement {
+    pub fn from_string(db_backend: DbBackend, stmt: String) -> Statement {
         Statement {
             sql: stmt,
             values: None,
-            syntax,
+            db_backend,
         }
     }
 
-    pub fn from_string_values_tuple(syntax: Syntax, stmt: (String, Values)) -> Statement {
+    pub fn from_sql_and_values<I>(db_backend: DbBackend, sql: &str, values: I) -> Self
+    where
+        I: IntoIterator<Item = Value>,
+    {
+        Self::from_string_values_tuple(
+            db_backend,
+            (sql.to_owned(), Values(values.into_iter().collect())),
+        )
+    }
+
+    pub(crate) fn from_string_values_tuple(
+        db_backend: DbBackend,
+        stmt: (String, Values),
+    ) -> Statement {
         Statement {
             sql: stmt.0,
             values: Some(stmt.1),
-            syntax,
+            db_backend,
         }
     }
 }
@@ -44,7 +53,7 @@ impl fmt::Display for Statement {
                 let string = inject_parameters(
                     &self.sql,
                     values.0.clone(),
-                    self.syntax.get_query_builder().as_ref(),
+                    self.db_backend.get_query_builder().as_ref(),
                 );
                 write!(f, "{}", &string)
             }
@@ -55,46 +64,45 @@ impl fmt::Display for Statement {
     }
 }
 
-impl Syntax {
-    pub fn get_query_builder(&self) -> Box<dyn QueryBuilder> {
-        match self {
-            Self::MySql => Box::new(MysqlQueryBuilder),
-            Self::Postgres => Box::new(PostgresQueryBuilder),
-            Self::Sqlite => Box::new(SqliteQueryBuilder),
+macro_rules! build_any_stmt {
+    ($stmt: expr, $db_backend: expr) => {
+        match $db_backend {
+            DbBackend::MySql => $stmt.build(MysqlQueryBuilder),
+            DbBackend::Postgres => $stmt.build(PostgresQueryBuilder),
+            DbBackend::Sqlite => $stmt.build(SqliteQueryBuilder),
         }
-    }
+    };
+}
 
-    pub fn get_query_builder_backend(&self) -> QueryBuilderBackend {
-        match self {
-            Self::MySql => QueryBuilderBackend::MySql,
-            Self::Postgres => QueryBuilderBackend::Postgres,
-            Self::Sqlite => QueryBuilderBackend::Sqlite,
+macro_rules! build_query_stmt {
+    ($stmt: ty) => {
+        impl StatementBuilder for $stmt {
+            fn build(&self, db_backend: &DbBackend) -> Statement {
+                let stmt = build_any_stmt!(self, db_backend);
+                Statement::from_string_values_tuple(*db_backend, stmt)
+            }
         }
-    }
+    };
+}
 
-    pub fn get_schema_builder_backend(&self) -> SchemaBuilderBackend {
-        match self {
-            Self::MySql => SchemaBuilderBackend::MySql,
-            Self::Postgres => SchemaBuilderBackend::Postgres,
-            Self::Sqlite => SchemaBuilderBackend::Sqlite,
+build_query_stmt!(sea_query::InsertStatement);
+build_query_stmt!(sea_query::SelectStatement);
+build_query_stmt!(sea_query::UpdateStatement);
+build_query_stmt!(sea_query::DeleteStatement);
+
+macro_rules! build_schema_stmt {
+    ($stmt: ty) => {
+        impl StatementBuilder for $stmt {
+            fn build(&self, db_backend: &DbBackend) -> Statement {
+                let stmt = build_any_stmt!(self, db_backend);
+                Statement::from_string(*db_backend, stmt)
+            }
         }
-    }
+    };
 }
 
-impl QueryBuilderWithSyntax for MysqlQueryBuilder {
-    fn syntax(&self) -> Syntax {
-        Syntax::MySql
-    }
-}
-
-impl QueryBuilderWithSyntax for PostgresQueryBuilder {
-    fn syntax(&self) -> Syntax {
-        Syntax::Postgres
-    }
-}
-
-impl QueryBuilderWithSyntax for SqliteQueryBuilder {
-    fn syntax(&self) -> Syntax {
-        Syntax::Sqlite
-    }
-}
+build_schema_stmt!(sea_query::TableCreateStatement);
+build_schema_stmt!(sea_query::TableDropStatement);
+build_schema_stmt!(sea_query::TableAlterStatement);
+build_schema_stmt!(sea_query::TableRenameStatement);
+build_schema_stmt!(sea_query::TableTruncateStatement);

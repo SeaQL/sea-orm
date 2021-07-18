@@ -30,14 +30,14 @@ impl Update {
     /// Update one ActiveModel
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::PostgresQueryBuilder};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     Update::one(cake::ActiveModel {
     ///         id: ActiveValue::set(1),
     ///         name: ActiveValue::set("Apple Pie".to_owned()),
     ///     })
-    ///     .build(PostgresQueryBuilder)
+    ///     .build(DbBackend::Postgres)
     ///     .to_string(),
     ///     r#"UPDATE "cake" SET "name" = 'Apple Pie' WHERE "cake"."id" = 1"#,
     /// );
@@ -59,13 +59,13 @@ impl Update {
     /// Update many ActiveModel
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::{Expr, PostgresQueryBuilder}};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::Expr, DbBackend};
     ///
     /// assert_eq!(
     ///     Update::many(fruit::Entity)
     ///         .col_expr(fruit::Column::Name, Expr::value("Golden Apple"))
     ///         .filter(fruit::Column::Name.contains("Apple"))
-    ///         .build(PostgresQueryBuilder)
+    ///         .build(DbBackend::Postgres)
     ///         .to_string(),
     ///     r#"UPDATE "fruit" SET "name" = 'Golden Apple' WHERE "fruit"."name" LIKE '%Apple%'"#,
     /// );
@@ -184,8 +184,8 @@ where
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, fruit};
-    use crate::{entity::*, query::*};
-    use sea_query::{Expr, PostgresQueryBuilder, Value};
+    use crate::{entity::*, query::*, DbBackend};
+    use sea_query::{Expr, Value};
 
     #[test]
     fn update_1() {
@@ -194,7 +194,7 @@ mod tests {
                 id: ActiveValue::set(1),
                 name: ActiveValue::set("Apple Pie".to_owned()),
             })
-            .build(PostgresQueryBuilder)
+            .build(DbBackend::Postgres)
             .to_string(),
             r#"UPDATE "cake" SET "name" = 'Apple Pie' WHERE "cake"."id" = 1"#,
         );
@@ -208,7 +208,7 @@ mod tests {
                 name: ActiveValue::set("Orange".to_owned()),
                 cake_id: ActiveValue::unset(),
             })
-            .build(PostgresQueryBuilder)
+            .build(DbBackend::Postgres)
             .to_string(),
             r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"#,
         );
@@ -222,7 +222,7 @@ mod tests {
                 name: ActiveValue::unchanged("Apple".to_owned()),
                 cake_id: ActiveValue::set(Some(3)),
             })
-            .build(PostgresQueryBuilder)
+            .build(DbBackend::Postgres)
             .to_string(),
             r#"UPDATE "fruit" SET "cake_id" = 3 WHERE "fruit"."id" = 2"#,
         );
@@ -234,7 +234,7 @@ mod tests {
             Update::many(fruit::Entity)
                 .col_expr(fruit::Column::CakeId, Expr::value(Value::Null))
                 .filter(fruit::Column::Id.eq(2))
-                .build(PostgresQueryBuilder)
+                .build(DbBackend::Postgres)
                 .to_string(),
             r#"UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."id" = 2"#,
         );

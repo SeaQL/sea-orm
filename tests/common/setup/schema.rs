@@ -4,7 +4,7 @@ use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, TableCreateState
 pub use super::super::bakery_chain::*;
 
 async fn create_table(db: &DbConn, stmt: &TableCreateStatement) -> Result<ExecResult, DbErr> {
-    let builder = db.get_schema_builder_backend();
+    let builder = db.get_database_backend();
     db.execute(builder.build(stmt)).await
 }
 

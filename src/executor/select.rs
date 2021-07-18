@@ -1,7 +1,7 @@
 use crate::{
     error::*, query::combine, DatabaseConnection, EntityTrait, FromQueryResult, Iterable,
     JsonValue, ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectTwo,
-    SelectTwoMany,
+    SelectTwoMany, Statement,
 };
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
@@ -12,6 +12,15 @@ where
     S: SelectorTrait,
 {
     query: SelectStatement,
+    selector: S,
+}
+
+#[derive(Clone, Debug)]
+pub struct SelectorRaw<S>
+where
+    S: SelectorTrait,
+{
+    stmt: Statement,
     selector: S,
 }
 
@@ -67,6 +76,56 @@ impl<E> Select<E>
 where
     E: EntityTrait,
 {
+    /// ```
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![
+    /// #         vec![
+    /// #             cake::Model {
+    /// #                 id: 1,
+    /// #                 name: "New York Cheese".to_owned(),
+    /// #             },
+    /// #         ],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    ///
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// assert_eq!(
+    ///     cake::Entity::find().from_raw_sql(
+    ///         Statement::from_sql_and_values(
+    ///             DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
+    ///         )
+    ///     ).one(&db).await?,
+    ///     Some(cake::Model {
+    ///         id: 1,
+    ///         name: "New York Cheese".to_owned(),
+    ///     })
+    /// );
+    /// #
+    /// # Ok(())
+    /// # });
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![
+    ///     Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
+    ///     ),
+    /// ]);
+    /// ```
+    #[allow(clippy::wrong_self_convention)]
+    pub fn from_raw_sql(self, stmt: Statement) -> SelectorRaw<SelectModel<E::Model>> {
+        SelectorRaw {
+            stmt,
+            selector: SelectModel { model: PhantomData },
+        }
+    }
+
     pub fn into_model<M>(self) -> Selector<SelectModel<M>>
     where
         M: FromQueryResult,
@@ -86,11 +145,11 @@ where
     }
 
     pub async fn one(self, db: &DatabaseConnection) -> Result<Option<E::Model>, DbErr> {
-        self.into_model::<E::Model>().one(db).await
+        self.into_model().one(db).await
     }
 
     pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<E::Model>, DbErr> {
-        self.into_model::<E::Model>().all(db).await
+        self.into_model().all(db).await
     }
 
     pub fn paginate(
@@ -98,7 +157,11 @@ where
         db: &DatabaseConnection,
         page_size: usize,
     ) -> Paginator<'_, SelectModel<E::Model>> {
-        self.into_model::<E::Model>().paginate(db, page_size)
+        self.into_model().paginate(db, page_size)
+    }
+
+    pub async fn count(self, db: &DatabaseConnection) -> Result<usize, DbErr> {
+        self.paginate(db, 1).num_items().await
     }
 }
 
@@ -130,14 +193,26 @@ where
         self,
         db: &DatabaseConnection,
     ) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr> {
-        self.into_model::<E::Model, F::Model>().one(db).await
+        self.into_model().one(db).await
     }
 
     pub async fn all(
         self,
         db: &DatabaseConnection,
     ) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr> {
-        self.into_model::<E::Model, F::Model>().all(db).await
+        self.into_model().all(db).await
+    }
+
+    pub fn paginate(
+        self,
+        db: &DatabaseConnection,
+        page_size: usize,
+    ) -> Paginator<'_, SelectTwoModel<E::Model, F::Model>> {
+        self.into_model().paginate(db, page_size)
+    }
+
+    pub async fn count(self, db: &DatabaseConnection) -> Result<usize, DbErr> {
+        self.paginate(db, 1).num_items().await
     }
 }
 
@@ -169,16 +244,25 @@ where
         self,
         db: &DatabaseConnection,
     ) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr> {
-        self.into_model::<E::Model, F::Model>().one(db).await
+        self.into_model().one(db).await
     }
 
     pub async fn all(
         self,
         db: &DatabaseConnection,
     ) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr> {
-        let rows = self.into_model::<E::Model, F::Model>().all(db).await?;
+        let rows = self.into_model().all(db).await?;
         Ok(consolidate_query_result::<E, F>(rows))
     }
+
+    // pub fn paginate()
+    // we could not implement paginate easily, if the number of children for a
+    // parent is larger than one page, then we will end up splitting it in two pages
+    // so the correct way is actually perform query in two stages
+    // paginate the parent model and then populate the children
+
+    // pub fn count()
+    // we should only count the number of items of the parent model
 }
 
 impl<S> Selector<S>
@@ -186,7 +270,7 @@ where
     S: SelectorTrait,
 {
     pub async fn one(mut self, db: &DatabaseConnection) -> Result<Option<S::Item>, DbErr> {
-        let builder = db.get_query_builder_backend();
+        let builder = db.get_database_backend();
         self.query.limit(1);
         let row = db.query_one(builder.build(&self.query)).await?;
         match row {
@@ -196,7 +280,7 @@ where
     }
 
     pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, DbErr> {
-        let builder = db.get_query_builder_backend();
+        let builder = db.get_database_backend();
         let rows = db.query_all(builder.build(&self.query)).await?;
         let mut models = Vec::new();
         for row in rows.into_iter() {
@@ -213,6 +297,28 @@ where
             db,
             selector: PhantomData,
         }
+    }
+}
+
+impl<S> SelectorRaw<S>
+where
+    S: SelectorTrait,
+{
+    pub async fn one(self, db: &DatabaseConnection) -> Result<Option<S::Item>, DbErr> {
+        let row = db.query_one(self.stmt).await?;
+        match row {
+            Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
+            None => Ok(None),
+        }
+    }
+
+    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, DbErr> {
+        let rows = db.query_all(self.stmt).await?;
+        let mut models = Vec::new();
+        for row in rows.into_iter() {
+            models.push(S::from_raw_query_result(row)?);
+        }
+        Ok(models)
     }
 }
 
