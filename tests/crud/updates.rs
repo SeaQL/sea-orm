@@ -92,3 +92,46 @@ pub async fn test_update_bakery(db: &DbConn) {
     assert_eq!(bakery_model.name, "SeaBreeze Bakery");
     assert_eq!(bakery_model.profit_margin, 12.00);
 }
+
+pub async fn test_update_deleted_customer(db: &DbConn) {
+    let init_n_customers = Customer::find().count(db).await.unwrap();
+
+    let customer = customer::ActiveModel {
+        name: Set("John".to_owned()),
+        notes: Set(None),
+        ..Default::default()
+    }
+    .save(db)
+    .await
+    .expect("could not insert customer");
+
+    assert_eq!(
+        Customer::find().count(db).await.unwrap(),
+        init_n_customers + 1
+    );
+
+    let customer_id = customer.id.clone();
+
+    let _ = customer.delete(db).await;
+    assert_eq!(Customer::find().count(db).await.unwrap(), init_n_customers);
+
+    let customer = customer::ActiveModel {
+        id: customer_id.clone(),
+        name: Set("John 2".to_owned()),
+        ..Default::default()
+    };
+
+    let _customer_update_res: customer::ActiveModel = Customer::update(customer)
+        .exec(db)
+        .await
+        .expect("could not update customer");
+
+    assert_eq!(Customer::find().count(db).await.unwrap(), init_n_customers);
+
+    let customer: Option<customer::Model> = Customer::find_by_id(customer_id.clone().unwrap())
+        .one(db)
+        .await
+        .expect("could not find customer");
+
+    assert_eq!(customer, None);
+}
