@@ -355,7 +355,7 @@ pub async fn test_group_by() {
 }
 
 pub async fn test_having() {
-    // customers with orders with total equal to $100
+    // customers with orders with total equal to $90
     let ctx = TestContext::new("mysql://root:@localhost", "test_having").await;
 
     let bakery = bakery::ActiveModel {
@@ -444,7 +444,7 @@ pub async fn test_having() {
         .column_as(order::Column::Total, "order_total")
         .group_by(customer::Column::Name)
         .group_by(order::Column::Total)
-        .having(order::Column::Total.eq(dec!(100.00)))
+        .having(order::Column::Total.gt(dec!(90.00)))
         .into_model::<SelectResult>()
         .all(&ctx.db)
         .await
