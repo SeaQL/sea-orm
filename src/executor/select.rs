@@ -80,32 +80,17 @@ where
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
     /// #
-    /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![
-    /// #         vec![
-    /// #             cake::Model {
-    /// #                 id: 1,
-    /// #                 name: "New York Cheese".to_owned(),
-    /// #             },
-    /// #         ],
-    /// #     ])
-    /// #     .into_connection();
+    /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
     /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
     /// #
-    /// assert_eq!(
-    ///     cake::Entity::find().from_raw_sql(
-    ///         Statement::from_sql_and_values(
-    ///             DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
-    ///         )
-    ///     ).one(&db).await?,
-    ///     Some(cake::Model {
-    ///         id: 1,
-    ///         name: "New York Cheese".to_owned(),
-    ///     })
-    /// );
+    /// let cheese: Option<cake::Model> = cake::Entity::find().from_raw_sql(
+    ///     Statement::from_sql_and_values(
+    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#, vec![1.into()]
+    ///     )
+    /// ).one(&db).await?;
     /// #
     /// # Ok(())
     /// # });
@@ -114,7 +99,7 @@ where
     ///     db.into_transaction_log(),
     ///     vec![
     ///     Transaction::from_sql_and_values(
-    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
+    ///             DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#, vec![1.into()]
     ///     ),
     /// ]);
     /// ```
