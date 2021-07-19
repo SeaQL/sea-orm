@@ -1,5 +1,6 @@
+// cargo test --test realtional_tests -- --nocapture
+
 use chrono::offset::Utc;
-use futures::join;
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
 use sea_orm::{entity::*, query::*, FromQueryResult};
@@ -8,24 +9,7 @@ pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 
 #[async_std::test]
-// cargo test --test realtional_tests -- --nocapture
-async fn main() {
-    let left_join_fut = test_left_join();
-    let right_join_fut = test_right_join();
-    let inner_join_fut = test_inner_join();
-    let group_by_fut = test_group_by();
-    let having_fut = test_having();
-
-    join!(
-        left_join_fut,
-        right_join_fut,
-        inner_join_fut,
-        group_by_fut,
-        having_fut
-    );
-}
-
-pub async fn test_left_join() {
+pub async fn left_join() {
     let ctx = TestContext::new("mysql://root:@localhost", "test_left_join").await;
 
     let bakery = bakery::ActiveModel {
@@ -94,7 +78,8 @@ pub async fn test_left_join() {
     ctx.delete().await;
 }
 
-pub async fn test_right_join() {
+#[async_std::test]
+pub async fn right_join() {
     let ctx = TestContext::new("mysql://root:@localhost", "test_right_join").await;
 
     let bakery = bakery::ActiveModel {
@@ -173,7 +158,8 @@ pub async fn test_right_join() {
     ctx.delete().await;
 }
 
-pub async fn test_inner_join() {
+#[async_std::test]
+pub async fn inner_join() {
     let ctx = TestContext::new("mysql://root:@localhost", "test_inner_join").await;
 
     let bakery = bakery::ActiveModel {
@@ -256,7 +242,8 @@ pub async fn test_inner_join() {
     ctx.delete().await;
 }
 
-pub async fn test_group_by() {
+#[async_std::test]
+pub async fn group_by() {
     let ctx = TestContext::new("mysql://root:@localhost", "test_group_by").await;
 
     let bakery = bakery::ActiveModel {
@@ -354,7 +341,8 @@ pub async fn test_group_by() {
     ctx.delete().await;
 }
 
-pub async fn test_having() {
+#[async_std::test]
+pub async fn having() {
     // customers with orders with total equal to $90
     let ctx = TestContext::new("mysql://root:@localhost", "test_having").await;
 
