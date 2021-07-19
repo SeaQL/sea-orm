@@ -205,6 +205,7 @@ pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .on_update(ForeignKeyAction::Cascade),
         )
         .col(ColumnDef::new(cake::Column::GlutenFree).boolean())
+        .col(ColumnDef::new(cake::Column::Serial).string())
         .to_owned();
 
     create_table(db, &stmt).await

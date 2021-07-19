@@ -1,6 +1,7 @@
 pub use super::*;
 use chrono::offset::Utc;
 use rust_decimal_macros::dec;
+use uuid::Uuid;
 
 pub async fn test_create_order(db: &DbConn) {
     // Bakery
@@ -30,6 +31,7 @@ pub async fn test_create_order(db: &DbConn) {
         name: Set("Mud Cake".to_owned()),
         price: Set(dec!(10.25)),
         gluten_free: Set(false),
+        serial: Set(Uuid::new_v4().to_string()),
         bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
         ..Default::default()
     };

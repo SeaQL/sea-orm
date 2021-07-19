@@ -17,6 +17,7 @@ pub struct Model {
     pub price: Decimal,
     pub bakery_id: Option<i32>,
     pub gluten_free: bool,
+    pub serial: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -26,6 +27,7 @@ pub enum Column {
     Price,
     BakeryId,
     GlutenFree,
+    Serial,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -55,6 +57,7 @@ impl ColumnTrait for Column {
             Self::Price => ColumnType::Decimal(Some((19, 4))).def(),
             Self::BakeryId => ColumnType::Integer.def(),
             Self::GlutenFree => ColumnType::Boolean.def(),
+            Self::Serial => ColumnType::String(None).def(),
         }
     }
 }

@@ -52,6 +52,7 @@ strum = { git = "https://github.com/SeaQL/strum.git", branch = "sea-orm", versio
     "sea-orm",
 ] }
 serde_json = { version = "^1", optional = true }
+uuid = { version = "0.8", features = ["serde", "v4"] }
 
 [dev-dependencies]
 async-std = { version = "^1.9", features = ["attributes"] }
