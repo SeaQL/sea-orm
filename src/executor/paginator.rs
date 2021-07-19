@@ -97,7 +97,7 @@ where
     /// let mut cake_pages = cake::Entity::find()
     ///     .order_by_asc(cake::Column::Id)
     ///     .paginate(db, 50);
-    /// 
+    ///
     /// while let Some(cakes) = cake_pages.fetch_and_next().await? {
     ///     // Do something on cakes: Vec<cake::Model>
     /// }
@@ -127,7 +127,7 @@ where
     ///     .order_by_asc(cake::Column::Id)
     ///     .paginate(db, 50)
     ///     .into_stream();
-    /// 
+    ///
     /// while let Some(cakes) = cake_stream.try_next().await? {
     ///     // Do something on cakes: Vec<cake::Model>
     /// }
@@ -153,7 +153,7 @@ where
 mod tests {
     use crate::entity::prelude::*;
     use crate::tests_cfg::*;
-    use crate::{DbBackend, DatabaseConnection, MockDatabase, Transaction};
+    use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};
 

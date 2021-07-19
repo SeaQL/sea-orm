@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, error::*, DbBackend, DatabaseConnection, ExecResult, MockDatabase,
-    QueryResult, Statement, Transaction,
+    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
+    Statement, Transaction,
 };
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
