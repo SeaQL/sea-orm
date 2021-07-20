@@ -35,9 +35,7 @@ impl PrimaryKeyTrait for PrimaryKey {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
-pub enum Relation {
-    CakeFilling,
-}
+pub enum Relation {}
 
 impl ColumnTrait for Column {
     type EntityName = Entity;
@@ -52,14 +50,17 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::CakeFilling => Entity::has_many(super::cake_filling::Entity).into(),
+            _ => panic!("No RelationDef"),
         }
     }
 }
 
-impl Related<super::cake_filling::Entity> for Entity {
+impl Related<super::cake::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::CakeFilling.def()
+        super::cake_filling::Relation::Cake.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::cake_filling::Relation::Filling.def().rev())
     }
 }
 
