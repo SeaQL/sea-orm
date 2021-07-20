@@ -1,4 +1,6 @@
-use crate::{Column, Entity, EntityWriter, Error, PrimaryKey, Relation, RelationType};
+use crate::{
+    Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation, RelationType,
+};
 use sea_query::TableStatement;
 use sea_schema::mysql::def::Schema;
 use std::collections::HashMap;
@@ -11,7 +13,8 @@ pub struct EntityTransformer {
 impl EntityTransformer {
     pub fn transform(self) -> Result<EntityWriter, Error> {
         let mut inverse_relations: HashMap<String, Vec<Relation>> = HashMap::new();
-        let mut entities = Vec::new();
+        let mut conjunct_relations: HashMap<String, Vec<ConjunctRelation>> = HashMap::new();
+        let mut entities = HashMap::new();
         for table_ref in self.schema.tables.iter() {
             let table_stmt = table_ref.write();
             let table_create = match table_stmt {
@@ -63,42 +66,65 @@ impl EntityTransformer {
                 table_name: table_name.clone(),
                 columns,
                 relations: relations.clone().collect(),
+                conjunct_relations: vec![],
                 primary_keys,
             };
-            entities.push(entity);
-            for mut rel in relations.into_iter() {
-                let ref_table = rel.ref_table;
-                let mut unique = true;
-                for col in rel.columns.iter() {
-                    if !unique_columns.contains(col) {
-                        unique = false;
-                        break;
+            entities.insert(table_name.clone(), entity.clone());
+            for (i, mut rel) in relations.into_iter().enumerate() {
+                let is_conjunct_relation = entity.primary_keys.len() == entity.columns.len()
+                    && entity.primary_keys.len() == 2;
+                match is_conjunct_relation {
+                    true => {
+                        let another_rel = entity.relations.get((i == 0) as usize).unwrap();
+                        let conjunct_relation = ConjunctRelation {
+                            via: table_name.clone(),
+                            to: another_rel.ref_table.clone(),
+                        };
+                        if let Some(vec) = conjunct_relations.get_mut(&rel.ref_table) {
+                            vec.push(conjunct_relation);
+                        } else {
+                            conjunct_relations.insert(rel.ref_table, vec![conjunct_relation]);
+                        }
+                    }
+                    false => {
+                        let ref_table = rel.ref_table;
+                        let mut unique = true;
+                        for col in rel.columns.iter() {
+                            if !unique_columns.contains(col) {
+                                unique = false;
+                                break;
+                            }
+                        }
+                        let rel_type = if unique {
+                            RelationType::HasOne
+                        } else {
+                            RelationType::HasMany
+                        };
+                        rel.rel_type = rel_type;
+                        rel.ref_table = table_name.clone();
+                        rel.columns = Vec::new();
+                        rel.ref_columns = Vec::new();
+                        if let Some(vec) = inverse_relations.get_mut(&ref_table) {
+                            vec.push(rel);
+                        } else {
+                            inverse_relations.insert(ref_table, vec![rel]);
+                        }
                     }
                 }
-                let rel_type = if unique {
-                    RelationType::HasOne
-                } else {
-                    RelationType::HasMany
-                };
-                rel.rel_type = rel_type;
-                rel.ref_table = table_name.clone();
-                rel.columns = Vec::new();
-                rel.ref_columns = Vec::new();
-                if let Some(vec) = inverse_relations.get_mut(&ref_table) {
-                    vec.push(rel);
-                } else {
-                    inverse_relations.insert(ref_table, vec![rel]);
-                }
             }
         }
-        for (tbl_name, relations) in inverse_relations.iter() {
-            for ent in entities.iter_mut() {
-                if ent.table_name.eq(tbl_name) {
-                    ent.relations.append(relations.clone().as_mut());
-                }
+        for (tbl_name, mut relations) in inverse_relations.into_iter() {
+            if let Some(entity) = entities.get_mut(&tbl_name) {
+                entity.relations.append(&mut relations);
             }
         }
-        println!("{:#?}", entities);
-        Ok(EntityWriter { entities })
+        for (tbl_name, mut conjunct_relations) in conjunct_relations.into_iter() {
+            if let Some(entity) = entities.get_mut(&tbl_name) {
+                entity.conjunct_relations.append(&mut conjunct_relations);
+            }
+        }
+        Ok(EntityWriter {
+            entities: entities.into_iter().map(|(_, v)| v).collect(),
+        })
     }
 }

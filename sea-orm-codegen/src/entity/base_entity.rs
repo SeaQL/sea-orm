@@ -1,4 +1,4 @@
-use crate::{Column, PrimaryKey, Relation};
+use crate::{Column, ConjunctRelation, PrimaryKey, Relation};
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::format_ident;
@@ -8,6 +8,7 @@ pub struct Entity {
     pub(crate) table_name: String,
     pub(crate) columns: Vec<Column>,
     pub(crate) relations: Vec<Relation>,
+    pub(crate) conjunct_relations: Vec<ConjunctRelation>,
     pub(crate) primary_keys: Vec<PrimaryKey>,
 }
 
@@ -115,6 +116,27 @@ impl Entity {
         let auto_increment = self.columns.iter().any(|col| col.auto_increment);
         format_ident!("{}", auto_increment)
     }
+
+    pub fn get_conjunct_relations_via_snake_case(&self) -> Vec<Ident> {
+        self.conjunct_relations
+            .iter()
+            .map(|con_rel| con_rel.get_via_snake_case())
+            .collect()
+    }
+
+    pub fn get_conjunct_relations_to_snake_case(&self) -> Vec<Ident> {
+        self.conjunct_relations
+            .iter()
+            .map(|con_rel| con_rel.get_to_snake_case())
+            .collect()
+    }
+
+    pub fn get_conjunct_relations_to_camel_case(&self) -> Vec<Ident> {
+        self.conjunct_relations
+            .iter()
+            .map(|con_rel| con_rel.get_to_camel_case())
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -156,6 +178,7 @@ mod tests {
                     rel_type: RelationType::HasOne,
                 },
             ],
+            conjunct_relations: vec![],
             primary_keys: vec![PrimaryKey {
                 name: "id".to_owned(),
             }],
@@ -348,5 +371,44 @@ mod tests {
             entity.get_primary_key_auto_increment(),
             format_ident!("{}", true)
         );
+    }
+
+    #[test]
+    fn test_get_conjunct_relations_via_snake_case() {
+        let entity = setup();
+
+        for (i, elem) in entity
+            .get_conjunct_relations_via_snake_case()
+            .into_iter()
+            .enumerate()
+        {
+            assert_eq!(elem, entity.conjunct_relations[i].get_via_snake_case());
+        }
+    }
+
+    #[test]
+    fn test_get_conjunct_relations_to_snake_case() {
+        let entity = setup();
+
+        for (i, elem) in entity
+            .get_conjunct_relations_to_snake_case()
+            .into_iter()
+            .enumerate()
+        {
+            assert_eq!(elem, entity.conjunct_relations[i].get_to_snake_case());
+        }
+    }
+
+    #[test]
+    fn test_get_conjunct_relations_to_camel_case() {
+        let entity = setup();
+
+        for (i, elem) in entity
+            .get_conjunct_relations_to_camel_case()
+            .into_iter()
+            .enumerate()
+        {
+            assert_eq!(elem, entity.conjunct_relations[i].get_to_camel_case());
+        }
     }
 }
