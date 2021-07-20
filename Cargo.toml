@@ -43,21 +43,25 @@ futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 rust_decimal = { version = "^1", optional = true }
 sea-query = { version = "^0.12" }
+# sea-query = { path = "../sea-query" }
 sea-orm-macros = { path = "sea-orm-macros", optional = true }
 sea-orm-codegen = { path = "sea-orm-codegen", optional = true }
 serde = { version = "^1.0", features = ["derive"] }
 sqlx = { version = "^0.5", optional = true }
+sqlx-core = { version = "^0.5", optional = true }
+sqlx-macros = { version = "^0.5", optional = true }
 strum = { git = "https://github.com/SeaQL/strum.git", branch = "sea-orm", version = "^0.21", features = [
     "derive",
     "sea-orm",
 ] }
 serde_json = { version = "^1", optional = true }
-uuid = { version = "0.8", features = ["serde", "v4"] }
+uuid = { version = "0.8", features = ["serde", "v4"], optional = true }
 
 [dev-dependencies]
 async-std = { version = "^1.9", features = ["attributes"] }
 maplit = { version = "^1" }
 rust_decimal_macros = { version = "^1" }
+
 sea-orm = { path = ".", features = [
     "sqlx-sqlite",
     "sqlx-json",
@@ -76,6 +80,7 @@ default = [
     "with-chrono",
     "with-rust_decimal",
     "mock",
+    "with-uuid",
 ]
 macros = ["sea-orm-macros"]
 codegen = ["sea-orm-codegen"]
@@ -83,6 +88,12 @@ mock = []
 with-json = ["serde_json", "sea-query/with-json"]
 with-chrono = ["chrono", "sea-query/with-chrono"]
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal"]
+with-uuid = [
+    "uuid",
+    "sea-query/with-uuid",
+    "sqlx-core/uuid",
+    "sqlx-macros/uuid",
+]
 sqlx-dep = ["sqlx"]
 sqlx-json = ["sqlx/json", "with-json"]
 sqlx-chrono = ["sqlx/chrono", "with-chrono"]

@@ -28,7 +28,7 @@ pub async fn test_create_cake(db: &DbConn) {
         name: Set("Mud Cake".to_owned()),
         price: Set(dec!(10.25)),
         gluten_free: Set(false),
-        serial: Set(uuid.to_string()),
+        serial: Set(uuid),
         bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
         ..Default::default()
     };
@@ -68,7 +68,7 @@ pub async fn test_create_cake(db: &DbConn) {
             .name,
         "SeaSide Bakery"
     );
-    assert_eq!(cake_model.serial, uuid.to_string());
+    assert_eq!(cake_model.serial, uuid);
 
     let related_bakers: Vec<baker::Model> = cake_model
         .find_related(Baker)

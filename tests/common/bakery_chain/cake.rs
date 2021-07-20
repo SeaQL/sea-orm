@@ -1,5 +1,6 @@
 use rust_decimal::prelude::*;
 use sea_orm::entity::prelude::*;
+use uuid::Uuid;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 pub struct Entity;
@@ -17,7 +18,7 @@ pub struct Model {
     pub price: Decimal,
     pub bakery_id: Option<i32>,
     pub gluten_free: bool,
-    pub serial: String,
+    pub serial: Uuid,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]

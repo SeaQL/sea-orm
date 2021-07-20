@@ -17,7 +17,7 @@ pub async fn test_update_cake(db: &DbConn) {
         name: Set("Mud Cake".to_owned()),
         price: Set(dec!(10.25)),
         gluten_free: Set(false),
-        serial: Set(Uuid::new_v4().to_string()),
+        serial: Set(Uuid::new_v4()),
         bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
         ..Default::default()
     };

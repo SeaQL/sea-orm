@@ -166,6 +166,12 @@ try_getable_all!(f64);
 try_getable_all!(String);
 try_getable_all!(NaiveDateTime);
 
+#[cfg(feature = "with-uuid")]
+use uuid::Uuid;
+
+#[cfg(feature = "with-uuid")]
+try_getable_all!(Uuid);
+
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;
 
