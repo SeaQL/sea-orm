@@ -21,6 +21,10 @@ impl Database {
         if crate::SqlxMySqlConnector::accepts(string) {
             return crate::SqlxMySqlConnector::connect(string).await;
         }
+        #[cfg(feature = "sqlx-postgres")]
+        if crate::SqlxPostgresConnector::accepts(string) {
+            return crate::SqlxPostgresConnector::connect(string).await;
+        }
         #[cfg(feature = "sqlx-sqlite")]
         if crate::SqlxSqliteConnector::accepts(string) {
             return crate::SqlxSqliteConnector::connect(string).await;
