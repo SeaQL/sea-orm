@@ -48,7 +48,7 @@ serde_json = { version = "^1", optional = true }
 async-std = { version = "^1.9", features = [ "attributes" ] }
 maplit = { version = "^1" }
 rust_decimal_macros = { version = "^1" }
-sea-orm = { path = ".", features = ["sqlx-sqlite", "sqlx-json", "sqlx-chrono", "sqlx-decimal", "runtime-async-std-native-tls"] }
+sea-orm = { path = ".", features = ["sqlx-postgres", "sqlx-sqlite", "sqlx-json", "sqlx-chrono", "sqlx-decimal", "runtime-async-std-native-tls", "debug-print"] }
 
 [features]
 debug-print = []

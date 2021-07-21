@@ -30,6 +30,10 @@ impl MockDatabaseConnector {
         if crate::SqlxMySqlConnector::accepts(string) {
             return true;
         }
+        #[cfg(feature = "sqlx-postgres")]
+        if crate::SqlxPostgresConnector::accepts(string) {
+            return true;
+        }
         #[cfg(feature = "sqlx-sqlite")]
         if crate::SqlxSqliteConnector::accepts(string) {
             return true;
@@ -49,6 +53,10 @@ impl MockDatabaseConnector {
         #[cfg(feature = "sqlx-mysql")]
         if crate::SqlxMySqlConnector::accepts(string) {
             return connect_mock_db!(DbBackend::MySql);
+        }
+        #[cfg(feature = "sqlx-postgres")]
+        if crate::SqlxPostgresConnector::accepts(string) {
+            return connect_mock_db!(DbBackend::Postgres);
         }
         #[cfg(feature = "sqlx-sqlite")]
         if crate::SqlxSqliteConnector::accepts(string) {

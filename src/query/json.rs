@@ -43,6 +43,44 @@ impl FromQueryResult for JsonValue {
                 }
                 Ok(JsonValue::Object(map))
             }
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => {
+                use serde_json::json;
+                use sqlx::{Column, Postgres, Row, Type};
+                let mut map = Map::new();
+                for column in row.columns() {
+                    let col = if !column.name().starts_with(pre) {
+                        continue;
+                    } else {
+                        column.name().replacen(pre, "", 1)
+                    };
+                    let col_type = column.type_info();
+                    macro_rules! match_postgres_type {
+                        ( $type: ty ) => {
+                            if <$type as Type<Postgres>>::type_info().eq(col_type) {
+                                map.insert(
+                                    col.to_owned(),
+                                    json!(res.try_get::<Option<$type>>(pre, &col)?),
+                                );
+                                continue;
+                            }
+                        };
+                    }
+                    match_postgres_type!(bool);
+                    match_postgres_type!(i8);
+                    match_postgres_type!(i16);
+                    match_postgres_type!(i32);
+                    match_postgres_type!(i64);
+                    // match_postgres_type!(u8); // unsupported by SQLx Postgres
+                    // match_postgres_type!(u16); // unsupported by SQLx Postgres
+                    match_postgres_type!(u32);
+                    // match_postgres_type!(u64); // unsupported by SQLx Postgres
+                    match_postgres_type!(f32);
+                    match_postgres_type!(f64);
+                    match_postgres_type!(String);
+                }
+                Ok(JsonValue::Object(map))
+            }
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => {
                 use serde_json::json;
