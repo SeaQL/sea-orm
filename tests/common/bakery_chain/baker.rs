@@ -1,4 +1,5 @@
 use sea_orm::entity::prelude::*;
+use serde_json::Value as Json;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 pub struct Entity;
@@ -13,6 +14,7 @@ impl EntityName for Entity {
 pub struct Model {
     pub id: i32,
     pub name: String,
+    pub contact_details: Json,
     pub bakery_id: Option<i32>,
 }
 
@@ -20,6 +22,7 @@ pub struct Model {
 pub enum Column {
     Id,
     Name,
+    ContactDetails,
     BakeryId,
 }
 
@@ -46,6 +49,7 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(None).def(),
+            Self::ContactDetails => ColumnType::Json.def(),
             Self::BakeryId => ColumnType::Integer.def(),
         }
     }

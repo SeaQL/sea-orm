@@ -1,5 +1,6 @@
 use crate::DbErr;
 use chrono::NaiveDateTime;
+use serde_json::Value as Json;
 use std::fmt;
 
 #[derive(Debug)]
@@ -165,6 +166,7 @@ try_getable_all!(f32);
 try_getable_all!(f64);
 try_getable_all!(String);
 try_getable_all!(NaiveDateTime);
+try_getable_all!(Json);
 
 #[cfg(feature = "with-uuid")]
 use uuid::Uuid;

@@ -18,6 +18,11 @@ pub async fn test_create_lineitem(db: &DbConn) {
     // Baker
     let baker_bob = baker::ActiveModel {
         name: Set("Baker Bob".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+61424000000",
+            "home": "0395555555",
+            "address": "12 Test St, Testville, Vic, Australia"
+        })),
         bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
         ..Default::default()
     };

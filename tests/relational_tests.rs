@@ -23,6 +23,11 @@ pub async fn left_join() {
 
     let _baker_1 = baker::ActiveModel {
         name: Set("Baker 1".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+61424000000",
+            "home": "0395555555",
+            "address": "12 Test St, Testville, Vic, Australia"
+        })),
         bakery_id: Set(Some(bakery.id.clone().unwrap())),
         ..Default::default()
     }
@@ -32,6 +37,7 @@ pub async fn left_join() {
 
     let _baker_2 = baker::ActiveModel {
         name: Set("Baker 2".to_owned()),
+        contact_details: Set(serde_json::json!({})),
         bakery_id: Set(None),
         ..Default::default()
     }
