@@ -1,6 +1,4 @@
-use crate::{
-    error::*, ActiveModelTrait, DatabaseConnection, EntityTrait, Insert, Iterable, Statement,
-};
+use crate::{error::*, ActiveModelTrait, DatabaseConnection, Insert, Statement};
 use sea_query::InsertStatement;
 use std::future::Future;
 
@@ -18,6 +16,7 @@ impl<A> Insert<A>
 where
     A: ActiveModelTrait,
 {
+    #[allow(unused_mut)]
     pub fn exec(
         self,
         db: &DatabaseConnection,
@@ -26,6 +25,7 @@ where
         let mut query = self.query;
         #[cfg(feature = "sqlx-postgres")]
         if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
+            use crate::{EntityTrait, Iterable};
             use sea_query::{Alias, Expr, Query};
             for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
                 query.returning(
