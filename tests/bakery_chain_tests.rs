@@ -6,8 +6,11 @@ pub use bakery_chain::*;
 mod crud;
 mod schema;
 
-#[async_std::test]
 // cargo test --test bakery_chain_tests -- --nocapture
+#[cfg_attr(feature = "runtime-async-std", async_std::main)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::main)]
+#[cfg_attr(feature = "runtime-tokio", tokio::main)]
+#[cfg(feature = "sqlx-sqlite")]
 async fn main() {
     let db: DbConn = setup::setup().await;
     setup_schema(&db).await;

@@ -133,6 +133,7 @@ macro_rules! try_getable_unsigned {
                         row.try_get(column.as_str())
                             .map_err(crate::sqlx_error_to_query_err)
                     }
+                    #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(_) => {
                         panic!("{} unsupported by sqlx-postgres", stringify!($type))
                     }
@@ -160,6 +161,7 @@ macro_rules! try_getable_unsigned {
                             Err(_) => Ok(None),
                         }
                     }
+                    #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(_) => {
                         panic!("{} unsupported by sqlx-postgres", stringify!($type))
                     }
