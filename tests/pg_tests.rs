@@ -9,6 +9,7 @@ use sea_query::{ColumnDef, TableCreateStatement};
 
 // cargo test --test pg_tests -- --nocapture
 #[async_std::test]
+#[cfg(feature = "sqlx-postgres")]
 async fn main() {
     let base_url = "postgres://root:root@localhost";
     let db_name = "bakery_chain_schema_crud_tests";

@@ -2,8 +2,9 @@ use sea_orm::{entity::*, error::*, sea_query, tests_cfg::*, DbBackend, DbConn, S
 
 mod setup;
 
-#[async_std::test]
 // cargo test --test basic -- --nocapture
+#[async_std::test]
+#[cfg(feature = "sqlx-sqlite")]
 async fn main() {
     let db: DbConn = setup::setup().await;
 

@@ -48,7 +48,7 @@ serde_json = { version = "^1", optional = true }
 async-std = { version = "^1.9", features = [ "attributes" ] }
 maplit = { version = "^1" }
 rust_decimal_macros = { version = "^1" }
-sea-orm = { path = ".", features = ["sqlx-postgres", "sqlx-sqlite", "sqlx-json", "sqlx-chrono", "sqlx-decimal", "runtime-async-std-native-tls", "debug-print"] }
+sea-orm = { path = ".", features = ["sqlx-json", "sqlx-chrono", "sqlx-decimal", "runtime-async-std-native-tls", "debug-print"] }
 
 [features]
 debug-print = []
@@ -72,3 +72,18 @@ runtime-tokio-native-tls = [ "sqlx/runtime-tokio-native-tls" ]
 runtime-actix-rustls = [ "sqlx/runtime-actix-rustls" ]
 runtime-async-std-rustls = [ "sqlx/runtime-async-std-rustls" ]
 runtime-tokio-rustls = [ "sqlx/runtime-tokio-rustls" ]
+
+[[test]]
+name = "sqlite-basic"
+path = "tests/basic.rs"
+required-features = ["sqlx-sqlite"]
+
+[[test]]
+name = "sqlite"
+path = "tests/bakery_chain_tests.rs"
+required-features = ["sqlx-sqlite"]
+
+[[test]]
+name = "postgres"
+path = "tests/pg_tests.rs"
+required-features = ["sqlx-postgres"]

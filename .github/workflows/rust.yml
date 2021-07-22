@@ -15,6 +15,77 @@ jobs:
   test:
     name: Unit Test
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        runtime: [async-std-native-tls]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-test-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --all
+            --features default,runtime-${{ matrix.runtime }}
+
+  sqlite:
+    name: SQLite
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        runtime: [async-std-native-tls]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --all
+            --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}
+
+  postgres:
+    name: Postgres
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        runtime: [async-std-native-tls]
     services:
       postgres:
         image: postgres:11
@@ -38,6 +109,14 @@ jobs:
           toolchain: stable
           override: true
 
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
+
       - uses: actions-rs/cargo@v1
         with:
           command: build
@@ -45,4 +124,6 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all
+          args: >
+            --all
+            --features default,sqlx-postgres,runtime-${{ matrix.runtime }}

@@ -6,8 +6,9 @@ pub use bakery_chain::*;
 mod crud;
 mod schema;
 
-#[async_std::test]
 // cargo test --test bakery_chain_tests -- --nocapture
+#[async_std::test]
+#[cfg(feature = "sqlx-sqlite")]
 async fn main() {
     let db: DbConn = setup::setup().await;
     setup_schema(&db).await;
