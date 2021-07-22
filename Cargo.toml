@@ -64,12 +64,13 @@ maplit = { version = "^1" }
 rust_decimal_macros = { version = "^1" }
 
 sea-orm = { path = ".", features = [
+    "sqlx-postgres",
+    "sqlx-mysql",
     "sqlx-sqlite",
     "sqlx-json",
     "sqlx-chrono",
     "sqlx-decimal",
     "runtime-async-std-native-tls",
-    "sqlx-mysql",
 ] }
 
 [features]

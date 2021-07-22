@@ -1,5 +1,5 @@
 use crate::{
-    error::*, DbBackend, DatabaseConnection, EntityTrait, ExecResult, ExecResultHolder, Iden,
+    error::*, DatabaseConnection, DbBackend, EntityTrait, ExecResult, ExecResultHolder, Iden,
     Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult, QueryResultRow,
     Statement, Transaction,
 };

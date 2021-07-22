@@ -1,4 +1,6 @@
-use crate::{error::*, ActiveModelTrait, DatabaseConnection, Insert, QueryTrait, Statement};
+use crate::{
+    error::*, ActiveModelTrait, DatabaseConnection, EntityTrait, Insert, Iterable, Statement,
+};
 use sea_query::InsertStatement;
 use std::future::Future;
 
@@ -21,7 +23,19 @@ where
         db: &DatabaseConnection,
     ) -> impl Future<Output = Result<InsertResult, DbErr>> + '_ {
         // so that self is dropped before entering await
-        Inserter::new(self.into_query()).exec(db)
+        let mut query = self.query;
+        #[cfg(feature = "sqlx-postgres")]
+        if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
+            use sea_query::{Alias, Expr, Query};
+            for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
+                query.returning(
+                    Query::select()
+                        .expr_as(Expr::col(key), Alias::new("last_insert_id"))
+                        .to_owned(),
+                );
+            }
+        }
+        Inserter::new(query).exec(db)
     }
 }
 
@@ -41,8 +55,15 @@ impl Inserter {
 
 // Only Statement impl Send
 async fn exec_insert(statement: Statement, db: &DatabaseConnection) -> Result<InsertResult, DbErr> {
-    let result = db.execute(statement).await?;
     // TODO: Postgres instead use query_one + returning clause
+    let result = match db {
+        #[cfg(feature = "sqlx-postgres")]
+        DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
+            let res = conn.query_one(statement).await?.unwrap();
+            crate::query_result_into_exec_result(res)?
+        }
+        _ => db.execute(statement).await?,
+    };
     Ok(InsertResult {
         last_insert_id: result.last_insert_id(),
     })

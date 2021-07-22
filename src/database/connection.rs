@@ -4,6 +4,8 @@ use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQue
 pub enum DatabaseConnection {
     #[cfg(feature = "sqlx-mysql")]
     SqlxMySqlPoolConnection(crate::SqlxMySqlPoolConnection),
+    #[cfg(feature = "sqlx-postgres")]
+    SqlxPostgresPoolConnection(crate::SqlxPostgresPoolConnection),
     #[cfg(feature = "sqlx-sqlite")]
     SqlxSqlitePoolConnection(crate::SqlxSqlitePoolConnection),
     #[cfg(feature = "mock")]
@@ -36,6 +38,8 @@ impl std::fmt::Debug for DatabaseConnection {
             match self {
                 #[cfg(feature = "sqlx-mysql")]
                 Self::SqlxMySqlPoolConnection(_) => "SqlxMySqlPoolConnection",
+                #[cfg(feature = "sqlx-postgres")]
+                Self::SqlxPostgresPoolConnection(_) => "SqlxMySqlPoolConnection",
                 #[cfg(feature = "sqlx-sqlite")]
                 Self::SqlxSqlitePoolConnection(_) => "SqlxSqlitePoolConnection",
                 #[cfg(feature = "mock")]
@@ -51,6 +55,8 @@ impl DatabaseConnection {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(_) => DbBackend::MySql,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(_) => DbBackend::Postgres,
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(_) => DbBackend::Sqlite,
             #[cfg(feature = "mock")]
@@ -63,6 +69,8 @@ impl DatabaseConnection {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.execute(stmt).await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.execute(stmt).await,
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.execute(stmt).await,
             #[cfg(feature = "mock")]
@@ -75,6 +83,8 @@ impl DatabaseConnection {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_one(stmt).await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.query_one(stmt).await,
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.query_one(stmt).await,
             #[cfg(feature = "mock")]
@@ -87,6 +97,8 @@ impl DatabaseConnection {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_all(stmt).await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.query_all(stmt).await,
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.query_all(stmt).await,
             #[cfg(feature = "mock")]

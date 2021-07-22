@@ -28,6 +28,19 @@ jobs:
         ports:
           - "3306:3306"
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      postgres:
+        image: postgres:11
+        env:
+          POSTGRES_HOST: 127.0.0.1
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: root
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v2
 
