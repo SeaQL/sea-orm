@@ -16,9 +16,9 @@ name = "sea_orm_codegen"
 path = "src/lib.rs"
 
 [dependencies]
-sea-schema = { version = "^0.2", default-features = false, features = [ "sqlx-mysql", "runtime-async-std-native-tls", "discovery", "writer" ] }
+sea-schema = { version = "^0.2", default-features = false, features = [ "sqlx-mysql", "discovery", "writer" ] }
 sea-query = { version = "^0.12" }
-sqlx = { version = "^0.5", features = [ "mysql", "runtime-async-std-native-tls" ] }
+sqlx = { version = "^0.5", default-features = false, features = [ "mysql" ] }
 syn = { version = "^1", default-features = false, features = [ "derive", "parsing", "proc-macro", "printing" ] }
 quote = "^1"
 heck = "^0.3"
@@ -26,4 +26,31 @@ proc-macro2 = "^1"
 
 [dev-dependencies]
 async-std = { version = "^1.9", features = [ "attributes" ] }
-sea-orm = { path = "../", features = ["mock", "sqlx-json", "sqlx-chrono", "runtime-async-std-native-tls"] }
+tokio = { version = "^1.6", features = ["full"] }
+sea-orm = { path = "../" }
+
+[features]
+runtime-actix-native-tls = [
+    "sqlx/runtime-actix-native-tls",
+    "sea-schema/runtime-actix-native-tls",
+]
+runtime-async-std-native-tls = [
+    "sqlx/runtime-async-std-native-tls",
+    "sea-schema/runtime-async-std-native-tls",
+]
+runtime-tokio-native-tls = [
+    "sqlx/runtime-tokio-native-tls",
+    "sea-schema/runtime-tokio-native-tls",
+]
+runtime-actix-rustls = [
+    "sqlx/runtime-actix-rustls",
+    "sea-schema/runtime-actix-rustls",
+]
+runtime-async-std-rustls = [
+    "sqlx/runtime-async-std-rustls",
+    "sea-schema/runtime-async-std-rustls",
+]
+runtime-tokio-rustls = [
+    "sqlx/runtime-tokio-rustls",
+    "sea-schema/runtime-tokio-rustls",
+]
