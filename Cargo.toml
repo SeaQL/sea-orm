@@ -47,6 +47,7 @@ serde_json = { version = "^1", optional = true }
 [dev-dependencies]
 async-std = { version = "^1.9", features = [ "attributes" ] }
 tokio = { version = "^1.6", features = ["full"] }
+actix-rt = { version = "2.2.0" }
 maplit = { version = "^1" }
 rust_decimal_macros = { version = "^1" }
 sea-orm = { path = ".", features = ["sqlx-json", "sqlx-chrono", "sqlx-decimal", "debug-print"] }
@@ -67,12 +68,15 @@ sqlx-decimal = [ "sqlx/decimal", "with-rust_decimal" ]
 sqlx-mysql = [ "sqlx-dep", "sea-query/sqlx-mysql", "sqlx/mysql" ]
 sqlx-postgres = [ "sqlx-dep", "sea-query/sqlx-postgres", "sqlx/postgres" ]
 sqlx-sqlite = [ "sqlx-dep", "sea-query/sqlx-sqlite", "sqlx/sqlite" ]
-runtime-actix-native-tls = [ "sqlx/runtime-actix-native-tls" ]
-runtime-async-std-native-tls = [ "sqlx/runtime-async-std-native-tls" ]
-runtime-tokio-native-tls = [ "sqlx/runtime-tokio-native-tls" ]
-runtime-actix-rustls = [ "sqlx/runtime-actix-rustls" ]
-runtime-async-std-rustls = [ "sqlx/runtime-async-std-rustls" ]
-runtime-tokio-rustls = [ "sqlx/runtime-tokio-rustls" ]
+runtime-async-std = []
+runtime-async-std-native-tls = [ "sqlx/runtime-async-std-native-tls", "runtime-async-std" ]
+runtime-async-std-rustls = [ "sqlx/runtime-async-std-rustls", "runtime-async-std" ]
+runtime-actix = []
+runtime-actix-native-tls = [ "sqlx/runtime-actix-native-tls", "runtime-actix" ]
+runtime-actix-rustls = [ "sqlx/runtime-actix-rustls", "runtime-actix" ]
+runtime-tokio = []
+runtime-tokio-native-tls = [ "sqlx/runtime-tokio-native-tls", "runtime-tokio" ]
+runtime-tokio-rustls = [ "sqlx/runtime-tokio-rustls", "runtime-tokio" ]
 
 [[test]]
 name = "sqlite-basic"

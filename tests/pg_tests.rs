@@ -8,16 +8,9 @@ pub use bakery_chain::*;
 use sea_query::{ColumnDef, TableCreateStatement};
 
 // cargo test --test pg_tests -- --nocapture
-#[cfg_attr(any(
-    feature = "runtime-async-std-native-tls",
-    feature = "runtime-async-std-rustls",
-), async_std::test)]
-#[cfg_attr(any(
-    feature = "runtime-actix-native-tls",
-    feature = "runtime-tokio-native-tls",
-    feature = "runtime-actix-rustls",
-    feature = "runtime-tokio-rustls",
-), tokio::main)]
+#[cfg_attr(feature = "runtime-async-std", async_std::main)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::main)]
+#[cfg_attr(feature = "runtime-tokio", tokio::main)]
 #[cfg(feature = "sqlx-postgres")]
 async fn main() {
     let base_url = "postgres://root:root@localhost";

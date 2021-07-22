@@ -7,16 +7,9 @@ mod crud;
 mod schema;
 
 // cargo test --test bakery_chain_tests -- --nocapture
-#[cfg_attr(any(
-    feature = "runtime-async-std-native-tls",
-    feature = "runtime-async-std-rustls",
-), async_std::test)]
-#[cfg_attr(any(
-    feature = "runtime-actix-native-tls",
-    feature = "runtime-tokio-native-tls",
-    feature = "runtime-actix-rustls",
-    feature = "runtime-tokio-rustls",
-), tokio::main)]
+#[cfg_attr(feature = "runtime-async-std", async_std::main)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::main)]
+#[cfg_attr(feature = "runtime-tokio", tokio::main)]
 #[cfg(feature = "sqlx-sqlite")]
 async fn main() {
     let db: DbConn = setup::setup().await;

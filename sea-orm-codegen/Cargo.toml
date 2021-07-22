@@ -26,7 +26,6 @@ proc-macro2 = "^1"
 
 [dev-dependencies]
 async-std = { version = "^1.9", features = [ "attributes" ] }
-tokio = { version = "^1.6", features = ["full"] }
 sea-orm = { path = "../" }
 
 [features]
