@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 async-std = { version = "^1.9", features = [ "attributes" ] }
-sea-orm = { path = "../../", features = [ "sqlx-mysql", "runtime-async-std-native-tls", "debug-print" ] }
+sea-orm = { path = "../../" }
 sea-orm-codegen = { path = "../../sea-orm-codegen" }
 sea-query = { version = "^0.12" }
 strum = { version = "^0.20", features = [ "derive" ] }

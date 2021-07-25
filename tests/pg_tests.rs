@@ -9,7 +9,10 @@ pub use common::bakery_chain::*;
 use sea_query::{ColumnDef, TableCreateStatement};
 
 // cargo test --test pg_tests -- --nocapture
-#[async_std::test]
+#[cfg_attr(feature = "runtime-async-std", async_std::main)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::main)]
+#[cfg_attr(feature = "runtime-tokio", tokio::main)]
+#[cfg(feature = "sqlx-postgres")]
 async fn main() {
     let base_url = "postgres://root:root@localhost";
     let db_name = "bakery_chain_schema_crud_tests";

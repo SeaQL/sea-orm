@@ -42,9 +42,9 @@ chrono = { version = "^0", optional = true }
 futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 rust_decimal = { version = "^1", optional = true }
-# sea-query = { version = "^0.12" }
+sea-query = { version = "^0.12" }
 # sea-query = { path = "../sea-query" }
-sea-query = { version = "^0.12", git = "https://github.com/samsamai/sea-query.git", branch = "ss/uuid" }
+# sea-query = { version = "^0.12", git = "https://github.com/samsamai/sea-query.git", branch = "ss/uuid" }
 sea-orm-macros = { path = "sea-orm-macros", optional = true }
 sea-orm-codegen = { path = "sea-orm-codegen", optional = true }
 serde = { version = "^1.0", features = ["derive"] }
@@ -60,17 +60,15 @@ uuid = { version = "0.8", features = ["serde", "v4"], optional = true }
 
 [dev-dependencies]
 async-std = { version = "^1.9", features = ["attributes"] }
+tokio = { version = "^1.6", features = ["full"] }
+actix-rt = { version = "2.2.0" }
 maplit = { version = "^1" }
 rust_decimal_macros = { version = "^1" }
-
 sea-orm = { path = ".", features = [
-    "sqlx-postgres",
-    "sqlx-mysql",
-    "sqlx-sqlite",
     "sqlx-json",
     "sqlx-chrono",
     "sqlx-decimal",
-    "runtime-async-std-native-tls",
+    "debug-print",
 ] }
 
 [features]
@@ -83,6 +81,10 @@ default = [
     "with-rust_decimal",
     "mock",
     "with-uuid",
+    "sqlx-postgres",
+    "sqlx-mysql",
+    "sqlx-sqlite",
+
 ]
 macros = ["sea-orm-macros"]
 codegen = ["sea-orm-codegen"]
@@ -103,9 +105,28 @@ sqlx-decimal = ["sqlx/decimal", "with-rust_decimal"]
 sqlx-mysql = ["sqlx-dep", "sea-query/sqlx-mysql", "sqlx/mysql"]
 sqlx-postgres = ["sqlx-dep", "sea-query/sqlx-postgres", "sqlx/postgres"]
 sqlx-sqlite = ["sqlx-dep", "sea-query/sqlx-sqlite", "sqlx/sqlite"]
-runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls"]
-runtime-async-std-native-tls = ["sqlx/runtime-async-std-native-tls"]
-runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls"]
-runtime-actix-rustls = ["sqlx/runtime-actix-rustls"]
-runtime-async-std-rustls = ["sqlx/runtime-async-std-rustls"]
-runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls"]
+runtime-async-std = []
+runtime-async-std-native-tls = [
+    "sqlx/runtime-async-std-native-tls",
+    "runtime-async-std",
+]
+runtime-async-std-rustls = [
+    "sqlx/runtime-async-std-rustls",
+    "runtime-async-std",
+]
+runtime-actix = []
+runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls", "runtime-actix"]
+runtime-actix-rustls = ["sqlx/runtime-actix-rustls", "runtime-actix"]
+runtime-tokio = []
+runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls", "runtime-tokio"]
+runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls", "runtime-tokio"]
+
+[[test]]
+name = "sqlite-basic"
+path = "tests/basic.rs"
+required-features = ["sqlx-sqlite"]
+
+[[test]]
+name = "postgres"
+path = "tests/pg_tests.rs"
+required-features = ["sqlx-postgres"]

@@ -5,8 +5,8 @@ pub use common::{bakery_chain::*, setup::*, TestContext};
 
 mod crud;
 
-#[async_std::test]
 // cargo test --test bakery_chain_tests -- --nocapture
+#[async_std::test]
 async fn main() {
     let base_url = "mysql://root:@localhost";
     let db_name = "bakery_chain_schema_crud_tests";

@@ -116,6 +116,7 @@ impl EntityWriter {
             Self::gen_impl_relation_trait(entity),
         ];
         code_blocks.extend(Self::gen_impl_related(entity));
+        code_blocks.extend(Self::gen_impl_conjunct_related(entity));
         code_blocks.extend(vec![Self::gen_impl_active_model_behavior()]);
         code_blocks
     }
@@ -239,13 +240,38 @@ impl EntityWriter {
         let camel = entity.get_relation_ref_tables_camel_case();
         let snake = entity.get_relation_ref_tables_snake_case();
         camel
-            .iter()
+            .into_iter()
             .zip(snake)
             .map(|(c, s)| {
                 quote! {
                     impl Related<super::#s::Entity> for Entity {
                         fn to() -> RelationDef {
                             Relation::#c.def()
+                        }
+                    }
+                }
+            })
+            .collect()
+    }
+
+    pub fn gen_impl_conjunct_related(entity: &Entity) -> Vec<TokenStream> {
+        let table_name_camel_case = entity.get_table_name_camel_case_ident();
+        let via_snake_case = entity.get_conjunct_relations_via_snake_case();
+        let to_snake_case = entity.get_conjunct_relations_to_snake_case();
+        let to_camel_case = entity.get_conjunct_relations_to_camel_case();
+        via_snake_case
+            .into_iter()
+            .zip(to_snake_case)
+            .zip(to_camel_case)
+            .map(|((via_snake_case, to_snake_case), to_camel_case)| {
+                quote! {
+                    impl Related<super::#to_snake_case::Entity> for Entity {
+                        fn to() -> RelationDef {
+                            super::#via_snake_case::Relation::#to_camel_case.def()
+                        }
+
+                        fn via() -> Option<RelationDef> {
+                            Some(super::#via_snake_case::Relation::#table_name_camel_case.def().rev())
                         }
                     }
                 }
@@ -277,7 +303,9 @@ impl EntityWriter {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Column, Entity, EntityWriter, PrimaryKey, Relation, RelationType};
+    use crate::{
+        Column, ConjunctRelation, Entity, EntityWriter, PrimaryKey, Relation, RelationType,
+    };
     use proc_macro2::TokenStream;
     use sea_query::ColumnType;
     use std::io::{self, BufRead, BufReader};
@@ -310,20 +338,16 @@ mod tests {
                         unique: false,
                     },
                 ],
-                relations: vec![
-                    Relation {
-                        ref_table: "cake_filling".to_owned(),
-                        columns: vec![],
-                        ref_columns: vec![],
-                        rel_type: RelationType::HasMany,
-                    },
-                    Relation {
-                        ref_table: "fruit".to_owned(),
-                        columns: vec![],
-                        ref_columns: vec![],
-                        rel_type: RelationType::HasMany,
-                    },
-                ],
+                relations: vec![Relation {
+                    ref_table: "fruit".to_owned(),
+                    columns: vec![],
+                    ref_columns: vec![],
+                    rel_type: RelationType::HasMany,
+                }],
+                conjunct_relations: vec![ConjunctRelation {
+                    via: "cake_filling".to_owned(),
+                    to: "filling".to_owned(),
+                }],
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
@@ -360,6 +384,7 @@ mod tests {
                         rel_type: RelationType::BelongsTo,
                     },
                 ],
+                conjunct_relations: vec![],
                 primary_keys: vec![
                     PrimaryKey {
                         name: "cake_id".to_owned(),
@@ -387,11 +412,10 @@ mod tests {
                         unique: false,
                     },
                 ],
-                relations: vec![Relation {
-                    ref_table: "cake_filling".to_owned(),
-                    columns: vec![],
-                    ref_columns: vec![],
-                    rel_type: RelationType::HasMany,
+                relations: vec![],
+                conjunct_relations: vec![ConjunctRelation {
+                    via: "cake_filling".to_owned(),
+                    to: "cake".to_owned(),
                 }],
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
@@ -436,6 +460,7 @@ mod tests {
                         rel_type: RelationType::HasMany,
                     },
                 ],
+                conjunct_relations: vec![],
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
@@ -471,6 +496,7 @@ mod tests {
                     ref_columns: vec!["id".to_owned()],
                     rel_type: RelationType::BelongsTo,
                 }],
+                conjunct_relations: vec![],
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],

@@ -5,5 +5,5 @@ edition = "2018"
 publish = false
 
 [dependencies]
-sea-orm = { path = "../../", features = [ "sqlx-mysql", "runtime-async-std-native-tls", "debug-print" ] }
+sea-orm = { path = "../../" }
 strum = { version = "^0.20", features = [ "derive" ] }
