@@ -2,10 +2,8 @@ use crate::{
     ColumnTrait, EntityTrait, Identity, IntoSimpleExpr, Iterable, ModelTrait, PrimaryKeyToColumn,
     RelationDef,
 };
-use sea_query::{Alias, Expr, IntoCondition, SelectExpr, SelectStatement, SimpleExpr};
-pub use sea_query::{
-    Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement, SeaRc,
-};
+use sea_query::{Alias, Expr, IntoCondition, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
+pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
 // LINT: when the column does not appear in tables selected from
 // LINT: when there is a group by clause, but some columns don't have aggregate functions
