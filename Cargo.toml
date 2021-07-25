@@ -42,9 +42,8 @@ chrono = { version = "^0", optional = true }
 futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 rust_decimal = { version = "^1", optional = true }
-sea-query = { version = "^0.12" }
+sea-query = { version = "~0.12.8" }
 # sea-query = { path = "../sea-query" }
-# sea-query = { version = "^0.12", git = "https://github.com/samsamai/sea-query.git", branch = "ss/uuid" }
 sea-orm-macros = { path = "sea-orm-macros", optional = true }
 sea-orm-codegen = { path = "sea-orm-codegen", optional = true }
 serde = { version = "^1.0", features = ["derive"] }
@@ -64,12 +63,7 @@ tokio = { version = "^1.6", features = ["full"] }
 actix-rt = { version = "2.2.0" }
 maplit = { version = "^1" }
 rust_decimal_macros = { version = "^1" }
-sea-orm = { path = ".", features = [
-    "sqlx-json",
-    "sqlx-chrono",
-    "sqlx-decimal",
-    "debug-print",
-] }
+sea-orm = { path = ".", features = ["debug-print"] }
 
 [features]
 debug-print = []
@@ -89,9 +83,13 @@ default = [
 macros = ["sea-orm-macros"]
 codegen = ["sea-orm-codegen"]
 mock = []
-with-json = ["serde_json", "sea-query/with-json"]
-with-chrono = ["chrono", "sea-query/with-chrono"]
-with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal"]
+with-json = ["serde_json", "sea-query/with-json", "sqlx-json"]
+with-chrono = ["chrono", "sea-query/with-chrono", "sqlx-chrono"]
+with-rust_decimal = [
+    "rust_decimal",
+    "sea-query/with-rust_decimal",
+    "sqlx-decimal",
+]
 with-uuid = [
     "uuid",
     "sea-query/with-uuid",
