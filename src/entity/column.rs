@@ -1,5 +1,5 @@
 use crate::{EntityName, IdenStatic, Iterable};
-use sea_query::{DynIden, Expr, SeaRc, SimpleExpr, Value};
+use sea_query::{DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
 
 #[derive(Debug, Clone)]
 pub struct ColumnDef {
@@ -62,6 +62,15 @@ macro_rules! bind_vec_func {
             I: IntoIterator<Item = V>,
         {
             Expr::tbl(self.entity_name(), *self).$func(v)
+        }
+    };
+}
+
+macro_rules! bind_subquery_func {
+    ( $func: ident ) => {
+        #[allow(clippy::wrong_self_convention)]
+        fn $func(&self, s: SelectStatement) -> SimpleExpr {
+            Expr::tbl(self.entity_name(), *self).$func(s)
         }
     };
 }
@@ -216,6 +225,9 @@ pub trait ColumnTrait: IdenStatic + Iterable {
 
     bind_vec_func!(is_in);
     bind_vec_func!(is_not_in);
+
+    bind_subquery_func!(in_subquery);
+    bind_subquery_func!(not_in_subquery);
 }
 
 impl ColumnType {
@@ -301,5 +313,37 @@ impl From<sea_query::ColumnType> for ColumnType {
             sea_query::ColumnType::Custom(s) => Self::Custom(s.to_string()),
             sea_query::ColumnType::Uuid => Self::Uuid,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        tests_cfg::*, ColumnTrait, Condition, DbBackend, EntityTrait, QueryFilter, QueryTrait,
+    };
+    use sea_query::Query;
+
+    #[test]
+    fn test_in_subquery() {
+        assert_eq!(
+            cake::Entity::find()
+                .filter(
+                    Condition::any().add(
+                        cake::Column::Id.in_subquery(
+                            Query::select()
+                                .expr(cake::Column::Id.max())
+                                .from(cake::Entity)
+                                .to_owned()
+                        )
+                    )
+                )
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "WHERE `cake`.`id` IN (SELECT MAX(`cake`.`id`) FROM `cake`)",
+            ]
+            .join(" ")
+        );
     }
 }
