@@ -3,9 +3,9 @@ use sea_orm::{entity::*, error::*, sea_query, tests_cfg::*, DbBackend, DbConn, S
 mod setup;
 
 // cargo test --test basic -- --nocapture
-#[cfg_attr(feature = "runtime-async-std", async_std::main)]
-#[cfg_attr(feature = "runtime-actix", actix_rt::main)]
-#[cfg_attr(feature = "runtime-tokio", tokio::main)]
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
 #[cfg(feature = "sqlx-sqlite")]
 async fn main() {
     let db: DbConn = setup::setup().await;
