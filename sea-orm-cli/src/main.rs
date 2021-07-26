@@ -1,7 +1,9 @@
 use clap::ArgMatches;
 use dotenv::dotenv;
-use sea_orm_codegen::EntityGenerator;
-use std::{error::Error, fmt::Display};
+use sea_orm_codegen::{EntityTransformer, OutputFile};
+use sea_schema::mysql::discovery::SchemaDiscovery;
+use sqlx::MySqlPool;
+use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command};
 
 mod cli;
 
@@ -22,13 +24,35 @@ async fn main() {
 async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
     match matches.subcommand() {
         ("entity", Some(args)) => {
-            let uri = args.value_of("DATABASE_URI").unwrap();
+            let url = args.value_of("DATABASE_URL").unwrap();
             let schema = args.value_of("DATABASE_SCHEMA").unwrap();
             let output_dir = args.value_of("OUTPUT_DIR").unwrap();
-            EntityGenerator::discover(uri, schema)
-                .await?
-                .transform()?
-                .generate(output_dir)?;
+
+            let connection = MySqlPool::connect(url).await?;
+            let schema_discovery = SchemaDiscovery::new(connection, schema);
+            let schema = schema_discovery.discover().await;
+            let table_stmts = schema
+                .tables
+                .into_iter()
+                .map(|schema| schema.write())
+                .collect();
+
+            let output = EntityTransformer::transform(table_stmts)?.generate();
+
+            let dir = Path::new(output_dir);
+            fs::create_dir_all(dir)?;
+
+            for OutputFile { name, content } in output.files.iter() {
+                let file_path = dir.join(name);
+                let mut file = fs::File::create(file_path)?;
+                file.write_all(content.as_bytes())?;
+            }
+            for OutputFile { name, .. } in output.files.iter() {
+                Command::new("rustfmt")
+                    .arg(dir.join(name))
+                    .spawn()?
+                    .wait()?;
+            }
         }
         _ => unreachable!("You should never see this message"),
     };

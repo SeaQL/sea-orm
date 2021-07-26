@@ -2,21 +2,17 @@ use crate::{
     Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation, RelationType,
 };
 use sea_query::TableStatement;
-use sea_schema::mysql::def::Schema;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
-pub struct EntityTransformer {
-    pub(crate) schema: Schema,
-}
+pub struct EntityTransformer;
 
 impl EntityTransformer {
-    pub fn transform(self) -> Result<EntityWriter, Error> {
+    pub fn transform(table_stmts: Vec<TableStatement>) -> Result<EntityWriter, Error> {
         let mut inverse_relations: HashMap<String, Vec<Relation>> = HashMap::new();
         let mut conjunct_relations: HashMap<String, Vec<ConjunctRelation>> = HashMap::new();
         let mut entities = HashMap::new();
-        for table_ref in self.schema.tables.iter() {
-            let table_stmt = table_ref.write();
+        for table_stmt in table_stmts.into_iter() {
             let table_create = match table_stmt {
                 TableStatement::Create(stmt) => stmt,
                 _ => {
