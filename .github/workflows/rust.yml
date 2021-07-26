@@ -194,3 +194,58 @@ jobs:
           args: >
             --all
             --features default,sqlx-mysql,runtime-${{ matrix.runtime }}
+
+  mariadb:
+    name: MariaDB
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
+        runtime: [async-std-native-tls]
+    services:
+      mysql:
+        image: mariadb:10.5
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_DB: mysql
+          MYSQL_USER: sea
+          MYSQL_PASSWORD: sea
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_ROOT_PASSWORD:
+        ports:
+          - "3306:3306"
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-mariadb-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: >
+            --all
+            --features default,runtime-${{ matrix.runtime }}
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --all
+            --features default,sqlx-mysql,runtime-${{ matrix.runtime }}
