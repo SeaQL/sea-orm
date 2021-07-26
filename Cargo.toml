@@ -5,7 +5,6 @@ members = [
     "sea-orm-codegen",
     "sea-orm-cli",
     "examples/sqlx-mysql",
-    "examples/codegen",
     "examples/cli",
 ]
 

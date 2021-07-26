@@ -8,18 +8,18 @@ pub fn build_cli() -> App<'static, 'static> {
             SubCommand::with_name("entity")
                 .about("Generate entity")
                 .arg(
-                    Arg::with_name("DATABASE_URI")
-                        .long("uri")
-                        .short("u")
-                        .help("Database URI")
+                    Arg::with_name("DATABASE_URL")
+                        .long("database-url")
+                        .short("url")
+                        .help("Database URL")
                         .takes_value(true)
                         .required(true)
-                        .env("DATABASE_URI"),
+                        .env("DATABASE_URL"),
                 )
                 .arg(
                     Arg::with_name("DATABASE_SCHEMA")
-                        .long("schema")
-                        .short("s")
+                        .long("database-schema")
+                        .short("schema")
                         .help("Database schema")
                         .takes_value(true)
                         .required(true)
