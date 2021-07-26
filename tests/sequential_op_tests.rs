@@ -10,260 +10,260 @@ pub use common::{bakery_chain::*, setup::*, TestContext};
 #[async_std::test]
 #[cfg(feature = "sqlx-mysql")]
 pub async fn test_multiple_operations() {
-  let ctx = TestContext::new("mysql://root:@localhost", "multiple_sequential_operations").await;
+    let ctx = TestContext::new("mysql://root:@localhost", "multiple_sequential_operations").await;
 
-  init_setup(&ctx.db).await;
-  let baker_least_sales = find_baker_least_sales(&ctx.db).await.unwrap();
-  assert_eq!(baker_least_sales.name, "Baker 2");
+    init_setup(&ctx.db).await;
+    let baker_least_sales = find_baker_least_sales(&ctx.db).await.unwrap();
+    assert_eq!(baker_least_sales.name, "Baker 2");
 
-  let new_cake = create_cake(&ctx.db, baker_least_sales).await.unwrap();
-  create_order(&ctx.db, new_cake).await;
+    let new_cake = create_cake(&ctx.db, baker_least_sales).await.unwrap();
+    create_order(&ctx.db, new_cake).await;
 
-  let baker_least_sales = find_baker_least_sales(&ctx.db).await.unwrap();
-  assert_eq!(baker_least_sales.name, "Baker 1");
+    let baker_least_sales = find_baker_least_sales(&ctx.db).await.unwrap();
+    assert_eq!(baker_least_sales.name, "Baker 1");
 }
 
 async fn init_setup(db: &DatabaseConnection) {
-  let bakery = bakery::ActiveModel {
-    name: Set("SeaSide Bakery".to_owned()),
-    profit_margin: Set(10.4),
-    ..Default::default()
-  }
-  .save(db)
-  .await
-  .expect("could not insert bakery");
-
-  let baker_1 = baker::ActiveModel {
-    name: Set("Baker 1".to_owned()),
-    contact_details: Set(serde_json::json!({})),
-    bakery_id: Set(Some(bakery.id.clone().unwrap())),
-    ..Default::default()
-  }
-  .save(db)
-  .await
-  .expect("could not insert baker");
-
-  let _baker_2 = baker::ActiveModel {
-    name: Set("Baker 2".to_owned()),
-    contact_details: Set(serde_json::json!({})),
-    bakery_id: Set(Some(bakery.id.clone().unwrap())),
-    ..Default::default()
-  }
-  .save(db)
-  .await
-  .expect("could not insert baker");
-
-  let mud_cake = cake::ActiveModel {
-    name: Set("Mud Cake".to_owned()),
-    price: Set(dec!(10.25)),
-    gluten_free: Set(false),
-    serial: Set(Uuid::new_v4()),
-    bakery_id: Set(Some(bakery.id.clone().unwrap())),
-    ..Default::default()
-  };
-
-  let cake_insert_res: InsertResult = Cake::insert(mud_cake)
-    .exec(db)
+    let bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+    .save(db)
     .await
-    .expect("could not insert cake");
+    .expect("could not insert bakery");
 
-  let cake_baker = cakes_bakers::ActiveModel {
-    cake_id: Set(cake_insert_res.last_insert_id as i32),
-    baker_id: Set(baker_1.id.clone().unwrap()),
-    ..Default::default()
-  };
-
-  let _cake_baker_res: InsertResult = CakesBakers::insert(cake_baker)
-    .exec(db)
+    let baker_1 = baker::ActiveModel {
+        name: Set("Baker 1".to_owned()),
+        contact_details: Set(serde_json::json!({})),
+        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        ..Default::default()
+    }
+    .save(db)
     .await
-    .expect("could not insert cake_baker");
+    .expect("could not insert baker");
 
-  let customer_kate = customer::ActiveModel {
-    name: Set("Kate".to_owned()),
-    ..Default::default()
-  }
-  .save(db)
-  .await
-  .expect("could not insert customer");
+    let _baker_2 = baker::ActiveModel {
+        name: Set("Baker 2".to_owned()),
+        contact_details: Set(serde_json::json!({})),
+        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        ..Default::default()
+    }
+    .save(db)
+    .await
+    .expect("could not insert baker");
 
-  let kate_order_1 = order::ActiveModel {
-    bakery_id: Set(Some(bakery.id.clone().unwrap())),
-    customer_id: Set(Some(customer_kate.id.clone().unwrap())),
-    total: Set(dec!(99.95)),
-    placed_at: Set(Utc::now().naive_utc()),
+    let mud_cake = cake::ActiveModel {
+        name: Set("Mud Cake".to_owned()),
+        price: Set(dec!(10.25)),
+        gluten_free: Set(false),
+        serial: Set(Uuid::new_v4()),
+        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        ..Default::default()
+    };
 
-    ..Default::default()
-  }
-  .save(db)
-  .await
-  .expect("could not insert order");
+    let cake_insert_res: InsertResult = Cake::insert(mud_cake)
+        .exec(db)
+        .await
+        .expect("could not insert cake");
 
-  let _lineitem = lineitem::ActiveModel {
-    cake_id: Set(Some(cake_insert_res.last_insert_id as i32)),
-    price: Set(dec!(10.00)),
-    quantity: Set(12),
-    order_id: Set(Some(kate_order_1.id.clone().unwrap())),
-    ..Default::default()
-  }
-  .save(db)
-  .await
-  .expect("could not insert order");
+    let cake_baker = cakes_bakers::ActiveModel {
+        cake_id: Set(cake_insert_res.last_insert_id as i32),
+        baker_id: Set(baker_1.id.clone().unwrap()),
+        ..Default::default()
+    };
 
-  let _lineitem2 = lineitem::ActiveModel {
-    cake_id: Set(Some(cake_insert_res.last_insert_id as i32)),
-    price: Set(dec!(50.00)),
-    quantity: Set(2),
-    order_id: Set(Some(kate_order_1.id.clone().unwrap())),
-    ..Default::default()
-  }
-  .save(db)
-  .await
-  .expect("could not insert order");
+    let _cake_baker_res: InsertResult = CakesBakers::insert(cake_baker)
+        .exec(db)
+        .await
+        .expect("could not insert cake_baker");
+
+    let customer_kate = customer::ActiveModel {
+        name: Set("Kate".to_owned()),
+        ..Default::default()
+    }
+    .save(db)
+    .await
+    .expect("could not insert customer");
+
+    let kate_order_1 = order::ActiveModel {
+        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        total: Set(dec!(99.95)),
+        placed_at: Set(Utc::now().naive_utc()),
+
+        ..Default::default()
+    }
+    .save(db)
+    .await
+    .expect("could not insert order");
+
+    let _lineitem = lineitem::ActiveModel {
+        cake_id: Set(Some(cake_insert_res.last_insert_id as i32)),
+        price: Set(dec!(10.00)),
+        quantity: Set(12),
+        order_id: Set(Some(kate_order_1.id.clone().unwrap())),
+        ..Default::default()
+    }
+    .save(db)
+    .await
+    .expect("could not insert order");
+
+    let _lineitem2 = lineitem::ActiveModel {
+        cake_id: Set(Some(cake_insert_res.last_insert_id as i32)),
+        price: Set(dec!(50.00)),
+        quantity: Set(2),
+        order_id: Set(Some(kate_order_1.id.clone().unwrap())),
+        ..Default::default()
+    }
+    .save(db)
+    .await
+    .expect("could not insert order");
 }
 
 async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model> {
-  #[derive(Debug, FromQueryResult)]
-  struct SelectResult {
-    id: i32,
-    cakes_sold_opt: Option<Decimal>,
-  }
+    #[derive(Debug, FromQueryResult)]
+    struct SelectResult {
+        id: i32,
+        cakes_sold_opt: Option<Decimal>,
+    }
 
-  #[derive(Debug)]
-  struct LeastSalesBakerResult {
-    id: i32,
-    cakes_sold: Decimal,
-  }
+    #[derive(Debug)]
+    struct LeastSalesBakerResult {
+        id: i32,
+        cakes_sold: Decimal,
+    }
 
-  let rel: RelationDef = cakes_bakers::Entity::belongs_to(baker::Entity)
-    .from(cakes_bakers::Column::BakerId)
-    .to(baker::Column::Id)
-    .into();
+    let rel: RelationDef = cakes_bakers::Entity::belongs_to(baker::Entity)
+        .from(cakes_bakers::Column::BakerId)
+        .to(baker::Column::Id)
+        .into();
 
-  let rel2: RelationDef = cakes_bakers::Entity::belongs_to(cake::Entity)
-    .from(cakes_bakers::Column::CakeId)
-    .to(cake::Column::Id)
-    .into();
+    let rel2: RelationDef = cakes_bakers::Entity::belongs_to(cake::Entity)
+        .from(cakes_bakers::Column::CakeId)
+        .to(cake::Column::Id)
+        .into();
 
-  let rel3: RelationDef = cake::Entity::has_many(lineitem::Entity)
-    .from(cake::Column::Id)
-    .to(lineitem::Column::CakeId)
-    .into();
+    let rel3: RelationDef = cake::Entity::has_many(lineitem::Entity)
+        .from(cake::Column::Id)
+        .to(lineitem::Column::CakeId)
+        .into();
 
-  let select = cakes_bakers::Entity::find()
-    .join(JoinType::RightJoin, rel)
-    .join(JoinType::LeftJoin, rel2)
-    .join(JoinType::LeftJoin, rel3)
-    .select_only()
-    .column(baker::Column::Id)
-    .column_as(lineitem::Column::Quantity.sum(), "cakes_sold_opt")
-    .group_by(baker::Column::Id);
+    let select = cakes_bakers::Entity::find()
+        .join(JoinType::RightJoin, rel)
+        .join(JoinType::LeftJoin, rel2)
+        .join(JoinType::LeftJoin, rel3)
+        .select_only()
+        .column(baker::Column::Id)
+        .column_as(lineitem::Column::Quantity.sum(), "cakes_sold_opt")
+        .group_by(baker::Column::Id);
 
-  let mut results: Vec<LeastSalesBakerResult> = select
-    .into_model::<SelectResult>()
-    .all(&db)
-    .await
-    .unwrap()
-    .into_iter()
-    .map(|b| LeastSalesBakerResult {
-      id: b.id.clone(),
-      cakes_sold: b.cakes_sold_opt.unwrap_or(dec!(0)),
-    })
-    .collect();
+    let mut results: Vec<LeastSalesBakerResult> = select
+        .into_model::<SelectResult>()
+        .all(&db)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|b| LeastSalesBakerResult {
+            id: b.id.clone(),
+            cakes_sold: b.cakes_sold_opt.unwrap_or(dec!(0)),
+        })
+        .collect();
 
-  results.sort_by(|a, b| b.cakes_sold.cmp(&a.cakes_sold));
+    results.sort_by(|a, b| b.cakes_sold.cmp(&a.cakes_sold));
 
-  Baker::find_by_id(results.last().unwrap().id)
-    .one(db)
-    .await
-    .unwrap()
+    Baker::find_by_id(results.last().unwrap().id)
+        .one(db)
+        .await
+        .unwrap()
 }
 
 async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cake::Model> {
-  let new_cake = cake::ActiveModel {
-    name: Set("New Cake".to_owned()),
-    price: Set(dec!(8.00)),
-    gluten_free: Set(false),
-    serial: Set(Uuid::new_v4()),
-    bakery_id: Set(Some(baker.bakery_id.clone().unwrap())),
-    ..Default::default()
-  };
+    let new_cake = cake::ActiveModel {
+        name: Set("New Cake".to_owned()),
+        price: Set(dec!(8.00)),
+        gluten_free: Set(false),
+        serial: Set(Uuid::new_v4()),
+        bakery_id: Set(Some(baker.bakery_id.clone().unwrap())),
+        ..Default::default()
+    };
 
-  let cake_insert_res: InsertResult = Cake::insert(new_cake)
-    .exec(db)
-    .await
-    .expect("could not insert cake");
+    let cake_insert_res: InsertResult = Cake::insert(new_cake)
+        .exec(db)
+        .await
+        .expect("could not insert cake");
 
-  let cake_baker = cakes_bakers::ActiveModel {
-    cake_id: Set(cake_insert_res.last_insert_id as i32),
-    baker_id: Set(baker.id),
-    ..Default::default()
-  };
+    let cake_baker = cakes_bakers::ActiveModel {
+        cake_id: Set(cake_insert_res.last_insert_id as i32),
+        baker_id: Set(baker.id),
+        ..Default::default()
+    };
 
-  let _cake_baker_res: InsertResult = CakesBakers::insert(cake_baker)
-    .exec(db)
-    .await
-    .expect("could not insert cake_baker");
+    let _cake_baker_res: InsertResult = CakesBakers::insert(cake_baker)
+        .exec(db)
+        .await
+        .expect("could not insert cake_baker");
 
-  Cake::find_by_id(cake_insert_res.last_insert_id)
-    .one(db)
-    .await
-    .unwrap()
+    Cake::find_by_id(cake_insert_res.last_insert_id)
+        .one(db)
+        .await
+        .unwrap()
 }
 
 async fn create_order(db: &DatabaseConnection, cake: cake::Model) {
-  let another_customer = customer::ActiveModel {
-    name: Set("John".to_owned()),
-    ..Default::default()
-  }
-  .save(db)
-  .await
-  .expect("could not insert customer");
+    let another_customer = customer::ActiveModel {
+        name: Set("John".to_owned()),
+        ..Default::default()
+    }
+    .save(db)
+    .await
+    .expect("could not insert customer");
 
-  let order = order::ActiveModel {
-    bakery_id: Set(Some(cake.bakery_id.unwrap())),
-    customer_id: Set(Some(another_customer.id.clone().unwrap())),
-    total: Set(dec!(200.00)),
-    placed_at: Set(Utc::now().naive_utc()),
+    let order = order::ActiveModel {
+        bakery_id: Set(Some(cake.bakery_id.unwrap())),
+        customer_id: Set(Some(another_customer.id.clone().unwrap())),
+        total: Set(dec!(200.00)),
+        placed_at: Set(Utc::now().naive_utc()),
 
-    ..Default::default()
-  }
-  .save(db)
-  .await
-  .expect("could not insert order");
+        ..Default::default()
+    }
+    .save(db)
+    .await
+    .expect("could not insert order");
 
-  let _lineitem = lineitem::ActiveModel {
-    cake_id: Set(Some(cake.id)),
-    price: Set(dec!(10.00)),
-    quantity: Set(300),
-    order_id: Set(Some(order.id.clone().unwrap())),
-    ..Default::default()
-  }
-  .save(db)
-  .await
-  .expect("could not insert order");
+    let _lineitem = lineitem::ActiveModel {
+        cake_id: Set(Some(cake.id)),
+        price: Set(dec!(10.00)),
+        quantity: Set(300),
+        order_id: Set(Some(order.id.clone().unwrap())),
+        ..Default::default()
+    }
+    .save(db)
+    .await
+    .expect("could not insert order");
 }
 
 pub async fn test_delete_bakery(db: &DatabaseConnection) {
-  let initial_bakeries = Bakery::find().all(db).await.unwrap().len();
+    let initial_bakeries = Bakery::find().all(db).await.unwrap().len();
 
-  let bakery = bakery::ActiveModel {
-    name: Set("SeaSide Bakery".to_owned()),
-    profit_margin: Set(10.4),
-    ..Default::default()
-  }
-  .save(db)
-  .await
-  .expect("could not insert bakery");
+    let bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+    .save(db)
+    .await
+    .expect("could not insert bakery");
 
-  assert_eq!(
-    Bakery::find().all(db).await.unwrap().len(),
-    initial_bakeries + 1
-  );
+    assert_eq!(
+        Bakery::find().all(db).await.unwrap().len(),
+        initial_bakeries + 1
+    );
 
-  let _result = bakery.delete(db).await.expect("failed to delete bakery");
+    let _result = bakery.delete(db).await.expect("failed to delete bakery");
 
-  assert_eq!(
-    Bakery::find().all(db).await.unwrap().len(),
-    initial_bakeries
-  );
+    assert_eq!(
+        Bakery::find().all(db).await.unwrap().len(),
+        initial_bakeries
+    );
 }
