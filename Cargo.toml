@@ -75,10 +75,6 @@ default = [
     "with-rust_decimal",
     "mock",
     "with-uuid",
-    "sqlx-postgres",
-    "sqlx-mysql",
-    "sqlx-sqlite",
-
 ]
 macros = ["sea-orm-macros"]
 codegen = ["sea-orm-codegen"]
