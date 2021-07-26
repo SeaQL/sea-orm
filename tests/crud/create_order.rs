@@ -1,6 +1,7 @@
 pub use super::*;
 use chrono::offset::Utc;
 use rust_decimal_macros::dec;
+use uuid::Uuid;
 
 pub async fn test_create_order(db: &DbConn) {
     // Bakery
@@ -17,6 +18,11 @@ pub async fn test_create_order(db: &DbConn) {
     // Baker
     let baker_bob = baker::ActiveModel {
         name: Set("Baker Bob".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+61424000000",
+            "home": "0395555555",
+            "address": "12 Test St, Testville, Vic, Australia"
+        })),
         bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
         ..Default::default()
     };
@@ -30,6 +36,7 @@ pub async fn test_create_order(db: &DbConn) {
         name: Set("Mud Cake".to_owned()),
         price: Set(dec!(10.25)),
         gluten_free: Set(false),
+        serial: Set(Uuid::new_v4()),
         bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
         ..Default::default()
     };
@@ -53,7 +60,7 @@ pub async fn test_create_order(db: &DbConn) {
     // Customer
     let customer_kate = customer::ActiveModel {
         name: Set("Kate".to_owned()),
-        notes: Set("Loves cheese cake".to_owned()),
+        notes: Set(Some("Loves cheese cake".to_owned())),
         ..Default::default()
     };
     let customer_insert_res: InsertResult = Customer::insert(customer_kate)

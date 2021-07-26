@@ -1,5 +1,6 @@
 pub use super::*;
 use rust_decimal_macros::dec;
+use uuid::Uuid;
 
 pub async fn test_create_cake(db: &DbConn) {
     let seaside_bakery = bakery::ActiveModel {
@@ -14,6 +15,11 @@ pub async fn test_create_cake(db: &DbConn) {
 
     let baker_bob = baker::ActiveModel {
         name: Set("Baker Bob".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+61424000000",
+            "home": "0395555555",
+            "address": "12 Test St, Testville, Vic, Australia"
+        })),
         bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
         ..Default::default()
     };
@@ -21,11 +27,13 @@ pub async fn test_create_cake(db: &DbConn) {
         .exec(db)
         .await
         .expect("could not insert baker");
+    let uuid = Uuid::new_v4();
 
     let mud_cake = cake::ActiveModel {
         name: Set("Mud Cake".to_owned()),
         price: Set(dec!(10.25)),
         gluten_free: Set(false),
+        serial: Set(uuid),
         bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
         ..Default::default()
     };
@@ -65,6 +73,7 @@ pub async fn test_create_cake(db: &DbConn) {
             .name,
         "SeaSide Bakery"
     );
+    assert_eq!(cake_model.serial, uuid);
 
     let related_bakers: Vec<baker::Model> = cake_model
         .find_related(Baker)

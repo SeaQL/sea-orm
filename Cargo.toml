@@ -12,18 +12,24 @@ members = [
 [package]
 name = "sea-orm"
 version = "0.1.0"
-authors = [ "Chris Tsang <tyt2y7@gmail.com>" ]
+authors = ["Chris Tsang <tyt2y7@gmail.com>"]
 edition = "2018"
 description = "🐚 An async & dynamic ORM for Rust"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
-categories = [ "database" ]
-keywords = [ "orm", "database", "sql", "mysql", "postgres", "sqlite", "async" ]
+categories = ["database"]
+keywords = ["orm", "database", "sql", "mysql", "postgres", "sqlite", "async"]
 publish = false
 
 [package.metadata.docs.rs]
-features = ["default", "sqlx-mysql", "sqlx-postgres", "sqlx-sqlite", "runtime-async-std-native-tls"]
+features = [
+    "default",
+    "sqlx-mysql",
+    "sqlx-postgres",
+    "sqlx-sqlite",
+    "runtime-async-std-native-tls",
+]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
@@ -36,59 +42,75 @@ chrono = { version = "^0", optional = true }
 futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 rust_decimal = { version = "^1", optional = true }
-sea-query = { version = "^0.12" }
+sea-query = { version = "~0.12.8" }
+# sea-query = { path = "../sea-query" }
 sea-orm-macros = { path = "sea-orm-macros", optional = true }
 sea-orm-codegen = { path = "sea-orm-codegen", optional = true }
-serde = { version = "^1.0", features = [ "derive" ] }
+serde = { version = "^1.0", features = ["derive"] }
 sqlx = { version = "^0.5", optional = true }
-strum = { git = "https://github.com/SeaQL/strum.git", branch = "sea-orm", version = "^0.21", features = [ "derive", "sea-orm" ] }
+sqlx-core = { version = "^0.5", optional = true }
+sqlx-macros = { version = "^0.5", optional = true }
+strum = { git = "https://github.com/SeaQL/strum.git", branch = "sea-orm", version = "^0.21", features = [
+    "derive",
+    "sea-orm",
+] }
 serde_json = { version = "^1", optional = true }
+uuid = { version = "0.8", features = ["serde", "v4"], optional = true }
 
 [dev-dependencies]
-async-std = { version = "^1.9", features = [ "attributes" ] }
+async-std = { version = "^1.9", features = ["attributes"] }
 tokio = { version = "^1.6", features = ["full"] }
 actix-rt = { version = "2.2.0" }
 maplit = { version = "^1" }
 rust_decimal_macros = { version = "^1" }
-sea-orm = { path = ".", features = ["sqlx-json", "sqlx-chrono", "sqlx-decimal", "debug-print"] }
+sea-orm = { path = ".", features = ["debug-print"] }
 
 [features]
 debug-print = []
-default = [ "macros", "codegen", "with-json", "with-chrono", "with-rust_decimal", "mock" ]
-macros = [ "sea-orm-macros" ]
-codegen = [ "sea-orm-codegen" ]
+default = [
+    "macros",
+    "codegen",
+    "with-json",
+    "with-chrono",
+    "with-rust_decimal",
+    "mock",
+    "with-uuid",
+]
+macros = ["sea-orm-macros"]
+codegen = ["sea-orm-codegen"]
 mock = []
-with-json = [ "serde_json", "sea-query/with-json" ]
-with-chrono = [ "chrono", "sea-query/with-chrono" ]
-with-rust_decimal = [ "rust_decimal", "sea-query/with-rust_decimal" ]
-sqlx-dep = [ "sqlx" ]
-sqlx-json = [ "sqlx/json", "with-json" ]
-sqlx-chrono = [ "sqlx/chrono", "with-chrono" ]
-sqlx-decimal = [ "sqlx/decimal", "with-rust_decimal" ]
-sqlx-mysql = [ "sqlx-dep", "sea-query/sqlx-mysql", "sqlx/mysql" ]
-sqlx-postgres = [ "sqlx-dep", "sea-query/sqlx-postgres", "sqlx/postgres" ]
-sqlx-sqlite = [ "sqlx-dep", "sea-query/sqlx-sqlite", "sqlx/sqlite" ]
+with-json = ["serde_json", "sea-query/with-json", "sqlx-json"]
+with-chrono = ["chrono", "sea-query/with-chrono", "sqlx-chrono"]
+with-rust_decimal = [
+    "rust_decimal",
+    "sea-query/with-rust_decimal",
+    "sqlx-decimal",
+]
+with-uuid = [
+    "uuid",
+    "sea-query/with-uuid",
+    "sqlx-core/uuid",
+    "sqlx-macros/uuid",
+]
+sqlx-dep = ["sqlx"]
+sqlx-json = ["sqlx/json", "with-json"]
+sqlx-chrono = ["sqlx/chrono", "with-chrono"]
+sqlx-decimal = ["sqlx/decimal", "with-rust_decimal"]
+sqlx-mysql = ["sqlx-dep", "sea-query/sqlx-mysql", "sqlx/mysql"]
+sqlx-postgres = ["sqlx-dep", "sea-query/sqlx-postgres", "sqlx/postgres"]
+sqlx-sqlite = ["sqlx-dep", "sea-query/sqlx-sqlite", "sqlx/sqlite"]
 runtime-async-std = []
-runtime-async-std-native-tls = [ "sqlx/runtime-async-std-native-tls", "runtime-async-std" ]
-runtime-async-std-rustls = [ "sqlx/runtime-async-std-rustls", "runtime-async-std" ]
+runtime-async-std-native-tls = [
+    "sqlx/runtime-async-std-native-tls",
+    "runtime-async-std",
+]
+runtime-async-std-rustls = [
+    "sqlx/runtime-async-std-rustls",
+    "runtime-async-std",
+]
 runtime-actix = []
-runtime-actix-native-tls = [ "sqlx/runtime-actix-native-tls", "runtime-actix" ]
-runtime-actix-rustls = [ "sqlx/runtime-actix-rustls", "runtime-actix" ]
+runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls", "runtime-actix"]
+runtime-actix-rustls = ["sqlx/runtime-actix-rustls", "runtime-actix"]
 runtime-tokio = []
-runtime-tokio-native-tls = [ "sqlx/runtime-tokio-native-tls", "runtime-tokio" ]
-runtime-tokio-rustls = [ "sqlx/runtime-tokio-rustls", "runtime-tokio" ]
-
-[[test]]
-name = "sqlite-basic"
-path = "tests/basic.rs"
-required-features = ["sqlx-sqlite"]
-
-[[test]]
-name = "sqlite"
-path = "tests/bakery_chain_tests.rs"
-required-features = ["sqlx-sqlite"]
-
-[[test]]
-name = "postgres"
-path = "tests/pg_tests.rs"
-required-features = ["sqlx-postgres"]
+runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls", "runtime-tokio"]
+runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls", "runtime-tokio"]

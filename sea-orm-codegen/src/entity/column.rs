@@ -32,6 +32,7 @@ impl Column {
             | ColumnType::Date
             | ColumnType::Json
             | ColumnType::JsonBinary
+            | ColumnType::Uuid
             | ColumnType::Custom(_) => "String",
             ColumnType::TinyInteger(_) => "i8",
             ColumnType::SmallInteger(_) => "i16",
@@ -83,6 +84,7 @@ impl Column {
             },
             ColumnType::Json => quote! { ColumnType::Json.def() },
             ColumnType::JsonBinary => quote! { ColumnType::JsonBinary.def() },
+            ColumnType::Uuid => quote! { ColumnType::Uuid.def() },
             ColumnType::Custom(s) => {
                 let s = s.to_string();
                 quote! { ColumnType::Custom(#s.to_owned()).def() }

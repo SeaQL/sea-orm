@@ -1,11 +1,12 @@
 use sea_orm::entity::prelude::*;
+use serde_json::Value as Json;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "customer"
+        "baker"
     }
 }
 
@@ -13,14 +14,16 @@ impl EntityName for Entity {
 pub struct Model {
     pub id: i32,
     pub name: String,
-    pub notes: String,
+    pub contact_details: Json,
+    pub bakery_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
     Name,
-    Notes,
+    ContactDetails,
+    BakeryId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -36,7 +39,7 @@ impl PrimaryKeyTrait for PrimaryKey {
 
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
-    Order,
+    Bakery,
 }
 
 impl ColumnTrait for Column {
@@ -46,7 +49,8 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(None).def(),
-            Self::Notes => ColumnType::Text.def(),
+            Self::ContactDetails => ColumnType::Json.def(),
+            Self::BakeryId => ColumnType::Integer.def(),
         }
     }
 }
@@ -54,14 +58,27 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Order => Entity::has_many(super::order::Entity).into(),
+            Self::Bakery => Entity::belongs_to(super::bakery::Entity)
+                .from(Column::BakeryId)
+                .to(super::bakery::Column::Id)
+                .into(),
         }
     }
 }
 
-impl Related<super::order::Entity> for Entity {
+impl Related<super::bakery::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Order.def()
+        Relation::Bakery.def()
+    }
+}
+
+impl Related<super::cake::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::cakes_bakers::Relation::Cake.def()
+    }
+
+    fn via() -> Option<RelationDef> {
+        Some(super::cakes_bakers::Relation::Baker.def().rev())
     }
 }
 

@@ -31,6 +31,7 @@ pub enum ColumnType {
     Json,
     JsonBinary,
     Custom(String),
+    Uuid,
 }
 
 macro_rules! bind_oper {
@@ -270,6 +271,7 @@ impl From<ColumnType> for sea_query::ColumnType {
             ColumnType::Custom(s) => {
                 sea_query::ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(&s)))
             }
+            ColumnType::Uuid => sea_query::ColumnType::Uuid,
         }
     }
 }
@@ -297,6 +299,7 @@ impl From<sea_query::ColumnType> for ColumnType {
             sea_query::ColumnType::Json => Self::Json,
             sea_query::ColumnType::JsonBinary => Self::JsonBinary,
             sea_query::ColumnType::Custom(s) => Self::Custom(s.to_string()),
+            sea_query::ColumnType::Uuid => Self::Uuid,
         }
     }
 }

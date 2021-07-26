@@ -3,14 +3,15 @@ use sea_orm::{
     Statement,
 };
 
-pub mod bakery_chain;
-pub use bakery_chain::*;
+pub mod common;
+pub use common::bakery_chain::*;
+
 use sea_query::{ColumnDef, TableCreateStatement};
 
 // cargo test --test pg_tests -- --nocapture
-#[cfg_attr(feature = "runtime-async-std", async_std::main)]
-#[cfg_attr(feature = "runtime-actix", actix_rt::main)]
-#[cfg_attr(feature = "runtime-tokio", tokio::main)]
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
 #[cfg(feature = "sqlx-postgres")]
 async fn main() {
     let base_url = "postgres://root:root@localhost";

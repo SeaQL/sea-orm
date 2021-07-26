@@ -5,10 +5,10 @@ edition = "2018"
 publish = false
 
 [dependencies]
-async-std = { version = "^1.9", features = [ "attributes" ] }
+async-std = { version = "^1.9", features = ["attributes"] }
 sea-orm = { path = "../../" }
 sea-orm-codegen = { path = "../../sea-orm-codegen" }
-sea-query = { version = "^0.12" }
-strum = { version = "^0.20", features = [ "derive" ] }
+sea-query = { version = "~0.12.8" }
+strum = { version = "^0.20", features = ["derive"] }
 serde_json = { version = "^1" }
 quote = { version = "^1" }
