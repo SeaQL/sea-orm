@@ -6,6 +6,7 @@ pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn find_one_with_no_result() {
     let ctx = TestContext::new("mysql://root:@localhost", "find_one_with_no_result").await;
 
@@ -16,6 +17,7 @@ pub async fn find_one_with_no_result() {
 }
 
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn find_one_with_result() {
     let ctx = TestContext::new("mysql://root:@localhost", "find_one_with_result").await;
 
@@ -36,6 +38,7 @@ pub async fn find_one_with_result() {
 }
 
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn find_by_id_with_no_result() {
     let ctx = TestContext::new("mysql://root:@localhost", "find_by_id_with_no_result").await;
 
@@ -46,6 +49,7 @@ pub async fn find_by_id_with_no_result() {
 }
 
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn find_by_id_with_result() {
     let ctx = TestContext::new("mysql://root:@localhost", "find_by_id_with_result").await;
 
@@ -70,6 +74,7 @@ pub async fn find_by_id_with_result() {
 }
 
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn find_all_with_no_result() {
     let ctx = TestContext::new("mysql://root:@localhost", "find_all_with_no_result").await;
 
@@ -80,6 +85,7 @@ pub async fn find_all_with_no_result() {
 }
 
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn find_all_with_result() {
     let ctx = TestContext::new("mysql://root:@localhost", "find_all_with_result").await;
 
@@ -109,6 +115,7 @@ pub async fn find_all_with_result() {
 }
 
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn find_all_filter_no_result() {
     let ctx = TestContext::new("mysql://root:@localhost", "find_all_filter_no_result").await;
 
@@ -142,6 +149,7 @@ pub async fn find_all_filter_no_result() {
 }
 
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn find_all_filter_with_results() {
     let ctx = TestContext::new("mysql://root:@localhost", "find_all_filter_with_results").await;
 

@@ -7,6 +7,7 @@ mod crud;
 
 // cargo test --test bakery_chain_tests -- --nocapture
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 async fn main() {
     let base_url = "mysql://root:@localhost";
     let db_name = "bakery_chain_schema_crud_tests";

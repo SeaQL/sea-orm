@@ -9,6 +9,7 @@ pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn left_join() {
     let ctx = TestContext::new("mysql://root:@localhost", "test_left_join").await;
 
@@ -85,6 +86,7 @@ pub async fn left_join() {
 }
 
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn right_join() {
     let ctx = TestContext::new("mysql://root:@localhost", "test_right_join").await;
 
@@ -165,6 +167,7 @@ pub async fn right_join() {
 }
 
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn inner_join() {
     let ctx = TestContext::new("mysql://root:@localhost", "test_inner_join").await;
 
@@ -249,6 +252,7 @@ pub async fn inner_join() {
 }
 
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn group_by() {
     let ctx = TestContext::new("mysql://root:@localhost", "test_group_by").await;
 
@@ -348,6 +352,7 @@ pub async fn group_by() {
 }
 
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn having() {
     // customers with orders with total equal to $90
     let ctx = TestContext::new("mysql://root:@localhost", "test_having").await;

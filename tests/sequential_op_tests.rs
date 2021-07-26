@@ -8,6 +8,7 @@ pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 
 #[async_std::test]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn test_multiple_operations() {
   let ctx = TestContext::new("mysql://root:@localhost", "multiple_sequential_operations").await;
 
