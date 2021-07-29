@@ -27,7 +27,7 @@ pub fn build_cli() -> App<'static, 'static> {
                 )
                 .arg(
                     Arg::with_name("OUTPUT_DIR")
-                        .long("output_dir")
+                        .long("output-dir")
                         .short("o")
                         .help("Entity file output directory")
                         .takes_value(true)
