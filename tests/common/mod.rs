@@ -2,6 +2,7 @@ pub mod setup;
 use sea_orm::DatabaseConnection;
 pub mod bakery_chain;
 pub use bakery_chain::*;
+use std::env;
 
 pub struct TestContext {
     base_url: String,
@@ -10,12 +11,14 @@ pub struct TestContext {
 }
 
 impl TestContext {
-    pub async fn new(base_url: &str, db_name: &str) -> Self {
-        let db: DatabaseConnection = setup::setup(base_url, db_name).await;
+    pub async fn new(test_name: &str) -> Self {
+        let base_url =
+            env::var("DATABASE_URL").expect("Enviroment variable 'DATABASE_URL' not set");
+        let db: DatabaseConnection = setup::setup(&base_url, test_name).await;
 
         Self {
-            base_url: base_url.to_string(),
-            db_name: db_name.to_string(),
+            base_url: base_url,
+            db_name: test_name.to_string(),
             db,
         }
     }

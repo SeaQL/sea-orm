@@ -7,10 +7,16 @@ use uuid::Uuid;
 pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 
+// Run the test locally:
+// DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql --test sequential_op_tests
 #[async_std::test]
-#[cfg(feature = "sqlx-mysql")]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 pub async fn test_multiple_operations() {
-    let ctx = TestContext::new("mysql://root:@localhost", "multiple_sequential_operations").await;
+    let ctx = TestContext::new("multiple_sequential_operations").await;
 
     init_setup(&ctx.db).await;
     let baker_least_sales = find_baker_least_sales(&ctx.db).await.unwrap();
@@ -21,6 +27,8 @@ pub async fn test_multiple_operations() {
 
     let baker_least_sales = find_baker_least_sales(&ctx.db).await.unwrap();
     assert_eq!(baker_least_sales.name, "Baker 1");
+
+    ctx.delete().await;
 }
 
 async fn init_setup(db: &DatabaseConnection) {
