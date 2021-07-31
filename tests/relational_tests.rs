@@ -1,5 +1,3 @@
-// cargo test --test realtional_tests -- --nocapture
-
 use chrono::offset::Utc;
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
@@ -8,6 +6,8 @@ use sea_orm::{entity::*, query::*, FromQueryResult};
 pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 
+// Run the test locally:
+// DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql --test realtional_tests
 #[async_std::test]
 #[cfg(any(
     feature = "sqlx-mysql",
