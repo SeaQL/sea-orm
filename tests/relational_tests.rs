@@ -9,9 +9,13 @@ pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 
 #[async_std::test]
-#[cfg(feature = "sqlx-mysql")]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 pub async fn left_join() {
-    let ctx = TestContext::new("mysql://root:@localhost", "test_left_join").await;
+    let ctx = TestContext::new("test_left_join").await;
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -86,9 +90,13 @@ pub async fn left_join() {
 }
 
 #[async_std::test]
-#[cfg(feature = "sqlx-mysql")]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 pub async fn right_join() {
-    let ctx = TestContext::new("mysql://root:@localhost", "test_right_join").await;
+    let ctx = TestContext::new("test_right_join").await;
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -167,9 +175,13 @@ pub async fn right_join() {
 }
 
 #[async_std::test]
-#[cfg(feature = "sqlx-mysql")]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 pub async fn inner_join() {
-    let ctx = TestContext::new("mysql://root:@localhost", "test_inner_join").await;
+    let ctx = TestContext::new("test_inner_join").await;
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -252,9 +264,13 @@ pub async fn inner_join() {
 }
 
 #[async_std::test]
-#[cfg(feature = "sqlx-mysql")]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 pub async fn group_by() {
-    let ctx = TestContext::new("mysql://root:@localhost", "test_group_by").await;
+    let ctx = TestContext::new("test_group_by").await;
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -352,10 +368,14 @@ pub async fn group_by() {
 }
 
 #[async_std::test]
-#[cfg(feature = "sqlx-mysql")]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 pub async fn having() {
     // customers with orders with total equal to $90
-    let ctx = TestContext::new("mysql://root:@localhost", "test_having").await;
+    let ctx = TestContext::new("test_having").await;
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),

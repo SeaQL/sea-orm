@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - origin/ss/test_suite_refactor
   pull_request:
     branches:
       - master
@@ -50,95 +51,95 @@ jobs:
             --all
             --features default,runtime-${{ matrix.runtime }}
 
-  sqlite:
-    name: SQLite
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
-        runtime: [async-std-native-tls]
-    steps:
-      - uses: actions/checkout@v2
+  # sqlite:
+  # name: SQLite
+  # runs-on: ubuntu-20.04
+  # strategy:
+  #   matrix:
+  #     # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
+  #     runtime: [async-std-native-tls]
+  # steps:
+  #   - uses: actions/checkout@v2
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+  #   - uses: actions-rs/toolchain@v1
+  #     with:
+  #       profile: minimal
+  #       toolchain: stable
+  #       override: true
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
+  #   - uses: actions/cache@v2
+  #     with:
+  #       path: |
+  #         ~/.cargo/registry
+  #         ~/.cargo/git
+  #         target
+  #       key: ${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: >
-            --all
-            --features default,runtime-${{ matrix.runtime }}
+  #   - uses: actions-rs/cargo@v1
+  #     with:
+  #       command: build
+  #       args: >
+  #         --all
+  #         --features default,runtime-${{ matrix.runtime }}
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --all
-            --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}
+  #   - uses: actions-rs/cargo@v1
+  #     with:
+  #       command: test
+  #       args: >
+  #         --all
+  #         --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}
 
-  postgres:
-    name: Postgres
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
-        runtime: [async-std-native-tls]
-    services:
-      postgres:
-        image: postgres:11
-        env:
-          POSTGRES_HOST: 127.0.0.1
-          POSTGRES_USER: root
-          POSTGRES_PASSWORD: root
-        ports:
-          - "5432:5432"
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v2
+  # postgres:
+  # name: Postgres
+  # runs-on: ubuntu-20.04
+  # strategy:
+  #   matrix:
+  #     # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
+  #     runtime: [async-std-native-tls]
+  # services:
+  #   postgres:
+  #     image: postgres:11
+  #     env:
+  #       POSTGRES_HOST: 127.0.0.1
+  #       POSTGRES_USER: root
+  #       POSTGRES_PASSWORD: root
+  #     ports:
+  #       - "5432:5432"
+  #     options: >-
+  #       --health-cmd pg_isready
+  #       --health-interval 10s
+  #       --health-timeout 5s
+  #       --health-retries 5
+  # steps:
+  #   - uses: actions/checkout@v2
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+  #   - uses: actions-rs/toolchain@v1
+  #     with:
+  #       profile: minimal
+  #       toolchain: stable
+  #       override: true
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
+  #   - uses: actions/cache@v2
+  #     with:
+  #       path: |
+  #         ~/.cargo/registry
+  #         ~/.cargo/git
+  #         target
+  #       key: ${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: >
-            --all
-            --features default,runtime-${{ matrix.runtime }}
+  #   - uses: actions-rs/cargo@v1
+  #     with:
+  #       command: build
+  #       args: >
+  #         --all
+  #         --features default,runtime-${{ matrix.runtime }}
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --all
-            --features default,sqlx-postgres,runtime-${{ matrix.runtime }}
+  #   - uses: actions-rs/cargo@v1
+  #     with:
+  #       command: test
+  #       args: >
+  #         --all
+  #         --features default,sqlx-postgres,runtime-${{ matrix.runtime }}
 
   mysql:
     name: MySQL
@@ -147,6 +148,8 @@ jobs:
       matrix:
         # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
         runtime: [async-std-native-tls]
+    env:
+      DATABASE_URL: mysql://root:@localhost
     services:
       mysql:
         image: mysql:8.0
@@ -195,57 +198,57 @@ jobs:
             --all
             --features default,sqlx-mysql,runtime-${{ matrix.runtime }}
 
-  mariadb:
-    name: MariaDB
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
-        runtime: [async-std-native-tls]
-    services:
-      mysql:
-        image: mariadb:10.5
-        env:
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_DB: mysql
-          MYSQL_USER: sea
-          MYSQL_PASSWORD: sea
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_ROOT_PASSWORD:
-        ports:
-          - "3306:3306"
-        options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-    steps:
-      - uses: actions/checkout@v2
+  # mariadb:
+  # name: MariaDB
+  # runs-on: ubuntu-20.04
+  # strategy:
+  #   matrix:
+  #     # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
+  #     runtime: [async-std-native-tls]
+  # services:
+  #   mysql:
+  #     image: mariadb:10.5
+  #     env:
+  #       MYSQL_HOST: 127.0.0.1
+  #       MYSQL_DB: mysql
+  #       MYSQL_USER: sea
+  #       MYSQL_PASSWORD: sea
+  #       MYSQL_ALLOW_EMPTY_PASSWORD: yes
+  #       MYSQL_ROOT_PASSWORD:
+  #     ports:
+  #       - "3306:3306"
+  #     options: >-
+  #       --health-cmd="mysqladmin ping"
+  #       --health-interval=10s
+  #       --health-timeout=5s
+  #       --health-retries=3
+  # steps:
+  #   - uses: actions/checkout@v2
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+  #   - uses: actions-rs/toolchain@v1
+  #     with:
+  #       profile: minimal
+  #       toolchain: stable
+  #       override: true
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-mariadb-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
+  #   - uses: actions/cache@v2
+  #     with:
+  #       path: |
+  #         ~/.cargo/registry
+  #         ~/.cargo/git
+  #         target
+  #       key: ${{ runner.os }}-mariadb-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: >
-            --all
-            --features default,runtime-${{ matrix.runtime }}
+  #   - uses: actions-rs/cargo@v1
+  #     with:
+  #       command: build
+  #       args: >
+  #         --all
+  #         --features default,runtime-${{ matrix.runtime }}
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --all
-            --features default,sqlx-mysql,runtime-${{ matrix.runtime }}
+  #   - uses: actions-rs/cargo@v1
+  #     with:
+  #       command: test
+  #       args: >
+  #         --all
+  #         --features default,sqlx-mysql,runtime-${{ matrix.runtime }}
