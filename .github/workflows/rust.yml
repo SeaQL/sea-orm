@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - origin/ss/test_suite_refactor
   pull_request:
     branches:
       - master
