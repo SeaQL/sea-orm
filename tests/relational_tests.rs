@@ -124,8 +124,8 @@ pub async fn right_join() {
     .expect("could not insert customer");
 
     let _order = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -209,8 +209,8 @@ pub async fn inner_join() {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -221,8 +221,8 @@ pub async fn inner_join() {
     .expect("could not insert order");
 
     let kate_order_2 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(100.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -290,8 +290,8 @@ pub async fn group_by() {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(99.95)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -302,8 +302,8 @@ pub async fn group_by() {
     .expect("could not insert order");
 
     let kate_order_2 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(200.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -395,8 +395,8 @@ pub async fn having() {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(100.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -407,8 +407,8 @@ pub async fn having() {
     .expect("could not insert order");
 
     let _kate_order_2 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(12.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -427,8 +427,8 @@ pub async fn having() {
     .expect("could not insert customer");
 
     let _bob_order_1 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_bob.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_bob.id.clone().unwrap()),
         total: Set(dec!(50.0)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -439,8 +439,8 @@ pub async fn having() {
     .expect("could not insert order");
 
     let _bob_order_2 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_bob.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_bob.id.clone().unwrap()),
         total: Set(dec!(50.0)),
         placed_at: Set(Utc::now().naive_utc()),
 

@@ -70,8 +70,8 @@ pub async fn test_create_order(db: &DbConn) {
 
     // Order
     let order_1 = order::ActiveModel {
-        bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
-        customer_id: Set(Some(customer_insert_res.last_insert_id as i32)),
+        bakery_id: Set(bakery_insert_res.last_insert_id as i32),
+        customer_id: Set(customer_insert_res.last_insert_id as i32),
         total: Set(dec!(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
@@ -81,10 +81,12 @@ pub async fn test_create_order(db: &DbConn) {
         .await
         .expect("could not insert order");
 
+    println!("order_insert_res: {:#?}", order_insert_res);
+
     // Lineitem
     let lineitem_1 = lineitem::ActiveModel {
-        cake_id: Set(Some(cake_insert_res.last_insert_id as i32)),
-        order_id: Set(Some(order_insert_res.last_insert_id as i32)),
+        cake_id: Set(cake_insert_res.last_insert_id as i32),
+        order_id: Set(order_insert_res.last_insert_id as i32),
         price: Set(dec!(7.55)),
         quantity: Set(2),
         ..Default::default()
@@ -94,37 +96,48 @@ pub async fn test_create_order(db: &DbConn) {
         .await
         .expect("could not insert lineitem");
 
+    // This fails with "error returned from database: incorrect binary data format in bind parameter 1"
     let order: Option<order::Model> = Order::find_by_id(order_insert_res.last_insert_id)
         .one(db)
         .await
         .expect("could not find order");
 
-    assert!(order.is_some());
-    let order_model = order.unwrap();
-    assert_eq!(order_model.total, dec!(15.10));
-
-    let customer: Option<customer::Model> = Customer::find_by_id(order_model.customer_id)
-        .one(db)
-        .await
-        .expect("could not find customer");
-
-    let customer_model = customer.unwrap();
-    assert_eq!(customer_model.name, "Kate");
-
-    let bakery: Option<bakery::Model> = Bakery::find_by_id(order_model.bakery_id)
-        .one(db)
-        .await
-        .expect("could not find bakery");
-
-    let bakery_model = bakery.unwrap();
-    assert_eq!(bakery_model.name, "SeaSide Bakery");
-
-    let related_lineitems: Vec<lineitem::Model> = order_model
-        .find_related(Lineitem)
+    // this is ok
+    let orders: Vec<order::Model> = Order::find_by_id(order_insert_res.last_insert_id)
         .all(db)
         .await
-        .expect("could not find related lineitems");
-    assert_eq!(related_lineitems.len(), 1);
-    assert_eq!(related_lineitems[0].price, dec!(7.55));
-    assert_eq!(related_lineitems[0].quantity, 2);
+        .unwrap();
+    println!("order: {:#?}", orders);
+    let order: order::Model = orders[0].clone();
+    println!("order: {:#?}", order);
+
+    assert_eq!(1, 2);
+    // assert!(order.is_some());
+    // let order_model = order.unwrap();
+    // assert_eq!(order_model.total, dec!(15.10));
+
+    // let customer: Option<customer::Model> = Customer::find_by_id(order_model.customer_id)
+    //     .one(db)
+    //     .await
+    //     .expect("could not find customer");
+
+    // let customer_model = customer.unwrap();
+    // assert_eq!(customer_model.name, "Kate");
+
+    // let bakery: Option<bakery::Model> = Bakery::find_by_id(order_model.bakery_id)
+    //     .one(db)
+    //     .await
+    //     .expect("could not find bakery");
+
+    // let bakery_model = bakery.unwrap();
+    // assert_eq!(bakery_model.name, "SeaSide Bakery");
+
+    // let related_lineitems: Vec<lineitem::Model> = order_model
+    //     .find_related(Lineitem)
+    //     .all(db)
+    //     .await
+    //     .expect("could not find related lineitems");
+    // assert_eq!(related_lineitems.len(), 1);
+    // assert_eq!(related_lineitems[0].price, dec!(7.55));
+    // assert_eq!(related_lineitems[0].quantity, 2);
 }

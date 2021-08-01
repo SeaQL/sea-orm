@@ -15,8 +15,8 @@ pub struct Model {
     pub id: i32,
     pub price: Decimal,
     pub quantity: i32,
-    pub order_id: Option<i32>,
-    pub cake_id: Option<i32>,
+    pub order_id: i32,
+    pub cake_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -51,7 +51,7 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::Id => ColumnType::Integer.def(),
-            Self::Price => ColumnType::Money(Some((19, 4))).def(),
+            Self::Price => ColumnType::Decimal(Some((19, 4))).def(),
             Self::Quantity => ColumnType::Integer.def(),
             Self::OrderId => ColumnType::Integer.def(),
             Self::CakeId => ColumnType::Integer.def(),

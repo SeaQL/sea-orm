@@ -39,7 +39,7 @@ impl std::fmt::Debug for DatabaseConnection {
                 #[cfg(feature = "sqlx-mysql")]
                 Self::SqlxMySqlPoolConnection(_) => "SqlxMySqlPoolConnection",
                 #[cfg(feature = "sqlx-postgres")]
-                Self::SqlxPostgresPoolConnection(_) => "SqlxMySqlPoolConnection",
+                Self::SqlxPostgresPoolConnection(_) => "SqlxPostgresPoolConnection",
                 #[cfg(feature = "sqlx-sqlite")]
                 Self::SqlxSqlitePoolConnection(_) => "SqlxSqlitePoolConnection",
                 #[cfg(feature = "mock")]

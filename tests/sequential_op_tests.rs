@@ -95,8 +95,8 @@ async fn init_setup(db: &DatabaseConnection) {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(99.95)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -107,10 +107,10 @@ async fn init_setup(db: &DatabaseConnection) {
     .expect("could not insert order");
 
     let _lineitem = lineitem::ActiveModel {
-        cake_id: Set(Some(cake_insert_res.last_insert_id as i32)),
+        cake_id: Set(cake_insert_res.last_insert_id as i32),
         price: Set(dec!(10.00)),
         quantity: Set(12),
-        order_id: Set(Some(kate_order_1.id.clone().unwrap())),
+        order_id: Set(kate_order_1.id.clone().unwrap()),
         ..Default::default()
     }
     .save(db)
@@ -118,10 +118,10 @@ async fn init_setup(db: &DatabaseConnection) {
     .expect("could not insert order");
 
     let _lineitem2 = lineitem::ActiveModel {
-        cake_id: Set(Some(cake_insert_res.last_insert_id as i32)),
+        cake_id: Set(cake_insert_res.last_insert_id as i32),
         price: Set(dec!(50.00)),
         quantity: Set(2),
-        order_id: Set(Some(kate_order_1.id.clone().unwrap())),
+        order_id: Set(kate_order_1.id.clone().unwrap()),
         ..Default::default()
     }
     .save(db)
@@ -228,8 +228,8 @@ async fn create_order(db: &DatabaseConnection, cake: cake::Model) {
     .expect("could not insert customer");
 
     let order = order::ActiveModel {
-        bakery_id: Set(Some(cake.bakery_id.unwrap())),
-        customer_id: Set(Some(another_customer.id.clone().unwrap())),
+        bakery_id: Set(cake.bakery_id.unwrap()),
+        customer_id: Set(another_customer.id.clone().unwrap()),
         total: Set(dec!(200.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -240,10 +240,10 @@ async fn create_order(db: &DatabaseConnection, cake: cake::Model) {
     .expect("could not insert order");
 
     let _lineitem = lineitem::ActiveModel {
-        cake_id: Set(Some(cake.id)),
+        cake_id: Set(cake.id),
         price: Set(dec!(10.00)),
         quantity: Set(300),
-        order_id: Set(Some(order.id.clone().unwrap())),
+        order_id: Set(order.id.clone().unwrap()),
         ..Default::default()
     }
     .save(db)
