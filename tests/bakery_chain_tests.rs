@@ -27,9 +27,9 @@ async fn create_entities(db: &DatabaseConnection) {
     crud::create_lineitem::test_create_lineitem(db).await;
     crud::create_order::test_create_order(db).await;
 
-    // crud::updates::test_update_cake(db).await;
-    // crud::updates::test_update_bakery(db).await;
-    // crud::updates::test_update_deleted_customer(db).await;
+    crud::updates::test_update_cake(db).await;
+    crud::updates::test_update_bakery(db).await;
+    crud::updates::test_update_deleted_customer(db).await;
 
     // crud::deletes::test_delete_cake(db).await;
     // crud::deletes::test_delete_bakery(db).await;
