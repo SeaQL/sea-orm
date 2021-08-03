@@ -1,8 +1,6 @@
 use clap::ArgMatches;
 use dotenv::dotenv;
 use sea_orm_codegen::{EntityTransformer, OutputFile};
-use sea_schema::mysql::discovery::SchemaDiscovery;
-use sqlx::MySqlPool;
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command};
 
 mod cli;
@@ -28,14 +26,33 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
             let schema = args.value_of("DATABASE_SCHEMA").unwrap();
             let output_dir = args.value_of("OUTPUT_DIR").unwrap();
 
-            let connection = MySqlPool::connect(url).await?;
-            let schema_discovery = SchemaDiscovery::new(connection, schema);
-            let schema = schema_discovery.discover().await;
-            let table_stmts = schema
-                .tables
-                .into_iter()
-                .map(|schema| schema.write())
-                .collect();
+            let table_stmts = if url.starts_with("mysql://") {
+                use sea_schema::mysql::discovery::SchemaDiscovery;
+                use sqlx::MySqlPool;
+
+                let connection = MySqlPool::connect(url).await?;
+                let schema_discovery = SchemaDiscovery::new(connection, schema);
+                let schema = schema_discovery.discover().await;
+                schema
+                    .tables
+                    .into_iter()
+                    .map(|schema| schema.write())
+                    .collect()
+            } else if url.starts_with("postgres://") {
+                use sea_schema::postgres::discovery::SchemaDiscovery;
+                use sqlx::PgPool;
+
+                let connection = PgPool::connect(url).await?;
+                let schema_discovery = SchemaDiscovery::new(connection, schema);
+                let schema = schema_discovery.discover().await;
+                schema
+                    .tables
+                    .into_iter()
+                    .map(|schema| schema.write())
+                    .collect()
+            } else {
+                panic!("This database is not supported ({})", url)
+            };
 
             let output = EntityTransformer::transform(table_stmts)?.generate();
 
