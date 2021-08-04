@@ -28,13 +28,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-test-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v1
 
       - uses: actions-rs/cargo@v1
         with:
@@ -66,13 +60,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v1
 
       - uses: actions-rs/cargo@v1
         with:
@@ -88,68 +76,18 @@ jobs:
             --all
             --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}
 
-  postgres:
-    name: Postgres
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
-        runtime: [async-std-native-tls]
-    services:
-      postgres:
-        image: postgres:11
-        env:
-          POSTGRES_HOST: 127.0.0.1
-          POSTGRES_USER: root
-          POSTGRES_PASSWORD: root
-        ports:
-          - "5432:5432"
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: >
-            --all
-            --features default,runtime-${{ matrix.runtime }}
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --all
-            --features default,sqlx-postgres,runtime-${{ matrix.runtime }}
-
   mysql:
     name: MySQL
     runs-on: ubuntu-20.04
     strategy:
       matrix:
+        # version: [8.0, 5.7, 5.6]
         # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
+        version: [8.0]
         runtime: [async-std-native-tls]
     services:
       mysql:
-        image: mysql:8.0
+        image: mysql:${{ matrix.version }}
         env:
           MYSQL_HOST: 127.0.0.1
           MYSQL_DB: mysql
@@ -173,13 +111,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v1
 
       - uses: actions-rs/cargo@v1
         with:
@@ -200,11 +132,13 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
+        # version: [10.6, 10.5, 10.4, 10.3, 10.2]
         # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
+        version: [10.6]
         runtime: [async-std-native-tls]
     services:
       mysql:
-        image: mariadb:10.5
+        image: mariadb:${{ matrix.version }}
         env:
           MYSQL_HOST: 127.0.0.1
           MYSQL_DB: mysql
@@ -228,13 +162,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-mariadb-${{ matrix.runtime }}-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v1
 
       - uses: actions-rs/cargo@v1
         with:
@@ -249,3 +177,51 @@ jobs:
           args: >
             --all
             --features default,sqlx-mysql,runtime-${{ matrix.runtime }}
+
+  postgres:
+    name: Postgres
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        # version: [13.3, 12.7, 11.12, 10.17, 9.6.22]
+        # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
+        version: [13.3]
+        runtime: [async-std-native-tls]
+    services:
+      postgres:
+        image: postgres:${{ matrix.version }}
+        env:
+          POSTGRES_HOST: 127.0.0.1
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: root
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: Swatinem/rust-cache@v1
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: >
+            --all
+            --features default,runtime-${{ matrix.runtime }}
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --all
+            --features default,sqlx-postgres,runtime-${{ matrix.runtime }}
