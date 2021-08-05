@@ -113,7 +113,7 @@ pub async fn test_create_order(db: &DbConn) {
     let customer_model = customer.unwrap();
     assert_eq!(customer_model.name, "Kate");
 
-    let bakery: Option<bakery::Model> = Bakery::find_by_id(order_model.bakery_id as u64)
+    let bakery: Option<bakery::Model> = Bakery::find_by_id(order_model.bakery_id as i64)
         .one(db)
         .await
         .expect("could not find bakery");

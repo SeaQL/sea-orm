@@ -12,7 +12,6 @@ use sea_query::{ColumnDef, TableCreateStatement};
 #[cfg_attr(feature = "runtime-async-std", async_std::test)]
 #[cfg_attr(feature = "runtime-actix", actix_rt::test)]
 #[cfg_attr(feature = "runtime-tokio", tokio::test)]
-#[async_std::test]
 #[cfg(feature = "sqlx-postgres")]
 async fn main() {
     let base_url = "postgres://root:root@localhost";
