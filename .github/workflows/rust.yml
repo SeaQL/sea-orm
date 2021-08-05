@@ -47,6 +47,8 @@ jobs:
   sqlite:
     name: SQLite
     runs-on: ubuntu-20.04
+    env:
+      DATABASE_URL: "sqlite::memory:"
     strategy:
       matrix:
         # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
@@ -79,6 +81,8 @@ jobs:
   mysql:
     name: MySQL
     runs-on: ubuntu-20.04
+    env:
+      DATABASE_URL: "mysql://root:@localhost"
     strategy:
       matrix:
         # version: [8.0, 5.7, 5.6]
@@ -130,6 +134,8 @@ jobs:
   mariadb:
     name: MariaDB
     runs-on: ubuntu-20.04
+    env:
+      DATABASE_URL: "mysql://root:@localhost"
     strategy:
       matrix:
         # version: [10.6, 10.5, 10.4, 10.3, 10.2]
@@ -181,6 +187,8 @@ jobs:
   postgres:
     name: Postgres
     runs-on: ubuntu-20.04
+    env:
+      DATABASE_URL: "postgres://root:root@localhost"
     strategy:
       matrix:
         # version: [13.3, 12.7, 11.12, 10.17, 9.6.22]
