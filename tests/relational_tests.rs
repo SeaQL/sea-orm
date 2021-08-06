@@ -90,11 +90,7 @@ pub async fn left_join() {
 }
 
 #[async_std::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 pub async fn right_join() {
     let ctx = TestContext::new("test_right_join").await;
 
