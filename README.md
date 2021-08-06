@@ -18,7 +18,7 @@ Inspired by ActiveRecord, Eloquent and TypeORM, SeaORM aims to provide you an in
 API to make working with databases in Rust a first-class experience.
 
 ```markdown
-This is a preview of SeaORM, and is not yet released.
+This is an early release of SeaORM, the API is not stable yet.
 ```
 
 ## Features
