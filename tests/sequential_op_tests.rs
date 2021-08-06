@@ -10,11 +10,7 @@ pub use common::{bakery_chain::*, setup::*, TestContext};
 // Run the test locally:
 // DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql --test sequential_op_tests
 #[async_std::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 pub async fn test_multiple_operations() {
     let ctx = TestContext::new("multiple_sequential_operations").await;
 
