@@ -4,8 +4,6 @@ pub use schema::*;
 
 pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
     let db = if cfg!(feature = "sqlx-mysql") {
-        println!("sqlx-mysql");
-
         let url = format!("{}/mysql", base_url);
         let db = Database::connect(&url).await.unwrap();
         let _drop_db_result = db
@@ -25,12 +23,8 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
         let url = format!("{}/{}", base_url, db_name);
         Database::connect(&url).await.unwrap()
     } else if cfg!(feature = "sqlx-postgres") {
-        println!("sqlx-postgres");
-
         let url = format!("{}/postgres", base_url);
-        println!("url: {:#?}", url);
         let db = Database::connect(&url).await.unwrap();
-        println!("db: {:#?}", db);
         let _drop_db_result = db
             .execute(Statement::from_string(
                 DatabaseBackend::Postgres,
@@ -46,12 +40,8 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
             .await;
 
         let url = format!("{}/{}", base_url, db_name);
-        println!("url: {:#?}", url);
-
         Database::connect(&url).await.unwrap()
     } else {
-        println!("sqlx-sqlite");
-
         Database::connect(base_url).await.unwrap()
     };
 
@@ -67,8 +57,6 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
 
 pub async fn tear_down(base_url: &str, db_name: &str) {
     if cfg!(feature = "sqlx-mysql") {
-        println!("sqlx-mysql");
-
         let url = format!("{}/mysql", base_url);
         let db = Database::connect(&url).await.unwrap();
         let _ = db
@@ -78,10 +66,7 @@ pub async fn tear_down(base_url: &str, db_name: &str) {
             ))
             .await;
     } else if cfg!(feature = "sqlx-postgres") {
-        println!("sqlx-postgres");
-
         let url = format!("{}/postgres", base_url);
-        println!("url: {:#?}", url);
         let db = Database::connect(&url).await.unwrap();
         let _ = db
             .execute(Statement::from_string(
@@ -90,6 +75,5 @@ pub async fn tear_down(base_url: &str, db_name: &str) {
             ))
             .await;
     } else {
-        println!("sqlx-sqlite");
     };
 }

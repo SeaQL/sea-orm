@@ -81,8 +81,6 @@ pub async fn test_create_order(db: &DbConn) {
         .await
         .expect("could not insert order");
 
-    println!("order_insert_res: {:#?}", order_insert_res);
-
     // Lineitem
     let lineitem_1 = lineitem::ActiveModel {
         cake_id: Set(cake_insert_res.last_insert_id as i32),
