@@ -52,7 +52,7 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
     } else {
         println!("sqlx-sqlite");
 
-        Database::connect("sqlite::memory:").await.unwrap()
+        Database::connect(base_url).await.unwrap()
     };
 
     assert!(schema::create_bakery_table(&db).await.is_ok());
