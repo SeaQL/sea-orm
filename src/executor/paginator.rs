@@ -65,8 +65,10 @@ where
         };
         let num_items = match self.db {
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(_) => result.try_get::<i64>("", "num_items")? as usize,
-            _ => result.try_get::<i32>("", "num_items")? as usize
+            DatabaseConnection::SqlxPostgresPoolConnection(_) => {
+                result.try_get::<i64>("", "num_items")? as usize
+            }
+            _ => result.try_get::<i32>("", "num_items")? as usize,
         };
         Ok(num_items)
     }
