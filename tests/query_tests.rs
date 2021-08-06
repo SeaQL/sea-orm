@@ -205,7 +205,7 @@ pub async fn find_all_filter_with_results() {
     .expect("could not insert bakery");
 
     let bakeries = Bakery::find()
-        .filter(bakery::Column::Name.contains("bakery"))
+        .filter(bakery::Column::Name.contains("Bakery"))
         .all(&ctx.db)
         .await
         .unwrap();
