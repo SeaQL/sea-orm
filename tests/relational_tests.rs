@@ -316,7 +316,7 @@ pub async fn group_by() {
     #[derive(Debug, FromQueryResult)]
     struct SelectResult {
         name: String,
-        number_orders: Option<i32>,
+        number_orders: Option<i64>,
         total_spent: Option<Decimal>,
         min_spent: Option<Decimal>,
         max_spent: Option<Decimal>,

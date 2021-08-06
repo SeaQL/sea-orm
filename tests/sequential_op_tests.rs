@@ -130,10 +130,15 @@ async fn init_setup(db: &DatabaseConnection) {
 }
 
 async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model> {
+    #[cfg(feature = "sqlx-postgres")]
+    type Type = i64;
+    #[cfg(not(feature = "sqlx-postgres"))]
+    type Type = Decimal;
+
     #[derive(Debug, FromQueryResult)]
     struct SelectResult {
         id: i32,
-        cakes_sold_opt: Option<Decimal>,
+        cakes_sold_opt: Option<Type>,
     }
 
     #[derive(Debug)]
@@ -174,13 +179,13 @@ async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model>
         .into_iter()
         .map(|b| LeastSalesBakerResult {
             id: b.id.clone(),
-            cakes_sold: b.cakes_sold_opt.unwrap_or(dec!(0)),
+            cakes_sold: b.cakes_sold_opt.unwrap_or_default().into(),
         })
         .collect();
 
     results.sort_by(|a, b| b.cakes_sold.cmp(&a.cakes_sold));
 
-    Baker::find_by_id(results.last().unwrap().id)
+    Baker::find_by_id(results.last().unwrap().id as i64)
         .one(db)
         .await
         .unwrap()
