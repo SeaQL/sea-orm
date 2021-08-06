@@ -8,8 +8,10 @@ pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 
 // Run the test locally:
-// DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql --test sequential_op_tests
-#[async_std::test]
+// DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std --test sequential_op_tests
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
 #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 pub async fn test_multiple_operations() {
     let ctx = TestContext::new("multiple_sequential_operations").await;
@@ -27,6 +29,7 @@ pub async fn test_multiple_operations() {
     ctx.delete().await;
 }
 
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 async fn init_setup(db: &DatabaseConnection) {
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -125,6 +128,7 @@ async fn init_setup(db: &DatabaseConnection) {
     .expect("could not insert order");
 }
 
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model> {
     #[cfg(feature = "sqlx-postgres")]
     type Type = i64;
@@ -187,6 +191,7 @@ async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model>
         .unwrap()
 }
 
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cake::Model> {
     let new_cake = cake::ActiveModel {
         name: Set("New Cake".to_owned()),
@@ -219,6 +224,7 @@ async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cak
         .unwrap()
 }
 
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 async fn create_order(db: &DatabaseConnection, cake: cake::Model) {
     let another_customer = customer::ActiveModel {
         name: Set("John".to_owned()),
@@ -252,6 +258,7 @@ async fn create_order(db: &DatabaseConnection, cake: cake::Model) {
     .expect("could not insert order");
 }
 
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 pub async fn test_delete_bakery(db: &DatabaseConnection) {
     let initial_bakeries = Bakery::find().all(db).await.unwrap().len();
 

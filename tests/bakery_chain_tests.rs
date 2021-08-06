@@ -6,8 +6,10 @@ pub use common::{bakery_chain::*, setup::*, TestContext};
 mod crud;
 
 // Run the test locally:
-// DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql --test bakery_chain_tests
-#[async_std::test]
+// DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std --test bakery_chain_tests
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
 #[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",

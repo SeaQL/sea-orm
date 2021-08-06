@@ -7,8 +7,10 @@ pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 
 // Run the test locally:
-// DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql --test realtional_tests
-#[async_std::test]
+// DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std --test relational_tests
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
 #[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",
@@ -89,7 +91,9 @@ pub async fn left_join() {
     ctx.delete().await;
 }
 
-#[async_std::test]
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
 #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 pub async fn right_join() {
     let ctx = TestContext::new("test_right_join").await;
@@ -170,7 +174,9 @@ pub async fn right_join() {
     ctx.delete().await;
 }
 
-#[async_std::test]
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
 #[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",
@@ -259,7 +265,9 @@ pub async fn inner_join() {
     ctx.delete().await;
 }
 
-#[async_std::test]
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
 #[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",
@@ -363,7 +371,9 @@ pub async fn group_by() {
     ctx.delete().await;
 }
 
-#[async_std::test]
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
 #[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",
