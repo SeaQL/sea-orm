@@ -5,6 +5,8 @@ pub enum DbErr {
     Query(String),
 }
 
+impl std::error::Error for DbErr {}
+
 impl std::fmt::Display for DbErr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
