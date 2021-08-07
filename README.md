@@ -8,6 +8,10 @@
     <strong>🐚 An async & dynamic ORM for Rust</strong>
   </p>
 
+  [![crate](https://img.shields.io/crates/v/sea-orm.svg)](https://crates.io/crates/sea-orm)
+  [![docs](https://docs.rs/sea-orm/badge.svg)](https://docs.rs/sea-orm)
+  [![build status](https://github.com/SeaQL/sea-orm/actions/workflows/rust.yml/badge.svg)](https://github.com/SeaQL/sea-orm/actions/workflows/rust.yml)
+
   <sub>Built with 🔥 by 🌊🦀🐚</sub>
 
 </div>

@@ -16,8 +16,7 @@ license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
 categories = ["database"]
-keywords = ["orm", "database", "sql", "mysql", "postgres", "sqlite", "async"]
-publish = false
+keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 
 [package.metadata.docs.rs]
 features = [
@@ -37,7 +36,7 @@ chrono = { version = "^0", optional = true }
 futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 rust_decimal = { version = "^1", optional = true }
-sea-orm-macros = { path = "sea-orm-macros", optional = true }
+sea-orm-macros = { version = "^0.1", optional = true }
 sea-query = { version = "^0.12.8" }
 sea-strum = { version = "^0.21", features = ["derive", "sea-orm"] }
 serde = { version = "^1.0", features = ["derive"] }
