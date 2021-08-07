@@ -1,5 +1,4 @@
 use sea_orm::entity::prelude::*;
-use serde_json::Value as Json;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 pub struct Entity;

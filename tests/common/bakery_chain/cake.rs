@@ -1,6 +1,4 @@
-use rust_decimal::prelude::*;
 use sea_orm::entity::prelude::*;
-use uuid::Uuid;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 pub struct Entity;
