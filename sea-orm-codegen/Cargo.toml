@@ -3,13 +3,12 @@ name = "sea-orm-codegen"
 version = "0.1.0"
 authors = ["Billy Chan <ccw.billy.123@gmail.com>"]
 edition = "2018"
-description = ""
+description = "Code Generator for SeaORM"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
 categories = ["database"]
-keywords = ["orm", "database", "sql", "mysql", "postgres", "sqlite"]
-publish = false
+keywords = ["sql", "mysql", "postgres", "sqlite"]
 
 [lib]
 name = "sea_orm_codegen"
