@@ -70,8 +70,8 @@ pub async fn test_create_order(db: &DbConn) {
 
     // Order
     let order_1 = order::ActiveModel {
-        bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
-        customer_id: Set(Some(customer_insert_res.last_insert_id as i32)),
+        bakery_id: Set(bakery_insert_res.last_insert_id as i32),
+        customer_id: Set(customer_insert_res.last_insert_id as i32),
         total: Set(dec!(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
@@ -83,8 +83,8 @@ pub async fn test_create_order(db: &DbConn) {
 
     // Lineitem
     let lineitem_1 = lineitem::ActiveModel {
-        cake_id: Set(Some(cake_insert_res.last_insert_id as i32)),
-        order_id: Set(Some(order_insert_res.last_insert_id as i32)),
+        cake_id: Set(cake_insert_res.last_insert_id as i32),
+        order_id: Set(order_insert_res.last_insert_id as i32),
         price: Set(dec!(7.55)),
         quantity: Set(2),
         ..Default::default()
@@ -94,7 +94,7 @@ pub async fn test_create_order(db: &DbConn) {
         .await
         .expect("could not insert lineitem");
 
-    let order: Option<order::Model> = Order::find_by_id(order_insert_res.last_insert_id)
+    let order: Option<order::Model> = Order::find_by_id(order_insert_res.last_insert_id as i32)
         .one(db)
         .await
         .expect("could not find order");
@@ -103,7 +103,7 @@ pub async fn test_create_order(db: &DbConn) {
     let order_model = order.unwrap();
     assert_eq!(order_model.total, dec!(15.10));
 
-    let customer: Option<customer::Model> = Customer::find_by_id(order_model.customer_id)
+    let customer: Option<customer::Model> = Customer::find_by_id(order_model.customer_id as u64)
         .one(db)
         .await
         .expect("could not find customer");
@@ -111,7 +111,7 @@ pub async fn test_create_order(db: &DbConn) {
     let customer_model = customer.unwrap();
     assert_eq!(customer_model.name, "Kate");
 
-    let bakery: Option<bakery::Model> = Bakery::find_by_id(order_model.bakery_id)
+    let bakery: Option<bakery::Model> = Bakery::find_by_id(order_model.bakery_id as i64)
         .one(db)
         .await
         .expect("could not find bakery");

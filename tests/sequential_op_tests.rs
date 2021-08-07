@@ -7,10 +7,14 @@ use uuid::Uuid;
 pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 
-#[async_std::test]
-#[cfg(feature = "sqlx-mysql")]
+// Run the test locally:
+// DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std --test sequential_op_tests
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 pub async fn test_multiple_operations() {
-    let ctx = TestContext::new("mysql://root:@localhost", "multiple_sequential_operations").await;
+    let ctx = TestContext::new("multiple_sequential_operations").await;
 
     init_setup(&ctx.db).await;
     let baker_least_sales = find_baker_least_sales(&ctx.db).await.unwrap();
@@ -21,8 +25,11 @@ pub async fn test_multiple_operations() {
 
     let baker_least_sales = find_baker_least_sales(&ctx.db).await.unwrap();
     assert_eq!(baker_least_sales.name, "Baker 1");
+
+    ctx.delete().await;
 }
 
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 async fn init_setup(db: &DatabaseConnection) {
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -87,8 +94,8 @@ async fn init_setup(db: &DatabaseConnection) {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(99.95)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -99,10 +106,10 @@ async fn init_setup(db: &DatabaseConnection) {
     .expect("could not insert order");
 
     let _lineitem = lineitem::ActiveModel {
-        cake_id: Set(Some(cake_insert_res.last_insert_id as i32)),
+        cake_id: Set(cake_insert_res.last_insert_id as i32),
         price: Set(dec!(10.00)),
         quantity: Set(12),
-        order_id: Set(Some(kate_order_1.id.clone().unwrap())),
+        order_id: Set(kate_order_1.id.clone().unwrap()),
         ..Default::default()
     }
     .save(db)
@@ -110,10 +117,10 @@ async fn init_setup(db: &DatabaseConnection) {
     .expect("could not insert order");
 
     let _lineitem2 = lineitem::ActiveModel {
-        cake_id: Set(Some(cake_insert_res.last_insert_id as i32)),
+        cake_id: Set(cake_insert_res.last_insert_id as i32),
         price: Set(dec!(50.00)),
         quantity: Set(2),
-        order_id: Set(Some(kate_order_1.id.clone().unwrap())),
+        order_id: Set(kate_order_1.id.clone().unwrap()),
         ..Default::default()
     }
     .save(db)
@@ -121,11 +128,17 @@ async fn init_setup(db: &DatabaseConnection) {
     .expect("could not insert order");
 }
 
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model> {
+    #[cfg(feature = "sqlx-postgres")]
+    type Type = i64;
+    #[cfg(not(feature = "sqlx-postgres"))]
+    type Type = Decimal;
+
     #[derive(Debug, FromQueryResult)]
     struct SelectResult {
         id: i32,
-        cakes_sold_opt: Option<Decimal>,
+        cakes_sold_opt: Option<Type>,
     }
 
     #[derive(Debug)]
@@ -166,18 +179,19 @@ async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model>
         .into_iter()
         .map(|b| LeastSalesBakerResult {
             id: b.id.clone(),
-            cakes_sold: b.cakes_sold_opt.unwrap_or(dec!(0)),
+            cakes_sold: b.cakes_sold_opt.unwrap_or_default().into(),
         })
         .collect();
 
     results.sort_by(|a, b| b.cakes_sold.cmp(&a.cakes_sold));
 
-    Baker::find_by_id(results.last().unwrap().id)
+    Baker::find_by_id(results.last().unwrap().id as i64)
         .one(db)
         .await
         .unwrap()
 }
 
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cake::Model> {
     let new_cake = cake::ActiveModel {
         name: Set("New Cake".to_owned()),
@@ -210,6 +224,7 @@ async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cak
         .unwrap()
 }
 
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 async fn create_order(db: &DatabaseConnection, cake: cake::Model) {
     let another_customer = customer::ActiveModel {
         name: Set("John".to_owned()),
@@ -220,8 +235,8 @@ async fn create_order(db: &DatabaseConnection, cake: cake::Model) {
     .expect("could not insert customer");
 
     let order = order::ActiveModel {
-        bakery_id: Set(Some(cake.bakery_id.unwrap())),
-        customer_id: Set(Some(another_customer.id.clone().unwrap())),
+        bakery_id: Set(cake.bakery_id.unwrap()),
+        customer_id: Set(another_customer.id.clone().unwrap()),
         total: Set(dec!(200.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -232,10 +247,10 @@ async fn create_order(db: &DatabaseConnection, cake: cake::Model) {
     .expect("could not insert order");
 
     let _lineitem = lineitem::ActiveModel {
-        cake_id: Set(Some(cake.id)),
+        cake_id: Set(cake.id),
         price: Set(dec!(10.00)),
         quantity: Set(300),
-        order_id: Set(Some(order.id.clone().unwrap())),
+        order_id: Set(order.id.clone().unwrap()),
         ..Default::default()
     }
     .save(db)
@@ -243,6 +258,7 @@ async fn create_order(db: &DatabaseConnection, cake: cake::Model) {
     .expect("could not insert order");
 }
 
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 pub async fn test_delete_bakery(db: &DatabaseConnection) {
     let initial_bakeries = Bakery::find().all(db).await.unwrap().len();
 

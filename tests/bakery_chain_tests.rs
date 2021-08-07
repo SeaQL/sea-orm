@@ -5,16 +5,20 @@ pub use common::{bakery_chain::*, setup::*, TestContext};
 
 mod crud;
 
-// cargo test --test bakery_chain_tests -- --nocapture
-#[async_std::test]
-#[cfg(feature = "sqlx-mysql")]
+// Run the test locally:
+// DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std --test bakery_chain_tests
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 async fn main() {
-    let base_url = "mysql://root:@localhost";
-    let db_name = "bakery_chain_schema_crud_tests";
-
-    let db: DatabaseConnection = common::setup::setup(base_url, db_name).await;
-    create_entities(&db).await;
-    common::setup::tear_down(base_url, db_name).await;
+    let ctx = TestContext::new("bakery_chain_schema_crud_tests").await;
+    create_entities(&ctx.db).await;
+    ctx.delete().await;
 }
 
 async fn create_entities(db: &DatabaseConnection) {

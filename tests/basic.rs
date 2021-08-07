@@ -1,20 +1,23 @@
-use sea_orm::{entity::*, error::*, sea_query, tests_cfg::*, DbBackend, DbConn, Statement};
+#[allow(unused_imports)]
+use sea_orm::{entity::*, error::*, sea_query, tests_cfg::*, Database, DbConn};
 
-mod setup;
-
-// cargo test --test basic -- --nocapture
+// DATABASE_URL="sqlite::memory:" cargo test --features sqlx-sqlit,runtime-async-std --test basic
 #[cfg_attr(feature = "runtime-async-std", async_std::test)]
 #[cfg_attr(feature = "runtime-actix", actix_rt::test)]
 #[cfg_attr(feature = "runtime-tokio", tokio::test)]
 #[cfg(feature = "sqlx-sqlite")]
 async fn main() {
-    let db: DbConn = setup::setup().await;
+    use std::env;
+    let base_url = env::var("DATABASE_URL").expect("Enviroment variable 'DATABASE_URL' not set");
+
+    let db: DbConn = Database::connect(&base_url).await.unwrap();
 
     setup_schema(&db).await;
 
     crud_cake(&db).await.unwrap();
 }
 
+#[cfg(feature = "sqlx-sqlite")]
 async fn setup_schema(db: &DbConn) {
     use sea_query::*;
 
@@ -28,14 +31,14 @@ async fn setup_schema(db: &DbConn) {
                 .primary_key(),
         )
         .col(ColumnDef::new(cake::Column::Name).string())
-        .build(SqliteQueryBuilder);
+        .to_owned();
 
-    let result = db
-        .execute(Statement::from_string(DbBackend::Sqlite, stmt))
-        .await;
+    let builder = db.get_database_backend();
+    let result = db.execute(builder.build(&stmt)).await;
     println!("Create table cake: {:?}", result);
 }
 
+#[cfg(feature = "sqlx-sqlite")]
 async fn crud_cake(db: &DbConn) -> Result<(), DbErr> {
     let apple = cake::ActiveModel {
         name: Set("Apple Pie".to_owned()),

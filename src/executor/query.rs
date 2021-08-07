@@ -1,4 +1,4 @@
-use crate::DbErr;
+use crate::{debug_print, DbErr};
 use chrono::NaiveDateTime;
 use serde_json::Value as Json;
 use std::fmt;
@@ -90,31 +90,28 @@ macro_rules! try_getable_all {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
-                        match row.try_get(column.as_str()) {
-                            Ok(v) => Ok(Some(v)),
-                            Err(_) => Ok(None),
-                        }
+                        row.try_get::<Option<$type>, _>(column.as_str())
+                            .map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => {
                         use sqlx::Row;
-                        match row.try_get(column.as_str()) {
-                            Ok(v) => Ok(Some(v)),
-                            Err(_) => Ok(None),
-                        }
+                        row.try_get::<Option<$type>, _>(column.as_str())
+                            .map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => {
                         use sqlx::Row;
-                        match row.try_get(column.as_str()) {
-                            Ok(v) => Ok(Some(v)),
-                            Err(_) => Ok(None),
-                        }
+                        row.try_get::<Option<$type>, _>(column.as_str())
+                            .map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => match row.try_get(column.as_str()) {
                         Ok(v) => Ok(Some(v)),
-                        Err(_) => Ok(None),
+                        Err(e) => {
+                            debug_print!("{:#?}", e.to_string());
+                            Ok(None)
+                        }
                     },
                 }
             }
@@ -157,10 +154,8 @@ macro_rules! try_getable_unsigned {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
-                        match row.try_get(column.as_str()) {
-                            Ok(v) => Ok(Some(v)),
-                            Err(_) => Ok(None),
-                        }
+                        row.try_get::<Option<$type>, _>(column.as_str())
+                            .map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(_) => {
@@ -169,15 +164,16 @@ macro_rules! try_getable_unsigned {
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => {
                         use sqlx::Row;
-                        match row.try_get(column.as_str()) {
-                            Ok(v) => Ok(Some(v)),
-                            Err(_) => Ok(None),
-                        }
+                        row.try_get::<Option<$type>, _>(column.as_str())
+                            .map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => match row.try_get(column.as_str()) {
                         Ok(v) => Ok(Some(v)),
-                        Err(_) => Ok(None),
+                        Err(e) => {
+                            debug_print!("{:#?}", e.to_string());
+                            Ok(None)
+                        }
                     },
                 }
             }
@@ -218,10 +214,8 @@ macro_rules! try_getable_mysql {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
-                        match row.try_get(column.as_str()) {
-                            Ok(v) => Ok(Some(v)),
-                            Err(_) => Ok(None),
-                        }
+                        row.try_get::<Option<$type>, _>(column.as_str())
+                            .map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(_) => {
@@ -234,7 +228,10 @@ macro_rules! try_getable_mysql {
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => match row.try_get(column.as_str()) {
                         Ok(v) => Ok(Some(v)),
-                        Err(_) => Ok(None),
+                        Err(e) => {
+                            debug_print!("{:#?}", e.to_string());
+                            Ok(None)
+                        }
                     },
                 }
             }
@@ -309,7 +306,10 @@ impl TryGetable for Option<Decimal> {
                 use sqlx::Row;
                 match row.try_get(column.as_str()) {
                     Ok(v) => Ok(Some(v)),
-                    Err(_) => Ok(None),
+                    Err(e) => {
+                        debug_print!("{:#?}", e.to_string());
+                        Ok(None)
+                    }
                 }
             }
             #[cfg(feature = "sqlx-postgres")]
@@ -317,7 +317,10 @@ impl TryGetable for Option<Decimal> {
                 use sqlx::Row;
                 match row.try_get(column.as_str()) {
                     Ok(v) => Ok(Some(v)),
-                    Err(_) => Ok(None),
+                    Err(e) => {
+                        debug_print!("{:#?}", e.to_string());
+                        Ok(None)
+                    }
                 }
             }
             #[cfg(feature = "sqlx-sqlite")]
@@ -325,13 +328,19 @@ impl TryGetable for Option<Decimal> {
                 let result: Result<Decimal, _> = TryGetable::try_get(res, pre, col);
                 match result {
                     Ok(v) => Ok(Some(v)),
-                    Err(_) => Ok(None),
+                    Err(e) => {
+                        debug_print!("{:#?}", e.to_string());
+                        Ok(None)
+                    }
                 }
             }
             #[cfg(feature = "mock")]
             QueryResultRow::Mock(row) => match row.try_get(column.as_str()) {
                 Ok(v) => Ok(Some(v)),
-                Err(_) => Ok(None),
+                Err(e) => {
+                    debug_print!("{:#?}", e.to_string());
+                    Ok(None)
+                }
             },
         }
     }

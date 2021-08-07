@@ -70,8 +70,8 @@ pub async fn test_create_lineitem(db: &DbConn) {
 
     // Order
     let order_1 = order::ActiveModel {
-        bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
-        customer_id: Set(Some(customer_insert_res.last_insert_id as i32)),
+        bakery_id: Set(bakery_insert_res.last_insert_id as i32),
+        customer_id: Set(customer_insert_res.last_insert_id as i32),
         total: Set(dec!(7.55)),
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
@@ -83,8 +83,8 @@ pub async fn test_create_lineitem(db: &DbConn) {
 
     // Lineitem
     let lineitem_1 = lineitem::ActiveModel {
-        cake_id: Set(Some(cake_insert_res.last_insert_id as i32)),
-        order_id: Set(Some(order_insert_res.last_insert_id as i32)),
+        cake_id: Set(cake_insert_res.last_insert_id as i32),
+        order_id: Set(order_insert_res.last_insert_id as i32),
         price: Set(dec!(7.55)),
         quantity: Set(1),
         ..Default::default()
@@ -102,9 +102,10 @@ pub async fn test_create_lineitem(db: &DbConn) {
 
     assert!(lineitem.is_some());
     let lineitem_model = lineitem.unwrap();
+
     assert_eq!(lineitem_model.price, dec!(7.55));
 
-    let cake: Option<cake::Model> = Cake::find_by_id(lineitem_model.cake_id)
+    let cake: Option<cake::Model> = Cake::find_by_id(lineitem_model.cake_id as u64)
         .one(db)
         .await
         .expect("could not find cake");
@@ -119,7 +120,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
 
     let order_model = order.unwrap();
     assert_eq!(
-        order_model.customer_id.unwrap(),
+        order_model.customer_id,
         customer_insert_res.last_insert_id as i32
     );
 }

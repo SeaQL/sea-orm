@@ -1,5 +1,3 @@
-// cargo test --test realtional_tests -- --nocapture
-
 use chrono::offset::Utc;
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
@@ -8,10 +6,18 @@ use sea_orm::{entity::*, query::*, FromQueryResult};
 pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 
-#[async_std::test]
-#[cfg(feature = "sqlx-mysql")]
+// Run the test locally:
+// DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std --test relational_tests
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 pub async fn left_join() {
-    let ctx = TestContext::new("mysql://root:@localhost", "test_left_join").await;
+    let ctx = TestContext::new("test_left_join").await;
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -85,10 +91,12 @@ pub async fn left_join() {
     ctx.delete().await;
 }
 
-#[async_std::test]
-#[cfg(feature = "sqlx-mysql")]
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 pub async fn right_join() {
-    let ctx = TestContext::new("mysql://root:@localhost", "test_right_join").await;
+    let ctx = TestContext::new("test_right_join").await;
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -116,8 +124,8 @@ pub async fn right_join() {
     .expect("could not insert customer");
 
     let _order = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -166,10 +174,16 @@ pub async fn right_join() {
     ctx.delete().await;
 }
 
-#[async_std::test]
-#[cfg(feature = "sqlx-mysql")]
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 pub async fn inner_join() {
-    let ctx = TestContext::new("mysql://root:@localhost", "test_inner_join").await;
+    let ctx = TestContext::new("test_inner_join").await;
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -197,8 +211,8 @@ pub async fn inner_join() {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -209,8 +223,8 @@ pub async fn inner_join() {
     .expect("could not insert order");
 
     let kate_order_2 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(100.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -251,10 +265,16 @@ pub async fn inner_join() {
     ctx.delete().await;
 }
 
-#[async_std::test]
-#[cfg(feature = "sqlx-mysql")]
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 pub async fn group_by() {
-    let ctx = TestContext::new("mysql://root:@localhost", "test_group_by").await;
+    let ctx = TestContext::new("test_group_by").await;
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -274,8 +294,8 @@ pub async fn group_by() {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(99.95)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -286,8 +306,8 @@ pub async fn group_by() {
     .expect("could not insert order");
 
     let kate_order_2 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(200.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -300,7 +320,7 @@ pub async fn group_by() {
     #[derive(Debug, FromQueryResult)]
     struct SelectResult {
         name: String,
-        number_orders: Option<i32>,
+        number_orders: Option<i64>,
         total_spent: Option<Decimal>,
         min_spent: Option<Decimal>,
         max_spent: Option<Decimal>,
@@ -351,11 +371,17 @@ pub async fn group_by() {
     ctx.delete().await;
 }
 
-#[async_std::test]
-#[cfg(feature = "sqlx-mysql")]
+#[cfg_attr(feature = "runtime-async-std", async_std::test)]
+#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
+#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 pub async fn having() {
     // customers with orders with total equal to $90
-    let ctx = TestContext::new("mysql://root:@localhost", "test_having").await;
+    let ctx = TestContext::new("test_having").await;
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -375,8 +401,8 @@ pub async fn having() {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(100.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -387,8 +413,8 @@ pub async fn having() {
     .expect("could not insert order");
 
     let _kate_order_2 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_kate.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_kate.id.clone().unwrap()),
         total: Set(dec!(12.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -407,8 +433,8 @@ pub async fn having() {
     .expect("could not insert customer");
 
     let _bob_order_1 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_bob.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_bob.id.clone().unwrap()),
         total: Set(dec!(50.0)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -419,8 +445,8 @@ pub async fn having() {
     .expect("could not insert order");
 
     let _bob_order_2 = order::ActiveModel {
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
-        customer_id: Set(Some(customer_bob.id.clone().unwrap())),
+        bakery_id: Set(bakery.id.clone().unwrap()),
+        customer_id: Set(customer_bob.id.clone().unwrap()),
         total: Set(dec!(50.0)),
         placed_at: Set(Utc::now().naive_utc()),
 
