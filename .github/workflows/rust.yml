@@ -17,8 +17,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
-        runtime: [async-std-native-tls]
+        runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
     steps:
       - uses: actions/checkout@v2
 
@@ -83,9 +82,7 @@ jobs:
       DATABASE_URL: "mysql://root:@localhost"
     strategy:
       matrix:
-        # version: [8.0, 5.7, 5.6]
-        # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
-        version: [8.0]
+        version: [8.0, 5.7]
         runtime: [async-std-native-tls]
     services:
       mysql:
@@ -134,8 +131,6 @@ jobs:
       DATABASE_URL: "mysql://root:@localhost"
     strategy:
       matrix:
-        # version: [10.6, 10.5, 10.4, 10.3, 10.2]
-        # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
         version: [10.6]
         runtime: [async-std-native-tls]
     services:
@@ -185,9 +180,7 @@ jobs:
       DATABASE_URL: "postgres://root:root@localhost"
     strategy:
       matrix:
-        # version: [13.3, 12.7, 11.12, 10.17, 9.6.22]
-        # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
-        version: [13.3]
+        version: [13.3, 12.7, 11.12, 10.17, 9.6.22]
         runtime: [async-std-native-tls]
     services:
       postgres:
