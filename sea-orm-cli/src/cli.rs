@@ -10,7 +10,7 @@ pub fn build_cli() -> App<'static, 'static> {
                 .arg(
                     Arg::with_name("DATABASE_URL")
                         .long("database-url")
-                        .short("url")
+                        .short("u")
                         .help("Database URL")
                         .takes_value(true)
                         .required(true)
@@ -19,7 +19,7 @@ pub fn build_cli() -> App<'static, 'static> {
                 .arg(
                     Arg::with_name("DATABASE_SCHEMA")
                         .long("database-schema")
-                        .short("schema")
+                        .short("s")
                         .help("Database schema")
                         .takes_value(true)
                         .required(true)
