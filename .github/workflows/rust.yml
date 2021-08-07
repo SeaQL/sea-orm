@@ -35,14 +35,14 @@ jobs:
           command: build
           args: >
             --all
-            --features default,runtime-${{ matrix.runtime }}
+            --features default
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: >
             --all
-            --features default,runtime-${{ matrix.runtime }}
+            --features default
 
   sqlite:
     name: SQLite
@@ -68,14 +68,12 @@ jobs:
         with:
           command: build
           args: >
-            --all
             --features default,runtime-${{ matrix.runtime }}
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: >
-            --all
             --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}
 
   mysql:
@@ -121,14 +119,12 @@ jobs:
         with:
           command: build
           args: >
-            --all
             --features default,runtime-${{ matrix.runtime }}
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: >
-            --all
             --features default,sqlx-mysql,runtime-${{ matrix.runtime }}
 
   mariadb:
@@ -174,14 +170,12 @@ jobs:
         with:
           command: build
           args: >
-            --all
             --features default,runtime-${{ matrix.runtime }}
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: >
-            --all
             --features default,sqlx-mysql,runtime-${{ matrix.runtime }}
 
   postgres:
@@ -224,12 +218,10 @@ jobs:
         with:
           command: build
           args: >
-            --all
             --features default,runtime-${{ matrix.runtime }}
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: >
-            --all
             --features default,sqlx-postgres,runtime-${{ matrix.runtime }}

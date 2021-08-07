@@ -70,24 +70,22 @@ default = [
 ]
 macros = ["sea-orm-macros"]
 mock = []
-with-json = ["serde_json", "sea-query/with-json", "sqlx-json"]
-with-chrono = ["chrono", "sea-query/with-chrono", "sqlx-chrono"]
+with-json = ["serde_json", "sea-query/with-json"]
+with-chrono = ["chrono", "sea-query/with-chrono"]
 with-rust_decimal = [
     "rust_decimal",
     "sea-query/with-rust_decimal",
-    "sqlx-decimal",
 ]
 with-uuid = [
     "uuid",
     "sea-query/with-uuid",
-    "sqlx-core/uuid",
-    "sqlx-macros/uuid",
 ]
-sqlx-dep = ["sqlx"]
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
+sqlx-dep = ["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid"]
 sqlx-json = ["sqlx/json", "with-json"]
 sqlx-chrono = ["sqlx/chrono", "with-chrono"]
 sqlx-decimal = ["sqlx/decimal", "with-rust_decimal"]
+sqlx-uuid = ["sqlx/uuid", "with-uuid"]
 sqlx-mysql = ["sqlx-dep", "sea-query/sqlx-mysql", "sqlx/mysql"]
 sqlx-postgres = ["sqlx-dep", "sea-query/sqlx-postgres", "sqlx/postgres"]
 sqlx-sqlite = ["sqlx-dep", "sea-query/sqlx-sqlite", "sqlx/sqlite"]
