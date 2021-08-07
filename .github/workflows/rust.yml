@@ -1,4 +1,4 @@
-name: sea-orm
+name: tests
 
 on:
   push:
