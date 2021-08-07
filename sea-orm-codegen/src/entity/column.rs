@@ -26,20 +26,19 @@ impl Column {
             ColumnType::Char(_)
             | ColumnType::String(_)
             | ColumnType::Text
-            | ColumnType::DateTime(_)
-            | ColumnType::Timestamp(_)
             | ColumnType::Time(_)
             | ColumnType::Date
-            | ColumnType::Json
-            | ColumnType::JsonBinary
-            | ColumnType::Uuid
             | ColumnType::Custom(_) => "String",
             ColumnType::TinyInteger(_) => "i8",
             ColumnType::SmallInteger(_) => "i16",
             ColumnType::Integer(_) => "i32",
             ColumnType::BigInteger(_) => "i64",
-            ColumnType::Float(_) | ColumnType::Decimal(_) | ColumnType::Money(_) => "f32",
+            ColumnType::Float(_) => "f32",
             ColumnType::Double(_) => "f64",
+            ColumnType::Json | ColumnType::JsonBinary => "Json",
+            ColumnType::DateTime(_) | ColumnType::Timestamp(_) => "DateTime",
+            ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal",
+            ColumnType::Uuid => "Uuid",
             ColumnType::Binary(_) => "Vec<u8>",
             ColumnType::Boolean => "bool",
         }
