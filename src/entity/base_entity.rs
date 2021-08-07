@@ -5,7 +5,7 @@ use crate::{
 };
 use sea_query::{Iden, IntoValueTuple};
 use std::fmt::Debug;
-pub use strum::IntoEnumIterator as Iterable;
+pub use sea_strum::IntoEnumIterator as Iterable;
 
 pub trait IdenStatic: Iden + Copy + Debug + 'static {
     fn as_str(&self) -> &str;
