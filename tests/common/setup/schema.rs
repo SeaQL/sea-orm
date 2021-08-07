@@ -19,8 +19,8 @@ pub async fn create_bakery_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .auto_increment()
                 .primary_key(),
         )
-        .col(ColumnDef::new(bakery::Column::Name).string())
-        .col(ColumnDef::new(bakery::Column::ProfitMargin).double())
+        .col(ColumnDef::new(bakery::Column::Name).string().not_null())
+        .col(ColumnDef::new(bakery::Column::ProfitMargin).double().not_null())
         .to_owned();
 
     create_table(db, &stmt).await
@@ -33,12 +33,11 @@ pub async fn create_baker_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(
             ColumnDef::new(baker::Column::Id)
                 .integer()
-                .not_null()
                 .auto_increment()
                 .primary_key(),
         )
-        .col(ColumnDef::new(baker::Column::Name).string())
-        .col(ColumnDef::new(baker::Column::ContactDetails).json())
+        .col(ColumnDef::new(baker::Column::Name).string().not_null())
+        .col(ColumnDef::new(baker::Column::ContactDetails).json().not_null())
         .col(ColumnDef::new(baker::Column::BakeryId).integer())
         .foreign_key(
             ForeignKey::create()
@@ -64,7 +63,7 @@ pub async fn create_customer_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .auto_increment()
                 .primary_key(),
         )
-        .col(ColumnDef::new(customer::Column::Name).string())
+        .col(ColumnDef::new(customer::Column::Name).string().not_null())
         .col(ColumnDef::new(customer::Column::Notes).text())
         .to_owned();
 
@@ -82,7 +81,7 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .auto_increment()
                 .primary_key(),
         )
-        .col(ColumnDef::new(order::Column::Total).decimal_len(19, 4))
+        .col(ColumnDef::new(order::Column::Total).decimal_len(19, 4).not_null())
         .col(ColumnDef::new(order::Column::BakeryId).integer().not_null())
         .col(
             ColumnDef::new(order::Column::CustomerId)
@@ -126,8 +125,8 @@ pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .auto_increment()
                 .primary_key(),
         )
-        .col(ColumnDef::new(lineitem::Column::Price).decimal_len(19, 4))
-        .col(ColumnDef::new(lineitem::Column::Quantity).integer())
+        .col(ColumnDef::new(lineitem::Column::Price).decimal_len(19, 4).not_null())
+        .col(ColumnDef::new(lineitem::Column::Quantity).integer().not_null())
         .col(
             ColumnDef::new(lineitem::Column::OrderId)
                 .integer()
@@ -178,6 +177,22 @@ pub async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, DbErr>
                 .col(cakes_bakers::Column::CakeId)
                 .col(cakes_bakers::Column::BakerId),
         )
+        .foreign_key(
+            ForeignKey::create()
+                .name("FK_cakes_bakers_cake")
+                .from(cakes_bakers::Entity, cakes_bakers::Column::CakeId)
+                .to(cake::Entity, cake::Column::Id)
+                .on_delete(ForeignKeyAction::Cascade)
+                .on_update(ForeignKeyAction::Cascade),
+        )
+        .foreign_key(
+            ForeignKey::create()
+                .name("FK_cakes_bakers_baker")
+                .from(cakes_bakers::Entity, cakes_bakers::Column::BakerId)
+                .to(baker::Entity, baker::Column::Id)
+                .on_delete(ForeignKeyAction::Cascade)
+                .on_update(ForeignKeyAction::Cascade),
+        )
         .to_owned();
 
     create_table(db, &stmt).await
@@ -194,9 +209,9 @@ pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .auto_increment()
                 .primary_key(),
         )
-        .col(ColumnDef::new(cake::Column::Name).string())
-        .col(ColumnDef::new(cake::Column::Price).decimal_len(19, 4))
-        .col(ColumnDef::new(cake::Column::BakeryId).integer().not_null())
+        .col(ColumnDef::new(cake::Column::Name).string().not_null())
+        .col(ColumnDef::new(cake::Column::Price).decimal_len(19, 4).not_null())
+        .col(ColumnDef::new(cake::Column::BakeryId).integer())
         .foreign_key(
             ForeignKey::create()
                 .name("FK_cake_bakery")
@@ -205,8 +220,8 @@ pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .on_delete(ForeignKeyAction::Cascade)
                 .on_update(ForeignKeyAction::Cascade),
         )
-        .col(ColumnDef::new(cake::Column::GlutenFree).boolean())
-        .col(ColumnDef::new(cake::Column::Serial).uuid())
+        .col(ColumnDef::new(cake::Column::GlutenFree).boolean().not_null())
+        .col(ColumnDef::new(cake::Column::Serial).uuid().not_null())
         .to_owned();
 
     create_table(db, &stmt).await
