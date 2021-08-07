@@ -26,7 +26,3 @@ syn = { version = "^1", default-features = false, features = [
 quote = "^1"
 heck = "^0.3"
 proc-macro2 = "^1"
-
-[dev-dependencies]
-async-std = { version = "^1.9", features = ["attributes"] }
-sea-orm = { path = "../" }

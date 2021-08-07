@@ -4,8 +4,6 @@ members = [
     "sea-orm-macros",
     "sea-orm-codegen",
     "sea-orm-cli",
-    "examples/sqlx-mysql",
-    "examples/cli",
 ]
 
 [package]
@@ -24,9 +22,7 @@ publish = false
 [package.metadata.docs.rs]
 features = [
     "default",
-    "sqlx-mysql",
-    "sqlx-postgres",
-    "sqlx-sqlite",
+    "sqlx-all",
     "runtime-async-std-native-tls",
 ]
 rustdoc-args = ["--cfg", "docsrs"]
@@ -88,6 +84,7 @@ with-uuid = [
     "sqlx-macros/uuid",
 ]
 sqlx-dep = ["sqlx"]
+sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-json = ["sqlx/json", "with-json"]
 sqlx-chrono = ["sqlx/chrono", "with-chrono"]
 sqlx-decimal = ["sqlx/decimal", "with-rust_decimal"]

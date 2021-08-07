@@ -1,9 +1,0 @@
-[package]
-name = "sea-orm-cli-example"
-version = "0.1.0"
-edition = "2018"
-publish = false
-
-[dependencies]
-sea-orm = { path = "../../" }
-strum = { version = "^0.20", features = [ "derive" ] }

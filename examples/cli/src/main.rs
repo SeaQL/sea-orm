@@ -1,3 +1,0 @@
-mod entity;
-
-fn main() {}
