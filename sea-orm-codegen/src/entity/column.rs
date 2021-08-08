@@ -41,6 +41,7 @@ impl Column {
             ColumnType::Uuid => "Uuid",
             ColumnType::Binary(_) => "Vec<u8>",
             ColumnType::Boolean => "bool",
+            _ => unimplemented!(),
         }
         .parse()
         .unwrap();
@@ -87,7 +88,8 @@ impl Column {
             ColumnType::Custom(s) => {
                 let s = s.to_string();
                 quote! { ColumnType::Custom(#s.to_owned()).def() }
-            }
+            },
+            _ => unimplemented!(),
         };
         if !self.not_null {
             col_def.extend(quote! {
