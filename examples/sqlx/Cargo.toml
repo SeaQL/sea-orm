@@ -1,5 +1,5 @@
 [package]
-name = "sea-orm-sqlx-example"
+name = "sea-orm-example-sqlx"
 version = "0.1.0"
 edition = "2018"
 publish = false
