@@ -4,8 +4,8 @@ use crate::{
     RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
 };
 use sea_query::{Iden, IntoValueTuple};
-use std::fmt::Debug;
 pub use sea_strum::IntoEnumIterator as Iterable;
+use std::fmt::Debug;
 
 pub trait IdenStatic: Iden + Copy + Debug + 'static {
     fn as_str(&self) -> &str;

@@ -88,7 +88,7 @@ impl Column {
             ColumnType::Custom(s) => {
                 let s = s.to_string();
                 quote! { ColumnType::Custom(#s.to_owned()).def() }
-            },
+            }
             _ => unimplemented!(),
         };
         if !self.not_null {

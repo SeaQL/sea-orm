@@ -20,7 +20,11 @@ pub async fn create_bakery_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .primary_key(),
         )
         .col(ColumnDef::new(bakery::Column::Name).string().not_null())
-        .col(ColumnDef::new(bakery::Column::ProfitMargin).double().not_null())
+        .col(
+            ColumnDef::new(bakery::Column::ProfitMargin)
+                .double()
+                .not_null(),
+        )
         .to_owned();
 
     create_table(db, &stmt).await
@@ -37,7 +41,11 @@ pub async fn create_baker_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .primary_key(),
         )
         .col(ColumnDef::new(baker::Column::Name).string().not_null())
-        .col(ColumnDef::new(baker::Column::ContactDetails).json().not_null())
+        .col(
+            ColumnDef::new(baker::Column::ContactDetails)
+                .json()
+                .not_null(),
+        )
         .col(ColumnDef::new(baker::Column::BakeryId).integer())
         .foreign_key(
             ForeignKey::create()
@@ -81,7 +89,11 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .auto_increment()
                 .primary_key(),
         )
-        .col(ColumnDef::new(order::Column::Total).decimal_len(19, 4).not_null())
+        .col(
+            ColumnDef::new(order::Column::Total)
+                .decimal_len(19, 4)
+                .not_null(),
+        )
         .col(ColumnDef::new(order::Column::BakeryId).integer().not_null())
         .col(
             ColumnDef::new(order::Column::CustomerId)
@@ -125,8 +137,16 @@ pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .auto_increment()
                 .primary_key(),
         )
-        .col(ColumnDef::new(lineitem::Column::Price).decimal_len(19, 4).not_null())
-        .col(ColumnDef::new(lineitem::Column::Quantity).integer().not_null())
+        .col(
+            ColumnDef::new(lineitem::Column::Price)
+                .decimal_len(19, 4)
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(lineitem::Column::Quantity)
+                .integer()
+                .not_null(),
+        )
         .col(
             ColumnDef::new(lineitem::Column::OrderId)
                 .integer()
@@ -210,7 +230,11 @@ pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .primary_key(),
         )
         .col(ColumnDef::new(cake::Column::Name).string().not_null())
-        .col(ColumnDef::new(cake::Column::Price).decimal_len(19, 4).not_null())
+        .col(
+            ColumnDef::new(cake::Column::Price)
+                .decimal_len(19, 4)
+                .not_null(),
+        )
         .col(ColumnDef::new(cake::Column::BakeryId).integer())
         .foreign_key(
             ForeignKey::create()
@@ -220,7 +244,11 @@ pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .on_delete(ForeignKeyAction::Cascade)
                 .on_update(ForeignKeyAction::Cascade),
         )
-        .col(ColumnDef::new(cake::Column::GlutenFree).boolean().not_null())
+        .col(
+            ColumnDef::new(cake::Column::GlutenFree)
+                .boolean()
+                .not_null(),
+        )
         .col(ColumnDef::new(cake::Column::Serial).uuid().not_null())
         .to_owned();
 
