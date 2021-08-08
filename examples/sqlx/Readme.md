@@ -1,4 +1,4 @@
-# SeaORM SQLx MySql example
+# SeaORM SQLx example
 
 Prepare:
 
