@@ -25,13 +25,10 @@
 //! This is an early release of SeaORM, the API is not stable yet.
 //! ```
 //!
-//! <div align="center">
-//!
-//!   [![Getting Started](https://img.shields.io/badge/Getting%20Started-blue)](https://www.sea-ql.org/SeaORM/docs/index)
-//!   [![Getting Started](https://img.shields.io/badge/Examples-orange)](https://github.com/SeaQL/sea-orm/tree/master/examples/sqlx)
-//!   [![Getting Started](https://img.shields.io/badge/Starter%20Kit-green)](https://github.com/SeaQL/sea-orm/issues/37)
-//!
-//! </div>
+//! [![Getting Started](https://img.shields.io/badge/Getting%20Started-blue)](https://www.sea-ql.org/SeaORM/docs/index)
+//! [![Examples](https://img.shields.io/badge/Examples-orange)](https://github.com/SeaQL/sea-orm/tree/master/examples/sqlx)
+//! [![Starter Kit](https://img.shields.io/badge/Starter%20Kit-green)](https://github.com/SeaQL/sea-orm/issues/37)
+//! [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
 //!
 //! ## Features
 //!
