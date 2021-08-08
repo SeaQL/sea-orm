@@ -8,7 +8,7 @@ use sea_orm::{entity::*, error::*, sea_query, tests_cfg::*, Database, DbConn};
 #[cfg(feature = "sqlx-sqlite")]
 async fn main() {
     use std::env;
-    let base_url = env::var("DATABASE_URL").expect("Enviroment variable 'DATABASE_URL' not set");
+    let base_url = env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_owned());
 
     let db: DbConn = Database::connect(&base_url).await.unwrap();
 
