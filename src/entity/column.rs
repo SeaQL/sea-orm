@@ -312,6 +312,7 @@ impl From<sea_query::ColumnType> for ColumnType {
             sea_query::ColumnType::JsonBinary => Self::JsonBinary,
             sea_query::ColumnType::Custom(s) => Self::Custom(s.to_string()),
             sea_query::ColumnType::Uuid => Self::Uuid,
+            _ => unimplemented!(),
         }
     }
 }
