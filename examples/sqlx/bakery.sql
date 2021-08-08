@@ -4,7 +4,7 @@ CREATE TABLE `cake` (
   `id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+);
 
 INSERT INTO `cake` (`id`, `name`) VALUES
 	(1, 'New York Cheese'),
@@ -18,7 +18,7 @@ CREATE TABLE `fruit` (
   `cake_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   CONSTRAINT `fk-fruit-cake` FOREIGN KEY (`cake_id`) REFERENCES `cake` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+);
 
 INSERT INTO `fruit` (`id`, `name`, `cake_id`) VALUES
   (1, 'Blueberry', 1),
@@ -39,7 +39,7 @@ CREATE TABLE `filling` (
   `id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+);
 
 INSERT INTO `filling` (`id`, `name`) VALUES
   (1, 'Vanilla'),
@@ -54,7 +54,7 @@ CREATE TABLE `cake_filling` (
   PRIMARY KEY (`cake_id`, `filling_id`),
   CONSTRAINT `fk-cake_filling-cake` FOREIGN KEY (`cake_id`) REFERENCES `cake` (`id`),
   CONSTRAINT `fk-cake_filling-filling` FOREIGN KEY (`filling_id`) REFERENCES `filling` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+);
 
 INSERT INTO `cake_filling` (`cake_id`, `filling_id`) VALUES
   (1, 1),
