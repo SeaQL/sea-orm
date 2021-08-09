@@ -1,6 +1,4 @@
 use crate::{debug_print, DbErr};
-use chrono::NaiveDateTime;
-use serde_json::Value as Json;
 use std::fmt;
 
 #[derive(Debug)]
@@ -219,7 +217,7 @@ macro_rules! try_getable_mysql {
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(_) => {
-                        panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+                        panic!("{} unsupported by sqlx-postgres", stringify!($type))
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(_) => {
@@ -251,14 +249,15 @@ try_getable_mysql!(u64);
 try_getable_all!(f32);
 try_getable_all!(f64);
 try_getable_all!(String);
-try_getable_all!(NaiveDateTime);
-try_getable_all!(Json);
 
-#[cfg(feature = "with-uuid")]
-use uuid::Uuid;
+#[cfg(feature = "with-json")]
+try_getable_all!(serde_json::Value);
 
-#[cfg(feature = "with-uuid")]
-try_getable_all!(Uuid);
+#[cfg(feature = "with-chrono")]
+try_getable_all!(chrono::NaiveDateTime);
+
+// #[cfg(feature = "with-chrono")]
+// try_getable_all!(chrono::DateTime<chrono::FixedOffset>);
 
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;
@@ -345,3 +344,6 @@ impl TryGetable for Option<Decimal> {
         }
     }
 }
+
+#[cfg(feature = "with-uuid")]
+try_getable_all!(uuid::Uuid);
