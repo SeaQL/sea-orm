@@ -1,6 +1,6 @@
 //! <div align="center">
 //!
-//!   <img src="docs/SeaORM banner.png"/>
+//!   <img src="https://www.sea-ql.org/SeaORM/img/SeaORM banner.png"/>
 //!
 //!   <h1>SeaORM</h1>
 //!
@@ -34,11 +34,11 @@
 //!
 //! 1. Async
 //!
-//! Relying on SQLx, SeaORM is a new library with async support from day 1.
+//! Relying on [SQLx](https://github.com/launchbadge/sqlx), SeaORM is a new library with async support from day 1.
 //!
 //! 2. Dynamic
 //!
-//! Built upon SeaQuery, SeaORM allows you to build complex queries without 'fighting the ORM'.
+//! Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex queries without 'fighting the ORM'.
 //!
 //! 3. Testable
 //!
