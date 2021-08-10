@@ -23,13 +23,14 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
     match matches.subcommand() {
         ("entity", Some(args)) => {
             let url = args.value_of("DATABASE_URL").unwrap();
-            let schema = args.value_of("DATABASE_SCHEMA").unwrap();
             let output_dir = args.value_of("OUTPUT_DIR").unwrap();
 
             let table_stmts = if url.starts_with("mysql://") {
                 use sea_schema::mysql::discovery::SchemaDiscovery;
                 use sqlx::MySqlPool;
 
+                let url_parts: Vec<&str> = url.split("/").collect();
+                let schema = url_parts.last().unwrap();
                 let connection = MySqlPool::connect(url).await?;
                 let schema_discovery = SchemaDiscovery::new(connection, schema);
                 let schema = schema_discovery.discover().await;
@@ -42,6 +43,7 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                 use sea_schema::postgres::discovery::SchemaDiscovery;
                 use sqlx::PgPool;
 
+                let schema = args.value_of("DATABASE_SCHEMA").unwrap_or("public");
                 let connection = PgPool::connect(url).await?;
                 let schema_discovery = SchemaDiscovery::new(connection, schema);
                 let schema = schema_discovery.discover().await;

@@ -21,8 +21,10 @@ pub fn build_cli() -> App<'static, 'static> {
                         .long("database-schema")
                         .short("s")
                         .help("Database schema")
+                        .long_help("Database schema\n \
+                        - For MySQL, this argument is ignored.\n \
+                        - For PostgreSQL, this argument is optional with default value 'public'.")
                         .takes_value(true)
-                        .required(true)
                         .env("DATABASE_SCHEMA"),
                 )
                 .arg(
