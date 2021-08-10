@@ -7,7 +7,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "cake_filling"
+        "_cake_filling_"
     }
 }
 
