@@ -19,7 +19,7 @@ clap = { version = "^2.33.3" }
 dotenv = { version = "^0.15" }
 async-std = { version = "^1.9", features = [ "attributes" ] }
 sea-orm = { version = "^0.1", features = [ "sqlx-all" ] }
-sea-orm-codegen = { version = "^0.1" }
+sea-orm-codegen = { path = "../sea-orm-codegen", version = "^0.1" }
 sea-schema = { version = "^0.2.4", default-features = false, features = [
     "sqlx-mysql",
     "sqlx-postgres",

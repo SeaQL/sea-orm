@@ -34,7 +34,7 @@ impl EntityWriter {
                 let code_blocks = Self::gen_code_blocks(entity);
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
-                    name: format!("{}.rs", entity.table_name),
+                    name: format!("{}.rs", entity.get_table_name_snake_case()),
                     content: lines.join("\n\n"),
                 }
             })
@@ -123,11 +123,11 @@ impl EntityWriter {
     }
 
     pub fn gen_impl_entity_name(entity: &Entity) -> TokenStream {
-        let table_name_snake_case = entity.get_table_name_snake_case();
+        let table_name = entity.table_name.as_str();
         quote! {
             impl EntityName for Entity {
                 fn table_name(&self) -> &str {
-                    #table_name_snake_case
+                    #table_name
                 }
             }
         }
@@ -341,7 +341,7 @@ mod tests {
                 }],
             },
             Entity {
-                table_name: "cake_filling".to_owned(),
+                table_name: "_cake_filling_".to_owned(),
                 columns: vec![
                     Column {
                         name: "cake_id".to_owned(),
