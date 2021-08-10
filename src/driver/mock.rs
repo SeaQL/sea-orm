@@ -25,6 +25,7 @@ pub trait MockDatabaseTrait: Send {
 }
 
 impl MockDatabaseConnector {
+    #[allow(unused_variables)]
     pub fn accepts(string: &str) -> bool {
         #[cfg(feature = "sqlx-mysql")]
         if crate::SqlxMySqlConnector::accepts(string) {
@@ -41,6 +42,7 @@ impl MockDatabaseConnector {
         false
     }
 
+    #[allow(unused_variables)]
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
         macro_rules! connect_mock_db {
             ( $syntax: expr ) => {

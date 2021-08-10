@@ -22,6 +22,7 @@ impl Column {
     }
 
     pub fn get_rs_type(&self) -> TokenStream {
+        #[allow(unreachable_patterns)]
         let ident: TokenStream = match self.col_type {
             ColumnType::Char(_)
             | ColumnType::String(_)

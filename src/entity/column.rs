@@ -290,6 +290,7 @@ impl From<ColumnType> for sea_query::ColumnType {
 
 impl From<sea_query::ColumnType> for ColumnType {
     fn from(col_type: sea_query::ColumnType) -> Self {
+        #[allow(unreachable_patterns)]
         match col_type {
             sea_query::ColumnType::Char(s) => Self::Char(s),
             sea_query::ColumnType::String(s) => Self::String(s),
