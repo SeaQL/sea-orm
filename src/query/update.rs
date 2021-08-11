@@ -49,7 +49,7 @@ impl Update {
     {
         let myself = UpdateOne {
             query: UpdateStatement::new()
-                .table(A::Entity::default().into_iden())
+                .table(A::Entity::default().table_ref())
                 .to_owned(),
             model,
         };
@@ -75,7 +75,7 @@ impl Update {
         E: EntityTrait,
     {
         UpdateMany {
-            query: UpdateStatement::new().table(entity.into_iden()).to_owned(),
+            query: UpdateStatement::new().table(entity.table_ref()).to_owned(),
             entity: PhantomData,
         }
     }

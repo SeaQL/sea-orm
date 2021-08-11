@@ -2,7 +2,7 @@ use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySe
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{DynIden, IntoColumnRef, IntoIden, SeaRc, SelectStatement, SimpleExpr};
+use sea_query::{DynIden, IntoColumnRef, SeaRc, SelectStatement, SimpleExpr};
 
 #[derive(Clone, Debug)]
 pub struct Select<E>
@@ -119,7 +119,7 @@ where
     }
 
     fn prepare_from(mut self) -> Self {
-        self.query.from(E::default().into_iden());
+        self.query.from(E::default().table_ref());
         self
     }
 }
