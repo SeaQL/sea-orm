@@ -76,33 +76,6 @@ impl<E> Select<E>
 where
     E: EntityTrait,
 {
-    /// ```
-    /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
-    /// #
-    /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
-    /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
-    ///
-    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
-    /// #
-    /// let cheese: Option<cake::Model> = cake::Entity::find().from_raw_sql(
-    ///     Statement::from_sql_and_values(
-    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#, vec![1.into()]
-    ///     )
-    /// ).one(&db).await?;
-    /// #
-    /// # Ok(())
-    /// # });
-    ///
-    /// assert_eq!(
-    ///     db.into_transaction_log(),
-    ///     vec![
-    ///     Transaction::from_sql_and_values(
-    ///             DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#, vec![1.into()]
-    ///     ),
-    /// ]);
-    /// ```
     #[allow(clippy::wrong_self_convention)]
     pub fn from_raw_sql(self, stmt: Statement) -> SelectorRaw<SelectModel<E::Model>> {
         SelectorRaw {
@@ -289,6 +262,117 @@ impl<S> SelectorRaw<S>
 where
     S: SelectorTrait,
 {
+    /// ```
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, FromQueryResult};
+    ///
+    /// #[derive(Debug, FromQueryResult)]
+    /// struct SelectResult {
+    ///     name: String,
+    ///     num_of_cakes: i32,
+    /// }
+    ///
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// let _: Vec<SelectResult> = cake::Entity::find().from_raw_sql(
+    ///     Statement::from_sql_and_values(
+    ///         DbBackend::Postgres, r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#, vec![]
+    ///     )
+    /// )
+    /// .into_model::<SelectResult>()
+    /// .all(&db)
+    /// .await?;
+    /// #
+    /// # Ok(())
+    /// # });
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![
+    ///     Transaction::from_sql_and_values(
+    ///             DbBackend::Postgres, r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#, vec![]
+    ///     ),
+    /// ]);
+    /// ```
+    pub fn into_model<M>(self) -> SelectorRaw<SelectModel<M>>
+    where
+        M: FromQueryResult,
+    {
+        SelectorRaw {
+            stmt: self.stmt,
+            selector: SelectModel { model: PhantomData },
+        }
+    }
+
+    /// ```
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    ///
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// let _: Vec<serde_json::Value> = cake::Entity::find().from_raw_sql(
+    ///     Statement::from_sql_and_values(
+    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
+    ///     )
+    /// )
+    /// .into_json()
+    /// .all(&db)
+    /// .await?;
+    /// #
+    /// # Ok(())
+    /// # });
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![
+    ///     Transaction::from_sql_and_values(
+    ///             DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
+    ///     ),
+    /// ]);
+    /// ```
+    #[cfg(feature = "with-json")]
+    pub fn into_json(self) -> SelectorRaw<SelectModel<JsonValue>> {
+        SelectorRaw {
+            stmt: self.stmt,
+            selector: SelectModel { model: PhantomData },
+        }
+    }
+
+    /// ```
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    ///
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// let _: Option<cake::Model> = cake::Entity::find().from_raw_sql(
+    ///     Statement::from_sql_and_values(
+    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#, vec![1.into()]
+    ///     )
+    /// ).one(&db).await?;
+    /// #
+    /// # Ok(())
+    /// # });
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![
+    ///     Transaction::from_sql_and_values(
+    ///             DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#, vec![1.into()]
+    ///     ),
+    /// ]);
+    /// ```
     pub async fn one(self, db: &DatabaseConnection) -> Result<Option<S::Item>, DbErr> {
         let row = db.query_one(self.stmt).await?;
         match row {
@@ -297,6 +381,33 @@ where
         }
     }
 
+    /// ```
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    ///
+    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// #
+    /// let _: Vec<cake::Model> = cake::Entity::find().from_raw_sql(
+    ///     Statement::from_sql_and_values(
+    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
+    ///     )
+    /// ).all(&db).await?;
+    /// #
+    /// # Ok(())
+    /// # });
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![
+    ///     Transaction::from_sql_and_values(
+    ///             DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
+    ///     ),
+    /// ]);
+    /// ```
     pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, DbErr> {
         let rows = db.query_all(self.stmt).await?;
         let mut models = Vec::new();
