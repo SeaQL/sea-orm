@@ -3,7 +3,7 @@ use crate::{
     ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related, RelationBuilder,
     RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
 };
-use sea_query::{Iden, IntoValueTuple};
+use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 pub use sea_strum::IntoEnumIterator as Iterable;
 use std::fmt::Debug;
 
@@ -12,10 +12,21 @@ pub trait IdenStatic: Iden + Copy + Debug + 'static {
 }
 
 pub trait EntityName: IdenStatic + Default {
+    fn schema_name(&self) -> Option<&str> {
+        None
+    }
+
     fn table_name(&self) -> &str;
 
     fn module_name(&self) -> &str {
-        Self::table_name(self)
+        self.table_name()
+    }
+
+    fn table_ref(&self) -> TableRef {
+        match self.schema_name() {
+            Some(schema) => (Alias::new(schema).into_iden(), self.into_iden()).into_table_ref(),
+            None => self.into_table_ref(),
+        }
     }
 }
 

@@ -1,6 +1,6 @@
-use crate::{ActiveModelTrait, EntityTrait, IntoActiveModel, Iterable, QueryTrait};
+use crate::{ActiveModelTrait, EntityName, EntityTrait, IntoActiveModel, Iterable, QueryTrait};
 use core::marker::PhantomData;
-use sea_query::{InsertStatement, IntoIden};
+use sea_query::InsertStatement;
 
 #[derive(Clone, Debug)]
 pub struct Insert<A>
@@ -28,7 +28,7 @@ where
     pub(crate) fn new() -> Self {
         Self {
             query: InsertStatement::new()
-                .into_table(A::Entity::default().into_iden())
+                .into_table(A::Entity::default().table_ref())
                 .to_owned(),
             columns: Vec::new(),
             model: PhantomData,

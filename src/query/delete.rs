@@ -65,7 +65,7 @@ impl Delete {
     {
         let myself = DeleteOne {
             query: DeleteStatement::new()
-                .from_table(A::Entity::default().into_iden())
+                .from_table(A::Entity::default().table_ref())
                 .to_owned(),
             model: model.into_active_model(),
         };
