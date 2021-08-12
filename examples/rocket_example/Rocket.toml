@@ -1,0 +1,2 @@
+[default.databases.sqlx]
+url = "db/sqlx/db.sqlite"

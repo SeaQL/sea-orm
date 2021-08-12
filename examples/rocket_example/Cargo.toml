@@ -1,0 +1,30 @@
+[package]
+name = "rocket-example"
+version = "0.1.0"
+edition = "2018"
+publish = false
+[workspace]
+[dependencies]
+# rocket = { path = "../../../Rocket/core/lib", features = ["json"] }
+rocket = { git = "https://github.com/SergioBenitez/Rocket.git", branch = "master", features = [
+  "json",
+] }
+# async-std = { version = "^1.9", features = ["attributes"] }
+sea-orm = { path = "../../", features = [
+  "sqlx-all",
+  # "runtime-async-std-native-tls",
+] }
+serde_json = { version = "^1" }
+futures = { version = "^0.3" }
+async-stream = { version = "^0.3" }
+futures-util = { version = "^0.3" }
+
+[dependencies.sqlx]
+version = "0.5.1"
+default-features = false
+features = ["macros", "offline", "migrate"]
+
+[dependencies.rocket_db_pools]
+git = "https://github.com/SergioBenitez/Rocket"
+branch = "master"
+features = ["sqlx_sqlite"]
