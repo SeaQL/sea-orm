@@ -3,7 +3,7 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{Data, DataEnum, Fields, Variant};
 
-pub fn expand_derive_column(ident: Ident, data: Data) -> syn::Result<TokenStream> {
+pub fn expand_derive_column(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
     let variants = match data {
         syn::Data::Enum(DataEnum { variants, .. }) => variants,
         _ => {
@@ -30,18 +30,26 @@ pub fn expand_derive_column(ident: Ident, data: Data) -> syn::Result<TokenStream
         })
         .collect();
 
+    let impl_iden = expand_derive_custom_column(ident)?;
+
     Ok(quote!(
-        impl sea_orm::Iden for #ident {
-            fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-                write!(s, "{}", self.as_str()).unwrap();
-            }
-        }
+        #impl_iden
 
         impl sea_orm::IdenStatic for #ident {
             fn as_str(&self) -> &str {
                 match self {
                     #(Self::#variant => #name),*
                 }
+            }
+        }
+    ))
+}
+
+pub fn expand_derive_custom_column(ident: &Ident) -> syn::Result<TokenStream> {
+    Ok(quote!(
+        impl sea_orm::Iden for #ident {
+            fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+                write!(s, "{}", self.as_str()).unwrap();
             }
         }
     ))
