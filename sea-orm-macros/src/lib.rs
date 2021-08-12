@@ -29,7 +29,17 @@ pub fn derive_primary_key(input: TokenStream) -> TokenStream {
 pub fn derive_column(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
 
-    match derives::expand_derive_column(ident, data) {
+    match derives::expand_derive_column(&ident, &data) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
+#[proc_macro_derive(DeriveCustomColumn)]
+pub fn derive_custom_column(input: TokenStream) -> TokenStream {
+    let DeriveInput { ident, .. } = parse_macro_input!(input);
+
+    match derives::expand_derive_custom_column(&ident) {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }

@@ -16,10 +16,21 @@ pub struct Model {
     pub name: String,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+// If your column names are not in snake-case, derive `DeriveCustomColumn` here.
+#[derive(Copy, Clone, Debug, EnumIter, DeriveCustomColumn)]
 pub enum Column {
     Id,
     Name,
+}
+
+// Then, customize each column names here.
+impl IdenStatic for Column {
+    fn as_str(&self) -> &str {
+        match self {
+            Self::Id => "id",
+            Self::Name => "name",
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
