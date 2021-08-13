@@ -61,7 +61,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_cfg::{cake, filling, fruit};
+    use crate::tests_cfg::{cake, cake_filling, cake_filling_price, filling, fruit};
     use crate::{ColumnTrait, DbBackend, EntityTrait, ModelTrait, QueryFilter, QueryTrait};
 
     #[test]
@@ -178,6 +178,25 @@ mod tests {
                 "SELECT `filling`.`id`, `filling`.`name` FROM `filling`",
                 "INNER JOIN `cake_filling` ON `cake_filling`.`filling_id` = `filling`.`id`",
                 "INNER JOIN `cake` ON `cake`.`id` = `cake_filling`.`cake_id`",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_8() {
+        use crate::{Related, Select};
+
+        let find_cake_filling_price: Select<cake_filling_price::Entity> =
+            cake_filling::Entity::find_related();
+        assert_eq!(
+            find_cake_filling_price.build(DbBackend::MySql).to_string(),
+            [
+                "SELECT `cake_filling_price`.`cake_id`, `cake_filling_price`.`filling_id`, `cake_filling_price`.`price`",
+                "FROM `cake_filling_price`",
+                "INNER JOIN `cake_filling` ON",
+                "(`cake_filling`.`cake_id` = `cake_filling_price`.`cake_id`) AND",
+                "(`cake_filling`.`filling_id` = `cake_filling_price`.`filling_id`)",
             ]
             .join(" ")
         );

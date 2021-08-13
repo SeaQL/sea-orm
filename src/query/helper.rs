@@ -283,6 +283,12 @@ fn join_condition(rel: RelationDef) -> SimpleExpr {
                 .equals(SeaRc::clone(&to_tbl), f1)
                 .and(Expr::tbl(SeaRc::clone(&from_tbl), o2).equals(SeaRc::clone(&to_tbl), f2))
         }
+        (Identity::Ternary(o1, o2, o3), Identity::Ternary(f1, f2, f3)) => {
+            Expr::tbl(SeaRc::clone(&from_tbl), o1)
+                .equals(SeaRc::clone(&to_tbl), f1)
+                .and(Expr::tbl(SeaRc::clone(&from_tbl), o2).equals(SeaRc::clone(&to_tbl), f2))
+                .and(Expr::tbl(SeaRc::clone(&from_tbl), o3).equals(SeaRc::clone(&to_tbl), f3))
+        }
         _ => panic!("Owner key and foreign key mismatch"),
     }
 }
