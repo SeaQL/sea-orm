@@ -1,4 +1,4 @@
-use crate::{EntityTrait, Identity, IntoIdentity, Iterable, QuerySelect, Select};
+use crate::{EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select};
 use core::marker::PhantomData;
 use sea_query::{DynIden, IntoIden, JoinType};
 use std::fmt::Debug;
@@ -89,13 +89,19 @@ where
         }
     }
 
-    pub fn from(mut self, identifier: E::Column) -> Self {
-        self.from_col = Some(identifier.into_identity());
+    pub fn from<T>(mut self, identifier: T) -> Self
+    where
+        T: IdentityOf<E>,
+    {
+        self.from_col = Some(identifier.identity_of());
         self
     }
 
-    pub fn to(mut self, identifier: R::Column) -> Self {
-        self.to_col = Some(identifier.into_identity());
+    pub fn to<T>(mut self, identifier: T) -> Self
+    where
+        T: IdentityOf<R>,
+    {
+        self.to_col = Some(identifier.identity_of());
         self
     }
 }
