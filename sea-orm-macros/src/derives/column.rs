@@ -3,7 +3,7 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{Data, DataEnum, Fields, Variant};
 
-pub fn expand_derive_column(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
+pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
     let variants = match data {
         syn::Data::Enum(DataEnum { variants, .. }) => variants,
         _ => {
@@ -30,13 +30,9 @@ pub fn expand_derive_column(ident: &Ident, data: &Data) -> syn::Result<TokenStre
         })
         .collect();
 
-    let impl_iden = expand_derive_custom_column(ident)?;
-
     Ok(quote!(
-        #impl_iden
-
-        impl sea_orm::IdenStatic for #ident {
-            fn as_str(&self) -> &str {
+        impl #ident {
+            fn default_as_str(&self) -> &str {
                 match self {
                     #(Self::#variant => #name),*
                 }
@@ -45,8 +41,26 @@ pub fn expand_derive_column(ident: &Ident, data: &Data) -> syn::Result<TokenStre
     ))
 }
 
-pub fn expand_derive_custom_column(ident: &Ident) -> syn::Result<TokenStream> {
+pub fn expand_derive_column(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
+    let impl_iden = expand_derive_custom_column(ident, data)?;
+
     Ok(quote!(
+        #impl_iden
+
+        impl sea_orm::IdenStatic for #ident {
+            fn as_str(&self) -> &str {
+                self.default_as_str()
+            }
+        }
+    ))
+}
+
+pub fn expand_derive_custom_column(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
+    let impl_default_as_str = impl_default_as_str(ident, data)?;
+
+    Ok(quote!(
+        #impl_default_as_str
+
         impl sea_orm::Iden for #ident {
             fn unquoted(&self, s: &mut dyn std::fmt::Write) {
                 write!(s, "{}", self.as_str()).unwrap();

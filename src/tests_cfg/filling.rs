@@ -27,8 +27,10 @@ pub enum Column {
 impl IdenStatic for Column {
     fn as_str(&self) -> &str {
         match self {
+            // Override column names
             Self::Id => "id",
-            Self::Name => "name",
+            // Leave all other columns using default snake-case values
+            _ => self.default_as_str(),
         }
     }
 }
