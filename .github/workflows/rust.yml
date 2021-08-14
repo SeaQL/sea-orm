@@ -30,7 +30,8 @@ jobs:
           command: build
           args: >
             --all
-            --features default
+            --exclude 'sea-orm-example-*'
+            --features default,runtime-${{ matrix.runtime }}
 
       - uses: actions-rs/cargo@v1
         with:
@@ -38,7 +39,28 @@ jobs:
           args: >
             --all
             --exclude 'sea-orm-example-*'
-            --features default
+            --features default,runtime-${{ matrix.runtime }}
+
+  cli:
+    name: CLI
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: >
+            --path sea-orm-cli
 
   sqlite:
     name: SQLite
