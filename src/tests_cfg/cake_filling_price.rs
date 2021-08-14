@@ -5,6 +5,10 @@ use crate::entity::prelude::*;
 pub struct Entity;
 
 impl EntityName for Entity {
+    fn schema_name(&self) -> Option<&str> {
+        Some("public")
+    }
+
     fn table_name(&self) -> &str {
         "cake_filling_price"
     }
