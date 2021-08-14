@@ -1,6 +1,6 @@
 use crate::{EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select};
 use core::marker::PhantomData;
-use sea_query::{DynIden, IntoIden, JoinType};
+use sea_query::{JoinType, TableRef};
 use std::fmt::Debug;
 
 #[derive(Clone, Debug)]
@@ -30,8 +30,8 @@ where
 
 pub struct RelationDef {
     pub rel_type: RelationType,
-    pub from_tbl: DynIden,
-    pub to_tbl: DynIden,
+    pub from_tbl: TableRef,
+    pub to_tbl: TableRef,
     pub from_col: Identity,
     pub to_col: Identity,
 }
@@ -43,8 +43,8 @@ where
 {
     entities: PhantomData<(E, R)>,
     rel_type: RelationType,
-    from_tbl: DynIden,
-    to_tbl: DynIden,
+    from_tbl: TableRef,
+    to_tbl: TableRef,
     from_col: Option<Identity>,
     to_col: Option<Identity>,
 }
@@ -71,8 +71,8 @@ where
         Self {
             entities: PhantomData,
             rel_type,
-            from_tbl: from.into_iden(),
-            to_tbl: to.into_iden(),
+            from_tbl: from.table_ref(),
+            to_tbl: to.table_ref(),
             from_col: None,
             to_col: None,
         }
