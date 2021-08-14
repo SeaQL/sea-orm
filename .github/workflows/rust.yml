@@ -30,6 +30,7 @@ jobs:
           command: build
           args: >
             --all
+            --exclude 'sea-orm-example-*'
             --features default,runtime-${{ matrix.runtime }}
 
       - uses: actions-rs/cargo@v1
