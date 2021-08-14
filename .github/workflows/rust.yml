@@ -30,7 +30,7 @@ jobs:
           command: build
           args: >
             --all
-            --features default
+            --features default,runtime-${{ matrix.runtime }}
 
       - uses: actions-rs/cargo@v1
         with:
@@ -38,7 +38,7 @@ jobs:
           args: >
             --all
             --exclude 'sea-orm-example-*'
-            --features default
+            --features default,runtime-${{ matrix.runtime }}
 
   sqlite:
     name: SQLite
