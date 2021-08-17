@@ -266,11 +266,22 @@ where
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
     /// #
-    /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![vec![
+    /// #         maplit::btreemap! {
+    /// #             "name" => Into::<Value>::into("Chocolate Forest"),
+    /// #             "num_of_cakes" => Into::<Value>::into(1),
+    /// #         },
+    /// #         maplit::btreemap! {
+    /// #             "name" => Into::<Value>::into("New York Cheese"),
+    /// #             "num_of_cakes" => Into::<Value>::into(1),
+    /// #         },
+    /// #     ]])
+    /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, FromQueryResult};
     ///
-    /// #[derive(Debug, FromQueryResult)]
+    /// #[derive(Debug, PartialEq, FromQueryResult)]
     /// struct SelectResult {
     ///     name: String,
     ///     num_of_cakes: i32,
@@ -278,7 +289,7 @@ where
     ///
     /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
     /// #
-    /// let _: Vec<SelectResult> = cake::Entity::find().from_raw_sql(
+    /// let res: Vec<SelectResult> = cake::Entity::find().from_raw_sql(
     ///     Statement::from_sql_and_values(
     ///         DbBackend::Postgres, r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#, vec![]
     ///     )
@@ -286,6 +297,20 @@ where
     /// .into_model::<SelectResult>()
     /// .all(&db)
     /// .await?;
+    ///
+    /// assert_eq!(
+    ///     res,
+    ///     vec![
+    ///         SelectResult {
+    ///             name: "Chocolate Forest".to_owned(),
+    ///             num_of_cakes: 1,
+    ///         },
+    ///         SelectResult {
+    ///             name: "New York Cheese".to_owned(),
+    ///             num_of_cakes: 1,
+    ///         },
+    ///     ]
+    /// );
     /// #
     /// # Ok(())
     /// # });
@@ -312,13 +337,24 @@ where
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
     /// #
-    /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![vec![
+    /// #         maplit::btreemap! {
+    /// #             "name" => Into::<Value>::into("Chocolate Forest"),
+    /// #             "num_of_cakes" => Into::<Value>::into(1),
+    /// #         },
+    /// #         maplit::btreemap! {
+    /// #             "name" => Into::<Value>::into("New York Cheese"),
+    /// #             "num_of_cakes" => Into::<Value>::into(1),
+    /// #         },
+    /// #     ]])
+    /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
     /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
     /// #
-    /// let _: Vec<serde_json::Value> = cake::Entity::find().from_raw_sql(
+    /// let res: Vec<serde_json::Value> = cake::Entity::find().from_raw_sql(
     ///     Statement::from_sql_and_values(
     ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
     ///     )
@@ -326,6 +362,20 @@ where
     /// .into_json()
     /// .all(&db)
     /// .await?;
+    ///
+    /// assert_eq!(
+    ///     res,
+    ///     vec![
+    ///         serde_json::json!({
+    ///             "name": "Chocolate Forest",
+    ///             "num_of_cakes": 1,
+    ///         }),
+    ///         serde_json::json!({
+    ///             "name": "New York Cheese",
+    ///             "num_of_cakes": 1,
+    ///         }),
+    ///     ]
+    /// );
     /// #
     /// # Ok(())
     /// # });
