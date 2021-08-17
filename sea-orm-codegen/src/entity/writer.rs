@@ -44,11 +44,18 @@ impl EntityWriter {
     pub fn write_mod(&self) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        let code_blocks = self
+        let code_blocks: Vec<TokenStream> = self
             .entities
             .iter()
             .map(|entity| Self::gen_mod(entity))
             .collect();
+        Self::write(
+            &mut lines,
+            vec![quote! {
+                pub mod prelude;
+            }],
+        );
+        lines.push("".to_owned());
         Self::write(&mut lines, code_blocks);
         OutputFile {
             name: "mod.rs".to_owned(),
