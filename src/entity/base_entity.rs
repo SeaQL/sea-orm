@@ -107,7 +107,7 @@ pub trait EntityTrait: EntityName {
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
-    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// # let _: Result<(), DbErr> = sea_orm::block_on!(async {
     /// #
     /// assert_eq!(
     ///     cake::Entity::find().one(&db).await?,
@@ -170,7 +170,7 @@ pub trait EntityTrait: EntityName {
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
-    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// # let _: Result<(), DbErr> = sea_orm::block_on!(async {
     /// #
     /// assert_eq!(
     ///     cake::Entity::find_by_id(11).all(&db).await?,
@@ -207,7 +207,7 @@ pub trait EntityTrait: EntityName {
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake_filling};
     ///
-    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// # let _: Result<(), DbErr> = sea_orm::block_on!(async {
     /// #
     /// assert_eq!(
     ///     cake_filling::Entity::find_by_id((2, 3)).all(&db).await?,
@@ -275,7 +275,7 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// # let _: Result<(), DbErr> = sea_orm::block_on!(async {
     /// #
     /// let insert_result = cake::Entity::insert(apple).exec(&db).await?;
     ///
@@ -326,7 +326,7 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// # let _: Result<(), DbErr> = sea_orm::block_on!(async {
     /// #
     /// let insert_result = cake::Entity::insert_many(vec![apple, orange]).exec(&db).await?;
     ///
@@ -378,7 +378,7 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// # let _: Result<(), DbErr> = sea_orm::block_on!(async {
     /// #
     /// assert_eq!(
     ///     fruit::Entity::update(orange.clone()).exec(&db).await?, // Clone here because we need to assert_eq
@@ -422,7 +422,7 @@ pub trait EntityTrait: EntityName {
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::{Expr, Value}};
     ///
-    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// # let _: Result<(), DbErr> = sea_orm::block_on!(async {
     /// #
     /// let update_result = fruit::Entity::update_many()
     ///     .col_expr(fruit::Column::CakeId, Expr::value(Value::Null))
@@ -471,7 +471,7 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// # let _: Result<(), DbErr> = sea_orm::block_on!(async {
     /// #
     /// let delete_result = fruit::Entity::delete(orange).exec(&db).await?;
     ///
@@ -514,7 +514,7 @@ pub trait EntityTrait: EntityName {
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
     ///
-    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// # let _: Result<(), DbErr> = sea_orm::block_on!(async {
     /// #
     /// let delete_result = fruit::Entity::delete_many()
     ///     .filter(fruit::Column::Name.contains("Apple"))
