@@ -6,9 +6,7 @@ pub use common::{bakery_chain::*, setup::*, TestContext};
 
 // Run the test locally:
 // DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std --test query_tests
-#[cfg_attr(feature = "runtime-async-std", async_std::test)]
-#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
-#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[sea_orm_macros::test]
 #[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",
@@ -23,9 +21,7 @@ pub async fn find_one_with_no_result() {
     ctx.delete().await;
 }
 
-#[cfg_attr(feature = "runtime-async-std", async_std::test)]
-#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
-#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[sea_orm_macros::test]
 #[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",
@@ -50,9 +46,7 @@ pub async fn find_one_with_result() {
     ctx.delete().await;
 }
 
-#[cfg_attr(feature = "runtime-async-std", async_std::test)]
-#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
-#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[sea_orm_macros::test]
 #[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",
@@ -67,9 +61,7 @@ pub async fn find_by_id_with_no_result() {
     ctx.delete().await;
 }
 
-#[cfg_attr(feature = "runtime-async-std", async_std::test)]
-#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
-#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[sea_orm_macros::test]
 #[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",
@@ -98,9 +90,7 @@ pub async fn find_by_id_with_result() {
     ctx.delete().await;
 }
 
-#[cfg_attr(feature = "runtime-async-std", async_std::test)]
-#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
-#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[sea_orm_macros::test]
 #[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",
@@ -115,9 +105,7 @@ pub async fn find_all_with_no_result() {
     ctx.delete().await;
 }
 
-#[cfg_attr(feature = "runtime-async-std", async_std::test)]
-#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
-#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[sea_orm_macros::test]
 #[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",
@@ -151,9 +139,7 @@ pub async fn find_all_with_result() {
     ctx.delete().await;
 }
 
-#[cfg_attr(feature = "runtime-async-std", async_std::test)]
-#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
-#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[sea_orm_macros::test]
 #[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",
@@ -191,9 +177,7 @@ pub async fn find_all_filter_no_result() {
     ctx.delete().await;
 }
 
-#[cfg_attr(feature = "runtime-async-std", async_std::test)]
-#[cfg_attr(feature = "runtime-actix", actix_rt::test)]
-#[cfg_attr(feature = "runtime-tokio", tokio::test)]
+#[sea_orm_macros::test]
 #[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",

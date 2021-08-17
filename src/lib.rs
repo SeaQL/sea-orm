@@ -208,6 +208,8 @@ pub mod error;
 mod executor;
 pub mod query;
 #[doc(hidden)]
+pub mod runtime;
+#[doc(hidden)]
 pub mod tests_cfg;
 mod util;
 

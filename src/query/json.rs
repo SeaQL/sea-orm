@@ -140,11 +140,11 @@ impl FromQueryResult for JsonValue {
 #[cfg(feature = "mock")]
 mod tests {
     use crate::tests_cfg::cake;
-    use crate::{entity::*, DbBackend, MockDatabase};
+    use crate::{entity::*, DbBackend, DbErr, MockDatabase};
     use sea_query::Value;
 
-    #[async_std::test]
-    async fn to_json_1() {
+    #[sea_orm_macros::test]
+    async fn to_json_1() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results(vec![vec![maplit::btreemap! {
                 "id" => Into::<Value>::into(128), "name" => Into::<Value>::into("apple")
@@ -158,5 +158,7 @@ mod tests {
                 "name": "apple"
             }))
         );
+
+        Ok(())
     }
 }

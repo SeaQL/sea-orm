@@ -84,3 +84,23 @@ pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
         Err(e) => e.to_compile_error().into(),
     }
 }
+
+#[doc(hidden)]
+#[proc_macro_attribute]
+pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
+    let input = syn::parse_macro_input!(input as syn::ItemFn);
+
+    let ret = &input.sig.output;
+    let name = &input.sig.ident;
+    let body = &input.block;
+    let attrs = &input.attrs;
+
+    quote::quote! (
+        #[test]
+        #(#attrs)*
+        fn #name() #ret {
+            ::sea_orm::block_on!(async { #body })
+        }
+    )
+    .into()
+}
