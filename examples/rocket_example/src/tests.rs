@@ -1,7 +1,7 @@
 use rocket::fairing::AdHoc;
-use rocket::local::blocking::Client;
-use rocket::serde::{Serialize, Deserialize};
 use rocket::http::Status;
+use rocket::local::blocking::Client;
+use rocket::serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(crate = "rocket::serde")]
@@ -20,13 +20,19 @@ fn test(base: &str, stage: AdHoc) {
 
     // Clear everything from the database.
     assert_eq!(client.delete(base).dispatch().status(), Status::Ok);
-    assert_eq!(client.get(base).dispatch().into_json::<Vec<i64>>(), Some(vec![]));
+    assert_eq!(
+        client.get(base).dispatch().into_json::<Vec<i64>>(),
+        Some(vec![])
+    );
 
     // Add some random posts, ensure they're listable and readable.
-    for i in 1..=N{
+    for i in 1..=N {
         let title = format!("My Post - {}", i);
         let text = format!("Once upon a time, at {}'o clock...", i);
-        let post = Post { title: title.clone(), text: text.clone() };
+        let post = Post {
+            title: title.clone(),
+            text: text.clone(),
+        };
 
         // Create a new post.
         let response = client.post(base).json(&post).dispatch().into_json::<Post>();
@@ -65,14 +71,4 @@ fn test(base: &str, stage: AdHoc) {
 #[test]
 fn test_sqlx() {
     test("/sqlx", crate::sqlx::stage())
-}
-
-#[test]
-fn test_diesel() {
-    test("/diesel", crate::diesel_sqlite::stage())
-}
-
-#[test]
-fn test_rusqlite() {
-    test("/rusqlite", crate::rusqlite::stage())
 }
