@@ -43,6 +43,8 @@ serde_json = { version = "^1", optional = true }
 uuid = { version = "0.8", features = ["serde", "v4"], optional = true }
 
 [dev-dependencies]
+smol = { version = "^1.2" }
+smol-potat = { version = "^1.1" }
 async-std = { version = "^1.9", features = ["attributes"] }
 tokio = { version = "^1.6", features = ["full"] }
 actix-rt = { version = "2.2.0" }

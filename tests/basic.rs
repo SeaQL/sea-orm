@@ -1,3 +1,5 @@
+pub mod common;
+
 #[allow(unused_imports)]
 use sea_orm::{entity::*, error::*, sea_query, tests_cfg::*, Database, DbConn};
 

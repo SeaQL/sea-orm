@@ -287,7 +287,7 @@ where
     ///     num_of_cakes: i32,
     /// }
     ///
-    /// # let _: Result<(), DbErr> = sea_orm::block_on!(async {
+    /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
     /// let res: Vec<SelectResult> = cake::Entity::find().from_raw_sql(
     ///     Statement::from_sql_and_values(
@@ -352,7 +352,7 @@ where
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
-    /// # let _: Result<(), DbErr> = sea_orm::block_on!(async {
+    /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
     /// let res: Vec<serde_json::Value> = cake::Entity::find().from_raw_sql(
     ///     Statement::from_sql_and_values(
@@ -404,7 +404,7 @@ where
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
-    /// # let _: Result<(), DbErr> = sea_orm::block_on!(async {
+    /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
     /// let _: Option<cake::Model> = cake::Entity::find().from_raw_sql(
     ///     Statement::from_sql_and_values(
@@ -439,7 +439,7 @@ where
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
-    /// # let _: Result<(), DbErr> = sea_orm::block_on!(async {
+    /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
     /// let _: Vec<cake::Model> = cake::Entity::find().from_raw_sql(
     ///     Statement::from_sql_and_values(

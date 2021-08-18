@@ -99,7 +99,7 @@ pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
         #[test]
         #(#attrs)*
         fn #name() #ret {
-            ::sea_orm::block_on!(async { #body })
+            crate::block_on!(async { #body })
         }
     )
     .into()
