@@ -285,7 +285,7 @@ mod tests {
 
     #[test]
     fn test_from_column_def() {
-        let column: Column = ColumnDef::new(Alias::new("id")).string().into();
+        let column: Column = ColumnDef::new(Alias::new("id")).string().to_owned().into();
         assert_eq!(
             column.get_def().to_string(),
             quote! {
@@ -294,13 +294,18 @@ mod tests {
             .to_string()
         );
 
-        let column: Column = ColumnDef::new(Alias::new("id")).string().not_null().into();
+        let column: Column = ColumnDef::new(Alias::new("id"))
+            .string()
+            .not_null()
+            .to_owned()
+            .into();
         assert!(column.not_null);
 
         let column: Column = ColumnDef::new(Alias::new("id"))
             .string()
             .unique_key()
             .not_null()
+            .to_owned()
             .into();
         assert!(column.unique);
         assert!(column.not_null);
@@ -310,6 +315,7 @@ mod tests {
             .auto_increment()
             .unique_key()
             .not_null()
+            .to_owned()
             .into();
         assert!(column.auto_increment);
         assert!(column.unique);
