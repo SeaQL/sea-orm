@@ -1,11 +1,4 @@
-#[cfg(any(
-    feature = "runtime-async-std",
-    all(
-        not(feature = "runtime-async-std"),
-        not(feature = "runtime-actix"),
-        not(feature = "runtime-tokio"),
-    ),
-))]
+#[cfg(feature = "runtime-async-std")]
 #[macro_export]
 macro_rules! block_on {
     ($($expr:tt)*) => {

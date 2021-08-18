@@ -13,9 +13,6 @@ jobs:
   test:
     name: Unit Test
     runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
     steps:
       - uses: actions/checkout@v2
 
@@ -25,13 +22,14 @@ jobs:
           toolchain: stable
           override: true
 
+      - uses: Swatinem/rust-cache@v1
+
       - uses: actions-rs/cargo@v1
         with:
           command: build
           args: >
             --all
             --exclude 'sea-orm-example-*'
-            --features default,runtime-${{ matrix.runtime }}
 
       - uses: actions-rs/cargo@v1
         with:
@@ -39,7 +37,6 @@ jobs:
           args: >
             --all
             --exclude 'sea-orm-example-*'
-            --features default,runtime-${{ matrix.runtime }}
 
   cli:
     name: CLI
@@ -56,6 +53,8 @@ jobs:
           toolchain: stable
           override: true
 
+      - uses: Swatinem/rust-cache@v1
+
       - uses: actions-rs/cargo@v1
         with:
           command: install
@@ -69,8 +68,7 @@ jobs:
       DATABASE_URL: "sqlite::memory:"
     strategy:
       matrix:
-        # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
-        runtime: [async-std-native-tls]
+        runtime: [async-std-native-tls, actix-native-tls, tokio-native-tls]
     steps:
       - uses: actions/checkout@v2
 
@@ -79,6 +77,8 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+
+      - uses: Swatinem/rust-cache@v1
 
       - uses: actions-rs/cargo@v1
         with:
@@ -100,7 +100,7 @@ jobs:
     strategy:
       matrix:
         version: [8.0, 5.7]
-        runtime: [async-std-native-tls]
+        runtime: [async-std-native-tls, actix-native-tls, tokio-native-tls]
     services:
       mysql:
         image: mysql:${{ matrix.version }}
@@ -127,6 +127,8 @@ jobs:
           toolchain: stable
           override: true
 
+      - uses: Swatinem/rust-cache@v1
+
       - uses: actions-rs/cargo@v1
         with:
           command: build
@@ -147,7 +149,7 @@ jobs:
     strategy:
       matrix:
         version: [10.6]
-        runtime: [async-std-native-tls]
+        runtime: [async-std-native-tls, actix-native-tls, tokio-native-tls]
     services:
       mysql:
         image: mariadb:${{ matrix.version }}
@@ -174,6 +176,8 @@ jobs:
           toolchain: stable
           override: true
 
+      - uses: Swatinem/rust-cache@v1
+
       - uses: actions-rs/cargo@v1
         with:
           command: build
@@ -194,7 +198,7 @@ jobs:
     strategy:
       matrix:
         version: [13.3, 12.7, 11.12, 10.17, 9.6.22]
-        runtime: [async-std-native-tls]
+        runtime: [async-std-native-tls, actix-native-tls, tokio-native-tls]
     services:
       postgres:
         image: postgres:${{ matrix.version }}
@@ -217,6 +221,8 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+
+      - uses: Swatinem/rust-cache@v1
 
       - uses: actions-rs/cargo@v1
         with:

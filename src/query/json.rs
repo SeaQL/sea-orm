@@ -143,7 +143,7 @@ mod tests {
     use crate::{entity::*, DbBackend, DbErr, MockDatabase};
     use sea_query::Value;
 
-    #[sea_orm_macros::test]
+    #[smol_potat::test]
     async fn to_json_1() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results(vec![vec![maplit::btreemap! {
