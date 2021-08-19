@@ -425,7 +425,7 @@ pub trait EntityTrait: EntityName {
     /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
     /// let update_result = fruit::Entity::update_many()
-    ///     .col_expr(fruit::Column::CakeId, Expr::value(Value::Null))
+    ///     .col_expr(fruit::Column::CakeId, Expr::value(Value::Int(None)))
     ///     .filter(fruit::Column::Name.contains("Apple"))
     ///     .exec(&db)
     ///     .await?;
@@ -438,7 +438,7 @@ pub trait EntityTrait: EntityName {
     /// assert_eq!(
     ///     db.into_transaction_log(),
     ///     vec![Transaction::from_sql_and_values(
-    ///         DbBackend::Postgres, r#"UPDATE "fruit" SET "cake_id" = $1 WHERE "fruit"."name" LIKE $2"#, vec![Value::Null, "%Apple%".into()]
+    ///         DbBackend::Postgres, r#"UPDATE "fruit" SET "cake_id" = $1 WHERE "fruit"."name" LIKE $2"#, vec![Value::Int(None), "%Apple%".into()]
     ///     )]);
     /// ```
     fn update_many() -> UpdateMany<Self> {

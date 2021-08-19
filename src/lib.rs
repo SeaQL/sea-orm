@@ -129,7 +129,7 @@
 //!
 //! // update many: UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."name" LIKE '%Apple%'
 //! Fruit::update_many()
-//!     .col_expr(fruit::Column::CakeId, Expr::value(Value::Null))
+//!     .col_expr(fruit::Column::CakeId, Expr::value(Value::Int(None)))
 //!     .filter(fruit::Column::Name.contains("Apple"))
 //!     .exec(db)
 //!     .await?;
