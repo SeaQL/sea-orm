@@ -4,6 +4,7 @@ use proc_macro::TokenStream;
 use syn::{parse_macro_input, DeriveInput};
 
 mod derives;
+mod util;
 
 #[proc_macro_derive(DeriveEntity, attributes(table))]
 pub fn derive_entity(input: TokenStream) -> TokenStream {
@@ -80,6 +81,16 @@ pub fn derive_partial_model(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
 
     match derives::expand_derive_partial_model(ident, data) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
+#[proc_macro_derive(DeriveInputModel, attributes(sea))]
+pub fn derive_input_model(input: TokenStream) -> TokenStream {
+    let DeriveInput { ident, data, .. } = parse_macro_input!(input);
+
+    match derives::expand_derive_input_model(ident, data) {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }
