@@ -17,7 +17,7 @@ pub struct Model {
     pub cake_id: Option<i32>,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+#[derive(Copy, Clone, PartialEq, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
     Name,
