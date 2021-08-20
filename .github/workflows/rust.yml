@@ -74,7 +74,7 @@ jobs:
             ~/.cargo/git
             Cargo.lock
             target
-          key: ${{ runner.os }}-${{ matrix.database }}-${{ matrix.runtime }}-${{ matrix.tls }}
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-${{ matrix.database }}-${{ matrix.runtime }}-${{ matrix.tls }}
 
       - uses: actions-rs/cargo@v1
         with:
@@ -109,7 +109,7 @@ jobs:
             ~/.cargo/git
             Cargo.lock
             target
-          key: ${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ matrix.tls }}
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ matrix.tls }}
 
       - uses: actions-rs/cargo@v1
         with:
@@ -161,7 +161,7 @@ jobs:
             ~/.cargo/git
             Cargo.lock
             target
-          key: ${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
 
       - uses: actions-rs/cargo@v1
         with:
@@ -213,7 +213,7 @@ jobs:
             ~/.cargo/git
             Cargo.lock
             target
-          key: ${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
 
       - uses: actions-rs/cargo@v1
         with:
@@ -262,7 +262,7 @@ jobs:
             ~/.cargo/git
             Cargo.lock
             target
-          key: ${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
 
       - uses: actions-rs/cargo@v1
         with:
