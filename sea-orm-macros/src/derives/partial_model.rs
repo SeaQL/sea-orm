@@ -1,50 +1,8 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{
-    AngleBracketedGenericArguments, Data, DataStruct, Field, Fields, GenericArgument,
-    PathArguments, Type, TypePath,
-};
+use syn::{Data, DataStruct, Field, Fields, Type};
 
-fn option_type_to_inner_type(ty: &Type) -> Option<&Type> {
-    let TypePath { path, .. } = if let Type::Path(path) = ty {
-        path
-    } else {
-        return None;
-    };
-
-    let segment = path.segments.first()?;
-    if segment.ident != "Option" {
-        return None;
-    }
-
-    let generic_arg =
-        if let PathArguments::AngleBracketed(AngleBracketedGenericArguments { args, .. }) =
-            &segment.arguments
-        {
-            args.first()?
-        } else {
-            return None;
-        };
-
-    let opt_ty = if let GenericArgument::Type(ty) = generic_arg {
-        ty
-    } else {
-        return None;
-    };
-
-    let TypePath { path, .. } = if let Type::Path(path) = ty {
-        path
-    } else {
-        return None;
-    };
-
-    let segment = path.segments.first()?;
-    if segment.ident == "Option" {
-        return option_type_to_inner_type(opt_ty);
-    }
-
-    Some(opt_ty)
-}
+use crate::util::option_type_to_inner_type;
 
 pub fn expand_derive_partial_model(ident: Ident, data: Data) -> syn::Result<TokenStream> {
     let fields = match data {
