@@ -35,6 +35,7 @@ impl QueryResult {
 }
 
 impl fmt::Debug for QueryResultRow {
+    #[allow(unused_variables)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -121,6 +122,7 @@ macro_rules! try_getable_unsigned {
     ( $type: ty ) => {
         impl TryGetable for $type {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr> {
+                #[allow(unused_variables)]
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
@@ -147,6 +149,7 @@ macro_rules! try_getable_unsigned {
 
         impl TryGetable for Option<$type> {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr> {
+                #[allow(unused_variables)]
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
@@ -183,6 +186,7 @@ macro_rules! try_getable_mysql {
     ( $type: ty ) => {
         impl TryGetable for $type {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr> {
+                #[allow(unused_variables)]
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
@@ -207,6 +211,7 @@ macro_rules! try_getable_mysql {
 
         impl TryGetable for Option<$type> {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr> {
+                #[allow(unused_variables)]
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
