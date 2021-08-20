@@ -75,6 +75,16 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
     }
 }
 
+#[proc_macro_derive(DerivePartialModel)]
+pub fn derive_partial_model(input: TokenStream) -> TokenStream {
+    let DeriveInput { ident, data, .. } = parse_macro_input!(input);
+
+    match derives::expand_derive_partial_model(ident, data) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
 #[proc_macro_derive(FromQueryResult)]
 pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
