@@ -230,8 +230,8 @@ jobs:
     strategy:
       matrix:
         version: [13.3, 12.7, 11.12, 10.17, 9.6.22]
-        runtime: [async-std, actix, tokio]
-        tls: [native-tls, rustls]
+        runtime: [tokio]
+        tls: [native-tls]
     services:
       postgres:
         image: postgres:${{ matrix.version }}
