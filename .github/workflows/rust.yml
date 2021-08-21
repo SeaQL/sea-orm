@@ -127,7 +127,7 @@ jobs:
       matrix:
         version: [8.0, 5.7]
         runtime: [async-std, actix, tokio]
-        tls: [native-tls, rustls]
+        tls: [native-tls]
     services:
       mysql:
         image: mysql:${{ matrix.version }}
@@ -179,7 +179,7 @@ jobs:
       matrix:
         version: [10.6]
         runtime: [async-std, actix, tokio]
-        tls: [native-tls, rustls]
+        tls: [rustls]
     services:
       mysql:
         image: mariadb:${{ matrix.version }}
