@@ -1,7 +1,8 @@
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use sea_orm::entity::prelude::*;
 
-#[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+#[derive(Copy, Clone, Default, Debug, DeriveEntity, Deserialize, Serialize)]
+#[serde(crate = "rocket::serde")]
 pub struct Entity;
 
 impl EntityName for Entity {
@@ -13,6 +14,7 @@ impl EntityName for Entity {
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Deserialize, Serialize)]
 #[serde(crate = "rocket::serde")]
 pub struct Model {
+    #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
     pub id: Option<i64>,
     pub title: String,
     pub text: String,
@@ -36,6 +38,9 @@ impl PrimaryKeyTrait for PrimaryKey {
     }
 }
 
+#[derive(Copy, Clone, Debug, EnumIter)]
+pub enum Relation {}
+
 impl ColumnTrait for Column {
     type EntityName = Entity;
 
@@ -48,4 +53,9 @@ impl ColumnTrait for Column {
     }
 }
 
+impl RelationTrait for Relation {
+    fn def(&self) -> RelationDef {
+        panic!()
+    }
+}
 impl ActiveModelBehavior for ActiveModel {}
