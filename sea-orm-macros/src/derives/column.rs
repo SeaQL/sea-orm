@@ -63,7 +63,7 @@ pub fn impl_col_from_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream>
     });
 
     Ok(quote!(
-        #[derive(Debug, Clone, Copy, PartialEq)]
+        #[derive(Debug, Clone, Copy)]
         pub struct #parse_error_iden;
 
         impl std::str::FromStr for #ident {

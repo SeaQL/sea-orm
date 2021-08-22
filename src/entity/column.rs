@@ -324,7 +324,6 @@ mod tests {
         tests_cfg::*, ColumnTrait, Condition, DbBackend, EntityTrait, QueryFilter, QueryTrait,
     };
     use sea_query::Query;
-    use std::str::FromStr;
 
     #[test]
     fn test_in_subquery() {
@@ -352,25 +351,24 @@ mod tests {
 
     #[test]
     fn test_col_from_str() {
+        use std::str::FromStr;
+
         match fruit::Column::from_str("id") {
-            Ok(col) => assert_eq!(col, fruit::Column::Id),
+            Ok(col) => assert!(matches!(col, fruit::Column::Id)),
             Err(_) => panic!("fruit from_str fails"),
         }
         match fruit::Column::from_str("name") {
-            Ok(col) => assert_eq!(col, fruit::Column::Name),
+            Ok(col) => assert!(matches!(col, fruit::Column::Name)),
             Err(_) => panic!("fruit from_str fails"),
         }
         match fruit::Column::from_str("cake_id") {
-            Ok(col) => assert_eq!(col, fruit::Column::CakeId),
+            Ok(col) => assert!(matches!(col, fruit::Column::CakeId)),
             Err(_) => panic!("fruit from_str fails"),
         }
         match fruit::Column::from_str("cakeId") {
-            Ok(col) => assert_eq!(col, fruit::Column::CakeId),
+            Ok(col) => assert!(matches!(col, fruit::Column::CakeId)),
             Err(_) => panic!("fruit from_str fails"),
         }
-        match fruit::Column::from_str("does_not_exist") {
-            Ok(_) => panic!("fruit from_str found match when it shouldn't have"),
-            Err(err) => assert_eq!(err, fruit::ParseColumnErr),
-        }
+        assert!(matches!(fruit::Column::from_str("does_not_exist"), Err(_)));
     }
 }

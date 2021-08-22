@@ -167,7 +167,7 @@ mod tests {
                 .left_join(fruit::Entity)
                 .select_also(fruit::Entity)
                 .filter(cake::Column::Id.eq(1))
-                .filter(ColumnTrait::eq(&fruit::Column::Id, 2))
+                .filter(fruit::Column::Id.eq(2))
                 .build(DbBackend::MySql)
                 .to_string(),
             [
@@ -186,7 +186,7 @@ mod tests {
                 .left_join(fruit::Entity)
                 .select_with(fruit::Entity)
                 .filter(cake::Column::Id.eq(1))
-                .filter(ColumnTrait::eq(&fruit::Column::Id, 2))
+                .filter(fruit::Column::Id.eq(2))
                 .build(DbBackend::MySql)
                 .to_string(),
             [
