@@ -353,22 +353,25 @@ mod tests {
     fn test_col_from_str() {
         use std::str::FromStr;
 
-        match fruit::Column::from_str("id") {
-            Ok(col) => assert!(matches!(col, fruit::Column::Id)),
-            Err(_) => panic!("fruit from_str fails"),
-        }
-        match fruit::Column::from_str("name") {
-            Ok(col) => assert!(matches!(col, fruit::Column::Name)),
-            Err(_) => panic!("fruit from_str fails"),
-        }
-        match fruit::Column::from_str("cake_id") {
-            Ok(col) => assert!(matches!(col, fruit::Column::CakeId)),
-            Err(_) => panic!("fruit from_str fails"),
-        }
-        match fruit::Column::from_str("cakeId") {
-            Ok(col) => assert!(matches!(col, fruit::Column::CakeId)),
-            Err(_) => panic!("fruit from_str fails"),
-        }
-        assert!(matches!(fruit::Column::from_str("does_not_exist"), Err(_)));
+        assert!(matches!(
+            fruit::Column::from_str("id"),
+            Ok(fruit::Column::Id)
+        ));
+        assert!(matches!(
+            fruit::Column::from_str("name"),
+            Ok(fruit::Column::Name)
+        ));
+        assert!(matches!(
+            fruit::Column::from_str("cake_id"),
+            Ok(fruit::Column::CakeId)
+        ));
+        assert!(matches!(
+            fruit::Column::from_str("cakeId"),
+            Ok(fruit::Column::CakeId)
+        ));
+        assert!(matches!(
+            fruit::Column::from_str("does_not_exist"),
+            Err(crate::ColumnFromStrErr(_))
+        ));
     }
 }
