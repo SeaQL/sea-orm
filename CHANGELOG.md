@@ -13,11 +13,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [[#81]] Support join on multiple columns
 - [[#99]] Implement FromStr for ColumnTrait
 
-[#68]: https://github.com/SeaQL/sea-query/issues/68
-[#70]: https://github.com/SeaQL/sea-query/issues/70
-[#80]: https://github.com/SeaQL/sea-query/issues/80
-[#81]: https://github.com/SeaQL/sea-query/issues/81
-[#99]: https://github.com/SeaQL/sea-query/issues/99
+[#68]: https://github.com/SeaQL/sea-orm/issues/68
+[#70]: https://github.com/SeaQL/sea-orm/issues/70
+[#80]: https://github.com/SeaQL/sea-orm/issues/80
+[#81]: https://github.com/SeaQL/sea-orm/issues/81
+[#99]: https://github.com/SeaQL/sea-orm/issues/99
 
 ## 0.1.1 - 2021-08-08
 
