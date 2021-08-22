@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use crate::{EntityName, IdenStatic, Iterable};
 use sea_query::{DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
 
@@ -77,7 +78,7 @@ macro_rules! bind_subquery_func {
 
 // LINT: when the operand value does not match column type
 /// Wrapper of the identically named method in [`sea_query::Expr`]
-pub trait ColumnTrait: IdenStatic + Iterable {
+pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     type EntityName: EntityName;
 
     fn def(&self) -> ColumnDef;
