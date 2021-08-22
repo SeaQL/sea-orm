@@ -7,13 +7,15 @@ use rocket_db_pools::{sqlx, Connection, Database};
 
 use futures::{future::TryFutureExt, stream::TryStreamExt};
 use sea_orm::entity::*;
-use sea_orm::QueryFilter;
+use sea_orm::{
+    DatabaseBackend, QueryFilter, SqlxSqliteConnector, SqlxSqlitePoolConnection, Statement,
+};
 
 mod setup;
 
 #[derive(Database, Debug)]
 #[database("blog")]
-struct Db(rocket_db_pools::sqlx::SqlitePool);
+struct Db(sea_orm::DatabaseConnection);
 
 type Result<T, E = rocket::response::Debug<sqlx::Error>> = std::result::Result<T, E>;
 
@@ -21,6 +23,7 @@ type Result<T, E = rocket::response::Debug<sqlx::Error>> = std::result::Result<T
 mod post;
 pub use post::Entity as Post;
 use sea_orm::DatabaseConnection;
+
 // #[derive(Debug, Clone, Deserialize, Serialize)]
 // #[serde(crate = "rocket::serde")]
 // struct Post {
@@ -88,9 +91,18 @@ async fn list(mut db: Connection<Db>) -> Result<Json<Vec<i64>>> {
     // let ids: Vec<i64> = recs.into();
 
     // println!("recs: {:#?}", ids);
+    println!("db: {:#?}", &*db);
+    let res = db
+        .execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "SELECT * from posts".to_owned(),
+        ))
+        .await;
+    println!("res: {:#?}", res);
 
-    let posts = Post::find().all(&mut *db).await.unwrap();
-    assert_eq!(posts.len(), 0);
+    // let con = SqlxSqliteConnector::from_sqlx_sqlite_pool(db);
+    // let posts = Post::find().all(&db).await.unwrap();
+    // assert_eq!(posts.len(), 0);
 
     let ids: Vec<i64> = vec![];
     Ok(Json(ids))
@@ -172,27 +184,50 @@ pub fn stage() -> AdHoc {
             .attach(Db::init())
             .attach(AdHoc::try_on_ignite("Create init post", |rocket| async {
                 let db = Db::fetch(&rocket).expect("database mounted");
-                let res = sqlx::query(
-                    r#"
-                    CREATE TABLE posts (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        title VARCHAR NOT NULL,
-                        text VARCHAR NOT NULL,
-                        published BOOLEAN NOT NULL DEFAULT 0
-                    )"#,
-                )
-                .execute(&**db)
-                .await;
-                println!("res: {:#?}", res);
+                // let res = sqlx::query(
+                //     r#"
+                //     CREATE TABLE posts (
+                //         id INTEGER PRIMARY KEY AUTOINCREMENT,
+                //         title VARCHAR NOT NULL,
+                //         text VARCHAR NOT NULL,
+                //         published BOOLEAN NOT NULL DEFAULT 0
+                //     )"#,
+                // )
+                // .execute(&**db)
+                // .await;
 
-                let res2 = sqlx::query(
-                    r#"
-                    INSERT INTO posts (title, text) VALUES ('a post', 'content of a post')
-                    "#,
-                )
-                .execute(&**db)
-                .await;
-                println!("res2: {:#?}", res2);
+                let create_post_table = db
+                    .execute(Statement::from_string(
+                        DatabaseBackend::Sqlite,
+                        r#"
+                        CREATE TABLE posts (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            title VARCHAR NOT NULL,
+                            text VARCHAR NOT NULL,
+                            published BOOLEAN NOT NULL DEFAULT 0
+                        )"#
+                        .to_owned(),
+                    ))
+                    .await;
+                println!("create_post_table: {:#?}", create_post_table);
+
+                let create_post = db
+                    .execute(Statement::from_string(
+                        DatabaseBackend::Sqlite,
+                        "INSERT INTO posts (title, text) VALUES ('a post', 'content of a post')"
+                            .to_owned(),
+                    ))
+                    .await;
+                println!("create_post: {:#?}", create_post);
+
+                // let res2 = sqlx::query(
+                //     r#"
+                //     INSERT INTO posts (title, text) VALUES ('a post', 'content of a post')
+                //     "#,
+                // )
+                // .execute(&**db)
+                // .await;
+                // println!("res2: {:#?}", res2);
 
                 // Db::fetch(&rocket)
                 //     .run(|db| {

@@ -10,10 +10,7 @@ rocket = { path = "../../../Rocket/core/lib", features = ["json"] }
 #   "json",
 # ] }
 # async-std = { version = "^1.9", features = ["attributes"] }
-sea-orm = { path = "../../", features = [
-  "sqlx-all",
-  # "runtime-async-std-native-tls",
-] }
+sea-orm = { path = "../../", features = ["sqlx-all"] }
 sea-query = { version = "^0.12.8" }
 
 serde_json = { version = "^1" }
@@ -32,4 +29,4 @@ features = ["macros", "offline", "migrate"]
 # features = ["sea_orm"]
 [dependencies.rocket_db_pools]
 path = "../../../Rocket/contrib/db_pools/lib"
-features = ["sqlx_sqlite"]
+features = ["seaorm_sqlx_sqlite"]
