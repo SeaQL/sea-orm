@@ -8,7 +8,7 @@ members = [
 
 [package]
 name = "sea-orm"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Chris Tsang <tyt2y7@gmail.com>"]
 edition = "2018"
 description = "🐚 An async & dynamic ORM for Rust"
