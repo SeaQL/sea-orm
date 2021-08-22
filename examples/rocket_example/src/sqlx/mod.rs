@@ -15,7 +15,7 @@ mod setup;
 
 #[derive(Database, Debug)]
 #[database("blog")]
-struct Db(sea_orm::DatabaseConnection);
+struct Db(sea_orm::Database);
 
 type Result<T, E = rocket::response::Debug<sqlx::Error>> = std::result::Result<T, E>;
 
@@ -48,7 +48,7 @@ use sea_orm::DatabaseConnection;
 // }
 
 #[get("/")]
-async fn list(mut db: Connection<Db>) -> Result<Json<Vec<i64>>> {
+async fn list(mut con: Connection<Db>) -> Result<Json<Vec<i64>>> {
     // let ids = sqlx::query!("SELECT id FROM posts")
     //     .fetch(&mut *db)
     //     .map_ok(|record| record.id)
@@ -91,17 +91,32 @@ async fn list(mut db: Connection<Db>) -> Result<Json<Vec<i64>>> {
     // let ids: Vec<i64> = recs.into();
 
     // println!("recs: {:#?}", ids);
-    println!("db: {:#?}", &*db);
-    let res = db
-        .execute(Statement::from_string(
+    // println!("db: {:#?}", &*db);
+    // let res = db
+    //     .execute(Statement::from_string(
+    //         DatabaseBackend::Sqlite,
+    //         "SELECT * from posts".to_owned(),
+    //     ))
+    //     .await;
+    // println!("res: {:#?}", res);
+
+    let all_posts = con
+        .query_all(Statement::from_string(
             DatabaseBackend::Sqlite,
-            "SELECT * from posts".to_owned(),
+            "select * from posts;".to_owned(),
         ))
-        .await;
-    println!("res: {:#?}", res);
+        .await
+        .unwrap();
+    for post in all_posts.into_iter() {
+        // let p = Post::from_raw_query_result(post);
+        println!(
+            "p: {:#?}",
+            sea_orm::JsonValue::from_query_result(&post, "").unwrap()
+        );
+    }
 
     // let con = SqlxSqliteConnector::from_sqlx_sqlite_pool(db);
-    // let posts = Post::find().all(&db).await.unwrap();
+    // let posts = Post::find().all(&con).await.unwrap();
     // assert_eq!(posts.len(), 0);
 
     let ids: Vec<i64> = vec![];
@@ -183,7 +198,9 @@ pub fn stage() -> AdHoc {
         rocket
             .attach(Db::init())
             .attach(AdHoc::try_on_ignite("Create init post", |rocket| async {
-                let db = Db::fetch(&rocket).expect("database mounted");
+                let con = sea_orm::Database::connect("mysql://root:@localhost/rocket_example")
+                    .await
+                    .unwrap();
                 // let res = sqlx::query(
                 //     r#"
                 //     CREATE TABLE posts (
@@ -195,23 +212,22 @@ pub fn stage() -> AdHoc {
                 // )
                 // .execute(&**db)
                 // .await;
-
-                let create_post_table = db
+                let create_post_table = con
                     .execute(Statement::from_string(
                         DatabaseBackend::Sqlite,
                         r#"
                         CREATE TABLE posts (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            title VARCHAR NOT NULL,
-                            text VARCHAR NOT NULL,
-                            published BOOLEAN NOT NULL DEFAULT 0
+                            id int NOT NULL AUTO_INCREMENT,
+                            title VARCHAR(255) NOT NULL,
+                            text VARCHAR(255) NOT NULL,
+                            PRIMARY KEY (id)
                         )"#
                         .to_owned(),
                     ))
                     .await;
                 println!("create_post_table: {:#?}", create_post_table);
 
-                let create_post = db
+                let create_post = con
                     .execute(Statement::from_string(
                         DatabaseBackend::Sqlite,
                         "INSERT INTO posts (title, text) VALUES ('a post', 'content of a post')"
@@ -219,6 +235,8 @@ pub fn stage() -> AdHoc {
                     ))
                     .await;
                 println!("create_post: {:#?}", create_post);
+
+                // println!("all_posts: {:#?}", all_posts);
 
                 // let res2 = sqlx::query(
                 //     r#"
