@@ -3,7 +3,6 @@ members = [
     ".",
     "sea-orm-macros",
     "sea-orm-codegen",
-    "examples/sqlx",
 ]
 
 [package]

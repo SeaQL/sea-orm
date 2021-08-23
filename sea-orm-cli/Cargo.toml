@@ -1,5 +1,5 @@
 [workspace]
-# A separate workspace for sea-orm-cli
+# A separate workspace
 
 [package]
 name = "sea-orm-cli"

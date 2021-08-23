@@ -1,0 +1,12 @@
+[workspace]
+# A separate workspace
+
+[package]
+name = "sea-orm-example-tokio"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+sea-orm = { path = "../../", features = [ "sqlx-all", "runtime-tokio-native-tls" ] }
+tokio = { version = "1", features = ["full"] }

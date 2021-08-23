@@ -27,7 +27,6 @@ jobs:
           command: test
           args: >
             --all
-            --exclude 'sea-orm-example-*'
 
   cli:
     name: CLI
@@ -82,6 +81,18 @@ jobs:
           args: >
             --features default,sqlx-${{ matrix.database }},runtime-${{ matrix.runtime }}-${{ matrix.tls }}
             --no-run
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: >
+            --path examples/async-std
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: >
+            --path examples/tokio
 
   sqlite:
     name: SQLite
