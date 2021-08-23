@@ -28,6 +28,22 @@ where
     }
 }
 
+pub trait Linked {
+    type FromEntity: EntityTrait;
+
+    type ToEntity: EntityTrait;
+
+    fn link() -> Vec<RelationDef>;
+
+    fn find_linked() -> Select<Self::ToEntity> {
+        let mut select = Select::new();
+        for rel in Self::link() {
+            select = select.join(JoinType::InnerJoin, rel);
+        }
+        select
+    }
+}
+
 pub struct RelationDef {
     pub rel_type: RelationType,
     pub from_tbl: TableRef,
