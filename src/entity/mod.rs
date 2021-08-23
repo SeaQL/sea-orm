@@ -6,6 +6,7 @@ mod model;
 pub mod prelude;
 mod primary_key;
 mod relation;
+mod create_stmt;
 
 pub use active_model::*;
 pub use base_entity::*;
@@ -15,3 +16,4 @@ pub use model::*;
 // pub use prelude::*;
 pub use primary_key::*;
 pub use relation::*;
+pub use create_stmt::*;
