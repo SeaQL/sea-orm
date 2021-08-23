@@ -10,6 +10,40 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+
+  compile:
+    name: Compile
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        database: [sqlite, mysql, postgres]
+        runtime: [async-std, actix, tokio]
+        tls: [native-tls, rustls]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            Cargo.lock
+            target
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-${{ matrix.database }}-${{ matrix.runtime }}-${{ matrix.tls }}
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --features default,sqlx-${{ matrix.database }},runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+            --no-run
+
   test:
     name: Unit Test
     runs-on: ubuntu-20.04
@@ -49,14 +83,12 @@ jobs:
           args: >
             --path sea-orm-cli
 
-  compile:
-    name: Compile
-    runs-on: ubuntu-20.04
+  examples:
+    name: Examples
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        database: [sqlite, mysql, postgres]
-        runtime: [async-std, actix, tokio]
-        tls: [native-tls, rustls]
+        os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v2
 
@@ -66,33 +98,17 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            Cargo.lock
-            target
-          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-${{ matrix.database }}-${{ matrix.runtime }}-${{ matrix.tls }}
-
       - uses: actions-rs/cargo@v1
         with:
-          command: test
+          command: build
           args: >
-            --features default,sqlx-${{ matrix.database }},runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-            --no-run
+            --manifest-path examples/async-std/Cargo.toml
 
       - uses: actions-rs/cargo@v1
         with:
           command: build
           args: >
-            --path examples/async-std
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: >
-            --path examples/tokio
+            --manifest-path examples/tokio/Cargo.toml
 
   sqlite:
     name: SQLite
