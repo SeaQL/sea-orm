@@ -232,8 +232,8 @@ mod tests {
     fn update_4() {
         assert_eq!(
             Update::many(fruit::Entity)
-                .col_expr(fruit::Column::CakeId, Expr::value(Value::Null))
-                .filter(ColumnTrait::eq(&fruit::Column::Id, 2))
+                .col_expr(fruit::Column::CakeId, Expr::value(Value::Int(None)))
+                .filter(fruit::Column::Id.eq(2))
                 .build(DbBackend::Postgres)
                 .to_string(),
             r#"UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."id" = 2"#,

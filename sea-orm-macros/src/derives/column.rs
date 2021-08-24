@@ -42,8 +42,6 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
 }
 
 pub fn impl_col_from_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
-    let parse_error_iden = format_ident!("Parse{}Err", ident);
-
     let data_enum = match data {
         Data::Enum(data_enum) => data_enum,
         _ => {
@@ -63,16 +61,13 @@ pub fn impl_col_from_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream>
     });
 
     Ok(quote!(
-        #[derive(Debug, Clone, Copy, PartialEq)]
-        pub struct #parse_error_iden;
-
         impl std::str::FromStr for #ident {
-            type Err = #parse_error_iden;
+            type Err = sea_orm::ColumnFromStrErr;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
                     #(#columns),*,
-                    _ => Err(#parse_error_iden),
+                    _ => Err(sea_orm::ColumnFromStrErr(format!("Failed to parse '{}' as `{}`", s, stringify!(#ident)))),
                 }
             }
         }

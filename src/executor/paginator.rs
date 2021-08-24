@@ -97,7 +97,7 @@ where
     /// # use sea_orm::{error::*, MockDatabase, DbBackend};
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres).into_connection();
     /// # let db = &owned_db;
-    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     /// let mut cake_pages = cake::Entity::find()
@@ -125,7 +125,7 @@ where
     /// # use sea_orm::{error::*, MockDatabase, DbBackend};
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres).into_connection();
     /// # let db = &owned_db;
-    /// # let _: Result<(), DbErr> = async_std::task::block_on(async {
+    /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
     /// use futures::TryStreamExt;
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
@@ -203,7 +203,7 @@ mod tests {
         (db, num_items)
     }
 
-    #[async_std::test]
+    #[smol_potat::test]
     async fn fetch_page() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
@@ -233,7 +233,7 @@ mod tests {
         Ok(())
     }
 
-    #[async_std::test]
+    #[smol_potat::test]
     async fn fetch() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
@@ -267,7 +267,7 @@ mod tests {
         Ok(())
     }
 
-    #[async_std::test]
+    #[smol_potat::test]
     async fn num_pages() -> Result<(), DbErr> {
         let (db, num_items) = setup_num_items();
 
@@ -299,7 +299,7 @@ mod tests {
         Ok(())
     }
 
-    #[async_std::test]
+    #[smol_potat::test]
     async fn next_and_cur_page() -> Result<(), DbErr> {
         let (db, _) = setup();
 
@@ -315,7 +315,7 @@ mod tests {
         Ok(())
     }
 
-    #[async_std::test]
+    #[smol_potat::test]
     async fn fetch_and_next() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
@@ -350,7 +350,7 @@ mod tests {
         Ok(())
     }
 
-    #[async_std::test]
+    #[smol_potat::test]
     async fn into_stream() -> Result<(), DbErr> {
         let (db, pages) = setup();
 

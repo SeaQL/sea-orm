@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use crate::{EntityName, IdenStatic, Iterable};
 use sea_query::{DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
 
@@ -77,7 +78,7 @@ macro_rules! bind_subquery_func {
 
 // LINT: when the operand value does not match column type
 /// Wrapper of the identically named method in [`sea_query::Expr`]
-pub trait ColumnTrait: IdenStatic + Iterable {
+pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     type EntityName: EntityName;
 
     fn def(&self) -> ColumnDef;
@@ -352,25 +353,27 @@ mod tests {
 
     #[test]
     fn test_col_from_str() {
-        match fruit::Column::from_str("id") {
-            Ok(col) => assert_eq!(col, fruit::Column::Id),
-            Err(_) => panic!("fruit from_str fails"),
-        }
-        match fruit::Column::from_str("name") {
-            Ok(col) => assert_eq!(col, fruit::Column::Name),
-            Err(_) => panic!("fruit from_str fails"),
-        }
-        match fruit::Column::from_str("cake_id") {
-            Ok(col) => assert_eq!(col, fruit::Column::CakeId),
-            Err(_) => panic!("fruit from_str fails"),
-        }
-        match fruit::Column::from_str("cakeId") {
-            Ok(col) => assert_eq!(col, fruit::Column::CakeId),
-            Err(_) => panic!("fruit from_str fails"),
-        }
-        match fruit::Column::from_str("does_not_exist") {
-            Ok(_) => panic!("fruit from_str found match when it shouldn't have"),
-            Err(err) => assert_eq!(err, fruit::ParseColumnErr),
-        }
+        use std::str::FromStr;
+
+        assert!(matches!(
+            fruit::Column::from_str("id"),
+            Ok(fruit::Column::Id)
+        ));
+        assert!(matches!(
+            fruit::Column::from_str("name"),
+            Ok(fruit::Column::Name)
+        ));
+        assert!(matches!(
+            fruit::Column::from_str("cake_id"),
+            Ok(fruit::Column::CakeId)
+        ));
+        assert!(matches!(
+            fruit::Column::from_str("cakeId"),
+            Ok(fruit::Column::CakeId)
+        ));
+        assert!(matches!(
+            fruit::Column::from_str("does_not_exist"),
+            Err(crate::ColumnFromStrErr(_))
+        ));
     }
 }
