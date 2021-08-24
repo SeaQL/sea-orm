@@ -1,7 +1,7 @@
 pub use crate::{
     error::*, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait, ColumnType,
-    DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveEntity, DeriveModel,
-    DerivePrimaryKey, EntityName, EntityTrait, EnumIter, Iden, IdenStatic, ModelTrait,
+    DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveCustomColumn, DeriveEntity,
+    DeriveModel, DerivePrimaryKey, EntityName, EntityTrait, EnumIter, Iden, IdenStatic, ModelTrait,
     PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryResult, Related, RelationDef,
     RelationTrait, Select, Value,
 };
@@ -11,6 +11,9 @@ pub use serde_json::Value as Json;
 
 #[cfg(feature = "with-chrono")]
 pub use chrono::NaiveDateTime as DateTime;
+
+#[cfg(feature = "with-chrono")]
+pub type DateTimeWithTimeZone = chrono::DateTime<chrono::FixedOffset>;
 
 #[cfg(feature = "with-rust_decimal")]
 pub use rust_decimal::Decimal;

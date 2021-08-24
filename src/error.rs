@@ -16,3 +16,14 @@ impl std::fmt::Display for DbErr {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct ColumnFromStrErr(pub String);
+
+impl std::error::Error for ColumnFromStrErr {}
+
+impl std::fmt::Display for ColumnFromStrErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0.as_str())
+    }
+}

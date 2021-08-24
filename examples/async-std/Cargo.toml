@@ -1,5 +1,8 @@
+[workspace]
+# A separate workspace
+
 [package]
-name = "sea-orm-example-sqlx"
+name = "sea-orm-example-async-std"
 version = "0.1.0"
 edition = "2018"
 publish = false

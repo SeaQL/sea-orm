@@ -1,10 +1,8 @@
 name: tests
 
 on:
-  push:
-    branches:
-      - master
   pull_request:
+  push:
     branches:
       - master
 
@@ -12,12 +10,15 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
-    name: Unit Test
+
+  compile:
+    name: Compile
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
+        database: [sqlite, mysql, postgres]
+        runtime: [async-std, actix, tokio]
+        tls: [native-tls, rustls]
     steps:
       - uses: actions/checkout@v2
 
@@ -27,32 +28,98 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            Cargo.lock
+            target
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-${{ matrix.database }}-${{ matrix.runtime }}-${{ matrix.tls }}
 
       - uses: actions-rs/cargo@v1
         with:
-          command: build
+          command: test
           args: >
-            --all
-            --features default
+            --features default,sqlx-${{ matrix.database }},runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+            --no-run
+
+  test:
+    name: Unit Test
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: >
             --all
-            --exclude 'sea-orm-example-*'
-            --features default
+
+  cli:
+    name: CLI
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: >
+            --path sea-orm-cli
+
+  examples:
+    name: Examples
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: >
+            --manifest-path examples/async-std/Cargo.toml
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: >
+            --manifest-path examples/tokio/Cargo.toml
 
   sqlite:
     name: SQLite
     runs-on: ubuntu-20.04
+    needs: compile
     env:
       DATABASE_URL: "sqlite::memory:"
     strategy:
       matrix:
-        # runtime: [async-std-native-tls, async-std-rustls, actix-native-tls, actix-rustls, tokio-native-tls, tokio-rustls]
-        runtime: [async-std-native-tls]
+        runtime: [async-std, actix, tokio]
+        tls: [native-tls, rustls]
     steps:
       - uses: actions/checkout@v2
 
@@ -62,29 +129,32 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: Swatinem/rust-cache@v1
-
-      - uses: actions-rs/cargo@v1
+      - uses: actions/cache@v2
         with:
-          command: build
-          args: >
-            --features default,runtime-${{ matrix.runtime }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            Cargo.lock
+            target
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ matrix.tls }}
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: >
-            --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}
+            --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   mysql:
     name: MySQL
     runs-on: ubuntu-20.04
+    needs: compile
     env:
       DATABASE_URL: "mysql://root:@localhost"
     strategy:
       matrix:
         version: [8.0, 5.7]
-        runtime: [async-std-native-tls]
+        runtime: [async-std, actix, tokio]
+        tls: [native-tls]
     services:
       mysql:
         image: mysql:${{ matrix.version }}
@@ -111,29 +181,32 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: Swatinem/rust-cache@v1
-
-      - uses: actions-rs/cargo@v1
+      - uses: actions/cache@v2
         with:
-          command: build
-          args: >
-            --features default,runtime-${{ matrix.runtime }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            Cargo.lock
+            target
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: >
-            --features default,sqlx-mysql,runtime-${{ matrix.runtime }}
+            --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   mariadb:
     name: MariaDB
     runs-on: ubuntu-20.04
+    needs: compile
     env:
       DATABASE_URL: "mysql://root:@localhost"
     strategy:
       matrix:
         version: [10.6]
-        runtime: [async-std-native-tls]
+        runtime: [async-std, actix, tokio]
+        tls: [rustls]
     services:
       mysql:
         image: mariadb:${{ matrix.version }}
@@ -160,29 +233,32 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: Swatinem/rust-cache@v1
-
-      - uses: actions-rs/cargo@v1
+      - uses: actions/cache@v2
         with:
-          command: build
-          args: >
-            --features default,runtime-${{ matrix.runtime }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            Cargo.lock
+            target
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: >
-            --features default,sqlx-mysql,runtime-${{ matrix.runtime }}
+            --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   postgres:
     name: Postgres
     runs-on: ubuntu-20.04
+    needs: compile
     env:
       DATABASE_URL: "postgres://root:root@localhost"
     strategy:
       matrix:
         version: [13.3, 12.7, 11.12, 10.17, 9.6.22]
-        runtime: [async-std-native-tls]
+        runtime: [tokio]
+        tls: [native-tls]
     services:
       postgres:
         image: postgres:${{ matrix.version }}
@@ -206,16 +282,17 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: Swatinem/rust-cache@v1
-
-      - uses: actions-rs/cargo@v1
+      - uses: actions/cache@v2
         with:
-          command: build
-          args: >
-            --features default,runtime-${{ matrix.runtime }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            Cargo.lock
+            target
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: >
-            --features default,sqlx-postgres,runtime-${{ matrix.runtime }}
+            --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}

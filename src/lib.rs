@@ -1,6 +1,6 @@
 //! <div align="center">
 //!
-//!   <img src="docs/SeaORM banner.png"/>
+//!   <img src="https://www.sea-ql.org/SeaORM/img/SeaORM banner.png"/>
 //!
 //!   <h1>SeaORM</h1>
 //!
@@ -18,30 +18,26 @@
 //!
 //! # SeaORM
 //!
-//! Inspired by ActiveRecord, Eloquent and TypeORM, SeaORM aims to provide you an intuitive and ergonomic
-//! API to make working with databases in Rust a first-class experience.
+//! SeaORM is a relational ORM to help you build light weight and concurrent web services in Rust.
 //!
 //! ```markdown
 //! This is an early release of SeaORM, the API is not stable yet.
 //! ```
 //!
-//! <div align="center">
-//!
-//!   [![Getting Started](https://img.shields.io/badge/Getting%20Started-blue)](https://www.sea-ql.org/SeaORM/docs/index)
-//!   [![Getting Started](https://img.shields.io/badge/Examples-orange)](https://github.com/SeaQL/sea-orm/tree/master/examples/sqlx)
-//!   [![Getting Started](https://img.shields.io/badge/Starter%20Kit-green)](https://github.com/SeaQL/sea-orm/issues/37)
-//!
-//! </div>
+//! [![Getting Started](https://img.shields.io/badge/Getting%20Started-blue)](https://www.sea-ql.org/SeaORM/docs/index)
+//! [![Examples](https://img.shields.io/badge/Examples-orange)](https://github.com/SeaQL/sea-orm/tree/master/examples/sqlx)
+//! [![Starter Kit](https://img.shields.io/badge/Starter%20Kit-green)](https://github.com/SeaQL/sea-orm/issues/37)
+//! [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
 //!
 //! ## Features
 //!
 //! 1. Async
 //!
-//! Relying on SQLx, SeaORM is a new library with async support from day 1.
+//! Relying on [SQLx](https://github.com/launchbadge/sqlx), SeaORM is a new library with async support from day 1.
 //!
 //! 2. Dynamic
 //!
-//! Built upon SeaQuery, SeaORM allows you to build complex queries without 'fighting the ORM'.
+//! Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex queries without 'fighting the ORM'.
 //!
 //! 3. Testable
 //!
@@ -133,7 +129,7 @@
 //!
 //! // update many: UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."name" LIKE '%Apple%'
 //! Fruit::update_many()
-//!     .col_expr(fruit::Column::CakeId, Expr::value(Value::Null))
+//!     .col_expr(fruit::Column::CakeId, Expr::value(Value::Int(None)))
 //!     .filter(fruit::Column::Name.contains("Apple"))
 //!     .exec(db)
 //!     .await?;
@@ -222,8 +218,8 @@ pub use executor::*;
 pub use query::*;
 
 pub use sea_orm_macros::{
-    DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveEntity, DeriveModel,
-    DerivePrimaryKey, FromQueryResult,
+    DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveCustomColumn, DeriveEntity,
+    DeriveModel, DerivePrimaryKey, FromQueryResult,
 };
 
 pub use sea_query;

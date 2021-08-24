@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use crate::{EntityName, IdenStatic, Iterable};
 use sea_query::{DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
 
@@ -77,7 +78,7 @@ macro_rules! bind_subquery_func {
 
 // LINT: when the operand value does not match column type
 /// Wrapper of the identically named method in [`sea_query::Expr`]
-pub trait ColumnTrait: IdenStatic + Iterable {
+pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     type EntityName: EntityName;
 
     fn def(&self) -> ColumnDef;
@@ -290,6 +291,7 @@ impl From<ColumnType> for sea_query::ColumnType {
 
 impl From<sea_query::ColumnType> for ColumnType {
     fn from(col_type: sea_query::ColumnType) -> Self {
+        #[allow(unreachable_patterns)]
         match col_type {
             sea_query::ColumnType::Char(s) => Self::Char(s),
             sea_query::ColumnType::String(s) => Self::String(s),
@@ -346,5 +348,31 @@ mod tests {
             ]
             .join(" ")
         );
+    }
+
+    #[test]
+    fn test_col_from_str() {
+        use std::str::FromStr;
+
+        assert!(matches!(
+            fruit::Column::from_str("id"),
+            Ok(fruit::Column::Id)
+        ));
+        assert!(matches!(
+            fruit::Column::from_str("name"),
+            Ok(fruit::Column::Name)
+        ));
+        assert!(matches!(
+            fruit::Column::from_str("cake_id"),
+            Ok(fruit::Column::CakeId)
+        ));
+        assert!(matches!(
+            fruit::Column::from_str("cakeId"),
+            Ok(fruit::Column::CakeId)
+        ));
+        assert!(matches!(
+            fruit::Column::from_str("does_not_exist"),
+            Err(crate::ColumnFromStrErr(_))
+        ));
     }
 }

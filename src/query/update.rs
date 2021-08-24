@@ -49,7 +49,7 @@ impl Update {
     {
         let myself = UpdateOne {
             query: UpdateStatement::new()
-                .table(A::Entity::default().into_iden())
+                .table(A::Entity::default().table_ref())
                 .to_owned(),
             model,
         };
@@ -75,7 +75,7 @@ impl Update {
         E: EntityTrait,
     {
         UpdateMany {
-            query: UpdateStatement::new().table(entity.into_iden()).to_owned(),
+            query: UpdateStatement::new().table(entity.table_ref()).to_owned(),
             entity: PhantomData,
         }
     }
@@ -232,7 +232,7 @@ mod tests {
     fn update_4() {
         assert_eq!(
             Update::many(fruit::Entity)
-                .col_expr(fruit::Column::CakeId, Expr::value(Value::Null))
+                .col_expr(fruit::Column::CakeId, Expr::value(Value::Int(None)))
                 .filter(fruit::Column::Id.eq(2))
                 .build(DbBackend::Postgres)
                 .to_string(),

@@ -3,13 +3,11 @@ members = [
     ".",
     "sea-orm-macros",
     "sea-orm-codegen",
-    "sea-orm-cli",
-    "examples/sqlx",
 ]
 
 [package]
 name = "sea-orm"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Chris Tsang <tyt2y7@gmail.com>"]
 edition = "2018"
 description = "🐚 An async & dynamic ORM for Rust"
@@ -20,11 +18,7 @@ categories = ["database"]
 keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 
 [package.metadata.docs.rs]
-features = [
-    "default",
-    "sqlx-all",
-    "runtime-async-std-native-tls",
-]
+features = ["default", "sqlx-all", "runtime-async-std-native-tls"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
@@ -37,8 +31,8 @@ chrono = { version = "^0", optional = true }
 futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 rust_decimal = { version = "^1", optional = true }
-sea-orm-macros = { version = "^0.1", optional = true }
-sea-query = { version = "^0.12.8" }
+sea-orm-macros = { version = "^0.1.1", optional = true }
+sea-query = { version = "^0.15", features = ["thread-safe"] }
 sea-strum = { version = "^0.21", features = ["derive", "sea-orm"] }
 serde = { version = "^1.0", features = ["derive"] }
 sqlx = { version = "^0.5", optional = true }
@@ -48,6 +42,8 @@ serde_json = { version = "^1", optional = true }
 uuid = { version = "0.8", features = ["serde", "v4"], optional = true }
 
 [dev-dependencies]
+smol = { version = "^1.2" }
+smol-potat = { version = "^1.1" }
 async-std = { version = "^1.9", features = ["attributes"] }
 tokio = { version = "^1.6", features = ["full"] }
 actix-rt = { version = "2.2.0" }
@@ -69,14 +65,8 @@ macros = ["sea-orm-macros"]
 mock = []
 with-json = ["serde_json", "sea-query/with-json"]
 with-chrono = ["chrono", "sea-query/with-chrono"]
-with-rust_decimal = [
-    "rust_decimal",
-    "sea-query/with-rust_decimal",
-]
-with-uuid = [
-    "uuid",
-    "sea-query/with-uuid",
-]
+with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal"]
+with-uuid = ["uuid", "sea-query/with-uuid"]
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-dep = ["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid"]
 sqlx-json = ["sqlx/json", "with-json"]

@@ -66,7 +66,8 @@ async fn find_all(db: &DbConn) -> Result<(), DbErr> {
 async fn find_together(db: &DbConn) -> Result<(), DbErr> {
     print!("find cakes and fruits: ");
 
-    let both = Cake::find().find_also_related(Fruit).all(db).await?;
+    let both: Vec<(cake::Model, Option<fruit::Model>)> =
+        Cake::find().find_also_related(Fruit).all(db).await?;
 
     println!();
     for bb in both.iter() {

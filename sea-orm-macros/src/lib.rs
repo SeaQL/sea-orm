@@ -29,7 +29,17 @@ pub fn derive_primary_key(input: TokenStream) -> TokenStream {
 pub fn derive_column(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
 
-    match derives::expand_derive_column(ident, data) {
+    match derives::expand_derive_column(&ident, &data) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
+#[proc_macro_derive(DeriveCustomColumn)]
+pub fn derive_custom_column(input: TokenStream) -> TokenStream {
+    let DeriveInput { ident, data, .. } = parse_macro_input!(input);
+
+    match derives::expand_derive_custom_column(&ident, &data) {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }
@@ -73,4 +83,24 @@ pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }
+}
+
+#[doc(hidden)]
+#[proc_macro_attribute]
+pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
+    let input = syn::parse_macro_input!(input as syn::ItemFn);
+
+    let ret = &input.sig.output;
+    let name = &input.sig.ident;
+    let body = &input.block;
+    let attrs = &input.attrs;
+
+    quote::quote! (
+        #[test]
+        #(#attrs)*
+        fn #name() #ret {
+            crate::block_on!(async { #body })
+        }
+    )
+    .into()
 }

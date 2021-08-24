@@ -5,8 +5,12 @@ use crate::entity::prelude::*;
 pub struct Entity;
 
 impl EntityName for Entity {
+    fn schema_name(&self) -> Option<&str> {
+        Some("public")
+    }
+
     fn table_name(&self) -> &str {
-        "cake_filling"
+        "cake_filling_price"
     }
 }
 
@@ -14,12 +18,14 @@ impl EntityName for Entity {
 pub struct Model {
     pub cake_id: i32,
     pub filling_id: i32,
+    pub price: Decimal,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     CakeId,
     FillingId,
+    Price,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -36,8 +42,7 @@ impl PrimaryKeyTrait for PrimaryKey {
 
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
-    Cake,
-    Filling,
+    CakeFilling,
 }
 
 impl ColumnTrait for Column {
@@ -47,6 +52,7 @@ impl ColumnTrait for Column {
         match self {
             Self::CakeId => ColumnType::Integer.def(),
             Self::FillingId => ColumnType::Integer.def(),
+            Self::Price => ColumnType::Decimal(None).def(),
         }
     }
 }
@@ -54,21 +60,20 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Cake => Entity::belongs_to(super::cake::Entity)
-                .from(Column::CakeId)
-                .to(super::cake::Column::Id)
-                .into(),
-            Self::Filling => Entity::belongs_to(super::filling::Entity)
-                .from(Column::FillingId)
-                .to(super::filling::Column::Id)
+            Self::CakeFilling => Entity::belongs_to(super::cake_filling::Entity)
+                .from((Column::CakeId, Column::FillingId))
+                .to((
+                    super::cake_filling::Column::CakeId,
+                    super::cake_filling::Column::FillingId,
+                ))
                 .into(),
         }
     }
 }
 
-impl Related<super::cake_filling_price::Entity> for Entity {
+impl Related<super::cake_filling::Entity> for Entity {
     fn to() -> RelationDef {
-        super::cake_filling_price::Relation::CakeFilling.def().rev()
+        Relation::CakeFilling.def()
     }
 }
 

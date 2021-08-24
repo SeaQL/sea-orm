@@ -34,7 +34,7 @@ impl EntityWriter {
                 let code_blocks = Self::gen_code_blocks(entity);
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
-                    name: format!("{}.rs", entity.table_name),
+                    name: format!("{}.rs", entity.get_table_name_snake_case()),
                     content: lines.join("\n\n"),
                 }
             })
@@ -44,11 +44,18 @@ impl EntityWriter {
     pub fn write_mod(&self) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        let code_blocks = self
+        let code_blocks: Vec<TokenStream> = self
             .entities
             .iter()
             .map(|entity| Self::gen_mod(entity))
             .collect();
+        Self::write(
+            &mut lines,
+            vec![quote! {
+                pub mod prelude;
+            }],
+        );
+        lines.push("".to_owned());
         Self::write(&mut lines, code_blocks);
         OutputFile {
             name: "mod.rs".to_owned(),
@@ -123,11 +130,11 @@ impl EntityWriter {
     }
 
     pub fn gen_impl_entity_name(entity: &Entity) -> TokenStream {
-        let table_name_snake_case = entity.get_table_name_snake_case();
+        let table_name = entity.table_name.as_str();
         quote! {
             impl EntityName for Entity {
                 fn table_name(&self) -> &str {
-                    #table_name_snake_case
+                    #table_name
                 }
             }
         }
@@ -341,7 +348,7 @@ mod tests {
                 }],
             },
             Entity {
-                table_name: "cake_filling".to_owned(),
+                table_name: "_cake_filling_".to_owned(),
                 columns: vec![
                     Column {
                         name: "cake_id".to_owned(),

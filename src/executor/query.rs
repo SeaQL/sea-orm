@@ -1,6 +1,4 @@
 use crate::{debug_print, DbErr};
-use chrono::NaiveDateTime;
-use serde_json::Value as Json;
 use std::fmt;
 
 #[derive(Debug)]
@@ -219,7 +217,65 @@ macro_rules! try_getable_mysql {
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(_) => {
+                        panic!("{} unsupported by sqlx-postgres", stringify!($type))
+                    }
+                    #[cfg(feature = "sqlx-sqlite")]
+                    QueryResultRow::SqlxSqlite(_) => {
                         panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+                    }
+                    #[cfg(feature = "mock")]
+                    QueryResultRow::Mock(row) => match row.try_get(column.as_str()) {
+                        Ok(v) => Ok(Some(v)),
+                        Err(e) => {
+                            debug_print!("{:#?}", e.to_string());
+                            Ok(None)
+                        }
+                    },
+                }
+            }
+        }
+    };
+}
+
+macro_rules! try_getable_postgres {
+    ( $type: ty ) => {
+        impl TryGetable for $type {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr> {
+                let column = format!("{}{}", pre, col);
+                match &res.row {
+                    #[cfg(feature = "sqlx-mysql")]
+                    QueryResultRow::SqlxMySql(_) => {
+                        panic!("{} unsupported by sqlx-mysql", stringify!($type))
+                    }
+                    #[cfg(feature = "sqlx-postgres")]
+                    QueryResultRow::SqlxPostgres(row) => {
+                        use sqlx::Row;
+                        row.try_get(column.as_str())
+                            .map_err(crate::sqlx_error_to_query_err)
+                    }
+                    #[cfg(feature = "sqlx-sqlite")]
+                    QueryResultRow::SqlxSqlite(_) => {
+                        panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+                    }
+                    #[cfg(feature = "mock")]
+                    QueryResultRow::Mock(row) => Ok(row.try_get(column.as_str())?),
+                }
+            }
+        }
+
+        impl TryGetable for Option<$type> {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr> {
+                let column = format!("{}{}", pre, col);
+                match &res.row {
+                    #[cfg(feature = "sqlx-mysql")]
+                    QueryResultRow::SqlxMySql(_) => {
+                        panic!("{} unsupported by sqlx-mysql", stringify!($type))
+                    }
+                    #[cfg(feature = "sqlx-postgres")]
+                    QueryResultRow::SqlxPostgres(row) => {
+                        use sqlx::Row;
+                        row.try_get::<Option<$type>, _>(column.as_str())
+                            .map_err(crate::sqlx_error_to_query_err)
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(_) => {
@@ -251,14 +307,15 @@ try_getable_mysql!(u64);
 try_getable_all!(f32);
 try_getable_all!(f64);
 try_getable_all!(String);
-try_getable_all!(NaiveDateTime);
-try_getable_all!(Json);
 
-#[cfg(feature = "with-uuid")]
-use uuid::Uuid;
+#[cfg(feature = "with-json")]
+try_getable_all!(serde_json::Value);
 
-#[cfg(feature = "with-uuid")]
-try_getable_all!(Uuid);
+#[cfg(feature = "with-chrono")]
+try_getable_all!(chrono::NaiveDateTime);
+
+#[cfg(feature = "with-chrono")]
+try_getable_postgres!(chrono::DateTime<chrono::FixedOffset>);
 
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;
@@ -345,3 +402,6 @@ impl TryGetable for Option<Decimal> {
         }
     }
 }
+
+#[cfg(feature = "with-uuid")]
+try_getable_all!(uuid::Uuid);

@@ -21,8 +21,10 @@ pub fn build_cli() -> App<'static, 'static> {
                         .long("database-schema")
                         .short("s")
                         .help("Database schema")
+                        .long_help("Database schema\n \
+                        - For MySQL, this argument is ignored.\n \
+                        - For PostgreSQL, this argument is optional with default value 'public'.")
                         .takes_value(true)
-                        .required(true)
                         .env("DATABASE_SCHEMA"),
                 )
                 .arg(
@@ -32,6 +34,12 @@ pub fn build_cli() -> App<'static, 'static> {
                         .help("Entity file output directory")
                         .takes_value(true)
                         .default_value("./"),
+                )
+                .arg(
+                    Arg::with_name("INCLUDE_HIDDEN_TABLES")
+                        .long("include-hidden-tables")
+                        .help("Generate entity file for hidden tables (i.e. table name starts with an underscore)")
+                        .takes_value(false),
                 ),
         )
         .setting(AppSettings::SubcommandRequiredElseHelp);

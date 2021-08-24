@@ -1,5 +1,7 @@
 # Design Goals
 
+We are heavily inspired by ActiveRecord, Eloquent and TypeORM.
+
 1. Intuitive and ergonomic
 
 API should state the intention clearly. Provide syntax sugar for common things.

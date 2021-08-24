@@ -2,7 +2,9 @@ use crate::{
     ColumnTrait, EntityTrait, Identity, IntoSimpleExpr, Iterable, ModelTrait, PrimaryKeyToColumn,
     RelationDef,
 };
-use sea_query::{Alias, Expr, IntoCondition, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
+use sea_query::{
+    Alias, Expr, IntoCondition, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef,
+};
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
 // LINT: when the column does not appear in tables selected from
@@ -269,8 +271,8 @@ pub trait QueryFilter: Sized {
 }
 
 fn join_condition(rel: RelationDef) -> SimpleExpr {
-    let from_tbl = rel.from_tbl.clone();
-    let to_tbl = rel.to_tbl.clone();
+    let from_tbl = unpack_table_ref(&rel.from_tbl);
+    let to_tbl = unpack_table_ref(&rel.to_tbl);
     let owner_keys = rel.from_col;
     let foreign_keys = rel.to_col;
 
@@ -283,6 +285,22 @@ fn join_condition(rel: RelationDef) -> SimpleExpr {
                 .equals(SeaRc::clone(&to_tbl), f1)
                 .and(Expr::tbl(SeaRc::clone(&from_tbl), o2).equals(SeaRc::clone(&to_tbl), f2))
         }
+        (Identity::Ternary(o1, o2, o3), Identity::Ternary(f1, f2, f3)) => {
+            Expr::tbl(SeaRc::clone(&from_tbl), o1)
+                .equals(SeaRc::clone(&to_tbl), f1)
+                .and(Expr::tbl(SeaRc::clone(&from_tbl), o2).equals(SeaRc::clone(&to_tbl), f2))
+                .and(Expr::tbl(SeaRc::clone(&from_tbl), o3).equals(SeaRc::clone(&to_tbl), f3))
+        }
         _ => panic!("Owner key and foreign key mismatch"),
+    }
+}
+
+fn unpack_table_ref(table_ref: &TableRef) -> DynIden {
+    match table_ref {
+        TableRef::Table(tbl) => SeaRc::clone(tbl),
+        TableRef::SchemaTable(_, tbl) => SeaRc::clone(tbl),
+        TableRef::TableAlias(tbl, _) => SeaRc::clone(tbl),
+        TableRef::SchemaTableAlias(_, tbl, _) => SeaRc::clone(tbl),
+        TableRef::SubQuery(_, tbl) => SeaRc::clone(tbl),
     }
 }
