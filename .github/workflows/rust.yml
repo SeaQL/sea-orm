@@ -89,6 +89,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
+        path: [async-std, tokio, rocket_example]
     steps:
       - uses: actions/checkout@v2
 
@@ -102,13 +103,7 @@ jobs:
         with:
           command: build
           args: >
-            --manifest-path examples/async-std/Cargo.toml
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: >
-            --manifest-path examples/tokio/Cargo.toml
+            --manifest-path examples/${{ matrix.path }}/Cargo.toml
 
   sqlite:
     name: SQLite
