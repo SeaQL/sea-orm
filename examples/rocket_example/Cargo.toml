@@ -5,12 +5,9 @@ edition = "2018"
 publish = false
 [workspace]
 [dependencies]
-rocket = { path = "../../../Rocket/core/lib", features = ["json"] }
-# rocket = { git = "https://github.com/SergioBenitez/Rocket.git", branch = "master", features = [
-#   "json",
-# ] }
-# async-std = { version = "^1.9", features = ["attributes"] }
-sea-orm = { path = "../../", features = ["sqlx-all"] }
+rocket = { git = "https://github.com/SergioBenitez/Rocket.git", features = ["json"] }
+rocket_db_pools = { git = "https://github.com/SergioBenitez/Rocket.git", features = ["sqlx_mysql"] }
+sea-orm = { path = "../../", features = ["sqlx-all", "rocket-mysql"] }
 sea-query = { version = "^0.12.8" }
 
 serde_json = { version = "^1" }
@@ -22,13 +19,3 @@ futures-util = { version = "^0.3" }
 version = "0.5.1"
 default-features = false
 features = ["macros", "offline", "migrate"]
-
-# [dependencies.rocket_db_pools]
-# git = "https://github.com/SergioBenitez/Rocket"
-# branch = "master"
-# features = ["sea_orm"]
-[dependencies.rocket_db_pools]
-path = "../../../Rocket/contrib/db_pools/lib"
-# git = "https://github.com/samsamai/Rocket.git"
-# branch = "ss/seaorm-contrib"
-features = ["seaorm_sqlx_sqlite"]

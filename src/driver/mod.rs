@@ -9,8 +9,13 @@ mod sqlx_postgres;
 #[cfg(feature = "sqlx-sqlite")]
 mod sqlx_sqlite;
 
+#[cfg(feature = "rocket-mysql")]
+mod rocket_mysql;
+
 #[cfg(feature = "mock")]
 pub use mock::*;
+#[cfg(feature = "rocket-mysql")]
+pub use rocket_mysql::*;
 #[cfg(feature = "sqlx-dep")]
 pub use sqlx_common::*;
 #[cfg(feature = "sqlx-mysql")]
