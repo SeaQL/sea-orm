@@ -102,7 +102,7 @@ async fn list(mut con: Connection<Db>) -> Result<Json<Vec<i64>>> {
 
     let all_posts = con
         .query_all(Statement::from_string(
-            DatabaseBackend::Sqlite,
+            DatabaseBackend::MySql,
             "select * from posts;".to_owned(),
         ))
         .await
@@ -214,7 +214,7 @@ pub fn stage() -> AdHoc {
                 // .await;
                 let create_post_table = con
                     .execute(Statement::from_string(
-                        DatabaseBackend::Sqlite,
+                        DatabaseBackend::MySql,
                         r#"
                         CREATE TABLE posts (
                             id int NOT NULL AUTO_INCREMENT,
@@ -229,7 +229,7 @@ pub fn stage() -> AdHoc {
 
                 let create_post = con
                     .execute(Statement::from_string(
-                        DatabaseBackend::Sqlite,
+                        DatabaseBackend::MySql,
                         "INSERT INTO posts (title, text) VALUES ('a post', 'content of a post')"
                             .to_owned(),
                     ))
