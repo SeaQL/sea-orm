@@ -1,6 +1,6 @@
 use sea_orm::{error::*, sea_query, DbConn, ExecResult};
 
-use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, TableCreateStatement};
+use sea_orm::sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, TableCreateStatement};
 
 // mod post;
 pub use super::post::*;
