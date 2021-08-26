@@ -149,3 +149,24 @@ pub trait CreateStatementOf
 }
 
 impl<EntityTrait> CreateStatementOf for EntityTrait {}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::{CreateStatementOf, tests_cfg};
+
+    #[test]
+    fn test_create_statement_tests_cfg_cake() {
+        let create_statement = tests_cfg::cake::Entity::create_table_statement_of(tests_cfg::cake::Entity);
+        let table = format!("{:?}", create_statement.get_table_name());
+        let columns = format!("{:?}", create_statement.get_columns());
+        let relations = format!("{:?}", create_statement.get_foreign_key_create_stmts());
+        let indexs = format!("{:?}", create_statement.get_indexes());
+        let result = format!("{:?}", create_statement);
+        assert_eq!("TableCreateStatement { table: Some(cake), columns: [ColumnDef { table: Some(cake), name: id, types: Some(Integer(None)), spec: [PrimaryKey, AutoIncrement, NotNull] }, ColumnDef { table: Some(cake), name: name, types: Some(String(None)), spec: [NotNull] }], options: [], partitions: [], indexes: [], foreign_keys: [ForeignKeyCreateStatement { foreign_key: TableForeignKey { name: None, table: Some(cake), ref_table: Some(fruit), columns: [id], ref_columns: [cake_id], on_delete: None, on_update: None } }], if_not_exists: true }", result);
+        assert_eq!(r#"Some("cake")"#, table);
+        assert_eq!("[ForeignKeyCreateStatement { foreign_key: TableForeignKey { name: None, table: Some(cake), ref_table: Some(fruit), columns: [id], ref_columns: [cake_id], on_delete: None, on_update: None } }]", relations);
+        assert_eq!(r#"[ColumnDef { table: Some(cake), name: id, types: Some(Integer(None)), spec: [PrimaryKey, AutoIncrement, NotNull] }, ColumnDef { table: Some(cake), name: name, types: Some(String(None)), spec: [NotNull] }]"#, columns);
+        assert_eq!("[]", indexs);
+    }
+}
