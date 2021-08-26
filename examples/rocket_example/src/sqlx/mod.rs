@@ -49,77 +49,14 @@ use sea_orm::DatabaseConnection;
 
 #[get("/")]
 async fn list(mut con: Connection<Db>) -> Result<Json<Vec<i64>>> {
-    // let ids = sqlx::query!("SELECT id FROM posts")
-    //     .fetch(&mut *db)
-    //     .map_ok(|record| record.id)
-    //     .try_collect::<Vec<_>>()
-    //     .await?;
-    // // let ids: Vec<i64> = vec![];
-
-    // let ids = sqlx::query(
-    //     r#"
-    //         SELECT id FROM posts
-    //     "#,
-    // )
-    // .execute(&mut *db)
-    // .await?;
-    // // .map_ok(|record| record.id);
-    // // .try_collect::<Vec<_>>();
-    // println!("ids: {:#?}", ids);
-
-    // let ids: Vec<i64> = vec![];
-    // Ok(Json(ids))
-
-    // let mut conn = db.acquire().await?;
-    // println!("conn: {:#?}", conn);
-
-    // let ids = sqlx::query("SELECT id FROM posts")
-    //     .fetch(&mut *db)
-    //     .map_ok(|record| record.id)
-    //     .try_collect::<Vec<_>>()
-    //     .await?;
-
-    // Ok(Json(ids))
-
-    // let recs = sqlx::query(
-    //     r#"
-    //     SELECT id FROM posts
-    //     "#,
-    // )
-    // .fetch_all(&mut *db)
-    // .await?;
-    // let ids: Vec<i64> = recs.into();
-
-    // println!("recs: {:#?}", ids);
-    // println!("db: {:#?}", &*db);
-    // let res = db
-    //     .execute(Statement::from_string(
-    //         DatabaseBackend::Sqlite,
-    //         "SELECT * from posts".to_owned(),
-    //     ))
-    //     .await;
-    // println!("res: {:#?}", res);
-
-    let all_posts = con
-        .query_all(Statement::from_string(
-            DatabaseBackend::MySql,
-            "select * from posts;".to_owned(),
-        ))
+    let ids = Post::find()
+        .all(&con)
         .await
-        .unwrap();
-    for post in all_posts.into_iter() {
-        // let p = Post::from_raw_query_result(post);
-        println!(
-            "p: {:#?}",
-            sea_orm::JsonValue::from_query_result(&post, "").unwrap()
-        );
-    }
+        .expect("could not retrieve posts")
+        .into_iter()
+        .map(|record| record.id.unwrap())
+        .collect::<Vec<_>>();
 
-    // let con = SqlxSqliteConnector::from_sqlx_sqlite_pool(db);
-    // let posts = Post::find().all(&con).await.unwrap();
-    // assert_eq!(posts.len(), 0);
-
-    let ids: Vec<i64> = vec![];
     Ok(Json(ids))
 }
 
