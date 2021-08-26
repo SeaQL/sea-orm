@@ -1,7 +1,8 @@
 use chrono::offset::Utc;
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
-use sea_orm::{entity::*, query::*, FromQueryResult};
+use sea_orm::{entity::*, query::*, DbErr, FromQueryResult};
+use uuid::Uuid;
 
 pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
@@ -473,4 +474,203 @@ pub async fn having() {
     );
 
     ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
+pub async fn linked() -> Result<(), DbErr> {
+    use common::bakery_chain::Order;
+
+    let ctx = TestContext::new("test_linked").await;
+
+    // SeaSide Bakery
+    let seaside_bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    };
+    let seaside_bakery_res: InsertResult = Bakery::insert(seaside_bakery).exec(&ctx.db).await?;
+
+    // Bob's Baker, Cake & Cake Baker
+    let baker_bob = baker::ActiveModel {
+        name: Set("Baker Bob".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+61424000000",
+            "home": "0395555555",
+            "address": "12 Test St, Testville, Vic, Australia"
+        })),
+        bakery_id: Set(Some(seaside_bakery_res.last_insert_id as i32)),
+        ..Default::default()
+    };
+    let baker_bob_res: InsertResult = Baker::insert(baker_bob).exec(&ctx.db).await?;
+    let mud_cake = cake::ActiveModel {
+        name: Set("Mud Cake".to_owned()),
+        price: Set(dec!(10.25)),
+        gluten_free: Set(false),
+        serial: Set(Uuid::new_v4()),
+        bakery_id: Set(Some(seaside_bakery_res.last_insert_id as i32)),
+        ..Default::default()
+    };
+    let mud_cake_res: InsertResult = Cake::insert(mud_cake).exec(&ctx.db).await?;
+    let bob_cakes_bakers = cakes_bakers::ActiveModel {
+        cake_id: Set(mud_cake_res.last_insert_id as i32),
+        baker_id: Set(baker_bob_res.last_insert_id as i32),
+        ..Default::default()
+    };
+    CakesBakers::insert(bob_cakes_bakers).exec(&ctx.db).await?;
+
+    // Bobby's Baker, Cake & Cake Baker
+    let baker_bobby = baker::ActiveModel {
+        name: Set("Baker Bobby".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+85212345678",
+        })),
+        bakery_id: Set(Some(seaside_bakery_res.last_insert_id as i32)),
+        ..Default::default()
+    };
+    let baker_bobby_res: InsertResult = Baker::insert(baker_bobby).exec(&ctx.db).await?;
+    let cheese_cake = cake::ActiveModel {
+        name: Set("Cheese Cake".to_owned()),
+        price: Set(dec!(20.5)),
+        gluten_free: Set(false),
+        serial: Set(Uuid::new_v4()),
+        bakery_id: Set(Some(seaside_bakery_res.last_insert_id as i32)),
+        ..Default::default()
+    };
+    let cheese_cake_res: InsertResult = Cake::insert(cheese_cake).exec(&ctx.db).await?;
+    let bobby_cakes_bakers = cakes_bakers::ActiveModel {
+        cake_id: Set(cheese_cake_res.last_insert_id as i32),
+        baker_id: Set(baker_bobby_res.last_insert_id as i32),
+        ..Default::default()
+    };
+    CakesBakers::insert(bobby_cakes_bakers)
+        .exec(&ctx.db)
+        .await?;
+    let chocolate_cake = cake::ActiveModel {
+        name: Set("Chocolate Cake".to_owned()),
+        price: Set(dec!(30.15)),
+        gluten_free: Set(false),
+        serial: Set(Uuid::new_v4()),
+        bakery_id: Set(Some(seaside_bakery_res.last_insert_id as i32)),
+        ..Default::default()
+    };
+    let chocolate_cake_res: InsertResult = Cake::insert(chocolate_cake).exec(&ctx.db).await?;
+    let bobby_cakes_bakers = cakes_bakers::ActiveModel {
+        cake_id: Set(chocolate_cake_res.last_insert_id as i32),
+        baker_id: Set(baker_bobby_res.last_insert_id as i32),
+        ..Default::default()
+    };
+    CakesBakers::insert(bobby_cakes_bakers)
+        .exec(&ctx.db)
+        .await?;
+
+    // Kate's Customer, Order & Line Item
+    let customer_kate = customer::ActiveModel {
+        name: Set("Kate".to_owned()),
+        notes: Set(Some("Loves cheese cake".to_owned())),
+        ..Default::default()
+    };
+    let customer_kate_res: InsertResult = Customer::insert(customer_kate).exec(&ctx.db).await?;
+    let kate_order_1 = order::ActiveModel {
+        bakery_id: Set(seaside_bakery_res.last_insert_id as i32),
+        customer_id: Set(customer_kate_res.last_insert_id as i32),
+        total: Set(dec!(15.10)),
+        placed_at: Set(Utc::now().naive_utc()),
+        ..Default::default()
+    };
+    let kate_order_1_res: InsertResult = Order::insert(kate_order_1).exec(&ctx.db).await?;
+    lineitem::ActiveModel {
+        cake_id: Set(cheese_cake_res.last_insert_id as i32),
+        order_id: Set(kate_order_1_res.last_insert_id as i32),
+        price: Set(dec!(7.55)),
+        quantity: Set(2),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await?;
+    let kate_order_2 = order::ActiveModel {
+        bakery_id: Set(seaside_bakery_res.last_insert_id as i32),
+        customer_id: Set(customer_kate_res.last_insert_id as i32),
+        total: Set(dec!(29.7)),
+        placed_at: Set(Utc::now().naive_utc()),
+        ..Default::default()
+    };
+    let kate_order_2_res: InsertResult = Order::insert(kate_order_2).exec(&ctx.db).await?;
+    lineitem::ActiveModel {
+        cake_id: Set(chocolate_cake_res.last_insert_id as i32),
+        order_id: Set(kate_order_2_res.last_insert_id as i32),
+        price: Set(dec!(9.9)),
+        quantity: Set(3),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await?;
+
+    // Kara's Customer, Order & Line Item
+    let customer_kara = customer::ActiveModel {
+        name: Set("Kara".to_owned()),
+        notes: Set(Some("Loves all cakes".to_owned())),
+        ..Default::default()
+    };
+    let customer_kara_res: InsertResult = Customer::insert(customer_kara).exec(&ctx.db).await?;
+    let kara_order_1 = order::ActiveModel {
+        bakery_id: Set(seaside_bakery_res.last_insert_id as i32),
+        customer_id: Set(customer_kara_res.last_insert_id as i32),
+        total: Set(dec!(15.10)),
+        placed_at: Set(Utc::now().naive_utc()),
+        ..Default::default()
+    };
+    let kara_order_1_res: InsertResult = Order::insert(kara_order_1).exec(&ctx.db).await?;
+    lineitem::ActiveModel {
+        cake_id: Set(mud_cake_res.last_insert_id as i32),
+        order_id: Set(kara_order_1_res.last_insert_id as i32),
+        price: Set(dec!(7.55)),
+        quantity: Set(2),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await?;
+    let kara_order_2 = order::ActiveModel {
+        bakery_id: Set(seaside_bakery_res.last_insert_id as i32),
+        customer_id: Set(customer_kara_res.last_insert_id as i32),
+        total: Set(dec!(29.7)),
+        placed_at: Set(Utc::now().naive_utc()),
+        ..Default::default()
+    };
+    let kara_order_2_res: InsertResult = Order::insert(kara_order_2).exec(&ctx.db).await?;
+    lineitem::ActiveModel {
+        cake_id: Set(cheese_cake_res.last_insert_id as i32),
+        order_id: Set(kara_order_2_res.last_insert_id as i32),
+        price: Set(dec!(9.9)),
+        quantity: Set(3),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await?;
+
+    /*
+       SELECT `baker`.`id` AS `A_id`, `baker`.`name` AS `A_name`,
+           `baker`.`contact_details` AS `A_contact_details`,
+           `baker`.`bakery_id` AS `A_bakery_id`, `customer`.`id` AS `B_id`,
+           `customer`.`name` AS `B_name`, `customer`.`notes` AS `B_notes`
+       FROM `baker`
+       LEFT JOIN `cakes_bakers` ON `baker`.`id` = `cakes_bakers`.`baker_id`
+       LEFT JOIN `cake` ON `cakes_bakers`.`cake_id` = `cake`.`id`
+       LEFT JOIN `lineitem` ON `cake`.`id` = `lineitem`.`cake_id`
+       LEFT JOIN `order` ON `lineitem`.`order_id` = `order`.`id`
+       LEFT JOIN `customer` ON `order`.`customer_id` = `customer`.`id`
+    */
+    let baked_for_customers = Baker::find()
+        .find_also_linked(baker::BakedForCustomer)
+        .all(&ctx.db)
+        .await?;
+    println!("{:#?}", baked_for_customers);
+
+    ctx.delete().await;
+
+    Ok(())
 }

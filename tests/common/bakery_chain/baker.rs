@@ -81,4 +81,22 @@ impl Related<super::cake::Entity> for Entity {
     }
 }
 
+pub struct BakedForCustomer;
+
+impl Linked for BakedForCustomer {
+    type FromEntity = Entity;
+
+    type ToEntity = super::customer::Entity;
+
+    fn link() -> Vec<RelationDef> {
+        vec![
+            super::cakes_bakers::Relation::Baker.def().rev(),
+            super::cakes_bakers::Relation::Cake.def(),
+            super::lineitem::Relation::Cake.def().rev(),
+            super::lineitem::Relation::Order.def(),
+            super::order::Relation::Customer.def(),
+        ]
+    }
+}
+
 impl ActiveModelBehavior for ActiveModel {}
