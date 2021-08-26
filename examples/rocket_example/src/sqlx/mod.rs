@@ -73,14 +73,18 @@ async fn read(mut con: Connection<Db>, id: i64) -> Option<Json<post::Model>> {
     }
 }
 
-// #[delete("/<id>")]
-// async fn delete(mut db: Connection<Db>, id: i64) -> Result<Option<()>> {
-//     let result = sqlx::query!("DELETE FROM posts WHERE id = ?", id)
-//         .execute(&mut *db)
-//         .await?;
+#[delete("/<id>")]
+async fn delete(mut conn: Connection<Db>, id: i64) -> Result<Option<()>> {
+    let post: post::ActiveModel = Post::find_by_id(id)
+        .one(&conn)
+        .await
+        .unwrap()
+        .unwrap()
+        .into();
+    let result = post.delete(&conn).await.unwrap();
 
-//     Ok((result.rows_affected() == 1).then(|| ()))
-// }
+    Ok((result.rows_affected == 1).then(|| ()))
+}
 
 // #[delete("/")]
 // async fn destroy(mut db: Connection<Db>) -> Result<()> {
@@ -203,7 +207,7 @@ pub fn stage() -> AdHoc {
                 //     None => Err(rocket),
                 // }
             }))
-            .mount("/sqlx", routes![list, read])
+            .mount("/sqlx", routes![list, read, delete])
     })
 }
 
