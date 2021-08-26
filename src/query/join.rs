@@ -249,8 +249,8 @@ mod tests {
             [
                 r#"SELECT `filling`.`id`, `filling`.`name`"#,
                 r#"FROM `filling`"#,
-                r#"INNER JOIN `cake_filling` ON `cake`.`id` = `cake_filling`.`cake_id`"#,
-                r#"INNER JOIN `filling` ON `cake_filling`.`filling_id` = `filling`.`id`"#,
+                r#"INNER JOIN `cake_filling` ON `cake_filling`.`filling_id` = `filling`.`id`"#,
+                r#"INNER JOIN `cake` ON `cake`.`id` = `cake_filling`.`cake_id`"#,
             ]
             .join(" ")
         );

@@ -37,8 +37,8 @@ pub trait Linked {
 
     fn find_linked() -> Select<Self::ToEntity> {
         let mut select = Select::new();
-        for rel in Self::link() {
-            select = select.join(JoinType::InnerJoin, rel);
+        for rel in Self::link().into_iter().rev() {
+            select = select.join_rev(JoinType::InnerJoin, rel);
         }
         select
     }
