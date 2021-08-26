@@ -61,26 +61,16 @@ async fn list(mut con: Connection<Db>) -> Result<Json<Vec<i64>>> {
 }
 
 #[get("/<id>")]
-async fn read(mut db: Connection<Db>, id: i64) -> Option<Json<Post>> {
-    // let post: Option<post::Model> = Post::find_by_id(id)
-    //     .one(db)
-    //     .await
-    //     .expect("could not find baker");
-    // println!("post: {:#?}", post);
+async fn read(mut con: Connection<Db>, id: i64) -> Option<Json<post::Model>> {
+    let post: Option<post::Model> = Post::find_by_id(id)
+        .one(&con)
+        .await
+        .expect("could not find post");
 
-    // sqlx::query!("SELECT id, title, text FROM posts WHERE id = ?", id)
-    //     .fetch_one(&mut *db)
-    //     .map_ok(|r| {
-    //         Json(Post {
-    //             id: Some(r.id),
-    //             title: r.title,
-    //             text: r.text,
-    //         })
-    //     })
-    //     .await
-    //     .ok()
-
-    None
+    match post {
+        None => None,
+        Some(post) => Some(Json(post)),
+    }
 }
 
 // #[delete("/<id>")]
