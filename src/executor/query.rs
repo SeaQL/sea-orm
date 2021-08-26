@@ -103,7 +103,10 @@ macro_rules! try_getable_all {
                             .and_then(|opt| opt.ok_or_else(TryGetError::Null))
                     }
                     #[cfg(feature = "mock")]
-                    QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|_| TryGetError::Null),
+                    QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        TryGetError::Null
+                    }),
                 }
             }
         }
@@ -135,7 +138,10 @@ macro_rules! try_getable_unsigned {
                             .and_then(|opt| opt.ok_or_else(TryGetError::Null))
                     }
                     #[cfg(feature = "mock")]
-                    QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|_| TryGetError::Null),
+                    QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        TryGetError::Null
+                    }),
                 }
             }
         }
@@ -164,7 +170,10 @@ macro_rules! try_getable_mysql {
                         panic!("{} unsupported by sqlx-sqlite", stringify!($type))
                     }
                     #[cfg(feature = "mock")]
-                    QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|_| TryGetError::Null),
+                    QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        TryGetError::Null
+                    }),
                 }
             }
         }
@@ -193,7 +202,10 @@ macro_rules! try_getable_postgres {
                         panic!("{} unsupported by sqlx-sqlite", stringify!($type))
                     }
                     #[cfg(feature = "mock")]
-                    QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|_| TryGetError::Null),
+                    QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        TryGetError::Null
+                    }),
                 }
             }
         }
@@ -256,7 +268,10 @@ impl TryGetable for Decimal {
                 }
             }
             #[cfg(feature = "mock")]
-            QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|_| TryGetError::Null),
+            QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
+                debug_print!("{:#?}", e.to_string());
+                TryGetError::Null
+            }),
         }
     }
 }
