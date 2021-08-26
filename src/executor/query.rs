@@ -85,22 +85,22 @@ macro_rules! try_getable_all {
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<$type>, _>(column.as_str())
-                            .map_err(crate::sqlx_error_to_query_err)
-                            .and_then(|opt| opt.ok_or_else(TryGetError::Null))
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or_else(|| TryGetError::Null))
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<$type>, _>(column.as_str())
-                            .map_err(crate::sqlx_error_to_query_err)
-                            .and_then(|opt| opt.ok_or_else(TryGetError::Null))
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or_else(|| TryGetError::Null))
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<$type>, _>(column.as_str())
-                            .map_err(crate::sqlx_error_to_query_err)
-                            .and_then(|opt| opt.ok_or_else(TryGetError::Null))
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or_else(|| TryGetError::Null))
                     }
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
@@ -123,8 +123,8 @@ macro_rules! try_getable_unsigned {
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<$type>, _>(column.as_str())
-                            .map_err(crate::sqlx_error_to_query_err)
-                            .and_then(|opt| opt.ok_or_else(TryGetError::Null))
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or_else(|| TryGetError::Null))
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(_) => {
@@ -134,8 +134,8 @@ macro_rules! try_getable_unsigned {
                     QueryResultRow::SqlxSqlite(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<$type>, _>(column.as_str())
-                            .map_err(crate::sqlx_error_to_query_err)
-                            .and_then(|opt| opt.ok_or_else(TryGetError::Null))
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or_else(|| TryGetError::Null))
                     }
                     #[cfg(feature = "mock")]
                     QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
@@ -158,8 +158,8 @@ macro_rules! try_getable_mysql {
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<$type>, _>(column.as_str())
-                            .map_err(crate::sqlx_error_to_query_err)
-                            .and_then(|opt| opt.ok_or_else(TryGetError::Null))
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or_else(|| TryGetError::Null))
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(_) => {
@@ -194,8 +194,8 @@ macro_rules! try_getable_postgres {
                     QueryResultRow::SqlxPostgres(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<$type>, _>(column.as_str())
-                            .map_err(crate::sqlx_error_to_query_err)
-                            .and_then(|opt| opt.ok_or_else(TryGetError::Null))
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or_else(|| TryGetError::Null))
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(_) => {
@@ -246,24 +246,26 @@ impl TryGetable for Decimal {
             QueryResultRow::SqlxMySql(row) => {
                 use sqlx::Row;
                 row.try_get::<Option<Decimal>, _>(column.as_str())
-                    .map_err(crate::sqlx_error_to_query_err)
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .and_then(|opt| opt.ok_or_else(|| TryGetError::Null))
             }
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => {
                 use sqlx::Row;
                 row.try_get::<Option<Decimal>, _>(column.as_str())
-                    .map_err(crate::sqlx_error_to_query_err)
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .and_then(|opt| opt.ok_or_else(|| TryGetError::Null))
             }
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => {
                 use sqlx::Row;
                 let val: Option<f64> = row
                     .try_get(column.as_str())
-                    .map_err(crate::sqlx_error_to_query_err)?;
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))?;
                 use rust_decimal::prelude::FromPrimitive;
                 match val {
                     Some(v) => Decimal::from_f64(v)
-                        .ok_or_else(|| DbErr::Query("Failed to convert f64 into Decimal".to_owned())),
+                        .ok_or_else(|| TryGetError::DbErr(DbErr::Query("Failed to convert f64 into Decimal".to_owned()))),
                     None => Err(TryGetError::Null)
                 }
             }
