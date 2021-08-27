@@ -78,7 +78,7 @@ impl MockDatabaseTrait for MockDatabase {
         self.transaction_log.push(Transaction::one(statement));
         if counter < self.exec_results.len() {
             Ok(ExecResult {
-                result: ExecResultHolder::Mock(std::mem::take(&mut self.exec_results[counter])),
+                result: ExecResultHolder(std::mem::take(&mut self.exec_results[counter])),
             })
         } else {
             Err(DbErr::Exec("`exec_results` buffer is empty.".to_owned()))

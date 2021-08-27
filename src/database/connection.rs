@@ -65,16 +65,23 @@ impl DatabaseConnection {
         }
     }
 
+    #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite", feature = "mock"))]
     pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.execute(stmt).await,
-            #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.execute(stmt).await,
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.execute(stmt).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.execute(stmt).await,
+            DatabaseConnection::Disconnected => panic!("Disconnected"),
+        }
+    }
+
+    #[cfg(feature = "sqlx-postgres")]
+    pub async fn execute<T>(&self, stmt: Statement) -> Result<ExecResult<T>, DbErr> {
+        match self {
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.execute(stmt).await,
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
     }

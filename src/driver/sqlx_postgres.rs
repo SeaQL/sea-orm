@@ -39,7 +39,7 @@ impl SqlxPostgresConnector {
 }
 
 impl SqlxPostgresPoolConnection {
-    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
+    pub async fn execute<T>(&self, stmt: Statement) -> Result<ExecResult<T>, DbErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
@@ -99,22 +99,25 @@ impl From<PgRow> for QueryResult {
     }
 }
 
-impl From<PgQueryResult> for ExecResult {
-    fn from(result: PgQueryResult) -> ExecResult {
+impl<T> From<PgQueryResult> for ExecResult<T> {
+    fn from(result: PgQueryResult) -> ExecResult<T> {
         ExecResult {
-            result: ExecResultHolder::SqlxPostgres {
-                last_insert_id: 0,
+            result: ExecResultHolder {
+                last_insert_id: None,
                 rows_affected: result.rows_affected(),
             },
         }
     }
 }
 
-pub(crate) fn query_result_into_exec_result(res: QueryResult) -> Result<ExecResult, DbErr> {
-    let last_insert_id: i32 = res.try_get("", "last_insert_id")?;
+pub(crate) fn query_result_into_exec_result<T>(res: QueryResult) -> Result<ExecResult<T>, DbErr>
+where
+    T: TryGetable,
+{
+    let last_insert_id: T = res.try_get("", "last_insert_id")?;
     Ok(ExecResult {
-        result: ExecResultHolder::SqlxPostgres {
-            last_insert_id: last_insert_id as u64,
+        result: ExecResultHolder {
+            last_insert_id: Some(last_insert_id),
             rows_affected: 0,
         },
     })

@@ -72,7 +72,10 @@ where
 
 // Only Statement impl Send
 async fn exec_update(statement: Statement, db: &DatabaseConnection) -> Result<UpdateResult, DbErr> {
+    #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite", feature = "mock"))]
     let result = db.execute(statement).await?;
+    #[cfg(feature = "sqlx-postgres")]
+    let result = db.execute::<u64>(statement).await?;
     Ok(UpdateResult {
         rows_affected: result.rows_affected(),
     })

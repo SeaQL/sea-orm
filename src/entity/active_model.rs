@@ -221,6 +221,7 @@ where
     let exec = E::insert(am).exec(db);
     let res = exec.await?;
     // TODO: if the entity does not have auto increment primary key, then last_insert_id is a wrong value
+    #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite", feature = "mock"))]
     if <E::PrimaryKey as PrimaryKeyTrait>::auto_increment() && res.last_insert_id != 0 {
         let find = E::find_by_id(res.last_insert_id).one(db);
         let found = find.await;
@@ -231,6 +232,23 @@ where
                 "Failed to find inserted item: {} {}",
                 E::default().to_string(),
                 res.last_insert_id
+            ))),
+        }
+    } else {
+        Ok(A::default())
+    }
+
+    #[cfg(feature = "sqlx-postgres")]
+    if let Some(last_insert_id) = res.last_insert_id {
+        let find = E::find_by_id(last_insert_id.to_owned()).one(db);
+        let found = find.await;
+        let model: Option<E::Model> = found?;
+        match model {
+            Some(model) => Ok(model.into_active_model()),
+            None => Err(DbErr::Exec(format!(
+                "Failed to find inserted item: {} {:?}",
+                E::default().to_string(),
+                last_insert_id
             ))),
         }
     } else {
