@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate rocket;
-#[macro_use]
-extern crate rocket_db_pools;
 
 mod sqlx;
 

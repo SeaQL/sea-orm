@@ -1,15 +1,12 @@
-use rocket::fairing::{self, AdHoc};
+use rocket::fairing::AdHoc;
 use rocket::response::status::Created;
-use rocket::serde::{json::Json, Deserialize, Serialize};
+use rocket::serde::json::Json;
 use rocket::{futures, Build, Rocket};
 
 use rocket_db_pools::{sqlx, Connection, Database};
 
-use futures::{future::TryFutureExt, stream::TryStreamExt};
 use sea_orm::entity::*;
-use sea_orm::{
-    DatabaseBackend, QueryFilter, SqlxSqliteConnector, SqlxSqlitePoolConnection, Statement,
-};
+use sea_orm::{DatabaseBackend, Statement};
 
 mod setup;
 
@@ -19,38 +16,30 @@ struct Db(sea_orm::Database);
 
 type Result<T, E = rocket::response::Debug<sqlx::Error>> = std::result::Result<T, E>;
 
-// use post::*;
 mod post;
 pub use post::Entity as Post;
-use sea_orm::DatabaseConnection;
 
-// #[derive(Debug, Clone, Deserialize, Serialize)]
-// #[serde(crate = "rocket::serde")]
-// struct Post {
-//     #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
-//     id: Option<i64>,
-//     title: String,
-//     text: String,
-// }
+#[post("/", data = "<post>")]
+async fn create(
+    conn: Connection<Db>,
+    post: Json<post::Model>,
+) -> Result<Created<Json<post::Model>>> {
+    let _post = post::ActiveModel {
+        title: Set(post.title.to_owned()),
+        text: Set(post.text.to_owned()),
+        ..Default::default()
+    }
+    .save(&conn)
+    .await
+    .expect("could not insert post");
 
-// #[post("/", data = "<post>")]
-// async fn create(mut db: Connection<Db>, post: Json<Post>) -> Result<Created<Json<Post>>> {
-//     // There is no support for `RETURNING`.
-//     sqlx::query!(
-//         "INSERT INTO posts (title, text) VALUES (?, ?)",
-//         post.title,
-//         post.text
-//     )
-//     .execute(&mut *db)
-//     .await?;
-
-//     Ok(Created::new("/").body(post))
-// }
+    Ok(Created::new("/").body(post))
+}
 
 #[get("/")]
-async fn list(mut con: Connection<Db>) -> Result<Json<Vec<i64>>> {
+async fn list(conn: Connection<Db>) -> Result<Json<Vec<i64>>> {
     let ids = Post::find()
-        .all(&con)
+        .all(&conn)
         .await
         .expect("could not retrieve posts")
         .into_iter()
@@ -61,9 +50,9 @@ async fn list(mut con: Connection<Db>) -> Result<Json<Vec<i64>>> {
 }
 
 #[get("/<id>")]
-async fn read(mut con: Connection<Db>, id: i64) -> Option<Json<post::Model>> {
+async fn read(conn: Connection<Db>, id: i64) -> Option<Json<post::Model>> {
     let post: Option<post::Model> = Post::find_by_id(id)
-        .one(&con)
+        .one(&conn)
         .await
         .expect("could not find post");
 
@@ -74,7 +63,7 @@ async fn read(mut con: Connection<Db>, id: i64) -> Option<Json<post::Model>> {
 }
 
 #[delete("/<id>")]
-async fn delete(mut conn: Connection<Db>, id: i64) -> Result<Option<()>> {
+async fn delete(conn: Connection<Db>, id: i64) -> Result<Option<()>> {
     let post: post::ActiveModel = Post::find_by_id(id)
         .one(&conn)
         .await
@@ -87,7 +76,7 @@ async fn delete(mut conn: Connection<Db>, id: i64) -> Result<Option<()>> {
 }
 
 #[delete("/")]
-async fn destroy(mut conn: Connection<Db>) -> Result<()> {
+async fn destroy(conn: Connection<Db>) -> Result<()> {
     let _result = Post::delete_many().exec(&conn).await.unwrap();
     Ok(())
 }
@@ -206,7 +195,7 @@ pub fn stage() -> AdHoc {
                 //     None => Err(rocket),
                 // }
             }))
-            .mount("/sqlx", routes![list, read, delete, destroy])
+            .mount("/sqlx", routes![create, delete, destroy, list, read,])
     })
 }
 
