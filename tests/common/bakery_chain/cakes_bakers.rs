@@ -28,6 +28,8 @@ pub enum PrimaryKey {
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
+    type ValueType = u64;
+
     fn auto_increment() -> bool {
         false
     }

@@ -1,7 +1,13 @@
+use sea_query::Value;
+
+use crate::TryGetable;
+
 use super::{ColumnTrait, IdenStatic, Iterable};
 
 //LINT: composite primary key cannot auto increment
 pub trait PrimaryKeyTrait: IdenStatic + Iterable {
+    type ValueType: TryGetable + Into<Value> + Clone + std::fmt::Debug;
+
     fn auto_increment() -> bool;
 }
 
