@@ -1,6 +1,7 @@
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite", feature = "mock"))]
+use crate::PrimaryKeyTrait;
 use crate::{
-    error::*, DatabaseConnection, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn,
-    PrimaryKeyTrait, Value,
+    error::*, DatabaseConnection, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn, Value,
 };
 use std::fmt::Debug;
 
@@ -239,8 +240,8 @@ where
     }
 
     #[cfg(feature = "sqlx-postgres")]
-    if let Some(last_insert_id) = res.last_insert_id {
-        let find = E::find_by_id(last_insert_id.to_owned()).one(db);
+    {
+        let find = E::find_by_id(res.last_insert_id.to_owned()).one(db);
         let found = find.await;
         let model: Option<E::Model> = found?;
         match model {
@@ -248,11 +249,9 @@ where
             None => Err(DbErr::Exec(format!(
                 "Failed to find inserted item: {} {:?}",
                 E::default().to_string(),
-                last_insert_id
+                res.last_insert_id
             ))),
         }
-    } else {
-        Ok(A::default())
     }
 }
 

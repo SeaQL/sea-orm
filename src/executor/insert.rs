@@ -16,7 +16,7 @@ pub struct InsertResult {
 #[cfg(feature = "sqlx-postgres")]
 #[derive(Clone, Debug)]
 pub struct InsertResult<T> {
-    pub last_insert_id: Option<T>,
+    pub last_insert_id: T,
 }
 
 impl<A> Insert<A>
@@ -113,6 +113,6 @@ where
         crate::query_result_into_exec_result(res)?
     };
     Ok(InsertResult {
-        last_insert_id: result.last_insert_id().clone(),
+        last_insert_id: result.last_insert_id().unwrap(),
     })
 }
