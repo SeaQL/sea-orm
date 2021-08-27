@@ -86,12 +86,11 @@ async fn delete(mut conn: Connection<Db>, id: i64) -> Result<Option<()>> {
     Ok((result.rows_affected == 1).then(|| ()))
 }
 
-// #[delete("/")]
-// async fn destroy(mut db: Connection<Db>) -> Result<()> {
-//     sqlx::query!("DELETE FROM posts").execute(&mut *db).await?;
-
-//     Ok(())
-// }
+#[delete("/")]
+async fn destroy(mut conn: Connection<Db>) -> Result<()> {
+    let _result = Post::delete_many().exec(&conn).await.unwrap();
+    Ok(())
+}
 
 // async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
 //     use crate::rocket_db_pools::Pool;
@@ -207,7 +206,7 @@ pub fn stage() -> AdHoc {
                 //     None => Err(rocket),
                 // }
             }))
-            .mount("/sqlx", routes![list, read, delete])
+            .mount("/sqlx", routes![list, read, delete, destroy])
     })
 }
 
