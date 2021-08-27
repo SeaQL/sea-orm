@@ -82,23 +82,10 @@ async fn destroy(conn: Connection<Db>) -> Result<()> {
 }
 
 async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
-    let con = sea_orm::Database::connect("mysql://root:@localhost/rocket_example")
+    let conn = sea_orm::Database::connect("mysql://root:@localhost/rocket_example")
         .await
         .unwrap();
-    let create_post_table = con
-        .execute(Statement::from_string(
-            DatabaseBackend::MySql,
-            r#"
-            CREATE TABLE posts (
-                id int NOT NULL AUTO_INCREMENT,
-                title VARCHAR(255) NOT NULL,
-                text VARCHAR(255) NOT NULL,
-                PRIMARY KEY (id)
-            )"#
-            .to_owned(),
-        ))
-        .await;
-    println!("create_post_table: {:#?}", create_post_table);
+    let create_post_table = setup::create_post_table(&conn);
     Ok(rocket)
 }
 
