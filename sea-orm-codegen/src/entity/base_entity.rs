@@ -117,6 +117,18 @@ impl Entity {
         format_ident!("{}", auto_increment)
     }
 
+    pub fn get_primary_key_rs_type(&self) -> TokenStream {
+        if let Some(primary_key) = self.primary_keys.first() {
+            self.columns
+                .iter()
+                .find(|col| col.name.eq(&primary_key.name))
+                .unwrap()
+                .get_rs_type()
+        } else {
+            TokenStream::new()
+        }
+    }
+
     pub fn get_conjunct_relations_via_snake_case(&self) -> Vec<Ident> {
         self.conjunct_relations
             .iter()
@@ -151,7 +163,7 @@ mod tests {
             columns: vec![
                 Column {
                     name: "id".to_owned(),
-                    col_type: ColumnType::String(None),
+                    col_type: ColumnType::Integer(None),
                     auto_increment: false,
                     not_null: false,
                     unique: false,
@@ -370,6 +382,16 @@ mod tests {
         assert_eq!(
             entity.get_primary_key_auto_increment(),
             format_ident!("{}", true)
+        );
+    }
+
+    #[test]
+    fn test_get_primary_key_rs_type() {
+        let entity = setup();
+
+        assert_eq!(
+            entity.get_primary_key_rs_type().to_string(),
+            entity.columns[0].get_rs_type().to_string()
         );
     }
 
