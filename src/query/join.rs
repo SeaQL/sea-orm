@@ -59,13 +59,13 @@ where
     }
 
     /// Left Join with a Linked Entity and select both Entity.
-    pub fn find_also_linked<L, T>(self, _: L) -> SelectTwo<E, T>
+    pub fn find_also_linked<L, T>(self, l: L) -> SelectTwo<E, T>
     where
         L: Linked<FromEntity = E, ToEntity = T>,
         T: EntityTrait,
     {
         let mut slf = self;
-        for rel in L::link() {
+        for rel in l.link() {
             slf = slf.join(JoinType::LeftJoin, rel);
         }
         slf.select_also(T::default())

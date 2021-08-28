@@ -17,11 +17,11 @@ pub trait ModelTrait: Clone + Debug {
         <Self::Entity as Related<R>>::find_related().belongs_to(self)
     }
 
-    fn find_linked<L>(&self, _: L) -> Select<L::ToEntity>
+    fn find_linked<L>(&self, l: L) -> Select<L::ToEntity>
     where
         L: Linked<FromEntity = Self::Entity>,
     {
-        L::find_linked()
+        l.find_linked()
     }
 }
 

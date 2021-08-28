@@ -33,11 +33,11 @@ pub trait Linked {
 
     type ToEntity: EntityTrait;
 
-    fn link() -> Vec<RelationDef>;
+    fn link(&self) -> Vec<RelationDef>;
 
-    fn find_linked() -> Select<Self::ToEntity> {
+    fn find_linked(&self) -> Select<Self::ToEntity> {
         let mut select = Select::new();
-        for rel in Self::link().into_iter().rev() {
+        for rel in self.link().into_iter().rev() {
             select = select.join_rev(JoinType::InnerJoin, rel);
         }
         select

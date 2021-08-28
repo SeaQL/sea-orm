@@ -80,7 +80,7 @@ impl Linked for CakeToFilling {
 
     type ToEntity = super::filling::Entity;
 
-    fn link() -> Vec<RelationDef> {
+    fn link(&self) -> Vec<RelationDef> {
         vec![
             super::cake_filling::Relation::Cake.def().rev(),
             super::cake_filling::Relation::Filling.def(),

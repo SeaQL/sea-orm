@@ -88,7 +88,7 @@ impl Linked for BakedForCustomer {
 
     type ToEntity = super::customer::Entity;
 
-    fn link() -> Vec<RelationDef> {
+    fn link(&self) -> Vec<RelationDef> {
         vec![
             super::cakes_bakers::Relation::Baker.def().rev(),
             super::cakes_bakers::Relation::Cake.def(),
