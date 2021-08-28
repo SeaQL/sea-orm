@@ -110,8 +110,11 @@ impl From<PgQueryResult> for ExecResult {
     }
 }
 
-pub(crate) fn query_result_into_exec_result(res: QueryResult) -> Result<ExecResult, DbErr> {
-    let last_insert_id: i32 = res.try_get("", "last_insert_id")?;
+pub(crate) fn query_result_into_exec_result<T>(res: QueryResult) -> Result<ExecResult, DbErr>
+where
+    T: TryGetable,
+{
+    let last_insert_id: T = res.try_get("", "last_insert_id")?;
     Ok(ExecResult {
         result: ExecResultHolder::SqlxPostgres {
             last_insert_id: last_insert_id as u64,

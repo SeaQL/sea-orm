@@ -1,15 +1,24 @@
-use crate::{error::*, ActiveModelTrait, DatabaseConnection, Insert, Statement};
+use crate::{
+    error::*, ActiveModelTrait, DatabaseConnection, EntityTrait, Insert, PrimaryKeyTrait, Statement,
+};
 use sea_query::InsertStatement;
-use std::future::Future;
+use std::{future::Future, marker::PhantomData};
 
 #[derive(Clone, Debug)]
-pub struct Inserter {
+pub struct Inserter<A>
+where
+    A: ActiveModelTrait,
+{
     query: InsertStatement,
+    model: PhantomData<A>,
 }
 
-#[derive(Clone, Debug)]
-pub struct InsertResult {
-    pub last_insert_id: u64,
+#[derive(Debug)]
+pub struct InsertResult<A>
+where
+    A: ActiveModelTrait,
+{
+    pub last_insert_id: <<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType,
 }
 
 impl<A> Insert<A>
@@ -17,10 +26,13 @@ where
     A: ActiveModelTrait,
 {
     #[allow(unused_mut)]
-    pub fn exec(
+    pub fn exec<'a>(
         self,
-        db: &DatabaseConnection,
-    ) -> impl Future<Output = Result<InsertResult, DbErr>> + '_ {
+        db: &'a DatabaseConnection,
+    ) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
+    where
+        A: 'a,
+    {
         // so that self is dropped before entering await
         let mut query = self.query;
         #[cfg(feature = "sqlx-postgres")]
@@ -35,26 +47,41 @@ where
                 );
             }
         }
-        Inserter::new(query).exec(db)
+        Inserter::<A>::new(query).exec(db)
     }
 }
 
-impl Inserter {
+impl<A> Inserter<A>
+where
+    A: ActiveModelTrait,
+{
     pub fn new(query: InsertStatement) -> Self {
-        Self { query }
+        Self {
+            query,
+            model: PhantomData,
+        }
     }
 
-    pub fn exec(
+    pub fn exec<'a>(
         self,
-        db: &DatabaseConnection,
-    ) -> impl Future<Output = Result<InsertResult, DbErr>> + '_ {
+        db: &'a DatabaseConnection,
+    ) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
+    where
+        A: 'a,
+    {
         let builder = db.get_database_backend();
         exec_insert(builder.build(&self.query), db)
     }
 }
 
 // Only Statement impl Send
-async fn exec_insert(statement: Statement, db: &DatabaseConnection) -> Result<InsertResult, DbErr> {
+async fn exec_insert<A>(
+    statement: Statement,
+    db: &DatabaseConnection,
+) -> Result<InsertResult<A>, DbErr>
+where
+    A: ActiveModelTrait,
+{
     // TODO: Postgres instead use query_one + returning clause
     let result = match db {
         #[cfg(feature = "sqlx-postgres")]

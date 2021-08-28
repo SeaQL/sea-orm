@@ -221,7 +221,11 @@ where
     let exec = E::insert(am).exec(db);
     let res = exec.await?;
     // TODO: if the entity does not have auto increment primary key, then last_insert_id is a wrong value
-    if <E::PrimaryKey as PrimaryKeyTrait>::auto_increment() && res.last_insert_id != 0 {
+    // FIXME: Assumed valid last_insert_id is not equals to Default::default()
+    if <E::PrimaryKey as PrimaryKeyTrait>::auto_increment()
+        && res.last_insert_id != <E::PrimaryKey as PrimaryKeyTrait>::ValueType::default()
+    {
+        let last_insert_id = res.last_insert_id.to_string();
         let find = E::find_by_id(res.last_insert_id).one(db);
         let found = find.await;
         let model: Option<E::Model> = found?;
@@ -230,7 +234,7 @@ where
             None => Err(DbErr::Exec(format!(
                 "Failed to find inserted item: {} {}",
                 E::default().to_string(),
-                res.last_insert_id
+                last_insert_id
             ))),
         }
     } else {
