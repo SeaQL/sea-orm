@@ -89,15 +89,13 @@ where
             let res = conn.query_one(statement).await?.unwrap();
             res.try_get("", "last_insert_id").unwrap_or_default()
         }
-        _ => {
-            db.execute(statement).await?
+        _ => db
+            .execute(statement)
+            .await?
             .last_insert_id()
             .to_string()
             .parse()
-            .unwrap_or_default()
-        },
+            .unwrap_or_default(),
     };
-    Ok(InsertResult {
-        last_insert_id,
-    })
+    Ok(InsertResult { last_insert_id })
 }

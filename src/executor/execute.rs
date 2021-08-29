@@ -23,7 +23,9 @@ impl ExecResult {
             #[cfg(feature = "sqlx-mysql")]
             ExecResultHolder::SqlxMySql(result) => result.last_insert_id(),
             #[cfg(feature = "sqlx-postgres")]
-            ExecResultHolder::SqlxPostgres(_) => panic!("Should not retrieve last_insert_id this way"),
+            ExecResultHolder::SqlxPostgres(_) => {
+                panic!("Should not retrieve last_insert_id this way")
+            }
             #[cfg(feature = "sqlx-sqlite")]
             ExecResultHolder::SqlxSqlite(result) => {
                 let last_insert_rowid = result.last_insert_rowid();
