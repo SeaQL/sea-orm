@@ -67,7 +67,7 @@ async fn init_setup(db: &DatabaseConnection) {
         ..Default::default()
     };
 
-    let cake_insert_res: InsertResult = Cake::insert(mud_cake)
+    let cake_insert_res = Cake::insert(mud_cake)
         .exec(db)
         .await
         .expect("could not insert cake");
@@ -78,7 +78,7 @@ async fn init_setup(db: &DatabaseConnection) {
         ..Default::default()
     };
 
-    let _cake_baker_res: InsertResult = CakesBakers::insert(cake_baker)
+    let _cake_baker_res = CakesBakers::insert(cake_baker)
         .exec(db)
         .await
         .expect("could not insert cake_baker");
@@ -200,7 +200,7 @@ async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cak
         ..Default::default()
     };
 
-    let cake_insert_res: InsertResult = Cake::insert(new_cake)
+    let cake_insert_res = Cake::insert(new_cake)
         .exec(db)
         .await
         .expect("could not insert cake");
@@ -211,7 +211,7 @@ async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cak
         ..Default::default()
     };
 
-    let _cake_baker_res: InsertResult = CakesBakers::insert(cake_baker)
+    let _cake_baker_res = CakesBakers::insert(cake_baker)
         .exec(db)
         .await
         .expect("could not insert cake_baker");

@@ -10,7 +10,7 @@ pub async fn test_create_order(db: &DbConn) {
         profit_margin: Set(10.4),
         ..Default::default()
     };
-    let bakery_insert_res: InsertResult = Bakery::insert(seaside_bakery)
+    let bakery_insert_res = Bakery::insert(seaside_bakery)
         .exec(db)
         .await
         .expect("could not insert bakery");
@@ -26,7 +26,7 @@ pub async fn test_create_order(db: &DbConn) {
         bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
         ..Default::default()
     };
-    let baker_insert_res: InsertResult = Baker::insert(baker_bob)
+    let baker_insert_res = Baker::insert(baker_bob)
         .exec(db)
         .await
         .expect("could not insert baker");
@@ -41,7 +41,7 @@ pub async fn test_create_order(db: &DbConn) {
         ..Default::default()
     };
 
-    let cake_insert_res: InsertResult = Cake::insert(mud_cake)
+    let cake_insert_res = Cake::insert(mud_cake)
         .exec(db)
         .await
         .expect("could not insert cake");
@@ -52,7 +52,7 @@ pub async fn test_create_order(db: &DbConn) {
         baker_id: Set(baker_insert_res.last_insert_id as i32),
         ..Default::default()
     };
-    let _cake_baker_res: InsertResult = CakesBakers::insert(cake_baker)
+    let _cake_baker_res = CakesBakers::insert(cake_baker)
         .exec(db)
         .await
         .expect("could not insert cake_baker");
@@ -63,7 +63,7 @@ pub async fn test_create_order(db: &DbConn) {
         notes: Set(Some("Loves cheese cake".to_owned())),
         ..Default::default()
     };
-    let customer_insert_res: InsertResult = Customer::insert(customer_kate)
+    let customer_insert_res = Customer::insert(customer_kate)
         .exec(db)
         .await
         .expect("could not insert customer");
@@ -76,7 +76,7 @@ pub async fn test_create_order(db: &DbConn) {
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
-    let order_insert_res: InsertResult = Order::insert(order_1)
+    let order_insert_res = Order::insert(order_1)
         .exec(db)
         .await
         .expect("could not insert order");
@@ -89,7 +89,7 @@ pub async fn test_create_order(db: &DbConn) {
         quantity: Set(2),
         ..Default::default()
     };
-    let _lineitem_insert_res: InsertResult = Lineitem::insert(lineitem_1)
+    let _lineitem_insert_res = Lineitem::insert(lineitem_1)
         .exec(db)
         .await
         .expect("could not insert lineitem");
