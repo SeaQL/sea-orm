@@ -11,12 +11,11 @@ env:
 
 jobs:
 
-  compile:
-    name: Compile
+  compile-sqlite:
+    name: Compile SQLite
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        database: [sqlite, mysql, postgres]
         runtime: [async-std, actix, tokio]
         tls: [native-tls, rustls]
     steps:
@@ -35,13 +34,77 @@ jobs:
             ~/.cargo/git
             Cargo.lock
             target
-          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-${{ matrix.database }}-${{ matrix.runtime }}-${{ matrix.tls }}
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ matrix.tls }}
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: >
-            --features default,sqlx-${{ matrix.database }},runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+            --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+            --no-run
+
+  compile-mysql:
+    name: Compile MySQL
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        runtime: [async-std, actix, tokio]
+        tls: [native-tls, rustls]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            Cargo.lock
+            target
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+            --no-run
+
+  compile-postgres:
+    name: Compile PostgreSQL
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        runtime: [async-std, actix, tokio]
+        tls: [native-tls, rustls]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            Cargo.lock
+            target
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
             --no-run
 
   test:
@@ -89,6 +152,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
+        path: [async-std, tokio]
     steps:
       - uses: actions/checkout@v2
 
@@ -102,18 +166,12 @@ jobs:
         with:
           command: build
           args: >
-            --manifest-path examples/async-std/Cargo.toml
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: >
-            --manifest-path examples/tokio/Cargo.toml
+            --manifest-path examples/${{ matrix.path }}/Cargo.toml
 
   sqlite:
     name: SQLite
     runs-on: ubuntu-20.04
-    needs: compile
+    needs: compile-sqlite
     env:
       DATABASE_URL: "sqlite::memory:"
     strategy:
@@ -147,7 +205,7 @@ jobs:
   mysql:
     name: MySQL
     runs-on: ubuntu-20.04
-    needs: compile
+    needs: compile-mysql
     env:
       DATABASE_URL: "mysql://root:@localhost"
     strategy:
@@ -199,7 +257,7 @@ jobs:
   mariadb:
     name: MariaDB
     runs-on: ubuntu-20.04
-    needs: compile
+    needs: compile-mysql
     env:
       DATABASE_URL: "mysql://root:@localhost"
     strategy:
@@ -251,7 +309,7 @@ jobs:
   postgres:
     name: Postgres
     runs-on: ubuntu-20.04
-    needs: compile
+    needs: compile-postgres
     env:
       DATABASE_URL: "postgres://root:root@localhost"
     strategy:
