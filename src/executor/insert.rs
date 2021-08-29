@@ -37,7 +37,7 @@ where
         let mut query = self.query;
         #[cfg(feature = "sqlx-postgres")]
         if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
-            use crate::{EntityTrait, Iterable};
+            use crate::Iterable;
             use sea_query::{Alias, Expr, Query};
             for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
                 query.returning(
@@ -83,15 +83,21 @@ where
     A: ActiveModelTrait,
 {
     // TODO: Postgres instead use query_one + returning clause
-    let result = match db {
+    let last_insert_id = match db {
         #[cfg(feature = "sqlx-postgres")]
         DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
             let res = conn.query_one(statement).await?.unwrap();
-            crate::query_result_into_exec_result(res)?
+            res.try_get("", "last_insert_id").unwrap_or_default()
         }
-        _ => db.execute(statement).await?,
+        _ => {
+            db.execute(statement).await?
+            .last_insert_id()
+            .to_string()
+            .parse()
+            .unwrap_or_default()
+        },
     };
     Ok(InsertResult {
-        last_insert_id: result.last_insert_id(),
+        last_insert_id,
     })
 }

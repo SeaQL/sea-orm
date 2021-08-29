@@ -107,16 +107,6 @@ impl From<PgQueryResult> for ExecResult {
     }
 }
 
-pub(crate) fn query_result_into_exec_result(res: QueryResult) -> Result<ExecResult, DbErr> {
-    let result = match res {
-        QueryResult::SqlxPostgres(result) => result,
-        _ => panic!("Should be QueryResult::SqlxPostgres"),
-    };
-    Ok(ExecResult {
-        result: ExecResultHolder::SqlxPostgres(result),
-    })
-}
-
 fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Postgres, PgArguments> {
     let mut query = sqlx::query(&stmt.sql);
     if let Some(values) = &stmt.values {
