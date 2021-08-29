@@ -1,4 +1,5 @@
 use crate::TryGetable;
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct ExecResult {
@@ -22,14 +23,15 @@ pub(crate) enum ExecResultHolder {
 impl ExecResult {
     pub fn last_insert_id<T>(&self) -> T
     where
-        T: TryGetable + Default,
+        T: TryGetable + Default + FromStr,
     {
         match &self.result {
             #[cfg(feature = "sqlx-mysql")]
-            ExecResultHolder::SqlxMySql(result) => {
-                // result.last_insert_id()
-                T::default()
-            }
+            ExecResultHolder::SqlxMySql(result) => result
+                .last_insert_id()
+                .to_string()
+                .parse()
+                .unwrap_or_default(),
             #[cfg(feature = "sqlx-postgres")]
             ExecResultHolder::SqlxPostgres(result) => {
                 res.try_get("", "last_insert_id").unwrap_or_default()
@@ -40,15 +42,15 @@ impl ExecResult {
                 if last_insert_rowid < 0 {
                     panic!("negative last_insert_rowid")
                 } else {
-                    // last_insert_rowid
-                    T::default()
+                    last_insert_rowid.to_string().parse().unwrap_or_default()
                 }
             }
             #[cfg(feature = "mock")]
-            ExecResultHolder::Mock(result) => {
-                // result.last_insert_id
-                T::default()
-            }
+            ExecResultHolder::Mock(result) => result
+                .last_insert_id
+                .to_string()
+                .parse()
+                .unwrap_or_default(),
         }
     }
 

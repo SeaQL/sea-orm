@@ -1,4 +1,4 @@
-use sea_orm::{entity::*, DbConn, InsertResult};
+use sea_orm::{entity::*, DbConn};
 
 pub use super::common::bakery_chain::*;
 
