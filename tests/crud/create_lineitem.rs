@@ -105,7 +105,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
 
     assert_eq!(lineitem_model.price, dec!(7.55));
 
-    let cake: Option<cake::Model> = Cake::find_by_id(lineitem_model.cake_id as u64)
+    let cake: Option<cake::Model> = Cake::find_by_id(lineitem_model.cake_id)
         .one(db)
         .await
         .expect("could not find cake");

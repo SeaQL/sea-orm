@@ -131,7 +131,7 @@ pub async fn test_update_deleted_customer(db: &DbConn) {
     assert_eq!(Customer::find().count(db).await.unwrap(), init_n_customers);
 
     let customer: Option<customer::Model> =
-        Customer::find_by_id(customer_id.clone().unwrap() as i64)
+        Customer::find_by_id(customer_id.clone().unwrap())
             .one(db)
             .await
             .expect("could not find customer");

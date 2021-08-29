@@ -183,7 +183,7 @@ async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model>
 
     results.sort_by(|a, b| b.cakes_sold.cmp(&a.cakes_sold));
 
-    Baker::find_by_id(results.last().unwrap().id as i64)
+    Baker::find_by_id(results.last().unwrap().id)
         .one(db)
         .await
         .unwrap()
