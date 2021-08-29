@@ -15,7 +15,7 @@ impl EntityName for Entity {
 #[serde(crate = "rocket::serde")]
 pub struct Model {
     #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
-    pub id: Option<i64>,
+    pub id: Option<i32>,
     pub title: String,
     pub text: String,
 }

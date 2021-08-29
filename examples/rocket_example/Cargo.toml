@@ -5,9 +5,11 @@ edition = "2018"
 publish = false
 [workspace]
 [dependencies]
-rocket = { git = "https://github.com/SergioBenitez/Rocket.git", features = ["json"] }
-rocket_db_pools = { git = "https://github.com/SergioBenitez/Rocket.git", features = ["sqlx_mysql"] }
-sea-orm = { path = "../../", features = ["sqlx-all", "rocket-mysql"] }
+rocket = { git = "https://github.com/SergioBenitez/Rocket.git", features = [
+  "json",
+] }
+rocket_db_pools = { git = "https://github.com/SergioBenitez/Rocket.git", features = [] }
+sea-orm = { path = "../../", features = ["rocket-db"] }
 sea-query = { version = "^0.12.8" }
 
 serde_json = { version = "^1" }
@@ -19,3 +21,8 @@ futures-util = { version = "^0.3" }
 version = "0.5.1"
 default-features = false
 features = ["macros", "offline", "migrate"]
+
+[features]
+default = ["sqlx-postgres"]
+sqlx-postgres = ["sea-orm/sqlx-postgres"]
+sqlx-mysql = ["sea-orm/sqlx-mysql"]

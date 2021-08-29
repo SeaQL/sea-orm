@@ -1,17 +1,14 @@
 use rocket::fairing::{self, AdHoc};
 use rocket::response::status::Created;
 use rocket::serde::json::Json;
-use rocket::{futures, Build, Rocket};
-
+use rocket::{Build, Rocket};
 use rocket_db_pools::{sqlx, Connection, Database};
-
 use sea_orm::entity::*;
-use sea_orm::{DatabaseBackend, Statement};
 
 mod setup;
 
 #[derive(Database, Debug)]
-#[database("blog")]
+#[database("rocket_example")]
 struct Db(sea_orm::Database);
 
 type Result<T, E = rocket::response::Debug<sqlx::Error>> = std::result::Result<T, E>;
@@ -37,7 +34,7 @@ async fn create(
 }
 
 #[get("/")]
-async fn list(conn: Connection<Db>) -> Result<Json<Vec<i64>>> {
+async fn list(conn: Connection<Db>) -> Result<Json<Vec<i32>>> {
     let ids = Post::find()
         .all(&conn)
         .await
@@ -63,7 +60,7 @@ async fn read(conn: Connection<Db>, id: i64) -> Option<Json<post::Model>> {
 }
 
 #[delete("/<id>")]
-async fn delete(conn: Connection<Db>, id: i64) -> Result<Option<()>> {
+async fn delete(conn: Connection<Db>, id: i32) -> Result<Option<()>> {
     let post: post::ActiveModel = Post::find_by_id(id)
         .one(&conn)
         .await
@@ -82,10 +79,14 @@ async fn destroy(conn: Connection<Db>) -> Result<()> {
 }
 
 async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
-    let conn = sea_orm::Database::connect("mysql://root:@localhost/rocket_example")
-        .await
-        .unwrap();
-    let create_post_table = setup::create_post_table(&conn);
+    #[cfg(feature = "sqlx-mysql")]
+    let db_url = "mysql://root:@localhost/rocket_example";
+    #[cfg(feature = "sqlx-postgres")]
+    let db_url = "postgres://root:root@localhost/rocket_example";
+
+    let conn = sea_orm::Database::connect(db_url).await.unwrap();
+
+    let _create_post_table = setup::create_post_table(&conn).await;
     Ok(rocket)
 }
 
