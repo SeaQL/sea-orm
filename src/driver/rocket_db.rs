@@ -1,7 +1,7 @@
-use rocket::figment::Figment;
-use rocket_db_pools::{Config, Error};
+use async_trait::async_trait;
+use rocket_db_pools::{rocket::figment::Figment, Config, Error};
 
-#[rocket::async_trait]
+#[async_trait]
 impl rocket_db_pools::Pool for crate::Database {
     type Error = crate::DbErr;
 

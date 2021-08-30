@@ -20,7 +20,7 @@ pub use sqlx_postgres::*;
 #[cfg(feature = "sqlx-sqlite")]
 pub use sqlx_sqlite::*;
 
-#[cfg(feature = "rocket-db")]
+#[cfg(feature = "web-api-rocket")]
 mod rocket_db;
-#[cfg(feature = "rocket-db")]
+#[cfg(feature = "web-api-rocket")]
 pub use rocket_db::*;
