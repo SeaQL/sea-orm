@@ -2,7 +2,7 @@ use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySe
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{DynIden, IntoColumnRef, SeaRc, SelectStatement, SimpleExpr};
+use sea_query::{DynIden, IntoColumnRef, LockType, SeaRc, SelectStatement, SimpleExpr};
 
 #[derive(Clone, Debug)]
 pub struct Select<E>
@@ -120,6 +120,24 @@ where
 
     fn prepare_from(mut self) -> Self {
         self.query.from(E::default().table_ref());
+        self
+    }
+
+    /// Select lock
+    pub fn lock(mut self, lock_type: LockType) -> Self {
+        self.query.lock(lock_type);
+        self
+    }
+
+    /// Select lock shared
+    pub fn lock_shared(mut self) -> Self {
+        self.query.lock_shared();
+        self
+    }
+
+    /// Select lock exclusive
+    pub fn lock_exclusive(mut self) -> Self {
+        self.query.lock_exclusive();
         self
     }
 }
