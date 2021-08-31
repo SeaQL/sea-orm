@@ -152,7 +152,6 @@ impl<EntityTrait> CreateStatementOf for EntityTrait {}
 
 #[cfg(test)]
 mod tests {
-
     use crate::{CreateStatementOf, tests_cfg};
 
     #[test]
