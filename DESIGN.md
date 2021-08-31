@@ -1,4 +1,4 @@
-# Design Goals
+# Design
 
 We are heavily inspired by ActiveRecord, Eloquent and TypeORM.
 
