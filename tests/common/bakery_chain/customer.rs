@@ -46,7 +46,7 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(None).def(),
-            Self::Notes => ColumnType::Text.def(),
+            Self::Notes => ColumnType::Text.def().null(),
         }
     }
 }

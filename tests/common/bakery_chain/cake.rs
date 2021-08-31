@@ -54,9 +54,9 @@ impl ColumnTrait for Column {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(None).def(),
             Self::Price => ColumnType::Decimal(Some((19, 4))).def(),
-            Self::BakeryId => ColumnType::Integer.def(),
+            Self::BakeryId => ColumnType::Integer.def().null(),
             Self::GlutenFree => ColumnType::Boolean.def(),
-            Self::Serial => ColumnType::String(None).def(),
+            Self::Serial => ColumnType::Binary(Some(16)).def(),
         }
     }
 }

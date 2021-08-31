@@ -49,7 +49,7 @@ impl ColumnTrait for Column {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(None).def(),
             Self::ContactDetails => ColumnType::Json.def(),
-            Self::BakeryId => ColumnType::Integer.def(),
+            Self::BakeryId => ColumnType::Integer.def().null(),
         }
     }
 }

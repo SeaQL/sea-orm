@@ -34,6 +34,7 @@ pub struct RelationDef {
     pub to_tbl: TableRef,
     pub from_col: Identity,
     pub to_col: Identity,
+    pub is_owner: bool,
 }
 
 pub struct RelationBuilder<E, R>
@@ -47,6 +48,7 @@ where
     to_tbl: TableRef,
     from_col: Option<Identity>,
     to_col: Option<Identity>,
+    is_owner: bool,
 }
 
 impl RelationDef {
@@ -58,6 +60,7 @@ impl RelationDef {
             to_tbl: self.from_tbl,
             from_col: self.to_col,
             to_col: self.from_col,
+            is_owner: !self.is_owner,
         }
     }
 }
@@ -67,7 +70,7 @@ where
     E: EntityTrait,
     R: EntityTrait,
 {
-    pub(crate) fn new(rel_type: RelationType, from: E, to: R) -> Self {
+    pub(crate) fn new(rel_type: RelationType, from: E, to: R, is_owner: bool) -> Self {
         Self {
             entities: PhantomData,
             rel_type,
@@ -75,10 +78,11 @@ where
             to_tbl: to.table_ref(),
             from_col: None,
             to_col: None,
+            is_owner,
         }
     }
 
-    pub(crate) fn from_rel(rel_type: RelationType, rel: RelationDef) -> Self {
+    pub(crate) fn from_rel(rel_type: RelationType, rel: RelationDef, is_owner: bool) -> Self {
         Self {
             entities: PhantomData,
             rel_type,
@@ -86,6 +90,7 @@ where
             to_tbl: rel.to_tbl,
             from_col: Some(rel.from_col),
             to_col: Some(rel.to_col),
+            is_owner,
         }
     }
 
@@ -118,6 +123,7 @@ where
             to_tbl: b.to_tbl,
             from_col: b.from_col.unwrap(),
             to_col: b.to_col.unwrap(),
+            is_owner: b.is_owner,
         }
     }
 }
