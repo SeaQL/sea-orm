@@ -210,7 +210,7 @@ pub async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, DbErr>
         )
         .primary_key(
             Index::create()
-            .name("pk-cakes_bakers")
+                .name("pk-cakes_bakers")
                 .col(cakes_bakers::Column::CakeId)
                 .col(cakes_bakers::Column::BakerId),
         )
