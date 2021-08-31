@@ -107,6 +107,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{entity_to_table_create_statement, tests_cfg::*};
+    use pretty_assertions::assert_eq;
     use sea_query::*;
 
     #[test]

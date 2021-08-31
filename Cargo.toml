@@ -50,6 +50,7 @@ actix-rt = { version = "2.2.0" }
 maplit = { version = "^1" }
 rust_decimal_macros = { version = "^1" }
 sea-orm = { path = ".", features = ["debug-print"] }
+pretty_assertions = { version = "^0.7" }
 
 [features]
 debug-print = []

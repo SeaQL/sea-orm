@@ -1,3 +1,4 @@
+use pretty_assertions::assert_eq;
 use sea_orm::{
     entity_to_table_create_statement, error::*, sea_query, DbConn, EntityTrait, ExecResult,
 };
