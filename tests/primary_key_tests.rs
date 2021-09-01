@@ -26,16 +26,14 @@ async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
         value: Set("1.18".to_owned()),
     };
 
-    let res = Metadata::insert(metadata.clone()).exec(db).await;
+    let res = Metadata::insert(metadata.clone()).exec(db).await?;
 
-    if cfg!(feature = "sqlx-postgres") {
-        assert_eq!(metadata.uuid.unwrap(), res?.last_insert_id);
+    let expected_uuid = if cfg!(feature = "sqlx-postgres") {
+        metadata.uuid.unwrap()
     } else {
-        assert_eq!(
-            res.unwrap_err(),
-            DbErr::Exec("uuid::Uuid cannot be converted from u64".to_owned())
-        );
-    }
+        Uuid::default()
+    };
+    assert_eq!(res.last_insert_id, expected_uuid);
 
     Ok(())
 }

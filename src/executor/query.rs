@@ -410,32 +410,6 @@ pub trait TryFromU64: Sized {
     fn try_from_u64(n: u64) -> Result<Self, DbErr>;
 }
 
-macro_rules! try_from_u64 {
-    ( $type: ty ) => {
-        impl TryFromU64 for $type {
-            fn try_from_u64(n: u64) -> Result<Self, DbErr> {
-                use std::convert::TryInto;
-                n.try_into().map_err(|_| {
-                    DbErr::Exec(format!(
-                        "fail to convert '{}' into '{}'",
-                        n,
-                        stringify!($type)
-                    ))
-                })
-            }
-        }
-    };
-}
-
-try_from_u64!(i8);
-try_from_u64!(i16);
-try_from_u64!(i32);
-try_from_u64!(i64);
-try_from_u64!(u8);
-try_from_u64!(u16);
-try_from_u64!(u32);
-try_from_u64!(u64);
-
 macro_rules! try_from_u64_err {
     ( $type: ty ) => {
         impl TryFromU64 for $type {
@@ -449,5 +423,60 @@ macro_rules! try_from_u64_err {
     };
 }
 
+macro_rules! try_from_u64_tuple {
+    ( $type: ty ) => {
+        try_from_u64_err!(($type, $type));
+        try_from_u64_err!(($type, $type, $type));
+    };
+}
+
+macro_rules! try_from_u64_numeric {
+    ( $type: ty ) => {
+        impl TryFromU64 for $type {
+            fn try_from_u64(n: u64) -> Result<Self, DbErr> {
+                use std::convert::TryInto;
+                n.try_into().map_err(|_| {
+                    DbErr::Exec(format!(
+                        "fail to convert '{}' into '{}'",
+                        n,
+                        stringify!($type)
+                    ))
+                })
+            }
+        }
+        try_from_u64_tuple!($type);
+    };
+}
+
+try_from_u64_numeric!(i8);
+try_from_u64_numeric!(i16);
+try_from_u64_numeric!(i32);
+try_from_u64_numeric!(i64);
+try_from_u64_numeric!(u8);
+try_from_u64_numeric!(u16);
+try_from_u64_numeric!(u32);
+try_from_u64_numeric!(u64);
+
+macro_rules! try_from_u64_string {
+    ( $type: ty ) => {
+        impl TryFromU64 for $type {
+            fn try_from_u64(n: u64) -> Result<Self, DbErr> {
+                Ok(n.to_string())
+            }
+        }
+        try_from_u64_tuple!($type);
+    };
+}
+
+try_from_u64_string!(String);
+
+macro_rules! try_from_u64_dummy {
+    ( $type: ty ) => {
+        try_from_u64_err!($type);
+        try_from_u64_err!(($type, $type));
+        try_from_u64_err!(($type, $type, $type));
+    };
+}
+
 #[cfg(feature = "with-uuid")]
-try_from_u64_err!(uuid::Uuid);
+try_from_u64_dummy!(uuid::Uuid);

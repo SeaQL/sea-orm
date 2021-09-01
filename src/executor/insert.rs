@@ -92,7 +92,9 @@ where
         }
         _ => {
             let last_insert_id = db.execute(statement).await?.last_insert_id();
-            ValueTypeOf::<A>::try_from_u64(last_insert_id)?
+            ValueTypeOf::<A>::try_from_u64(last_insert_id)
+                .ok()
+                .unwrap_or_default()
         }
     };
     Ok(InsertResult { last_insert_id })
