@@ -1,24 +1,27 @@
 use async_trait::async_trait;
 use rocket_db_pools::{rocket::figment::Figment, Config, Error};
 
+#[derive(Debug)]
+pub struct RocketDbPool {
+    db_url: String,
+}
+
 #[async_trait]
-impl rocket_db_pools::Pool for crate::Database {
+impl rocket_db_pools::Pool for RocketDbPool {
     type Error = crate::DbErr;
 
     type Connection = crate::DatabaseConnection;
 
     async fn init(figment: &Figment) -> Result<Self, Self::Error> {
-        Ok(crate::Database {})
+        let config = figment.extract::<Config>().unwrap();
+        let db_url = config.url;
+
+        Ok(RocketDbPool {
+            db_url: db_url.to_owned(),
+        })
     }
 
     async fn get(&self) -> Result<Self::Connection, Self::Error> {
-        #[cfg(feature = "sqlx-mysql")]
-        let db_url = "mysql://root:@localhost/rocket_example";
-        #[cfg(feature = "sqlx-postgres")]
-        let db_url = "postgres://root:root@localhost/rocket_example";
-
-        println!("db_url: {:#?}", db_url);
-
-        Ok(crate::Database::connect(db_url).await.unwrap())
+        Ok(crate::Database::connect(&self.db_url).await.unwrap())
     }
 }

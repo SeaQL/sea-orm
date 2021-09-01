@@ -5,7 +5,9 @@ edition = "2018"
 publish = false
 [workspace]
 [dependencies]
-rocket = { git = "https://github.com/SergioBenitez/Rocket.git", features = ["json"] }
+rocket = { git = "https://github.com/SergioBenitez/Rocket.git", features = [
+  "json",
+] }
 rocket_db_pools = { git = "https://github.com/SergioBenitez/Rocket.git", features = [] }
 sea-orm = { path = "../../", features = ["web-api-rocket"] }
 sea-query = { version = "^0.12.8" }

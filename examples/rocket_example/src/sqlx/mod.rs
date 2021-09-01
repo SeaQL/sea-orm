@@ -4,12 +4,13 @@ use rocket::serde::json::Json;
 use rocket::{Build, Rocket};
 use rocket_db_pools::{sqlx, Connection, Database};
 use sea_orm::entity::*;
+use sea_orm::RocketDbPool;
 
 mod setup;
 
 #[derive(Database, Debug)]
 #[database("rocket_example")]
-struct Db(sea_orm::Database);
+struct Db(RocketDbPool);
 
 type Result<T, E = rocket::response::Debug<sqlx::Error>> = std::result::Result<T, E>;
 
