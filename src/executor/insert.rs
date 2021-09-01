@@ -1,5 +1,6 @@
 use crate::{
-    error::*, ActiveModelTrait, DatabaseConnection, EntityTrait, Insert, PrimaryKeyTrait, Statement,
+    error::*, ActiveModelTrait, DatabaseConnection, EntityTrait, Insert, PrimaryKeyTrait,
+    Statement, TryFromU64,
 };
 use sea_query::InsertStatement;
 use std::{future::Future, marker::PhantomData};
@@ -82,20 +83,17 @@ async fn exec_insert<A>(
 where
     A: ActiveModelTrait,
 {
-    // TODO: Postgres instead use query_one + returning clause
+    type ValueTypeOf<A> = <<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType;
     let last_insert_id = match db {
         #[cfg(feature = "sqlx-postgres")]
         DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
             let res = conn.query_one(statement).await?.unwrap();
             res.try_get("", "last_insert_id").unwrap_or_default()
         }
-        _ => db
-            .execute(statement)
-            .await?
-            .last_insert_id()
-            .to_string()
-            .parse()
-            .unwrap_or_default(),
+        _ => {
+            let last_insert_id = db.execute(statement).await?.last_insert_id();
+            ValueTypeOf::<A>::try_from_u64(last_insert_id)?
+        }
     };
     Ok(InsertResult { last_insert_id })
 }

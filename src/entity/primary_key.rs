@@ -1,10 +1,7 @@
 use super::{ColumnTrait, IdenStatic, Iterable};
-use crate::TryGetable;
+use crate::{TryFromU64, TryGetable};
 use sea_query::IntoValueTuple;
-use std::{
-    fmt::{Debug, Display},
-    str::FromStr,
-};
+use std::fmt::{Debug, Display};
 
 //LINT: composite primary key cannot auto increment
 pub trait PrimaryKeyTrait: IdenStatic + Iterable {
@@ -15,7 +12,7 @@ pub trait PrimaryKeyTrait: IdenStatic + Iterable {
         + PartialEq
         + IntoValueTuple
         + TryGetable
-        + FromStr;
+        + TryFromU64;
 
     fn auto_increment() -> bool;
 }

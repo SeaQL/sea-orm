@@ -405,3 +405,49 @@ impl TryGetable for Option<Decimal> {
 
 #[cfg(feature = "with-uuid")]
 try_getable_all!(uuid::Uuid);
+
+pub trait TryFromU64: Sized {
+    fn try_from_u64(n: u64) -> Result<Self, DbErr>;
+}
+
+macro_rules! try_from_u64 {
+    ( $type: ty ) => {
+        impl TryFromU64 for $type {
+            fn try_from_u64(n: u64) -> Result<Self, DbErr> {
+                use std::convert::TryInto;
+                n.try_into().map_err(|_| {
+                    DbErr::Exec(format!(
+                        "fail to convert '{}' into '{}'",
+                        n,
+                        stringify!($type)
+                    ))
+                })
+            }
+        }
+    };
+}
+
+try_from_u64!(i8);
+try_from_u64!(i16);
+try_from_u64!(i32);
+try_from_u64!(i64);
+try_from_u64!(u8);
+try_from_u64!(u16);
+try_from_u64!(u32);
+try_from_u64!(u64);
+
+macro_rules! try_from_u64_err {
+    ( $type: ty ) => {
+        impl TryFromU64 for $type {
+            fn try_from_u64(_: u64) -> Result<Self, DbErr> {
+                Err(DbErr::Exec(format!(
+                    "{} cannot be converted from u64",
+                    stringify!($type)
+                )))
+            }
+        }
+    };
+}
+
+#[cfg(feature = "with-uuid")]
+try_from_u64_err!(uuid::Uuid);
