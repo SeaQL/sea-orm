@@ -3,7 +3,7 @@ pub use crate::{
     DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveCustomColumn, DeriveEntity,
     DeriveModel, DerivePrimaryKey, EntityName, EntityTrait, EnumIter, Iden, IdenStatic, ModelTrait,
     PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryResult, Related, RelationDef,
-    RelationTrait, Select, Value,
+    RelationTrait, Select, SimpleModel, Value,
 };
 
 #[cfg(feature = "with-json")]

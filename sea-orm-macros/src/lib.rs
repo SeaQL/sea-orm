@@ -1,9 +1,19 @@
+#![feature(extend_one)]
+
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, DeriveInput};
+use syn::{parse_macro_input, DeriveInput, Error};
 
 mod derives;
+
+#[proc_macro_derive(SimpleModel, attributes(input, auto_identity))]
+pub fn simple_model(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_simple_model(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
 
 #[proc_macro_derive(DeriveEntity, attributes(table))]
 pub fn derive_entity(input: TokenStream) -> TokenStream {
