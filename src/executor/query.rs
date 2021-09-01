@@ -18,7 +18,7 @@ pub(crate) enum QueryResultRow {
 }
 
 pub trait TryGetable: Sized {
-    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr>;
+    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError>;
 }
 
 pub enum TryGetError {
