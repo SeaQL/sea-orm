@@ -17,10 +17,8 @@ pub(crate) enum QueryResultRow {
     Mock(crate::MockRow),
 }
 
-pub trait TryGetable {
-    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr>
-    where
-        Self: Sized;
+pub trait TryGetable: Sized {
+    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, DbErr>;
 }
 
 // QueryResult //
@@ -405,6 +403,72 @@ impl TryGetable for Option<Decimal> {
 
 #[cfg(feature = "with-uuid")]
 try_getable_all!(uuid::Uuid);
+
+// TryGetableMany //
+
+pub trait TryGetableMany: Sized {
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, DbErr>;
+}
+
+impl<T> TryGetableMany for T
+where
+    T: TryGetable,
+{
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, DbErr> {
+        let expect_len = 1;
+        if cols.len() < expect_len {
+            return Err(DbErr::Query(format!(
+                "Expect {} column names supplied but got slice of length {}",
+                expect_len,
+                cols.len()
+            )));
+        }
+        T::try_get(res, pre, &cols[0])
+    }
+}
+
+impl<T> TryGetableMany for (T, T)
+where
+    T: TryGetable,
+{
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, DbErr> {
+        let expect_len = 2;
+        if cols.len() < expect_len {
+            return Err(DbErr::Query(format!(
+                "Expect {} column names supplied but got slice of length {}",
+                expect_len,
+                cols.len()
+            )));
+        }
+        Ok((
+            T::try_get(res, pre, &cols[0])?,
+            T::try_get(res, pre, &cols[1])?,
+        ))
+    }
+}
+
+impl<T> TryGetableMany for (T, T, T)
+where
+    T: TryGetable,
+{
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, DbErr> {
+        let expect_len = 3;
+        if cols.len() < expect_len {
+            return Err(DbErr::Query(format!(
+                "Expect {} column names supplied but got slice of length {}",
+                expect_len,
+                cols.len()
+            )));
+        }
+        Ok((
+            T::try_get(res, pre, &cols[0])?,
+            T::try_get(res, pre, &cols[1])?,
+            T::try_get(res, pre, &cols[2])?,
+        ))
+    }
+}
+
+// TryFromU64 //
 
 pub trait TryFromU64: Sized {
     fn try_from_u64(n: u64) -> Result<Self, DbErr>;

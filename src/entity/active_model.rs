@@ -225,16 +225,14 @@ where
     if <E::PrimaryKey as PrimaryKeyTrait>::auto_increment()
         && res.last_insert_id != <E::PrimaryKey as PrimaryKeyTrait>::ValueType::default()
     {
-        let last_insert_id = res.last_insert_id.to_string();
         let find = E::find_by_id(res.last_insert_id).one(db);
         let found = find.await;
         let model: Option<E::Model> = found?;
         match model {
             Some(model) => Ok(model.into_active_model()),
             None => Err(DbErr::Exec(format!(
-                "Failed to find inserted item: {} {}",
+                "Failed to find inserted item: {}",
                 E::default().to_string(),
-                last_insert_id
             ))),
         }
     } else {
