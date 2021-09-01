@@ -262,9 +262,12 @@ impl TryGetable for Decimal {
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))?;
                 use rust_decimal::prelude::FromPrimitive;
                 match val {
-                    Some(v) => Decimal::from_f64(v)
-                        .ok_or_else(|| TryGetError::DbErr(DbErr::Query("Failed to convert f64 into Decimal".to_owned()))),
-                    None => Err(TryGetError::Null)
+                    Some(v) => Decimal::from_f64(v).ok_or_else(|| {
+                        TryGetError::DbErr(DbErr::Query(
+                            "Failed to convert f64 into Decimal".to_owned(),
+                        ))
+                    }),
+                    None => Err(TryGetError::Null),
                 }
             }
             #[cfg(feature = "mock")]
@@ -282,22 +285,15 @@ try_getable_all!(uuid::Uuid);
 // TryGetableMany //
 
 pub trait TryGetableMany: Sized {
-    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, DbErr>;
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError>;
 }
 
 impl<T> TryGetableMany for T
 where
     T: TryGetable,
 {
-    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, DbErr> {
-        let expect_len = 1;
-        if cols.len() < expect_len {
-            return Err(DbErr::Query(format!(
-                "Expect {} column names supplied but got slice of length {}",
-                expect_len,
-                cols.len()
-            )));
-        }
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
+        try_get_many_with_slice_len_of(1, cols)?;
         T::try_get(res, pre, &cols[0])
     }
 }
@@ -306,15 +302,8 @@ impl<T> TryGetableMany for (T, T)
 where
     T: TryGetable,
 {
-    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, DbErr> {
-        let expect_len = 2;
-        if cols.len() < expect_len {
-            return Err(DbErr::Query(format!(
-                "Expect {} column names supplied but got slice of length {}",
-                expect_len,
-                cols.len()
-            )));
-        }
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
+        try_get_many_with_slice_len_of(2, cols)?;
         Ok((
             T::try_get(res, pre, &cols[0])?,
             T::try_get(res, pre, &cols[1])?,
@@ -326,20 +315,25 @@ impl<T> TryGetableMany for (T, T, T)
 where
     T: TryGetable,
 {
-    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, DbErr> {
-        let expect_len = 3;
-        if cols.len() < expect_len {
-            return Err(DbErr::Query(format!(
-                "Expect {} column names supplied but got slice of length {}",
-                expect_len,
-                cols.len()
-            )));
-        }
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
+        try_get_many_with_slice_len_of(3, cols)?;
         Ok((
             T::try_get(res, pre, &cols[0])?,
             T::try_get(res, pre, &cols[1])?,
             T::try_get(res, pre, &cols[2])?,
         ))
+    }
+}
+
+fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), TryGetError> {
+    if cols.len() < len {
+        Err(TryGetError::DbErr(DbErr::Query(format!(
+            "Expect {} column names supplied but got slice of length {}",
+            len,
+            cols.len()
+        ))))
+    } else {
+        Ok(())
     }
 }
 

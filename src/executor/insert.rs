@@ -88,7 +88,7 @@ where
         #[cfg(feature = "sqlx-postgres")]
         DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
             let res = conn.query_one(statement).await?.unwrap();
-            res.try_get("", "last_insert_id").unwrap_or_default()
+            res.try_get_many("", "last_insert_id").unwrap_or_default()
         }
         _ => {
             let last_insert_id = db.execute(statement).await?.last_insert_id();

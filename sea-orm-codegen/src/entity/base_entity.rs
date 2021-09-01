@@ -118,12 +118,25 @@ impl Entity {
     }
 
     pub fn get_primary_key_rs_type(&self) -> TokenStream {
-        if let Some(primary_key) = self.primary_keys.first() {
-            self.columns
-                .iter()
-                .find(|col| col.name.eq(&primary_key.name))
-                .unwrap()
-                .get_rs_type()
+        let types = self
+            .primary_keys
+            .iter()
+            .map(|primary_key| {
+                self.columns
+                    .iter()
+                    .find(|col| col.name.eq(&primary_key.name))
+                    .unwrap()
+                    .get_rs_type()
+                    .to_string()
+            })
+            .collect::<Vec<_>>();
+        if !types.is_empty() {
+            let value_type = if types.len() > 1 {
+                vec!["(".to_owned(), types.join(", "), ")".to_owned()]
+            } else {
+                types
+            };
+            value_type.join("").parse().unwrap()
         } else {
             TokenStream::new()
         }
