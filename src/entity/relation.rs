@@ -9,6 +9,8 @@ pub enum RelationType {
     HasMany,
 }
 
+pub type ForeignKeyAction = sea_query::ForeignKeyAction;
+
 pub trait RelationTrait: Iterable + Debug + 'static {
     fn def(&self) -> RelationDef;
 }
@@ -35,6 +37,8 @@ pub struct RelationDef {
     pub from_col: Identity,
     pub to_col: Identity,
     pub is_owner: bool,
+    pub on_delete: Option<ForeignKeyAction>,
+    pub on_update: Option<ForeignKeyAction>,
 }
 
 pub struct RelationBuilder<E, R>
@@ -49,6 +53,8 @@ where
     from_col: Option<Identity>,
     to_col: Option<Identity>,
     is_owner: bool,
+    on_delete: Option<ForeignKeyAction>,
+    on_update: Option<ForeignKeyAction>,
 }
 
 impl RelationDef {
@@ -61,6 +67,8 @@ impl RelationDef {
             from_col: self.to_col,
             to_col: self.from_col,
             is_owner: !self.is_owner,
+            on_delete: self.on_delete,
+            on_update: self.on_update,
         }
     }
 }
@@ -79,6 +87,8 @@ where
             from_col: None,
             to_col: None,
             is_owner,
+            on_delete: None,
+            on_update: None,
         }
     }
 
@@ -91,6 +101,8 @@ where
             from_col: Some(rel.from_col),
             to_col: Some(rel.to_col),
             is_owner,
+            on_delete: None,
+            on_update: None,
         }
     }
 
@@ -109,6 +121,16 @@ where
         self.to_col = Some(identifier.identity_of());
         self
     }
+
+    pub fn on_delete(mut self, action: ForeignKeyAction) -> Self {
+        self.on_delete = Some(action);
+        self
+    }
+
+    pub fn on_update(mut self, action: ForeignKeyAction) -> Self {
+        self.on_update = Some(action);
+        self
+    }
 }
 
 impl<E, R> From<RelationBuilder<E, R>> for RelationDef
@@ -124,6 +146,8 @@ where
             from_col: b.from_col.unwrap(),
             to_col: b.to_col.unwrap(),
             is_owner: b.is_owner,
+            on_delete: b.on_delete,
+            on_update: b.on_update,
         }
     }
 }

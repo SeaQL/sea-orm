@@ -89,6 +89,12 @@ where
                 foreign_key_stmt.to_col(o3);
             }
         }
+        if let Some(action) = relation.on_delete {
+            foreign_key_stmt.on_delete(action);
+        }
+        if let Some(action) = relation.on_update {
+            foreign_key_stmt.on_update(action);
+        }
         stmt.foreign_key(
             foreign_key_stmt
                 .name(&format!(

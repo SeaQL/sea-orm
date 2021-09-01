@@ -67,6 +67,8 @@ impl RelationTrait for Relation {
             Self::Bakery => Entity::belongs_to(super::bakery::Entity)
                 .from(Column::BakeryId)
                 .to(super::bakery::Column::Id)
+                .on_delete(ForeignKeyAction::Cascade)
+                .on_update(ForeignKeyAction::Cascade)
                 .into(),
             Self::Lineitem => Entity::has_many(super::lineitem::Entity).into(),
         }
