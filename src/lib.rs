@@ -25,7 +25,7 @@
 //! ```
 //!
 //! [![Getting Started](https://img.shields.io/badge/Getting%20Started-blue)](https://www.sea-ql.org/SeaORM/docs/index)
-//! [![Examples](https://img.shields.io/badge/Examples-orange)](https://github.com/SeaQL/sea-orm/tree/master/examples/sqlx)
+//! [![Examples](https://img.shields.io/badge/Examples-orange)](https://github.com/SeaQL/sea-orm/tree/master/examples)
 //! [![Starter Kit](https://img.shields.io/badge/Starter%20Kit-green)](https://github.com/SeaQL/sea-orm/issues/37)
 //! [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
 //!
@@ -180,6 +180,12 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! ## Learn More
+//!
+//! 1. [Design](https://github.com/SeaQL/sea-orm/tree/master/DESIGN.md)
+//! 1. [Architecture](https://github.com/SeaQL/sea-orm/tree/master/ARCHITECTURE.md)
+//!
 //! ## License
 //!
 //! Licensed under either of

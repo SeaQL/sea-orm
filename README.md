@@ -25,7 +25,7 @@ This is an early release of SeaORM, the API is not stable yet.
 ```
 
 [![Getting Started](https://img.shields.io/badge/Getting%20Started-blue)](https://www.sea-ql.org/SeaORM/docs/index)
-[![Examples](https://img.shields.io/badge/Examples-orange)](https://github.com/SeaQL/sea-orm/tree/master/examples/sqlx)
+[![Examples](https://img.shields.io/badge/Examples-orange)](https://github.com/SeaQL/sea-orm/tree/master/examples)
 [![Starter Kit](https://img.shields.io/badge/Starter%20Kit-green)](https://github.com/SeaQL/sea-orm/issues/37)
 [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
 
@@ -108,7 +108,7 @@ let pear: fruit::ActiveModel = Fruit::update(pear).exec(db).await?;
 
 // update many: UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."name" LIKE '%Apple%'
 Fruit::update_many()
-    .col_expr(fruit::Column::CakeId, Expr::value(Value::Null))
+    .col_expr(fruit::Column::CakeId, Expr::value(Value::Int(None)))
     .filter(fruit::Column::Name.contains("Apple"))
     .exec(db)
     .await?;
@@ -148,6 +148,12 @@ fruit::Entity::delete_many()
     .await?;
 
 ```
+
+## Learn More
+
+1. [Design](https://github.com/SeaQL/sea-orm/tree/master/DESIGN.md)
+1. [Architecture](https://github.com/SeaQL/sea-orm/tree/master/ARCHITECTURE.md)
+
 ## License
 
 Licensed under either of
