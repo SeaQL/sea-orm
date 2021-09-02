@@ -652,23 +652,60 @@ pub async fn linked() -> Result<(), DbErr> {
     .save(&ctx.db)
     .await?;
 
-    /*
-       SELECT `baker`.`id` AS `A_id`, `baker`.`name` AS `A_name`,
-           `baker`.`contact_details` AS `A_contact_details`,
-           `baker`.`bakery_id` AS `A_bakery_id`, `customer`.`id` AS `B_id`,
-           `customer`.`name` AS `B_name`, `customer`.`notes` AS `B_notes`
-       FROM `baker`
-       LEFT JOIN `cakes_bakers` ON `baker`.`id` = `cakes_bakers`.`baker_id`
-       LEFT JOIN `cake` ON `cakes_bakers`.`cake_id` = `cake`.`id`
-       LEFT JOIN `lineitem` ON `cake`.`id` = `lineitem`.`cake_id`
-       LEFT JOIN `order` ON `lineitem`.`order_id` = `order`.`id`
-       LEFT JOIN `customer` ON `order`.`customer_id` = `customer`.`id`
-    */
+    #[derive(Debug, FromQueryResult, PartialEq)]
+    struct BakerLite {
+        name: String,
+    }
+
+    #[derive(Debug, FromQueryResult, PartialEq)]
+    struct CustomerLite {
+        name: String,
+    }
+
     let baked_for_customers = Baker::find()
         .find_also_linked(baker::BakedForCustomer)
+        .select_only()
+        .column_as_prefixed(baker::Column::Name, "A_", baker::Column::Name)
+        .column_as_prefixed(customer::Column::Name, "B_", customer::Column::Name)
+        .group_by(baker::Column::Id)
+        .group_by(customer::Column::Id)
+        .group_by(baker::Column::Name)
+        .group_by(customer::Column::Name)
+        .order_by_asc(baker::Column::Id)
+        .order_by_asc(customer::Column::Id)
+        .into_model::<BakerLite, CustomerLite>()
         .all(&ctx.db)
         .await?;
-    println!("{:#?}", baked_for_customers);
+
+    assert_eq!(
+        baked_for_customers,
+        vec![
+            (
+                BakerLite {
+                    name: "Baker Bob".to_owned(),
+                },
+                Some(CustomerLite {
+                    name: "Kara".to_owned(),
+                })
+            ),
+            (
+                BakerLite {
+                    name: "Baker Bobby".to_owned(),
+                },
+                Some(CustomerLite {
+                    name: "Kate".to_owned(),
+                })
+            ),
+            (
+                BakerLite {
+                    name: "Baker Bobby".to_owned(),
+                },
+                Some(CustomerLite {
+                    name: "Kara".to_owned(),
+                })
+            ),
+        ]
+    );
 
     ctx.delete().await;
 

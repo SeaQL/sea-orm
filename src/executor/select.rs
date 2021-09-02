@@ -128,7 +128,7 @@ where
     E: EntityTrait,
     F: EntityTrait,
 {
-    fn into_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
+    pub fn into_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
     where
         M: FromQueryResult,
         N: FromQueryResult,

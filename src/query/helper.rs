@@ -3,7 +3,7 @@ use crate::{
     RelationDef,
 };
 use sea_query::{
-    Alias, Expr, IntoCondition, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef,
+    Alias, Expr, Iden, IntoCondition, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -62,6 +62,33 @@ pub trait QuerySelect: Sized {
         self.query().expr(SelectExpr {
             expr: col.into_simple_expr(),
             alias: Some(SeaRc::new(Alias::new(alias))),
+        });
+        self
+    }
+
+    /// Add a select column with prefixed alias
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .column_as_prefixed(cake::Column::Id.count(), "A_", cake::Column::Id)
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT COUNT("cake"."id") AS "A_id" FROM "cake""#
+    /// );
+    /// ```
+    fn column_as_prefixed<C, I>(mut self, col: C, prefix: &str, alias: I) -> Self
+    where
+        C: IntoSimpleExpr,
+        I: Iden,
+    {
+        self.query().expr(SelectExpr {
+            expr: col.into_simple_expr(),
+            alias: Some(SeaRc::new(Alias::new(
+                vec![prefix, alias.to_string().as_str()].join("").as_str(),
+            ))),
         });
         self
     }
