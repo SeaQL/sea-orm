@@ -11,7 +11,9 @@ impl EntityName for Entity {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Deserialize, Serialize)]
+#[derive(
+    Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Deserialize, Serialize, FromForm,
+)]
 #[serde(crate = "rocket::serde")]
 pub struct Model {
     #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]

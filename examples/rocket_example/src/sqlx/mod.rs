@@ -1,8 +1,12 @@
 use rocket::fairing::{self, AdHoc};
-use rocket::response::status::Created;
+use rocket::form::{Context, Form};
+use rocket::fs::{relative, FileServer};
+use rocket::response::{Flash, Redirect};
 use rocket::serde::json::Json;
-use rocket::{Build, Rocket};
+use rocket::{Build, Request, Rocket};
 use rocket_db_pools::{sqlx, Connection, Database};
+use rocket_dyn_templates::{context, Template};
+
 use sea_orm::entity::*;
 use sea_orm::RocketDbPool;
 
@@ -17,11 +21,15 @@ type Result<T, E = rocket::response::Debug<sqlx::Error>> = std::result::Result<T
 mod post;
 pub use post::Entity as Post;
 
-#[post("/", data = "<post>")]
-async fn create(
-    conn: Connection<Db>,
-    post: Json<post::Model>,
-) -> Result<Created<Json<post::Model>>> {
+#[get("/new")]
+fn new() -> Template {
+    Template::render("new", &Context::default())
+}
+
+#[post("/", data = "<post_form>")]
+async fn create(conn: Connection<Db>, post_form: Form<post::Model>) -> Flash<Redirect> {
+    let post = post_form.into_inner();
+
     let _post = post::ActiveModel {
         title: Set(post.title.to_owned()),
         text: Set(post.text.to_owned()),
@@ -31,20 +39,24 @@ async fn create(
     .await
     .expect("could not insert post");
 
-    Ok(Created::new("/").body(post))
+    Flash::success(Redirect::to("/"), "Post successfully added.")
 }
 
 #[get("/")]
-async fn list(conn: Connection<Db>) -> Result<Json<Vec<i32>>> {
-    let ids = Post::find()
+async fn list(conn: Connection<Db>) -> Template {
+    let posts = Post::find()
         .all(&conn)
         .await
         .expect("could not retrieve posts")
         .into_iter()
-        .map(|record| record.id.unwrap())
         .collect::<Vec<_>>();
 
-    Ok(Json(ids))
+    Template::render(
+        "index",
+        context! {
+            posts: posts,
+        },
+    )
 }
 
 #[get("/<id>")]
@@ -61,22 +73,32 @@ async fn read(conn: Connection<Db>, id: i64) -> Option<Json<post::Model>> {
 }
 
 #[delete("/<id>")]
-async fn delete(conn: Connection<Db>, id: i32) -> Result<Option<()>> {
+async fn delete(conn: Connection<Db>, id: i32) -> Flash<Redirect> {
     let post: post::ActiveModel = Post::find_by_id(id)
         .one(&conn)
         .await
         .unwrap()
         .unwrap()
         .into();
-    let result = post.delete(&conn).await.unwrap();
+    let _result = post.delete(&conn).await.unwrap();
 
-    Ok((result.rows_affected == 1).then(|| ()))
+    Flash::success(Redirect::to("/"), "Post successfully deleted.")
 }
 
 #[delete("/")]
 async fn destroy(conn: Connection<Db>) -> Result<()> {
     let _result = Post::delete_many().exec(&conn).await.unwrap();
     Ok(())
+}
+
+#[catch(404)]
+pub fn not_found(req: &Request<'_>) -> Template {
+    Template::render(
+        "error/404",
+        context! {
+            uri: req.uri()
+        },
+    )
 }
 
 async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
@@ -96,6 +118,9 @@ pub fn stage() -> AdHoc {
         rocket
             .attach(Db::init())
             .attach(AdHoc::try_on_ignite("SQLx Migrations", run_migrations))
-            .mount("/sqlx", routes![create, delete, destroy, list, read,])
+            .mount("/", FileServer::from(relative!("/static")))
+            .mount("/", routes![new, create, delete, destroy, list, read,])
+            .register("/", catchers![not_found])
+            .attach(Template::fairing())
     })
 }

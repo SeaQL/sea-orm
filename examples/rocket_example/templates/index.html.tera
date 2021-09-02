@@ -1,0 +1,30 @@
+{% extends "base" %} {% block content %}
+<h1>Posts</h1>
+<table>
+  <tbody>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Title</th>
+        <th>Text</th>
+        <th></th>
+      </tr>
+    </thead>
+    {% for post in posts %}
+    <tr>
+      <td>{{ post.id }}</td>
+      <td>{{ post.title }}</td>
+      <td>{{ post.text }}</td>
+      <td>
+        <form class="link" action="/{{ post.id }}" method="post">
+          <input type="hidden" name="_method" value="delete" />
+          <button class="link" type="submit">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p><a href="/new">Add Post</a></p>
+{% endblock content %}
