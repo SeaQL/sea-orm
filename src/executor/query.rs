@@ -44,6 +44,13 @@ impl QueryResult {
     {
         Ok(T::try_get(self, pre, col)?)
     }
+
+    pub fn try_get_many<T>(&self, pre: &str, cols: &[String]) -> Result<T, DbErr>
+    where
+        T: TryGetableMany,
+    {
+        Ok(T::try_get_many(self, pre, cols)?)
+    }
 }
 
 impl fmt::Debug for QueryResultRow {

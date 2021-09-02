@@ -38,13 +38,12 @@ where
         let mut query = self.query;
         #[cfg(feature = "sqlx-postgres")]
         if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
-            use crate::Iterable;
-            use sea_query::{Alias, Expr, Query};
-            for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
+            use crate::{sea_query::Query, Iterable};
+            if <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
                 query.returning(
                     Query::select()
-                        .expr_as(Expr::col(key), Alias::new("last_insert_id"))
-                        .to_owned(),
+                        .columns(<A::Entity as EntityTrait>::PrimaryKey::iter())
+                        .take(),
                 );
             }
         }
@@ -83,12 +82,17 @@ async fn exec_insert<A>(
 where
     A: ActiveModelTrait,
 {
-    type ValueTypeOf<A> = <<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType;
+    type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
+    type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
     let last_insert_id = match db {
         #[cfg(feature = "sqlx-postgres")]
         DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
+            use crate::{sea_query::Iden, Iterable};
+            let cols = PrimaryKey::<A>::iter()
+                .map(|col| col.to_string())
+                .collect::<Vec<_>>();
             let res = conn.query_one(statement).await?.unwrap();
-            res.try_get_many("", "last_insert_id").unwrap_or_default()
+            res.try_get_many("", cols.as_ref()).unwrap_or_default()
         }
         _ => {
             let last_insert_id = db.execute(statement).await?.last_insert_id();
