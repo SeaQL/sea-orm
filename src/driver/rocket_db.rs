@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use rocket_db_pools::{rocket::figment::Figment, Config, Error};
+use rocket_db_pools::{rocket::figment::Figment, Config};
 
 #[derive(Debug)]
 pub struct RocketDbPool {
