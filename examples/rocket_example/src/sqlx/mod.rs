@@ -3,6 +3,7 @@ use rocket::form::{Context, Form};
 use rocket::fs::{relative, FileServer};
 use rocket::response::{Flash, Redirect};
 use rocket::serde::json::Json;
+use rocket::Config;
 use rocket::{Build, Request, Rocket};
 use rocket_db_pools::{sqlx, Connection, Database};
 use rocket_dyn_templates::{context, Template};
@@ -102,13 +103,8 @@ pub fn not_found(req: &Request<'_>) -> Template {
 }
 
 async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
-    #[cfg(feature = "sqlx-mysql")]
-    let db_url = "mysql://root:@localhost/rocket_example";
-    #[cfg(feature = "sqlx-postgres")]
-    let db_url = "postgres://root:root@localhost/rocket_example";
-
-    let conn = sea_orm::Database::connect(db_url).await.unwrap();
-
+    let db_url = Db::fetch(&rocket).unwrap().db_url.clone();
+    let conn = sea_orm::Database::connect(&db_url).await.unwrap();
     let _create_post_table = setup::create_post_table(&conn).await;
     Ok(rocket)
 }

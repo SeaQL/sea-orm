@@ -3,7 +3,7 @@ use rocket_db_pools::{rocket::figment::Figment, Config, Error};
 
 #[derive(Debug)]
 pub struct RocketDbPool {
-    db_url: String,
+    pub db_url: String,
 }
 
 #[async_trait]
