@@ -21,6 +21,7 @@ pub trait TryGetable: Sized {
     fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError>;
 }
 
+#[derive(Debug)]
 pub enum TryGetError {
     DbErr(DbErr),
     Null,

@@ -1,3 +1,10 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![deny(
+    missing_debug_implementations,
+    clippy::print_stderr,
+    clippy::print_stdout
+)]
+
 //! <div align="center">
 //!
 //!   <img src="https://www.sea-ql.org/SeaORM/img/SeaORM banner.png"/>

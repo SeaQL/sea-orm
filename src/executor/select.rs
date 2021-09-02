@@ -30,6 +30,7 @@ pub trait SelectorTrait {
     fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr>;
 }
 
+#[derive(Debug)]
 pub struct SelectModel<M>
 where
     M: FromQueryResult,

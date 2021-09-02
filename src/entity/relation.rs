@@ -46,6 +46,7 @@ pub trait Linked {
     }
 }
 
+#[derive(Debug)]
 pub struct RelationDef {
     pub rel_type: RelationType,
     pub from_tbl: TableRef,
@@ -57,6 +58,7 @@ pub struct RelationDef {
     pub on_update: Option<ForeignKeyAction>,
 }
 
+#[derive(Debug)]
 pub struct RelationBuilder<E, R>
 where
     E: EntityTrait,
