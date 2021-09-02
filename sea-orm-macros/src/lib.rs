@@ -7,7 +7,10 @@ use syn::{parse_macro_input, DeriveInput, Error};
 
 mod derives;
 
-#[proc_macro_derive(SimpleModel, attributes(input, auto_identity))]
+#[proc_macro_derive(
+    SimpleModel,
+    attributes(table, input, primary_key, auto_identity, has_default)
+)]
 pub fn simple_model(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     derives::expand_simple_model(input)
