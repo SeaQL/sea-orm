@@ -4,6 +4,7 @@ extern crate rocket;
 use rocket::fairing::{self, AdHoc};
 use rocket::form::{Context, Form};
 use rocket::fs::{relative, FileServer};
+use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};
 use rocket::serde::json::Json;
 use rocket::{Build, Request, Rocket};
@@ -46,18 +47,20 @@ async fn create(conn: Connection<Db>, post_form: Form<post::Model>) -> Flash<Red
 }
 
 #[get("/")]
-async fn list(conn: Connection<Db>) -> Template {
+async fn list(conn: Connection<Db>, flash: Option<FlashMessage<'_>>) -> Template {
     let posts = Post::find()
         .all(&conn)
         .await
         .expect("could not retrieve posts")
         .into_iter()
         .collect::<Vec<_>>();
+    let flash = flash.map(FlashMessage::into_inner);
 
     Template::render(
         "index",
         context! {
             posts: posts,
+            flash: flash,
         },
     )
 }

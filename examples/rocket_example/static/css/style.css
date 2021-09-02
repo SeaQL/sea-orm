@@ -2,24 +2,24 @@
   border: 1px solid #ff0000 !important;
 }
 
-.field-error-msg {
+.field-error-flash {
   color: #ff0000;
   display: block;
   margin: -10px 0 10px 0;
 }
 
 .field-success {
-  border: 1px solid #5AB953 !important;
+  border: 1px solid #5ab953 !important;
 }
 
-.field-success-msg {
-  color: #5AB953;
+.field-success-flash {
+  color: #5ab953;
   display: block;
   margin: -10px 0 10px 0;
 }
 
 span.completed {
-    text-decoration: line-through;
+  text-decoration: line-through;
 }
 
 form.inline {
@@ -29,7 +29,7 @@ form.inline {
 form.link,
 button.link {
   display: inline;
-  color: #1EAEDB;
+  color: #1eaedb;
   border: none;
   outline: none;
   background: none;
@@ -45,8 +45,9 @@ button.link {
   letter-spacing: inherit;
 }
 
-form.link:hover, button.link:hover {
-  color: #0FA0CE;
+form.link:hover,
+button.link:hover {
+  color: #0fa0ce;
 }
 
 button.small {
