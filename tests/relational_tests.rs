@@ -8,7 +8,7 @@ pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 
 // Run the test locally:
-// DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std --test relational_tests
+// DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std-native-tls --test relational_tests
 #[sea_orm_macros::test]
 #[cfg(any(
     feature = "sqlx-mysql",
@@ -662,7 +662,7 @@ pub async fn linked() -> Result<(), DbErr> {
         name: String,
     }
 
-    let baked_for_customers = Baker::find()
+    let baked_for_customers: Vec<(BakerLite, Option<CustomerLite>)> = Baker::find()
         .find_also_linked(baker::BakedForCustomer)
         .select_only()
         .column_as_prefixed(baker::Column::Name, "A_", baker::Column::Name)
@@ -673,7 +673,7 @@ pub async fn linked() -> Result<(), DbErr> {
         .group_by(customer::Column::Name)
         .order_by_asc(baker::Column::Id)
         .order_by_asc(customer::Column::Id)
-        .into_model::<BakerLite, CustomerLite>()
+        .into_model()
         .all(&ctx.db)
         .await?;
 
