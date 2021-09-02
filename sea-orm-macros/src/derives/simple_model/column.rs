@@ -76,7 +76,7 @@ pub(crate) fn expand_column(
 
         impl sea_orm::Iden for #column_ident {
             fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-                write!(s, "{}", self.as_str()).unwrap();
+                write!(s, "{}", <#column_ident as sea_orm::IdenStatic>::as_str(self)).unwrap();
             }
         }
     );

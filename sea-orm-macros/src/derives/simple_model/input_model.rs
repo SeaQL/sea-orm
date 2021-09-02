@@ -27,7 +27,7 @@ fn impl_active_model_trait(
 
         if option_type_to_inner_type(&field.ty).is_some() || has_attribute("has_default", &field.attrs) {
             quote!(
-                <Self::Entity as EntityTrait>::Column::#column_name => {
+                <Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_name => {
                     if let Some(value) = &self.#field_name {
                         sea_orm::ActiveValue::set(value.clone()).into_wrapped_value()
                     } else {
@@ -36,7 +36,7 @@ fn impl_active_model_trait(
                 }
             )
         } else {
-            quote!(<Self::Entity as EntityTrait>::Column::#column_name => sea_orm::ActiveValue::set(self.#field_name.clone()).into_wrapped_value())
+            quote!(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_name => sea_orm::ActiveValue::set(self.#field_name.clone()).into_wrapped_value())
         }
     });
 
@@ -44,26 +44,26 @@ fn impl_active_model_trait(
         impl sea_orm::ActiveModelTrait for #input_model_ident {
             type Entity = #entity_ident;
 
-            fn take(&mut self, c: <Self::Entity as EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
+            fn take(&mut self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 self.get(c)
             }
 
-            fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
+            fn get(&self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 match c {
                     #(#get_fields,)*
                     _ => sea_orm::ActiveValue::unset(),
                 }
             }
 
-            fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: sea_orm::Value) {
+            fn set(&mut self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column, v: sea_orm::Value) {
                 panic!("cannot set on an input model")
             }
 
-            fn unset(&mut self, c: <Self::Entity as EntityTrait>::Column) {
+            fn unset(&mut self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) {
                 panic!("cannot unset on an input model")
             }
 
-            fn is_unset(&self, c: <Self::Entity as EntityTrait>::Column) -> bool {
+            fn is_unset(&self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) -> bool {
                 panic!("cannot is_unset on an input model")
             }
 

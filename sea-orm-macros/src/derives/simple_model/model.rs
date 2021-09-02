@@ -23,16 +23,16 @@ pub(crate) fn expand_model(ident: Ident, fields: Punctuated<Field, Comma>) -> Re
         impl sea_orm::ModelTrait for #ident {
             type Entity = #entity_ident;
 
-            fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> sea_orm::Value {
+            fn get(&self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) -> sea_orm::Value {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#column_names => self.#field_names.clone().into(),)*
+                    #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_names => self.#field_names.clone().into(),)*
                     _ => panic!(#missing_field_msg),
                 }
             }
 
-            fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: sea_orm::Value) {
+            fn set(&mut self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column, v: sea_orm::Value) {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#column_names => self.#field_names = v.unwrap(),)*
+                    #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_names => self.#field_names = v.unwrap(),)*
                     _ => panic!(#missing_field_msg),
                 }
             }
@@ -41,7 +41,7 @@ pub(crate) fn expand_model(ident: Ident, fields: Punctuated<Field, Comma>) -> Re
         impl sea_orm::FromQueryResult for #ident {
             fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::DbErr> {
                 Ok(Self {
-                    #(#field_names: row.try_get(pre, <<Self as ModelTrait>::Entity as EntityTrait>::Column::#column_names.as_str().into())?),*
+                    #(#field_names: row.try_get(pre, sea_orm::IdenStatic::as_str(&<<Self as sea_orm::ModelTrait>::Entity as sea_orm::entity::EntityTrait>::Column::#column_names).into())?),*
                 })
             }
         }

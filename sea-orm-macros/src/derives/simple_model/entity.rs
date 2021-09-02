@@ -30,7 +30,7 @@ pub(crate) fn expand_entity(
         #[derive(Copy, Clone, Default, Debug)]
         #vis struct #entity_ident;
 
-        impl EntityName for #entity_ident {
+        impl sea_orm::EntityName for #entity_ident {
             fn schema_name(&self) -> Option<&str> {
                 #schema_name_expended
             }
@@ -42,7 +42,7 @@ pub(crate) fn expand_entity(
 
         impl sea_orm::Iden for #entity_ident {
             fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-                write!(s, "{}", self.as_str()).unwrap();
+                write!(s, "{}", <#entity_ident as sea_orm::IdenStatic>::as_str(self)).unwrap();
             }
         }
 
@@ -52,7 +52,7 @@ pub(crate) fn expand_entity(
             }
         }
 
-        impl EntityTrait for #entity_ident {
+        impl sea_orm::entity::EntityTrait for #entity_ident {
             type Model = #ident;
 
             type Column = #column_ident;

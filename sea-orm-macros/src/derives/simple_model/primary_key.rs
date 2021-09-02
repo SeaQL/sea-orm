@@ -61,7 +61,7 @@ pub(crate) fn expand_primary_key(
 
         impl sea_orm::Iden for #primary_key_ident {
             fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-                write!(s, "{}", self.as_str()).unwrap();
+                write!(s, "{}", <#primary_key_ident as sea_orm::IdenStatic>::as_str(self)).unwrap();
             }
         }
 
