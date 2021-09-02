@@ -28,12 +28,14 @@ async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     let res = Metadata::insert(metadata.clone()).exec(db).await?;
 
-    let expected_uuid = if cfg!(feature = "sqlx-postgres") {
-        metadata.uuid.unwrap()
-    } else {
-        Uuid::default()
-    };
-    assert_eq!(res.last_insert_id, expected_uuid);
+    assert_eq!(
+        res.last_insert_id,
+        if cfg!(feature = "sqlx-postgres") {
+            metadata.uuid.unwrap()
+        } else {
+            Default::default()
+        }
+    );
 
     Ok(())
 }

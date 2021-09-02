@@ -78,10 +78,18 @@ async fn init_setup(db: &DatabaseConnection) {
         ..Default::default()
     };
 
-    let _cake_baker_res = CakesBakers::insert(cake_baker)
+    let cake_baker_res = CakesBakers::insert(cake_baker.clone())
         .exec(db)
         .await
         .expect("could not insert cake_baker");
+    assert_eq!(
+        cake_baker_res.last_insert_id,
+        if cfg!(feature = "sqlx-postgres") {
+            (cake_baker.cake_id.unwrap(), cake_baker.baker_id.unwrap())
+        } else {
+            Default::default()
+        }
+    );
 
     let customer_kate = customer::ActiveModel {
         name: Set("Kate".to_owned()),
@@ -211,10 +219,18 @@ async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cak
         ..Default::default()
     };
 
-    let _cake_baker_res = CakesBakers::insert(cake_baker)
+    let cake_baker_res = CakesBakers::insert(cake_baker.clone())
         .exec(db)
         .await
         .expect("could not insert cake_baker");
+    assert_eq!(
+        cake_baker_res.last_insert_id,
+        if cfg!(feature = "sqlx-postgres") {
+            (cake_baker.cake_id.unwrap(), cake_baker.baker_id.unwrap())
+        } else {
+            Default::default()
+        }
+    );
 
     Cake::find_by_id(cake_insert_res.last_insert_id)
         .one(db)

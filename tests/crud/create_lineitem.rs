@@ -52,10 +52,18 @@ pub async fn test_create_lineitem(db: &DbConn) {
         baker_id: Set(baker_insert_res.last_insert_id as i32),
         ..Default::default()
     };
-    let _cake_baker_res = CakesBakers::insert(cake_baker)
+    let cake_baker_res = CakesBakers::insert(cake_baker.clone())
         .exec(db)
         .await
         .expect("could not insert cake_baker");
+    assert_eq!(
+        cake_baker_res.last_insert_id,
+        if cfg!(feature = "sqlx-postgres") {
+            (cake_baker.cake_id.unwrap(), cake_baker.baker_id.unwrap())
+        } else {
+            Default::default()
+        }
+    );
 
     // Customer
     let customer_kate = customer::ActiveModel {
