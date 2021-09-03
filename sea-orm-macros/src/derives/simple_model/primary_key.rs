@@ -3,7 +3,7 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use syn::{punctuated::Punctuated, token::Comma, Error, Field, Result, Visibility};
 
-use crate::derives::simple_model::util::has_attribute;
+use crate::util::has_attribute;
 
 pub(crate) fn expand_primary_key(
     vis: Visibility,

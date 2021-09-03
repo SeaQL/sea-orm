@@ -6,14 +6,20 @@ use proc_macro::TokenStream;
 use syn::{parse_macro_input, DeriveInput, Error};
 
 mod derives;
+mod util;
 
-#[proc_macro_derive(
-    SimpleModel,
-    attributes(table, input, primary_key, auto_identity, has_default)
-)]
+#[proc_macro_derive(SimpleModel, attributes(table, primary_key))]
 pub fn simple_model(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     derives::expand_simple_model(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
+#[proc_macro_derive(SimpleInput, attributes(input))]
+pub fn simple_input(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_simple_input(input)
         .unwrap_or_else(Error::into_compile_error)
         .into()
 }

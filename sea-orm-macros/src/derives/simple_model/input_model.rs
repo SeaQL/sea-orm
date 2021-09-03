@@ -4,7 +4,7 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use syn::{punctuated::Punctuated, token::Comma, Attribute, Field, Result, Visibility};
 
-use crate::derives::simple_model::util::{
+use crate::util::{
     get_token_stream_attributes, get_token_stream_derives_with, has_attribute,
     option_type_to_inner_type, split_token_stream,
 };
