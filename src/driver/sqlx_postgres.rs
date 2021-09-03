@@ -102,22 +102,9 @@ impl From<PgRow> for QueryResult {
 impl From<PgQueryResult> for ExecResult {
     fn from(result: PgQueryResult) -> ExecResult {
         ExecResult {
-            result: ExecResultHolder::SqlxPostgres {
-                last_insert_id: 0,
-                rows_affected: result.rows_affected(),
-            },
+            result: ExecResultHolder::SqlxPostgres(result),
         }
     }
-}
-
-pub(crate) fn query_result_into_exec_result(res: QueryResult) -> Result<ExecResult, DbErr> {
-    let last_insert_id: i32 = res.try_get("", "last_insert_id")?;
-    Ok(ExecResult {
-        result: ExecResultHolder::SqlxPostgres {
-            last_insert_id: last_insert_id as u64,
-            rows_affected: 0,
-        },
-    })
 }
 
 fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Postgres, PgArguments> {

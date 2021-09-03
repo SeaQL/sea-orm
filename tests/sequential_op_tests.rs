@@ -67,7 +67,7 @@ async fn init_setup(db: &DatabaseConnection) {
         ..Default::default()
     };
 
-    let cake_insert_res: InsertResult = Cake::insert(mud_cake)
+    let cake_insert_res = Cake::insert(mud_cake)
         .exec(db)
         .await
         .expect("could not insert cake");
@@ -78,10 +78,18 @@ async fn init_setup(db: &DatabaseConnection) {
         ..Default::default()
     };
 
-    let _cake_baker_res: InsertResult = CakesBakers::insert(cake_baker)
+    let cake_baker_res = CakesBakers::insert(cake_baker.clone())
         .exec(db)
         .await
         .expect("could not insert cake_baker");
+    assert_eq!(
+        cake_baker_res.last_insert_id,
+        if cfg!(feature = "sqlx-postgres") {
+            (cake_baker.cake_id.unwrap(), cake_baker.baker_id.unwrap())
+        } else {
+            Default::default()
+        }
+    );
 
     let customer_kate = customer::ActiveModel {
         name: Set("Kate".to_owned()),
@@ -183,7 +191,7 @@ async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model>
 
     results.sort_by(|a, b| b.cakes_sold.cmp(&a.cakes_sold));
 
-    Baker::find_by_id(results.last().unwrap().id as i64)
+    Baker::find_by_id(results.last().unwrap().id)
         .one(db)
         .await
         .unwrap()
@@ -200,7 +208,7 @@ async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cak
         ..Default::default()
     };
 
-    let cake_insert_res: InsertResult = Cake::insert(new_cake)
+    let cake_insert_res = Cake::insert(new_cake)
         .exec(db)
         .await
         .expect("could not insert cake");
@@ -211,10 +219,18 @@ async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cak
         ..Default::default()
     };
 
-    let _cake_baker_res: InsertResult = CakesBakers::insert(cake_baker)
+    let cake_baker_res = CakesBakers::insert(cake_baker.clone())
         .exec(db)
         .await
         .expect("could not insert cake_baker");
+    assert_eq!(
+        cake_baker_res.last_insert_id,
+        if cfg!(feature = "sqlx-postgres") {
+            (cake_baker.cake_id.unwrap(), cake_baker.baker_id.unwrap())
+        } else {
+            Default::default()
+        }
+    );
 
     Cake::find_by_id(cake_insert_res.last_insert_id)
         .one(db)

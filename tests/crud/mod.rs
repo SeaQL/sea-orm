@@ -1,4 +1,4 @@
-use sea_orm::{entity::*, DbConn, InsertResult};
+use sea_orm::{entity::*, DbConn};
 
 pub use super::common::bakery_chain::*;
 
@@ -15,7 +15,7 @@ pub async fn test_create_bakery(db: &DbConn) {
         profit_margin: Set(10.4),
         ..Default::default()
     };
-    let res: InsertResult = Bakery::insert(seaside_bakery)
+    let res = Bakery::insert(seaside_bakery)
         .exec(db)
         .await
         .expect("could not insert bakery");
@@ -37,7 +37,7 @@ pub async fn test_create_customer(db: &DbConn) {
         notes: Set(Some("Loves cheese cake".to_owned())),
         ..Default::default()
     };
-    let res: InsertResult = Customer::insert(customer_kate)
+    let res = Customer::insert(customer_kate)
         .exec(db)
         .await
         .expect("could not insert customer");

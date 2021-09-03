@@ -17,6 +17,10 @@ pub(crate) enum QueryResultRow {
     Mock(crate::MockRow),
 }
 
+pub trait TryGetable: Sized {
+    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError>;
+}
+
 pub enum TryGetError {
     DbErr(DbErr),
     Null,
@@ -31,12 +35,6 @@ impl From<TryGetError> for DbErr {
     }
 }
 
-pub trait TryGetable {
-    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError>
-    where
-        Self: Sized;
-}
-
 // QueryResult //
 
 impl QueryResult {
@@ -45,6 +43,13 @@ impl QueryResult {
         T: TryGetable,
     {
         Ok(T::try_get(self, pre, col)?)
+    }
+
+    pub fn try_get_many<T>(&self, pre: &str, cols: &[String]) -> Result<T, DbErr>
+    where
+        T: TryGetableMany,
+    {
+        Ok(T::try_get_many(self, pre, cols)?)
     }
 }
 
@@ -283,3 +288,135 @@ impl TryGetable for Decimal {
 
 #[cfg(feature = "with-uuid")]
 try_getable_all!(uuid::Uuid);
+
+// TryGetableMany //
+
+pub trait TryGetableMany: Sized {
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError>;
+}
+
+impl<T> TryGetableMany for T
+where
+    T: TryGetable,
+{
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
+        try_get_many_with_slice_len_of(1, cols)?;
+        T::try_get(res, pre, &cols[0])
+    }
+}
+
+impl<T> TryGetableMany for (T, T)
+where
+    T: TryGetable,
+{
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
+        try_get_many_with_slice_len_of(2, cols)?;
+        Ok((
+            T::try_get(res, pre, &cols[0])?,
+            T::try_get(res, pre, &cols[1])?,
+        ))
+    }
+}
+
+impl<T> TryGetableMany for (T, T, T)
+where
+    T: TryGetable,
+{
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
+        try_get_many_with_slice_len_of(3, cols)?;
+        Ok((
+            T::try_get(res, pre, &cols[0])?,
+            T::try_get(res, pre, &cols[1])?,
+            T::try_get(res, pre, &cols[2])?,
+        ))
+    }
+}
+
+fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), TryGetError> {
+    if cols.len() < len {
+        Err(TryGetError::DbErr(DbErr::Query(format!(
+            "Expect {} column names supplied but got slice of length {}",
+            len,
+            cols.len()
+        ))))
+    } else {
+        Ok(())
+    }
+}
+
+// TryFromU64 //
+
+pub trait TryFromU64: Sized {
+    fn try_from_u64(n: u64) -> Result<Self, DbErr>;
+}
+
+macro_rules! try_from_u64_err {
+    ( $type: ty ) => {
+        impl TryFromU64 for $type {
+            fn try_from_u64(_: u64) -> Result<Self, DbErr> {
+                Err(DbErr::Exec(format!(
+                    "{} cannot be converted from u64",
+                    stringify!($type)
+                )))
+            }
+        }
+    };
+}
+
+macro_rules! try_from_u64_tuple {
+    ( $type: ty ) => {
+        try_from_u64_err!(($type, $type));
+        try_from_u64_err!(($type, $type, $type));
+    };
+}
+
+macro_rules! try_from_u64_numeric {
+    ( $type: ty ) => {
+        impl TryFromU64 for $type {
+            fn try_from_u64(n: u64) -> Result<Self, DbErr> {
+                use std::convert::TryInto;
+                n.try_into().map_err(|_| {
+                    DbErr::Exec(format!(
+                        "fail to convert '{}' into '{}'",
+                        n,
+                        stringify!($type)
+                    ))
+                })
+            }
+        }
+        try_from_u64_tuple!($type);
+    };
+}
+
+try_from_u64_numeric!(i8);
+try_from_u64_numeric!(i16);
+try_from_u64_numeric!(i32);
+try_from_u64_numeric!(i64);
+try_from_u64_numeric!(u8);
+try_from_u64_numeric!(u16);
+try_from_u64_numeric!(u32);
+try_from_u64_numeric!(u64);
+
+macro_rules! try_from_u64_string {
+    ( $type: ty ) => {
+        impl TryFromU64 for $type {
+            fn try_from_u64(n: u64) -> Result<Self, DbErr> {
+                Ok(n.to_string())
+            }
+        }
+        try_from_u64_tuple!($type);
+    };
+}
+
+try_from_u64_string!(String);
+
+macro_rules! try_from_u64_dummy {
+    ( $type: ty ) => {
+        try_from_u64_err!($type);
+        try_from_u64_err!(($type, $type));
+        try_from_u64_err!(($type, $type, $type));
+    };
+}
+
+#[cfg(feature = "with-uuid")]
+try_from_u64_dummy!(uuid::Uuid);

@@ -271,3 +271,20 @@ pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 
     create_table(db, &stmt, Cake).await
 }
+
+pub async fn create_metadata_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(metadata::Entity)
+        .if_not_exists()
+        .col(
+            ColumnDef::new(metadata::Column::Uuid)
+                .uuid()
+                .not_null()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(metadata::Column::Key).string().not_null())
+        .col(ColumnDef::new(metadata::Column::Value).string().not_null())
+        .to_owned();
+
+    create_table(db, &stmt).await
+}

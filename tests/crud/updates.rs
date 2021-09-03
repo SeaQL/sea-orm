@@ -8,7 +8,7 @@ pub async fn test_update_cake(db: &DbConn) {
         profit_margin: Set(10.4),
         ..Default::default()
     };
-    let bakery_insert_res: InsertResult = Bakery::insert(seaside_bakery)
+    let bakery_insert_res = Bakery::insert(seaside_bakery)
         .exec(db)
         .await
         .expect("could not insert bakery");
@@ -22,7 +22,7 @@ pub async fn test_update_cake(db: &DbConn) {
         ..Default::default()
     };
 
-    let cake_insert_res: InsertResult = Cake::insert(mud_cake)
+    let cake_insert_res = Cake::insert(mud_cake)
         .exec(db)
         .await
         .expect("could not insert cake");
@@ -62,7 +62,7 @@ pub async fn test_update_bakery(db: &DbConn) {
         profit_margin: Set(10.4),
         ..Default::default()
     };
-    let bakery_insert_res: InsertResult = Bakery::insert(seaside_bakery)
+    let bakery_insert_res = Bakery::insert(seaside_bakery)
         .exec(db)
         .await
         .expect("could not insert bakery");
@@ -130,11 +130,10 @@ pub async fn test_update_deleted_customer(db: &DbConn) {
 
     assert_eq!(Customer::find().count(db).await.unwrap(), init_n_customers);
 
-    let customer: Option<customer::Model> =
-        Customer::find_by_id(customer_id.clone().unwrap() as i64)
-            .one(db)
-            .await
-            .expect("could not find customer");
+    let customer: Option<customer::Model> = Customer::find_by_id(customer_id.clone().unwrap())
+        .one(db)
+        .await
+        .expect("could not find customer");
 
     assert_eq!(customer, None);
 }

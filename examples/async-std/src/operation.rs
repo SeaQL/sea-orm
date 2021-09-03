@@ -20,7 +20,7 @@ pub async fn insert_and_update(db: &DbConn) -> Result<(), DbErr> {
         name: Set("pear".to_owned()),
         ..Default::default()
     };
-    let res: InsertResult = Fruit::insert(pear).exec(db).await?;
+    let res = Fruit::insert(pear).exec(db).await?;
 
     println!();
     println!("Inserted: last_insert_id = {}\n", res.last_insert_id);

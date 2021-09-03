@@ -31,6 +31,8 @@ pub enum PrimaryKey {
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
+    type ValueType = i32;
+
     fn auto_increment() -> bool {
         true
     }
