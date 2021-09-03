@@ -49,7 +49,7 @@ impl ColumnTrait for Column {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(None).def(),
             Self::ContactDetails => ColumnType::Json.def(),
-            Self::BakeryId => ColumnType::Integer.def(),
+            Self::BakeryId => ColumnType::Integer.def().null(),
         }
     }
 }
@@ -60,6 +60,8 @@ impl RelationTrait for Relation {
             Self::Bakery => Entity::belongs_to(super::bakery::Entity)
                 .from(Column::BakeryId)
                 .to(super::bakery::Column::Id)
+                .on_delete(ForeignKeyAction::Cascade)
+                .on_update(ForeignKeyAction::Cascade)
                 .into(),
         }
     }

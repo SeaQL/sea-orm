@@ -55,21 +55,21 @@ pub trait EntityTrait: EntityName {
     where
         R: EntityTrait,
     {
-        RelationBuilder::new(RelationType::HasOne, Self::default(), related)
+        RelationBuilder::new(RelationType::HasOne, Self::default(), related, false)
     }
 
     fn has_one<R>(_: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait + Related<Self>,
     {
-        RelationBuilder::from_rel(RelationType::HasOne, R::to().rev())
+        RelationBuilder::from_rel(RelationType::HasOne, R::to().rev(), true)
     }
 
     fn has_many<R>(_: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait + Related<Self>,
     {
-        RelationBuilder::from_rel(RelationType::HasMany, R::to().rev())
+        RelationBuilder::from_rel(RelationType::HasMany, R::to().rev(), true)
     }
 
     /// Construct select statement to find one / all models

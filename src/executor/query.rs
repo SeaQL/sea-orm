@@ -264,9 +264,12 @@ impl TryGetable for Decimal {
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))?;
                 use rust_decimal::prelude::FromPrimitive;
                 match val {
-                    Some(v) => Decimal::from_f64(v)
-                        .ok_or_else(|| TryGetError::DbErr(DbErr::Query("Failed to convert f64 into Decimal".to_owned()))),
-                    None => Err(TryGetError::Null)
+                    Some(v) => Decimal::from_f64(v).ok_or_else(|| {
+                        TryGetError::DbErr(DbErr::Query(
+                            "Failed to convert f64 into Decimal".to_owned(),
+                        ))
+                    }),
+                    None => Err(TryGetError::Null),
                 }
             }
             #[cfg(feature = "mock")]
