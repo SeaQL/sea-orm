@@ -118,6 +118,10 @@ pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
         #[test]
         #(#attrs)*
         fn #name() #ret {
+            let _ = ::env_logger::builder()
+                .filter_level(::log::LevelFilter::Debug)
+                .is_test(true)
+                .try_init();
             crate::block_on!(async { #body })
         }
     )

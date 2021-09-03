@@ -1,11 +1,9 @@
 use crate::{
-    ColumnTrait, EntityTrait, Identity, IntoSimpleExpr, Iterable, ModelTrait, PrimaryKeyToColumn,
-    RelationDef,
-};
-use sea_query::{
-    Alias, Expr, IntoCondition, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef,
+    ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable, ModelTrait,
+    PrimaryKeyToColumn, RelationDef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
+use sea_query::{Expr, IntoCondition, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef};
 
 // LINT: when the column does not appear in tables selected from
 // LINT: when there is a group by clause, but some columns don't have aggregate functions
@@ -55,13 +53,14 @@ pub trait QuerySelect: Sized {
     ///     r#"SELECT COUNT("cake"."id") AS "count" FROM "cake""#
     /// );
     /// ```
-    fn column_as<C>(mut self, col: C, alias: &str) -> Self
+    fn column_as<C, I>(mut self, col: C, alias: I) -> Self
     where
         C: IntoSimpleExpr,
+        I: IntoIdentity,
     {
         self.query().expr(SelectExpr {
             expr: col.into_simple_expr(),
-            alias: Some(SeaRc::new(Alias::new(alias))),
+            alias: Some(SeaRc::new(alias.into_identity())),
         });
         self
     }
@@ -295,7 +294,7 @@ fn join_condition(rel: RelationDef) -> SimpleExpr {
     }
 }
 
-fn unpack_table_ref(table_ref: &TableRef) -> DynIden {
+pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> DynIden {
     match table_ref {
         TableRef::Table(tbl) => SeaRc::clone(tbl),
         TableRef::SchemaTable(_, tbl) => SeaRc::clone(tbl),
