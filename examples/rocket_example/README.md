@@ -1,3 +1,5 @@
+![screenshot](Screenshot.png)
+
 # Rocket with SeaOrm example app
 
 - modify the `url` var in `Rocket.toml` to point to your chosen database
