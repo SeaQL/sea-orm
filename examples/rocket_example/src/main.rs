@@ -46,6 +46,29 @@ async fn create(conn: Connection<Db>, post_form: Form<post::Model>) -> Flash<Red
     Flash::success(Redirect::to("/"), "Post successfully added.")
 }
 
+#[post("/<id>", data = "<post_form>")]
+async fn update(conn: Connection<Db>, id: i64, post_form: Form<post::Model>) -> Flash<Redirect> {
+    let post: post::ActiveModel = Post::find_by_id(id)
+        .one(&conn)
+        .await
+        .unwrap()
+        .unwrap()
+        .into();
+
+    let post_data = post_form.into_inner();
+
+    let _edited_post = post::ActiveModel {
+        id: post.id,
+        title: Set(post_data.title.to_owned()),
+        text: Set(post_data.text.to_owned()),
+    }
+    .save(&conn)
+    .await
+    .expect("could not edit post");
+
+    Flash::success(Redirect::to("/"), "Post successfully edited.")
+}
+
 #[get("/")]
 async fn list(conn: Connection<Db>, flash: Option<FlashMessage<'_>>) -> Template {
     let posts = Post::find()
@@ -66,16 +89,18 @@ async fn list(conn: Connection<Db>, flash: Option<FlashMessage<'_>>) -> Template
 }
 
 #[get("/<id>")]
-async fn read(conn: Connection<Db>, id: i64) -> Option<Json<post::Model>> {
+async fn edit(conn: Connection<Db>, id: i64) -> Template {
     let post: Option<post::Model> = Post::find_by_id(id)
         .one(&conn)
         .await
         .expect("could not find post");
 
-    match post {
-        None => None,
-        Some(post) => Some(Json(post)),
-    }
+    Template::render(
+        "edit",
+        context! {
+            post: post,
+        },
+    )
 }
 
 #[delete("/<id>")]
@@ -120,7 +145,10 @@ fn rocket() -> _ {
         .attach(Db::init())
         .attach(AdHoc::try_on_ignite("Migrations", run_migrations))
         .mount("/", FileServer::from(relative!("/static")))
-        .mount("/", routes![new, create, delete, destroy, list, read,])
+        .mount(
+            "/",
+            routes![new, create, delete, destroy, list, edit, update],
+        )
         .register("/", catchers![not_found])
         .attach(Template::fairing())
 }

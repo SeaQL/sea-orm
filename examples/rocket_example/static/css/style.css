@@ -57,3 +57,20 @@ button.small {
   line-height: 20px;
   margin: 0 2.5px;
 }
+
+.post {
+}
+
+.post:hover {
+  background-color: #bce2ee;
+}
+
+.post td {
+  padding: 5px;
+  width: 150px;
+}
+
+#delete-button {
+  color: red;
+  border-color: red;
+}

@@ -12,20 +12,13 @@
         <th>ID</th>
         <th>Title</th>
         <th>Text</th>
-        <th></th>
       </tr>
     </thead>
     {% for post in posts %}
-    <tr>
+    <tr class="post" onclick="window.location='/{{ post.id }}';">
       <td>{{ post.id }}</td>
       <td>{{ post.title }}</td>
       <td>{{ post.text }}</td>
-      <td>
-        <form class="link" action="/{{ post.id }}" method="post">
-          <input type="hidden" name="_method" value="delete" />
-          <button class="link" type="submit">Delete</button>
-        </form>
-      </td>
     </tr>
     {% endfor %}
   </tbody>
