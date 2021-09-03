@@ -51,7 +51,6 @@ pub async fn test_create_cake(db: &DbConn) {
     let cake_baker = cakes_bakers::ActiveModel {
         cake_id: Set(cake_insert_res.last_insert_id as i32),
         baker_id: Set(baker_insert_res.last_insert_id as i32),
-        ..Default::default()
     };
     let cake_baker_res = CakesBakers::insert(cake_baker.clone())
         .exec(db)
@@ -70,7 +69,7 @@ pub async fn test_create_cake(db: &DbConn) {
     let cake_model = cake.unwrap();
     assert_eq!(cake_model.name, "Mud Cake");
     assert_eq!(cake_model.price, dec!(10.25));
-    assert_eq!(cake_model.gluten_free, false);
+    assert!(!cake_model.gluten_free);
     assert_eq!(
         cake_model
             .find_related(Bakery)

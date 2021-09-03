@@ -19,7 +19,7 @@ impl TestContext {
         let db: DatabaseConnection = setup::setup(&base_url, test_name).await;
 
         Self {
-            base_url: base_url,
+            base_url,
             db_name: test_name.to_string(),
             db,
         }

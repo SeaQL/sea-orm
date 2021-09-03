@@ -308,7 +308,7 @@ mod tests {
     use sea_query::ColumnType;
     use std::io::{self, BufRead, BufReader};
 
-    const ENTITY_FILES: [&'static str; 5] = [
+    const ENTITY_FILES: [&str; 5] = [
         include_str!("../../tests/entity/cake.rs"),
         include_str!("../../tests/entity/cake_filling.rs"),
         include_str!("../../tests/entity/filling.rs"),

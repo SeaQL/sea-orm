@@ -36,7 +36,7 @@ pub async fn test_update_cake(db: &DbConn) {
     let cake_model = cake.unwrap();
     assert_eq!(cake_model.name, "Mud Cake");
     assert_eq!(cake_model.price, dec!(10.25));
-    assert_eq!(cake_model.gluten_free, false);
+    assert!(!cake_model.gluten_free);
 
     let mut cake_am: cake::ActiveModel = cake_model.into();
     cake_am.name = Set("Extra chocolate mud cake".to_owned());
@@ -75,7 +75,7 @@ pub async fn test_update_bakery(db: &DbConn) {
     assert!(bakery.is_some());
     let bakery_model = bakery.unwrap();
     assert_eq!(bakery_model.name, "SeaSide Bakery");
-    assert_eq!(bakery_model.profit_margin, 10.4);
+    assert!((bakery_model.profit_margin - 10.40).abs() < f64::EPSILON);
 
     let mut bakery_am: bakery::ActiveModel = bakery_model.into();
     bakery_am.name = Set("SeaBreeze Bakery".to_owned());
@@ -92,7 +92,7 @@ pub async fn test_update_bakery(db: &DbConn) {
         .expect("could not find bakery");
     let bakery_model = bakery.unwrap();
     assert_eq!(bakery_model.name, "SeaBreeze Bakery");
-    assert_eq!(bakery_model.profit_margin, 12.00);
+    assert!((bakery_model.profit_margin - 12.00).abs() < f64::EPSILON);
 }
 
 pub async fn test_update_deleted_customer(db: &DbConn) {

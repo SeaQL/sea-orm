@@ -50,7 +50,6 @@ pub async fn test_create_order(db: &DbConn) {
     let cake_baker = cakes_bakers::ActiveModel {
         cake_id: Set(cake_insert_res.last_insert_id as i32),
         baker_id: Set(baker_insert_res.last_insert_id as i32),
-        ..Default::default()
     };
     let cake_baker_res = CakesBakers::insert(cake_baker.clone())
         .exec(db)

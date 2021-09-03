@@ -1,9 +1,9 @@
-use sea_orm::DatabaseConnection;
-
 pub mod common;
-pub use common::{bakery_chain::*, setup::*, TestContext};
-
 mod crud;
+
+pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use crud::*;
+use sea_orm::DatabaseConnection;
 
 // Run the test locally:
 // DATABASE_URL="mysql://root:root@localhost" cargo test --features sqlx-mysql,runtime-async-std --test crud_tests
@@ -20,18 +20,18 @@ async fn main() {
     ctx.delete().await;
 }
 
-async fn create_entities(db: &DatabaseConnection) {
-    crud::test_create_bakery(db).await;
-    crud::create_baker::test_create_baker(db).await;
-    crud::test_create_customer(db).await;
-    crud::create_cake::test_create_cake(db).await;
-    crud::create_lineitem::test_create_lineitem(db).await;
-    crud::create_order::test_create_order(db).await;
+pub async fn create_entities(db: &DatabaseConnection) {
+    test_create_bakery(db).await;
+    test_create_baker(db).await;
+    test_create_customer(db).await;
+    test_create_cake(db).await;
+    test_create_lineitem(db).await;
+    test_create_order(db).await;
 
-    crud::updates::test_update_cake(db).await;
-    crud::updates::test_update_bakery(db).await;
-    crud::updates::test_update_deleted_customer(db).await;
+    test_update_cake(db).await;
+    test_update_bakery(db).await;
+    test_update_deleted_customer(db).await;
 
-    crud::deletes::test_delete_cake(db).await;
-    crud::deletes::test_delete_bakery(db).await;
+    test_delete_cake(db).await;
+    test_delete_bakery(db).await;
 }
