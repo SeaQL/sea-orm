@@ -43,7 +43,7 @@ pub(crate) fn expand_primary_key(
         .iter()
         .map(|(_, camel_ident, _)| camel_ident)
         .collect();
-    // let primary_key_type = primary_key_fields.first().unwrap().1.clone();
+    let primary_key_type = primary_key_fields.first().unwrap().2.clone();
 
     let expanded = quote!(
         #[derive(Copy, Clone, Debug, sea_orm::sea_strum::EnumIter)]
@@ -52,7 +52,7 @@ pub(crate) fn expand_primary_key(
         }
 
         impl sea_orm::entity::PrimaryKeyTrait for #primary_key_ident {
-            // type ValueType = #primary_key_type;
+            type ValueType = #primary_key_type;
 
             fn auto_increment() -> bool {
                 false
