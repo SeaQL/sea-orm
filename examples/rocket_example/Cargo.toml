@@ -19,7 +19,8 @@ rocket_db_pools = { git = "https://github.com/SergioBenitez/Rocket.git" }
 rocket_dyn_templates = { git = "https://github.com/SergioBenitez/Rocket.git", features = [
   "tera",
 ] }
-sea-orm = { path = "../../", features = ["web-api-rocket"] }
+# remove `path = ""` in your own project
+sea-orm = { path = "../../", version = "^0.2" }
 serde_json = { version = "^1" }
 
 [dependencies.sqlx]
