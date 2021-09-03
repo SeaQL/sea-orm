@@ -11,9 +11,41 @@ env:
 
 jobs:
 
+  compile:
+    name: Compile
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        database: [sqlite, mysql, postgres]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            Cargo.lock
+            target
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-${{ matrix.database }}-async-std-native-tls
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --features default,sqlx-${{ matrix.database }},runtime-async-std-native-tls
+            --no-run
+
   compile-sqlite:
     name: Compile SQLite
     runs-on: ubuntu-20.04
+    needs: compile
     strategy:
       matrix:
         runtime: [async-std, actix, tokio]
@@ -35,6 +67,9 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ matrix.tls }}
+          restore-keys: |
+            ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-sqlite-${{ matrix.runtime }}-
+            ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-sqlite-
 
       - uses: actions-rs/cargo@v1
         with:
@@ -46,6 +81,7 @@ jobs:
   compile-mysql:
     name: Compile MySQL
     runs-on: ubuntu-20.04
+    needs: compile
     strategy:
       matrix:
         runtime: [async-std, actix, tokio]
@@ -67,6 +103,9 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
+          restore-keys: |
+            ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-
+            ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-
 
       - uses: actions-rs/cargo@v1
         with:
@@ -78,6 +117,7 @@ jobs:
   compile-postgres:
     name: Compile PostgreSQL
     runs-on: ubuntu-20.04
+    needs: compile
     strategy:
       matrix:
         runtime: [async-std, actix, tokio]
@@ -99,6 +139,9 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
+          restore-keys: |
+            ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-
+            ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-
 
       - uses: actions-rs/cargo@v1
         with:
