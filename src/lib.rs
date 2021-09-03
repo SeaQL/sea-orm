@@ -77,10 +77,8 @@
 //! let fruits: Vec<fruit::Model> = cheese.find_related(Fruit).all(db).await?;
 //!
 //! // find related models (eager)
-//! let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> = Cake::find()
-//!     .find_with_related(Fruit)
-//!     .all(db)
-//!     .await?;
+//! let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> =
+//!     Cake::find().find_with_related(Fruit).all(db).await?;
 //!
 //! # Ok(())
 //! # }
