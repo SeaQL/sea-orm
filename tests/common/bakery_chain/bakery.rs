@@ -48,7 +48,7 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(None).def(),
-            Self::ProfitMargin => ColumnType::Float.def(),
+            Self::ProfitMargin => ColumnType::Double.def(),
         }
     }
 }

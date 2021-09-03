@@ -1,6 +1,6 @@
-use std::str::FromStr;
 use crate::{EntityName, IdenStatic, Iterable};
 use sea_query::{DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
+use std::str::FromStr;
 
 #[derive(Debug, Clone)]
 pub struct ColumnDef {

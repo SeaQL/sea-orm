@@ -56,10 +56,14 @@ impl RelationTrait for Relation {
             Self::Cake => Entity::belongs_to(super::cake::Entity)
                 .from(Column::CakeId)
                 .to(super::cake::Column::Id)
+                .on_delete(ForeignKeyAction::Cascade)
+                .on_update(ForeignKeyAction::Cascade)
                 .into(),
             Self::Baker => Entity::belongs_to(super::baker::Entity)
                 .from(Column::BakerId)
                 .to(super::baker::Column::Id)
+                .on_delete(ForeignKeyAction::Cascade)
+                .on_update(ForeignKeyAction::Cascade)
                 .into(),
         }
     }

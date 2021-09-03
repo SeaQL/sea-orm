@@ -295,7 +295,7 @@ fn join_condition(rel: RelationDef) -> SimpleExpr {
     }
 }
 
-fn unpack_table_ref(table_ref: &TableRef) -> DynIden {
+pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> DynIden {
     match table_ref {
         TableRef::Table(tbl) => SeaRc::clone(tbl),
         TableRef::SchemaTable(_, tbl) => SeaRc::clone(tbl),
