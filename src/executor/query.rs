@@ -59,9 +59,9 @@ impl fmt::Debug for QueryResultRow {
             #[cfg(feature = "sqlx-mysql")]
             Self::SqlxMySql(row) => write!(f, "{:?}", row),
             #[cfg(feature = "sqlx-postgres")]
-            Self::SqlxPostgres(_) => write!("QueryResultRow::SqlxPostgres cannot be inspected"),
+            Self::SqlxPostgres(_) => write!(f, "QueryResultRow::SqlxPostgres cannot be inspected"),
             #[cfg(feature = "sqlx-sqlite")]
-            Self::SqlxSqlite(_) => write!("QueryResultRow::SqlxSqlite cannot be inspected"),
+            Self::SqlxSqlite(_) => write!(f, "QueryResultRow::SqlxSqlite cannot be inspected"),
             #[cfg(feature = "mock")]
             Self::Mock(row) => write!(f, "{:?}", row),
         }
