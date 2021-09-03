@@ -9,7 +9,7 @@ mod select;
 mod traits;
 mod update;
 
-// pub use combine::*;
+pub use combine::{SelectA, SelectB};
 pub use delete::*;
 pub use helper::*;
 pub use insert::*;

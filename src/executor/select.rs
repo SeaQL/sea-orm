@@ -1,6 +1,6 @@
 use crate::{
-    error::*, query::combine, DatabaseConnection, EntityTrait, FromQueryResult, Iterable,
-    JsonValue, ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectTwo,
+    error::*, DatabaseConnection, EntityTrait, FromQueryResult, IdenStatic, Iterable, JsonValue,
+    ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo,
     SelectTwoMany, Statement,
 };
 use sea_query::SelectStatement;
@@ -66,8 +66,8 @@ where
 
     fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr> {
         Ok((
-            M::from_query_result(&res, combine::SELECT_A)?,
-            N::from_query_result_optional(&res, combine::SELECT_B)?,
+            M::from_query_result(&res, SelectA.as_str())?,
+            N::from_query_result_optional(&res, SelectB.as_str())?,
         ))
     }
 }
@@ -128,7 +128,7 @@ where
     E: EntityTrait,
     F: EntityTrait,
 {
-    fn into_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
+    pub fn into_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
     where
         M: FromQueryResult,
         N: FromQueryResult,
