@@ -6,12 +6,12 @@ use rocket::form::{Context, Form};
 use rocket::fs::{relative, FileServer};
 use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};
-use rocket::serde::json::Json;
 use rocket::{Build, Request, Rocket};
 use rocket_db_pools::{sqlx, Connection, Database};
 use rocket_dyn_templates::{context, Template};
 
 use sea_orm::entity::*;
+use sea_orm::QueryOrder;
 use sea_orm::RocketDbPool;
 
 mod setup;
@@ -72,6 +72,7 @@ async fn update(conn: Connection<Db>, id: i64, post_form: Form<post::Model>) -> 
 #[get("/")]
 async fn list(conn: Connection<Db>, flash: Option<FlashMessage<'_>>) -> Template {
     let posts = Post::find()
+        .order_by_asc(post::Column::Id)
         .all(&conn)
         .await
         .expect("could not retrieve posts")

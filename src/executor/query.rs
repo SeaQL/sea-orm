@@ -103,6 +103,7 @@ macro_rules! try_getable_all {
                             .and_then(|opt| opt.ok_or(TryGetError::Null))
                     }
                     #[cfg(feature = "mock")]
+                    #[allow(unused_variables)]
                     QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null
@@ -138,6 +139,7 @@ macro_rules! try_getable_unsigned {
                             .and_then(|opt| opt.ok_or(TryGetError::Null))
                     }
                     #[cfg(feature = "mock")]
+                    #[allow(unused_variables)]
                     QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null
@@ -170,6 +172,7 @@ macro_rules! try_getable_mysql {
                         panic!("{} unsupported by sqlx-sqlite", stringify!($type))
                     }
                     #[cfg(feature = "mock")]
+                    #[allow(unused_variables)]
                     QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null
@@ -202,6 +205,7 @@ macro_rules! try_getable_postgres {
                         panic!("{} unsupported by sqlx-sqlite", stringify!($type))
                     }
                     #[cfg(feature = "mock")]
+                    #[allow(unused_variables)]
                     QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null
@@ -264,12 +268,16 @@ impl TryGetable for Decimal {
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))?;
                 use rust_decimal::prelude::FromPrimitive;
                 match val {
-                    Some(v) => Decimal::from_f64(v)
-                        .ok_or_else(|| TryGetError::DbErr(DbErr::Query("Failed to convert f64 into Decimal".to_owned()))),
-                    None => Err(TryGetError::Null)
+                    Some(v) => Decimal::from_f64(v).ok_or_else(|| {
+                        TryGetError::DbErr(DbErr::Query(
+                            "Failed to convert f64 into Decimal".to_owned(),
+                        ))
+                    }),
+                    None => Err(TryGetError::Null),
                 }
             }
             #[cfg(feature = "mock")]
+            #[allow(unused_variables)]
             QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
                 debug_print!("{:#?}", e.to_string());
                 TryGetError::Null

@@ -58,9 +58,6 @@ button.small {
   margin: 0 2.5px;
 }
 
-.post {
-}
-
 .post:hover {
   background-color: #bce2ee;
 }
