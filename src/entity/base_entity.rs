@@ -137,13 +137,18 @@ pub trait EntityTrait: EntityName {
     /// assert_eq!(
     ///     db.into_transaction_log(),
     ///     vec![
-    ///     Transaction::from_sql_and_values(
-    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#, vec![1u64.into()]
-    ///     ),
-    ///     Transaction::from_sql_and_values(
-    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
-    ///     ),
-    /// ]);
+    ///         Transaction::from_sql_and_values(
+    ///             DbBackend::Postgres,
+    ///             r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
+    ///             vec![1u64.into()]
+    ///         ),
+    ///         Transaction::from_sql_and_values(
+    ///             DbBackend::Postgres,
+    ///             r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
+    ///             vec![]
+    ///         ),
+    ///     ]
+    /// );
     /// ```
     fn find() -> Select<Self> {
         Select::new()
@@ -186,8 +191,11 @@ pub trait EntityTrait: EntityName {
     /// assert_eq!(
     ///     db.into_transaction_log(),
     ///     vec![Transaction::from_sql_and_values(
-    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = $1"#, vec![11i32.into()]
-    ///     )]);
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = $1"#,
+    ///         vec![11i32.into()]
+    ///     )]
+    /// );
     /// ```
     /// Find by composite key
     /// ```
