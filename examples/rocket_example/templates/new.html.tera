@@ -2,7 +2,7 @@
 <div class="row">
   <h4>New Post</h4>
   <form action="/" method="post">
-    <div class="ten columns">
+    <div class="twelve columns">
       <input
         type="text"
         placeholder="enter title"
@@ -22,8 +22,16 @@
         class="u-full-width"
       />
     </div>
-    <div class="two columns">
-      <input type="submit" value="add post" />
+    <div class="twelve columns">
+      <div class="two columns">
+        <a href="/">
+          <input type="button" value="cancel" />
+        </a>
+      </div>
+      <div class="eight columns"></div>
+      <div class="two columns">
+        <input type="submit" value="save post" />
+      </div>
     </div>
   </form>
 </div>

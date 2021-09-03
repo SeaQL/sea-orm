@@ -24,5 +24,10 @@
   </tbody>
 </table>
 
-<p><a href="/new">Add Post</a></p>
+<div class="twelve columns">
+  <a href="/new">
+    <input type="button" value="add post" />
+  </a>
+</div>
+
 {% endblock content %}
