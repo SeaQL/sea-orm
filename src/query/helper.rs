@@ -1,11 +1,9 @@
 use crate::{
-    ColumnTrait, EntityTrait, Identity, IntoSimpleExpr, Iterable, ModelTrait, PrimaryKeyToColumn,
-    RelationDef,
-};
-use sea_query::{
-    Alias, Expr, Iden, IntoCondition, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef,
+    ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable, ModelTrait,
+    PrimaryKeyToColumn, RelationDef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
+use sea_query::{Expr, IntoCondition, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef};
 
 // LINT: when the column does not appear in tables selected from
 // LINT: when there is a group by clause, but some columns don't have aggregate functions
@@ -55,40 +53,14 @@ pub trait QuerySelect: Sized {
     ///     r#"SELECT COUNT("cake"."id") AS "count" FROM "cake""#
     /// );
     /// ```
-    fn column_as<C>(mut self, col: C, alias: &str) -> Self
+    fn column_as<C, I>(mut self, col: C, alias: I) -> Self
     where
         C: IntoSimpleExpr,
+        I: IntoIdentity,
     {
         self.query().expr(SelectExpr {
             expr: col.into_simple_expr(),
-            alias: Some(SeaRc::new(Alias::new(alias))),
-        });
-        self
-    }
-
-    /// Add a select column with prefixed alias
-    /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .select_only()
-    ///         .column_as_prefixed(cake::Column::Id.count(), "A_", cake::Column::Id)
-    ///         .build(DbBackend::Postgres)
-    ///         .to_string(),
-    ///     r#"SELECT COUNT("cake"."id") AS "A_id" FROM "cake""#
-    /// );
-    /// ```
-    fn column_as_prefixed<C, I>(mut self, col: C, prefix: &str, alias: I) -> Self
-    where
-        C: IntoSimpleExpr,
-        I: Iden,
-    {
-        self.query().expr(SelectExpr {
-            expr: col.into_simple_expr(),
-            alias: Some(SeaRc::new(Alias::new(
-                vec![prefix, alias.to_string().as_str()].join("").as_str(),
-            ))),
+            alias: Some(SeaRc::new(alias.into_identity())),
         });
         self
     }

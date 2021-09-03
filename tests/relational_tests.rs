@@ -484,6 +484,7 @@ pub async fn having() {
 ))]
 pub async fn linked() -> Result<(), DbErr> {
     use common::bakery_chain::Order;
+    use sea_orm::{SelectA, SelectB};
 
     let ctx = TestContext::new("test_linked").await;
 
@@ -665,8 +666,8 @@ pub async fn linked() -> Result<(), DbErr> {
     let baked_for_customers: Vec<(BakerLite, Option<CustomerLite>)> = Baker::find()
         .find_also_linked(baker::BakedForCustomer)
         .select_only()
-        .column_as_prefixed(baker::Column::Name, "A_", baker::Column::Name)
-        .column_as_prefixed(customer::Column::Name, "B_", customer::Column::Name)
+        .column_as(baker::Column::Name, (SelectA, baker::Column::Name))
+        .column_as(customer::Column::Name, (SelectB, customer::Column::Name))
         .group_by(baker::Column::Id)
         .group_by(customer::Column::Id)
         .group_by(baker::Column::Name)
