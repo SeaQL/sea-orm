@@ -494,7 +494,7 @@ pub async fn linked() -> Result<(), DbErr> {
         profit_margin: Set(10.4),
         ..Default::default()
     };
-    let seaside_bakery_res: InsertResult = Bakery::insert(seaside_bakery).exec(&ctx.db).await?;
+    let seaside_bakery_res = Bakery::insert(seaside_bakery).exec(&ctx.db).await?;
 
     // Bob's Baker, Cake & Cake Baker
     let baker_bob = baker::ActiveModel {
@@ -507,7 +507,7 @@ pub async fn linked() -> Result<(), DbErr> {
         bakery_id: Set(Some(seaside_bakery_res.last_insert_id as i32)),
         ..Default::default()
     };
-    let baker_bob_res: InsertResult = Baker::insert(baker_bob).exec(&ctx.db).await?;
+    let baker_bob_res = Baker::insert(baker_bob).exec(&ctx.db).await?;
     let mud_cake = cake::ActiveModel {
         name: Set("Mud Cake".to_owned()),
         price: Set(dec!(10.25)),
@@ -516,7 +516,7 @@ pub async fn linked() -> Result<(), DbErr> {
         bakery_id: Set(Some(seaside_bakery_res.last_insert_id as i32)),
         ..Default::default()
     };
-    let mud_cake_res: InsertResult = Cake::insert(mud_cake).exec(&ctx.db).await?;
+    let mud_cake_res = Cake::insert(mud_cake).exec(&ctx.db).await?;
     let bob_cakes_bakers = cakes_bakers::ActiveModel {
         cake_id: Set(mud_cake_res.last_insert_id as i32),
         baker_id: Set(baker_bob_res.last_insert_id as i32),
@@ -533,7 +533,7 @@ pub async fn linked() -> Result<(), DbErr> {
         bakery_id: Set(Some(seaside_bakery_res.last_insert_id as i32)),
         ..Default::default()
     };
-    let baker_bobby_res: InsertResult = Baker::insert(baker_bobby).exec(&ctx.db).await?;
+    let baker_bobby_res = Baker::insert(baker_bobby).exec(&ctx.db).await?;
     let cheese_cake = cake::ActiveModel {
         name: Set("Cheese Cake".to_owned()),
         price: Set(dec!(20.5)),
@@ -542,7 +542,7 @@ pub async fn linked() -> Result<(), DbErr> {
         bakery_id: Set(Some(seaside_bakery_res.last_insert_id as i32)),
         ..Default::default()
     };
-    let cheese_cake_res: InsertResult = Cake::insert(cheese_cake).exec(&ctx.db).await?;
+    let cheese_cake_res = Cake::insert(cheese_cake).exec(&ctx.db).await?;
     let bobby_cakes_bakers = cakes_bakers::ActiveModel {
         cake_id: Set(cheese_cake_res.last_insert_id as i32),
         baker_id: Set(baker_bobby_res.last_insert_id as i32),
@@ -559,7 +559,7 @@ pub async fn linked() -> Result<(), DbErr> {
         bakery_id: Set(Some(seaside_bakery_res.last_insert_id as i32)),
         ..Default::default()
     };
-    let chocolate_cake_res: InsertResult = Cake::insert(chocolate_cake).exec(&ctx.db).await?;
+    let chocolate_cake_res = Cake::insert(chocolate_cake).exec(&ctx.db).await?;
     let bobby_cakes_bakers = cakes_bakers::ActiveModel {
         cake_id: Set(chocolate_cake_res.last_insert_id as i32),
         baker_id: Set(baker_bobby_res.last_insert_id as i32),
@@ -575,7 +575,7 @@ pub async fn linked() -> Result<(), DbErr> {
         notes: Set(Some("Loves cheese cake".to_owned())),
         ..Default::default()
     };
-    let customer_kate_res: InsertResult = Customer::insert(customer_kate).exec(&ctx.db).await?;
+    let customer_kate_res = Customer::insert(customer_kate).exec(&ctx.db).await?;
     let kate_order_1 = order::ActiveModel {
         bakery_id: Set(seaside_bakery_res.last_insert_id as i32),
         customer_id: Set(customer_kate_res.last_insert_id as i32),
@@ -583,7 +583,7 @@ pub async fn linked() -> Result<(), DbErr> {
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
-    let kate_order_1_res: InsertResult = Order::insert(kate_order_1).exec(&ctx.db).await?;
+    let kate_order_1_res = Order::insert(kate_order_1).exec(&ctx.db).await?;
     lineitem::ActiveModel {
         cake_id: Set(cheese_cake_res.last_insert_id as i32),
         order_id: Set(kate_order_1_res.last_insert_id as i32),
@@ -600,7 +600,7 @@ pub async fn linked() -> Result<(), DbErr> {
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
-    let kate_order_2_res: InsertResult = Order::insert(kate_order_2).exec(&ctx.db).await?;
+    let kate_order_2_res = Order::insert(kate_order_2).exec(&ctx.db).await?;
     lineitem::ActiveModel {
         cake_id: Set(chocolate_cake_res.last_insert_id as i32),
         order_id: Set(kate_order_2_res.last_insert_id as i32),
@@ -617,7 +617,7 @@ pub async fn linked() -> Result<(), DbErr> {
         notes: Set(Some("Loves all cakes".to_owned())),
         ..Default::default()
     };
-    let customer_kara_res: InsertResult = Customer::insert(customer_kara).exec(&ctx.db).await?;
+    let customer_kara_res = Customer::insert(customer_kara).exec(&ctx.db).await?;
     let kara_order_1 = order::ActiveModel {
         bakery_id: Set(seaside_bakery_res.last_insert_id as i32),
         customer_id: Set(customer_kara_res.last_insert_id as i32),
@@ -625,7 +625,7 @@ pub async fn linked() -> Result<(), DbErr> {
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
-    let kara_order_1_res: InsertResult = Order::insert(kara_order_1).exec(&ctx.db).await?;
+    let kara_order_1_res = Order::insert(kara_order_1).exec(&ctx.db).await?;
     lineitem::ActiveModel {
         cake_id: Set(mud_cake_res.last_insert_id as i32),
         order_id: Set(kara_order_1_res.last_insert_id as i32),
@@ -642,7 +642,7 @@ pub async fn linked() -> Result<(), DbErr> {
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
-    let kara_order_2_res: InsertResult = Order::insert(kara_order_2).exec(&ctx.db).await?;
+    let kara_order_2_res = Order::insert(kara_order_2).exec(&ctx.db).await?;
     lineitem::ActiveModel {
         cake_id: Set(cheese_cake_res.last_insert_id as i32),
         order_id: Set(kara_order_2_res.last_insert_id as i32),

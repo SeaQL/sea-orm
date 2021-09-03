@@ -21,10 +21,10 @@ where
             column_def.unique_key();
         }
         for primary_key in E::PrimaryKey::iter() {
-            if column.to_string() == primary_key.into_column().to_string()
-                && E::PrimaryKey::auto_increment()
-            {
-                column_def.auto_increment();
+            if column.to_string() == primary_key.into_column().to_string() {
+                if E::PrimaryKey::auto_increment() {
+                    column_def.auto_increment();
+                }
                 if E::PrimaryKey::iter().count() == 1 {
                     column_def.primary_key();
                 }

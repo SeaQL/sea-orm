@@ -286,5 +286,5 @@ pub async fn create_metadata_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(metadata::Column::Value).string().not_null())
         .to_owned();
 
-    create_table(db, &stmt).await
+    create_table(db, &stmt, Metadata).await
 }
