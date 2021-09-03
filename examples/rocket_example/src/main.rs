@@ -12,7 +12,9 @@ use rocket_dyn_templates::{context, Template};
 
 use sea_orm::entity::*;
 use sea_orm::QueryOrder;
-use sea_orm::RocketDbPool;
+
+mod pool;
+use pool::RocketDbPool;
 
 mod setup;
 

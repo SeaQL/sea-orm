@@ -8,9 +8,9 @@ pub struct RocketDbPool {
 
 #[async_trait]
 impl rocket_db_pools::Pool for RocketDbPool {
-    type Error = crate::DbErr;
+    type Error = sea_orm::DbErr;
 
-    type Connection = crate::DatabaseConnection;
+    type Connection = sea_orm::DatabaseConnection;
 
     async fn init(figment: &Figment) -> Result<Self, Self::Error> {
         let config = figment.extract::<Config>().unwrap();
@@ -22,6 +22,6 @@ impl rocket_db_pools::Pool for RocketDbPool {
     }
 
     async fn get(&self) -> Result<Self::Connection, Self::Error> {
-        Ok(crate::Database::connect(&self.db_url).await.unwrap())
+        Ok(sea_orm::Database::connect(&self.db_url).await.unwrap())
     }
 }

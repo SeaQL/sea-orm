@@ -9,6 +9,7 @@ publish = false
 
 [dependencies]
 async-stream = { version = "^0.3" }
+async-trait = { version = "0.1" }
 futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 rocket = { git = "https://github.com/SergioBenitez/Rocket.git", features = [
