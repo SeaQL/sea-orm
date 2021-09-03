@@ -1,31 +1,32 @@
 [package]
-name = "rocket-example"
+name = "sea-orm-rocket-example"
 version = "0.1.0"
+authors = ["Sam Samai <sam@studio2pi.com.au>"]
 edition = "2018"
 publish = false
+
 [workspace]
+
 [dependencies]
+async-stream = { version = "^0.3" }
+futures = { version = "^0.3" }
+futures-util = { version = "^0.3" }
 rocket = { git = "https://github.com/SergioBenitez/Rocket.git", features = [
   "json",
 ] }
-rocket_db_pools = { git = "https://github.com/SergioBenitez/Rocket.git", features = [] }
+rocket_db_pools = { git = "https://github.com/SergioBenitez/Rocket.git" }
 rocket_dyn_templates = { git = "https://github.com/SergioBenitez/Rocket.git", features = [
   "tera",
 ] }
 sea-orm = { path = "../../", features = ["web-api-rocket"] }
-sea-query = { version = "^0.12.8" }
-
 serde_json = { version = "^1" }
-futures = { version = "^0.3" }
-async-stream = { version = "^0.3" }
-futures-util = { version = "^0.3" }
 
 [dependencies.sqlx]
-version = "0.5.1"
+version = "^0.5"
 default-features = false
 features = ["macros", "offline", "migrate"]
 
 [features]
 default = ["sqlx-postgres"]
-sqlx-postgres = ["sea-orm/sqlx-postgres"]
-sqlx-mysql = ["sea-orm/sqlx-mysql"]
+sqlx-mysql = ["sea-orm/sqlx-mysql", "rocket_db_pools/sqlx_mysql"]
+sqlx-postgres = ["sea-orm/sqlx-postgres", "rocket_db_pools/sqlx_postgres"]
