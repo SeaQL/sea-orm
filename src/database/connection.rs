@@ -75,7 +75,7 @@ impl DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.execute(stmt).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.execute(stmt).await,
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
+            DatabaseConnection::Disconnected => Err(DbErr::Conn("Disconnected".to_owned())),
         }
     }
 
@@ -89,7 +89,7 @@ impl DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.query_one(stmt).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.query_one(stmt).await,
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
+            DatabaseConnection::Disconnected => Err(DbErr::Conn("Disconnected".to_owned())),
         }
     }
 
@@ -103,7 +103,7 @@ impl DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.query_all(stmt).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.query_all(stmt).await,
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
+            DatabaseConnection::Disconnected => Err(DbErr::Conn("Disconnected".to_owned())),
         }
     }
 

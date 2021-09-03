@@ -43,11 +43,11 @@ where
     ///
     /// assert_eq!(
     ///     Insert::one(cake::Model {
-    ///             id: 1,
-    ///             name: "Apple Pie".to_owned(),
-    ///         })
-    ///         .build(DbBackend::Postgres)
-    ///         .to_string(),
+    ///         id: 1,
+    ///         name: "Apple Pie".to_owned(),
+    ///     })
+    ///     .build(DbBackend::Postgres)
+    ///     .to_string(),
     ///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#,
     /// );
     /// ```
@@ -57,11 +57,11 @@ where
     ///
     /// assert_eq!(
     ///     Insert::one(cake::ActiveModel {
-    ///             id: Unset(None),
-    ///             name: Set("Apple Pie".to_owned()),
-    ///         })
-    ///         .build(DbBackend::Postgres)
-    ///         .to_string(),
+    ///         id: Unset(None),
+    ///         name: Set("Apple Pie".to_owned()),
+    ///     })
+    ///     .build(DbBackend::Postgres)
+    ///     .to_string(),
     ///     r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie')"#,
     /// );
     /// ```
@@ -79,17 +79,17 @@ where
     ///
     /// assert_eq!(
     ///     Insert::many(vec![
-    ///             cake::Model {
-    ///                 id: 1,
-    ///                 name: "Apple Pie".to_owned(),
-    ///             },
-    ///             cake::Model {
-    ///                 id: 2,
-    ///                 name: "Orange Scone".to_owned(),
-    ///             }
-    ///         ])
-    ///         .build(DbBackend::Postgres)
-    ///         .to_string(),
+    ///         cake::Model {
+    ///             id: 1,
+    ///             name: "Apple Pie".to_owned(),
+    ///         },
+    ///         cake::Model {
+    ///             id: 2,
+    ///             name: "Orange Scone".to_owned(),
+    ///         }
+    ///     ])
+    ///     .build(DbBackend::Postgres)
+    ///     .to_string(),
     ///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie'), (2, 'Orange Scone')"#,
     /// );
     /// ```

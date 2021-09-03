@@ -173,8 +173,11 @@ impl EntityWriter {
 
     pub fn gen_impl_primary_key(entity: &Entity) -> TokenStream {
         let primary_key_auto_increment = entity.get_primary_key_auto_increment();
+        let value_type = entity.get_primary_key_rs_type();
         quote! {
             impl PrimaryKeyTrait for PrimaryKey {
+                type ValueType = #value_type;
+
                 fn auto_increment() -> bool {
                     #primary_key_auto_increment
                 }
@@ -305,7 +308,7 @@ mod tests {
     use sea_query::ColumnType;
     use std::io::{self, BufRead, BufReader};
 
-    const ENTITY_FILES: [&'static str; 5] = [
+    const ENTITY_FILES: [&str; 5] = [
         include_str!("../../tests/entity/cake.rs"),
         include_str!("../../tests/entity/cake_filling.rs"),
         include_str!("../../tests/entity/filling.rs"),

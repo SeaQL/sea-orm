@@ -29,6 +29,8 @@ pub enum PrimaryKey {
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
+    type ValueType = i32;
+
     fn auto_increment() -> bool {
         true
     }
@@ -46,7 +48,7 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(None).def(),
-            Self::Notes => ColumnType::Text.def(),
+            Self::Notes => ColumnType::Text.def().null(),
         }
     }
 }

@@ -103,7 +103,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
-    ///         .filter(cake::Column::Id.between(2,3))
+    ///         .filter(cake::Column::Id.between(2, 3))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` BETWEEN 2 AND 3"
@@ -121,7 +121,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
-    ///         .filter(cake::Column::Id.not_between(2,3))
+    ///         .filter(cake::Column::Id.not_between(2, 3))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` NOT BETWEEN 2 AND 3"

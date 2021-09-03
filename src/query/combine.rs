@@ -1,10 +1,31 @@
-use crate::{EntityTrait, IntoSimpleExpr, Iterable, QueryTrait, Select, SelectTwo, SelectTwoMany};
+use crate::{
+    EntityTrait, IdenStatic, IntoSimpleExpr, Iterable, QueryTrait, Select, SelectTwo, SelectTwoMany,
+};
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
 use sea_query::{Alias, ColumnRef, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
 
-pub const SELECT_A: &str = "A_";
-pub const SELECT_B: &str = "B_";
+macro_rules! select_def {
+    ( $ident: ident, $str: expr ) => {
+        #[derive(Debug, Clone, Copy)]
+        pub struct $ident;
+
+        impl Iden for $ident {
+            fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+                write!(s, "{}", self.as_str()).unwrap();
+            }
+        }
+
+        impl IdenStatic for $ident {
+            fn as_str(&self) -> &str {
+                $str
+            }
+        }
+    };
+}
+
+select_def!(SelectA, "A_");
+select_def!(SelectB, "B_");
 
 impl<E> Select<E>
 where
@@ -37,7 +58,7 @@ where
     where
         F: EntityTrait,
     {
-        self = self.apply_alias(SELECT_A);
+        self = self.apply_alias(SelectA.as_str());
         SelectTwo::new(self.into_query())
     }
 
@@ -45,7 +66,7 @@ where
     where
         F: EntityTrait,
     {
-        self = self.apply_alias(SELECT_A);
+        self = self.apply_alias(SelectA.as_str());
         SelectTwoMany::new(self.into_query())
     }
 }
@@ -102,7 +123,7 @@ where
     S: QueryTrait<QueryStatement = SelectStatement>,
 {
     for col in <F::Column as Iterable>::iter() {
-        let alias = format!("{}{}", SELECT_B, col.to_string().as_str());
+        let alias = format!("{}{}", SelectB.as_str(), col.as_str());
         selector.query().expr(SelectExpr {
             expr: col.into_simple_expr(),
             alias: Some(SeaRc::new(Alias::new(&alias))),

@@ -59,7 +59,7 @@ impl Update {
     /// Update many ActiveModel
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::Expr, DbBackend};
+    /// use sea_orm::{entity::*, query::*, sea_query::Expr, tests_cfg::fruit, DbBackend};
     ///
     /// assert_eq!(
     ///     Update::many(fruit::Entity)

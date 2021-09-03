@@ -1,3 +1,10 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![deny(
+    missing_debug_implementations,
+    clippy::print_stderr,
+    clippy::print_stdout
+)]
+
 //! <div align="center">
 //!
 //!   <img src="https://www.sea-ql.org/SeaORM/img/SeaORM banner.png"/>
@@ -70,10 +77,8 @@
 //! let fruits: Vec<fruit::Model> = cheese.find_related(Fruit).all(db).await?;
 //!
 //! // find related models (eager)
-//! let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> = Cake::find()
-//!     .find_with_related(Fruit)
-//!     .all(db)
-//!     .await?;
+//! let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> =
+//!     Cake::find().find_with_related(Fruit).all(db).await?;
 //!
 //! # Ok(())
 //! # }
@@ -93,7 +98,7 @@
 //! };
 //!
 //! // insert one
-//! let res: InsertResult = Fruit::insert(pear).exec(db).await?;
+//! let res = Fruit::insert(pear).exec(db).await?;
 //!
 //! println!("InsertResult: {}", res.last_insert_id);
 //! # Ok(())
