@@ -25,7 +25,15 @@
           />
         </div>
         <div class="twelve columns">
-          <input type="submit" value="save post" />
+          <div class="two columns">
+            <a href="/">
+              <input type="button" value="cancel" />
+            </a>
+          </div>
+          <div class="eight columns"></div>
+          <div class="two columns">
+            <input type="submit" value="save post" />
+          </div>
         </div>
       </form>
     </div>
