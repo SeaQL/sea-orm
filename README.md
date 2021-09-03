@@ -151,6 +151,7 @@ fruit::Entity::delete_many()
 
 1. [Design](https://github.com/SeaQL/sea-orm/tree/master/DESIGN.md)
 1. [Architecture](https://github.com/SeaQL/sea-orm/tree/master/ARCHITECTURE.md)
+1. [Compare with Diesel](https://www.sea-ql.org/SeaORM/docs/internal-design/diesel)
 
 ## License
 
