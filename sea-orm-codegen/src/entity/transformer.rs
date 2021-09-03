@@ -34,11 +34,6 @@ impl EntityTransformer {
                 .iter()
                 .map(|col_def| col_def.into())
                 .collect();
-            let unique_columns: Vec<String> = columns
-                .iter()
-                .filter(|col| col.unique)
-                .map(|col| col.name.clone())
-                .collect();
             let relations = table_create
                 .get_foreign_key_create_stmts()
                 .iter()
@@ -85,8 +80,13 @@ impl EntityTransformer {
                     false => {
                         let ref_table = rel.ref_table;
                         let mut unique = true;
-                        for col in rel.columns.iter() {
-                            if !unique_columns.contains(col) {
+                        for column in rel.columns.iter() {
+                            if !entity
+                                .columns
+                                .iter()
+                                .filter(|col| col.unique)
+                                .any(|col| col.name.as_str() == column)
+                            {
                                 unique = false;
                                 break;
                             }
