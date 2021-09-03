@@ -10,8 +10,10 @@ use crate::{debug_print, error::*, executor::*, DatabaseConnection, Statement};
 
 use super::sqlx_common::*;
 
+#[derive(Debug)]
 pub struct SqlxPostgresConnector;
 
+#[derive(Debug)]
 pub struct SqlxPostgresPoolConnection {
     pool: PgPool,
 }

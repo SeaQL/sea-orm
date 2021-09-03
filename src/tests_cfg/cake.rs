@@ -75,6 +75,7 @@ impl Related<super::filling::Entity> for Entity {
     }
 }
 
+#[derive(Debug)]
 pub struct CakeToFilling;
 
 impl Linked for CakeToFilling {
