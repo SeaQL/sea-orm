@@ -1,10 +1,9 @@
+pub use super::super::bakery_chain::*;
 use pretty_assertions::assert_eq;
 use sea_orm::{
     entity_to_table_create_statement, error::*, sea_query, DbConn, EntityTrait, ExecResult,
 };
 use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, Table, TableCreateStatement};
-
-pub use super::super::bakery_chain::*;
 
 async fn create_table<E>(
     db: &DbConn,

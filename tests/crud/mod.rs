@@ -1,13 +1,19 @@
-use sea_orm::{entity::*, DbConn};
-
-pub use super::common::bakery_chain::*;
-
 pub mod create_baker;
 pub mod create_cake;
 pub mod create_lineitem;
 pub mod create_order;
 pub mod deletes;
 pub mod updates;
+
+pub use create_baker::*;
+pub use create_cake::*;
+pub use create_lineitem::*;
+pub use create_order::*;
+pub use deletes::*;
+pub use updates::*;
+
+pub use super::common::bakery_chain::*;
+use sea_orm::{entity::*, DbConn};
 
 pub async fn test_create_bakery(db: &DbConn) {
     let seaside_bakery = bakery::ActiveModel {
@@ -28,7 +34,7 @@ pub async fn test_create_bakery(db: &DbConn) {
     assert!(bakery.is_some());
     let bakery_model = bakery.unwrap();
     assert_eq!(bakery_model.name, "SeaSide Bakery");
-    assert_eq!(bakery_model.profit_margin, 10.4);
+    assert!((bakery_model.profit_margin - 10.4).abs() < f64::EPSILON);
 }
 
 pub async fn test_create_customer(db: &DbConn) {

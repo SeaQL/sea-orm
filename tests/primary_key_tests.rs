@@ -1,6 +1,7 @@
-use sea_orm::{entity::prelude::*, DatabaseConnection, Set};
 pub mod common;
+
 pub use common::{bakery_chain::*, setup::*, TestContext};
+use sea_orm::{entity::prelude::*, DatabaseConnection, Set};
 use uuid::Uuid;
 
 #[sea_orm_macros::test]
@@ -19,7 +20,7 @@ async fn main() -> Result<(), DbErr> {
     Ok(())
 }
 
-async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
+pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
     let metadata = metadata::ActiveModel {
         uuid: Set(Uuid::new_v4()),
         key: Set("markup".to_owned()),
