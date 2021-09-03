@@ -25,8 +25,8 @@ This is an early release of SeaORM, the API is not stable yet.
 ```
 
 [![Getting Started](https://img.shields.io/badge/Getting%20Started-blue)](https://www.sea-ql.org/SeaORM/docs/index)
-[![Examples](https://img.shields.io/badge/Examples-orange)](https://github.com/SeaQL/sea-orm/tree/master/examples)
-[![Starter Kit](https://img.shields.io/badge/Starter%20Kit-green)](https://github.com/SeaQL/sea-orm/issues/37)
+[![Examples](https://img.shields.io/badge/Examples-green)](https://github.com/SeaQL/sea-orm/tree/master/examples)
+[![Rocket Example](https://img.shields.io/badge/Rocket%20Example-orange)](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
 [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
 
 ## Features
@@ -68,10 +68,8 @@ let cheese: cake::Model = cheese.unwrap();
 let fruits: Vec<fruit::Model> = cheese.find_related(Fruit).all(db).await?;
 
 // find related models (eager)
-let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> = Cake::find()
-    .find_with_related(Fruit)
-    .all(db)
-    .await?;
+let cake_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> =
+    Cake::find().find_with_related(Fruit).all(db).await?;
 
 ```
 ### Insert

@@ -4,7 +4,7 @@
 
 1. Modify the `url` var in `Rocket.toml` to point to your chosen database
 
-1. Turn on the appropriate database feature for your chosen db in `Cargo.toml` (the `default = ["sqlx-mysql"]`)
+1. Turn on the appropriate database feature for your chosen db in `Cargo.toml` (the `default = ["sqlx-postgres"]` line)
 
 1. `cargo run` to start the server
 
