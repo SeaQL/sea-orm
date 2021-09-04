@@ -3,13 +3,16 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use syn::{punctuated::Punctuated, token::Comma, Field, Result};
 
-pub(crate) fn expand_model(ident: Ident, fields: Punctuated<Field, Comma>) -> Result<TokenStream> {
+pub(crate) fn expand_model(
+    ident: &Ident,
+    fields: &Punctuated<Field, Comma>,
+) -> Result<TokenStream> {
     let missing_field_msg = format!("field does not exist on {}", ident);
     let entity_ident = format_ident!("{}Entity", ident);
 
     let field_names: Vec<_> = fields
         .iter()
-        .map(|field| field.ident.clone().unwrap())
+        .map(|field| field.ident.as_ref().unwrap())
         .collect();
 
     let column_names: Vec<_> = field_names

@@ -24,12 +24,12 @@ pub(crate) fn expand_simple_model(input: DeriveInput) -> Result<TokenStream> {
         }
     };
 
-    let entity = expand_entity(&attrs, vis.clone(), ident.clone())?;
-    let column = expand_column(vis.clone(), ident.clone(), fields.clone())?;
-    let primary_key = expand_primary_key(vis.clone(), ident.clone(), fields.clone())?;
-    let relation = expand_relation(vis.clone(), ident.clone())?;
-    let model = expand_model(ident.clone(), fields.clone())?;
-    let field_validation = expand_field_validation(ident.clone(), fields.clone())?;
+    let entity = expand_entity(&attrs, &vis, &ident)?;
+    let column = expand_column(&vis, &ident, &fields)?;
+    let primary_key = expand_primary_key(&vis, &ident, &fields)?;
+    let relation = expand_relation(&vis, &ident)?;
+    let model = expand_model(&ident, &fields)?;
+    let field_validation = expand_field_validation(&ident, &fields)?;
 
     let expanded = quote!(
         #entity

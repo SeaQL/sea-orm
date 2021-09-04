@@ -6,9 +6,9 @@ use syn::{punctuated::Punctuated, token::Comma, Error, Field, Result, Visibility
 use crate::util::has_attribute;
 
 pub(crate) fn expand_primary_key(
-    vis: Visibility,
-    ident: Ident,
-    fields: Punctuated<Field, Comma>,
+    vis: &Visibility,
+    ident: &Ident,
+    fields: &Punctuated<Field, Comma>,
 ) -> Result<TokenStream> {
     let primary_key_ident = format_ident!("{}PrimaryKey", ident);
     let column_ident = format_ident!("{}Column", ident);
@@ -22,8 +22,11 @@ pub(crate) fn expand_primary_key(
 
             Some((
                 field.ident.clone(),
-                format_ident!("{}", field.ident.unwrap().to_string().to_camel_case()),
-                field.ty,
+                format_ident!(
+                    "{}",
+                    field.ident.as_ref().unwrap().to_string().to_camel_case()
+                ),
+                field.ty.clone(),
             ))
         })
         .collect();
@@ -37,7 +40,7 @@ pub(crate) fn expand_primary_key(
 
     let primary_keys_name: Vec<_> = primary_key_fields
         .iter()
-        .map(|(ident, _, _)| ident.clone().unwrap().to_string())
+        .map(|(ident, _, _)| ident.as_ref().unwrap().to_string())
         .collect();
     let primary_keys: Vec<_> = primary_key_fields
         .iter()

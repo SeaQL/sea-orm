@@ -6,8 +6,8 @@ use syn::{punctuated::Punctuated, token::Comma, Field, Result};
 use crate::util::option_type_to_inner_type;
 
 pub(crate) fn expand_field_validation(
-    ident: Ident,
-    fields: Punctuated<Field, Comma>,
+    ident: &Ident,
+    fields: &Punctuated<Field, Comma>,
 ) -> Result<TokenStream> {
     let fn_names: Vec<_> = fields
         .iter()
@@ -15,7 +15,7 @@ pub(crate) fn expand_field_validation(
             format_ident!(
                 "_Assert{}{}",
                 ident,
-                field.ident.clone().unwrap().to_string().to_camel_case()
+                field.ident.as_ref().unwrap().to_string().to_camel_case()
             )
         })
         .collect();
@@ -23,7 +23,7 @@ pub(crate) fn expand_field_validation(
     let field_inner_types = fields.into_iter().map(|field| {
         option_type_to_inner_type(&field.ty)
             .map(Clone::clone)
-            .unwrap_or(field.ty)
+            .unwrap_or_else(|| field.ty.clone())
     });
 
     let expanded = quote!(

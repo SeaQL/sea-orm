@@ -2,7 +2,7 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use syn::{Result, Visibility};
 
-pub(crate) fn expand_relation(vis: Visibility, ident: Ident) -> Result<TokenStream> {
+pub(crate) fn expand_relation(vis: &Visibility, ident: &Ident) -> Result<TokenStream> {
     let relation_ident = format_ident!("{}Relation", ident);
 
     let expanded = quote!(

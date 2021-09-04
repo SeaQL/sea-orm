@@ -4,9 +4,9 @@ use quote::{format_ident, quote};
 use syn::{punctuated::Punctuated, token::Comma, Field, Result, Visibility};
 
 pub(crate) fn expand_column(
-    vis: Visibility,
-    ident: Ident,
-    fields: Punctuated<Field, Comma>,
+    vis: &Visibility,
+    ident: &Ident,
+    fields: &Punctuated<Field, Comma>,
 ) -> Result<TokenStream> {
     let column_ident = format_ident!("{}Column", ident);
     let entity_ident = format_ident!("{}Entity", ident);
@@ -14,18 +14,18 @@ pub(crate) fn expand_column(
     let column_fields = fields.iter().map(|field| {
         format_ident!(
             "{}",
-            field.ident.clone().unwrap().to_string().to_camel_case()
+            field.ident.as_ref().unwrap().to_string().to_camel_case()
         )
     });
     let column_fields_cloned = column_fields.clone();
     let column_field_names = fields
         .iter()
-        .map(|field| field.ident.clone().unwrap().to_string());
+        .map(|field| field.ident.as_ref().unwrap().to_string());
 
     let column_from_str_fields = fields.iter().map(|field| {
         let field_camel = format_ident!(
             "{}",
-            field.ident.clone().unwrap().to_string().to_camel_case()
+            field.ident.as_ref().unwrap().to_string().to_camel_case()
         );
         let column_str_snake = field_camel.to_string().to_snake_case();
         let column_str_mixed = field_camel.to_string().to_mixed_case();

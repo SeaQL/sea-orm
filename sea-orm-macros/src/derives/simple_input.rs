@@ -66,7 +66,7 @@ fn impl_insertable(
         });
 
     let get_fields = fields.iter().map(|field| {
-        let field_name = field.ident.clone().unwrap();
+        let field_name = field.ident.as_ref().unwrap();
         let column_name = format_ident!("{}", field_name.to_string().to_camel_case());
 
         if option_type_to_inner_type(&field.ty).is_some() {

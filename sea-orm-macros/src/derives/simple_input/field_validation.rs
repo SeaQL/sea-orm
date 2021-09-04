@@ -13,7 +13,7 @@ pub(crate) fn expand_field_validation(
         let fn_name = format_ident!(
             "_Assert{}{}",
             model_ident,
-            field.ident.clone().unwrap().to_string().to_camel_case()
+            field.ident.as_ref().unwrap().to_string().to_camel_case()
         );
 
         let ty = {

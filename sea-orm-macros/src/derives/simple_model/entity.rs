@@ -11,8 +11,8 @@ struct Table {
 
 pub(crate) fn expand_entity(
     attrs: &[Attribute],
-    vis: Visibility,
-    ident: Ident,
+    vis: &Visibility,
+    ident: &Ident,
 ) -> Result<TokenStream> {
     let table_attr = Table::from_attributes(attrs)?;
     let schema_name_expended = table_attr
