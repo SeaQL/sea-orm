@@ -66,6 +66,12 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
             }
         }
 
+        impl sea_orm::IntoInsertable<ActiveModel> for <Entity as EntityTrait>::Model {
+            fn into_insertable(self) -> ActiveModel {
+                self.into()
+            }
+        }
+
         impl sea_orm::ActiveModelTrait for ActiveModel {
             type Entity = Entity;
 

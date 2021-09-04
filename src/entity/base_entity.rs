@@ -1,7 +1,7 @@
 use crate::{
     ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne, FromQueryResult, Insert,
-    ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related, RelationBuilder,
-    RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
+    Insertable, ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related,
+    RelationBuilder, RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
 };
 use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 pub use sea_strum::IntoEnumIterator as Iterable;
@@ -301,7 +301,7 @@ pub trait EntityTrait: EntityName {
     /// ```
     fn insert<A>(model: A) -> Insert<A>
     where
-        A: ActiveModelTrait<Entity = Self>,
+        A: Insertable<Entity = Self>,
     {
         Insert::one(model)
     }
@@ -353,7 +353,7 @@ pub trait EntityTrait: EntityName {
     /// ```
     fn insert_many<A, I>(models: I) -> Insert<A>
     where
-        A: ActiveModelTrait<Entity = Self>,
+        A: Insertable<Entity = Self>,
         I: IntoIterator<Item = A>,
     {
         Insert::many(models)

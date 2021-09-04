@@ -40,12 +40,11 @@ pub(crate) fn expand_derive_simple_input(input: DeriveInput) -> Result<TokenStre
         }
     };
 
-    let active_model_trait =
-        impl_active_model_trait(&ident, input.generics, &entity_ident, &fields)?;
+    let insertable = impl_insertable(&ident, input.generics, &entity_ident, &fields)?;
     let field_validation = expand_field_validation(&model_ident, &fields)?;
 
     let expanded = quote!(
-        #active_model_trait
+        #insertable
 
         #field_validation
     );
@@ -53,7 +52,7 @@ pub(crate) fn expand_derive_simple_input(input: DeriveInput) -> Result<TokenStre
     Ok(expanded)
 }
 
-fn impl_active_model_trait(
+fn impl_insertable(
     input_model_ident: &Ident,
     mut input_model_generics: Generics,
     entity_ident: &Ident,
@@ -86,34 +85,14 @@ fn impl_active_model_trait(
     });
 
     let expanded = quote!(
-        impl sea_orm::ActiveModelTrait for #input_model_ident#input_model_generics {
+        impl sea_orm::Insertable for #input_model_ident#input_model_generics {
             type Entity = #entity_ident;
 
             fn take(&mut self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
-                self.get(c)
-            }
-
-            fn get(&self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 match c {
                     #(#get_fields,)*
                     _ => sea_orm::ActiveValue::unset(),
                 }
-            }
-
-            fn set(&mut self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column, v: sea_orm::Value) {
-                panic!("cannot set on an input model")
-            }
-
-            fn unset(&mut self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) {
-                panic!("cannot unset on an input model")
-            }
-
-            fn is_unset(&self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) -> bool {
-                panic!("cannot is_unset on an input model")
-            }
-
-            fn default() -> Self {
-                <#input_model_ident#input_model_generics as std::default::Default>::default()
             }
         }
     );
