@@ -1,6 +1,4 @@
-use crate::{
-    ActiveModelTrait, ActiveValue, EntityName, EntityTrait, IntoActiveModel, Iterable, QueryTrait,
-};
+use crate::{ActiveModelTrait, ActiveValue, EntityName, EntityTrait, Iterable, QueryTrait};
 use core::marker::PhantomData;
 use sea_query::{InsertStatement, Value};
 

@@ -4,8 +4,7 @@ use syn::{Data, DataStruct, DeriveInput, Fields, FieldsNamed, Result};
 
 use crate::derives::simple_model::{
     column::expand_column, entity::expand_entity, field_validation::expand_field_validation,
-    input_model::expand_input_model, model::expand_model, primary_key::expand_primary_key,
-    relation::expand_relation,
+    model::expand_model, primary_key::expand_primary_key, relation::expand_relation,
 };
 
 pub(crate) fn expand_simple_model(input: DeriveInput) -> Result<TokenStream> {
@@ -31,7 +30,6 @@ pub(crate) fn expand_simple_model(input: DeriveInput) -> Result<TokenStream> {
     let relation = expand_relation(vis.clone(), ident.clone())?;
     let model = expand_model(ident.clone(), fields.clone())?;
     let field_validation = expand_field_validation(ident.clone(), fields.clone())?;
-    // let input_model = expand_input_model(&attrs, vis, ident, fields)?;
 
     let expanded = quote!(
         #entity
@@ -45,8 +43,6 @@ pub(crate) fn expand_simple_model(input: DeriveInput) -> Result<TokenStream> {
         #model
 
         #field_validation
-
-        // #input_model
     );
 
     Ok(expanded)
