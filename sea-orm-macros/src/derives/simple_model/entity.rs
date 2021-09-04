@@ -1,12 +1,13 @@
 use bae::FromAttributes;
-use proc_macro2::{Ident, TokenStream};
+use heck::SnakeCase;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{Attribute, Lit, Result, Visibility};
+use syn::{Attribute, Lit, LitStr, Result, Visibility};
 
-#[derive(FromAttributes)]
+#[derive(Default, FromAttributes)]
 struct Table {
     schema: Option<Lit>,
-    name: Lit,
+    name: Option<Lit>,
 }
 
 pub(crate) fn expand_entity(
@@ -14,12 +15,17 @@ pub(crate) fn expand_entity(
     vis: &Visibility,
     ident: &Ident,
 ) -> Result<TokenStream> {
-    let table_attr = Table::from_attributes(attrs)?;
-    let schema_name_expended = table_attr
+    let table_attr = Table::try_from_attributes(attrs)?.unwrap_or_default();
+    let table_name = table_attr.name.unwrap_or_else(|| {
+        Lit::Str(LitStr::new(
+            &(ident.to_string().to_snake_case() + "s"),
+            Span::call_site(),
+        ))
+    });
+    let schema_name_expanded = table_attr
         .schema
         .map(|schema| quote!(Some(#schema)))
         .unwrap_or_else(|| quote!(None));
-    let table_name = table_attr.name;
 
     let entity_ident = format_ident!("{}Entity", ident);
     let column_ident = format_ident!("{}Column", ident);
@@ -32,7 +38,7 @@ pub(crate) fn expand_entity(
 
         impl sea_orm::EntityName for #entity_ident {
             fn schema_name(&self) -> Option<&str> {
-                #schema_name_expended
+                #schema_name_expanded
             }
 
             fn table_name(&self) -> &str {
