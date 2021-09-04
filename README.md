@@ -20,10 +20,6 @@
 
 SeaORM is a relational ORM to help you build light weight and concurrent web services in Rust.
 
-```markdown
-This is an early release of SeaORM, the API is not stable yet.
-```
-
 [![Getting Started](https://img.shields.io/badge/Getting%20Started-blue)](https://www.sea-ql.org/SeaORM/docs/index)
 [![Examples](https://img.shields.io/badge/Examples-green)](https://github.com/SeaQL/sea-orm/tree/master/examples)
 [![Rocket Example](https://img.shields.io/badge/Rocket%20Example-orange)](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
