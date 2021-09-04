@@ -1,11 +1,11 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
-use syn::{Result, Visibility};
+use syn::Visibility;
 
-pub(crate) fn expand_relation(vis: &Visibility, ident: &Ident) -> Result<TokenStream> {
+pub(crate) fn expand_relation(vis: &Visibility, ident: &Ident) -> TokenStream {
     let relation_ident = format_ident!("{}Relation", ident);
 
-    let expanded = quote!(
+    quote!(
         #[derive(Copy, Clone, Debug, sea_orm::sea_strum::EnumIter)]
         #vis enum #relation_ident {}
 
@@ -14,7 +14,5 @@ pub(crate) fn expand_relation(vis: &Visibility, ident: &Ident) -> Result<TokenSt
                 panic!("No RelationDef")
             }
         }
-    );
-
-    Ok(expanded)
+    )
 }

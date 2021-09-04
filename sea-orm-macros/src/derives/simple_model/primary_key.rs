@@ -48,7 +48,7 @@ pub(crate) fn expand_primary_key(
         .collect();
     let primary_key_type = primary_key_fields.first().unwrap().2.clone();
 
-    let expanded = quote!(
+    Ok(quote!(
         #[derive(Copy, Clone, Debug, sea_orm::sea_strum::EnumIter)]
         #vis enum #primary_key_ident {
             #(#primary_keys),*
@@ -92,7 +92,5 @@ pub(crate) fn expand_primary_key(
                 }
             }
         }
-    );
-
-    Ok(expanded)
+    ))
 }

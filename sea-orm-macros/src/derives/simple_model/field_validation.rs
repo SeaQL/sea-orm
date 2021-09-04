@@ -1,14 +1,14 @@
 use heck::CamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
-use syn::{punctuated::Punctuated, token::Comma, Field, Result};
+use syn::{punctuated::Punctuated, token::Comma, Field};
 
 use crate::util::option_type_to_inner_type;
 
 pub(crate) fn expand_field_validation(
     ident: &Ident,
     fields: &Punctuated<Field, Comma>,
-) -> Result<TokenStream> {
+) -> TokenStream {
     let fn_names: Vec<_> = fields
         .iter()
         .map(|field| {
@@ -26,9 +26,7 @@ pub(crate) fn expand_field_validation(
             .unwrap_or_else(|| field.ty.clone())
     });
 
-    let expanded = quote!(
+    quote!(
         #(trait #fn_names<T: Into<#field_inner_types>> {})*
-    );
-
-    Ok(expanded)
+    )
 }

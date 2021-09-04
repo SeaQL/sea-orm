@@ -1,13 +1,13 @@
 use heck::{CamelCase, MixedCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
-use syn::{punctuated::Punctuated, token::Comma, Field, Result, Visibility};
+use syn::{punctuated::Punctuated, token::Comma, Field, Visibility};
 
 pub(crate) fn expand_column(
     vis: &Visibility,
     ident: &Ident,
     fields: &Punctuated<Field, Comma>,
-) -> Result<TokenStream> {
+) -> TokenStream {
     let column_ident = format_ident!("{}Column", ident);
     let entity_ident = format_ident!("{}Entity", ident);
 
@@ -34,7 +34,7 @@ pub(crate) fn expand_column(
         )
     });
 
-    let expanded = quote!(
+    quote!(
         #[derive(Copy, Clone, Debug, sea_orm::sea_strum::EnumIter)]
         #vis enum #column_ident {
             #(#column_fields),*
@@ -79,7 +79,5 @@ pub(crate) fn expand_column(
                 write!(s, "{}", <#column_ident as sea_orm::IdenStatic>::as_str(self)).unwrap();
             }
         }
-    );
-
-    Ok(expanded)
+    )
 }

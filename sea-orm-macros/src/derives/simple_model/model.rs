@@ -1,12 +1,9 @@
 use heck::CamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
-use syn::{punctuated::Punctuated, token::Comma, Field, Result};
+use syn::{punctuated::Punctuated, token::Comma, Field};
 
-pub(crate) fn expand_model(
-    ident: &Ident,
-    fields: &Punctuated<Field, Comma>,
-) -> Result<TokenStream> {
+pub(crate) fn expand_model(ident: &Ident, fields: &Punctuated<Field, Comma>) -> TokenStream {
     let missing_field_msg = format!("field does not exist on {}", ident);
     let entity_ident = format_ident!("{}Entity", ident);
 
@@ -20,9 +17,7 @@ pub(crate) fn expand_model(
         .map(|field_name| format_ident!("{}", field_name.to_string().to_camel_case()))
         .collect();
 
-    // let field_types: Vec<_> = fields.iter().map(|field| field.ty.clone()).collect();
-
-    let expanded = quote!(
+    quote!(
         impl sea_orm::ModelTrait for #ident {
             type Entity = #entity_ident;
 
@@ -48,7 +43,5 @@ pub(crate) fn expand_model(
                 })
             }
         }
-    );
-
-    Ok(expanded)
+    )
 }

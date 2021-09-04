@@ -1,14 +1,14 @@
 use heck::CamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
-use syn::{punctuated::Punctuated, spanned::Spanned, token::Comma, Field, Result, Type};
+use syn::{punctuated::Punctuated, spanned::Spanned, token::Comma, Field, Type};
 
 use crate::util::option_type_to_inner_type;
 
 pub(crate) fn expand_field_validation(
     model_ident: &Ident,
     fields: &Punctuated<Field, Comma>,
-) -> Result<TokenStream> {
+) -> TokenStream {
     let checks = fields.into_iter().map(|field| {
         let fn_name = format_ident!(
             "_Assert{}{}",
@@ -35,9 +35,7 @@ pub(crate) fn expand_field_validation(
         quote_spanned!(field.ty.span()=> impl #fn_name<#ty> for () {})
     });
 
-    let expanded = quote!(
+    quote!(
         #(#checks)*
-    );
-
-    Ok(expanded)
+    )
 }
