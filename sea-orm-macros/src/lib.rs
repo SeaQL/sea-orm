@@ -22,6 +22,14 @@ pub fn simple_input(input: TokenStream) -> TokenStream {
         .into()
 }
 
+#[proc_macro_derive(SimpleUpdate, attributes(update))]
+pub fn simple_update(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_simple_update(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
 #[proc_macro_derive(DeriveEntity, attributes(table))]
 pub fn derive_entity(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, attrs, .. } = parse_macro_input!(input);

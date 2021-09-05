@@ -5,20 +5,20 @@ use syn::{punctuated::Punctuated, token::Comma, Field, Generics};
 
 use crate::util;
 
-pub(crate) fn impl_insertable(
-    input_model_ident: &Ident,
-    mut input_model_generics: Generics,
+pub(crate) fn impl_updatable(
+    update_model_ident: &Ident,
+    mut update_model_generics: Generics,
     entity_ident: &Ident,
     fields: &Punctuated<Field, Comma>,
 ) -> TokenStream {
-    input_model_generics
+    update_model_generics
         .lifetimes_mut()
         .into_iter()
         .for_each(|mut lifetime| {
             lifetime.lifetime.ident = format_ident!("_");
         });
 
-    let take_fields = fields.iter().map(|field| {
+    let get_fields = fields.iter().map(|field| {
         let field_name = field.ident.as_ref().unwrap();
         let column_name = format_ident!("{}", field_name.to_string().to_camel_case());
 
@@ -38,12 +38,12 @@ pub(crate) fn impl_insertable(
     });
 
     quote!(
-        impl sea_orm::Insertable for #input_model_ident#input_model_generics {
+        impl sea_orm::Updatable for #update_model_ident#update_model_generics {
             type Entity = #entity_ident;
 
-            fn take(&mut self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
+            fn get(&self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 match c {
-                    #(#take_fields,)*
+                    #(#get_fields,)*
                     _ => sea_orm::ActiveValue::unset(),
                 }
             }

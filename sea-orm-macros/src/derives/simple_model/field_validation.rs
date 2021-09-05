@@ -20,10 +20,11 @@ pub(crate) fn expand_field_validation(
         })
         .collect();
 
-    let field_inner_types = fields.into_iter().map(|field| {
-        option_type_to_inner_type(&field.ty)
-            .map(Clone::clone)
-            .unwrap_or_else(|| field.ty.clone())
+    let field_inner_types = fields.iter().map(|field| {
+        &field.ty
+        // option_type_to_inner_type(&field.ty)
+        //     .map(Clone::clone)
+        //     .unwrap_or_else(|| field.ty.clone())
     });
 
     quote!(

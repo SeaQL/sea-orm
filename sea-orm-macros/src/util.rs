@@ -1,4 +1,10 @@
-use syn::{Attribute, Path, PathSegment, Type};
+use heck::CamelCase;
+use proc_macro2::{Ident, TokenStream};
+use quote::{format_ident, quote, quote_spanned};
+use syn::{
+    punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Field, Generics, Path,
+    PathSegment, Type,
+};
 
 pub(crate) fn has_attribute(name: &str, attrs: &[Attribute]) -> bool {
     attrs.iter().any(|attr| {
@@ -7,6 +13,50 @@ pub(crate) fn has_attribute(name: &str, attrs: &[Attribute]) -> bool {
             .iter()
             .any(|segment| segment.ident == name)
     })
+}
+
+pub(crate) fn expand_model_field_validation(
+    ident: &Ident,
+    mut generics: Generics,
+    model_ident: &Ident,
+    fields: &Punctuated<Field, Comma>,
+) -> TokenStream {
+    generics
+        .lifetimes_mut()
+        .into_iter()
+        .for_each(|mut lifetime| {
+            lifetime.lifetime.ident = format_ident!("_");
+        });
+
+    let checks = fields.into_iter().map(|field| {
+        let fn_name = format_ident!(
+            "_Assert{}{}",
+            model_ident,
+            field.ident.as_ref().unwrap().to_string().to_camel_case()
+        );
+
+        let ty = {
+            let mut ty = option_type_to_inner_type(&field.ty)
+                .map(Clone::clone)
+                .unwrap_or_else(|| field.ty.clone());
+
+            // Rename lifetimes to _
+            if let Type::Reference(ref mut type_ref) = ty {
+                type_ref.lifetime = type_ref.lifetime.clone().map(|mut lifetime| {
+                    lifetime.ident = format_ident!("_");
+                    lifetime
+                });
+            }
+
+            ty
+        };
+
+        quote_spanned!(field.ty.span()=> impl #fn_name<#ty> for #ident#generics {})
+    });
+
+    quote!(
+        #(#checks)*
+    )
 }
 
 /// Returns in inner type of an `Option` `syn::Type`.

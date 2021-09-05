@@ -1,7 +1,7 @@
 use crate::{
     ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne, FromQueryResult, Insert,
     Insertable, ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related,
-    RelationBuilder, RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
+    RelationBuilder, RelationTrait, RelationType, Select, Updatable, Update, UpdateMany, UpdateOne,
 };
 use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 pub use sea_strum::IntoEnumIterator as Iterable;
@@ -404,7 +404,7 @@ pub trait EntityTrait: EntityName {
     /// ```
     fn update<A>(model: A) -> UpdateOne<A>
     where
-        A: ActiveModelTrait<Entity = Self>,
+        A: Updatable<Entity = Self>,
     {
         Update::one(model)
     }
