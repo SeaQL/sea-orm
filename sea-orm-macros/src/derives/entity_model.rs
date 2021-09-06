@@ -47,10 +47,11 @@ impl sea_orm::prelude::EntityName for Entity {
 
                     let mut nullable = false;
                     let mut default_value = None;
+                    let mut default_expr = None;
                     let mut indexed = false;
                     let mut unique = false;
                     let mut sql_type = None;
-                    // search for #[sea_orm(primary_key, column_type = "String", nullable, default_value = "something", indexed, unique)]
+                    // search for #[sea_orm(primary_key, column_type = "String", default_value = "new user", default_expr = "gen_random_uuid()", nullable, indexed, unique)]
                     field.attrs.iter().for_each(|attr| {
                         if let Some(ident) = attr.path.get_ident() {
                             if ident != "sea_orm" {
@@ -75,6 +76,9 @@ impl sea_orm::prelude::EntityName for Entity {
                                             }
                                             else if name == "default_value" {
                                                 default_value = Some(nv.lit.to_owned());
+                                            }
+                                            else if name == "default_expr" {
+                                                default_expr = Some(nv.lit.to_owned());
                                             }
                                         }
                                     },
@@ -139,6 +143,12 @@ impl sea_orm::prelude::EntityName for Entity {
                     }
                     if unique {
                         match_row = quote! { #match_row.unique() };
+                    }
+                    if let Some(default_value) = default_value {
+                        match_row = quote! { #match_row.default_value(#default_value) };
+                    }
+                    if let Some(default_expr) = default_expr {
+                        match_row = quote! { #match_row.default_expr(#default_expr) };
                     }
                     columns_trait.push(match_row);
                 }
