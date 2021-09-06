@@ -34,11 +34,11 @@ fn new() -> Template {
 
 #[post("/", data = "<post_form>")]
 async fn create(conn: Connection<Db>, post_form: Form<post::Model>) -> Flash<Redirect> {
-    let post = post_form.into_inner();
+    let form = post_form.into_inner();
 
     post::ActiveModel {
-        title: Set(post.title.to_owned()),
-        text: Set(post.text.to_owned()),
+        title: Set(form.title.to_owned()),
+        text: Set(form.text.to_owned()),
         ..Default::default()
     }
     .save(&conn)
@@ -57,12 +57,12 @@ async fn update(conn: Connection<Db>, id: i32, post_form: Form<post::Model>) -> 
         .unwrap()
         .into();
 
-    let post_data = post_form.into_inner();
+    let form = post_form.into_inner();
 
     post::ActiveModel {
         id: post.id,
-        title: Set(post_data.title.to_owned()),
-        text: Set(post_data.text.to_owned()),
+        title: Set(form.title.to_owned()),
+        text: Set(form.text.to_owned()),
     }
     .save(&conn)
     .await
