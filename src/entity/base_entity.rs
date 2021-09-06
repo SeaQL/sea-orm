@@ -239,22 +239,14 @@ pub trait EntityTrait: EntityName {
     ///         vec![2i32.into(), 3i32.into()]
     ///     )]);
     /// ```
-    fn find_by_id<V>(values: V) -> Select<Self>
-    where
-        V: IntoValueTuple,
-    {
+    fn find_by_id(values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType) -> Select<Self> {
         let mut select = Self::find();
         let mut keys = Self::PrimaryKey::iter();
         for v in values.into_value_tuple() {
             if let Some(key) = keys.next() {
                 let col = key.into_column();
                 select = select.filter(col.eq(v));
-            } else {
-                panic!("primary key arity mismatch");
             }
-        }
-        if keys.next().is_some() {
-            panic!("primary key arity mismatch");
         }
         select
     }
