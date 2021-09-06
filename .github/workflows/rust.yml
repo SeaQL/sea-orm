@@ -170,7 +170,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        path: [async-std, tokio]
+        path: [async-std, tokio, rocket_example]
     steps:
       - uses: actions/checkout@v2
 

@@ -239,10 +239,7 @@ pub trait EntityTrait: EntityName {
     ///         vec![2i32.into(), 3i32.into()]
     ///     )]);
     /// ```
-    fn find_by_id<V>(values: V) -> Select<Self>
-    where
-        V: IntoValueTuple,
-    {
+    fn find_by_id(values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType) -> Select<Self> {
         let mut select = Self::find();
         let mut keys = Self::PrimaryKey::iter();
         for v in values.into_value_tuple() {
