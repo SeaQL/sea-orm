@@ -17,7 +17,7 @@ struct DeriveModelPrimaryKey {
     ident: syn::Ident,
     primary_keys: Vec<syn::Ident>,
     primary_key_fields: Vec<syn::Field>,
-    primary_key_type: syn::Type,
+    primary_key_type: TokenStream,
     vis: syn::Visibility,
 }
 
@@ -69,7 +69,14 @@ impl DeriveModelPrimaryKey {
                 ))
             })?;
 
-        let primary_key_type = first_primary_key.ty.clone();
+        let primary_key_type = if primary_keys.len() <= 1 {
+            let pk_type = &first_primary_key.ty;
+            quote!(#pk_type)
+        } else {
+            let primary_key_types: Vec<_> =
+                primary_key_fields.iter().map(|field| &field.ty).collect();
+            quote!(( #( #primary_key_types ),* ))
+        };
 
         let auto_increment = if primary_keys.len() > 1 {
             false
