@@ -246,7 +246,12 @@ pub trait EntityTrait: EntityName {
             if let Some(key) = keys.next() {
                 let col = key.into_column();
                 select = select.filter(col.eq(v));
+            } else {
+                panic!("primary key arity mismatch");
             }
+        }
+        if keys.next().is_some() {
+            panic!("primary key arity mismatch");
         }
         select
     }
