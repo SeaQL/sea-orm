@@ -38,6 +38,7 @@ impl sea_orm::prelude::EntityName for Entity {
     let mut columns_enum: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_trait: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_keys: Punctuated<_, Comma> = Punctuated::new();
+    let mut auto_increment = true;
     if let Data::Struct(item_struct) = data {
         if let Fields::Named(fields) = item_struct.fields {
             for field in fields.named {
@@ -51,15 +52,15 @@ impl sea_orm::prelude::EntityName for Entity {
                     let mut indexed = false;
                     let mut unique = false;
                     let mut sql_type = None;
-                    // search for #[sea_orm(primary_key, column_type = "String", default_value = "new user", default_expr = "gen_random_uuid()", nullable, indexed, unique)]
-                    field.attrs.iter().for_each(|attr| {
+                    // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String", default_value = "new user", default_expr = "gen_random_uuid()", nullable, indexed, unique)]
+                    for attr in field.attrs.iter() {
                         if let Some(ident) = attr.path.get_ident() {
                             if ident != "sea_orm" {
-                                return;
+                                continue;
                             }
                         }
                         else {
-                            return;
+                            continue;
                         }
 
                         // single param
@@ -70,8 +71,23 @@ impl sea_orm::prelude::EntityName for Entity {
                                         if let Some(name) = nv.path.get_ident() {
                                             if name == "column_type" {
                                                 if let Lit::Str(litstr) = &nv.lit {
-                                                    let ty: TokenStream = syn::parse_str(&litstr.value()).unwrap();
+                                                    let ty: TokenStream = syn::parse_str(&litstr.value())?;
                                                     sql_type = Some(ty);
+                                                }
+                                                else {
+                                                    return Err(Error::new(field.span(), format!("Invalid column_type {:?}", nv.lit)));
+                                                }
+                                            }
+                                            else if name == "auto_increment" {
+                                                if let Lit::Str(litstr) = &nv.lit {
+                                                    auto_increment = match litstr.value().as_str() {
+                                                        "true" => true,
+                                                        "false" => false,
+                                                        _ => return Err(Error::new(field.span(), format!("Invalid auto_increment = {}", litstr.value()))),
+                                                    };
+                                                }
+                                                else {
+                                                    return Err(Error::new(field.span(), format!("Invalid auto_increment = {:?}", nv.lit)));
                                                 }
                                             }
                                             else if name == "default_value" {
@@ -102,7 +118,7 @@ impl sea_orm::prelude::EntityName for Entity {
                                 }
                             }
                         }
-                    });
+                    }
 
                     let field_type = match sql_type {
                         Some(t) => t,
@@ -140,7 +156,7 @@ impl sea_orm::prelude::EntityName for Entity {
 
                     let mut match_row = quote! { Self::#field_name => sea_orm::prelude::ColumnType::#field_type.def() };
                     if nullable {
-                        match_row = quote! { #match_row.null() };
+                        match_row = quote! { #match_row.nullable() };
                     }
                     if indexed {
                         match_row = quote! { #match_row.indexed() };
@@ -161,7 +177,7 @@ impl sea_orm::prelude::EntityName for Entity {
     }
 
     let primary_key = (!primary_keys.is_empty()).then(|| {
-        let auto_increment = primary_keys.len() == 1;
+        let auto_increment = auto_increment && primary_keys.len() == 1;
         quote! {
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
 pub enum PrimaryKey {
