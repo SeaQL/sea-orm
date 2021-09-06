@@ -29,14 +29,6 @@ impl DeriveModelColumn {
             _ => return Err(Error::InputNotStruct),
         };
 
-        for field in &fields {
-            println!(
-                "{}: {:?}",
-                field.ident.clone().unwrap().to_string(),
-                field.ty.clone().into_token_stream().to_string()
-            );
-        }
-
         let sea_attr = derive_attr::Sea::try_from_attributes(&input.attrs)
             .map_err(Error::Syn)?
             .unwrap_or_default();
@@ -149,7 +141,7 @@ impl DeriveModelColumn {
                         let column_type = lit_str.value().parse::<TokenStream>().map_err(|_| {
                             syn::Error::new_spanned(field, "'column_type_raw' attribute not valid")
                         })?;
-                        quote!(ColumnType::#column_type.def())
+                        quote!(sea_orm::entity::ColumnType::#column_type.def())
                     }
                     Some(_) => {
                         return Err(syn::Error::new_spanned(
@@ -157,7 +149,10 @@ impl DeriveModelColumn {
                             "'column_type_raw' attribute must be a string",
                         ))
                     }
-                    None => Self::type_to_column_type(field.ty.clone()),
+                    None => {
+                        let column_type = Self::type_to_column_type(field.ty.clone());
+                        quote!(sea_orm::entity::ColumnType::#column_type.def())
+                    }
                 };
 
                 let expanded_indexed = attr.indexed.map(|_| quote!(.indexed())).unwrap_or_default();
@@ -169,10 +164,6 @@ impl DeriveModelColumn {
                 )
             })
             .collect::<Result<Vec<_>, _>>()?;
-
-        for def in &field_column_defs {
-            println!("{}", def.clone().to_string())
-        }
 
         Ok(quote!(
             impl sea_orm::entity::ColumnTrait for #ident {
@@ -244,25 +235,25 @@ impl DeriveModelColumn {
         let ty_string = ty.into_token_stream().to_string();
         match ty_string.as_str() {
             "std::string::String" | "string::String" | "String" => {
-                quote!(ColumnType::String(None))
+                quote!(String(None))
             }
-            "char" => quote!(ColumnType::Char(None)),
-            "i8" => quote!(ColumnType::TinyInteger),
-            "i16" => quote!(ColumnType::SmallInteger),
-            "i32" => quote!(ColumnType::Integer),
-            "i64" => quote!(ColumnType::BigInteger),
-            "f32" => quote!(ColumnType::Float),
-            "f64" => quote!(ColumnType::Double),
-            "Json" => quote!(ColumnType::Json),
-            "DateTime" => quote!(ColumnType::DateTime),
-            "DateTimeWithTimeZone" => quote!(ColumnType::DateTimeWithTimeZone),
-            "Decimal" => quote!(ColumnType::Decimal(None)),
-            "Uuid" => quote!(ColumnType::Uuid),
-            "Vec < u8 >" => quote!(ColumnType::Binary),
-            "bool" => quote!(ColumnType::Boolean),
+            "char" => quote!(Char(None)),
+            "i8" => quote!(TinyInteger),
+            "i16" => quote!(SmallInteger),
+            "i32" => quote!(Integer),
+            "i64" => quote!(BigInteger),
+            "f32" => quote!(Float),
+            "f64" => quote!(Double),
+            "Json" => quote!(Json),
+            "DateTime" => quote!(DateTime),
+            "DateTimeWithTimeZone" => quote!(DateTimeWithTimeZone),
+            "Decimal" => quote!(Decimal(None)),
+            "Uuid" => quote!(Uuid),
+            "Vec < u8 >" => quote!(Binary),
+            "bool" => quote!(Boolean),
             _ => {
                 let ty_name = ty_string.replace(' ', "").to_snake_case();
-                quote!(ColumnType::Custom(#ty_name.to_owned()))
+                quote!(Custom(#ty_name.to_owned()))
             }
         }
     }
