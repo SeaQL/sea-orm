@@ -19,14 +19,14 @@ pub mod field_attr {
     #[derive(Default, FromAttributes)]
     pub struct Sea {
         pub auto_increment: Option<syn::Lit>,
-        pub belongs_to: Option<syn::Ident>,
+        pub belongs_to: Option<syn::Lit>,
         pub column_type: Option<syn::Lit>,
         pub column_type_raw: Option<syn::Lit>,
-        pub from: Option<syn::Ident>,
+        pub from: Option<syn::Lit>,
         pub indexed: Option<()>,
         pub null: Option<()>,
         pub primary_key: Option<()>,
-        pub to: Option<syn::Ident>,
+        pub to: Option<syn::Lit>,
         pub unique: Option<()>,
     }
 }

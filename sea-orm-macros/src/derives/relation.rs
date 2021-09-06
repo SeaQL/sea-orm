@@ -52,15 +52,25 @@ impl DeriveRelation {
             .map(|variant| {
                 let variant_ident = &variant.ident;
                 let attr = field_attr::Sea::from_attributes(&variant.attrs)?;
-                let belongs_to = attr.belongs_to.ok_or_else(|| {
-                    syn::Error::new_spanned(variant, "Missing attribute 'belongs_to'")
-                })?;
+                let belongs_to = attr
+                    .belongs_to
+                    .as_ref()
+                    .map(Self::parse_lit_string)
+                    .ok_or_else(|| {
+                        syn::Error::new_spanned(variant, "Missing attribute 'belongs_to'")
+                    })??;
                 let from = attr
                     .from
-                    .ok_or_else(|| syn::Error::new_spanned(variant, "Missing attribute 'from'"))?;
+                    .as_ref()
+                    .map(Self::parse_lit_string)
+                    .ok_or_else(|| {
+                        syn::Error::new_spanned(variant, "Missing attribute 'from'")
+                    })??;
                 let to = attr
                     .to
-                    .ok_or_else(|| syn::Error::new_spanned(variant, "Missing attribute 'to'"))?;
+                    .as_ref()
+                    .map(Self::parse_lit_string)
+                    .ok_or_else(|| syn::Error::new_spanned(variant, "Missing attribute 'to'"))??;
 
                 Result::<_, syn::Error>::Ok(quote!(
                     Self::#variant_ident => #entity_ident::belongs_to(#belongs_to)
@@ -81,6 +91,16 @@ impl DeriveRelation {
                 }
             }
         ))
+    }
+
+    fn parse_lit_string(lit: &syn::Lit) -> syn::Result<TokenStream> {
+        match lit {
+            syn::Lit::Str(lit_str) => lit_str
+                .value()
+                .parse()
+                .map_err(|_| syn::Error::new_spanned(lit, "attribute not valid")),
+            _ => Err(syn::Error::new_spanned(lit, "attribute must be a string")),
+        }
     }
 }
 
