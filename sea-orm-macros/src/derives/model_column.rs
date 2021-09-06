@@ -11,7 +11,6 @@ mod derive_attr {
     pub struct Sea {
         pub column: Option<syn::Ident>,
         pub entity: Option<syn::Ident>,
-        pub primary_key: Option<syn::Ident>,
     }
 }
 
@@ -20,9 +19,7 @@ mod field_attr {
 
     #[derive(Default, FromAttributes)]
     pub struct Sea {
-        pub auto_increment: Option<syn::Lit>,
         pub column_type: Option<syn::Type>,
-        pub primary_key: Option<()>,
     }
 }
 

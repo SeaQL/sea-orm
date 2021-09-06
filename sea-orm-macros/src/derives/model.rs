@@ -1,25 +1,13 @@
 use std::iter::FromIterator;
 
+use bae::FromAttributes;
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 
-mod derive_attr {
-    use bae::FromAttributes;
-
-    #[derive(Default, FromAttributes)]
-    pub struct Sea {
-        pub entity: Option<syn::Ident>,
-    }
-}
-
-mod field_attr {
-    use bae::FromAttributes;
-
-    #[derive(Default, FromAttributes)]
-    pub struct Sea {
-        pub column_type: Option<syn::Type>,
-    }
+#[derive(Default, FromAttributes)]
+pub struct Sea {
+    pub entity: Option<syn::Ident>,
 }
 
 enum Error {
@@ -44,7 +32,7 @@ impl DeriveModel {
             _ => return Err(Error::InputNotStruct),
         };
 
-        let sea_attr = derive_attr::Sea::try_from_attributes(&input.attrs)
+        let sea_attr = Sea::try_from_attributes(&input.attrs)
             .map_err(Error::Syn)?
             .unwrap_or_default();
 
