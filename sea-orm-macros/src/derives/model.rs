@@ -9,9 +9,7 @@ mod derive_attr {
 
     #[derive(Default, FromAttributes)]
     pub struct Sea {
-        pub column: Option<syn::Ident>,
         pub entity: Option<syn::Ident>,
-        pub primary_key: Option<syn::Ident>,
     }
 }
 
@@ -20,18 +18,16 @@ mod field_attr {
 
     #[derive(Default, FromAttributes)]
     pub struct Sea {
-        pub auto_increment: Option<syn::Lit>,
         pub column_type: Option<syn::Type>,
-        pub primary_key: Option<()>,
     }
 }
 
-pub enum Error {
+enum Error {
     InputNotStruct,
     Syn(syn::Error),
 }
 
-pub struct DeriveModel {
+struct DeriveModel {
     column_idents: Vec<syn::Ident>,
     entity_ident: syn::Ident,
     field_idents: Vec<syn::Ident>,
@@ -39,7 +35,7 @@ pub struct DeriveModel {
 }
 
 impl DeriveModel {
-    pub fn new(input: syn::DeriveInput) -> Result<Self, Error> {
+    fn new(input: syn::DeriveInput) -> Result<Self, Error> {
         let fields = match input.data {
             syn::Data::Struct(syn::DataStruct {
                 fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
@@ -78,7 +74,7 @@ impl DeriveModel {
         })
     }
 
-    pub fn expand(&self) -> syn::Result<TokenStream> {
+    fn expand(&self) -> syn::Result<TokenStream> {
         let expanded_impl_from_query_result = self.impl_from_query_result();
         let expanded_impl_model_trait = self.impl_model_trait();
 
@@ -134,7 +130,7 @@ impl DeriveModel {
     }
 }
 
-pub(crate) fn expand_derive_model(input: syn::DeriveInput) -> syn::Result<TokenStream> {
+pub fn expand_derive_model(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     let ident_span = input.ident.span();
 
     match DeriveModel::new(input) {

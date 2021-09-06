@@ -1,21 +1,20 @@
 use std::iter::FromIterator;
 
+use bae::FromAttributes;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use bae::FromAttributes;
-
 #[derive(Default, FromAttributes)]
-pub struct Sea {
-    pub column: Option<syn::Ident>,
-    pub model: Option<syn::Ident>,
-    pub primary_key: Option<syn::Ident>,
-    pub relation: Option<syn::Ident>,
-    pub schema_name: Option<syn::Lit>,
-    pub table_name: Option<syn::Lit>,
+struct Sea {
+    column: Option<syn::Ident>,
+    model: Option<syn::Ident>,
+    primary_key: Option<syn::Ident>,
+    relation: Option<syn::Ident>,
+    schema_name: Option<syn::Lit>,
+    table_name: Option<syn::Lit>,
 }
 
-pub struct DeriveEntity {
+struct DeriveEntity {
     column_ident: syn::Ident,
     ident: syn::Ident,
     model_ident: syn::Ident,
@@ -26,7 +25,7 @@ pub struct DeriveEntity {
 }
 
 impl DeriveEntity {
-    pub fn new(input: syn::DeriveInput) -> Result<Self, syn::Error> {
+    fn new(input: syn::DeriveInput) -> Result<Self, syn::Error> {
         let sea_attr = Sea::try_from_attributes(&input.attrs)?.unwrap_or_default();
 
         let ident = input.ident;
@@ -53,7 +52,7 @@ impl DeriveEntity {
         })
     }
 
-    pub fn expand(&self) -> TokenStream {
+    fn expand(&self) -> TokenStream {
         let expanded_impl_entity_name = self.impl_entity_name();
         let expanded_impl_entity_trait = self.impl_entity_trait();
         let expanded_impl_iden = self.impl_iden();
@@ -140,6 +139,6 @@ impl DeriveEntity {
     }
 }
 
-pub(crate) fn expand_derive_entity(input: syn::DeriveInput) -> syn::Result<TokenStream> {
+pub fn expand_derive_entity(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     Ok(DeriveEntity::new(input)?.expand())
 }

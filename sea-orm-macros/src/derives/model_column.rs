@@ -26,12 +26,12 @@ mod field_attr {
     }
 }
 
-pub enum Error {
+enum Error {
     InputNotStruct,
     Syn(syn::Error),
 }
 
-pub struct DeriveModelColumn {
+struct DeriveModelColumn {
     column_idents: Vec<syn::Ident>,
     entity_ident: syn::Ident,
     fields: syn::punctuated::Punctuated<syn::Field, syn::token::Comma>,
@@ -40,7 +40,7 @@ pub struct DeriveModelColumn {
 }
 
 impl DeriveModelColumn {
-    pub fn new(input: syn::DeriveInput) -> Result<Self, Error> {
+    fn new(input: syn::DeriveInput) -> Result<Self, Error> {
         let fields = match input.data {
             syn::Data::Struct(syn::DataStruct {
                 fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
@@ -74,7 +74,7 @@ impl DeriveModelColumn {
         })
     }
 
-    pub fn expand(&self) -> TokenStream {
+    fn expand(&self) -> TokenStream {
         let expanded_define_column = self.define_column();
         let expanded_impl_as_str = self.impl_as_str();
         let expanded_impl_column_trait = self.impl_column_trait();
@@ -195,7 +195,7 @@ impl DeriveModelColumn {
     }
 }
 
-pub(crate) fn expand_derive_model_column(input: syn::DeriveInput) -> syn::Result<TokenStream> {
+pub fn expand_derive_model_column(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     let ident_span = input.ident.span();
 
     match DeriveModelColumn::new(input) {

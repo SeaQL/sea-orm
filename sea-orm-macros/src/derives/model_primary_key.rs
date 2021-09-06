@@ -20,17 +20,16 @@ mod field_attr {
     #[derive(Default, FromAttributes)]
     pub struct Sea {
         pub auto_increment: Option<syn::Lit>,
-        pub column_type: Option<syn::Type>,
         pub primary_key: Option<()>,
     }
 }
 
-pub enum Error {
+enum Error {
     InputNotStruct,
     Syn(syn::Error),
 }
 
-pub struct DeriveModelPrimaryKey {
+struct DeriveModelPrimaryKey {
     auto_increment: bool,
     column_ident: syn::Ident,
     ident: syn::Ident,
@@ -41,7 +40,7 @@ pub struct DeriveModelPrimaryKey {
 }
 
 impl DeriveModelPrimaryKey {
-    pub fn new(input: syn::DeriveInput) -> Result<Self, Error> {
+    fn new(input: syn::DeriveInput) -> Result<Self, Error> {
         let fields = match input.data {
             syn::Data::Struct(syn::DataStruct {
                 fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
@@ -113,7 +112,7 @@ impl DeriveModelPrimaryKey {
         })
     }
 
-    pub fn expand(&self) -> TokenStream {
+    fn expand(&self) -> TokenStream {
         let expanded_define_primary_key = self.define_primary_key();
         let expanded_impl_as_str = self.impl_as_str();
         let expanded_impl_iden = self.impl_iden();
@@ -230,7 +229,7 @@ impl DeriveModelPrimaryKey {
     }
 }
 
-pub(crate) fn expand_derive_model_primary_key(input: syn::DeriveInput) -> syn::Result<TokenStream> {
+pub fn expand_derive_model_primary_key(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     let ident_span = input.ident.span();
 
     match DeriveModelPrimaryKey::new(input) {

@@ -21,19 +21,19 @@ mod field_attr {
     }
 }
 
-pub enum Error {
+enum Error {
     InputNotEnum,
     Syn(syn::Error),
 }
 
-pub struct DeriveRelation {
+struct DeriveRelation {
     entity_ident: syn::Ident,
     ident: syn::Ident,
     variants: syn::punctuated::Punctuated<syn::Variant, syn::token::Comma>,
 }
 
 impl DeriveRelation {
-    pub fn new(input: syn::DeriveInput) -> Result<Self, Error> {
+    fn new(input: syn::DeriveInput) -> Result<Self, Error> {
         let variants = match input.data {
             syn::Data::Enum(syn::DataEnum { variants, .. }) => variants,
             _ => return Err(Error::InputNotEnum),
@@ -53,7 +53,7 @@ impl DeriveRelation {
         })
     }
 
-    pub fn expand(&self) -> syn::Result<TokenStream> {
+    fn expand(&self) -> syn::Result<TokenStream> {
         let expanded_impl_relation_trait = self.impl_relation_trait()?;
 
         Ok(expanded_impl_relation_trait)
@@ -97,7 +97,7 @@ impl DeriveRelation {
     }
 }
 
-pub(crate) fn expand_derive_relation(input: syn::DeriveInput) -> syn::Result<TokenStream> {
+pub fn expand_derive_relation(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     let ident_span = input.ident.span();
 
     match DeriveRelation::new(input) {
