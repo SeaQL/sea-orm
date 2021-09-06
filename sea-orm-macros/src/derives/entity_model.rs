@@ -46,8 +46,11 @@ impl sea_orm::prelude::EntityName for Entity {
                     columns_enum.push(quote! { #field_name });
 
                     let mut nullable = false;
+                    let mut default_value = None;
+                    let mut indexed = false;
+                    let mut unique = false;
                     let mut sql_type = None;
-                    // search for #[sea_orm(primary_key, type = "String", nullable)]
+                    // search for #[sea_orm(primary_key, column_type = "String", nullable, default_value = "something", indexed, unique)]
                     field.attrs.iter().for_each(|attr| {
                         if let Some(ident) = attr.path.get_ident() {
                             if ident != "sea_orm" {
@@ -64,11 +67,14 @@ impl sea_orm::prelude::EntityName for Entity {
                                 match meta {
                                     Meta::NameValue(nv) => {
                                         if let Some(name) = nv.path.get_ident() {
-                                            if name == "type" {
+                                            if name == "column_type" {
                                                 if let Lit::Str(litstr) = &nv.lit {
                                                     let ty: TokenStream = syn::parse_str(&litstr.value()).unwrap();
                                                     sql_type = Some(ty);
                                                 }
+                                            }
+                                            else if name == "default_value" {
+                                                default_value = Some(nv.lit.to_owned());
                                             }
                                         }
                                     },
@@ -80,6 +86,12 @@ impl sea_orm::prelude::EntityName for Entity {
                                             else if name == "nullable" {
                                                 nullable = true;
                                             }
+                                            else if name == "indexed" {
+                                                indexed = true;
+                                            }
+                                            else if name == "unique" {
+                                                unique = true;
+                                            }
                                         }
                                     },
                                     _ => {},
@@ -90,7 +102,7 @@ impl sea_orm::prelude::EntityName for Entity {
                     let field_type = sql_type.unwrap_or_else(|| {
                         let field_type = &field.ty;
                         let temp = quote! { #field_type }
-                            .to_string()//Example: "Option < String >"
+                            .to_string()//E.g.: "Option < String >"
                             .replace(" ", "");
                         let temp = if temp.starts_with("Option<") {
                             nullable = true;
@@ -118,12 +130,17 @@ impl sea_orm::prelude::EntityName for Entity {
                         }
                     });
 
+                    let mut match_row = quote! { Self::#field_name => sea_orm::prelude::ColumnType::#field_type.def() };
                     if nullable {
-                        columns_trait.push(quote! { Self::#field_name => sea_orm::prelude::ColumnType::#field_type.def().null() });
+                        match_row = quote! { #match_row.null() };
                     }
-                    else {
-                        columns_trait.push(quote! { Self::#field_name => sea_orm::prelude::ColumnType::#field_type.def() });
+                    if indexed {
+                        match_row = quote! { #match_row.indexed() };
                     }
+                    if unique {
+                        match_row = quote! { #match_row.unique() };
+                    }
+                    columns_trait.push(match_row);
                 }
             }
         }
