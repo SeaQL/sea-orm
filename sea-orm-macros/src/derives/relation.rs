@@ -1,25 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 
-mod derive_attr {
-    use bae::FromAttributes;
-
-    #[derive(Default, FromAttributes)]
-    pub struct Sea {
-        pub entity: Option<syn::Ident>,
-    }
-}
-
-mod field_attr {
-    use bae::FromAttributes;
-
-    #[derive(FromAttributes)]
-    pub struct Sea {
-        pub belongs_to: syn::Ident,
-        pub from: syn::Ident,
-        pub to: syn::Ident,
-    }
-}
+use crate::attributes::{derive_attr, field_attr};
 
 enum Error {
     InputNotEnum,
@@ -69,11 +51,16 @@ impl DeriveRelation {
             .iter()
             .map(|variant| {
                 let variant_ident = &variant.ident;
-                let field_attr::Sea {
-                    belongs_to,
-                    from,
-                    to,
-                } = field_attr::Sea::from_attributes(&variant.attrs)?;
+                let attr = field_attr::Sea::from_attributes(&variant.attrs)?;
+                let belongs_to = attr.belongs_to.ok_or_else(|| {
+                    syn::Error::new_spanned(variant, "Missing attribute 'belongs_to'")
+                })?;
+                let from = attr
+                    .from
+                    .ok_or_else(|| syn::Error::new_spanned(variant, "Missing attribute 'from'"))?;
+                let to = attr
+                    .to
+                    .ok_or_else(|| syn::Error::new_spanned(variant, "Missing attribute 'to'"))?;
 
                 Result::<_, syn::Error>::Ok(quote!(
                     Self::#variant_ident => #entity_ident::belongs_to(#belongs_to)

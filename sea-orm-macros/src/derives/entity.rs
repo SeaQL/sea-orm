@@ -4,15 +4,7 @@ use bae::FromAttributes;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-#[derive(Default, FromAttributes)]
-struct Sea {
-    column: Option<syn::Ident>,
-    model: Option<syn::Ident>,
-    primary_key: Option<syn::Ident>,
-    relation: Option<syn::Ident>,
-    schema_name: Option<syn::Lit>,
-    table_name: Option<syn::Lit>,
-}
+use crate::attributes::derive_attr;
 
 struct DeriveEntity {
     column_ident: syn::Ident,
@@ -26,7 +18,7 @@ struct DeriveEntity {
 
 impl DeriveEntity {
     fn new(input: syn::DeriveInput) -> Result<Self, syn::Error> {
-        let sea_attr = Sea::try_from_attributes(&input.attrs)?.unwrap_or_default();
+        let sea_attr = derive_attr::Sea::try_from_attributes(&input.attrs)?.unwrap_or_default();
 
         let ident = input.ident;
         let column_ident = sea_attr.column.unwrap_or_else(|| format_ident!("Column"));

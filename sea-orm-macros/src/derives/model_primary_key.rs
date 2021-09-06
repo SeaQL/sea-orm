@@ -4,25 +4,7 @@ use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 
-mod derive_attr {
-    use bae::FromAttributes;
-
-    #[derive(Default, FromAttributes)]
-    pub struct Sea {
-        pub column: Option<syn::Ident>,
-        pub primary_key: Option<syn::Ident>,
-    }
-}
-
-mod field_attr {
-    use bae::FromAttributes;
-
-    #[derive(Default, FromAttributes)]
-    pub struct Sea {
-        pub auto_increment: Option<syn::Lit>,
-        pub primary_key: Option<()>,
-    }
-}
+use crate::attributes::{derive_attr, field_attr};
 
 enum Error {
     InputNotStruct,

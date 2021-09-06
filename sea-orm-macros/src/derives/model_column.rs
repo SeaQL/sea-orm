@@ -2,26 +2,9 @@ use std::iter::FromIterator;
 
 use heck::{CamelCase, MixedCase, SnakeCase};
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, quote_spanned};
+use quote::{format_ident, quote, quote_spanned, ToTokens};
 
-mod derive_attr {
-    use bae::FromAttributes;
-
-    #[derive(Default, FromAttributes)]
-    pub struct Sea {
-        pub column: Option<syn::Ident>,
-        pub entity: Option<syn::Ident>,
-    }
-}
-
-mod field_attr {
-    use bae::FromAttributes;
-
-    #[derive(Default, FromAttributes)]
-    pub struct Sea {
-        pub column_type: Option<syn::Type>,
-    }
-}
+use crate::attributes::{derive_attr, field_attr};
 
 enum Error {
     InputNotStruct,
@@ -45,6 +28,14 @@ impl DeriveModelColumn {
             }) => named,
             _ => return Err(Error::InputNotStruct),
         };
+
+        for field in &fields {
+            println!(
+                "{}: {:?}",
+                field.ident.clone().unwrap().to_string(),
+                field.ty.clone().into_token_stream().to_string()
+            );
+        }
 
         let sea_attr = derive_attr::Sea::try_from_attributes(&input.attrs)
             .map_err(Error::Syn)?
@@ -71,22 +62,22 @@ impl DeriveModelColumn {
         })
     }
 
-    fn expand(&self) -> TokenStream {
+    fn expand(&self) -> syn::Result<TokenStream> {
         let expanded_define_column = self.define_column();
         let expanded_impl_as_str = self.impl_as_str();
-        let expanded_impl_column_trait = self.impl_column_trait();
+        let expanded_impl_column_trait = self.impl_column_trait()?;
         let expanded_impl_from_str = self.impl_from_str();
         let expanded_impl_iden = self.impl_iden();
         let expanded_impl_iden_static = self.impl_iden_static();
 
-        TokenStream::from_iter([
+        Ok(TokenStream::from_iter([
             expanded_define_column,
             expanded_impl_as_str,
             expanded_impl_column_trait,
             expanded_impl_from_str,
             expanded_impl_iden,
             expanded_impl_iden_static,
-        ])
+        ]))
     }
 
     fn define_column(&self) -> TokenStream {
@@ -122,20 +113,78 @@ impl DeriveModelColumn {
         )
     }
 
-    fn impl_column_trait(&self) -> TokenStream {
-        let ident = &self.ident;
-        let entity_ident = &self.entity_ident;
+    fn impl_column_trait(&self) -> syn::Result<TokenStream> {
+        let Self {
+            ident,
+            column_idents,
+            entity_ident,
+            ..
+        } = self;
 
-        quote!(
+        let field_column_defs = self
+            .fields
+            .iter()
+            .map(|field| {
+                let attr = field_attr::Sea::try_from_attributes(&field.attrs)?.unwrap_or_default();
+
+                if let Some(column_type_raw) = attr.column_type_raw {
+                    return match column_type_raw {
+                        syn::Lit::Str(lit_str) => {
+                            lit_str.value().parse::<TokenStream>().map_err(|_| {
+                                syn::Error::new_spanned(
+                                    field,
+                                    "'column_type_raw' attribute not valid",
+                                )
+                            })
+                        }
+                        _ => Err(syn::Error::new_spanned(
+                            field,
+                            "'column_type_raw' attribute must be a string",
+                        )),
+                    };
+                }
+
+                let column_type = match attr.column_type {
+                    Some(syn::Lit::Str(lit_str)) => {
+                        let column_type = lit_str.value().parse::<TokenStream>().map_err(|_| {
+                            syn::Error::new_spanned(field, "'column_type_raw' attribute not valid")
+                        })?;
+                        quote!(ColumnType::#column_type.def())
+                    }
+                    Some(_) => {
+                        return Err(syn::Error::new_spanned(
+                            field,
+                            "'column_type_raw' attribute must be a string",
+                        ))
+                    }
+                    None => Self::type_to_column_type(field.ty.clone()),
+                };
+
+                let expanded_indexed = attr.indexed.map(|_| quote!(.indexed())).unwrap_or_default();
+                let expanded_null = attr.null.map(|_| quote!(.null())).unwrap_or_default();
+                let expanded_unique = attr.unique.map(|_| quote!(.unique())).unwrap_or_default();
+
+                Result::<_, syn::Error>::Ok(
+                    quote!(#column_type#expanded_indexed#expanded_null#expanded_unique),
+                )
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        for def in &field_column_defs {
+            println!("{}", def.clone().to_string())
+        }
+
+        Ok(quote!(
             impl sea_orm::entity::ColumnTrait for #ident {
                 type EntityName = #entity_ident;
 
                 fn def(&self) -> sea_orm::entity::ColumnDef {
-                    // TODO: Generate column def
-                    panic!("No ColumnDef")
+                    match self {
+                        #( Self::#column_idents => #field_column_defs, )*
+                    }
                 }
             }
-        )
+        ))
     }
 
     fn impl_from_str(&self) -> TokenStream {
@@ -190,13 +239,40 @@ impl DeriveModelColumn {
             }
         )
     }
+
+    fn type_to_column_type(ty: syn::Type) -> TokenStream {
+        let ty_string = ty.into_token_stream().to_string();
+        match ty_string.as_str() {
+            "std::string::String" | "string::String" | "String" => {
+                quote!(ColumnType::String(None))
+            }
+            "char" => quote!(ColumnType::Char(None)),
+            "i8" => quote!(ColumnType::TinyInteger),
+            "i16" => quote!(ColumnType::SmallInteger),
+            "i32" => quote!(ColumnType::Integer),
+            "i64" => quote!(ColumnType::BigInteger),
+            "f32" => quote!(ColumnType::Float),
+            "f64" => quote!(ColumnType::Double),
+            "Json" => quote!(ColumnType::Json),
+            "DateTime" => quote!(ColumnType::DateTime),
+            "DateTimeWithTimeZone" => quote!(ColumnType::DateTimeWithTimeZone),
+            "Decimal" => quote!(ColumnType::Decimal(None)),
+            "Uuid" => quote!(ColumnType::Uuid),
+            "Vec < u8 >" => quote!(ColumnType::Binary),
+            "bool" => quote!(ColumnType::Boolean),
+            _ => {
+                let ty_name = ty_string.replace(' ', "").to_snake_case();
+                quote!(ColumnType::Custom(#ty_name.to_owned()))
+            }
+        }
+    }
 }
 
 pub fn expand_derive_model_column(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     let ident_span = input.ident.span();
 
     match DeriveModelColumn::new(input) {
-        Ok(model) => Ok(model.expand()),
+        Ok(model) => model.expand(),
         Err(Error::InputNotStruct) => Ok(quote_spanned! {
             ident_span => compile_error!("you can only derive DeriveModelColumn on structs");
         }),

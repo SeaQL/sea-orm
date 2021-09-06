@@ -3,6 +3,7 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, DeriveInput, Error};
 
+mod attributes;
 mod derives;
 
 #[proc_macro_derive(DeriveEntity, attributes(sea))]
