@@ -5,14 +5,14 @@ use quote::{format_ident, quote};
 
 use bae::FromAttributes;
 
-#[derive(FromAttributes)]
+#[derive(Default, FromAttributes)]
 pub struct Sea {
     pub column: Option<syn::Ident>,
     pub model: Option<syn::Ident>,
     pub primary_key: Option<syn::Ident>,
     pub relation: Option<syn::Ident>,
     pub schema_name: Option<syn::Lit>,
-    pub table_name: syn::Lit,
+    pub table_name: Option<syn::Lit>,
 }
 
 pub struct DeriveEntity {
@@ -22,12 +22,12 @@ pub struct DeriveEntity {
     primary_key_ident: syn::Ident,
     relation_ident: syn::Ident,
     schema_name: Option<syn::Lit>,
-    table_name: syn::Lit,
+    table_name: Option<syn::Lit>,
 }
 
 impl DeriveEntity {
     pub fn new(input: syn::DeriveInput) -> Result<Self, syn::Error> {
-        let sea_attr = Sea::from_attributes(&input.attrs)?;
+        let sea_attr = Sea::try_from_attributes(&input.attrs)?.unwrap_or_default();
 
         let ident = input.ident;
         let column_ident = sea_attr.column.unwrap_or_else(|| format_ident!("Column"));
@@ -69,7 +69,10 @@ impl DeriveEntity {
 
     fn impl_entity_name(&self) -> TokenStream {
         let ident = &self.ident;
-        let table_name = &self.table_name;
+        let table_name = match &self.table_name {
+            Some(table_name) => table_name,
+            None => return TokenStream::new(), // No table name, do not derive EntityName
+        };
         let expanded_schema_name = self
             .schema_name
             .as_ref()
