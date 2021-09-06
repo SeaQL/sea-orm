@@ -52,7 +52,7 @@ impl sea_orm::prelude::EntityName for Entity {
                     let mut indexed = false;
                     let mut unique = false;
                     let mut sql_type = None;
-                    // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String", default_value = "new user", default_expr = "gen_random_uuid()", nullable, indexed, unique)]
+                    // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(Some(255))", default_value = "new user", default_expr = "gen_random_uuid()", nullable, indexed, unique)]
                     for attr in field.attrs.iter() {
                         if let Some(ident) = attr.path.get_ident() {
                             if ident != "sea_orm" {
