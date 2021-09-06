@@ -4,7 +4,6 @@ use proc_macro::TokenStream;
 use syn::{parse_macro_input, DeriveInput, Error};
 
 mod derives;
-mod util;
 
 #[proc_macro_derive(DeriveEntity, attributes(sea))]
 pub fn derive_entity(input: TokenStream) -> TokenStream {
@@ -86,6 +85,14 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }
+}
+
+#[proc_macro_derive(DeriveRelation, attributes(sea))]
+pub fn derive_relation(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_relation(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
 }
 
 #[proc_macro_derive(FromQueryResult)]

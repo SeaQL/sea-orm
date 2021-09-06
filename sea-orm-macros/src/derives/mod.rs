@@ -7,6 +7,7 @@ mod model;
 mod model_column;
 mod model_primary_key;
 mod primary_key;
+mod relation;
 
 pub use active_model::*;
 pub use active_model_behavior::*;
@@ -17,3 +18,4 @@ pub use model::*;
 pub use model_column::*;
 pub use model_primary_key::*;
 pub use primary_key::*;
+pub use relation::*;

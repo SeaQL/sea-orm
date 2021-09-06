@@ -1,8 +1,8 @@
 pub use crate::{
     error::*, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait, ColumnType,
     DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveCustomColumn, DeriveEntity,
-    DeriveModel, DeriveModelColumn, DeriveModelPrimaryKey, DerivePrimaryKey, EntityName,
-    EntityTrait, EnumIter, ForeignKeyAction, Iden, IdenStatic, Linked, ModelTrait,
+    DeriveModel, DeriveModelColumn, DeriveModelPrimaryKey, DerivePrimaryKey, DeriveRelation,
+    EntityName, EntityTrait, EnumIter, ForeignKeyAction, Iden, IdenStatic, Linked, ModelTrait,
     PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryResult, Related, RelationDef,
     RelationTrait, Select, Value,
 };
