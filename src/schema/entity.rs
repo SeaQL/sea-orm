@@ -4,7 +4,7 @@ use crate::{
 };
 use sea_query::{ColumnDef, ForeignKeyCreateStatement, Iden, Index, TableCreateStatement};
 
-pub fn entity_to_table_create_statement<E>(entity: E) -> TableCreateStatement
+pub fn create_table_from_entity<E>(entity: E) -> TableCreateStatement
 where
     E: EntityTrait,
 {
@@ -112,14 +112,14 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{entity_to_table_create_statement, tests_cfg::*};
+    use crate::{create_table_from_entity, tests_cfg::*};
     use pretty_assertions::assert_eq;
     use sea_query::*;
 
     #[test]
-    fn test_entity_to_table_create_statement() {
+    fn test_create_table_from_entity() {
         assert_eq!(
-            entity_to_table_create_statement(CakeFillingPrice).to_string(MysqlQueryBuilder),
+            create_table_from_entity(CakeFillingPrice).to_string(MysqlQueryBuilder),
             Table::create()
                 .table(CakeFillingPrice)
                 .if_not_exists()
