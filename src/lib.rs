@@ -214,6 +214,7 @@ pub mod entity;
 pub mod error;
 mod executor;
 pub mod query;
+pub mod schema;
 #[doc(hidden)]
 pub mod tests_cfg;
 mod util;
@@ -224,6 +225,7 @@ pub use entity::*;
 pub use error::*;
 pub use executor::*;
 pub use query::*;
+pub use schema::*;
 
 pub use sea_orm_macros::{
     DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveCustomColumn, DeriveEntity,

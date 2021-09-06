@@ -1,8 +1,6 @@
 pub use super::super::bakery_chain::*;
 use pretty_assertions::assert_eq;
-use sea_orm::{
-    entity_to_table_create_statement, error::*, sea_query, DbConn, EntityTrait, ExecResult,
-};
+use sea_orm::{create_table_from_entity, error::*, sea_query, DbConn, EntityTrait, ExecResult};
 use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, Table, TableCreateStatement};
 
 async fn create_table<E>(
@@ -15,10 +13,7 @@ where
 {
     let builder = db.get_database_backend();
     let stmt = builder.build(stmt);
-    assert_eq!(
-        builder.build(&entity_to_table_create_statement(entity)),
-        stmt
-    );
+    assert_eq!(builder.build(&create_table_from_entity(entity)), stmt);
     db.execute(stmt).await
 }
 
