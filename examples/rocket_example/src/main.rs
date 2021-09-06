@@ -49,7 +49,7 @@ async fn create(conn: Connection<Db>, post_form: Form<post::Model>) -> Flash<Red
 }
 
 #[post("/<id>", data = "<post_form>")]
-async fn update(conn: Connection<Db>, id: i64, post_form: Form<post::Model>) -> Flash<Redirect> {
+async fn update(conn: Connection<Db>, id: i32, post_form: Form<post::Model>) -> Flash<Redirect> {
     let post: post::ActiveModel = Post::find_by_id(id)
         .one(&conn)
         .await
@@ -91,7 +91,7 @@ async fn list(conn: Connection<Db>, flash: Option<FlashMessage<'_>>) -> Template
 }
 
 #[get("/<id>")]
-async fn edit(conn: Connection<Db>, id: i64) -> Template {
+async fn edit(conn: Connection<Db>, id: i32) -> Template {
     let post: Option<post::Model> = Post::find_by_id(id)
         .one(&conn)
         .await
