@@ -1,45 +1,11 @@
-use crate::{ActiveModelTrait, ActiveValue, EntityName, EntityTrait, Iterable, QueryTrait};
+use crate::{ActiveModelTrait, EntityName, EntityTrait, IntoActiveModel, Iterable, QueryTrait};
 use core::marker::PhantomData;
-use sea_query::{InsertStatement, Value};
-
-pub trait Insertable {
-    type Entity: EntityTrait;
-
-    fn take(&mut self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value>;
-}
-
-impl<T, E> Insertable for T
-where
-    T: ActiveModelTrait<Entity = E>,
-    E: EntityTrait,
-{
-    type Entity = E;
-
-    fn take(&mut self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value> {
-        self.take(c)
-    }
-}
-
-pub trait IntoInsertable<A>
-where
-    A: Insertable,
-{
-    fn into_insertable(self) -> A;
-}
-
-impl<A> IntoInsertable<A> for A
-where
-    A: Insertable,
-{
-    fn into_insertable(self) -> A {
-        self
-    }
-}
+use sea_query::InsertStatement;
 
 #[derive(Clone, Debug)]
 pub struct Insert<A>
 where
-    A: Insertable,
+    A: ActiveModelTrait,
 {
     pub(crate) query: InsertStatement,
     pub(crate) columns: Vec<bool>,
@@ -48,7 +14,7 @@ where
 
 impl<A> Default for Insert<A>
 where
-    A: Insertable,
+    A: ActiveModelTrait,
 {
     fn default() -> Self {
         Self::new()
@@ -57,7 +23,7 @@ where
 
 impl<A> Insert<A>
 where
-    A: Insertable,
+    A: ActiveModelTrait,
 {
     pub(crate) fn new() -> Self {
         Self {
@@ -101,7 +67,7 @@ where
     /// ```
     pub fn one<M>(m: M) -> Insert<A>
     where
-        M: IntoInsertable<A>,
+        M: IntoActiveModel<A>,
     {
         Self::new().add(m)
     }
@@ -129,7 +95,7 @@ where
     /// ```
     pub fn many<M, I>(models: I) -> Self
     where
-        M: IntoInsertable<A>,
+        M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
     {
         Self::new().add_many(models)
@@ -138,9 +104,9 @@ where
     #[allow(clippy::should_implement_trait)]
     pub fn add<M>(mut self, m: M) -> Self
     where
-        M: IntoInsertable<A>,
+        M: IntoActiveModel<A>,
     {
-        let mut am: A = m.into_insertable();
+        let mut am: A = m.into_active_model();
         let mut columns = Vec::new();
         let mut values = Vec::new();
         let columns_empty = self.columns.is_empty();
@@ -164,7 +130,7 @@ where
 
     pub fn add_many<M, I>(mut self, models: I) -> Self
     where
-        M: IntoInsertable<A>,
+        M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
     {
         for model in models.into_iter() {

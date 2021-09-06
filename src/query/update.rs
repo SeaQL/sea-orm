@@ -1,43 +1,9 @@
 use crate::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, Iterable, PrimaryKeyToColumn,
-    QueryFilter, QueryTrait,
+    ActiveModelTrait, ColumnTrait, EntityTrait, Iterable, PrimaryKeyToColumn, QueryFilter,
+    QueryTrait,
 };
 use core::marker::PhantomData;
-use sea_query::{IntoIden, SimpleExpr, UpdateStatement, Value};
-
-pub trait Updatable {
-    type Entity: EntityTrait;
-
-    fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value>;
-}
-
-impl<T, E> Updatable for T
-where
-    T: ActiveModelTrait<Entity = E>,
-    E: EntityTrait,
-{
-    type Entity = E;
-
-    fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value> {
-        self.get(c)
-    }
-}
-
-pub trait IntoUpdatable<A>
-where
-    A: Updatable,
-{
-    fn into_updatable(self) -> A;
-}
-
-impl<A> IntoUpdatable<A> for A
-where
-    A: Updatable,
-{
-    fn into_updatable(self) -> A {
-        self
-    }
-}
+use sea_query::{IntoIden, SimpleExpr, UpdateStatement};
 
 #[derive(Clone, Debug)]
 pub struct Update;
@@ -45,7 +11,7 @@ pub struct Update;
 #[derive(Clone, Debug)]
 pub struct UpdateOne<A>
 where
-    A: Updatable,
+    A: ActiveModelTrait,
 {
     pub(crate) query: UpdateStatement,
     pub(crate) model: A,
@@ -79,7 +45,7 @@ impl Update {
     pub fn one<E, A>(model: A) -> UpdateOne<A>
     where
         E: EntityTrait,
-        A: Updatable<Entity = E>,
+        A: ActiveModelTrait<Entity = E>,
     {
         let myself = UpdateOne {
             query: UpdateStatement::new()
@@ -117,7 +83,7 @@ impl Update {
 
 impl<A> UpdateOne<A>
 where
-    A: Updatable,
+    A: ActiveModelTrait,
 {
     pub(crate) fn prepare(mut self) -> Self {
         for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
@@ -144,7 +110,7 @@ where
 
 impl<A> QueryFilter for UpdateOne<A>
 where
-    A: Updatable,
+    A: ActiveModelTrait,
 {
     type QueryStatement = UpdateStatement;
 
@@ -166,7 +132,7 @@ where
 
 impl<A> QueryTrait for UpdateOne<A>
 where
-    A: Updatable,
+    A: ActiveModelTrait,
 {
     type QueryStatement = UpdateStatement;
 

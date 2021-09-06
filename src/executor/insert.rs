@@ -1,6 +1,6 @@
 use crate::{
-    error::*, DatabaseConnection, EntityTrait, Insert, Insertable, PrimaryKeyTrait, Statement,
-    TryFromU64,
+    error::*, ActiveModelTrait, DatabaseConnection, EntityTrait, Insert, PrimaryKeyTrait,
+    Statement, TryFromU64,
 };
 use sea_query::InsertStatement;
 use std::{future::Future, marker::PhantomData};
@@ -8,7 +8,7 @@ use std::{future::Future, marker::PhantomData};
 #[derive(Clone, Debug)]
 pub struct Inserter<A>
 where
-    A: Insertable,
+    A: ActiveModelTrait,
 {
     query: InsertStatement,
     model: PhantomData<A>,
@@ -17,15 +17,14 @@ where
 #[derive(Debug)]
 pub struct InsertResult<A>
 where
-    A: Insertable,
+    A: ActiveModelTrait,
 {
-    pub last_insert_id:
-        <<<A as Insertable>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType,
+    pub last_insert_id: <<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType,
 }
 
 impl<A> Insert<A>
 where
-    A: Insertable,
+    A: ActiveModelTrait,
 {
     #[allow(unused_mut)]
     pub fn exec<'a>(
@@ -54,7 +53,7 @@ where
 
 impl<A> Inserter<A>
 where
-    A: Insertable,
+    A: ActiveModelTrait,
 {
     pub fn new(query: InsertStatement) -> Self {
         Self {
@@ -81,9 +80,9 @@ async fn exec_insert<A>(
     db: &DatabaseConnection,
 ) -> Result<InsertResult<A>, DbErr>
 where
-    A: Insertable,
+    A: ActiveModelTrait,
 {
-    type PrimaryKey<A> = <<A as Insertable>::Entity as EntityTrait>::PrimaryKey;
+    type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
     let last_insert_id = match db {
         #[cfg(feature = "sqlx-postgres")]

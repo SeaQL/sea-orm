@@ -1,9 +1,10 @@
 pub use crate::{
     error::*, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait, ColumnType,
     DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveCustomColumn, DeriveEntity,
-    DeriveModel, DerivePrimaryKey, EntityName, EntityTrait, EnumIter, ForeignKeyAction, Iden,
-    IdenStatic, Linked, ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryResult,
-    Related, RelationDef, RelationTrait, Select, SimpleInput, SimpleModel, Value,
+    DeriveModel, DerivePrimaryKey, EntityModel, EntityName, EntityTrait, EnumIter,
+    ForeignKeyAction, Iden, IdenStatic, Linked, ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait,
+    QueryFilter, QueryResult, Related, RelationDef, RelationTrait, Select, SimpleInput,
+    SimpleModel, Value,
 };
 
 #[cfg(feature = "with-json")]

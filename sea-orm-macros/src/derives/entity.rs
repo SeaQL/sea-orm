@@ -1,51 +1,142 @@
-use heck::SnakeCase;
-use proc_macro2::{Ident, TokenStream};
-use quote::quote;
-use syn::{Attribute, Meta};
+use std::iter::FromIterator;
 
-fn get_entity_attr(attrs: &[Attribute]) -> Option<syn::Lit> {
-    for attr in attrs {
-        let name_value = match attr.parse_meta() {
-            Ok(Meta::NameValue(nv)) => nv,
-            _ => continue,
-        };
-        if name_value.path.is_ident("table") {
-            return Some(name_value.lit);
-        }
-    }
-    None
+use proc_macro2::TokenStream;
+use quote::{format_ident, quote};
+
+use bae::FromAttributes;
+
+#[derive(FromAttributes)]
+pub struct Sea {
+    pub column: Option<syn::Ident>,
+    pub model: Option<syn::Ident>,
+    pub primary_key: Option<syn::Ident>,
+    pub relation: Option<syn::Ident>,
+    pub schema_name: Option<syn::Lit>,
+    pub table_name: syn::Lit,
 }
 
-pub fn expand_derive_entity(ident: Ident, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
-    let _entity_name = match get_entity_attr(&attrs) {
-        Some(lit) => quote! { #lit },
-        None => {
-            let normalized = ident.to_string().to_snake_case();
-            quote! { #normalized }
-        }
-    };
+pub struct DeriveEntity {
+    column_ident: syn::Ident,
+    ident: syn::Ident,
+    model_ident: syn::Ident,
+    primary_key_ident: syn::Ident,
+    relation_ident: syn::Ident,
+    schema_name: Option<syn::Lit>,
+    table_name: syn::Lit,
+}
 
-    Ok(quote!(
-        impl sea_orm::Iden for #ident {
-            fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-                write!(s, "{}", self.as_str()).unwrap();
+impl DeriveEntity {
+    pub fn new(input: syn::DeriveInput) -> Result<Self, syn::Error> {
+        let sea_attr = Sea::from_attributes(&input.attrs)?;
+
+        let ident = input.ident;
+        let column_ident = sea_attr.column.unwrap_or_else(|| format_ident!("Column"));
+        let model_ident = sea_attr.model.unwrap_or_else(|| format_ident!("Model"));
+        let primary_key_ident = sea_attr
+            .primary_key
+            .unwrap_or_else(|| format_ident!("PrimaryKey"));
+        let relation_ident = sea_attr
+            .relation
+            .unwrap_or_else(|| format_ident!("Relation"));
+
+        let table_name = sea_attr.table_name;
+        let schema_name = sea_attr.schema_name;
+
+        Ok(DeriveEntity {
+            column_ident,
+            ident,
+            model_ident,
+            primary_key_ident,
+            relation_ident,
+            schema_name,
+            table_name,
+        })
+    }
+
+    pub fn expand(&self) -> TokenStream {
+        let expanded_impl_entity_name = self.impl_entity_name();
+        let expanded_impl_entity_trait = self.impl_entity_trait();
+        let expanded_impl_iden = self.impl_iden();
+        let expanded_impl_iden_static = self.impl_iden_static();
+
+        TokenStream::from_iter([
+            expanded_impl_entity_name,
+            expanded_impl_entity_trait,
+            expanded_impl_iden,
+            expanded_impl_iden_static,
+        ])
+    }
+
+    fn impl_entity_name(&self) -> TokenStream {
+        let ident = &self.ident;
+        let table_name = &self.table_name;
+        let expanded_schema_name = self
+            .schema_name
+            .as_ref()
+            .map(|schema| quote!(Some(#schema)))
+            .unwrap_or_else(|| quote!(None));
+
+        quote!(
+            impl sea_orm::entity::EntityName for #ident {
+                fn schema_name(&self) -> Option<&str> {
+                    #expanded_schema_name
+                }
+
+                fn table_name(&self) -> &str {
+                    #table_name
+                }
             }
-        }
+        )
+    }
 
-        impl sea_orm::IdenStatic for #ident {
-            fn as_str(&self) -> &str {
-                <Self as sea_orm::EntityName>::table_name(self)
+    fn impl_entity_trait(&self) -> TokenStream {
+        let Self {
+            ident,
+            model_ident,
+            column_ident,
+            primary_key_ident,
+            relation_ident,
+            ..
+        } = self;
+
+        quote!(
+            impl sea_orm::entity::EntityTrait for #ident {
+                type Model = #model_ident;
+
+                type Column = #column_ident;
+
+                type PrimaryKey = #primary_key_ident;
+
+                type Relation = #relation_ident;
             }
-        }
+        )
+    }
 
-        impl EntityTrait for #ident {
-            type Model = Model;
+    fn impl_iden(&self) -> TokenStream {
+        let ident = &self.ident;
 
-            type Column = Column;
+        quote!(
+            impl sea_orm::Iden for #ident {
+                fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+                    write!(s, "{}", self.as_str()).unwrap();
+                }
+            }
+        )
+    }
 
-            type PrimaryKey = PrimaryKey;
+    fn impl_iden_static(&self) -> TokenStream {
+        let ident = &self.ident;
 
-            type Relation = Relation;
-        }
-    ))
+        quote!(
+            impl sea_orm::IdenStatic for #ident {
+                fn as_str(&self) -> &str {
+                    <Self as sea_orm::EntityName>::table_name(self)
+                }
+            }
+        )
+    }
+}
+
+pub(crate) fn expand_derive_entity(input: syn::DeriveInput) -> syn::Result<TokenStream> {
+    Ok(DeriveEntity::new(input)?.expand())
 }

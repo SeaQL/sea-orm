@@ -6,6 +6,14 @@ use syn::{parse_macro_input, DeriveInput, Error};
 mod derives;
 mod util;
 
+#[proc_macro_derive(EntityModel, attributes(sea))]
+pub fn entity_model(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_entity_model(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
 #[proc_macro_derive(SimpleModel, attributes(table, primary_key))]
 pub fn simple_model(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -30,14 +38,12 @@ pub fn simple_update(input: TokenStream) -> TokenStream {
         .into()
 }
 
-#[proc_macro_derive(DeriveEntity, attributes(table))]
+#[proc_macro_derive(DeriveEntity, attributes(sea))]
 pub fn derive_entity(input: TokenStream) -> TokenStream {
-    let DeriveInput { ident, attrs, .. } = parse_macro_input!(input);
-
-    match derives::expand_derive_entity(ident, attrs) {
-        Ok(ts) => ts.into(),
-        Err(e) => e.to_compile_error().into(),
-    }
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_entity(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
 }
 
 #[proc_macro_derive(DerivePrimaryKey)]
