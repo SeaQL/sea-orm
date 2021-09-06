@@ -2,7 +2,7 @@ use crate as sea_orm;
 use crate::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-#[sea(table_name = "cake_filling_price")]
+#[sea(schema_name = "public", table_name = "cake_filling_price")]
 pub struct Entity;
 
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
