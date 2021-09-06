@@ -77,9 +77,8 @@ async fn list(conn: Connection<Db>, flash: Option<FlashMessage<'_>>) -> Template
         .order_by_asc(post::Column::Id)
         .all(&conn)
         .await
-        .expect("could not retrieve posts")
-        .into_iter()
-        .collect::<Vec<_>>();
+        .expect("could not retrieve posts");
+
     let flash = flash.map(FlashMessage::into_inner);
 
     Template::render(
