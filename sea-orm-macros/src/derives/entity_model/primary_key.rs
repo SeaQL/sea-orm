@@ -44,7 +44,7 @@ impl<'a> PrimaryKey<'a> {
             })
             .collect();
 
-        let primary_keys = primary_key_fields
+        let primary_keys: Vec<_> = primary_key_fields
             .iter()
             .map(|field| {
                 format_ident!(
@@ -63,16 +63,17 @@ impl<'a> PrimaryKey<'a> {
 
         let primary_key_type = &first_primary_key.ty;
 
-        let auto_increment = field_attr::Sea::try_from_attributes(&first_primary_key.attrs)
-            .unwrap_or_default()
-            .unwrap_or_default()
-            .auto_increment.map(|auto_increment| match auto_increment {
+        let auto_increment = if primary_keys.len() > 1 {
+            false
+        } else {
+            field_attr::Sea::try_from_attributes(&first_primary_key.attrs).unwrap_or_default().unwrap_or_default().auto_increment.map(|auto_increment| match auto_increment {
                 syn::Lit::Bool(val) => Ok(val.value),
                 _ => Err(syn::Error::new_spanned(
                     entity_model.ident.clone(),
                     "Unexpected value for auto_increment. Expected #[sea(auto_increment = true | false)]",
                 )),
-            }).unwrap_or(Ok(true))?;
+            }).unwrap_or(Ok(true))?
+        };
 
         Ok(PrimaryKey {
             auto_increment,
