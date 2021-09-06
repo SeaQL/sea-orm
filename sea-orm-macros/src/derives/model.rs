@@ -1,57 +1,147 @@
+use std::iter::FromIterator;
+
 use heck::CamelCase;
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{Data, DataStruct, Field, Fields};
 
-pub fn expand_derive_model(ident: Ident, data: Data) -> syn::Result<TokenStream> {
-    let fields = match data {
-        Data::Struct(DataStruct {
-            fields: Fields::Named(named),
-            ..
-        }) => named.named,
-        _ => {
-            return Ok(quote_spanned! {
-                ident.span() => compile_error!("you can only derive DeriveModel on structs");
+mod derive_attr {
+    use bae::FromAttributes;
+
+    #[derive(Default, FromAttributes)]
+    pub struct Sea {
+        pub column: Option<syn::Ident>,
+        pub entity: Option<syn::Ident>,
+        pub primary_key: Option<syn::Ident>,
+    }
+}
+
+mod field_attr {
+    use bae::FromAttributes;
+
+    #[derive(Default, FromAttributes)]
+    pub struct Sea {
+        pub auto_increment: Option<syn::Lit>,
+        pub column_type: Option<syn::Type>,
+        pub primary_key: Option<()>,
+    }
+}
+
+pub enum Error {
+    InputNotStruct,
+    Syn(syn::Error),
+}
+
+pub struct DeriveModel {
+    column_idents: Vec<syn::Ident>,
+    entity_ident: syn::Ident,
+    field_idents: Vec<syn::Ident>,
+    ident: syn::Ident,
+}
+
+impl DeriveModel {
+    pub fn new(input: syn::DeriveInput) -> Result<Self, Error> {
+        let fields = match input.data {
+            syn::Data::Struct(syn::DataStruct {
+                fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
+                ..
+            }) => named,
+            _ => return Err(Error::InputNotStruct),
+        };
+
+        let sea_attr = derive_attr::Sea::try_from_attributes(&input.attrs)
+            .map_err(Error::Syn)?
+            .unwrap_or_default();
+
+        let ident = input.ident;
+        let entity_ident = sea_attr.entity.unwrap_or_else(|| format_ident!("Entity"));
+
+        let field_idents = fields
+            .iter()
+            .map(|field| field.ident.as_ref().unwrap().clone())
+            .collect();
+
+        let column_idents = fields
+            .iter()
+            .map(|field| {
+                format_ident!(
+                    "{}",
+                    field.ident.as_ref().unwrap().to_string().to_camel_case()
+                )
             })
-        }
-    };
+            .collect();
 
-    let field: Vec<Ident> = fields
-        .clone()
-        .into_iter()
-        .map(|Field { ident, .. }| format_ident!("{}", ident.unwrap().to_string()))
-        .collect();
+        Ok(DeriveModel {
+            column_idents,
+            entity_ident,
+            field_idents,
+            ident,
+        })
+    }
 
-    let name: Vec<Ident> = fields
-        .into_iter()
-        .map(|Field { ident, .. }| format_ident!("{}", ident.unwrap().to_string().to_camel_case()))
-        .collect();
+    pub fn expand(&self) -> syn::Result<TokenStream> {
+        let expanded_impl_from_query_result = self.impl_from_query_result();
+        let expanded_impl_model_trait = self.impl_model_trait();
 
-    Ok(quote!(
-        impl sea_orm::ModelTrait for #ident {
-            type Entity = Entity;
+        Ok(TokenStream::from_iter([
+            expanded_impl_from_query_result,
+            expanded_impl_model_trait,
+        ]))
+    }
 
-            fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> sea_orm::Value {
-                match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.clone().into(),)*
-                    _ => panic!("This Model does not have this field"),
+    fn impl_from_query_result(&self) -> TokenStream {
+        let ident = &self.ident;
+        let field_idents = &self.field_idents;
+        let column_idents = &self.column_idents;
+
+        quote!(
+            impl sea_orm::FromQueryResult for #ident {
+                fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::DbErr> {
+                    Ok(Self {
+                        #(#field_idents: row.try_get(pre, sea_orm::IdenStatic::as_str(&<<Self as sea_orm::ModelTrait>::Entity as sea_orm::entity::EntityTrait>::Column::#column_idents).into())?),*
+                    })
                 }
             }
+        )
+    }
 
-            fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: sea_orm::Value) {
-                match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field = v.unwrap(),)*
-                    _ => panic!("This Model does not have this field"),
+    fn impl_model_trait(&self) -> TokenStream {
+        let ident = &self.ident;
+        let entity_ident = &self.entity_ident;
+        let field_idents = &self.field_idents;
+        let column_idents = &self.column_idents;
+
+        let missing_field_msg = format!("field does not exist on {}", ident);
+
+        quote!(
+            impl sea_orm::ModelTrait for #ident {
+                type Entity = #entity_ident;
+
+                fn get(&self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) -> sea_orm::Value {
+                    match c {
+                        #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_idents => self.#field_idents.clone().into(),)*
+                        _ => panic!(#missing_field_msg),
+                    }
+                }
+
+                fn set(&mut self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column, v: sea_orm::Value) {
+                    match c {
+                        #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_idents => self.#field_idents = v.unwrap(),)*
+                        _ => panic!(#missing_field_msg),
+                    }
                 }
             }
-        }
+        )
+    }
+}
 
-        impl sea_orm::FromQueryResult for #ident {
-            fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::DbErr> {
-                Ok(Self {
-                    #(#field: row.try_get(pre, <<Self as ModelTrait>::Entity as EntityTrait>::Column::#name.as_str().into())?),*
-                })
-            }
-        }
-    ))
+pub(crate) fn expand_derive_model(input: syn::DeriveInput) -> syn::Result<TokenStream> {
+    let ident_span = input.ident.span();
+
+    match DeriveModel::new(input) {
+        Ok(model) => model.expand(),
+        Err(Error::InputNotStruct) => Ok(quote_spanned! {
+            ident_span => compile_error!("you can only derive DeriveModel on structs");
+        }),
+        Err(Error::Syn(err)) => Err(err),
+    }
 }

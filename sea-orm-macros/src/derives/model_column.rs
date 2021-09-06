@@ -1,37 +1,61 @@
-use std::{borrow::Cow, iter::FromIterator};
+use std::iter::FromIterator;
 
 use heck::{CamelCase, MixedCase, SnakeCase};
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, quote_spanned};
 
-use super::DeriveEntityModel;
+mod derive_attr {
+    use bae::FromAttributes;
 
-pub struct Column<'a> {
-    columns: Vec<syn::Ident>,
-    entity_ident: Cow<'a, syn::Ident>,
-    fields: &'a syn::punctuated::Punctuated<syn::Field, syn::token::Comma>,
-    ident: Cow<'a, syn::Ident>,
-    vis: &'a syn::Visibility,
+    #[derive(Default, FromAttributes)]
+    pub struct Sea {
+        pub column: Option<syn::Ident>,
+        pub entity: Option<syn::Ident>,
+        pub primary_key: Option<syn::Ident>,
+    }
 }
 
-impl<'a> Column<'a> {
-    pub fn from_entity_model(entity_model: &'a DeriveEntityModel) -> Self {
-        let ident = entity_model
-            .sea_attr
-            .column
-            .as_ref()
-            .map(|column| Cow::Borrowed(column))
-            .unwrap_or_else(|| Cow::Owned(format_ident!("Column")));
+mod field_attr {
+    use bae::FromAttributes;
 
-        let entity_ident = entity_model
-            .sea_attr
-            .entity
-            .as_ref()
-            .map(|entity| Cow::Borrowed(entity))
-            .unwrap_or_else(|| Cow::Owned(format_ident!("Entity")));
+    #[derive(Default, FromAttributes)]
+    pub struct Sea {
+        pub auto_increment: Option<syn::Lit>,
+        pub column_type: Option<syn::Type>,
+        pub primary_key: Option<()>,
+    }
+}
 
-        let columns = entity_model
-            .fields
+pub enum Error {
+    InputNotStruct,
+    Syn(syn::Error),
+}
+
+pub struct DeriveModelColumn {
+    column_idents: Vec<syn::Ident>,
+    entity_ident: syn::Ident,
+    fields: syn::punctuated::Punctuated<syn::Field, syn::token::Comma>,
+    ident: syn::Ident,
+    vis: syn::Visibility,
+}
+
+impl DeriveModelColumn {
+    pub fn new(input: syn::DeriveInput) -> Result<Self, Error> {
+        let fields = match input.data {
+            syn::Data::Struct(syn::DataStruct {
+                fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
+                ..
+            }) => named,
+            _ => return Err(Error::InputNotStruct),
+        };
+
+        let sea_attr = derive_attr::Sea::try_from_attributes(&input.attrs)
+            .map_err(Error::Syn)?
+            .unwrap_or_default();
+
+        let ident = sea_attr.column.unwrap_or_else(|| format_ident!("Column"));
+        let entity_ident = sea_attr.entity.unwrap_or_else(|| format_ident!("Entity"));
+        let column_idents = fields
             .iter()
             .map(|field| {
                 format_ident!(
@@ -41,13 +65,13 @@ impl<'a> Column<'a> {
             })
             .collect();
 
-        Column {
-            columns,
+        Ok(DeriveModelColumn {
+            column_idents,
             entity_ident,
-            fields: &entity_model.fields,
+            fields,
             ident,
-            vis: &entity_model.vis,
-        }
+            vis: input.vis,
+        })
     }
 
     pub fn expand(&self) -> TokenStream {
@@ -71,19 +95,19 @@ impl<'a> Column<'a> {
     fn define_column(&self) -> TokenStream {
         let vis = &self.vis;
         let ident = &self.ident;
-        let columns = &self.columns;
+        let column_idents = &self.column_idents;
 
         quote!(
             #[derive(Copy, Clone, Debug, sea_orm::sea_strum::EnumIter)]
             #vis enum #ident {
-                #(#columns),*
+                #(#column_idents),*
             }
         )
     }
 
     fn impl_as_str(&self) -> TokenStream {
         let ident = &self.ident;
-        let columns = &self.columns;
+        let column_idents = &self.column_idents;
 
         let columns_as_string = self
             .fields
@@ -94,7 +118,7 @@ impl<'a> Column<'a> {
             impl #ident {
                 fn as_str(&self) -> &str {
                     match self {
-                        #(Self::#columns => #columns_as_string),*
+                        #(Self::#column_idents => #columns_as_string),*
                     }
                 }
             }
@@ -168,5 +192,17 @@ impl<'a> Column<'a> {
                 }
             }
         )
+    }
+}
+
+pub(crate) fn expand_derive_model_column(input: syn::DeriveInput) -> syn::Result<TokenStream> {
+    let ident_span = input.ident.span();
+
+    match DeriveModelColumn::new(input) {
+        Ok(model) => Ok(model.expand()),
+        Err(Error::InputNotStruct) => Ok(quote_spanned! {
+            ident_span => compile_error!("you can only derive DeriveModelColumn on structs");
+        }),
+        Err(Error::Syn(err)) => Err(err),
     }
 }

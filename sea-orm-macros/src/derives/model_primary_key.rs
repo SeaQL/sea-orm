@@ -1,40 +1,67 @@
-use std::{borrow::Cow, iter::FromIterator};
+use std::iter::FromIterator;
 
 use heck::CamelCase;
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, quote_spanned};
 
-use super::{field_attr, DeriveEntityModel};
+mod derive_attr {
+    use bae::FromAttributes;
 
-pub struct PrimaryKey<'a> {
-    auto_increment: bool,
-    column_ident: Cow<'a, syn::Ident>,
-    ident: Cow<'a, syn::Ident>,
-    primary_keys: Vec<syn::Ident>,
-    primary_key_fields: Vec<&'a syn::Field>,
-    primary_key_type: &'a syn::Type,
-    vis: &'a syn::Visibility,
+    #[derive(Default, FromAttributes)]
+    pub struct Sea {
+        pub column: Option<syn::Ident>,
+        pub primary_key: Option<syn::Ident>,
+    }
 }
 
-impl<'a> PrimaryKey<'a> {
-    pub fn from_entity_model(entity_model: &'a DeriveEntityModel) -> syn::Result<Self> {
-        let ident = entity_model
-            .sea_attr
+mod field_attr {
+    use bae::FromAttributes;
+
+    #[derive(Default, FromAttributes)]
+    pub struct Sea {
+        pub auto_increment: Option<syn::Lit>,
+        pub column_type: Option<syn::Type>,
+        pub primary_key: Option<()>,
+    }
+}
+
+pub enum Error {
+    InputNotStruct,
+    Syn(syn::Error),
+}
+
+pub struct DeriveModelPrimaryKey {
+    auto_increment: bool,
+    column_ident: syn::Ident,
+    ident: syn::Ident,
+    primary_keys: Vec<syn::Ident>,
+    primary_key_fields: Vec<syn::Field>,
+    primary_key_type: syn::Type,
+    vis: syn::Visibility,
+}
+
+impl DeriveModelPrimaryKey {
+    pub fn new(input: syn::DeriveInput) -> Result<Self, Error> {
+        let fields = match input.data {
+            syn::Data::Struct(syn::DataStruct {
+                fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
+                ..
+            }) => named,
+            _ => return Err(Error::InputNotStruct),
+        };
+
+        let sea_attr = derive_attr::Sea::try_from_attributes(&input.attrs)
+            .map_err(Error::Syn)?
+            .unwrap_or_default();
+
+        let ident = sea_attr
             .primary_key
-            .as_ref()
-            .map(|primary_key| Cow::Borrowed(primary_key))
-            .unwrap_or_else(|| Cow::Owned(format_ident!("PrimaryKey")));
+            .unwrap_or_else(|| format_ident!("PrimaryKey"));
+        let column_ident = sea_attr.column.unwrap_or_else(|| format_ident!("Column"));
+        let model_ident = input.ident;
 
-        let column_ident = entity_model
-            .sea_attr
-            .column
-            .as_ref()
-            .map(|column| Cow::Borrowed(column))
-            .unwrap_or_else(|| Cow::Owned(format_ident!("Column")));
-
-        let primary_key_fields: Vec<_> = entity_model
-            .fields
-            .iter()
+        let primary_key_fields: Vec<_> = fields
+            .into_iter()
             .filter(|field| {
                 field_attr::Sea::try_from_attributes(&field.attrs)
                     .unwrap_or_default()
@@ -55,34 +82,34 @@ impl<'a> PrimaryKey<'a> {
             .collect();
 
         let first_primary_key = primary_key_fields.first().ok_or_else(|| {
-                syn::Error::new_spanned(
-                    entity_model.ident.clone(),
+                Error::Syn(syn::Error::new_spanned(
+                    model_ident.clone(),
                     "No primary key attribute specified. Mark your primary key(s) with #[sea(primary_key)]",
-                )
+                ))
             })?;
 
-        let primary_key_type = &first_primary_key.ty;
+        let primary_key_type = first_primary_key.ty.clone();
 
         let auto_increment = if primary_keys.len() > 1 {
             false
         } else {
             field_attr::Sea::try_from_attributes(&first_primary_key.attrs).unwrap_or_default().unwrap_or_default().auto_increment.map(|auto_increment| match auto_increment {
                 syn::Lit::Bool(val) => Ok(val.value),
-                _ => Err(syn::Error::new_spanned(
-                    entity_model.ident.clone(),
+                _ => Err(Error::Syn(syn::Error::new_spanned(
+                    model_ident.clone(),
                     "Unexpected value for auto_increment. Expected #[sea(auto_increment = true | false)]",
-                )),
+                ))),
             }).unwrap_or(Ok(true))?
         };
 
-        Ok(PrimaryKey {
+        Ok(DeriveModelPrimaryKey {
             auto_increment,
             column_ident,
             ident,
             primary_keys,
             primary_key_fields,
             primary_key_type,
-            vis: &entity_model.vis,
+            vis: input.vis,
         })
     }
 
@@ -200,5 +227,17 @@ impl<'a> PrimaryKey<'a> {
                 }
             }
         )
+    }
+}
+
+pub(crate) fn expand_derive_model_primary_key(input: syn::DeriveInput) -> syn::Result<TokenStream> {
+    let ident_span = input.ident.span();
+
+    match DeriveModelPrimaryKey::new(input) {
+        Ok(model) => Ok(model.expand()),
+        Err(Error::InputNotStruct) => Ok(quote_spanned! {
+            ident_span => compile_error!("you can only derive DeriveModelPrimaryKey on structs");
+        }),
+        Err(Error::Syn(err)) => Err(err),
     }
 }

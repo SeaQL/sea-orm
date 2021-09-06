@@ -6,38 +6,6 @@ use syn::{parse_macro_input, DeriveInput, Error};
 mod derives;
 mod util;
 
-#[proc_macro_derive(EntityModel, attributes(sea))]
-pub fn entity_model(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    derives::expand_derive_entity_model(input)
-        .unwrap_or_else(Error::into_compile_error)
-        .into()
-}
-
-#[proc_macro_derive(SimpleModel, attributes(table, primary_key))]
-pub fn simple_model(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    derives::expand_simple_model(input)
-        .unwrap_or_else(Error::into_compile_error)
-        .into()
-}
-
-#[proc_macro_derive(SimpleInput, attributes(input))]
-pub fn simple_input(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    derives::expand_derive_simple_input(input)
-        .unwrap_or_else(Error::into_compile_error)
-        .into()
-}
-
-#[proc_macro_derive(SimpleUpdate, attributes(update))]
-pub fn simple_update(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    derives::expand_derive_simple_update(input)
-        .unwrap_or_else(Error::into_compile_error)
-        .into()
-}
-
 #[proc_macro_derive(DeriveEntity, attributes(sea))]
 pub fn derive_entity(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -76,14 +44,28 @@ pub fn derive_custom_column(input: TokenStream) -> TokenStream {
     }
 }
 
-#[proc_macro_derive(DeriveModel)]
+#[proc_macro_derive(DeriveModel, attributes(sea))]
 pub fn derive_model(input: TokenStream) -> TokenStream {
-    let DeriveInput { ident, data, .. } = parse_macro_input!(input);
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_model(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
 
-    match derives::expand_derive_model(ident, data) {
-        Ok(ts) => ts.into(),
-        Err(e) => e.to_compile_error().into(),
-    }
+#[proc_macro_derive(DeriveModelColumn, attributes(sea))]
+pub fn derive_model_column(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_model_column(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
+#[proc_macro_derive(DeriveModelPrimaryKey, attributes(sea))]
+pub fn derive_model_primary_key(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_model_primary_key(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
 }
 
 #[proc_macro_derive(DeriveActiveModel)]
