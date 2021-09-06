@@ -11,7 +11,7 @@ use rocket_db_pools::{sqlx, Connection, Database};
 use rocket_dyn_templates::{context, Template};
 
 use sea_orm::entity::*;
-use sea_orm::QueryOrder;
+use sea_orm::query::*;
 
 mod pool;
 use pool::RocketDbPool;
@@ -34,11 +34,11 @@ fn new() -> Template {
 
 #[post("/", data = "<post_form>")]
 async fn create(conn: Connection<Db>, post_form: Form<post::Model>) -> Flash<Redirect> {
-    let post = post_form.into_inner();
+    let form = post_form.into_inner();
 
-    let _post = post::ActiveModel {
-        title: Set(post.title.to_owned()),
-        text: Set(post.text.to_owned()),
+    post::ActiveModel {
+        title: Set(form.title.to_owned()),
+        text: Set(form.text.to_owned()),
         ..Default::default()
     }
     .save(&conn)
@@ -57,12 +57,12 @@ async fn update(conn: Connection<Db>, id: i32, post_form: Form<post::Model>) -> 
         .unwrap()
         .into();
 
-    let post_data = post_form.into_inner();
+    let form = post_form.into_inner();
 
-    let _edited_post = post::ActiveModel {
+    post::ActiveModel {
         id: post.id,
-        title: Set(post_data.title.to_owned()),
-        text: Set(post_data.text.to_owned()),
+        title: Set(form.title.to_owned()),
+        text: Set(form.text.to_owned()),
     }
     .save(&conn)
     .await
@@ -113,14 +113,15 @@ async fn delete(conn: Connection<Db>, id: i32) -> Flash<Redirect> {
         .unwrap()
         .unwrap()
         .into();
-    let _result = post.delete(&conn).await.unwrap();
+
+    post.delete(&conn).await.unwrap();
 
     Flash::success(Redirect::to("/"), "Post successfully deleted.")
 }
 
 #[delete("/")]
 async fn destroy(conn: Connection<Db>) -> Result<()> {
-    let _result = Post::delete_many().exec(&conn).await.unwrap();
+    Post::delete_many().exec(&conn).await.unwrap();
     Ok(())
 }
 
@@ -137,7 +138,7 @@ pub fn not_found(req: &Request<'_>) -> Template {
 async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
     let db_url = Db::fetch(&rocket).unwrap().db_url.clone();
     let conn = sea_orm::Database::connect(&db_url).await.unwrap();
-    let _create_post_table = setup::create_post_table(&conn).await;
+    setup::create_post_table(&conn).await;
     Ok(rocket)
 }
 
