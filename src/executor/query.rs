@@ -127,7 +127,7 @@ macro_rules! try_getable_unsigned {
         impl TryGetable for $type {
             #[allow(unused_variables)]
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
-                #[cfg(not(feature = "sqlx-postgres"))]
+                #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite", feature = "mock"))]
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
@@ -165,7 +165,7 @@ macro_rules! try_getable_mysql {
         impl TryGetable for $type {
             #[allow(unused_variables)]
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
-                #[cfg(not(feature = "sqlx-postgres"))]
+                #[cfg(any(feature = "sqlx-mysql", feature = "mock"))]
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
@@ -199,7 +199,7 @@ macro_rules! try_getable_postgres {
     ( $type: ty ) => {
         impl TryGetable for $type {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
-                #[cfg(not(feature = "sqlx-sqlite"))]
+                #[cfg(any(feature = "sqlx-postgres", feature = "mock"))]
                 let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
