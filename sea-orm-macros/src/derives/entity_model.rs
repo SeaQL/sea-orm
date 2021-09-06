@@ -1,7 +1,7 @@
 
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use syn::{Attribute, Data, Fields, Lit, Meta, punctuated::Punctuated, token::Comma};
+use syn::{Attribute, Data, Fields, Lit, Meta, parse::Error, punctuated::Punctuated, spanned::Spanned, token::Comma};
 
 use convert_case::{Case, Casing};
 
@@ -103,36 +103,40 @@ impl sea_orm::prelude::EntityName for Entity {
                             }
                         }
                     });
-                    let field_type = sql_type.unwrap_or_else(|| {
-                        let field_type = &field.ty;
-                        let temp = quote! { #field_type }
-                            .to_string()//E.g.: "Option < String >"
-                            .replace(" ", "");
-                        let temp = if temp.starts_with("Option<") {
-                            nullable = true;
-                            &temp[7..(temp.len() - 1)]
+
+                    let field_type = match sql_type {
+                        Some(t) => t,
+                        None => {
+                            let field_type = &field.ty;
+                            let temp = quote! { #field_type }
+                                .to_string()//E.g.: "Option < String >"
+                                .replace(" ", "");
+                            let temp = if temp.starts_with("Option<") {
+                                nullable = true;
+                                &temp[7..(temp.len() - 1)]
+                            }
+                            else {
+                                temp.as_str()
+                            };
+                            match temp {
+                                "char" => quote! { Char(None) },
+                                "String" | "&str" => quote! { String(None) },
+                                "u8" | "i8" => quote! { TinyInteger },
+                                "u16" | "i16" => quote! { SmallInteger },
+                                "u32" | "u64" | "i32" | "i64" => quote! { Integer },
+                                "u128" | "i128" => quote! { BigInteger },
+                                "f32" => quote! { Float },
+                                "f64" => quote! { Double },
+                                "bool" => quote! { Boolean },
+                                "NaiveDate" => quote! { Date },
+                                "NaiveTime" => quote! { Time },
+                                "NaiveDateTime" => quote! { DateTime },
+                                "Uuid" => quote! { Uuid },
+                                "Decimal" => quote! { BigInteger },
+                                _ => return Err(Error::new(field.span(), format!("unrecognized type {}", temp))),
+                            }
                         }
-                        else {
-                            temp.as_str()
-                        };
-                        match temp {
-                            "char" => quote! { Char(None) },
-                            "String" | "&str" => quote! { String(None) },
-                            "u8" | "i8" => quote! { TinyInteger },
-                            "u16" | "i16" => quote! { SmallInteger },
-                            "u32" | "u64" | "i32" | "i64" => quote! { Integer },
-                            "u128" | "i128" => quote! { BigInteger },
-                            "f32" => quote! { Float },
-                            "f64" => quote! { Double },
-                            "bool" => quote! { Boolean },
-                            "NaiveDate" => quote! { Date },
-                            "NaiveTime" => quote! { Time },
-                            "NaiveDateTime" => quote! { DateTime },
-                            "Uuid" => quote! { Uuid },
-                            "Decimal" => quote! { BigInteger },
-                            _ => panic!("unrecognized type {}", temp),
-                        }
-                    });
+                    };
 
                     let mut match_row = quote! { Self::#field_name => sea_orm::prelude::ColumnType::#field_type.def() };
                     if nullable {
