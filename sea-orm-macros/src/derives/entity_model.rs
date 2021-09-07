@@ -35,7 +35,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
             pub struct Entity;
             
             impl sea_orm::prelude::EntityName for Entity {
-                fn schema_name(&self) -> &str {
+                fn schema_name(&self) -> Option<&str> {
                     #schema_name
                 }
 

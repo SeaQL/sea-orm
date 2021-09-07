@@ -13,17 +13,6 @@ pub enum Relation {
     Fruit,
 }
 
-impl ColumnTrait for Column {
-    type EntityName = Entity;
-
-    fn def(&self) -> ColumnDef {
-        match self {
-            Self::Id => ColumnType::Integer.def(),
-            Self::Name => ColumnType::String(None).def(),
-        }
-    }
-}
-
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
