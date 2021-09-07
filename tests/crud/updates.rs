@@ -42,10 +42,8 @@ pub async fn test_update_cake(db: &DbConn) {
     cake_am.name = Set("Extra chocolate mud cake".to_owned());
     cake_am.price = Set(dec!(20.00));
 
-    let _cake_update_res: cake::ActiveModel = cake_am
-        .update(db)
-        .await
-        .expect("could not update cake");
+    let _cake_update_res: cake::ActiveModel =
+        cake_am.update(db).await.expect("could not update cake");
 
     let cake: Option<cake::Model> = Cake::find_by_id(cake_insert_res.last_insert_id)
         .one(db)
@@ -81,10 +79,8 @@ pub async fn test_update_bakery(db: &DbConn) {
     bakery_am.name = Set("SeaBreeze Bakery".to_owned());
     bakery_am.profit_margin = Set(12.00);
 
-    let _bakery_update_res: bakery::ActiveModel = bakery_am
-        .update(db)
-        .await
-        .expect("could not update bakery");
+    let _bakery_update_res: bakery::ActiveModel =
+        bakery_am.update(db).await.expect("could not update bakery");
 
     let bakery: Option<bakery::Model> = Bakery::find_by_id(bakery_insert_res.last_insert_id)
         .one(db)
