@@ -52,32 +52,71 @@ impl DeriveRelation {
             .map(|variant| {
                 let variant_ident = &variant.ident;
                 let attr = field_attr::SeaOrm::from_attributes(&variant.attrs)?;
-                let belongs_to = attr
-                    .belongs_to
-                    .as_ref()
-                    .map(Self::parse_lit_string)
-                    .ok_or_else(|| {
-                        syn::Error::new_spanned(variant, "Missing attribute 'belongs_to'")
-                    })??;
-                let from = attr
-                    .from
-                    .as_ref()
-                    .map(Self::parse_lit_string)
-                    .ok_or_else(|| {
-                        syn::Error::new_spanned(variant, "Missing attribute 'from'")
-                    })??;
-                let to = attr
-                    .to
-                    .as_ref()
-                    .map(Self::parse_lit_string)
-                    .ok_or_else(|| syn::Error::new_spanned(variant, "Missing attribute 'to'"))??;
+                let mut relation_type = quote! { error };
+                let related_to = if attr.belongs_to.is_some() {
+                    relation_type = quote! { belongs_to };
+                    attr.belongs_to
+                        .as_ref()
+                        .map(Self::parse_lit_string)
+                        .ok_or_else(|| {
+                            syn::Error::new_spanned(variant, "Missing value for 'belongs_to'")
+                        })
+                } else if attr.has_one.is_some() {
+                    relation_type = quote! { has_one };
+                    attr.has_one
+                        .as_ref()
+                        .map(Self::parse_lit_string)
+                        .ok_or_else(|| {
+                            syn::Error::new_spanned(variant, "Missing value for 'has_one'")
+                        })
+                } else if attr.has_many.is_some() {
+                    relation_type = quote! { has_many };
+                    attr.has_many
+                        .as_ref()
+                        .map(Self::parse_lit_string)
+                        .ok_or_else(|| {
+                            syn::Error::new_spanned(variant, "Missing value for 'has_many'")
+                        })
+                } else {
+                    Err(syn::Error::new_spanned(
+                        variant,
+                        "Missing one of 'has_one', 'has_many' or 'belongs_to'",
+                    ))
+                }??;
 
-                Result::<_, syn::Error>::Ok(quote!(
-                    Self::#variant_ident => #entity_ident::belongs_to(#belongs_to)
-                        .from(#from)
-                        .to(#to)
-                        .into()
-                ))
+                let mut result = quote!(
+                    Self::#variant_ident => #entity_ident::#relation_type(#related_to)
+                );
+
+                if attr.from.is_some() {
+                    let from =
+                        attr.from
+                            .as_ref()
+                            .map(Self::parse_lit_string)
+                            .ok_or_else(|| {
+                                syn::Error::new_spanned(variant, "Missing value for 'from'")
+                            })??;
+                    result = quote! { #result.from(#from) };
+                } else if attr.belongs_to.is_some() {
+                    return Err(syn::Error::new_spanned(variant, "Missing attribute 'from'"));
+                }
+
+                if attr.to.is_some() {
+                    let to = attr
+                        .to
+                        .as_ref()
+                        .map(Self::parse_lit_string)
+                        .ok_or_else(|| {
+                            syn::Error::new_spanned(variant, "Missing value for 'to'")
+                        })??;
+                    result = quote! { #result.to(#to) };
+                } else if attr.belongs_to.is_some() {
+                    return Err(syn::Error::new_spanned(variant, "Missing attribute 'to'"));
+                }
+
+                result = quote! { #result.into() };
+
+                Result::<_, syn::Error>::Ok(result)
             })
             .collect::<Result<Vec<_>, _>>()?;
 

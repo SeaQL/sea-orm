@@ -32,8 +32,13 @@ impl PrimaryKeyTrait for PrimaryKey {
     }
 }
 
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::cake::Entity",
+        from = "Column::CakeId",
+        to = "super::cake::Column::Id"
+    )]
     Cake,
 }
 
@@ -45,17 +50,6 @@ impl ColumnTrait for Column {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(None).def(),
             Self::CakeId => ColumnType::Integer.def(),
-        }
-    }
-}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        match self {
-            Self::Cake => Entity::belongs_to(super::cake::Entity)
-                .from(Column::CakeId)
-                .to(super::cake::Column::Id)
-                .into(),
         }
     }
 }

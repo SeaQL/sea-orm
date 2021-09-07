@@ -1,5 +1,5 @@
 use crate as sea_orm;
-use sea_orm::entity::prelude::*;
+use crate::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, DeriveModel, DeriveActiveModel)]
 #[sea_orm(table_name = "cake")]
@@ -9,17 +9,10 @@ pub struct Model {
     pub name: String,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_many = "super::fruit::Entity")]
     Fruit,
-}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        match self {
-            Self::Fruit => Entity::has_many(super::fruit::Entity).into(),
-        }
-    }
 }
 
 impl Related<super::fruit::Entity> for Entity {

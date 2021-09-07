@@ -1,8 +1,8 @@
-use std::iter::FromIterator;
+use crate::attributes::derive_attr;
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use crate::attributes::derive_attr;
+use std::iter::FromIterator;
 
 enum Error {
     InputNotStruct,

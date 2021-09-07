@@ -101,18 +101,19 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                                 }
                                             } else if name == "auto_increment" {
                                                 if let Lit::Str(litstr) = &nv.lit {
-                                                    auto_increment =
-                                                        match litstr.value().as_str() {
-                                                            "true" => true,
-                                                            "false" => false,
-                                                            _ => return Err(Error::new(
+                                                    auto_increment = match litstr.value().as_str() {
+                                                        "true" => true,
+                                                        "false" => false,
+                                                        _ => {
+                                                            return Err(Error::new(
                                                                 field.span(),
                                                                 format!(
                                                                     "Invalid auto_increment = {}",
                                                                     litstr.value()
                                                                 ),
-                                                            )),
-                                                        };
+                                                            ))
+                                                        }
+                                                    };
                                                 } else {
                                                     return Err(Error::new(
                                                         field.span(),

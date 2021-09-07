@@ -19,6 +19,8 @@ pub mod field_attr {
     #[derive(Default, FromAttributes)]
     pub struct SeaOrm {
         pub belongs_to: Option<syn::Lit>,
+        pub has_one: Option<syn::Lit>,
+        pub has_many: Option<syn::Lit>,
         pub from: Option<syn::Lit>,
         pub to: Option<syn::Lit>,
     }
