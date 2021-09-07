@@ -10,7 +10,7 @@ pub async fn test_delete_cake(db: &DbConn) {
         profit_margin: Set(10.4),
         ..Default::default()
     };
-    let bakery_insert_res: InsertResult = Bakery::insert(seaside_bakery)
+    let bakery_insert_res = Bakery::insert(seaside_bakery)
         .exec(db)
         .await
         .expect("could not insert bakery");

@@ -1,15 +1,25 @@
-use crate::{error::*, ActiveModelTrait, DatabaseConnection, Insert, Statement};
+use crate::{
+    error::*, ActiveModelTrait, DatabaseConnection, EntityTrait, Insert, PrimaryKeyTrait,
+    Statement, TryFromU64,
+};
 use sea_query::InsertStatement;
-use std::future::Future;
+use std::{future::Future, marker::PhantomData};
 
 #[derive(Clone, Debug)]
-pub struct Inserter {
+pub struct Inserter<A>
+where
+    A: ActiveModelTrait,
+{
     query: InsertStatement,
+    model: PhantomData<A>,
 }
 
-#[derive(Clone, Debug)]
-pub struct InsertResult {
-    pub last_insert_id: u64,
+#[derive(Debug)]
+pub struct InsertResult<A>
+where
+    A: ActiveModelTrait,
+{
+    pub last_insert_id: <<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType,
 }
 
 impl<A> Insert<A>
@@ -17,54 +27,79 @@ where
     A: ActiveModelTrait,
 {
     #[allow(unused_mut)]
-    pub fn exec(
+    pub fn exec<'a>(
         self,
-        db: &DatabaseConnection,
-    ) -> impl Future<Output = Result<InsertResult, DbErr>> + '_ {
+        db: &'a DatabaseConnection,
+    ) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
+    where
+        A: 'a,
+    {
         // so that self is dropped before entering await
         let mut query = self.query;
         #[cfg(feature = "sqlx-postgres")]
         if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
-            use crate::{EntityTrait, Iterable};
-            use sea_query::{Alias, Expr, Query};
-            for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
+            use crate::{sea_query::Query, Iterable};
+            if <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
                 query.returning(
                     Query::select()
-                        .expr_as(Expr::col(key), Alias::new("last_insert_id"))
-                        .to_owned(),
+                        .columns(<A::Entity as EntityTrait>::PrimaryKey::iter())
+                        .take(),
                 );
             }
         }
-        Inserter::new(query).exec(db)
+        Inserter::<A>::new(query).exec(db)
     }
 }
 
-impl Inserter {
+impl<A> Inserter<A>
+where
+    A: ActiveModelTrait,
+{
     pub fn new(query: InsertStatement) -> Self {
-        Self { query }
+        Self {
+            query,
+            model: PhantomData,
+        }
     }
 
-    pub fn exec(
+    pub fn exec<'a>(
         self,
-        db: &DatabaseConnection,
-    ) -> impl Future<Output = Result<InsertResult, DbErr>> + '_ {
+        db: &'a DatabaseConnection,
+    ) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
+    where
+        A: 'a,
+    {
         let builder = db.get_database_backend();
         exec_insert(builder.build(&self.query), db)
     }
 }
 
 // Only Statement impl Send
-async fn exec_insert(statement: Statement, db: &DatabaseConnection) -> Result<InsertResult, DbErr> {
-    // TODO: Postgres instead use query_one + returning clause
-    let result = match db {
+async fn exec_insert<A>(
+    statement: Statement,
+    db: &DatabaseConnection,
+) -> Result<InsertResult<A>, DbErr>
+where
+    A: ActiveModelTrait,
+{
+    type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
+    type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
+    let last_insert_id = match db {
         #[cfg(feature = "sqlx-postgres")]
         DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
+            use crate::{sea_query::Iden, Iterable};
+            let cols = PrimaryKey::<A>::iter()
+                .map(|col| col.to_string())
+                .collect::<Vec<_>>();
             let res = conn.query_one(statement).await?.unwrap();
-            crate::query_result_into_exec_result(res)?
+            res.try_get_many("", cols.as_ref()).unwrap_or_default()
         }
-        _ => db.execute(statement).await?,
+        _ => {
+            let last_insert_id = db.execute(statement).await?.last_insert_id();
+            ValueTypeOf::<A>::try_from_u64(last_insert_id)
+                .ok()
+                .unwrap_or_default()
+        }
     };
-    Ok(InsertResult {
-        last_insert_id: result.last_insert_id(),
-    })
+    Ok(InsertResult { last_insert_id })
 }

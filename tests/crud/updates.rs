@@ -8,7 +8,7 @@ pub async fn test_update_cake(db: &DbConn) {
         profit_margin: Set(10.4),
         ..Default::default()
     };
-    let bakery_insert_res: InsertResult = Bakery::insert(seaside_bakery)
+    let bakery_insert_res = Bakery::insert(seaside_bakery)
         .exec(db)
         .await
         .expect("could not insert bakery");
@@ -22,7 +22,7 @@ pub async fn test_update_cake(db: &DbConn) {
         ..Default::default()
     };
 
-    let cake_insert_res: InsertResult = Cake::insert(mud_cake)
+    let cake_insert_res = Cake::insert(mud_cake)
         .exec(db)
         .await
         .expect("could not insert cake");
@@ -36,7 +36,7 @@ pub async fn test_update_cake(db: &DbConn) {
     let cake_model = cake.unwrap();
     assert_eq!(cake_model.name, "Mud Cake");
     assert_eq!(cake_model.price, dec!(10.25));
-    assert_eq!(cake_model.gluten_free, false);
+    assert!(!cake_model.gluten_free);
 
     let mut cake_am: cake::ActiveModel = cake_model.into();
     cake_am.name = Set("Extra chocolate mud cake".to_owned());
@@ -62,7 +62,7 @@ pub async fn test_update_bakery(db: &DbConn) {
         profit_margin: Set(10.4),
         ..Default::default()
     };
-    let bakery_insert_res: InsertResult = Bakery::insert(seaside_bakery)
+    let bakery_insert_res = Bakery::insert(seaside_bakery)
         .exec(db)
         .await
         .expect("could not insert bakery");
@@ -75,7 +75,7 @@ pub async fn test_update_bakery(db: &DbConn) {
     assert!(bakery.is_some());
     let bakery_model = bakery.unwrap();
     assert_eq!(bakery_model.name, "SeaSide Bakery");
-    assert_eq!(bakery_model.profit_margin, 10.4);
+    assert!((bakery_model.profit_margin - 10.40).abs() < f64::EPSILON);
 
     let mut bakery_am: bakery::ActiveModel = bakery_model.into();
     bakery_am.name = Set("SeaBreeze Bakery".to_owned());
@@ -92,7 +92,7 @@ pub async fn test_update_bakery(db: &DbConn) {
         .expect("could not find bakery");
     let bakery_model = bakery.unwrap();
     assert_eq!(bakery_model.name, "SeaBreeze Bakery");
-    assert_eq!(bakery_model.profit_margin, 12.00);
+    assert!((bakery_model.profit_margin - 12.00).abs() < f64::EPSILON);
 }
 
 pub async fn test_update_deleted_customer(db: &DbConn) {
@@ -130,11 +130,10 @@ pub async fn test_update_deleted_customer(db: &DbConn) {
 
     assert_eq!(Customer::find().count(db).await.unwrap(), init_n_customers);
 
-    let customer: Option<customer::Model> =
-        Customer::find_by_id(customer_id.clone().unwrap() as i64)
-            .one(db)
-            .await
-            .expect("could not find customer");
+    let customer: Option<customer::Model> = Customer::find_by_id(customer_id.clone().unwrap())
+        .one(db)
+        .await
+        .expect("could not find customer");
 
     assert_eq!(customer, None);
 }

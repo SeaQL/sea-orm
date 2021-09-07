@@ -1,6 +1,6 @@
 use crate::{
-    error::*, query::combine, DatabaseConnection, EntityTrait, FromQueryResult, Iterable,
-    JsonValue, ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectTwo,
+    error::*, DatabaseConnection, EntityTrait, FromQueryResult, IdenStatic, Iterable, JsonValue,
+    ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo,
     SelectTwoMany, Statement,
 };
 use sea_query::SelectStatement;
@@ -30,6 +30,7 @@ pub trait SelectorTrait {
     fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr>;
 }
 
+#[derive(Debug)]
 pub struct SelectModel<M>
 where
     M: FromQueryResult,
@@ -66,8 +67,8 @@ where
 
     fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr> {
         Ok((
-            M::from_query_result(&res, combine::SELECT_A)?,
-            N::from_query_result_optional(&res, combine::SELECT_B)?,
+            M::from_query_result(&res, SelectA.as_str())?,
+            N::from_query_result_optional(&res, SelectB.as_str())?,
         ))
     }
 }
@@ -128,7 +129,7 @@ where
     E: EntityTrait,
     F: EntityTrait,
 {
-    fn into_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
+    pub fn into_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
     where
         M: FromQueryResult,
         N: FromQueryResult,
@@ -289,14 +290,15 @@ where
     ///
     /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
-    /// let res: Vec<SelectResult> = cake::Entity::find().from_raw_sql(
-    ///     Statement::from_sql_and_values(
-    ///         DbBackend::Postgres, r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#, vec![]
-    ///     )
-    /// )
-    /// .into_model::<SelectResult>()
-    /// .all(&db)
-    /// .await?;
+    /// let res: Vec<SelectResult> = cake::Entity::find()
+    ///     .from_raw_sql(Statement::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#,
+    ///         vec![],
+    ///     ))
+    ///     .into_model::<SelectResult>()
+    ///     .all(&db)
+    ///     .await?;
     ///
     /// assert_eq!(
     ///     res,
@@ -317,11 +319,12 @@ where
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![
-    ///     Transaction::from_sql_and_values(
-    ///             DbBackend::Postgres, r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#, vec![]
-    ///     ),
-    /// ]);
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#,
+    ///         vec![]
+    ///     ),]
+    /// );
     /// ```
     pub fn into_model<M>(self) -> SelectorRaw<SelectModel<M>>
     where
@@ -406,22 +409,26 @@ where
     ///
     /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
-    /// let _: Option<cake::Model> = cake::Entity::find().from_raw_sql(
-    ///     Statement::from_sql_and_values(
-    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#, vec![1.into()]
-    ///     )
-    /// ).one(&db).await?;
+    /// let _: Option<cake::Model> = cake::Entity::find()
+    ///     .from_raw_sql(Statement::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#,
+    ///         vec![1.into()],
+    ///     ))
+    ///     .one(&db)
+    ///     .await?;
     /// #
     /// # Ok(())
     /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![
-    ///     Transaction::from_sql_and_values(
-    ///             DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#, vec![1.into()]
-    ///     ),
-    /// ]);
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#,
+    ///         vec![1.into()]
+    ///     ),]
+    /// );
     /// ```
     pub async fn one(self, db: &DatabaseConnection) -> Result<Option<S::Item>, DbErr> {
         let row = db.query_one(self.stmt).await?;
@@ -441,22 +448,26 @@ where
     ///
     /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
-    /// let _: Vec<cake::Model> = cake::Entity::find().from_raw_sql(
-    ///     Statement::from_sql_and_values(
-    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
-    ///     )
-    /// ).all(&db).await?;
+    /// let _: Vec<cake::Model> = cake::Entity::find()
+    ///     .from_raw_sql(Statement::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
+    ///         vec![],
+    ///     ))
+    ///     .all(&db)
+    ///     .await?;
     /// #
     /// # Ok(())
     /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![
-    ///     Transaction::from_sql_and_values(
-    ///             DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
-    ///     ),
-    /// ]);
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
+    ///         vec![]
+    ///     ),]
+    /// );
     /// ```
     pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, DbErr> {
         let rows = db.query_all(self.stmt).await?;

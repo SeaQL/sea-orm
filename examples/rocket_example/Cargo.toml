@@ -1,0 +1,34 @@
+[package]
+name = "sea-orm-rocket-example"
+version = "0.1.0"
+authors = ["Sam Samai <sam@studio2pi.com.au>"]
+edition = "2018"
+publish = false
+
+[workspace]
+
+[dependencies]
+async-stream = { version = "^0.3" }
+async-trait = { version = "0.1" }
+futures = { version = "^0.3" }
+futures-util = { version = "^0.3" }
+rocket = { git = "https://github.com/SergioBenitez/Rocket.git", features = [
+  "json",
+] }
+rocket_db_pools = { git = "https://github.com/SergioBenitez/Rocket.git" }
+rocket_dyn_templates = { git = "https://github.com/SergioBenitez/Rocket.git", features = [
+  "tera",
+] }
+# remove `path = ""` in your own project
+sea-orm = { path = "../../", version = "^0.2" }
+serde_json = { version = "^1" }
+
+[dependencies.sqlx]
+version = "^0.5"
+default-features = false
+features = ["macros", "offline", "migrate"]
+
+[features]
+default = ["sqlx-postgres"]
+sqlx-mysql = ["sea-orm/sqlx-mysql", "rocket_db_pools/sqlx_mysql"]
+sqlx-postgres = ["sea-orm/sqlx-postgres", "rocket_db_pools/sqlx_postgres"]

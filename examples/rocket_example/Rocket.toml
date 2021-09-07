@@ -1,0 +1,11 @@
+[default]
+template_dir = "templates/"
+
+[default.databases.rocket_example]
+# Mysql
+# make sure to enable "sqlx-mysql" feature in Cargo.toml, i.e default = ["sqlx-mysql"]
+# url = "mysql://root:@localhost/rocket_example"
+
+# Postgres
+# make sure to enable "sqlx-postgres" feature in Cargo.toml, i.e default = ["sqlx-postgres"]
+url = "postgres://root:root@localhost/rocket_example"

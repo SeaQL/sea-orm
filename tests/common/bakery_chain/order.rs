@@ -33,6 +33,8 @@ pub enum PrimaryKey {
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
+    type ValueType = i32;
+
     fn auto_increment() -> bool {
         true
     }
@@ -65,10 +67,14 @@ impl RelationTrait for Relation {
             Self::Bakery => Entity::belongs_to(super::bakery::Entity)
                 .from(Column::BakeryId)
                 .to(super::bakery::Column::Id)
+                .on_delete(ForeignKeyAction::Cascade)
+                .on_update(ForeignKeyAction::Cascade)
                 .into(),
             Self::Customer => Entity::belongs_to(super::customer::Entity)
                 .from(Column::CustomerId)
                 .to(super::customer::Column::Id)
+                .on_delete(ForeignKeyAction::Cascade)
+                .on_update(ForeignKeyAction::Cascade)
                 .into(),
             Self::Lineitem => Entity::has_many(super::lineitem::Entity).into(),
         }

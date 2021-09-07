@@ -1,7 +1,6 @@
 pub mod common;
 
-#[allow(unused_imports)]
-use sea_orm::{entity::*, error::*, sea_query, tests_cfg::*, Database, DbConn};
+pub use sea_orm::{entity::*, error::*, sea_query, tests_cfg::*, Database, DbConn};
 
 // DATABASE_URL="sqlite::memory:" cargo test --features sqlx-sqlit,runtime-async-std --test basic
 #[sea_orm_macros::test]

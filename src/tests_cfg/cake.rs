@@ -28,6 +28,8 @@ pub enum PrimaryKey {
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
+    type ValueType = i32;
+
     fn auto_increment() -> bool {
         true
     }
@@ -70,6 +72,22 @@ impl Related<super::filling::Entity> for Entity {
 
     fn via() -> Option<RelationDef> {
         Some(super::cake_filling::Relation::Cake.def().rev())
+    }
+}
+
+#[derive(Debug)]
+pub struct CakeToFilling;
+
+impl Linked for CakeToFilling {
+    type FromEntity = Entity;
+
+    type ToEntity = super::filling::Entity;
+
+    fn link(&self) -> Vec<RelationDef> {
+        vec![
+            super::cake_filling::Relation::Cake.def().rev(),
+            super::cake_filling::Relation::Filling.def(),
+        ]
     }
 }
 

@@ -10,7 +10,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
         profit_margin: Set(10.4),
         ..Default::default()
     };
-    let bakery_insert_res: InsertResult = Bakery::insert(seaside_bakery)
+    let bakery_insert_res = Bakery::insert(seaside_bakery)
         .exec(db)
         .await
         .expect("could not insert bakery");
@@ -26,7 +26,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
         bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
         ..Default::default()
     };
-    let baker_insert_res: InsertResult = Baker::insert(baker_bob)
+    let baker_insert_res = Baker::insert(baker_bob)
         .exec(db)
         .await
         .expect("could not insert baker");
@@ -41,7 +41,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
         ..Default::default()
     };
 
-    let cake_insert_res: InsertResult = Cake::insert(mud_cake)
+    let cake_insert_res = Cake::insert(mud_cake)
         .exec(db)
         .await
         .expect("could not insert cake");
@@ -50,12 +50,19 @@ pub async fn test_create_lineitem(db: &DbConn) {
     let cake_baker = cakes_bakers::ActiveModel {
         cake_id: Set(cake_insert_res.last_insert_id as i32),
         baker_id: Set(baker_insert_res.last_insert_id as i32),
-        ..Default::default()
     };
-    let _cake_baker_res: InsertResult = CakesBakers::insert(cake_baker)
+    let cake_baker_res = CakesBakers::insert(cake_baker.clone())
         .exec(db)
         .await
         .expect("could not insert cake_baker");
+    assert_eq!(
+        cake_baker_res.last_insert_id,
+        if cfg!(feature = "sqlx-postgres") {
+            (cake_baker.cake_id.unwrap(), cake_baker.baker_id.unwrap())
+        } else {
+            Default::default()
+        }
+    );
 
     // Customer
     let customer_kate = customer::ActiveModel {
@@ -63,7 +70,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
         notes: Set(Some("Loves cheese cake".to_owned())),
         ..Default::default()
     };
-    let customer_insert_res: InsertResult = Customer::insert(customer_kate)
+    let customer_insert_res = Customer::insert(customer_kate)
         .exec(db)
         .await
         .expect("could not insert customer");
@@ -76,7 +83,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
-    let order_insert_res: InsertResult = Order::insert(order_1)
+    let order_insert_res = Order::insert(order_1)
         .exec(db)
         .await
         .expect("could not insert order");
@@ -89,7 +96,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
         quantity: Set(1),
         ..Default::default()
     };
-    let lineitem_insert_res: InsertResult = Lineitem::insert(lineitem_1)
+    let lineitem_insert_res = Lineitem::insert(lineitem_1)
         .exec(db)
         .await
         .expect("could not insert lineitem");
@@ -105,7 +112,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
 
     assert_eq!(lineitem_model.price, dec!(7.55));
 
-    let cake: Option<cake::Model> = Cake::find_by_id(lineitem_model.cake_id as u64)
+    let cake: Option<cake::Model> = Cake::find_by_id(lineitem_model.cake_id)
         .one(db)
         .await
         .expect("could not find cake");

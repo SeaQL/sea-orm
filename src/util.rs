@@ -1,7 +1,7 @@
 #[macro_export]
 #[cfg(feature = "debug-print")]
 macro_rules! debug_print {
-    ($( $args:expr ),*) => { println!( $( $args ),* ); }
+    ($( $args:expr ),*) => { log::debug!( $( $args ),* ); }
 }
 
 #[macro_export]
