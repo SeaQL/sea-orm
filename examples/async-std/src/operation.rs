@@ -33,7 +33,7 @@ pub async fn insert_and_update(db: &DbConn) -> Result<(), DbErr> {
     let mut pear: fruit::ActiveModel = pear.unwrap().into();
     pear.name = Set("Sweet pear".to_owned());
 
-    let pear: fruit::ActiveModel = Fruit::update(pear).exec(db).await?;
+    let pear: fruit::ActiveModel = pear.update(db).await?;
 
     println!();
     println!("Updated: {:?}\n", pear);

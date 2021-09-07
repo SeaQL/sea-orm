@@ -212,7 +212,10 @@ where
     Ok(am)
 }
 
-async fn insert_and_select_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, DbErr>
+pub async fn insert_and_select_active_model<A, E>(
+    am: A,
+    db: &DatabaseConnection,
+) -> Result<A, DbErr>
 where
     A: ActiveModelTrait<Entity = E>,
     E::Model: IntoActiveModel<A>,
@@ -240,12 +243,12 @@ where
     }
 }
 
-async fn update_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, DbErr>
+pub async fn update_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, DbErr>
 where
     A: ActiveModelTrait<Entity = E>,
     E: EntityTrait,
 {
-    let exec = E::update(am).exec(db);
+    let exec = E::update(am).prepare_filters().exec(db);
     exec.await
 }
 

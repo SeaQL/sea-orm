@@ -37,6 +37,7 @@ impl Update {
     ///         id: ActiveValue::set(1),
     ///         name: ActiveValue::set("Apple Pie".to_owned()),
     ///     })
+    ///     .filter(cake::Column::Id.eq(1))
     ///     .build(DbBackend::Postgres)
     ///     .to_string(),
     ///     r#"UPDATE "cake" SET "name" = 'Apple Pie' WHERE "cake"."id" = 1"#,
@@ -53,7 +54,7 @@ impl Update {
                 .to_owned(),
             model,
         };
-        myself.prepare()
+        myself.prepare_values()
     }
 
     /// Update many ActiveModel
@@ -85,16 +86,7 @@ impl<A> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
-    pub(crate) fn prepare(mut self) -> Self {
-        for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
-            let col = key.into_column();
-            let av = self.model.get(col);
-            if av.is_set() || av.is_unchanged() {
-                self = self.filter(col.eq(av.unwrap()));
-            } else {
-                panic!("PrimaryKey is not set");
-            }
-        }
+    pub(crate) fn prepare_values(mut self) -> Self {
         for col in <A::Entity as EntityTrait>::Column::iter() {
             if <A::Entity as EntityTrait>::PrimaryKey::from_column(col).is_some() {
                 continue;
@@ -102,6 +94,19 @@ where
             let av = self.model.get(col);
             if av.is_set() {
                 self.query.value(col, av.unwrap());
+            }
+        }
+        self
+    }
+
+    pub(crate) fn prepare_filters(mut self) -> Self {
+        for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
+            let col = key.into_column();
+            let av = self.model.get(col);
+            if av.is_set() || av.is_unchanged() {
+                self = self.filter(col.eq(av.unwrap()));
+            } else {
+                panic!("PrimaryKey is not set");
             }
         }
         self
@@ -194,6 +199,7 @@ mod tests {
                 id: ActiveValue::set(1),
                 name: ActiveValue::set("Apple Pie".to_owned()),
             })
+            .filter(cake::Column::Id.eq(1))
             .build(DbBackend::Postgres)
             .to_string(),
             r#"UPDATE "cake" SET "name" = 'Apple Pie' WHERE "cake"."id" = 1"#,
@@ -208,6 +214,7 @@ mod tests {
                 name: ActiveValue::set("Orange".to_owned()),
                 cake_id: ActiveValue::unset(),
             })
+            .filter(fruit::Column::Id.eq(1))
             .build(DbBackend::Postgres)
             .to_string(),
             r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"#,
@@ -222,6 +229,7 @@ mod tests {
                 name: ActiveValue::unchanged("Apple".to_owned()),
                 cake_id: ActiveValue::set(Some(3)),
             })
+            .filter(fruit::Column::Id.eq(2))
             .build(DbBackend::Postgres)
             .to_string(),
             r#"UPDATE "fruit" SET "cake_id" = 3 WHERE "fruit"."id" = 2"#,
