@@ -17,7 +17,7 @@ struct DeriveEntity {
 
 impl DeriveEntity {
     fn new(input: syn::DeriveInput) -> Result<Self, syn::Error> {
-        let sea_attr = derive_attr::Sea::try_from_attributes(&input.attrs)?.unwrap_or_default();
+        let sea_attr = derive_attr::SeaOrm::try_from_attributes(&input.attrs)?.unwrap_or_default();
 
         let ident = input.ident;
         let column_ident = sea_attr.column.unwrap_or_else(|| format_ident!("Column"));
