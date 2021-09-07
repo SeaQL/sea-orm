@@ -49,6 +49,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
     let mut columns_enum: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_trait: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_keys: Punctuated<_, Comma> = Punctuated::new();
+    let mut primary_key_types: Punctuated<_, Comma> = Punctuated::new();
     let mut auto_increment = true;
     if let Data::Struct(item_struct) = data {
         if let Fields::Named(fields) = item_struct.fields {
@@ -113,6 +114,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                         if let Some(name) = p.get_ident() {
                                             if name == "primary_key" {
                                                 primary_keys.push(quote! { #field_name });
+                                                primary_key_types.push(field.ty.clone());
                                             }
                                             else if name == "nullable" {
                                                 nullable = true;
@@ -189,6 +191,13 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
     let primary_key = (!primary_keys.is_empty()).then(|| {
         let auto_increment = auto_increment && primary_keys.len() == 1;
+        let primary_key_types = if primary_key_types.len() == 1 {
+            let first = primary_key_types.first();
+            quote! { #first }
+        }
+        else {
+            quote! { (#primary_key_types) }
+        };
         quote! {
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
 pub enum PrimaryKey {
@@ -196,6 +205,8 @@ pub enum PrimaryKey {
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
+    type ValueType = #primary_key_types;
+
     fn auto_increment() -> bool {
         #auto_increment
     }
