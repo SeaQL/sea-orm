@@ -238,19 +238,19 @@ impl DeriveModelColumn {
                 quote!(String(None))
             }
             "char" => quote!(Char(None)),
-            "i8" => quote!(TinyInteger),
-            "i16" => quote!(SmallInteger),
-            "i32" => quote!(Integer),
-            "i64" => quote!(BigInteger),
+            "i8" | "u8" => quote!(TinyInteger),
+            "i16" | "u16" => quote!(SmallInteger),
+            "i32" | "u32" => quote!(Integer),
+            "i64" | "u64" | "i128" | "u128" => quote!(BigInteger),
             "f32" => quote!(Float),
             "f64" => quote!(Double),
+            "bool" => quote!(Boolean),
             "Json" => quote!(Json),
             "DateTime" => quote!(DateTime),
             "DateTimeWithTimeZone" => quote!(DateTimeWithTimeZone),
             "Decimal" => quote!(Decimal(None)),
             "Uuid" => quote!(Uuid),
-            "Vec < u8 >" => quote!(Binary),
-            "bool" => quote!(Boolean),
+            "std::vec::Vec < u8 >" | "vec::Vec < u8 >" | "Vec < u8 >" => quote!(Binary),
             _ => {
                 let ty_name = ty_string.replace(' ', "").to_snake_case();
                 quote!(Custom(#ty_name.to_owned()))
