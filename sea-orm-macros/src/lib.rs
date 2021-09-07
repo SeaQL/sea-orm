@@ -98,6 +98,14 @@ pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
     }
 }
 
+#[proc_macro_derive(DeriveRelation, attributes(sea_orm))]
+pub fn derive_relation(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_relation(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
 #[doc(hidden)]
 #[proc_macro_attribute]
 pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
