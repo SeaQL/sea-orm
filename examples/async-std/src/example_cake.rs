@@ -1,35 +1,11 @@
 use sea_orm::entity::prelude::*;
 
-#[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-pub struct Entity;
-
-impl EntityName for Entity {
-    fn table_name(&self) -> &str {
-        "cake"
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, EntityModel)]
+#[sea_orm(table_name = "cake")]
 pub struct Model {
+    #[sea_orm(primary_key)]
     pub id: i32,
     pub name: String,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
-pub enum Column {
-    Id,
-    Name,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
-pub enum PrimaryKey {
-    Id,
-}
-
-impl PrimaryKeyTrait for PrimaryKey {
-    fn auto_increment() -> bool {
-        true
-    }
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]

@@ -6,33 +6,44 @@ use syn::{Attribute, Data, Fields, Lit, Meta, parse::Error, punctuated::Punctuat
 use convert_case::{Case, Casing};
 
 pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
-    // if #[sea_orm(table_name = "foo")] specified, create Entity struct
-    let table_name = attrs.iter().filter_map(|attr| {
-        if attr.path.get_ident()? != "sea_orm" {
-            return None;
+    // if #[sea_orm(table_name = "foo", schema_name = "bar")] specified, create Entity struct
+    let mut table_name = None;
+    let mut schema_name = quote! { None };
+    attrs.iter().for_each(|attr| {
+        if attr.path.get_ident().map(|i| i == "sea_orm") != Some(true) {
+            return;
         }
 
-        let list = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated).ok()?;
-        for meta in list.iter() {
-            if let Meta::NameValue(nv) = meta {
-                if nv.path.get_ident()? == "table_name" {
-                    let table_name = &nv.lit;
-                    return Some(quote! {
-#[derive(Copy, Clone, Default, Debug, sea_orm::prelude::DeriveEntity)]
-pub struct Entity;
-
-impl sea_orm::prelude::EntityName for Entity {
-    fn table_name(&self) -> &str {
-        #table_name
-    }
-}
-                    });
+        if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
+            for meta in list.iter() {
+                if let Meta::NameValue(nv) = meta {
+                    if let Some(ident) = nv.path.get_ident() {
+                        if ident == "table_name" {
+                            table_name = Some(nv.lit.clone());
+                        }
+                        else if ident == "schema_name" {
+                            let name = &nv.lit;
+                            schema_name = quote! { Some(#name) };
+                        }
+                    }
                 }
             }
         }
+    });
+    let entity_def = table_name.map(|table_name| quote! {
+            #[derive(Copy, Clone, Default, Debug, sea_orm::prelude::DeriveEntity)]
+            pub struct Entity;
+            
+            impl sea_orm::prelude::EntityName for Entity {
+                fn schema_name(&self) -> &str {
+                    #schema_name
+                }
 
-        None
-    }).next().unwrap_or_default();
+                fn table_name(&self) -> &str {
+                    #table_name
+                }
+            }
+        }).unwrap_or_default();
 
     // generate Column enum and it's ColumnTrait impl
     let mut columns_enum: Punctuated<_, Comma> = Punctuated::new();
@@ -208,7 +219,7 @@ impl sea_orm::prelude::ColumnTrait for Column {
     }
 }
 
-#table_name
+#entity_def
 
 #primary_key
     })
