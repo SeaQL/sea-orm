@@ -45,13 +45,14 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
         Database::connect(base_url).await.unwrap()
     };
 
-    assert!(schema::create_bakery_table(&db).await.is_ok());
-    assert!(schema::create_baker_table(&db).await.is_ok());
-    assert!(schema::create_customer_table(&db).await.is_ok());
-    assert!(schema::create_order_table(&db).await.is_ok());
-    assert!(schema::create_cake_table(&db).await.is_ok());
-    assert!(schema::create_cakes_bakers_table(&db).await.is_ok());
-    assert!(schema::create_lineitem_table(&db).await.is_ok());
+    schema::create_bakery_table(&db).await.unwrap();
+    schema::create_baker_table(&db).await.unwrap();
+    schema::create_customer_table(&db).await.unwrap();
+    schema::create_order_table(&db).await.unwrap();
+    schema::create_cake_table(&db).await.unwrap();
+    schema::create_cakes_bakers_table(&db).await.unwrap();
+    schema::create_lineitem_table(&db).await.unwrap();
+    schema::create_metadata_table(&db).await.unwrap();
     db
 }
 

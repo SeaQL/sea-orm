@@ -1,4 +1,4 @@
-use crate::{EntityTrait, QuerySelect, Related, Select, SelectTwo, SelectTwoMany};
+use crate::{EntityTrait, Linked, QuerySelect, Related, Select, SelectTwo, SelectTwoMany};
 pub use sea_query::JoinType;
 
 impl<E> Select<E>
@@ -56,6 +56,19 @@ where
         E: Related<R>,
     {
         self.left_join(r).select_with(r)
+    }
+
+    /// Left Join with a Linked Entity and select both Entity.
+    pub fn find_also_linked<L, T>(self, l: L) -> SelectTwo<E, T>
+    where
+        L: Linked<FromEntity = E, ToEntity = T>,
+        T: EntityTrait,
+    {
+        let mut slf = self;
+        for rel in l.link() {
+            slf = slf.join(JoinType::LeftJoin, rel);
+        }
+        slf.select_also(T::default())
     }
 }
 
@@ -216,6 +229,46 @@ mod tests {
                 r#"INNER JOIN "public"."cake_filling_price" ON"#,
                 r#"("cake_filling_price"."cake_id" = "cake_filling"."cake_id") AND"#,
                 r#"("cake_filling_price"."filling_id" = "cake_filling"."filling_id")"#,
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_10() {
+        let cake_model = cake::Model {
+            id: 12,
+            name: "".to_owned(),
+        };
+
+        assert_eq!(
+            cake_model
+                .find_linked(cake::CakeToFilling)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                r#"SELECT `filling`.`id`, `filling`.`name`"#,
+                r#"FROM `filling`"#,
+                r#"INNER JOIN `cake_filling` ON `cake_filling`.`filling_id` = `filling`.`id`"#,
+                r#"INNER JOIN `cake` ON `cake`.`id` = `cake_filling`.`cake_id`"#,
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_11() {
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_linked(cake::CakeToFilling)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
+                r#"`filling`.`id` AS `B_id`, `filling`.`name` AS `B_name`"#,
+                r#"FROM `cake`"#,
+                r#"LEFT JOIN `cake_filling` ON `cake`.`id` = `cake_filling`.`cake_id`"#,
+                r#"LEFT JOIN `filling` ON `cake_filling`.`filling_id` = `filling`.`id`"#,
             ]
             .join(" ")
         );

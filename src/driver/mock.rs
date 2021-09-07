@@ -2,19 +2,22 @@ use crate::{
     debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
     Statement, Transaction,
 };
+use std::fmt::Debug;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Mutex,
 };
 
+#[derive(Debug)]
 pub struct MockDatabaseConnector;
 
+#[derive(Debug)]
 pub struct MockDatabaseConnection {
     counter: AtomicUsize,
     mocker: Mutex<Box<dyn MockDatabaseTrait>>,
 }
 
-pub trait MockDatabaseTrait: Send {
+pub trait MockDatabaseTrait: Send + Debug {
     fn execute(&mut self, counter: usize, stmt: Statement) -> Result<ExecResult, DbErr>;
 
     fn query(&mut self, counter: usize, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;

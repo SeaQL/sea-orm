@@ -119,33 +119,18 @@ impl From<&ColumnDef> for Column {
             Some(ty) => ty.clone(),
             None => panic!("ColumnType should not be empty"),
         };
-        let auto_increments: Vec<bool> = col_def
+        let auto_increment = col_def
             .get_column_spec()
             .iter()
-            .filter_map(|spec| match spec {
-                ColumnSpec::AutoIncrement => Some(true),
-                _ => None,
-            })
-            .collect();
-        let auto_increment = !auto_increments.is_empty();
-        let not_nulls: Vec<bool> = col_def
+            .any(|spec| matches!(spec, ColumnSpec::AutoIncrement));
+        let not_null = col_def
             .get_column_spec()
             .iter()
-            .filter_map(|spec| match spec {
-                ColumnSpec::NotNull => Some(true),
-                _ => None,
-            })
-            .collect();
-        let not_null = !not_nulls.is_empty();
-        let uniques: Vec<bool> = col_def
+            .any(|spec| matches!(spec, ColumnSpec::NotNull));
+        let unique = col_def
             .get_column_spec()
             .iter()
-            .filter_map(|spec| match spec {
-                ColumnSpec::UniqueKey => Some(true),
-                _ => None,
-            })
-            .collect();
-        let unique = !uniques.is_empty();
+            .any(|spec| matches!(spec, ColumnSpec::UniqueKey));
         Self {
             name,
             col_type,
