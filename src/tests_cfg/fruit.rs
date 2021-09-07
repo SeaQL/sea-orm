@@ -1,35 +1,13 @@
 use crate as sea_orm;
 use crate::entity::prelude::*;
 
-#[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, DeriveModel, DeriveActiveModel)]
 #[sea_orm(table_name = "fruit")]
-pub struct Entity;
-
-#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
+    #[sea_orm(primary_key)]
     pub id: i32,
     pub name: String,
     pub cake_id: Option<i32>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
-pub enum Column {
-    Id,
-    Name,
-    CakeId,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
-pub enum PrimaryKey {
-    Id,
-}
-
-impl PrimaryKeyTrait for PrimaryKey {
-    type ValueType = i32;
-
-    fn auto_increment() -> bool {
-        true
-    }
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -40,18 +18,6 @@ pub enum Relation {
         to = "super::cake::Column::Id"
     )]
     Cake,
-}
-
-impl ColumnTrait for Column {
-    type EntityName = Entity;
-
-    fn def(&self) -> ColumnDef {
-        match self {
-            Self::Id => ColumnType::Integer.def(),
-            Self::Name => ColumnType::String(None).def(),
-            Self::CakeId => ColumnType::Integer.def(),
-        }
-    }
 }
 
 impl Related<super::cake::Entity> for Entity {
