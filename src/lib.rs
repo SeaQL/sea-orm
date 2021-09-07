@@ -227,7 +227,7 @@ pub use query::*;
 
 pub use sea_orm_macros::{
     DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveCustomColumn, DeriveEntity,
-    DeriveModel, DerivePrimaryKey, FromQueryResult, EntityModel,
+    DeriveEntityModel, DeriveModel, DerivePrimaryKey, FromQueryResult,
 };
 
 pub use sea_query;
