@@ -1,3 +1,4 @@
 mod entity;
 
-pub use entity::*;
+#[derive(Debug)]
+pub struct Schema;

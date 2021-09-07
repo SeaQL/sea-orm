@@ -1,10 +1,19 @@
 use crate::{
     unpack_table_ref, ColumnTrait, EntityTrait, Identity, Iterable, PrimaryKeyToColumn,
-    PrimaryKeyTrait, RelationTrait,
+    PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{ColumnDef, ForeignKeyCreateStatement, Iden, Index, TableCreateStatement};
 
-pub fn create_table_from_entity<E>(entity: E) -> TableCreateStatement
+impl Schema {
+    pub fn create_table_from_entity<E>(entity: E) -> TableCreateStatement
+    where
+        E: EntityTrait,
+    {
+        create_table_from_entity(entity)
+    }
+}
+
+pub(crate) fn create_table_from_entity<E>(entity: E) -> TableCreateStatement
 where
     E: EntityTrait,
 {
@@ -112,14 +121,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{create_table_from_entity, tests_cfg::*};
+    use crate::{sea_query::*, tests_cfg::*, Schema};
     use pretty_assertions::assert_eq;
-    use sea_query::*;
 
     #[test]
     fn test_create_table_from_entity() {
         assert_eq!(
-            create_table_from_entity(CakeFillingPrice).to_string(MysqlQueryBuilder),
+            Schema::create_table_from_entity(CakeFillingPrice).to_string(MysqlQueryBuilder),
             Table::create()
                 .table(CakeFillingPrice)
                 .if_not_exists()
