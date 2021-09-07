@@ -1,7 +1,9 @@
-
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use syn::{Attribute, Data, Fields, Lit, Meta, parse::Error, punctuated::Punctuated, spanned::Spanned, token::Comma};
+use syn::{
+    parse::Error, punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, Fields,
+    Lit, Meta,
+};
 
 use convert_case::{Case, Casing};
 
@@ -20,8 +22,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     if let Some(ident) = nv.path.get_ident() {
                         if ident == "table_name" {
                             table_name = Some(nv.lit.clone());
-                        }
-                        else if ident == "schema_name" {
+                        } else if ident == "schema_name" {
                             let name = &nv.lit;
                             schema_name = quote! { Some(#name) };
                         }
@@ -30,20 +31,24 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
             }
         }
     });
-    let entity_def = table_name.map(|table_name| quote! {
-            #[derive(Copy, Clone, Default, Debug, sea_orm::prelude::DeriveEntity)]
-            pub struct Entity;
-            
-            impl sea_orm::prelude::EntityName for Entity {
-                fn schema_name(&self) -> Option<&str> {
-                    #schema_name
-                }
+    let entity_def = table_name
+        .map(|table_name| {
+            quote! {
+                #[derive(Copy, Clone, Default, Debug, sea_orm::prelude::DeriveEntity)]
+                pub struct Entity;
 
-                fn table_name(&self) -> &str {
-                    #table_name
+                impl sea_orm::prelude::EntityName for Entity {
+                    fn schema_name(&self) -> Option<&str> {
+                        #schema_name
+                    }
+
+                    fn table_name(&self) -> &str {
+                        #table_name
+                    }
                 }
             }
-        }).unwrap_or_default();
+        })
+        .unwrap_or_default();
 
     // generate Column enum and it's ColumnTrait impl
     let mut columns_enum: Punctuated<_, Comma> = Punctuated::new();
@@ -55,7 +60,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         if let Fields::Named(fields) = item_struct.fields {
             for field in fields.named {
                 if let Some(ident) = &field.ident {
-                    let field_name = Ident::new(&ident.to_string().to_case(Case::Pascal), Span::call_site());
+                    let field_name =
+                        Ident::new(&ident.to_string().to_case(Case::Pascal), Span::call_site());
                     columns_enum.push(quote! { #field_name });
 
                     let mut nullable = false;
@@ -70,60 +76,74 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             if ident != "sea_orm" {
                                 continue;
                             }
-                        }
-                        else {
+                        } else {
                             continue;
                         }
 
                         // single param
-                        if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
+                        if let Ok(list) =
+                            attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
+                        {
                             for meta in list.iter() {
                                 match meta {
                                     Meta::NameValue(nv) => {
                                         if let Some(name) = nv.path.get_ident() {
                                             if name == "column_type" {
                                                 if let Lit::Str(litstr) = &nv.lit {
-                                                    let ty: TokenStream = syn::parse_str(&litstr.value())?;
+                                                    let ty: TokenStream =
+                                                        syn::parse_str(&litstr.value())?;
                                                     sql_type = Some(ty);
+                                                } else {
+                                                    return Err(Error::new(
+                                                        field.span(),
+                                                        format!("Invalid column_type {:?}", nv.lit),
+                                                    ));
                                                 }
-                                                else {
-                                                    return Err(Error::new(field.span(), format!("Invalid column_type {:?}", nv.lit)));
+                                            } else if name == "auto_increment" {
+                                                if let Lit::Str(litstr) = &nv.lit {
+                                                    auto_increment =
+                                                        match litstr.value().as_str() {
+                                                            "true" => true,
+                                                            "false" => false,
+                                                            _ => return Err(Error::new(
+                                                                field.span(),
+                                                                format!(
+                                                                    "Invalid auto_increment = {}",
+                                                                    litstr.value()
+                                                                ),
+                                                            )),
+                                                        };
+                                                } else {
+                                                    return Err(Error::new(
+                                                        field.span(),
+                                                        format!(
+                                                            "Invalid auto_increment = {:?}",
+                                                            nv.lit
+                                                        ),
+                                                    ));
                                                 }
-                                            }
-                                            else if name == "auto_increment" {
-                                                if let Lit::Bool(litbool) = &nv.lit {
-                                                    auto_increment = litbool.value();
-                                                }
-                                                else {
-                                                    return Err(Error::new(field.span(), format!("Invalid auto_increment = {:?}", nv.lit)));
-                                                }
-                                            }
-                                            else if name == "default_value" {
+                                            } else if name == "default_value" {
                                                 default_value = Some(nv.lit.to_owned());
-                                            }
-                                            else if name == "default_expr" {
+                                            } else if name == "default_expr" {
                                                 default_expr = Some(nv.lit.to_owned());
                                             }
                                         }
-                                    },
+                                    }
                                     Meta::Path(p) => {
                                         if let Some(name) = p.get_ident() {
                                             if name == "primary_key" {
                                                 primary_keys.push(quote! { #field_name });
                                                 primary_key_types.push(field.ty.clone());
-                                            }
-                                            else if name == "nullable" {
+                                            } else if name == "nullable" {
                                                 nullable = true;
-                                            }
-                                            else if name == "indexed" {
+                                            } else if name == "indexed" {
                                                 indexed = true;
-                                            }
-                                            else if name == "unique" {
+                                            } else if name == "unique" {
                                                 unique = true;
                                             }
                                         }
-                                    },
-                                    _ => {},
+                                    }
+                                    _ => {}
                                 }
                             }
                         }
@@ -134,13 +154,12 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         None => {
                             let field_type = &field.ty;
                             let temp = quote! { #field_type }
-                                .to_string()//E.g.: "Option < String >"
+                                .to_string() //E.g.: "Option < String >"
                                 .replace(" ", "");
                             let temp = if temp.starts_with("Option<") {
                                 nullable = true;
                                 &temp[7..(temp.len() - 1)]
-                            }
-                            else {
+                            } else {
                                 temp.as_str()
                             };
                             match temp {
@@ -158,7 +177,12 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 "NaiveDateTime" => quote! { DateTime },
                                 "Uuid" => quote! { Uuid },
                                 "Decimal" => quote! { BigInteger },
-                                _ => return Err(Error::new(field.span(), format!("unrecognized type {}", temp))),
+                                _ => {
+                                    return Err(Error::new(
+                                        field.span(),
+                                        format!("unrecognized type {}", temp),
+                                    ))
+                                }
                             }
                         }
                     };
@@ -185,49 +209,50 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         }
     }
 
-    let primary_key = (!primary_keys.is_empty()).then(|| {
-        let auto_increment = auto_increment && primary_keys.len() == 1;
-        let primary_key_types = if primary_key_types.len() == 1 {
-            let first = primary_key_types.first();
-            quote! { #first }
-        }
-        else {
-            quote! { (#primary_key_types) }
-        };
-        quote! {
-#[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
-pub enum PrimaryKey {
-    #primary_keys
-}
+    let primary_key = (!primary_keys.is_empty())
+        .then(|| {
+            let auto_increment = auto_increment && primary_keys.len() == 1;
+            let primary_key_types = if primary_key_types.len() == 1 {
+                let first = primary_key_types.first();
+                quote! { #first }
+            } else {
+                quote! { (#primary_key_types) }
+            };
+            quote! {
+            #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+            pub enum PrimaryKey {
+                #primary_keys
+            }
 
-impl PrimaryKeyTrait for PrimaryKey {
-    type ValueType = #primary_key_types;
+            impl PrimaryKeyTrait for PrimaryKey {
+                type ValueType = #primary_key_types;
 
-    fn auto_increment() -> bool {
-        #auto_increment
-    }
-}
-        }
-    }).unwrap_or_default();
+                fn auto_increment() -> bool {
+                    #auto_increment
+                }
+            }
+                    }
+        })
+        .unwrap_or_default();
 
     return Ok(quote! {
-#[derive(Copy, Clone, Debug, sea_orm::prelude::EnumIter, sea_orm::prelude::DeriveColumn)]
-pub enum Column {
-    #columns_enum
-}
+    #[derive(Copy, Clone, Debug, sea_orm::prelude::EnumIter, sea_orm::prelude::DeriveColumn)]
+    pub enum Column {
+        #columns_enum
+    }
 
-impl sea_orm::prelude::ColumnTrait for Column {
-    type EntityName = Entity;
+    impl sea_orm::prelude::ColumnTrait for Column {
+        type EntityName = Entity;
 
-    fn def(&self) -> sea_orm::prelude::ColumnDef {
-        match self {
-            #columns_trait
+        fn def(&self) -> sea_orm::prelude::ColumnDef {
+            match self {
+                #columns_trait
+            }
         }
     }
-}
 
-#entity_def
+    #entity_def
 
-#primary_key
-    })
+    #primary_key
+        });
 }

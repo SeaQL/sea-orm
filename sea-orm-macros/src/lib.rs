@@ -1,7 +1,7 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use syn::{DeriveInput, parse_macro_input};
+use syn::{parse_macro_input, DeriveInput};
 
 mod derives;
 
@@ -10,6 +10,22 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, attrs, .. } = parse_macro_input!(input);
 
     match derives::expand_derive_entity(ident, attrs) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
+#[proc_macro_derive(DeriveEntityModel, attributes(sea_orm))]
+pub fn derive_entity_model(input: TokenStream) -> TokenStream {
+    let DeriveInput {
+        ident, data, attrs, ..
+    } = parse_macro_input!(input as DeriveInput);
+
+    if ident != "Model" {
+        panic!("Struct name must be Model");
+    }
+
+    match derives::expand_derive_entity_model(data, attrs) {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }
@@ -107,18 +123,4 @@ pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
         }
     )
     .into()
-}
-
-#[proc_macro_derive(EntityModel, attributes(sea_orm))]
-pub fn derive_entity_model(input: TokenStream) -> TokenStream {
-    let DeriveInput { ident, data, attrs, .. } = parse_macro_input!(input as DeriveInput);
-
-    if ident != "Model" {
-        panic!("Struct name must be Model");
-    }
-
-    match derives::expand_derive_entity_model(data, attrs) {
-        Ok(ts) => ts.into(),
-        Err(e) => e.to_compile_error().into(),
-    }
 }
