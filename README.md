@@ -98,7 +98,7 @@ let mut pear: fruit::ActiveModel = pear.unwrap().into();
 pear.name = Set("Sweet pear".to_owned());
 
 // update one
-let pear: fruit::ActiveModel = Fruit::update(pear).exec(db).await?;
+let pear: fruit::ActiveModel = pear.update(db).await?;
 
 // update many: UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."name" LIKE '%Apple%'
 Fruit::update_many()

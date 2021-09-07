@@ -37,6 +37,14 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
         }
 
         impl ActiveModel {
+            pub async fn insert(self, db: &sea_orm::DatabaseConnection) -> Result<Self, sea_orm::DbErr> {
+                sea_orm::insert_and_select_active_model::<Self, Entity>(self, db).await
+            }
+
+            pub async fn update(self, db: &sea_orm::DatabaseConnection) -> Result<Self, sea_orm::DbErr> {
+                sea_orm::update_active_model::<Self, Entity>(self, db).await
+            }
+
             pub async fn save(self, db: &sea_orm::DatabaseConnection) -> Result<Self, sea_orm::DbErr> {
                 sea_orm::save_active_model::<Self, Entity>(self, db).await
             }

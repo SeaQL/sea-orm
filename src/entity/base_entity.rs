@@ -386,7 +386,7 @@ pub trait EntityTrait: EntityName {
     /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
     /// assert_eq!(
-    ///     fruit::Entity::update(orange.clone()).exec(&db).await?, // Clone here because we need to assert_eq
+    ///     orange.clone().update(&db).await?, // Clone here because we need to assert_eq
     ///     orange
     /// );
     /// #
