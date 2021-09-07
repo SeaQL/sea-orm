@@ -1,18 +1,17 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, DeriveInput};
+use syn::{parse_macro_input, DeriveInput, Error};
 
+mod attributes;
 mod derives;
 
-#[proc_macro_derive(DeriveEntity, attributes(table))]
+#[proc_macro_derive(DeriveEntity, attributes(sea_orm))]
 pub fn derive_entity(input: TokenStream) -> TokenStream {
-    let DeriveInput { ident, attrs, .. } = parse_macro_input!(input);
-
-    match derives::expand_derive_entity(ident, attrs) {
-        Ok(ts) => ts.into(),
-        Err(e) => e.to_compile_error().into(),
-    }
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_entity(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
 }
 
 #[proc_macro_derive(DeriveEntityModel, attributes(sea_orm))]
