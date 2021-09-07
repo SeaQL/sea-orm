@@ -1,7 +1,7 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, DeriveInput};
+use syn::{DeriveInput, parse_macro_input};
 
 mod derives;
 
@@ -88,7 +88,7 @@ pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
 #[doc(hidden)]
 #[proc_macro_attribute]
 pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
-    let input = syn::parse_macro_input!(input as syn::ItemFn);
+    let input = parse_macro_input!(input as syn::ItemFn);
 
     let ret = &input.sig.output;
     let name = &input.sig.ident;
@@ -107,4 +107,18 @@ pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
         }
     )
     .into()
+}
+
+#[proc_macro_derive(EntityModel, attributes(sea_orm))]
+pub fn derive_entity_model(input: TokenStream) -> TokenStream {
+    let DeriveInput { ident, data, attrs, .. } = parse_macro_input!(input as DeriveInput);
+
+    if ident != "Model" {
+        panic!("Struct name must be Model");
+    }
+
+    match derives::expand_derive_entity_model(data, attrs) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
 }
