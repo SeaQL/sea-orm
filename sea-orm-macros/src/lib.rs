@@ -16,6 +16,7 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(DeriveEntityModel, attributes(sea_orm))]
 pub fn derive_entity_model(input: TokenStream) -> TokenStream {
+    let input_ts = input.clone();
     let DeriveInput {
         ident, data, attrs, ..
     } = parse_macro_input!(input as DeriveInput);
@@ -24,10 +25,14 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
         panic!("Struct name must be Model");
     }
 
-    match derives::expand_derive_entity_model(data, attrs) {
-        Ok(ts) => ts.into(),
-        Err(e) => e.to_compile_error().into(),
-    }
+    let mut ts: TokenStream = derives::expand_derive_entity_model(data, attrs)
+        .unwrap_or_else(Error::into_compile_error)
+        .into();
+    ts.extend(vec![
+        derive_model(input_ts.clone()),
+        derive_active_model(input_ts),
+    ]);
+    ts
 }
 
 #[proc_macro_derive(DerivePrimaryKey)]
