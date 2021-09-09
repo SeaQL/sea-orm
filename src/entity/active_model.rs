@@ -92,7 +92,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     async fn update(self, db: &DatabaseConnection) -> Result<Self, DbErr> {
-        let exec = Self::Entity::update(self).prepare_filters().exec(db);
+        let exec = Self::Entity::update(self).exec(db);
         exec.await
     }
 
