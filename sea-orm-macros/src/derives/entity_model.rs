@@ -224,24 +224,24 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         })
         .unwrap_or_default();
 
-    return Ok(quote! {
-    #[derive(Copy, Clone, Debug, sea_orm::prelude::EnumIter, sea_orm::prelude::DeriveColumn)]
-    pub enum Column {
-        #columns_enum
-    }
+    Ok(quote! {
+        #[derive(Copy, Clone, Debug, sea_orm::prelude::EnumIter, sea_orm::prelude::DeriveColumn)]
+        pub enum Column {
+            #columns_enum
+        }
 
-    impl sea_orm::prelude::ColumnTrait for Column {
-        type EntityName = Entity;
+        impl sea_orm::prelude::ColumnTrait for Column {
+            type EntityName = Entity;
 
-        fn def(&self) -> sea_orm::prelude::ColumnDef {
-            match self {
-                #columns_trait
+            fn def(&self) -> sea_orm::prelude::ColumnDef {
+                match self {
+                    #columns_trait
+                }
             }
         }
-    }
 
-    #entity_def
+        #entity_def
 
-    #primary_key
-        });
+        #primary_key
+    })
 }
