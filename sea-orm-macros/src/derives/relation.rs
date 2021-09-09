@@ -114,6 +114,28 @@ impl DeriveRelation {
                     return Err(syn::Error::new_spanned(variant, "Missing attribute 'to'"));
                 }
 
+                if attr.on_update.is_some() {
+                    let on_update = attr
+                        .on_update
+                        .as_ref()
+                        .map(Self::parse_lit_string)
+                        .ok_or_else(|| {
+                            syn::Error::new_spanned(variant, "Missing value for 'on_update'")
+                        })??;
+                    result = quote! { #result.on_update(sea_orm::prelude::ForeignKeyAction::#on_update) };
+                }
+
+                if attr.on_delete.is_some() {
+                    let on_delete = attr
+                        .on_delete
+                        .as_ref()
+                        .map(Self::parse_lit_string)
+                        .ok_or_else(|| {
+                            syn::Error::new_spanned(variant, "Missing value for 'on_delete'")
+                        })??;
+                    result = quote! { #result.on_delete(sea_orm::prelude::ForeignKeyAction::#on_delete) };
+                }
+
                 result = quote! { #result.into() };
 
                 Result::<_, syn::Error>::Ok(result)

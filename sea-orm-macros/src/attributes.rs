@@ -21,6 +21,8 @@ pub mod field_attr {
         pub belongs_to: Option<syn::Lit>,
         pub has_one: Option<syn::Lit>,
         pub has_many: Option<syn::Lit>,
+        pub on_update: Option<syn::Lit>,
+        pub on_delete: Option<syn::Lit>,
         pub from: Option<syn::Lit>,
         pub to: Option<syn::Lit>,
     }
