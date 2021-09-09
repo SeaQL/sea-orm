@@ -6,6 +6,7 @@ use std::fmt::Debug;
 //LINT: composite primary key cannot auto increment
 pub trait PrimaryKeyTrait: IdenStatic + Iterable {
     type ValueType: Sized
+        + Send
         + Default
         + Debug
         + PartialEq
