@@ -59,6 +59,7 @@ default = [
     "with-uuid",
 ]
 macros = ["sea-orm-macros"]
+model-validation = ["sea-orm-macros/model-validation"]
 mock = []
 with-json = ["serde_json", "sea-query/with-json"]
 with-chrono = ["chrono", "sea-query/with-chrono"]

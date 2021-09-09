@@ -5,6 +5,7 @@ use syn::{parse_macro_input, DeriveInput, Error};
 
 mod attributes;
 mod derives;
+mod model_validation;
 
 #[proc_macro_derive(DeriveEntity, attributes(sea_orm))]
 pub fn derive_entity(input: TokenStream) -> TokenStream {

@@ -215,6 +215,7 @@ pub mod error;
 mod executor;
 pub mod query;
 #[doc(hidden)]
+#[cfg(not(feature = "model-validation"))]
 pub mod tests_cfg;
 mod util;
 

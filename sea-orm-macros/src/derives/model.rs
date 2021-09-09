@@ -1,4 +1,4 @@
-use crate::attributes::derive_attr;
+use crate::{attributes::derive_attr, model_validation};
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
@@ -29,6 +29,27 @@ impl DeriveModel {
         let sea_attr = derive_attr::SeaOrm::try_from_attributes(&input.attrs)
             .map_err(Error::Syn)?
             .unwrap_or_default();
+
+        model_validation::validate_fields(
+            sea_attr
+                .schema_name
+                .and_then(|schema| match schema {
+                    syn::Lit::Str(lit_str) => Some(lit_str.value()),
+                    _ => None,
+                })
+                .unwrap_or_else(|| "public".to_string())
+                .as_ref(),
+            sea_attr
+                .table_name
+                .and_then(|schema| match schema {
+                    syn::Lit::Str(lit_str) => Some(lit_str.value()),
+                    _ => None,
+                })
+                .unwrap()
+                .as_str(),
+            &fields,
+        )
+        .unwrap();
 
         let ident = input.ident;
         let entity_ident = sea_attr.entity.unwrap_or_else(|| format_ident!("Entity"));
