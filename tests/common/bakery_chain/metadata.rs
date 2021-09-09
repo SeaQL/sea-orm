@@ -8,6 +8,7 @@ pub struct Model {
     pub uuid: Uuid,
     pub key: String,
     pub value: String,
+    pub bytes: Vec<u8>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
