@@ -1,4 +1,6 @@
-use crate::{attributes::derive_attr, model_validation};
+use crate::attributes::derive_attr;
+#[cfg(feature = "model-validation")]
+use crate::model_validation;
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
@@ -30,6 +32,7 @@ impl DeriveModel {
             .map_err(Error::Syn)?
             .unwrap_or_default();
 
+        #[cfg(feature = "model-validation")]
         model_validation::validate_fields(
             sea_attr
                 .schema_name

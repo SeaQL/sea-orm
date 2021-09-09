@@ -5,6 +5,7 @@ use syn::{parse_macro_input, DeriveInput, Error};
 
 mod attributes;
 mod derives;
+#[cfg(feature = "model-validation")]
 mod model_validation;
 
 #[proc_macro_derive(DeriveEntity, attributes(sea_orm))]
