@@ -91,6 +91,10 @@ impl Entity {
         self.relations.iter().map(|rel| rel.get_def()).collect()
     }
 
+    pub fn get_relation_attrs(&self) -> Vec<TokenStream> {
+        self.relations.iter().map(|rel| rel.get_attrs()).collect()
+    }
+
     pub fn get_relation_rel_types(&self) -> Vec<Ident> {
         self.relations
             .iter()
@@ -168,7 +172,7 @@ impl Entity {
 mod tests {
     use crate::{Column, Entity, PrimaryKey, Relation, RelationType};
     use quote::format_ident;
-    use sea_query::ColumnType;
+    use sea_query::{ColumnType, ForeignKeyAction};
 
     fn setup() -> Entity {
         Entity {
@@ -195,12 +199,16 @@ mod tests {
                     columns: vec!["id".to_owned()],
                     ref_columns: vec!["cake_id".to_owned()],
                     rel_type: RelationType::HasOne,
+                    on_delete: Some(ForeignKeyAction::Cascade),
+                    on_update: Some(ForeignKeyAction::Cascade),
                 },
                 Relation {
                     ref_table: "filling".to_owned(),
                     columns: vec!["id".to_owned()],
                     ref_columns: vec!["cake_id".to_owned()],
                     rel_type: RelationType::HasOne,
+                    on_delete: Some(ForeignKeyAction::Cascade),
+                    on_update: Some(ForeignKeyAction::Cascade),
                 },
             ],
             conjunct_relations: vec![],
@@ -344,6 +352,18 @@ mod tests {
 
         for (i, elem) in entity.get_relation_defs().into_iter().enumerate() {
             assert_eq!(elem.to_string(), entity.relations[i].get_def().to_string());
+        }
+    }
+
+    #[test]
+    fn test_get_relation_attrs() {
+        let entity = setup();
+
+        for (i, elem) in entity.get_relation_attrs().into_iter().enumerate() {
+            assert_eq!(
+                elem.to_string(),
+                entity.relations[i].get_attrs().to_string()
+            );
         }
     }
 
