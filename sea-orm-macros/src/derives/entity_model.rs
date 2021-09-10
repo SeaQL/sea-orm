@@ -167,6 +167,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 "Uuid" => quote! { Uuid },
                                 "Json" => quote! { Json },
                                 "Decimal" => quote! { Decimal },
+                                "Vec<u8>" => quote! { Binary },
                                 _ => {
                                     return Err(Error::new(
                                         field.span(),
