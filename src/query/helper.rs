@@ -3,7 +3,9 @@ use crate::{
     PrimaryKeyToColumn, RelationDef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
-use sea_query::{Expr, IntoCondition, LockType, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef};
+use sea_query::{
+    Expr, IntoCondition, LockType, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef,
+};
 
 // LINT: when the column does not appear in tables selected from
 // LINT: when there is a group by clause, but some columns don't have aggregate functions

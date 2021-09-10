@@ -73,13 +73,17 @@ async fn update(conn: Connection<Db>, id: i32, post_form: Form<post::Model>) -> 
 }
 
 #[get("/?<page>")]
-async fn list(conn: Connection<Db>, page: Option<usize>, flash: Option<FlashMessage<'_>>) -> Template {
+async fn list(
+    conn: Connection<Db>,
+    page: Option<usize>,
+    flash: Option<FlashMessage<'_>>,
+) -> Template {
     let page = page.unwrap_or(0);
-    let paginator = Post::find()
-        .paginate(&conn, ROWS_PER_PAGE);
+    let paginator = Post::find().paginate(&conn, ROWS_PER_PAGE);
     let num_pages = paginator.num_pages().await.ok().unwrap();
 
-    let posts = paginator.fetch_page(page)
+    let posts = paginator
+        .fetch_page(page)
         .await
         .expect("could not retrieve posts");
 
@@ -91,7 +95,7 @@ async fn list(conn: Connection<Db>, page: Option<usize>, flash: Option<FlashMess
             posts: posts,
             flash: flash,
             page: page,
-            num_pages: num_pages
+            num_pages: num_pages,
         },
     )
 }
