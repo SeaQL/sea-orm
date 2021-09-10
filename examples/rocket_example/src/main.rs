@@ -11,7 +11,6 @@ use rocket_db_pools::{sqlx, Connection, Database};
 use rocket_dyn_templates::{context, Template};
 
 use sea_orm::entity::*;
-use sea_orm::query::*;
 
 mod pool;
 use pool::RocketDbPool;
@@ -71,11 +70,14 @@ async fn update(conn: Connection<Db>, id: i32, post_form: Form<post::Model>) -> 
     Flash::success(Redirect::to("/"), "Post successfully edited.")
 }
 
-#[get("/")]
-async fn list(conn: Connection<Db>, flash: Option<FlashMessage<'_>>) -> Template {
-    let posts = Post::find()
-        .order_by_asc(post::Column::Id)
-        .all(&conn)
+#[get("/?<page>")]
+async fn list(conn: Connection<Db>, page: Option<usize>, flash: Option<FlashMessage<'_>>) -> Template {
+    let page = page.unwrap_or(0);
+    let paginator = Post::find()
+        .paginate(&conn, 4);
+    let num_pages = paginator.num_pages().await.ok().unwrap();
+
+    let posts = paginator.fetch_page(page)
         .await
         .expect("could not retrieve posts");
 
@@ -86,6 +88,8 @@ async fn list(conn: Connection<Db>, flash: Option<FlashMessage<'_>>) -> Template
         context! {
             posts: posts,
             flash: flash,
+            page: page,
+            num_pages: num_pages
         },
     )
 }
@@ -138,7 +142,7 @@ pub fn not_found(req: &Request<'_>) -> Template {
 async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
     let db_url = Db::fetch(&rocket).unwrap().db_url.clone();
     let conn = sea_orm::Database::connect(&db_url).await.unwrap();
-    setup::create_post_table(&conn).await;
+    let _ = setup::create_post_table(&conn).await;
     Ok(rocket)
 }
 
