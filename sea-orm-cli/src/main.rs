@@ -25,6 +25,7 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
             let url = args.value_of("DATABASE_URL").unwrap();
             let output_dir = args.value_of("OUTPUT_DIR").unwrap();
             let include_hidden_tables = args.is_present("INCLUDE_HIDDEN_TABLES");
+            let expanded_format = args.is_present("EXPANDED_FORMAT");
             let filter_hidden_tables = |table: &str| -> bool {
                 if include_hidden_tables {
                     true
@@ -66,7 +67,7 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                 panic!("This database is not supported ({})", url)
             };
 
-            let output = EntityTransformer::transform(table_stmts)?.generate();
+            let output = EntityTransformer::transform(table_stmts)?.generate(expanded_format);
 
             let dir = Path::new(output_dir);
             fs::create_dir_all(dir)?;

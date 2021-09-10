@@ -40,6 +40,20 @@ pub fn build_cli() -> App<'static, 'static> {
                         .long("include-hidden-tables")
                         .help("Generate entity file for hidden tables (i.e. table name starts with an underscore)")
                         .takes_value(false),
+                )
+                .arg(
+                    Arg::with_name("EXPANDED_FORMAT")
+                        .long("expanded-format")
+                        .help("Generate entity file of expanded format")
+                        .takes_value(false)
+                        .conflicts_with("COMPACT_FORMAT"),
+                )
+                .arg(
+                    Arg::with_name("COMPACT_FORMAT")
+                        .long("compact-format")
+                        .help("Generate entity file of compact format")
+                        .takes_value(false)
+                        .conflicts_with("EXPANDED_FORMAT"),
                 ),
         )
         .setting(AppSettings::SubcommandRequiredElseHelp);

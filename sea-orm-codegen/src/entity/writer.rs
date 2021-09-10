@@ -17,21 +17,25 @@ pub struct OutputFile {
 }
 
 impl EntityWriter {
-    pub fn generate(self) -> WriterOutput {
+    pub fn generate(self, expanded_format: bool) -> WriterOutput {
         let mut files = Vec::new();
-        files.extend(self.write_entities());
+        files.extend(self.write_entities(expanded_format));
         files.push(self.write_mod());
         files.push(self.write_prelude());
         WriterOutput { files }
     }
 
-    pub fn write_entities(&self) -> Vec<OutputFile> {
+    pub fn write_entities(&self, expanded_format: bool) -> Vec<OutputFile> {
         self.entities
             .iter()
             .map(|entity| {
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);
-                let code_blocks = Self::gen_expanded_code_blocks(entity);
+                let code_blocks = if expanded_format {
+                    Self::gen_expanded_code_blocks(entity)
+                } else {
+                    Self::gen_compact_code_blocks(entity)
+                };
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
                     name: format!("{}.rs", entity.get_table_name_snake_case()),
