@@ -2,6 +2,7 @@ use crate::{
     error::*, DatabaseConnection, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn,
     PrimaryKeyTrait, Value,
 };
+use async_trait::async_trait;
 use std::fmt::Debug;
 
 #[derive(Clone, Debug, Default)]
@@ -50,6 +51,7 @@ where
     ActiveValue::unchanged(value)
 }
 
+#[async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
     type Entity: EntityTrait;
 
@@ -65,9 +67,71 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     fn default() -> Self;
 
-    // below is not yet possible. right now we define these methods in DeriveActiveModel
-    // fn save(self, db: &DatabaseConnection) -> impl Future<Output = Result<Self, DbErr>>;
-    // fn delete(self, db: &DatabaseConnection) -> impl Future<Output = Result<DeleteResult, DbErr>>;
+    async fn insert(self, db: &DatabaseConnection) -> Result<Self, DbErr>
+    where
+        <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+    {
+        let am = self;
+        let exec = <Self::Entity as EntityTrait>::insert(am).exec(db);
+        let res = exec.await?;
+        // TODO: if the entity does not have auto increment primary key, then last_insert_id is a wrong value
+        // FIXME: Assumed valid last_insert_id is not equals to Default::default()
+        if <<Self::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::auto_increment()
+            && res.last_insert_id != <<Self::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType::default()
+        {
+            let find = <Self::Entity as EntityTrait>::find_by_id(res.last_insert_id).one(db);
+            let found = find.await;
+            let model: Option<<Self::Entity as EntityTrait>::Model> = found?;
+            match model {
+                Some(model) => Ok(model.into_active_model()),
+                None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
+            }
+        } else {
+            Ok(Self::default())
+        }
+    }
+
+    async fn update(self, db: &DatabaseConnection) -> Result<Self, DbErr> {
+        let exec = Self::Entity::update(self).exec(db);
+        exec.await
+    }
+
+    /// Insert the model if primary key is unset, update otherwise.
+    /// Only works if the entity has auto increment primary key.
+    async fn save(self, db: &DatabaseConnection) -> Result<Self, DbErr>
+    where
+        Self: ActiveModelBehavior,
+        <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+    {
+        let mut am = self;
+        am = ActiveModelBehavior::before_save(am);
+        let mut is_update = true;
+        for key in <Self::Entity as EntityTrait>::PrimaryKey::iter() {
+            let col = key.into_column();
+            if am.is_unset(col) {
+                is_update = false;
+                break;
+            }
+        }
+        if !is_update {
+            am = am.insert(db).await?;
+        } else {
+            am = am.update(db).await?;
+        }
+        am = ActiveModelBehavior::after_save(am);
+        Ok(am)
+    }
+
+    /// Delete an active model by its primary key
+    async fn delete(self, db: &DatabaseConnection) -> Result<DeleteResult, DbErr>
+    where
+        Self: ActiveModelBehavior,
+    {
+        let mut am = self;
+        am = ActiveModelBehavior::before_delete(am);
+        let exec = Self::Entity::delete(am).exec(db);
+        exec.await
+    }
 }
 
 /// Behaviors for users to override
@@ -184,81 +248,4 @@ where
     fn eq(&self, other: &Self) -> bool {
         self.value.as_ref() == other.value.as_ref()
     }
-}
-
-/// Insert the model if primary key is unset, update otherwise.
-/// Only works if the entity has auto increment primary key.
-pub async fn save_active_model<A, E>(mut am: A, db: &DatabaseConnection) -> Result<A, DbErr>
-where
-    A: ActiveModelBehavior + ActiveModelTrait<Entity = E>,
-    E::Model: IntoActiveModel<A>,
-    E: EntityTrait,
-{
-    am = ActiveModelBehavior::before_save(am);
-    let mut is_update = true;
-    for key in E::PrimaryKey::iter() {
-        let col = key.into_column();
-        if am.is_unset(col) {
-            is_update = false;
-            break;
-        }
-    }
-    if !is_update {
-        am = insert_and_select_active_model::<A, E>(am, db).await?;
-    } else {
-        am = update_active_model::<A, E>(am, db).await?;
-    }
-    am = ActiveModelBehavior::after_save(am);
-    Ok(am)
-}
-
-async fn insert_and_select_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, DbErr>
-where
-    A: ActiveModelTrait<Entity = E>,
-    E::Model: IntoActiveModel<A>,
-    E: EntityTrait,
-{
-    let exec = E::insert(am).exec(db);
-    let res = exec.await?;
-    // TODO: if the entity does not have auto increment primary key, then last_insert_id is a wrong value
-    // FIXME: Assumed valid last_insert_id is not equals to Default::default()
-    if <E::PrimaryKey as PrimaryKeyTrait>::auto_increment()
-        && res.last_insert_id != <E::PrimaryKey as PrimaryKeyTrait>::ValueType::default()
-    {
-        let find = E::find_by_id(res.last_insert_id).one(db);
-        let found = find.await;
-        let model: Option<E::Model> = found?;
-        match model {
-            Some(model) => Ok(model.into_active_model()),
-            None => Err(DbErr::Exec(format!(
-                "Failed to find inserted item: {}",
-                E::default().to_string(),
-            ))),
-        }
-    } else {
-        Ok(A::default())
-    }
-}
-
-async fn update_active_model<A, E>(am: A, db: &DatabaseConnection) -> Result<A, DbErr>
-where
-    A: ActiveModelTrait<Entity = E>,
-    E: EntityTrait,
-{
-    let exec = E::update(am).exec(db);
-    exec.await
-}
-
-/// Delete an active model by its primary key
-pub async fn delete_active_model<A, E>(
-    mut am: A,
-    db: &DatabaseConnection,
-) -> Result<DeleteResult, DbErr>
-where
-    A: ActiveModelBehavior + ActiveModelTrait<Entity = E>,
-    E: EntityTrait,
-{
-    am = ActiveModelBehavior::before_delete(am);
-    let exec = E::delete(am).exec(db);
-    exec.await
 }

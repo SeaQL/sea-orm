@@ -47,13 +47,14 @@ impl Update {
         E: EntityTrait,
         A: ActiveModelTrait<Entity = E>,
     {
-        let myself = UpdateOne {
+        UpdateOne {
             query: UpdateStatement::new()
                 .table(A::Entity::default().table_ref())
                 .to_owned(),
             model,
-        };
-        myself.prepare()
+        }
+        .prepare_filters()
+        .prepare_values()
     }
 
     /// Update many ActiveModel
@@ -85,7 +86,7 @@ impl<A> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
-    pub(crate) fn prepare(mut self) -> Self {
+    pub(crate) fn prepare_filters(mut self) -> Self {
         for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
             let av = self.model.get(col);
@@ -95,6 +96,10 @@ where
                 panic!("PrimaryKey is not set");
             }
         }
+        self
+    }
+
+    pub(crate) fn prepare_values(mut self) -> Self {
         for col in <A::Entity as EntityTrait>::Column::iter() {
             if <A::Entity as EntityTrait>::PrimaryKey::from_column(col).is_some() {
                 continue;
