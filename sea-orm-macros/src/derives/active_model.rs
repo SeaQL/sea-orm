@@ -36,23 +36,13 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
             #(pub #field: sea_orm::ActiveValue<#ty>),*
         }
 
-        impl ActiveModel {
-            pub async fn save(self, db: &sea_orm::DatabaseConnection) -> Result<Self, sea_orm::DbErr> {
-                sea_orm::save_active_model::<Self, Entity>(self, db).await
-            }
-
-            pub async fn delete(self, db: &sea_orm::DatabaseConnection) -> Result<sea_orm::DeleteResult, sea_orm::DbErr> {
-                sea_orm::delete_active_model::<Self, Entity>(self, db).await
-            }
-        }
-
-        impl Default for ActiveModel {
+        impl std::default::Default for ActiveModel {
             fn default() -> Self {
                 <Self as sea_orm::ActiveModelBehavior>::new()
             }
         }
 
-        impl From<<Entity as EntityTrait>::Model> for ActiveModel {
+        impl std::convert::From<<Entity as EntityTrait>::Model> for ActiveModel {
             fn from(m: <Entity as EntityTrait>::Model) -> Self {
                 Self {
                     #(#field: sea_orm::unchanged_active_value_not_intended_for_public_use(m.#field)),*

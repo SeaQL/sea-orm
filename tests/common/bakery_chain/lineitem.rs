@@ -1,82 +1,35 @@
 use sea_orm::entity::prelude::*;
 
-#[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-pub struct Entity;
-
-impl EntityName for Entity {
-    fn table_name(&self) -> &str {
-        "lineitem"
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[sea_orm(table_name = "lineitem")]
 pub struct Model {
+    #[sea_orm(primary_key)]
     pub id: i32,
+    #[sea_orm(column_type = "Decimal(Some((19, 4)))")]
     pub price: Decimal,
     pub quantity: i32,
     pub order_id: i32,
     pub cake_id: i32,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
-pub enum Column {
-    Id,
-    Price,
-    Quantity,
-    OrderId,
-    CakeId,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
-pub enum PrimaryKey {
-    Id,
-}
-
-impl PrimaryKeyTrait for PrimaryKey {
-    type ValueType = i32;
-
-    fn auto_increment() -> bool {
-        true
-    }
-}
-
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::order::Entity",
+        from = "Column::OrderId",
+        to = "super::order::Column::Id",
+        on_update = "Cascade",
+        on_delete = "Cascade"
+    )]
     Order,
+    #[sea_orm(
+        belongs_to = "super::cake::Entity",
+        from = "Column::CakeId",
+        to = "super::cake::Column::Id",
+        on_update = "Cascade",
+        on_delete = "Cascade"
+    )]
     Cake,
-}
-
-impl ColumnTrait for Column {
-    type EntityName = Entity;
-
-    fn def(&self) -> ColumnDef {
-        match self {
-            Self::Id => ColumnType::Integer.def(),
-            Self::Price => ColumnType::Decimal(Some((19, 4))).def(),
-            Self::Quantity => ColumnType::Integer.def(),
-            Self::OrderId => ColumnType::Integer.def(),
-            Self::CakeId => ColumnType::Integer.def(),
-        }
-    }
-}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        match self {
-            Self::Order => Entity::belongs_to(super::order::Entity)
-                .from(Column::OrderId)
-                .to(super::order::Column::Id)
-                .on_delete(ForeignKeyAction::Cascade)
-                .on_update(ForeignKeyAction::Cascade)
-                .into(),
-            Self::Cake => Entity::belongs_to(super::cake::Entity)
-                .from(Column::CakeId)
-                .to(super::cake::Column::Id)
-                .on_delete(ForeignKeyAction::Cascade)
-                .on_update(ForeignKeyAction::Cascade)
-                .into(),
-        }
-    }
 }
 
 impl Related<super::order::Entity> for Entity {

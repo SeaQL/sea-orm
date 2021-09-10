@@ -47,13 +47,14 @@ impl Update {
         E: EntityTrait,
         A: ActiveModelTrait<Entity = E>,
     {
-        let myself = UpdateOne {
+        UpdateOne {
             query: UpdateStatement::new()
                 .table(A::Entity::default().table_ref())
                 .to_owned(),
             model,
-        };
-        myself.prepare()
+        }
+        .prepare_filters()
+        .prepare_values()
     }
 
     /// Update many ActiveModel
@@ -85,7 +86,7 @@ impl<A> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
-    pub(crate) fn prepare(mut self) -> Self {
+    fn prepare_filters(mut self) -> Self {
         for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
             let av = self.model.get(col);
@@ -95,6 +96,10 @@ where
                 panic!("PrimaryKey is not set");
             }
         }
+        self
+    }
+
+    fn prepare_values(mut self) -> Self {
         for col in <A::Entity as EntityTrait>::Column::iter() {
             if <A::Entity as EntityTrait>::PrimaryKey::from_column(col).is_some() {
                 continue;
@@ -172,6 +177,19 @@ impl<E> UpdateMany<E>
 where
     E: EntityTrait,
 {
+    pub fn set<A>(mut self, model: A) -> Self
+    where
+        A: ActiveModelTrait<Entity = E>,
+    {
+        for col in E::Column::iter() {
+            let av = model.get(col);
+            if av.is_set() {
+                self.query.value(col, av.unwrap());
+            }
+        }
+        self
+    }
+
     pub fn col_expr<T>(mut self, col: T, expr: SimpleExpr) -> Self
     where
         T: IntoIden,
@@ -237,6 +255,37 @@ mod tests {
                 .build(DbBackend::Postgres)
                 .to_string(),
             r#"UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."id" = 2"#,
+        );
+    }
+
+    #[test]
+    fn update_5() {
+        assert_eq!(
+            Update::many(fruit::Entity)
+                .set(fruit::ActiveModel {
+                    name: ActiveValue::set("Apple".to_owned()),
+                    cake_id: ActiveValue::set(Some(3)),
+                    ..Default::default()
+                })
+                .filter(fruit::Column::Id.eq(2))
+                .build(DbBackend::Postgres)
+                .to_string(),
+            r#"UPDATE "fruit" SET "name" = 'Apple', "cake_id" = 3 WHERE "fruit"."id" = 2"#,
+        );
+    }
+
+    #[test]
+    fn update_6() {
+        assert_eq!(
+            Update::many(fruit::Entity)
+                .set(fruit::ActiveModel {
+                    id: ActiveValue::set(3),
+                    ..Default::default()
+                })
+                .filter(fruit::Column::Id.eq(2))
+                .build(DbBackend::Postgres)
+                .to_string(),
+            r#"UPDATE "fruit" SET "id" = 3 WHERE "fruit"."id" = 2"#,
         );
     }
 }

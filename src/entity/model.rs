@@ -2,7 +2,7 @@ use crate::{DbErr, EntityTrait, Linked, QueryFilter, QueryResult, Related, Selec
 pub use sea_query::Value;
 use std::fmt::Debug;
 
-pub trait ModelTrait: Clone + Debug {
+pub trait ModelTrait: Clone + Send + Debug {
     type Entity: EntityTrait;
 
     fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> Value;
@@ -21,7 +21,7 @@ pub trait ModelTrait: Clone + Debug {
     where
         L: Linked<FromEntity = Self::Entity>,
     {
-        l.find_linked()
+        l.find_linked().belongs_to(self)
     }
 }
 
