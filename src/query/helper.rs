@@ -3,7 +3,7 @@ use crate::{
     PrimaryKeyToColumn, RelationDef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
-use sea_query::{Expr, IntoCondition, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef};
+use sea_query::{Expr, IntoCondition, LockType, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef};
 
 // LINT: when the column does not appear in tables selected from
 // LINT: when there is a group by clause, but some columns don't have aggregate functions
@@ -138,6 +138,24 @@ pub trait QuerySelect: Sized {
     fn join_rev(mut self, join: JoinType, rel: RelationDef) -> Self {
         self.query()
             .join(join, rel.from_tbl.clone(), join_condition(rel));
+        self
+    }
+
+    /// Select lock
+    fn lock(mut self, lock_type: LockType) -> Self {
+        self.query().lock(lock_type);
+        self
+    }
+
+    /// Select lock shared
+    fn lock_shared(mut self) -> Self {
+        self.query().lock_shared();
+        self
+    }
+
+    /// Select lock exclusive
+    fn lock_exclusive(mut self) -> Self {
+        self.query().lock_exclusive();
         self
     }
 }
