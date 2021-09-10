@@ -308,12 +308,12 @@ mod tests {
     use sea_query::ColumnType;
     use std::io::{self, BufRead, BufReader};
 
-    const ENTITY_FILES: [&str; 5] = [
-        include_str!("../../tests/entity/cake.rs"),
-        include_str!("../../tests/entity/cake_filling.rs"),
-        include_str!("../../tests/entity/filling.rs"),
-        include_str!("../../tests/entity/fruit.rs"),
-        include_str!("../../tests/entity/vendor.rs"),
+    const EXPANDED_ENTITY_FILES: [&str; 5] = [
+        include_str!("../../tests/expanded/cake.rs"),
+        include_str!("../../tests/expanded/cake_filling.rs"),
+        include_str!("../../tests/expanded/filling.rs"),
+        include_str!("../../tests/expanded/fruit.rs"),
+        include_str!("../../tests/expanded/vendor.rs"),
     ];
 
     fn setup() -> Vec<Entity> {
@@ -506,10 +506,10 @@ mod tests {
     fn test_gen_code_blocks() -> io::Result<()> {
         let entities = setup();
 
-        assert_eq!(entities.len(), ENTITY_FILES.len());
+        assert_eq!(entities.len(), EXPANDED_ENTITY_FILES.len());
 
         for (i, entity) in entities.iter().enumerate() {
-            let mut reader = BufReader::new(ENTITY_FILES[i].as_bytes());
+            let mut reader = BufReader::new(EXPANDED_ENTITY_FILES[i].as_bytes());
             let mut lines: Vec<String> = Vec::new();
 
             reader.read_until(b';', &mut Vec::new())?;
