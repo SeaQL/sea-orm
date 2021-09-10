@@ -26,6 +26,8 @@ type Result<T, E = rocket::response::Debug<sqlx::Error>> = std::result::Result<T
 mod post;
 pub use post::Entity as Post;
 
+const ROWS_PER_PAGE: usize = 4;
+
 #[get("/new")]
 fn new() -> Template {
     Template::render("new", &Context::default())
@@ -74,7 +76,7 @@ async fn update(conn: Connection<Db>, id: i32, post_form: Form<post::Model>) -> 
 async fn list(conn: Connection<Db>, page: Option<usize>, flash: Option<FlashMessage<'_>>) -> Template {
     let page = page.unwrap_or(0);
     let paginator = Post::find()
-        .paginate(&conn, 4);
+        .paginate(&conn, ROWS_PER_PAGE);
     let num_pages = paginator.num_pages().await.ok().unwrap();
 
     let posts = paginator.fetch_page(page)
