@@ -47,14 +47,14 @@ impl Update {
         E: EntityTrait,
         A: ActiveModelTrait<Entity = E>,
     {
-        let mut myself = UpdateOne {
+        UpdateOne {
             query: UpdateStatement::new()
                 .table(A::Entity::default().table_ref())
                 .to_owned(),
             model,
-        };
-        myself = myself.prepare_filters();
-        myself.prepare_values()
+        }
+        .prepare_filters()
+        .prepare_values()
     }
 
     /// Update many ActiveModel
