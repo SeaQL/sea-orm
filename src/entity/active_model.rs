@@ -74,15 +74,14 @@ pub trait ActiveModelTrait: Clone + Debug {
         let am = self;
         let exec = <Self::Entity as EntityTrait>::insert(am).exec(db);
         let res = exec.await?;
-        // TODO: if the entity does not have auto increment primary key, then last_insert_id is a wrong value
-        // FIXME: Assumed valid last_insert_id is not equals to Default::default()
-        if <<Self::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::auto_increment()
-            && res.last_insert_id != <<Self::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType::default()
+        // Assume valid last_insert_id is not equals to Default::default()
+        if res.last_insert_id
+            != <<Self::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType::default()
         {
-            let find = <Self::Entity as EntityTrait>::find_by_id(res.last_insert_id).one(db);
-            let found = find.await;
-            let model: Option<<Self::Entity as EntityTrait>::Model> = found?;
-            match model {
+            let found = <Self::Entity as EntityTrait>::find_by_id(res.last_insert_id)
+                .one(db)
+                .await?;
+            match found {
                 Some(model) => Ok(model.into_active_model()),
                 None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
             }
