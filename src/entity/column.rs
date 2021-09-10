@@ -248,7 +248,11 @@ impl ColumnDef {
         self
     }
 
-    pub fn null(mut self) -> Self {
+    pub fn null(self) -> Self {
+        self.nullable()
+    }
+
+    pub fn nullable(mut self) -> Self {
         self.null = true;
         self
     }

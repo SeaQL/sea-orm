@@ -2,7 +2,7 @@ pub mod common;
 
 pub use sea_orm::{entity::*, error::*, sea_query, tests_cfg::*, Database, DbConn};
 
-// DATABASE_URL="sqlite::memory:" cargo test --features sqlx-sqlit,runtime-async-std --test basic
+// DATABASE_URL="sqlite::memory:" cargo test --features sqlx-sqlite,runtime-async-std-native-tls --test basic
 #[sea_orm_macros::test]
 #[cfg(feature = "sqlx-sqlite")]
 async fn main() {

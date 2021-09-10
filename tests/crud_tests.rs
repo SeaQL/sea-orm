@@ -6,8 +6,9 @@ pub use crud::*;
 use sea_orm::DatabaseConnection;
 
 // Run the test locally:
-// DATABASE_URL="mysql://root:root@localhost" cargo test --features sqlx-mysql,runtime-async-std --test crud_tests
-// DATABASE_URL="postgres://root:root@localhost" cargo test --features sqlx-postgres,runtime-async-std --test crud_tests
+// DATABASE_URL="sqlite::memory:" cargo test --features sqlx-sqlite,runtime-async-std-native-tls --test crud_tests
+// DATABASE_URL="mysql://root:root@localhost" cargo test --features sqlx-mysql,runtime-async-std-native-tls --test crud_tests
+// DATABASE_URL="postgres://root:root@localhost" cargo test --features sqlx-postgres,runtime-async-std-native-tls --test crud_tests
 #[sea_orm_macros::test]
 #[cfg(any(
     feature = "sqlx-mysql",
