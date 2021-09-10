@@ -21,7 +21,7 @@ pub trait ModelTrait: Clone + Send + Debug {
     where
         L: Linked<FromEntity = Self::Entity>,
     {
-        l.find_linked()
+        l.find_linked().belongs_to(self)
     }
 }
 
