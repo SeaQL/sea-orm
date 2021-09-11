@@ -22,6 +22,19 @@
     </tr>
     {% endfor %}
   </tbody>
+  <tfoot>
+    <tr>
+      <td></td>
+      <td>
+        {% if page == 0 %} Previous {% else %}
+        <a href="/?page={{ page - 1 }}&posts_per_page={{ posts_per_page }}">Previous</a>
+        {% endif %} | {% if page == num_pages - 1 %} Next {% else %}
+        <a href="/?page={{ page + 1 }}&posts_per_page={{ posts_per_page }}">Next</a>
+        {% endif %}
+      </td>
+      <td></td>
+    </tr>
+  </tfoot>
 </table>
 
 <div class="twelve columns">

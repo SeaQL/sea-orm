@@ -1,4 +1,6 @@
-use crate::{debug_print, DbErr};
+#[cfg(feature = "mock")]
+use crate::debug_print;
+use crate::DbErr;
 use std::fmt;
 
 #[derive(Debug)]
