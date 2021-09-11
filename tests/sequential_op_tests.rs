@@ -179,7 +179,7 @@ async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model>
 
     let mut results: Vec<LeastSalesBakerResult> = select
         .into_model::<SelectResult>()
-        .all(&db)
+        .all(db)
         .await
         .unwrap()
         .into_iter()
