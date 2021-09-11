@@ -1,4 +1,4 @@
-use crate::{ActiveModelTrait, DbConnection, EntityTrait, Insert, PrimaryKeyTrait, Statement, TryFromU64, error::*};
+use crate::{ActiveModelTrait, DbBackend, DbConnection, EntityTrait, Insert, PrimaryKeyTrait, Statement, TryFromU64, error::*};
 use sea_query::InsertStatement;
 use std::{future::Future, marker::PhantomData};
 
@@ -36,7 +36,7 @@ where
         // so that self is dropped before entering await
         let mut query = self.query;
         #[cfg(feature = "sqlx-postgres")]
-        if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
+        if db.get_database_backend() == DbBackend::Postgres {
             use crate::{sea_query::Query, Iterable};
             if <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
                 query.returning(
@@ -86,22 +86,19 @@ where
 {
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
-    let last_insert_id = match db {
-        #[cfg(feature = "sqlx-postgres")]
-        DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
-            use crate::{sea_query::Iden, Iterable};
-            let cols = PrimaryKey::<A>::iter()
-                .map(|col| col.to_string())
-                .collect::<Vec<_>>();
-            let res = conn.query_one(statement).await?.unwrap();
-            res.try_get_many("", cols.as_ref()).unwrap_or_default()
-        }
-        _ => {
-            let last_insert_id = db.execute(statement).await?.last_insert_id();
-            ValueTypeOf::<A>::try_from_u64(last_insert_id)
-                .ok()
-                .unwrap_or_default()
-        }
+    let last_insert_id = if db.get_database_backend() == DbBackend::Postgres {
+        use crate::{sea_query::Iden, Iterable};
+        let cols = PrimaryKey::<A>::iter()
+            .map(|col| col.to_string())
+            .collect::<Vec<_>>();
+        let res = db.query_one(statement).await?.unwrap();
+        res.try_get_many("", cols.as_ref()).unwrap_or_default()
+    }
+    else {
+        let last_insert_id = db.execute(statement).await?.last_insert_id();
+        ValueTypeOf::<A>::try_from_u64(last_insert_id)
+            .ok()
+            .unwrap_or_default()
     };
     Ok(InsertResult { last_insert_id })
 }

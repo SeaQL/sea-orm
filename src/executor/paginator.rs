@@ -1,4 +1,4 @@
-use crate::{DbConnection, SelectorTrait, error::*};
+use crate::{DbBackend, DbConnection, SelectorTrait, error::*};
 use async_stream::stream;
 use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
@@ -65,12 +65,11 @@ where
             Some(res) => res,
             None => return Ok(0),
         };
-        let num_items = match self.db {
-            #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(_) => {
-                result.try_get::<i64>("", "num_items")? as usize
-            }
-            _ => result.try_get::<i32>("", "num_items")? as usize,
+        let num_items = if self.db.get_database_backend() == DbBackend::Postgres {
+            result.try_get::<i64>("", "num_items")? as usize
+        }
+        else {
+            result.try_get::<i32>("", "num_items")? as usize
         };
         Ok(num_items)
     }

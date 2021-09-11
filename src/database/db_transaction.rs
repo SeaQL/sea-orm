@@ -42,13 +42,14 @@ impl<'a> From<sqlx::Transaction<'a, sqlx::Sqlite>> for DatabaseTransaction<'a> {
 
 #[allow(dead_code)]
 impl<'a> DatabaseTransaction<'a> {
-    pub(crate) async fn run<F, T, E, Fut>(&self, callback: F) -> Result<T, TransactionError<E>>
+    pub(crate) async fn run<F, T, E, Fut>(self, callback: F) -> Result<T, TransactionError<E>>
     where
         F: FnOnce(&DatabaseTransaction) -> Fut + Send,
         Fut: futures::Future<Output=Result<T, E>> + Send,
-        E: std::error::Error,
+        T: Send,
+        E: std::error::Error + Send,
     {
-        let res = callback(self).await.map_err(|e| TransactionError::Transaction(e));
+        let res = callback(&self).await.map_err(|e| TransactionError::Transaction(e));
         if res.is_ok() {
             self.commit().await?;
         }
@@ -58,31 +59,50 @@ impl<'a> DatabaseTransaction<'a> {
         res
     }
 
-    async fn commit<E>(&self) -> Result<(), TransactionError<E>>
+    async fn commit<E>(self) -> Result<(), TransactionError<E>>
     where E: std::error::Error {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseTransaction::SqlxMySqlTransaction(transaction) => transaction.commit().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string()))),
+            DatabaseTransaction::SqlxMySqlTransaction(inner) => {
+                let transaction = inner.into_inner();
+                transaction.commit().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string())))
+            },
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseTransaction::SqlxPostgresTransaction(transaction) => transaction.commit().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string()))),
+            DatabaseTransaction::SqlxPostgresTransaction(inner) => {
+                let transaction = inner.into_inner();
+                transaction.commit().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string())))
+            },
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseTransaction::SqlxSqliteTransaction(transaction) => transaction.commit().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string()))),
+            DatabaseTransaction::SqlxSqliteTransaction(inner) => {
+                let transaction = inner.into_inner();
+                transaction.commit().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string())))
+            },
+            #[cfg(not(any(feature = "sqlx-mysql", feature = "sqlx-postgres", feature = "sqlx-sqlite")))]
             _ => unimplemented!(),
         }
     }
 
-    async fn rollback<E>(&self) -> Result<(), TransactionError<E>>
+    async fn rollback<E>(self) -> Result<(), TransactionError<E>>
     where E: std::error::Error {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseTransaction::SqlxMySqlTransaction(transaction) => transaction.rollback().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string()))),
+            DatabaseTransaction::SqlxMySqlTransaction(inner) => {
+                let transaction = inner.into_inner();
+                transaction.rollback().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string())))
+            },
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseTransaction::SqlxPostgresTransaction(transaction) => transaction.rollback().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string()))),
+            DatabaseTransaction::SqlxPostgresTransaction(inner) => {
+                let transaction = inner.into_inner();
+                transaction.rollback().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string())))
+            },
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseTransaction::SqlxSqliteTransaction(transaction) => transaction.rollback().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string()))),
+            DatabaseTransaction::SqlxSqliteTransaction(inner) => {
+                let transaction = inner.into_inner();
+                transaction.rollback().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string())))
+            },
+            #[cfg(not(any(feature = "sqlx-mysql", feature = "sqlx-postgres", feature = "sqlx-sqlite")))]
             _ => unimplemented!(),
         }
-        
     }
 }
 
@@ -96,6 +116,7 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
             DatabaseTransaction::SqlxPostgresTransaction(_) => DbBackend::Postgres,
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseTransaction::SqlxSqliteTransaction(_) => DbBackend::Sqlite,
+            #[cfg(not(any(feature = "sqlx-mysql", feature = "sqlx-postgres", feature = "sqlx-sqlite")))]
             _ => unimplemented!(),
         }
     }
@@ -125,6 +146,7 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
                 query.execute(&mut *conn).await
                     .map(Into::into)
             },
+            #[cfg(not(any(feature = "sqlx-mysql", feature = "sqlx-postgres", feature = "sqlx-sqlite")))]
             _ => unimplemented!(),
         };
         #[cfg(feature = "sqlx-dep")]
@@ -156,6 +178,7 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
                 query.fetch_one(&mut *conn).await
                     .map(|row| Some(row.into()))
             },
+            #[cfg(not(any(feature = "sqlx-mysql", feature = "sqlx-postgres", feature = "sqlx-sqlite")))]
             _ => unimplemented!(),
         };
         #[cfg(feature = "sqlx-dep")]
@@ -192,6 +215,7 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
                 query.fetch_all(&mut *conn).await
                     .map(|rows| rows.into_iter().map(|r| r.into()).collect())
             },
+            #[cfg(not(any(feature = "sqlx-mysql", feature = "sqlx-postgres", feature = "sqlx-sqlite")))]
             _ => unimplemented!(),
         };
         #[cfg(feature = "sqlx-dep")]
@@ -204,7 +228,9 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
     where
             F: FnOnce(&DatabaseTransaction) -> Fut + Send,
             Fut: futures::Future<Output=Result<T, E>> + Send,
-            E: std::error::Error {
+            T: Send,
+            E: std::error::Error + Send,
+    {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseTransaction::SqlxMySqlTransaction(conn) => {
@@ -224,6 +250,7 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
                 let transaction = DatabaseTransaction::from(conn.begin().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string())))?);
                 transaction.run(_callback).await
             },
+            #[cfg(not(any(feature = "sqlx-mysql", feature = "sqlx-postgres", feature = "sqlx-sqlite")))]
             _ => unimplemented!(),
         }
     }
