@@ -109,7 +109,9 @@ impl DbConnection for DatabaseConnection {
         }
     }
 
-    async fn transaction<F, T, E, Fut>(&self, callback: F) -> Result<T, TransactionError<E>>
+    /// Execute the function inside a transaction.
+    /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
+    async fn transaction<F, T, E, Fut>(&self, _callback: F) -> Result<T, TransactionError<E>>
     where
         F: FnOnce(&DatabaseTransaction) -> Fut + Send,
         Fut: Future<Output=Result<T, E>> + Send,
@@ -117,11 +119,11 @@ impl DbConnection for DatabaseConnection {
     {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.transaction(callback).await,
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.transaction(_callback).await,
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.transaction(callback).await,
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.transaction(_callback).await,
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.transaction(callback).await,
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.transaction(_callback).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(_) => panic!("Mock"),//TODO: can it be permitted? How?
             DatabaseConnection::Disconnected => panic!("Disconnected"),
