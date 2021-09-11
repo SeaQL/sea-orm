@@ -26,7 +26,7 @@ type Result<T, E = rocket::response::Debug<sqlx::Error>> = std::result::Result<T
 mod post;
 pub use post::Entity as Post;
 
-const DEFAULT_POSTS_PER_PAGE: usize = 25;
+const DEFAULT_POSTS_PER_PAGE: usize = 5;
 
 #[get("/new")]
 fn new() -> Template {
@@ -97,6 +97,7 @@ async fn list(
             posts: posts,
             flash: flash,
             page: page,
+            posts_per_page: posts_per_page,
             num_pages: num_pages,
         },
     )
