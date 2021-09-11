@@ -1,4 +1,7 @@
-use crate::{DbBackend, DbConnection, DbErr, ExecResult, QueryResult, Statement, debug_print, sqlx_error_to_exec_err, sqlx_error_to_query_err};
+use crate::{DbBackend, DbConnection, DbErr, ExecResult, QueryResult, Statement, debug_print};
+#[cfg(feature = "sqlx-dep")]
+use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
+#[cfg(feature = "sqlx-dep")]
 use sqlx::Connection;
 
 #[cfg(any(feature = "runtime-actix", feature = "runtime-tokio"))]
@@ -14,6 +17,8 @@ pub enum DatabaseTransaction<'a>  {
     SqlxPostgresTransaction(Mutex<sqlx::Transaction<'a, sqlx::Postgres>>),
     #[cfg(feature = "sqlx-sqlite")]
     SqlxSqliteTransaction(Mutex<sqlx::Transaction<'a, sqlx::Sqlite>>),
+    #[cfg(not(any(feature = "sqlx-mysql", feature = "sqlx-postgres", feature = "sqlx-sqlite")))]
+    None(&'a ()),
 }
 
 #[cfg(feature = "sqlx-mysql")]
@@ -47,6 +52,7 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
             DatabaseTransaction::SqlxPostgresTransaction(_) => DbBackend::Postgres,
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseTransaction::SqlxSqliteTransaction(_) => DbBackend::Sqlite,
+            _ => unimplemented!(),
         }
     }
 
@@ -75,7 +81,9 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
                 query.execute(&mut *conn).await
                     .map(Into::into)
             },
+            _ => unimplemented!(),
         };
+        #[cfg(feature = "sqlx-dep")]
         res.map_err(sqlx_error_to_exec_err)
     }
 
@@ -104,7 +112,9 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
                 query.fetch_one(&mut *conn).await
                     .map(|row| Some(row.into()))
             },
+            _ => unimplemented!(),
         };
+        #[cfg(feature = "sqlx-dep")]
         if let Err(sqlx::Error::RowNotFound) = res {
             Ok(None)
         }
@@ -138,7 +148,9 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
                 query.fetch_all(&mut *conn).await
                     .map(|rows| rows.into_iter().map(|r| r.into()).collect())
             },
+            _ => unimplemented!(),
         };
+        #[cfg(feature = "sqlx-dep")]
         res.map_err(sqlx_error_to_query_err)
     }
 
@@ -166,6 +178,7 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
                 let transaction = DatabaseTransaction::from(conn.begin().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string())))?);
                 callback(&transaction).await.map_err(|e| TransactionError::Transaction(e))
             },
+            _ => unimplemented!(),
         }
     }
 
