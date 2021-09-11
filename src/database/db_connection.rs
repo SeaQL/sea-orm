@@ -17,7 +17,8 @@ pub trait DbConnection {
     where
         F: FnOnce(&DatabaseTransaction) -> Fut + Send,
         Fut: Future<Output=Result<T, E>> + Send,
-        E: std::error::Error;
+        T: Send,
+        E: std::error::Error + Send;
 
     #[cfg(feature = "mock")]
     fn as_mock_connection(&self) -> &crate::MockDatabaseConnection;

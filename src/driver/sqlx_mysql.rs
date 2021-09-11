@@ -95,7 +95,8 @@ impl SqlxMySqlPoolConnection {
     where
         F: FnOnce(&DatabaseTransaction) -> Fut + Send,
         Fut: Future<Output=Result<T, E>> + Send,
-        E: std::error::Error,
+        T: Send,
+        E: std::error::Error + Send,
     {
         if let Ok(conn) = &mut self.pool.acquire().await {
             let transaction = DatabaseTransaction::from(

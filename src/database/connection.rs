@@ -115,7 +115,8 @@ impl DbConnection for DatabaseConnection {
     where
         F: FnOnce(&DatabaseTransaction) -> Fut + Send,
         Fut: Future<Output=Result<T, E>> + Send,
-        E: std::error::Error,
+        T: Send,
+        E: std::error::Error + Send,
     {
         match self {
             #[cfg(feature = "sqlx-mysql")]
