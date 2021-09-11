@@ -4,10 +4,8 @@ use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 #[cfg(feature = "sqlx-dep")]
 use sqlx::Connection;
 
-#[cfg(any(feature = "runtime-actix", feature = "runtime-tokio"))]
-use tokio::sync::Mutex;
-#[cfg(any(feature = "runtime-async-std"))]
-use async_std::sync::Mutex;
+#[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres", feature = "sqlx-sqlite"))]
+use futures::lock::Mutex;
 
 #[derive(Debug)]
 pub enum DatabaseTransaction<'a>  {
