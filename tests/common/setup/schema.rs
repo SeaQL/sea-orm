@@ -1,6 +1,6 @@
 pub use super::super::bakery_chain::*;
 use pretty_assertions::assert_eq;
-use sea_orm::{error::*, sea_query, DbConn, EntityTrait, ExecResult, Schema};
+use sea_orm::{DbConn, DbConnection, EntityTrait, ExecResult, Schema, error::*, sea_query};
 use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, Table, TableCreateStatement};
 
 async fn create_table<E>(
