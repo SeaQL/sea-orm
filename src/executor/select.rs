@@ -1,8 +1,4 @@
-use crate::{
-    error::*, DatabaseConnection, EntityTrait, FromQueryResult, IdenStatic, Iterable, JsonValue,
-    ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo,
-    SelectTwoMany, Statement,
-};
+use crate::{DatabaseConnection, DbConnection, EntityTrait, FromQueryResult, IdenStatic, Iterable, JsonValue, ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement, error::*};
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
 

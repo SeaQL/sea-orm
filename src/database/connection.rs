@@ -1,4 +1,5 @@
-use crate::{error::*, ExecResult, QueryResult, Statement, StatementBuilder};
+use std::future::Future;
+use crate::{DatabaseTransaction, DbConnection, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError, error::*};
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 
 pub enum DatabaseConnection {
@@ -50,8 +51,9 @@ impl std::fmt::Debug for DatabaseConnection {
     }
 }
 
-impl DatabaseConnection {
-    pub fn get_database_backend(&self) -> DbBackend {
+#[async_trait::async_trait]
+impl DbConnection for DatabaseConnection {
+    fn get_database_backend(&self) -> DbBackend {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(_) => DbBackend::MySql,
@@ -65,7 +67,7 @@ impl DatabaseConnection {
         }
     }
 
-    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
+    async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.execute(stmt).await,
@@ -79,7 +81,7 @@ impl DatabaseConnection {
         }
     }
 
-    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
+    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_one(stmt).await,
@@ -93,7 +95,7 @@ impl DatabaseConnection {
         }
     }
 
-    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
+    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_all(stmt).await,
@@ -107,23 +109,31 @@ impl DatabaseConnection {
         }
     }
 
+    async fn transaction<F, T, E, Fut>(&self, callback: F) -> Result<T, TransactionError<E>>
+    where
+        F: FnOnce(&DatabaseTransaction) -> Fut + Send,
+        Fut: Future<Output=Result<T, E>> + Send,
+        E: std::error::Error,
+    {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.transaction(callback).await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.transaction(callback).await,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.transaction(callback).await,
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(_) => panic!("Mock"),//TODO: can it be permitted? How?
+            DatabaseConnection::Disconnected => panic!("Disconnected"),
+        }
+    }
+
     #[cfg(feature = "mock")]
-    pub fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
+    fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
         match self {
             DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
             _ => panic!("not mock connection"),
         }
-    }
-
-    #[cfg(not(feature = "mock"))]
-    pub fn as_mock_connection(&self) -> Option<bool> {
-        None
-    }
-
-    #[cfg(feature = "mock")]
-    pub fn into_transaction_log(self) -> Vec<crate::Transaction> {
-        let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
-        mocker.drain_transaction_log()
     }
 }
 

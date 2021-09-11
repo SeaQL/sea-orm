@@ -1,6 +1,4 @@
-use crate::{
-    error::*, ActiveModelTrait, DatabaseConnection, EntityTrait, Statement, UpdateMany, UpdateOne,
-};
+use crate::{ActiveModelTrait, DatabaseConnection, DbConnection, EntityTrait, Statement, UpdateMany, UpdateOne, error::*};
 use sea_query::UpdateStatement;
 use std::future::Future;
 

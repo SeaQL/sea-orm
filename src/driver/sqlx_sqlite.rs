@@ -1,12 +1,10 @@
-use sqlx::{
-    sqlite::{SqliteArguments, SqliteQueryResult, SqliteRow},
-    Sqlite, SqlitePool,
-};
+use std::future::Future;
+use sqlx::{Connection, Sqlite, SqlitePool, sqlite::{SqliteArguments, SqliteQueryResult, SqliteRow}};
 
 sea_query::sea_query_driver_sqlite!();
 use sea_query_driver_sqlite::bind_query;
 
-use crate::{debug_print, error::*, executor::*, DatabaseConnection, Statement};
+use crate::{DatabaseConnection, DatabaseTransaction, Statement, TransactionError, debug_print, error::*, executor::*};
 
 use super::sqlx_common::*;
 
@@ -91,6 +89,26 @@ impl SqlxSqlitePoolConnection {
             ))
         }
     }
+
+    pub async fn transaction<'a, F, T, E, Fut>(&'a self, callback: F) -> Result<T, TransactionError<E>>
+    where
+        F: FnOnce(&DatabaseTransaction) -> Fut + Send,
+        Fut: Future<Output=Result<T, E>> + Send,
+        E: std::error::Error,
+    {
+        if let Ok(conn) = &mut self.pool.acquire().await {
+            let transaction = DatabaseTransaction::from(
+                conn.begin().await.map_err(|e| {
+                    TransactionError::Connection(DbErr::Query(e.to_string()))
+                })?
+            );
+            callback(&transaction).await.map_err(|e| TransactionError::Transaction(e))
+        } else {
+            Err(TransactionError::Connection(DbErr::Query(
+                "Failed to acquire connection from pool.".to_owned(),
+            )))
+        }
+    }
 }
 
 impl From<SqliteRow> for QueryResult {
@@ -109,7 +127,7 @@ impl From<SqliteQueryResult> for ExecResult {
     }
 }
 
-fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, SqliteArguments> {
+pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, SqliteArguments> {
     let mut query = sqlx::query(&stmt.sql);
     if let Some(values) = &stmt.values {
         query = bind_query(query, values);
