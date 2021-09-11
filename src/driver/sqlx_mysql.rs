@@ -103,7 +103,7 @@ impl SqlxMySqlPoolConnection {
                     TransactionError::Connection(DbErr::Query(e.to_string()))
                 })?
             );
-            callback(&transaction).await.map_err(|e| TransactionError::Transaction(e))
+            transaction.run(callback).await
         } else {
             Err(TransactionError::Connection(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),

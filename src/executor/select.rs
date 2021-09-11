@@ -1,4 +1,4 @@
-use crate::{DatabaseConnection, DbConnection, EntityTrait, FromQueryResult, IdenStatic, Iterable, JsonValue, ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement, error::*};
+use crate::{DbConnection, EntityTrait, FromQueryResult, IdenStatic, Iterable, JsonValue, ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement, error::*};
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
 
@@ -99,23 +99,27 @@ where
         }
     }
 
-    pub async fn one(self, db: &DatabaseConnection) -> Result<Option<E::Model>, DbErr> {
+    pub async fn one<C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
+    where C: DbConnection {
         self.into_model().one(db).await
     }
 
-    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<E::Model>, DbErr> {
+    pub async fn all<C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
+    where C: DbConnection {
         self.into_model().all(db).await
     }
 
-    pub fn paginate(
+    pub fn paginate<C>(
         self,
-        db: &DatabaseConnection,
+        db: &C,
         page_size: usize,
-    ) -> Paginator<'_, SelectModel<E::Model>> {
+    ) -> Paginator<'_, C, SelectModel<E::Model>>
+    where C: DbConnection {
         self.into_model().paginate(db, page_size)
     }
 
-    pub async fn count(self, db: &DatabaseConnection) -> Result<usize, DbErr> {
+    pub async fn count<C>(self, db: &C) -> Result<usize, DbErr>
+    where C: DbConnection {
         self.paginate(db, 1).num_items().await
     }
 }
@@ -144,29 +148,33 @@ where
         }
     }
 
-    pub async fn one(
+    pub async fn one<C>(
         self,
-        db: &DatabaseConnection,
-    ) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr> {
+        db: &C,
+    ) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
+    where C: DbConnection {
         self.into_model().one(db).await
     }
 
-    pub async fn all(
+    pub async fn all<C>(
         self,
-        db: &DatabaseConnection,
-    ) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr> {
+        db: &C,
+    ) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr>
+    where C: DbConnection {
         self.into_model().all(db).await
     }
 
-    pub fn paginate(
+    pub fn paginate<C>(
         self,
-        db: &DatabaseConnection,
+        db: &C,
         page_size: usize,
-    ) -> Paginator<'_, SelectTwoModel<E::Model, F::Model>> {
+    ) -> Paginator<'_, C, SelectTwoModel<E::Model, F::Model>>
+    where C: DbConnection {
         self.into_model().paginate(db, page_size)
     }
 
-    pub async fn count(self, db: &DatabaseConnection) -> Result<usize, DbErr> {
+    pub async fn count<C>(self, db: &C) -> Result<usize, DbErr>
+    where C: DbConnection {
         self.paginate(db, 1).num_items().await
     }
 }
@@ -195,17 +203,19 @@ where
         }
     }
 
-    pub async fn one(
+    pub async fn one<C>(
         self,
-        db: &DatabaseConnection,
-    ) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr> {
+        db: &C,
+    ) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
+    where C: DbConnection {
         self.into_model().one(db).await
     }
 
-    pub async fn all(
+    pub async fn all<C>(
         self,
-        db: &DatabaseConnection,
-    ) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr> {
+        db: &C,
+    ) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>
+    where C: DbConnection {
         let rows = self.into_model().all(db).await?;
         Ok(consolidate_query_result::<E, F>(rows))
     }
@@ -224,7 +234,8 @@ impl<S> Selector<S>
 where
     S: SelectorTrait,
 {
-    pub async fn one(mut self, db: &DatabaseConnection) -> Result<Option<S::Item>, DbErr> {
+    pub async fn one<C>(mut self, db: &C) -> Result<Option<S::Item>, DbErr>
+    where C: DbConnection {
         let builder = db.get_database_backend();
         self.query.limit(1);
         let row = db.query_one(builder.build(&self.query)).await?;
@@ -234,7 +245,8 @@ where
         }
     }
 
-    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, DbErr> {
+    pub async fn all<C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
+    where C: DbConnection {
         let builder = db.get_database_backend();
         let rows = db.query_all(builder.build(&self.query)).await?;
         let mut models = Vec::new();
@@ -244,7 +256,8 @@ where
         Ok(models)
     }
 
-    pub fn paginate(self, db: &DatabaseConnection, page_size: usize) -> Paginator<'_, S> {
+    pub fn paginate<C>(self, db: &C, page_size: usize) -> Paginator<'_, C, S>
+    where C: DbConnection {
         Paginator {
             query: self.query,
             page: 0,
@@ -438,7 +451,8 @@ where
     ///     ),]
     /// );
     /// ```
-    pub async fn one(self, db: &DatabaseConnection) -> Result<Option<S::Item>, DbErr> {
+    pub async fn one<C>(self, db: &C) -> Result<Option<S::Item>, DbErr>
+    where C: DbConnection {
         let row = db.query_one(self.stmt).await?;
         match row {
             Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
@@ -477,7 +491,8 @@ where
     ///     ),]
     /// );
     /// ```
-    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, DbErr> {
+    pub async fn all<C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
+    where C: DbConnection {
         let rows = db.query_all(self.stmt).await?;
         let mut models = Vec::new();
         for row in rows.into_iter() {

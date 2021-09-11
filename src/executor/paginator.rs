@@ -1,4 +1,4 @@
-use crate::{DatabaseConnection, DbConnection, SelectorTrait, error::*};
+use crate::{DbConnection, SelectorTrait, error::*};
 use async_stream::stream;
 use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
@@ -7,21 +7,23 @@ use std::{marker::PhantomData, pin::Pin};
 pub type PinBoxStream<'db, Item> = Pin<Box<dyn Stream<Item = Item> + 'db>>;
 
 #[derive(Clone, Debug)]
-pub struct Paginator<'db, S>
+pub struct Paginator<'db, C, S>
 where
+    C: DbConnection,
     S: SelectorTrait + 'db,
 {
     pub(crate) query: SelectStatement,
     pub(crate) page: usize,
     pub(crate) page_size: usize,
-    pub(crate) db: &'db DatabaseConnection,
+    pub(crate) db: &'db C,
     pub(crate) selector: PhantomData<S>,
 }
 
 // LINT: warn if paginator is used without an order by clause
 
-impl<'db, S> Paginator<'db, S>
+impl<'db, C, S> Paginator<'db, C, S>
 where
+    C: DbConnection,
     S: SelectorTrait + 'db,
 {
     /// Fetch a specific page

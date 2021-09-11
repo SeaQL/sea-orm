@@ -40,6 +40,52 @@ impl<'a> From<sqlx::Transaction<'a, sqlx::Sqlite>> for DatabaseTransaction<'a> {
     }
 }
 
+#[allow(dead_code)]
+impl<'a> DatabaseTransaction<'a> {
+    pub(crate) async fn run<F, T, E, Fut>(&self, callback: F) -> Result<T, TransactionError<E>>
+    where
+        F: FnOnce(&DatabaseTransaction) -> Fut + Send,
+        Fut: futures::Future<Output=Result<T, E>> + Send,
+        E: std::error::Error,
+    {
+        let res = callback(self).await.map_err(|e| TransactionError::Transaction(e));
+        if res.is_ok() {
+            self.commit().await?;
+        }
+        else {
+            self.rollback().await?;
+        }
+        res
+    }
+
+    async fn commit<E>(&self) -> Result<(), TransactionError<E>>
+    where E: std::error::Error {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseTransaction::SqlxMySqlTransaction(transaction) => transaction.commit().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string()))),
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseTransaction::SqlxPostgresTransaction(transaction) => transaction.commit().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string()))),
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseTransaction::SqlxSqliteTransaction(transaction) => transaction.commit().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string()))),
+            _ => unimplemented!(),
+        }
+    }
+
+    async fn rollback<E>(&self) -> Result<(), TransactionError<E>>
+    where E: std::error::Error {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseTransaction::SqlxMySqlTransaction(transaction) => transaction.rollback().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string()))),
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseTransaction::SqlxPostgresTransaction(transaction) => transaction.rollback().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string()))),
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseTransaction::SqlxSqliteTransaction(transaction) => transaction.rollback().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string()))),
+            _ => unimplemented!(),
+        }
+        
+    }
+}
+
 #[async_trait::async_trait]
 impl<'a> DbConnection for DatabaseTransaction<'a> {
     fn get_database_backend(&self) -> DbBackend {
@@ -57,7 +103,7 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
     async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
-        let res = match self {
+        let _res = match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseTransaction::SqlxMySqlTransaction(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
@@ -82,13 +128,13 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
             _ => unimplemented!(),
         };
         #[cfg(feature = "sqlx-dep")]
-        res.map_err(sqlx_error_to_exec_err)
+        _res.map_err(sqlx_error_to_exec_err)
     }
 
     async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
-        let res = match self {
+        let _res = match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseTransaction::SqlxMySqlTransaction(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
@@ -113,18 +159,18 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
             _ => unimplemented!(),
         };
         #[cfg(feature = "sqlx-dep")]
-        if let Err(sqlx::Error::RowNotFound) = res {
+        if let Err(sqlx::Error::RowNotFound) = _res {
             Ok(None)
         }
         else {
-            res.map_err(sqlx_error_to_query_err)
+            _res.map_err(sqlx_error_to_query_err)
         }
     }
 
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
-        let res = match self {
+        let _res = match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseTransaction::SqlxMySqlTransaction(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
@@ -149,10 +195,12 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
             _ => unimplemented!(),
         };
         #[cfg(feature = "sqlx-dep")]
-        res.map_err(sqlx_error_to_query_err)
+        _res.map_err(sqlx_error_to_query_err)
     }
 
-    async fn transaction<F, T, E, Fut>(&self, callback: F) -> Result<T, TransactionError<E>>
+    /// Execute the function inside a transaction.
+    /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
+    async fn transaction<F, T, E, Fut>(&self, _callback: F) -> Result<T, TransactionError<E>>
     where
             F: FnOnce(&DatabaseTransaction) -> Fut + Send,
             Fut: futures::Future<Output=Result<T, E>> + Send,
@@ -162,19 +210,19 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
             DatabaseTransaction::SqlxMySqlTransaction(conn) => {
                 let mut conn = conn.lock().await;
                 let transaction = DatabaseTransaction::from(conn.begin().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string())))?);
-                callback(&transaction).await.map_err(|e| TransactionError::Transaction(e))
+                transaction.run(_callback).await
             },
             #[cfg(feature = "sqlx-postgres")]
             DatabaseTransaction::SqlxPostgresTransaction(conn) => {
                 let mut conn = conn.lock().await;
                 let transaction = DatabaseTransaction::from(conn.begin().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string())))?);
-                callback(&transaction).await.map_err(|e| TransactionError::Transaction(e))
+                transaction.run(_callback).await
             },
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseTransaction::SqlxSqliteTransaction(conn) => {
                 let mut conn = conn.lock().await;
                 let transaction = DatabaseTransaction::from(conn.begin().await.map_err(|e| TransactionError::Connection(DbErr::Query(e.to_string())))?);
-                callback(&transaction).await.map_err(|e| TransactionError::Transaction(e))
+                transaction.run(_callback).await
             },
             _ => unimplemented!(),
         }
