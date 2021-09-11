@@ -1,0 +1,46 @@
+{% extends "base" %} {% block content %}
+<h1>Posts</h1>
+{% if flash %}
+<small class="field-{{ flash.0 }}-flash">
+  {{ flash.1 }}
+</small>
+{% endif %}
+<table>
+  <tbody>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Title</th>
+        <th>Text</th>
+      </tr>
+    </thead>
+    {% for post in posts %}
+    <tr class="post" onclick="window.location='/{{ post.id }}';">
+      <td>{{ post.id }}</td>
+      <td>{{ post.title }}</td>
+      <td>{{ post.text }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td></td>
+      <td>
+        {% if page == 0 %} Previous {% else %}
+        <a href="/?page={{ page - 1 }}">Previous</a>
+        {% endif %} | {% if page == num_pages - 1 %} Next {% else %}
+        <a href="/?page={{ page + 1 }}">Next</a>
+        {% endif %}
+      </td>
+      <td></td>
+    </tr>
+  </tfoot>
+</table>
+
+<div class="twelve columns">
+  <a href="/new">
+    <input type="button" value="add post" />
+  </a>
+</div>
+
+{% endblock content %}

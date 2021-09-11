@@ -1,0 +1,38 @@
+{% extends "base" %} {% block content %}
+<div class="row">
+  <h4>New Post</h4>
+  <form action="/" method="post">
+    <div class="twelve columns">
+      <input
+        type="text"
+        placeholder="enter title"
+        name="title"
+        id="title"
+        value=""
+        autofocus
+        class="u-full-width"
+      />
+      <input
+        type="text"
+        placeholder="enter content"
+        name="text"
+        id="text"
+        value=""
+        autofocus
+        class="u-full-width"
+      />
+    </div>
+    <div class="twelve columns">
+      <div class="two columns">
+        <a href="/">
+          <input type="button" value="cancel" />
+        </a>
+      </div>
+      <div class="eight columns"></div>
+      <div class="two columns">
+        <input type="submit" value="save post" />
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock content %}
