@@ -94,9 +94,8 @@
 //! };
 //!
 //! // insert one
-//! let res = Fruit::insert(pear).exec(db).await?;
-//!
-//! println!("InsertResult: {}", res.last_insert_id);
+//! let pear = pear.insert(db).await?;
+//! #
 //! # Ok(())
 //! # }
 //! # async fn function2(db: &DbConn) -> Result<(), DbErr> {
