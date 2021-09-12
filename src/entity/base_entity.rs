@@ -293,7 +293,7 @@ pub trait EntityTrait: EntityName {
     /// assert_eq!(
     ///     db.into_transaction_log(),
     ///     vec![Transaction::from_sql_and_values(
-    ///         DbBackend::Postgres, r#"INSERT INTO "cake" ("name") VALUES ($1)"#, vec!["Apple Pie".into()]
+    ///         DbBackend::Postgres, r#"INSERT INTO "cake" ("name") VALUES ($1) RETURNING "id""#, vec!["Apple Pie".into()]
     ///     )]);
     /// ```
     fn insert<A>(model: A) -> Insert<A>
