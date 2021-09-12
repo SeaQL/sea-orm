@@ -67,7 +67,7 @@ where
         };
         let num_items = match builder {
             #[cfg(feature = "sqlx-postgres")]
-            DbBackend::Postgres => result.try_get::<i64>("", "num_items")? as usize,
+            DbBackend::Postgres if !self.db.is_mock_connection() => result.try_get::<i64>("", "num_items")? as usize,
             _ => result.try_get::<i32>("", "num_items")? as usize,
         };
         Ok(num_items)
@@ -163,11 +163,6 @@ mod tests {
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};
 
-    #[cfg(feature = "sqlx-postgres")]
-    type NumRows = i64;
-    #[cfg(not(feature = "sqlx-postgres"))]
-    type NumRows = i32;
-
     fn setup() -> (DatabaseConnection, Vec<Vec<fruit::Model>>) {
         let page1 = vec![
             fruit::Model {
@@ -197,7 +192,7 @@ mod tests {
         (db, vec![page1, page2, page3])
     }
 
-    fn setup_num_items() -> (DatabaseConnection, NumRows) {
+    fn setup_num_items() -> (DatabaseConnection, i32) {
         let num_items = 3;
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results(vec![vec![maplit::btreemap! {

@@ -132,6 +132,14 @@ impl DbConnection for DatabaseConnection {
     }
 
     #[cfg(feature = "mock")]
+    fn is_mock_connection(&self) -> bool {
+        match self {
+            DatabaseConnection::MockDatabaseConnection(_) => true,
+            _ => false,
+        }
+    }
+
+    #[cfg(feature = "mock")]
     fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
         match self {
             DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,

@@ -35,7 +35,7 @@ where
         // so that self is dropped before entering await
         let mut query = self.query;
         #[cfg(feature = "sqlx-postgres")]
-        if db.get_database_backend() == DbBackend::Postgres {
+        if db.get_database_backend() == DbBackend::Postgres && !db.is_mock_connection() {
             use crate::{sea_query::Query, Iterable};
             if <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
                 query.returning(
@@ -86,7 +86,7 @@ where
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
     let last_insert_id = match db.get_database_backend() {
         #[cfg(feature = "sqlx-postgres")]
-        DbBackend::Postgres => {
+        DbBackend::Postgres if !db.is_mock_connection() => {
             use crate::{sea_query::Iden, Iterable};
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
