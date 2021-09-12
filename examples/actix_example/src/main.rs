@@ -9,6 +9,7 @@ use actix_web::{
     error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result,
 };
 use listenfd::ListenFd;
+use sea_orm::entity::*;
 use sea_orm::query::*;
 use sea_orm::DatabaseConnection;
 use sea_orm::EntityTrait;
@@ -20,7 +21,7 @@ mod post;
 pub use post::Entity as Post;
 mod setup;
 
-const DEFAULT_POSTS_PER_PAGE: usize = 4;
+const DEFAULT_POSTS_PER_PAGE: usize = 25;
 
 struct AppState {
     db_url: String,
@@ -60,6 +61,37 @@ async fn list(req: HttpRequest, data: web::Data<AppState>) -> Result<HttpRespons
         .render("index.html.tera", &ctx)
         .map_err(|_| error::ErrorInternalServerError("Template error"))?;
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
+}
+
+#[get("/new")]
+async fn new(data: web::Data<AppState>) -> Result<HttpResponse, Error> {
+    let template = &data.templates;
+    let ctx = tera::Context::new();
+    let body = template
+        .render("new.html.tera", &ctx)
+        .map_err(|_| error::ErrorInternalServerError("Template error"))?;
+    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+}
+
+#[post("/")]
+async fn create(
+    data: web::Data<AppState>,
+    post_form: web::Form<post::Model>,
+) -> Result<HttpResponse, Error> {
+    let conn = sea_orm::Database::connect(&data.db_url).await.unwrap();
+
+    let form = post_form.into_inner();
+
+    post::ActiveModel {
+        title: Set(form.title.to_owned()),
+        text: Set(form.text.to_owned()),
+        ..Default::default()
+    }
+    .save(&conn)
+    .await
+    .expect("could not insert post");
+
+    Ok(HttpResponse::Found().header("location", "/").finish())
 }
 
 #[actix_web::main]
@@ -104,4 +136,6 @@ async fn main() -> std::io::Result<()> {
 
 pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(list);
+    cfg.service(new);
+    cfg.service(create);
 }

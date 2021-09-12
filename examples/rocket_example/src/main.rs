@@ -29,7 +29,7 @@ pub use post::Entity as Post;
 const DEFAULT_POSTS_PER_PAGE: usize = 25;
 
 #[get("/new")]
-fn new() -> Template {
+async fn new() -> Template {
     Template::render("new", &Context::default())
 }
 
