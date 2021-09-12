@@ -17,6 +17,7 @@ actix-web = "3"
 actix-files = "0.5"
 tera = "1.8.0"
 dotenv = "0.15"
+listenfd = "0.3.3"
 
 # remove `path = ""` in your own project
 sea-orm = { path = "../../", version = "^0.2", features = [
