@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
 pub use sea_orm::entity::*;
-pub use sea_orm::QueryFilter;
+pub use sea_orm::{QueryFilter, DbConnection};
 
 // Run the test locally:
 // DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std --test query_tests
@@ -211,6 +211,47 @@ pub async fn find_all_filter_with_results() {
         .unwrap();
 
     assert_eq!(bakeries.len(), 2);
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
+pub async fn transaction() {
+    use sea_orm::DbErr;
+
+    let ctx = TestContext::new("find_all_filter_with_results").await;
+
+    ctx.db.transaction::<_, (), DbErr>(|txn| Box::pin(async move {
+        let _ = bakery::ActiveModel {
+            name: Set("SeaSide Bakery".to_owned()),
+            profit_margin: Set(10.4),
+            ..Default::default()
+        }
+        .save(txn)
+        .await?;
+
+        let _ = bakery::ActiveModel {
+            name: Set("Top Bakery".to_owned()),
+            profit_margin: Set(15.0),
+            ..Default::default()
+        }
+        .save(txn)
+        .await?;
+
+        let bakeries = Bakery::find()
+            .filter(bakery::Column::Name.contains("Bakery"))
+            .all(txn)
+            .await?;
+
+        assert_eq!(bakeries.len(), 2);
+
+        Ok(())
+    })).await.unwrap();
 
     ctx.delete().await;
 }

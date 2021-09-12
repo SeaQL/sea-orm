@@ -1,4 +1,4 @@
-use std::future::Future;
+use std::{pin::Pin, future::Future};
 
 use sqlx::{Connection, MySql, MySqlPool, mysql::{MySqlArguments, MySqlQueryResult, MySqlRow}};
 
@@ -91,10 +91,9 @@ impl SqlxMySqlPoolConnection {
         }
     }
 
-    pub async fn transaction<'a, F, T, E, Fut>(&'a self, callback: F) -> Result<T, TransactionError<E>>
+    pub async fn transaction<'a, F, T, E>(&'a self, callback: F) -> Result<T, TransactionError<E>>
     where
-        F: FnOnce(&DatabaseTransaction) -> Fut + Send,
-        Fut: Future<Output=Result<T, E>> + Send,
+        F: for<'c> FnOnce(&'c DatabaseTransaction<'_>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>> + 'a + Send + Sync,
         T: Send,
         E: std::error::Error + Send,
     {

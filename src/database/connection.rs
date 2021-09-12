@@ -1,4 +1,4 @@
-use std::future::Future;
+use std::{pin::Pin, future::Future};
 use crate::{DatabaseTransaction, DbConnection, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError, error::*};
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 
@@ -111,10 +111,9 @@ impl DbConnection for DatabaseConnection {
 
     /// Execute the function inside a transaction.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
-    async fn transaction<F, T, E, Fut>(&self, _callback: F) -> Result<T, TransactionError<E>>
+    async fn transaction<'a, F, T, E>(&self, _callback: F) -> Result<T, TransactionError<E>>
     where
-        F: FnOnce(&DatabaseTransaction) -> Fut + Send,
-        Fut: Future<Output=Result<T, E>> + Send,
+        F: for<'c> FnOnce(&'c DatabaseTransaction<'_>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>> + 'a + Send + Sync,
         T: Send,
         E: std::error::Error + Send,
     {

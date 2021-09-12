@@ -1,3 +1,4 @@
+use std::{pin::Pin, future::Future};
 use crate::{DbBackend, DbConnection, DbErr, ExecResult, QueryResult, Statement, debug_print};
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
@@ -42,10 +43,9 @@ impl<'a> From<sqlx::Transaction<'a, sqlx::Sqlite>> for DatabaseTransaction<'a> {
 
 #[allow(dead_code)]
 impl<'a> DatabaseTransaction<'a> {
-    pub(crate) async fn run<F, T, E, Fut>(self, callback: F) -> Result<T, TransactionError<E>>
+    pub(crate) async fn run<F, T, E>(self, callback: F) -> Result<T, TransactionError<E>>
     where
-        F: FnOnce(&DatabaseTransaction) -> Fut + Send,
-        Fut: futures::Future<Output=Result<T, E>> + Send,
+        F: for<'c> FnOnce(&'c DatabaseTransaction<'_>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>> + Send + Sync,
         T: Send,
         E: std::error::Error + Send,
     {
@@ -224,12 +224,11 @@ impl<'a> DbConnection for DatabaseTransaction<'a> {
 
     /// Execute the function inside a transaction.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
-    async fn transaction<F, T, E, Fut>(&self, _callback: F) -> Result<T, TransactionError<E>>
+    async fn transaction<'b, F, T, E>(&self, _callback: F) -> Result<T, TransactionError<E>>
     where
-            F: FnOnce(&DatabaseTransaction) -> Fut + Send,
-            Fut: futures::Future<Output=Result<T, E>> + Send,
-            T: Send,
-            E: std::error::Error + Send,
+        F: for<'c> FnOnce(&'c DatabaseTransaction<'_>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>> + 'b + Send + Sync,
+        T: Send,
+        E: std::error::Error + Send,
     {
         match self {
             #[cfg(feature = "sqlx-mysql")]
