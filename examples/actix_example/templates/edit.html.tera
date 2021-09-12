@@ -38,9 +38,8 @@
       </form>
     </div>
     <div class="two columns">
-      <form action="/{{ post.id }}" method="post">
+      <form action="/delete/{{ post.id }}" method="post">
         <div class="two columns">
-          <input type="hidden" name="_method" value="delete" />
           <input id="delete-button" type="submit" value="delete post" />
         </div>
       </form>

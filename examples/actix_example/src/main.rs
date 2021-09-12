@@ -6,12 +6,12 @@ use actix_web::dev::ServiceResponse;
 use actix_web::http::StatusCode;
 use actix_web::middleware::errhandlers::{ErrorHandlerResponse, ErrorHandlers};
 use actix_web::{
-    error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result,
+    delete, error, get, guard, http, middleware, post, web, App, Error, HttpRequest, HttpResponse,
+    HttpServer, Result,
 };
 use listenfd::ListenFd;
 use sea_orm::entity::*;
 use sea_orm::query::*;
-use sea_orm::DatabaseConnection;
 use sea_orm::EntityTrait;
 use serde::Deserialize;
 use std::env;
@@ -135,9 +135,26 @@ async fn update(
     Ok(HttpResponse::Found().header("location", "/").finish())
 }
 
+#[post("/delete/{id}")]
+async fn delete(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
+    let conn = sea_orm::Database::connect(&data.db_url).await.unwrap();
+
+    let post: post::ActiveModel = Post::find_by_id(id.into_inner())
+        .one(&conn)
+        .await
+        .unwrap()
+        .unwrap()
+        .into();
+
+    post.delete(&conn).await.unwrap();
+
+    // Flash::success(Redirect::to("/"), "Post successfully deleted.")
+    Ok(HttpResponse::Found().header("location", "/").finish())
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    std::env::set_var("RUST_LOG", "actix_web=info");
+    std::env::set_var("RUST_LOG", "actix_web=debug");
     env_logger::init();
 
     // get env vars
@@ -160,8 +177,8 @@ async fn main() -> std::io::Result<()> {
                 templates: templates,
             })
             .wrap(middleware::Logger::default()) // enable logger
-            .service(fs::Files::new("/static", "./static").show_files_listing())
             .configure(init)
+            .service(fs::Files::new("/static", "./static").show_files_listing())
     });
 
     server = match listenfd.take_tcp_listener(0)? {
@@ -181,4 +198,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(create);
     cfg.service(edit);
     cfg.service(update);
+    cfg.service(delete);
 }
