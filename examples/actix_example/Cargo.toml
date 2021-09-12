@@ -1,5 +1,5 @@
 [package]
-name = "sea-orm-rocket-example"
+name = "sea-orm-actix-example"
 version = "0.1.0"
 authors = ["Sam Samai <sam@studio2pi.com.au>"]
 edition = "2018"
@@ -21,7 +21,7 @@ tera = "1.8.0"
 sea-orm = { path = "../../", version = "^0.2", features = [
   "macros",
   "sqlx-all",
-  "runtime-tokio-native-tls",
+  "runtime-async-std-native-tls",
 ], default-features = false }
 serde = "1"
 env_logger = "0.8"
@@ -29,9 +29,9 @@ env_logger = "0.8"
 [dependencies.sqlx]
 version = "^0.5"
 default-features = false
-features = ["macros", "offline", "migrate"]
+features = ["macros", "offline", "migrate", "runtime-async-std-native-tls"]
 
 [features]
-default = ["sqlx-postgres"]
+default = ["sqlx-mysql"]
 sqlx-mysql = ["sea-orm/sqlx-mysql"]
 sqlx-postgres = ["sea-orm/sqlx-postgres"]
