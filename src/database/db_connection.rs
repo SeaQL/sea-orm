@@ -20,6 +20,10 @@ pub trait DbConnection {
         T: Send,
         E: std::error::Error + Send;
 
+    fn is_mock_connection(&self) -> bool {
+        false
+    }
+
     #[cfg(feature = "mock")]
     fn as_mock_connection(&self) -> &crate::MockDatabaseConnection;
 
