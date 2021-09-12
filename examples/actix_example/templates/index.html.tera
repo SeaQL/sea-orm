@@ -13,7 +13,7 @@
       type="text/css"
     />
     <link rel="stylesheet" href="/static/css/normalize.css" />
-    <link rel="stylesheet" href="/css/skeleton.css" />
+    <link rel="stylesheet" href="/static/css/skeleton.css" />
     <link rel="stylesheet" href="/static/css/style.css" />
     <link rel="icon" type="image/png" href="/static/images/favicon.png" />
   </head>
