@@ -84,19 +84,22 @@ where
 {
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
-    let last_insert_id = if db.get_database_backend() == DbBackend::Postgres {
-        use crate::{sea_query::Iden, Iterable};
-        let cols = PrimaryKey::<A>::iter()
-            .map(|col| col.to_string())
-            .collect::<Vec<_>>();
-        let res = db.query_one(statement).await?.unwrap();
-        res.try_get_many("", cols.as_ref()).unwrap_or_default()
-    }
-    else {
-        let last_insert_id = db.execute(statement).await?.last_insert_id();
-        ValueTypeOf::<A>::try_from_u64(last_insert_id)
-            .ok()
-            .unwrap_or_default()
+    let last_insert_id = match db.get_database_backend() {
+        #[cfg(feature = "sqlx-postgres")]
+        DbBackend::Postgres => {
+            use crate::{sea_query::Iden, Iterable};
+            let cols = PrimaryKey::<A>::iter()
+                .map(|col| col.to_string())
+                .collect::<Vec<_>>();
+            let res = db.query_one(statement).await?.unwrap();
+            res.try_get_many("", cols.as_ref()).unwrap_or_default()
+        },
+        _ => {
+            let last_insert_id = db.execute(statement).await?.last_insert_id();
+            ValueTypeOf::<A>::try_from_u64(last_insert_id)
+                .ok()
+                .unwrap_or_default()
+        },
     };
     Ok(InsertResult { last_insert_id })
 }
