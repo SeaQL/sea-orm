@@ -1,46 +1,68 @@
-{% extends "base" %} {% block content %}
-<h1>Posts</h1>
-{% if flash %}
-<small class="field-{{ flash.0 }}-flash">
-  {{ flash.1 }}
-</small>
-{% endif %}
-<table>
-  <tbody>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Title</th>
-        <th>Text</th>
-      </tr>
-    </thead>
-    {% for post in posts %}
-    <tr class="post" onclick="window.location='/{{ post.id }}';">
-      <td>{{ post.id }}</td>
-      <td>{{ post.title }}</td>
-      <td>{{ post.text }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-  <tfoot>
-    <tr>
-      <td></td>
-      <td>
-        {% if page == 0 %} Previous {% else %}
-        <a href="/?page={{ page - 1 }}">Previous</a>
-        {% endif %} | {% if page == num_pages - 1 %} Next {% else %}
-        <a href="/?page={{ page + 1 }}">Next</a>
-        {% endif %}
-      </td>
-      <td></td>
-    </tr>
-  </tfoot>
-</table>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Actix Example</title>
+    <meta name="description" content="Actix - SeaOrm integration example" />
+    <meta name="author" content="Sam Samai" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<div class="twelve columns">
-  <a href="/new">
-    <input type="button" value="add post" />
-  </a>
-</div>
+    <link
+      href="//fonts.googleapis.com/css?family=Raleway:400,300,600"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <link rel="stylesheet" href="/static/css/normalize.css" />
+    <link rel="stylesheet" href="/css/skeleton.css" />
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="icon" type="image/png" href="/static/images/favicon.png" />
+  </head>
+  <body>
+    <div class="container">
+      <p><!--Nothing to see here --></p>
+      <h1>Posts</h1>
+      {# {% if flash %}
+      <small class="field-{{ flash.0 }}-flash">
+        {{ flash.1 }}
+      </small>
+      {% endif %} #}
+      <table>
+        <tbody>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Title</th>
+              <th>Text</th>
+            </tr>
+          </thead>
+          {% for post in posts %}
+          <tr class="post" onclick="window.location='/{{ post.id }}';">
+            <td>{{ post.id }}</td>
+            <td>{{ post.title }}</td>
+            <td>{{ post.text }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td></td>
+            <td>
+              {% if page == 0 %} Previous {% else %}
+              <a href="/?page={{ page - 1 }}">Previous</a>
+              {% endif %} | {% if page == num_pages - 1 %} Next {% else %}
+              <a href="/?page={{ page + 1 }}">Next</a>
+              {% endif %}
+            </td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
 
-{% endblock content %}
+      <div class="twelve columns">
+        <a href="/new">
+          <input type="button" value="add post" />
+        </a>
+      </div>
+    </div>
+  </body>
+</html>

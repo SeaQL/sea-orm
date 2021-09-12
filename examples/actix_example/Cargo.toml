@@ -14,6 +14,7 @@ futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 actix-http = "2"
 actix-web = "3"
+actix-files = "0.5"
 tera = "1.8.0"
 
 # remove `path = ""` in your own project
@@ -22,7 +23,8 @@ sea-orm = { path = "../../", version = "^0.2", features = [
   "sqlx-all",
   "runtime-tokio-native-tls",
 ], default-features = false }
-serde_json = { version = "^1" }
+serde = "1"
+env_logger = "0.8"
 
 [dependencies.sqlx]
 version = "^0.5"

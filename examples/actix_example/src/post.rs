@@ -1,8 +1,8 @@
-use rocket::serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use sea_orm::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity, Deserialize, Serialize)]
-#[serde(crate = "rocket::serde")]
+#[serde(crate = "serde")]
 pub struct Entity;
 
 impl EntityName for Entity {
@@ -12,9 +12,9 @@ impl EntityName for Entity {
 }
 
 #[derive(
-    Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Deserialize, Serialize, FromForm,
+    Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Deserialize, Serialize,
 )]
-#[serde(crate = "rocket::serde")]
+#[serde(crate = "serde")]
 pub struct Model {
     #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
     pub id: Option<i32>,
