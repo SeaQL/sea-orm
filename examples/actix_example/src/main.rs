@@ -94,6 +94,47 @@ async fn create(
     Ok(HttpResponse::Found().header("location", "/").finish())
 }
 
+#[get("/{id}")]
+async fn edit(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
+    let conn = sea_orm::Database::connect(&data.db_url).await.unwrap();
+    let template = &data.templates;
+
+    let post: post::Model = Post::find_by_id(id.into_inner())
+        .one(&conn)
+        .await
+        .expect("could not find post")
+        .unwrap();
+
+    let mut ctx = tera::Context::new();
+    ctx.insert("post", &post);
+
+    let body = template
+        .render("edit.html.tera", &ctx)
+        .map_err(|_| error::ErrorInternalServerError("Template error"))?;
+    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+}
+
+#[post("/{id}")]
+async fn update(
+    data: web::Data<AppState>,
+    id: web::Path<i32>,
+    post_form: web::Form<post::Model>,
+) -> Result<HttpResponse, Error> {
+    let conn = sea_orm::Database::connect(&data.db_url).await.unwrap();
+    let form = post_form.into_inner();
+
+    post::ActiveModel {
+        id: Set(Some(id.into_inner())),
+        title: Set(form.title.to_owned()),
+        text: Set(form.text.to_owned()),
+    }
+    .save(&conn)
+    .await
+    .expect("could not edit post");
+
+    Ok(HttpResponse::Found().header("location", "/").finish())
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "actix_web=info");
@@ -138,4 +179,6 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(list);
     cfg.service(new);
     cfg.service(create);
+    cfg.service(edit);
+    cfg.service(update);
 }
