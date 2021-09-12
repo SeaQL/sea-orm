@@ -163,6 +163,11 @@ mod tests {
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};
 
+    #[cfg(feature = "sqlx-postgres")]
+    type NumRows = i64;
+    #[cfg(not(feature = "sqlx-postgres"))]
+    type NumRows = i32;
+
     fn setup() -> (DatabaseConnection, Vec<Vec<fruit::Model>>) {
         let page1 = vec![
             fruit::Model {
@@ -192,7 +197,7 @@ mod tests {
         (db, vec![page1, page2, page3])
     }
 
-    fn setup_num_items() -> (DatabaseConnection, i32) {
+    fn setup_num_items() -> (DatabaseConnection, NumRows) {
         let num_items = 3;
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results(vec![vec![maplit::btreemap! {
