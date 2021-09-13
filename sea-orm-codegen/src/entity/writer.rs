@@ -1,6 +1,8 @@
 use crate::Entity;
 use proc_macro2::TokenStream;
 use quote::quote;
+use std::iter::FromIterator;
+use syn::{punctuated::Punctuated, token::Comma};
 
 #[derive(Clone, Debug)]
 pub struct EntityWriter {
@@ -332,12 +334,29 @@ impl EntityWriter {
             .columns
             .iter()
             .map(|col| {
-                if !primary_keys.contains(&col.name) {
-                    TokenStream::new()
-                } else {
-                    quote! {
-                        #[sea_orm(primary_key)]
+                let mut attrs: Punctuated<_, Comma> = Punctuated::new();
+                if primary_keys.contains(&col.name) {
+                    attrs.push(quote! { primary_key });
+                    if !col.auto_increment {
+                        attrs.push(quote! { auto_increment = false });
                     }
+                }
+                if let Some(ts) = col.get_col_type_attrs() {
+                    attrs.extend(vec![ts]);
+                };
+                if !attrs.is_empty() {
+                    let mut ts = TokenStream::new();
+                    for (i, attr) in attrs.into_iter().enumerate() {
+                        if i > 0 {
+                            ts = quote! { #ts, };
+                        }
+                        ts = quote! { #ts #attr };
+                    }
+                    quote! {
+                        #[sea_orm(#ts)]
+                    }
+                } else {
+                    TokenStream::new()
                 }
             })
             .collect();

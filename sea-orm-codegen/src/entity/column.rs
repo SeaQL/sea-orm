@@ -2,6 +2,7 @@ use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{ColumnDef, ColumnSpec, ColumnType};
+use syn::punctuated::Punctuated;
 
 #[derive(Clone, Debug)]
 pub struct Column {
@@ -50,6 +51,20 @@ impl Column {
             true => quote! { #ident },
             false => quote! { Option<#ident> },
         }
+    }
+
+    pub fn get_col_type_attrs(&self) -> Option<TokenStream> {
+        let col_type = match &self.col_type {
+            ColumnType::Float(Some(l)) => Some(format!("Float(Some({}))", l)),
+            ColumnType::Double(Some(l)) => Some(format!("Double(Some({}))", l)),
+            ColumnType::Decimal(Some((p, s))) => Some(format!("Decimal(Some(({}, {})))", p, s)),
+            ColumnType::Money(Some((p, s))) => Some(format!("Money(Some({}, {}))", p, s)),
+            ColumnType::Custom(iden) => {
+                Some(format!("Custom(\"{}\".to_owned())", iden.to_string()))
+            }
+            _ => None,
+        };
+        col_type.map(|ty| quote! { column_type = #ty })
     }
 
     pub fn get_def(&self) -> TokenStream {
