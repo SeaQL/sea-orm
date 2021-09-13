@@ -105,7 +105,7 @@ pub trait EntityTrait: EntityName {
     /// #     ])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbConnection};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, ConnectionTrait};
     ///
     /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
@@ -173,7 +173,7 @@ pub trait EntityTrait: EntityName {
     /// #     ])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbConnection};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, ConnectionTrait};
     ///
     /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
@@ -213,7 +213,7 @@ pub trait EntityTrait: EntityName {
     /// #     ])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake_filling, DbConnection};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake_filling, ConnectionTrait};
     ///
     /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
@@ -273,7 +273,7 @@ pub trait EntityTrait: EntityName {
     /// #     ])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbConnection};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, ConnectionTrait};
     ///
     /// let apple = cake::ActiveModel {
     ///     name: Set("Apple Pie".to_owned()),
@@ -320,7 +320,7 @@ pub trait EntityTrait: EntityName {
     /// #     ])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbConnection};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, ConnectionTrait};
     ///
     /// let apple = cake::ActiveModel {
     ///     name: Set("Apple Pie".to_owned()),
@@ -375,7 +375,7 @@ pub trait EntityTrait: EntityName {
     /// #     ])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, DbConnection};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, ConnectionTrait};
     ///
     /// let orange = fruit::ActiveModel {
     ///     id: Set(1),
@@ -425,7 +425,7 @@ pub trait EntityTrait: EntityName {
     /// #     ])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::{Expr, Value}, DbConnection};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::{Expr, Value}, ConnectionTrait};
     ///
     /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
@@ -469,7 +469,7 @@ pub trait EntityTrait: EntityName {
     /// #     ])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, DbConnection};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, ConnectionTrait};
     ///
     /// let orange = fruit::ActiveModel {
     ///     id: Set(3),
@@ -506,7 +506,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend, DbConnection};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend, ConnectionTrait};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results(vec![

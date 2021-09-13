@@ -1,4 +1,4 @@
-use crate::{ActiveModelTrait, DbBackend, DbConnection, EntityTrait, Insert, PrimaryKeyTrait, Statement, TryFromU64, error::*};
+use crate::{ActiveModelTrait, DbBackend, ConnectionTrait, EntityTrait, Insert, PrimaryKeyTrait, Statement, TryFromU64, error::*};
 use sea_query::InsertStatement;
 use std::{future::Future, marker::PhantomData};
 
@@ -29,7 +29,7 @@ where
         db: &'a C,
     ) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
     where
-        C: DbConnection,
+        C: ConnectionTrait,
         A: 'a,
     {
         // so that self is dropped before entering await
@@ -65,7 +65,7 @@ where
         db: &'a C,
     ) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
     where
-        C: DbConnection,
+        C: ConnectionTrait,
         A: 'a,
     {
         let builder = db.get_database_backend();
@@ -79,7 +79,7 @@ async fn exec_insert<A, C>(
     db: &C,
 ) -> Result<InsertResult<A>, DbErr>
 where
-    C: DbConnection,
+    C: ConnectionTrait,
     A: ActiveModelTrait,
 {
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
