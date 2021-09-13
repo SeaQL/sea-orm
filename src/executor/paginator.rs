@@ -1,4 +1,4 @@
-use crate::{DbBackend, DbConnection, SelectorTrait, error::*};
+use crate::{DbBackend, ConnectionTrait, SelectorTrait, error::*};
 use async_stream::stream;
 use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
@@ -9,7 +9,7 @@ pub type PinBoxStream<'db, Item> = Pin<Box<dyn Stream<Item = Item> + 'db>>;
 #[derive(Clone, Debug)]
 pub struct Paginator<'db, C, S>
 where
-    C: DbConnection,
+    C: ConnectionTrait,
     S: SelectorTrait + 'db,
 {
     pub(crate) query: SelectStatement,
@@ -23,7 +23,7 @@ where
 
 impl<'db, C, S> Paginator<'db, C, S>
 where
-    C: DbConnection,
+    C: ConnectionTrait,
     S: SelectorTrait + 'db,
 {
     /// Fetch a specific page
@@ -158,7 +158,7 @@ where
 #[cfg(feature = "mock")]
 mod tests {
     use crate::entity::prelude::*;
-    use crate::{DbConnection, tests_cfg::*};
+    use crate::{ConnectionTrait, tests_cfg::*};
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};

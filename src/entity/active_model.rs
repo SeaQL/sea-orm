@@ -1,5 +1,5 @@
 use crate::{
-    error::*, DbConnection, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn,
+    error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn,
     PrimaryKeyTrait, Value,
 };
 use async_trait::async_trait;
@@ -70,7 +70,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn insert<C>(self, db: &C) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        C: DbConnection + Sync,
+        C: ConnectionTrait + Sync,
     {
         let am = self;
         let exec = <Self::Entity as EntityTrait>::insert(am).exec(db);
@@ -92,7 +92,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     async fn update<C>(self, db: &C) -> Result<Self, DbErr>
-    where C: DbConnection + Sync {
+    where C: ConnectionTrait + Sync {
         let exec = Self::Entity::update(self).exec(db);
         exec.await
     }
@@ -103,7 +103,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     where
         Self: ActiveModelBehavior,
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        C: DbConnection + Sync,
+        C: ConnectionTrait + Sync,
     {
         let mut am = self;
         am = ActiveModelBehavior::before_save(am);
@@ -128,7 +128,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn delete<C>(self, db: &C) -> Result<DeleteResult, DbErr>
     where
         Self: ActiveModelBehavior,
-        C: DbConnection + Sync,
+        C: ConnectionTrait + Sync,
     {
         let mut am = self;
         am = ActiveModelBehavior::before_delete(am);

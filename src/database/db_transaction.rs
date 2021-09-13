@@ -1,5 +1,5 @@
 use std::{pin::Pin, future::Future};
-use crate::{DbBackend, DbConnection, DbErr, ExecResult, QueryResult, Statement, debug_print};
+use crate::{DbBackend, ConnectionTrait, DbErr, ExecResult, QueryResult, Statement, debug_print};
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 #[cfg(feature = "sqlx-dep")]
@@ -107,7 +107,7 @@ impl<'a> DatabaseTransaction<'a> {
 }
 
 #[async_trait::async_trait]
-impl<'a> DbConnection for DatabaseTransaction<'a> {
+impl<'a> ConnectionTrait for DatabaseTransaction<'a> {
     fn get_database_backend(&self) -> DbBackend {
         match self {
             #[cfg(feature = "sqlx-mysql")]

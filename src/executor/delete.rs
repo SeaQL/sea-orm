@@ -1,4 +1,4 @@
-use crate::{ActiveModelTrait, DbConnection, DeleteMany, DeleteOne, EntityTrait, Statement, error::*};
+use crate::{ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, Statement, error::*};
 use sea_query::DeleteStatement;
 use std::future::Future;
 
@@ -20,7 +20,7 @@ where
         self,
         db: &'a C,
     ) -> impl Future<Output = Result<DeleteResult, DbErr>> + 'a
-    where C: DbConnection {
+    where C: ConnectionTrait {
         // so that self is dropped before entering await
         exec_delete_only(self.query, db)
     }
@@ -34,7 +34,7 @@ where
         self,
         db: &'a C,
     ) -> impl Future<Output = Result<DeleteResult, DbErr>> + 'a
-    where C: DbConnection {
+    where C: ConnectionTrait {
         // so that self is dropped before entering await
         exec_delete_only(self.query, db)
     }
@@ -49,7 +49,7 @@ impl Deleter {
         self,
         db: &C,
     ) -> impl Future<Output = Result<DeleteResult, DbErr>> + '_
-    where C: DbConnection {
+    where C: ConnectionTrait {
         let builder = db.get_database_backend();
         exec_delete(builder.build(&self.query), db)
     }
@@ -59,13 +59,13 @@ async fn exec_delete_only<C>(
     query: DeleteStatement,
     db: &C,
 ) -> Result<DeleteResult, DbErr>
-where C: DbConnection {
+where C: ConnectionTrait {
     Deleter::new(query).exec(db).await
 }
 
 // Only Statement impl Send
 async fn exec_delete<C>(statement: Statement, db: &C) -> Result<DeleteResult, DbErr>
-where C: DbConnection {
+where C: ConnectionTrait {
     let result = db.execute(statement).await?;
     Ok(DeleteResult {
         rows_affected: result.rows_affected(),

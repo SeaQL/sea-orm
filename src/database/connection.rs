@@ -1,5 +1,5 @@
 use std::{pin::Pin, future::Future};
-use crate::{DatabaseTransaction, DbConnection, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError, error::*};
+use crate::{DatabaseTransaction, ConnectionTrait, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError, error::*};
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 
 pub enum DatabaseConnection {
@@ -52,7 +52,7 @@ impl std::fmt::Debug for DatabaseConnection {
 }
 
 #[async_trait::async_trait]
-impl DbConnection for DatabaseConnection {
+impl ConnectionTrait for DatabaseConnection {
     fn get_database_backend(&self) -> DbBackend {
         match self {
             #[cfg(feature = "sqlx-mysql")]
