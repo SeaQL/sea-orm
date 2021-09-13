@@ -95,6 +95,7 @@
 //!
 //! // insert one
 //! let pear = pear.insert(db).await?;
+//! #
 //! # Ok(())
 //! # }
 //! # async fn function2(db: &DbConn) -> Result<(), DbErr> {
