@@ -2,7 +2,7 @@ use std::{pin::Pin, future::Future};
 use crate::{DatabaseTransaction, DbBackend, DbErr, ExecResult, QueryResult, Statement, TransactionError};
 
 #[async_trait::async_trait]
-pub trait ConnectionTrait {
+pub trait ConnectionTrait: Sync {
     fn get_database_backend(&self) -> DbBackend;
 
     async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr>;
