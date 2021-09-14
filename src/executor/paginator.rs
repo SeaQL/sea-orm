@@ -1,4 +1,4 @@
-use crate::{error::*, DatabaseConnection, SelectorTrait};
+use crate::{DbBackend, ConnectionTrait, SelectorTrait, error::*};
 use async_stream::stream;
 use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
@@ -7,21 +7,23 @@ use std::{marker::PhantomData, pin::Pin};
 pub type PinBoxStream<'db, Item> = Pin<Box<dyn Stream<Item = Item> + 'db>>;
 
 #[derive(Clone, Debug)]
-pub struct Paginator<'db, S>
+pub struct Paginator<'db, C, S>
 where
+    C: ConnectionTrait,
     S: SelectorTrait + 'db,
 {
     pub(crate) query: SelectStatement,
     pub(crate) page: usize,
     pub(crate) page_size: usize,
-    pub(crate) db: &'db DatabaseConnection,
+    pub(crate) db: &'db C,
     pub(crate) selector: PhantomData<S>,
 }
 
 // LINT: warn if paginator is used without an order by clause
 
-impl<'db, S> Paginator<'db, S>
+impl<'db, C, S> Paginator<'db, C, S>
 where
+    C: ConnectionTrait,
     S: SelectorTrait + 'db,
 {
     /// Fetch a specific page
@@ -63,11 +65,9 @@ where
             Some(res) => res,
             None => return Ok(0),
         };
-        let num_items = match self.db {
+        let num_items = match builder {
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(_) => {
-                result.try_get::<i64>("", "num_items")? as usize
-            }
+            DbBackend::Postgres if !self.db.is_mock_connection() => result.try_get::<i64>("", "num_items")? as usize,
             _ => result.try_get::<i32>("", "num_items")? as usize,
         };
         Ok(num_items)
@@ -158,7 +158,7 @@ where
 #[cfg(feature = "mock")]
 mod tests {
     use crate::entity::prelude::*;
-    use crate::tests_cfg::*;
+    use crate::{ConnectionTrait, tests_cfg::*};
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};

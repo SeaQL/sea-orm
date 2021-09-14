@@ -1,6 +1,4 @@
-use crate::{
-    error::*, ActiveModelTrait, DatabaseConnection, EntityTrait, Statement, UpdateMany, UpdateOne,
-};
+use crate::{ActiveModelTrait, ConnectionTrait, EntityTrait, Statement, UpdateMany, UpdateOne, error::*};
 use sea_query::UpdateStatement;
 use std::future::Future;
 
@@ -18,7 +16,8 @@ impl<'a, A: 'a> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
-    pub fn exec(self, db: &'a DatabaseConnection) -> impl Future<Output = Result<A, DbErr>> + 'a {
+    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<A, DbErr>> + 'a
+    where C: ConnectionTrait {
         // so that self is dropped before entering await
         exec_update_and_return_original(self.query, self.model, db)
     }
@@ -28,10 +27,11 @@ impl<'a, E> UpdateMany<E>
 where
     E: EntityTrait,
 {
-    pub fn exec(
+    pub fn exec<C>(
         self,
-        db: &'a DatabaseConnection,
-    ) -> impl Future<Output = Result<UpdateResult, DbErr>> + 'a {
+        db: &'a C,
+    ) -> impl Future<Output = Result<UpdateResult, DbErr>> + 'a
+    where C: ConnectionTrait {
         // so that self is dropped before entering await
         exec_update_only(self.query, db)
     }
@@ -42,36 +42,40 @@ impl Updater {
         Self { query }
     }
 
-    pub fn exec(
+    pub fn exec<C>(
         self,
-        db: &DatabaseConnection,
-    ) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_ {
+        db: &C,
+    ) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_
+    where C: ConnectionTrait {
         let builder = db.get_database_backend();
         exec_update(builder.build(&self.query), db)
     }
 }
 
-async fn exec_update_only(
+async fn exec_update_only<C>(
     query: UpdateStatement,
-    db: &DatabaseConnection,
-) -> Result<UpdateResult, DbErr> {
+    db: &C,
+) -> Result<UpdateResult, DbErr>
+where C: ConnectionTrait {
     Updater::new(query).exec(db).await
 }
 
-async fn exec_update_and_return_original<A>(
+async fn exec_update_and_return_original<A, C>(
     query: UpdateStatement,
     model: A,
-    db: &DatabaseConnection,
+    db: &C,
 ) -> Result<A, DbErr>
 where
     A: ActiveModelTrait,
+    C: ConnectionTrait,
 {
     Updater::new(query).exec(db).await?;
     Ok(model)
 }
 
 // Only Statement impl Send
-async fn exec_update(statement: Statement, db: &DatabaseConnection) -> Result<UpdateResult, DbErr> {
+async fn exec_update<C>(statement: Statement, db: &C) -> Result<UpdateResult, DbErr>
+where C: ConnectionTrait {
     let result = db.execute(statement).await?;
     Ok(UpdateResult {
         rows_affected: result.rows_affected(),

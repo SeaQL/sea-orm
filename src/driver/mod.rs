@@ -3,11 +3,11 @@ mod mock;
 #[cfg(feature = "sqlx-dep")]
 mod sqlx_common;
 #[cfg(feature = "sqlx-mysql")]
-mod sqlx_mysql;
+pub(crate) mod sqlx_mysql;
 #[cfg(feature = "sqlx-postgres")]
-mod sqlx_postgres;
+pub(crate) mod sqlx_postgres;
 #[cfg(feature = "sqlx-sqlite")]
-mod sqlx_sqlite;
+pub(crate) mod sqlx_sqlite;
 
 #[cfg(feature = "mock")]
 pub use mock::*;

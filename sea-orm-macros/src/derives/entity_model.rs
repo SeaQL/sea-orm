@@ -163,10 +163,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 "bool" => quote! { Boolean },
                                 "NaiveDate" => quote! { Date },
                                 "NaiveTime" => quote! { Time },
-                                "DateTime" | "NaiveDateTime" => quote! { DateTime },
+                                "DateTime" | "NaiveDateTime" | "DateTimeWithTimeZone" => quote! { DateTime },
                                 "Uuid" => quote! { Uuid },
                                 "Json" => quote! { Json },
-                                "Decimal" => quote! { Decimal },
+                                "Decimal" => quote! { Decimal(None) },
                                 "Vec<u8>" => quote! { Binary },
                                 _ => {
                                     return Err(Error::new(

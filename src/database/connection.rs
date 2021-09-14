@@ -1,4 +1,5 @@
-use crate::{error::*, ExecResult, QueryResult, Statement, StatementBuilder};
+use std::{pin::Pin, future::Future};
+use crate::{DatabaseTransaction, ConnectionTrait, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError, error::*};
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 
 pub enum DatabaseConnection {
@@ -50,8 +51,9 @@ impl std::fmt::Debug for DatabaseConnection {
     }
 }
 
-impl DatabaseConnection {
-    pub fn get_database_backend(&self) -> DbBackend {
+#[async_trait::async_trait]
+impl ConnectionTrait for DatabaseConnection {
+    fn get_database_backend(&self) -> DbBackend {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(_) => DbBackend::MySql,
@@ -65,7 +67,7 @@ impl DatabaseConnection {
         }
     }
 
-    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
+    async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.execute(stmt).await,
@@ -79,7 +81,7 @@ impl DatabaseConnection {
         }
     }
 
-    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
+    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_one(stmt).await,
@@ -93,7 +95,7 @@ impl DatabaseConnection {
         }
     }
 
-    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
+    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_all(stmt).await,
@@ -107,23 +109,41 @@ impl DatabaseConnection {
         }
     }
 
+    /// Execute the function inside a transaction.
+    /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
+    async fn transaction<'a, F, T, E>(&self, _callback: F) -> Result<T, TransactionError<E>>
+    where
+        F: for<'c> FnOnce(&'c DatabaseTransaction<'_>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>> + 'a + Send + Sync,
+        T: Send,
+        E: std::error::Error + Send,
+    {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.transaction(_callback).await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.transaction(_callback).await,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.transaction(_callback).await,
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(_) => panic!("Mock"),//TODO: can it be permitted? How?
+            DatabaseConnection::Disconnected => panic!("Disconnected"),
+        }
+    }
+
     #[cfg(feature = "mock")]
-    pub fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
+    fn is_mock_connection(&self) -> bool {
+        match self {
+            DatabaseConnection::MockDatabaseConnection(_) => true,
+            _ => false,
+        }
+    }
+
+    #[cfg(feature = "mock")]
+    fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
         match self {
             DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
             _ => panic!("not mock connection"),
         }
-    }
-
-    #[cfg(not(feature = "mock"))]
-    pub fn as_mock_connection(&self) -> Option<bool> {
-        None
-    }
-
-    #[cfg(feature = "mock")]
-    pub fn into_transaction_log(self) -> Vec<crate::Transaction> {
-        let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
-        mocker.drain_transaction_log()
     }
 }
 
