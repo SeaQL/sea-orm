@@ -1,6 +1,8 @@
 use crate::Entity;
 use proc_macro2::TokenStream;
 use quote::quote;
+use std::iter::FromIterator;
+use syn::{punctuated::Punctuated, token::Comma};
 
 #[derive(Clone, Debug)]
 pub struct EntityWriter {
@@ -17,21 +19,25 @@ pub struct OutputFile {
 }
 
 impl EntityWriter {
-    pub fn generate(self) -> WriterOutput {
+    pub fn generate(self, expanded_format: bool) -> WriterOutput {
         let mut files = Vec::new();
-        files.extend(self.write_entities());
+        files.extend(self.write_entities(expanded_format));
         files.push(self.write_mod());
         files.push(self.write_prelude());
         WriterOutput { files }
     }
 
-    pub fn write_entities(&self) -> Vec<OutputFile> {
+    pub fn write_entities(&self, expanded_format: bool) -> Vec<OutputFile> {
         self.entities
             .iter()
             .map(|entity| {
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);
-                let code_blocks = Self::gen_code_blocks(entity);
+                let code_blocks = if expanded_format {
+                    Self::gen_expanded_code_blocks(entity)
+                } else {
+                    Self::gen_compact_code_blocks(entity)
+                };
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
                     name: format!("{}.rs", entity.get_table_name_snake_case()),
@@ -97,7 +103,7 @@ impl EntityWriter {
         lines.push("".to_owned());
     }
 
-    pub fn gen_code_blocks(entity: &Entity) -> Vec<TokenStream> {
+    pub fn gen_expanded_code_blocks(entity: &Entity) -> Vec<TokenStream> {
         let mut code_blocks = vec![
             Self::gen_import(),
             Self::gen_entity_struct(),
@@ -110,6 +116,23 @@ impl EntityWriter {
             Self::gen_impl_column_trait(entity),
             Self::gen_impl_relation_trait(entity),
         ];
+        code_blocks.extend(Self::gen_impl_related(entity));
+        code_blocks.extend(Self::gen_impl_conjunct_related(entity));
+        code_blocks.extend(vec![Self::gen_impl_active_model_behavior()]);
+        code_blocks
+    }
+
+    pub fn gen_compact_code_blocks(entity: &Entity) -> Vec<TokenStream> {
+        let mut code_blocks = vec![Self::gen_import(), Self::gen_compact_model_struct(entity)];
+        let relation_defs = if entity.get_relation_ref_tables_camel_case().is_empty() {
+            vec![
+                Self::gen_relation_enum(entity),
+                Self::gen_impl_relation_trait(entity),
+            ]
+        } else {
+            vec![Self::gen_compact_relation_enum(entity)]
+        };
+        code_blocks.extend(relation_defs);
         code_blocks.extend(Self::gen_impl_related(entity));
         code_blocks.extend(Self::gen_impl_conjunct_related(entity));
         code_blocks.extend(vec![Self::gen_impl_active_model_behavior()]);
@@ -297,6 +320,71 @@ impl EntityWriter {
             pub use super::#table_name_snake_case_ident::Entity as #table_name_camel_case_ident;
         }
     }
+
+    pub fn gen_compact_model_struct(entity: &Entity) -> TokenStream {
+        let table_name = entity.table_name.as_str();
+        let column_names_snake_case = entity.get_column_names_snake_case();
+        let column_rs_types = entity.get_column_rs_types();
+        let primary_keys: Vec<String> = entity
+            .primary_keys
+            .iter()
+            .map(|pk| pk.name.clone())
+            .collect();
+        let attrs: Vec<TokenStream> = entity
+            .columns
+            .iter()
+            .map(|col| {
+                let mut attrs: Punctuated<_, Comma> = Punctuated::new();
+                if primary_keys.contains(&col.name) {
+                    attrs.push(quote! { primary_key });
+                    if !col.auto_increment {
+                        attrs.push(quote! { auto_increment = false });
+                    }
+                }
+                if let Some(ts) = col.get_col_type_attrs() {
+                    attrs.extend(vec![ts]);
+                };
+                if !attrs.is_empty() {
+                    let mut ts = TokenStream::new();
+                    for (i, attr) in attrs.into_iter().enumerate() {
+                        if i > 0 {
+                            ts = quote! { #ts, };
+                        }
+                        ts = quote! { #ts #attr };
+                    }
+                    quote! {
+                        #[sea_orm(#ts)]
+                    }
+                } else {
+                    TokenStream::new()
+                }
+            })
+            .collect();
+        quote! {
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = #table_name)]
+            pub struct Model {
+                #(
+                    #attrs
+                    pub #column_names_snake_case: #column_rs_types,
+                )*
+            }
+        }
+    }
+
+    pub fn gen_compact_relation_enum(entity: &Entity) -> TokenStream {
+        let relation_ref_tables_camel_case = entity.get_relation_ref_tables_camel_case();
+        let attrs = entity.get_relation_attrs();
+        quote! {
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {
+                #(
+                    #attrs
+                    #relation_ref_tables_camel_case,
+                )*
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -304,17 +392,10 @@ mod tests {
     use crate::{
         Column, ConjunctRelation, Entity, EntityWriter, PrimaryKey, Relation, RelationType,
     };
+    use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
-    use sea_query::ColumnType;
+    use sea_query::{ColumnType, ForeignKeyAction};
     use std::io::{self, BufRead, BufReader};
-
-    const ENTITY_FILES: [&str; 5] = [
-        include_str!("../../tests/entity/cake.rs"),
-        include_str!("../../tests/entity/cake_filling.rs"),
-        include_str!("../../tests/entity/filling.rs"),
-        include_str!("../../tests/entity/fruit.rs"),
-        include_str!("../../tests/entity/vendor.rs"),
-    ];
 
     fn setup() -> Vec<Entity> {
         vec![
@@ -341,6 +422,8 @@ mod tests {
                     columns: vec![],
                     ref_columns: vec![],
                     rel_type: RelationType::HasMany,
+                    on_delete: None,
+                    on_update: None,
                 }],
                 conjunct_relations: vec![ConjunctRelation {
                     via: "cake_filling".to_owned(),
@@ -374,12 +457,16 @@ mod tests {
                         columns: vec!["cake_id".to_owned()],
                         ref_columns: vec!["id".to_owned()],
                         rel_type: RelationType::BelongsTo,
+                        on_delete: Some(ForeignKeyAction::Cascade),
+                        on_update: Some(ForeignKeyAction::Cascade),
                     },
                     Relation {
                         ref_table: "filling".to_owned(),
                         columns: vec!["filling_id".to_owned()],
                         ref_columns: vec!["id".to_owned()],
                         rel_type: RelationType::BelongsTo,
+                        on_delete: Some(ForeignKeyAction::Cascade),
+                        on_update: Some(ForeignKeyAction::Cascade),
                     },
                 ],
                 conjunct_relations: vec![],
@@ -450,12 +537,16 @@ mod tests {
                         columns: vec!["cake_id".to_owned()],
                         ref_columns: vec!["id".to_owned()],
                         rel_type: RelationType::BelongsTo,
+                        on_delete: None,
+                        on_update: None,
                     },
                     Relation {
                         ref_table: "vendor".to_owned(),
                         columns: vec![],
                         ref_columns: vec![],
                         rel_type: RelationType::HasMany,
+                        on_delete: None,
+                        on_update: None,
                     },
                 ],
                 conjunct_relations: vec![],
@@ -493,6 +584,8 @@ mod tests {
                     columns: vec!["fruit_id".to_owned()],
                     ref_columns: vec!["id".to_owned()],
                     rel_type: RelationType::BelongsTo,
+                    on_delete: None,
+                    on_update: None,
                 }],
                 conjunct_relations: vec![],
                 primary_keys: vec![PrimaryKey {
@@ -503,8 +596,15 @@ mod tests {
     }
 
     #[test]
-    fn test_gen_code_blocks() -> io::Result<()> {
+    fn test_gen_expanded_code_blocks() -> io::Result<()> {
         let entities = setup();
+        const ENTITY_FILES: [&str; 5] = [
+            include_str!("../../tests/expanded/cake.rs"),
+            include_str!("../../tests/expanded/cake_filling.rs"),
+            include_str!("../../tests/expanded/filling.rs"),
+            include_str!("../../tests/expanded/fruit.rs"),
+            include_str!("../../tests/expanded/vendor.rs"),
+        ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
 
@@ -521,7 +621,46 @@ mod tests {
             }
             let content = lines.join("");
             let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_code_blocks(entity)
+            let generated = EntityWriter::gen_expanded_code_blocks(entity)
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                });
+            assert_eq!(expected.to_string(), generated.to_string());
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_gen_compact_code_blocks() -> io::Result<()> {
+        let entities = setup();
+        const ENTITY_FILES: [&str; 5] = [
+            include_str!("../../tests/compact/cake.rs"),
+            include_str!("../../tests/compact/cake_filling.rs"),
+            include_str!("../../tests/compact/filling.rs"),
+            include_str!("../../tests/compact/fruit.rs"),
+            include_str!("../../tests/compact/vendor.rs"),
+        ];
+
+        assert_eq!(entities.len(), ENTITY_FILES.len());
+
+        for (i, entity) in entities.iter().enumerate() {
+            let mut reader = BufReader::new(ENTITY_FILES[i].as_bytes());
+            let mut lines: Vec<String> = Vec::new();
+
+            reader.read_until(b';', &mut Vec::new())?;
+
+            let mut line = String::new();
+            while reader.read_line(&mut line)? > 0 {
+                lines.push(line.to_owned());
+                line.clear();
+            }
+            let content = lines.join("");
+            let expected: TokenStream = content.parse().unwrap();
+            let generated = EntityWriter::gen_compact_code_blocks(entity)
                 .into_iter()
                 .skip(1)
                 .fold(TokenStream::new(), |mut acc, tok| {

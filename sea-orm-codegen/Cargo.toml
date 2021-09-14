@@ -15,7 +15,7 @@ name = "sea_orm_codegen"
 path = "src/lib.rs"
 
 [dependencies]
-sea-query = { version = "^0.15" }
+sea-query = { version = "^0.16.1", git = "https://github.com/SeaQL/sea-query.git", branch = "foreign-key-getters" }
 syn = { version = "^1", default-features = false, features = [
     "derive",
     "parsing",
@@ -25,3 +25,6 @@ syn = { version = "^1", default-features = false, features = [
 quote = "^1"
 heck = "^0.3"
 proc-macro2 = "^1"
+
+[dev-dependencies]
+pretty_assertions = { version = "^0.7" }
