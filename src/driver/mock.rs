@@ -5,7 +5,7 @@ use crate::{
 use std::fmt::Debug;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
-    Arc, Mutex,
+    Mutex,
 };
 
 #[derive(Debug)]
@@ -14,7 +14,7 @@ pub struct MockDatabaseConnector;
 #[derive(Debug)]
 pub struct MockDatabaseConnection {
     counter: AtomicUsize,
-    mocker: Arc<Mutex<Box<dyn MockDatabaseTrait>>>,
+    mocker: Mutex<Box<dyn MockDatabaseTrait>>,
 }
 
 pub trait MockDatabaseTrait: Send + Debug {
@@ -78,7 +78,7 @@ impl MockDatabaseConnection {
     {
         Self {
             counter: AtomicUsize::new(0),
-            mocker: Arc::new(Mutex::new(Box::new(m))),
+            mocker: Mutex::new(Box::new(m)),
         }
     }
 
@@ -107,16 +107,5 @@ impl MockDatabaseConnection {
 
     pub fn get_database_backend(&self) -> DbBackend {
         self.mocker.lock().unwrap().get_database_backend()
-    }
-}
-
-/// Note: MockDatabaseConnection::clone() is just sharing `Arc` pointer across instances
-/// instead of cloning the original mocker.
-impl Clone for MockDatabaseConnection {
-    fn clone(&self) -> Self {
-        Self {
-            counter: AtomicUsize::new(self.counter.load(Ordering::SeqCst)),
-            mocker: Arc::clone(&self.mocker),
-        }
     }
 }

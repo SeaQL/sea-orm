@@ -2,7 +2,7 @@ use std::{pin::Pin, future::Future};
 use crate::{DatabaseTransaction, ConnectionTrait, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError, error::*};
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 
-#[derive(Clone)]
+#[cfg_attr(not(feature = "mock"), derive(Clone))]
 pub enum DatabaseConnection {
     #[cfg(feature = "sqlx-mysql")]
     SqlxMySqlPoolConnection(crate::SqlxMySqlPoolConnection),
@@ -172,9 +172,7 @@ mod tests {
     #[test]
     fn assert_database_connection_traits() {
         fn assert_send_sync<T: Send + Sync>() {}
-        fn assert_clone<T: Clone>() {}
 
         assert_send_sync::<DatabaseConnection>();
-        assert_clone::<DatabaseConnection>();
     }
 }
