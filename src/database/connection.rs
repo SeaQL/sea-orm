@@ -1,6 +1,7 @@
 use crate::{error::*, ExecResult, QueryResult, Statement, StatementBuilder};
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 
+#[cfg_attr(not(feature = "mock"), derive(Clone))]
 pub enum DatabaseConnection {
     #[cfg(feature = "sqlx-mysql")]
     SqlxMySqlPoolConnection(crate::SqlxMySqlPoolConnection),
@@ -141,5 +142,17 @@ impl DbBackend {
             Self::Postgres => Box::new(PostgresQueryBuilder),
             Self::Sqlite => Box::new(SqliteQueryBuilder),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::DatabaseConnection;
+
+    #[test]
+    fn assert_database_connection_traits() {
+        fn assert_send_sync<T: Send + Sync>() {}
+
+        assert_send_sync::<DatabaseConnection>();
     }
 }
