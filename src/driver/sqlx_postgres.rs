@@ -12,7 +12,7 @@ use super::sqlx_common::*;
 #[derive(Debug)]
 pub struct SqlxPostgresConnector;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SqlxPostgresPoolConnection {
     pool: PgPool,
 }

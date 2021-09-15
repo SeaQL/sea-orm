@@ -6,7 +6,7 @@ use crate::{
 use sea_query::{Value, ValueType};
 use std::collections::BTreeMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MockDatabase {
     db_backend: DbBackend,
     transaction_log: Vec<Transaction>,

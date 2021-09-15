@@ -12,7 +12,7 @@ use super::sqlx_common::*;
 #[derive(Debug)]
 pub struct SqlxSqliteConnector;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SqlxSqlitePoolConnection {
     pool: SqlitePool,
 }
