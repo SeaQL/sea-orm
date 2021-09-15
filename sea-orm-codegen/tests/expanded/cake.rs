@@ -14,7 +14,7 @@ impl EntityName for Entity {
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
     pub id: i32,
-    pub name: String,
+    pub name: Option<String> ,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -46,7 +46,7 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::Id => ColumnType::Integer.def(),
-            Self::Name => ColumnType::String(Some(255u32)).def(),
+            Self::Name => ColumnType::Text.def().null(),
         }
     }
 }
