@@ -2,7 +2,6 @@ use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{ColumnDef, ColumnSpec, ColumnType};
-use syn::punctuated::Punctuated;
 
 #[derive(Clone, Debug)]
 pub struct Column {

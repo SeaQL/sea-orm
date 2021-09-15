@@ -1,7 +1,6 @@
 use crate::Entity;
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::iter::FromIterator;
 use syn::{punctuated::Punctuated, token::Comma};
 
 #[derive(Clone, Debug)]
