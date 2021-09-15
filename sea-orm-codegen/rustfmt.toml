@@ -1,3 +1,4 @@
 ignore = [
-    "tests/entity/*.rs",
+    "tests/compact/*.rs",
+    "tests/expanded/*.rs",
 ]

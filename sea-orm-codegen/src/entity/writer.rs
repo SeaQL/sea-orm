@@ -1,7 +1,6 @@
 use crate::Entity;
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::iter::FromIterator;
 use syn::{punctuated::Punctuated, token::Comma};
 
 #[derive(Clone, Debug)]
@@ -343,6 +342,9 @@ impl EntityWriter {
                 }
                 if let Some(ts) = col.get_col_type_attrs() {
                     attrs.extend(vec![ts]);
+                    if !col.not_null {
+                        attrs.push(quote! { nullable });
+                    }
                 };
                 if !attrs.is_empty() {
                     let mut ts = TokenStream::new();
@@ -411,9 +413,9 @@ mod tests {
                     },
                     Column {
                         name: "name".to_owned(),
-                        col_type: ColumnType::String(Some(255)),
+                        col_type: ColumnType::Text,
                         auto_increment: false,
-                        not_null: true,
+                        not_null: false,
                         unique: false,
                     },
                 ],
