@@ -2,11 +2,11 @@
 <div class="container">
   <p><!--Nothing to see here --></p>
   <h1>Posts</h1>
-  {# {% if flash %}
-  <small class="field-{{ flash.0 }}-flash">
-    {{ flash.1 }}
+  {% if flash_message %}
+  <small class="field-{{ flash_kind }}-flash">
+    {{ flash_message }}
   </small>
-  {% endif %} #}
+  {% endif %}
   <table>
     <tbody>
       <thead>
