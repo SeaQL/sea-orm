@@ -3,7 +3,12 @@ use sea_orm::*;
 
 #[tokio::main]
 pub async fn main() {
-    let db = Database::connect("sql://sea:sea@localhost/bakery")
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Debug)
+        .is_test(true)
+        .init();
+
+    let db = Database::connect("mysql://sea:sea@localhost/bakery")
         .await
         .unwrap();
 
