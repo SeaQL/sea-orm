@@ -1,8 +1,9 @@
-use crate::attributes::derive_attr;
+use crate::{attributes::derive_attr, util::field_not_ignored};
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use std::iter::FromIterator;
+use syn::Ident;
 
 enum Error {
     InputNotStruct,
@@ -14,6 +15,7 @@ struct DeriveModel {
     entity_ident: syn::Ident,
     field_idents: Vec<syn::Ident>,
     ident: syn::Ident,
+    ignore_attrs: Vec<bool>,
 }
 
 impl DeriveModel {
@@ -48,11 +50,17 @@ impl DeriveModel {
             })
             .collect();
 
+        let ignore_attrs = fields
+            .iter()
+            .map(|field| !field_not_ignored(field))
+            .collect();
+
         Ok(DeriveModel {
             column_idents,
             entity_ident,
             field_idents,
             ident,
+            ignore_attrs,
         })
     }
 
@@ -70,23 +78,56 @@ impl DeriveModel {
         let ident = &self.ident;
         let field_idents = &self.field_idents;
         let column_idents = &self.column_idents;
+        let field_values: Vec<TokenStream> = column_idents
+            .iter()
+            .zip(&self.ignore_attrs)
+            .map(|(column_ident, ignore)| {
+                if *ignore {
+                    quote! {
+                        Default::default()
+                    }
+                } else {
+                    quote! {
+                        row.try_get(pre, sea_orm::IdenStatic::as_str(&<<Self as sea_orm::ModelTrait>::Entity as sea_orm::entity::EntityTrait>::Column::#column_ident).into())?
+                    }
+                }
+            })
+            .collect();
 
         quote!(
             impl sea_orm::FromQueryResult for #ident {
                 fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::DbErr> {
                     Ok(Self {
-                        #(#field_idents: row.try_get(pre, sea_orm::IdenStatic::as_str(&<<Self as sea_orm::ModelTrait>::Entity as sea_orm::entity::EntityTrait>::Column::#column_idents).into())?),*
+                        #(#field_idents: #field_values),*
                     })
                 }
             }
         )
     }
 
-    fn impl_model_trait(&self) -> TokenStream {
+    fn impl_model_trait<'a>(&'a self) -> TokenStream {
         let ident = &self.ident;
         let entity_ident = &self.entity_ident;
-        let field_idents = &self.field_idents;
-        let column_idents = &self.column_idents;
+        let ignore_attrs = &self.ignore_attrs;
+        let ignore = |(ident, ignore): (&'a Ident, &bool)| -> Option<&'a Ident> {
+            if *ignore {
+                None
+            } else {
+                Some(ident)
+            }
+        };
+        let field_idents: Vec<&Ident> = self
+            .field_idents
+            .iter()
+            .zip(ignore_attrs)
+            .filter_map(ignore)
+            .collect();
+        let column_idents: Vec<&Ident> = self
+            .column_idents
+            .iter()
+            .zip(ignore_attrs)
+            .filter_map(ignore)
+            .collect();
 
         let missing_field_msg = format!("field does not exist on {}", ident);
 
