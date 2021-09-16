@@ -91,9 +91,9 @@ impl SqlxSqlitePoolConnection {
         }
     }
 
-    pub async fn transaction<'a, F, T, E>(&'a self, callback: F) -> Result<T, TransactionError<E>>
+    pub async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
     where
-        F: for<'c> FnOnce(&'c DatabaseTransaction<'_>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>> + 'a + Send + Sync,
+        F: for<'b> FnOnce(&'b DatabaseTransaction<'_>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>> + Send + Sync,
         T: Send,
         E: std::error::Error + Send,
     {
