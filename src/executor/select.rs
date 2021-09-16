@@ -263,6 +263,20 @@ impl<S> SelectorRaw<S>
 where
     S: SelectorTrait,
 {
+    // Create `SelectorRaw` from Statment. Executing this `SelectorRaw` will
+    // return a type `M` which implement `FromQueryResult`.
+    //
+    // Helper function used by `Statment.into_model()`
+    pub(crate) fn from_statement<M>(stmt: Statement) -> SelectorRaw<SelectModel<M>>
+    where
+        M: FromQueryResult,
+    {
+        SelectorRaw {
+            stmt,
+            selector: SelectModel { model: PhantomData },
+        }
+    }
+
     /// ```
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
