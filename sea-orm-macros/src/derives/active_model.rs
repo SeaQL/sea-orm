@@ -15,9 +15,9 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
                 ident.span() => compile_error!("you can only derive DeriveActiveModel on structs");
             })
         }
-    };
-
-    let fields = fields.into_iter().filter(field_not_ignored);
+    }
+    .into_iter()
+    .filter(field_not_ignored);
 
     let field: Vec<Ident> = fields
         .clone()
