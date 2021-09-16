@@ -62,5 +62,13 @@ pub fn build_cli() -> App<'static, 'static> {
         .version(env!("CARGO_PKG_VERSION"))
         .setting(AppSettings::VersionlessSubcommands)
         .subcommand(entity_subcommand)
+        .arg(
+            Arg::with_name("VERBOSE")
+                .long("verbose")
+                .short("v")
+                .help("Show debug messages")
+                .takes_value(false)
+                .global(true),
+        )
         .setting(AppSettings::SubcommandRequiredElseHelp)
 }
