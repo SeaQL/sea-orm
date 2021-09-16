@@ -10,6 +10,8 @@ pub struct Model {
     pub bakery_id: i32,
     pub customer_id: i32,
     pub placed_at: DateTime,
+    #[sea_orm(ignore)]
+    pub ignored_attr: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

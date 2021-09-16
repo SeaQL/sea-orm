@@ -9,6 +9,8 @@ pub struct Entity;
 pub struct Model {
     pub id: i32,
     pub name: String,
+    #[sea_orm(ignore)]
+    pub ignored_attr: i32,
 }
 
 // If your column names are not in snake-case, derive `DeriveCustomColumn` here.

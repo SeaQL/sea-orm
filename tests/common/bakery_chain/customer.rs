@@ -8,6 +8,8 @@ pub struct Model {
     pub name: String,
     #[sea_orm(column_type = "Text", nullable)]
     pub notes: Option<String>,
+    #[sea_orm(ignore)]
+    pub ignored_attr: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

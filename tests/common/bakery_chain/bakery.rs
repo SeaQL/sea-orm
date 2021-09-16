@@ -7,6 +7,8 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub profit_margin: f64,
+    #[sea_orm(ignore)]
+    pub ignored_attr: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
