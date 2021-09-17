@@ -57,15 +57,6 @@ async fn list(
     let paginator = Post::find().paginate(&conn, posts_per_page);
     let num_pages = paginator.num_pages().await.ok().unwrap();
 
-    let mut flash_message = String::new();
-    let mut flash_kind = String::new();
-
-    if let Some(flash) = opt_flash {
-        let flash_inner = flash.into_inner();
-        flash_message = flash_inner.message.to_owned();
-        flash_kind = flash_inner.kind.to_owned();
-    }
-
     let posts = paginator
         .fetch_page(page)
         .await
@@ -75,8 +66,11 @@ async fn list(
     ctx.insert("page", &page);
     ctx.insert("posts_per_page", &posts_per_page);
     ctx.insert("num_pages", &num_pages);
-    ctx.insert("flash_message", &flash_message);
-    ctx.insert("flash_kind", &flash_kind);
+
+    if let Some(flash) = opt_flash {
+        let flash_inner = flash.into_inner();
+        ctx.insert("flash", &flash_inner);
+    }
 
     let body = template
         .render("index.html.tera", &ctx)
