@@ -1,5 +1,6 @@
 use clap::ArgMatches;
 use dotenv::dotenv;
+use log::LevelFilter;
 use sea_orm_codegen::{EntityTransformer, OutputFile};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command};
 
@@ -33,6 +34,12 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                     !table.starts_with("_")
                 }
             };
+            if args.is_present("VERBOSE") {
+                let _ = ::env_logger::builder()
+                    .filter_level(LevelFilter::Debug)
+                    .is_test(true)
+                    .try_init();
+            }
 
             let table_stmts = if url.starts_with("mysql://") {
                 use sea_schema::mysql::discovery::SchemaDiscovery;
