@@ -11,8 +11,6 @@ pub struct Model {
     pub bakery_id: Option<i32>,
     pub gluten_free: bool,
     pub serial: Uuid,
-    #[sea_orm(ignore)]
-    pub ignored_attr: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

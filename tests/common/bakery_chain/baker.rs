@@ -8,8 +8,6 @@ pub struct Model {
     pub name: String,
     pub contact_details: Json,
     pub bakery_id: Option<i32>,
-    #[sea_orm(ignore)]
-    pub ignored_attr: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
