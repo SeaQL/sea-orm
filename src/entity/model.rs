@@ -28,20 +28,13 @@ pub trait ModelTrait: Clone + Send + Debug {
     }
 }
 
-pub trait FromQueryResult {
-    fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr>
-    where
-        Self: Sized;
+pub trait FromQueryResult: Sized {
+    fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr>;
 
-    fn from_query_result_optional(res: &QueryResult, pre: &str) -> Result<Option<Self>, DbErr>
-    where
-        Self: Sized,
-    {
+    fn from_query_result_optional(res: &QueryResult, pre: &str) -> Result<Option<Self>, DbErr> {
         Ok(Self::from_query_result(res, pre).ok())
     }
-}
 
-pub trait FromQueryResultExt: FromQueryResult + Sized {
     /// ```
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
@@ -107,5 +100,3 @@ pub trait FromQueryResultExt: FromQueryResult + Sized {
         SelectorRaw::<SelectModel<Self>>::from_statement(stmt)
     }
 }
-
-impl<T: FromQueryResult> FromQueryResultExt for T {}
