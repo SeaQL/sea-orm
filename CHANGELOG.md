@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.2.2 - 2021-09-18
+
+- [[#105]] Compact entity format
+- [[#132]] Add ActiveModel `insert` & `update`
+- [[#129]] Add `set` method to `UpdateMany`
+- [[#118]] Initial lock support
+- [[#167]] Add `FromQueryResult::find_by_statement`
+
+[#105]: https://github.com/SeaQL/sea-orm/issues/105
+[#132]: https://github.com/SeaQL/sea-orm/issues/132
+[#129]: https://github.com/SeaQL/sea-orm/issues/129
+[#118]: https://github.com/SeaQL/sea-orm/issues/118
+[#167]: https://github.com/SeaQL/sea-orm/issues/167
+
 ## 0.2.1 - 2021-09-04
 
 - Update dependencies
