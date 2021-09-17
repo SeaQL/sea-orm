@@ -391,14 +391,26 @@ macro_rules! try_from_u64_err {
             }
         }
     };
-}
 
-macro_rules! try_from_u64_tuple {
-    ( $type: ty ) => {
-        try_from_u64_err!(($type, $type));
-        try_from_u64_err!(($type, $type, $type));
+    ( $($gen_type: ident),* ) => {
+        impl<$( $gen_type, )*> TryFromU64 for ($( $gen_type, )*)
+        where
+            $( $gen_type: TryFromU64, )*
+        {
+            fn try_from_u64(_: u64) -> Result<Self, DbErr> {
+                Err(DbErr::Exec(format!(
+                    "{} cannot be converted from u64",
+                    stringify!(($($gen_type,)*))
+                )))
+            }
+        }
     };
 }
+
+// impl TryFromU64 for tuples with generic types
+try_from_u64_err!(A, B);
+try_from_u64_err!(A, B, C);
+try_from_u64_err!(A, B, C, D);
 
 macro_rules! try_from_u64_numeric {
     ( $type: ty ) => {
@@ -414,7 +426,6 @@ macro_rules! try_from_u64_numeric {
                 })
             }
         }
-        try_from_u64_tuple!($type);
     };
 }
 
@@ -434,19 +445,49 @@ macro_rules! try_from_u64_string {
                 Ok(n.to_string())
             }
         }
-        try_from_u64_tuple!($type);
     };
 }
 
 try_from_u64_string!(String);
 
-macro_rules! try_from_u64_dummy {
-    ( $type: ty ) => {
-        try_from_u64_err!($type);
-        try_from_u64_err!(($type, $type));
-        try_from_u64_err!(($type, $type, $type));
-    };
-}
-
 #[cfg(feature = "with-uuid")]
-try_from_u64_dummy!(uuid::Uuid);
+try_from_u64_err!(uuid::Uuid);
+
+// impl<A, B> TryFromU64 for (A, B)
+// where
+//     A: TryFromU64,
+//     B: TryFromU64,
+// {
+//     fn try_from_u64(_: u64) -> Result<Self, DbErr> {
+//         Err(DbErr::Exec(
+//             "(A, B) cannot be converted from u64".to_owned(),
+//         ))
+//     }
+// }
+
+// impl<A, B, C> TryFromU64 for (A, B, C)
+// where
+//     A: TryFromU64,
+//     B: TryFromU64,
+//     C: TryFromU64,
+// {
+//     fn try_from_u64(_: u64) -> Result<Self, DbErr> {
+//         Err(DbErr::Exec(
+//             "(A, B, C) cannot be converted from u64".to_owned(),
+//         ))
+//     }
+// }
+
+// impl<A, B, C, D> TryFromU64 for (A, B, C, D)
+// where
+//     A: TryFromU64,
+//     B: TryFromU64,
+//     C: TryFromU64,
+//     D: TryFromU64,
+// {
+//     fn try_from_u64(_: u64) -> Result<Self, DbErr> {
+//         Err(DbErr::Exec(
+//             "(A, B, C, D) cannot be converted from u64".to_owned(),
+//         ))
+//     }
+// }
