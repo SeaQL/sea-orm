@@ -1,13 +1,12 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-#[sea_orm(table_name = "metadata")]
+#[sea_orm(table_name = "log")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub uuid: Uuid,
-    pub key: String,
-    pub value: String,
-    pub bytes: Vec<u8>,
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    pub json: Json,
+    pub created_at: DateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]

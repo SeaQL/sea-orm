@@ -286,3 +286,25 @@ pub async fn create_metadata_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 
     create_table(db, &stmt, Metadata).await
 }
+
+pub async fn create_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(log::Entity)
+        .if_not_exists()
+        .col(
+            ColumnDef::new(log::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(log::Column::Json).json().not_null())
+        .col(
+            ColumnDef::new(log::Column::CreatedAt)
+                .timestamp_with_time_zone()
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, Log).await
+}
