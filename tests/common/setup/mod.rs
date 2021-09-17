@@ -53,6 +53,7 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
     schema::create_cakes_bakers_table(&db).await.unwrap();
     schema::create_lineitem_table(&db).await.unwrap();
     schema::create_metadata_table(&db).await.unwrap();
+    schema::create_log_table(&db).await.unwrap();
     db
 }
 

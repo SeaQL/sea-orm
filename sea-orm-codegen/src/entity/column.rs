@@ -38,6 +38,7 @@ impl Column {
             ColumnType::Double(_) => "f64",
             ColumnType::Json | ColumnType::JsonBinary => "Json",
             ColumnType::DateTime(_) | ColumnType::Timestamp(_) => "DateTime",
+            ColumnType::TimestampWithTimeZone(_) => "DateTimeWithTimeZone",
             ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal",
             ColumnType::Uuid => "Uuid",
             ColumnType::Binary(_) => "Vec<u8>",
