@@ -1,5 +1,5 @@
-use crate::{EntityTrait, RelationDef, QuerySelect, Select};
-use sea_query::{JoinType};
+use crate::{EntityTrait, QuerySelect, RelationDef, Select};
+use sea_query::JoinType;
 
 pub type LinkDef = RelationDef;
 
