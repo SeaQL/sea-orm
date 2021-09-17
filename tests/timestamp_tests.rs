@@ -29,7 +29,5 @@ pub async fn create_log(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(log.id.clone(), res.last_insert_id);
     assert_eq!(Log::find().one(db).await?, Some(log.clone()));
 
-    assert!(false);
-
     Ok(())
 }
