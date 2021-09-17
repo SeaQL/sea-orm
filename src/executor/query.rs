@@ -314,29 +314,50 @@ where
     }
 }
 
-impl<T> TryGetableMany for (T, T)
+impl<A, B> TryGetableMany for (A, B)
 where
-    T: TryGetable,
+    A: TryGetable,
+    B: TryGetable,
 {
     fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
         try_get_many_with_slice_len_of(2, cols)?;
         Ok((
-            T::try_get(res, pre, &cols[0])?,
-            T::try_get(res, pre, &cols[1])?,
+            A::try_get(res, pre, &cols[0])?,
+            B::try_get(res, pre, &cols[1])?,
         ))
     }
 }
 
-impl<T> TryGetableMany for (T, T, T)
+impl<A, B, C> TryGetableMany for (A, B, C)
 where
-    T: TryGetable,
+    A: TryGetable,
+    B: TryGetable,
+    C: TryGetable,
 {
     fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
         try_get_many_with_slice_len_of(3, cols)?;
         Ok((
-            T::try_get(res, pre, &cols[0])?,
-            T::try_get(res, pre, &cols[1])?,
-            T::try_get(res, pre, &cols[2])?,
+            A::try_get(res, pre, &cols[0])?,
+            B::try_get(res, pre, &cols[1])?,
+            C::try_get(res, pre, &cols[2])?,
+        ))
+    }
+}
+
+impl<A, B, C, D> TryGetableMany for (A, B, C, D)
+where
+    A: TryGetable,
+    B: TryGetable,
+    C: TryGetable,
+    D: TryGetable,
+{
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
+        try_get_many_with_slice_len_of(4, cols)?;
+        Ok((
+            A::try_get(res, pre, &cols[0])?,
+            B::try_get(res, pre, &cols[1])?,
+            C::try_get(res, pre, &cols[2])?,
+            D::try_get(res, pre, &cols[3])?,
         ))
     }
 }
