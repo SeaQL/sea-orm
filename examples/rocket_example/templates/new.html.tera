@@ -4,6 +4,12 @@
   <form action="/" method="post">
     <div class="twelve columns">
       <input
+        type="hidden"
+        name="id"
+        id="id"
+        value="0"
+      />
+      <input
         type="text"
         placeholder="enter title"
         name="title"

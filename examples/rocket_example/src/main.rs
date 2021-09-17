@@ -10,7 +10,7 @@ use rocket::{Build, Request, Rocket};
 use rocket_db_pools::{sqlx, Connection, Database};
 use rocket_dyn_templates::{context, Template};
 
-use sea_orm::entity::*;
+use sea_orm::{entity::*, query::*};
 
 mod pool;
 use pool::RocketDbPool;
@@ -81,7 +81,9 @@ async fn list(
 ) -> Template {
     let page = page.unwrap_or(0);
     let posts_per_page = posts_per_page.unwrap_or(DEFAULT_POSTS_PER_PAGE);
-    let paginator = Post::find().paginate(&conn, posts_per_page);
+    let paginator = Post::find()
+        .order_by_asc(post::Column::Id)
+        .paginate(&conn, posts_per_page);
     let num_pages = paginator.num_pages().await.ok().unwrap();
 
     let posts = paginator
