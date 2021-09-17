@@ -68,6 +68,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut default_value = None;
                     let mut default_expr = None;
                     let mut indexed = false;
+                    let mut ignore = false;
                     let mut unique = false;
                     let mut sql_type = None;
                     // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(Some(255))", default_value = "new user", default_expr = "gen_random_uuid()", nullable, indexed, unique)]
@@ -120,7 +121,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                     }
                                     Meta::Path(p) => {
                                         if let Some(name) = p.get_ident() {
-                                            if name == "primary_key" {
+                                            if name == "ignore" {
+                                                ignore = true;
+                                                break;
+                                            } else if name == "primary_key" {
                                                 primary_keys.push(quote! { #field_name });
                                                 primary_key_types.push(field.ty.clone());
                                             } else if name == "nullable" {
@@ -136,6 +140,11 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 }
                             }
                         }
+                    }
+
+                    if ignore {
+                        columns_enum.pop();
+                        continue;
                     }
 
                     let field_type = match sql_type {
