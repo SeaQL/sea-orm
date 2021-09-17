@@ -2,34 +2,24 @@ use crate as sea_orm;
 use crate::entity::prelude::*;
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-#[sea_orm(table_name = "filling")]
 pub struct Entity;
+
+impl EntityName for Entity {
+    fn table_name(&self) -> &str {
+        "cake"
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
     pub id: i32,
     pub name: String,
-    #[sea_orm(ignore)]
-    pub ignored_attr: i32,
 }
 
-// If your column names are not in snake-case, derive `DeriveCustomColumn` here.
-#[derive(Copy, Clone, Debug, EnumIter, DeriveCustomColumn)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
     Name,
-}
-
-// Then, customize each column names here.
-impl IdenStatic for Column {
-    fn as_str(&self) -> &str {
-        match self {
-            // Override column names
-            Self::Id => "id",
-            // Leave all other columns using default snake-case values
-            _ => self.default_as_str(),
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -46,7 +36,9 @@ impl PrimaryKeyTrait for PrimaryKey {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
-pub enum Relation {}
+pub enum Relation {
+    Fruit,
+}
 
 impl ColumnTrait for Column {
     type EntityName = Entity;
@@ -61,17 +53,41 @@ impl ColumnTrait for Column {
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
-        panic!()
+        match self {
+            Self::Fruit => Entity::has_many(super::fruit::Entity).into(),
+        }
     }
 }
 
-impl Related<super::cake::Entity> for Entity {
+impl Related<super::fruit::Entity> for Entity {
     fn to() -> RelationDef {
-        super::cake_filling::Relation::Cake.def()
+        Relation::Fruit.def()
+    }
+}
+
+impl Related<super::filling::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::cake_filling::Relation::Filling.def()
     }
 
     fn via() -> Option<RelationDef> {
-        Some(super::cake_filling::Relation::Filling.def().rev())
+        Some(super::cake_filling::Relation::Cake.def().rev())
+    }
+}
+
+#[derive(Debug)]
+pub struct CakeToFilling;
+
+impl Linked for CakeToFilling {
+    type FromEntity = Entity;
+
+    type ToEntity = super::filling::Entity;
+
+    fn link(&self) -> Vec<RelationDef> {
+        vec![
+            super::cake_filling::Relation::Cake.def().rev(),
+            super::cake_filling::Relation::Filling.def(),
+        ]
     }
 }
 

@@ -5,6 +5,7 @@ use syn::{parse_macro_input, DeriveInput, Error};
 
 mod attributes;
 mod derives;
+mod util;
 
 #[proc_macro_derive(DeriveEntity, attributes(sea_orm))]
 pub fn derive_entity(input: TokenStream) -> TokenStream {
@@ -73,7 +74,7 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
         .into()
 }
 
-#[proc_macro_derive(DeriveActiveModel)]
+#[proc_macro_derive(DeriveActiveModel, attributes(sea_orm))]
 pub fn derive_active_model(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
 

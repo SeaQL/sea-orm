@@ -34,6 +34,7 @@ where
     where
         A: 'a,
     {
+        // TODO: extract primary key's value from query
         // so that self is dropped before entering await
         let mut query = self.query;
         #[cfg(feature = "sqlx-postgres")]
@@ -48,6 +49,7 @@ where
             }
         }
         Inserter::<A>::new(query).exec(db)
+        // TODO: return primary key if extracted before, otherwise use InsertResult
     }
 }
 

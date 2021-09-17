@@ -1,3 +1,4 @@
+use crate::util::field_not_ignored;
 use heck::CamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
@@ -14,7 +15,9 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
                 ident.span() => compile_error!("you can only derive DeriveActiveModel on structs");
             })
         }
-    };
+    }
+    .into_iter()
+    .filter(field_not_ignored);
 
     let field: Vec<Ident> = fields
         .clone()

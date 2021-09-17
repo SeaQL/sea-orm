@@ -10,3 +10,5 @@ publish = false
 [dependencies]
 sea-orm = { path = "../../", features = [ "sqlx-all", "runtime-tokio-native-tls" ] }
 tokio = { version = "1", features = ["full"] }
+env_logger = { version = "^0.9" }
+log = { version = "^0.4" }
