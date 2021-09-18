@@ -1,5 +1,5 @@
 use crate::{
-    error::*, DatabaseConnection, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn,
+    error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn,
     PrimaryKeyTrait, Value,
 };
 use async_trait::async_trait;
@@ -67,9 +67,10 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     fn default() -> Self;
 
-    async fn insert(self, db: &DatabaseConnection) -> Result<Self, DbErr>
+    async fn insert<C>(self, db: &C) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        C: ConnectionTrait,
     {
         let am = self;
         let exec = <Self::Entity as EntityTrait>::insert(am).exec(db);
@@ -90,17 +91,19 @@ pub trait ActiveModelTrait: Clone + Debug {
         }
     }
 
-    async fn update(self, db: &DatabaseConnection) -> Result<Self, DbErr> {
+    async fn update<C>(self, db: &C) -> Result<Self, DbErr>
+    where C: ConnectionTrait {
         let exec = Self::Entity::update(self).exec(db);
         exec.await
     }
 
     /// Insert the model if primary key is unset, update otherwise.
     /// Only works if the entity has auto increment primary key.
-    async fn save(self, db: &DatabaseConnection) -> Result<Self, DbErr>
+    async fn save<C>(self, db: &C) -> Result<Self, DbErr>
     where
         Self: ActiveModelBehavior,
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        C: ConnectionTrait,
     {
         let mut am = self;
         am = ActiveModelBehavior::before_save(am);
@@ -122,9 +125,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     /// Delete an active model by its primary key
-    async fn delete(self, db: &DatabaseConnection) -> Result<DeleteResult, DbErr>
+    async fn delete<C>(self, db: &C) -> Result<DeleteResult, DbErr>
     where
         Self: ActiveModelBehavior,
+        C: ConnectionTrait,
     {
         let mut am = self;
         am = ActiveModelBehavior::before_delete(am);

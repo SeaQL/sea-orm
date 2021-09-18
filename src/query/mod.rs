@@ -20,4 +20,4 @@ pub use select::*;
 pub use traits::*;
 pub use update::*;
 
-pub use crate::{InsertResult, Statement, UpdateResult, Value, Values};
+pub use crate::{InsertResult, Statement, UpdateResult, Value, Values, ConnectionTrait};
