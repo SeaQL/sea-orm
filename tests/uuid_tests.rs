@@ -2,7 +2,6 @@ pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
 use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
-use uuid::Uuid;
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -11,10 +10,8 @@ use uuid::Uuid;
     feature = "sqlx-postgres"
 ))]
 async fn main() -> Result<(), DbErr> {
-    let ctx = TestContext::new("bakery_chain_schema_primary_key_tests").await;
-
+    let ctx = TestContext::new("bakery_chain_schema_uuid_tests").await;
     create_metadata(&ctx.db).await?;
-
     ctx.delete().await;
 
     Ok(())

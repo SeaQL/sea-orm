@@ -10,13 +10,7 @@ pub struct Model {
     pub bytes: Vec<u8>,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        unreachable!()
-    }
-}
 
 impl ActiveModelBehavior for ActiveModel {}
