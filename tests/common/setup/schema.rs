@@ -1,18 +1,28 @@
 pub use super::super::bakery_chain::*;
 use pretty_assertions::assert_eq;
 use sea_orm::{error::*, sea_query, DbConn, EntityTrait, ExecResult, Schema};
-use sea_query::{ColumnDef, ForeignKey, ForeignKeyAction, Index, Table, TableCreateStatement};
+use sea_query::{
+    Alias, ColumnDef, ForeignKey, ForeignKeyAction, Index, Table, TableCreateStatement,
+};
 
 async fn create_table<E>(
     db: &DbConn,
-    stmt: &TableCreateStatement,
+    create: &TableCreateStatement,
     entity: E,
 ) -> Result<ExecResult, DbErr>
 where
     E: EntityTrait,
 {
     let builder = db.get_database_backend();
-    let stmt = builder.build(stmt);
+    let stmt = builder.build(
+        Table::drop()
+            .table(Alias::new(create.get_table_name().unwrap().as_ref()))
+            .if_exists()
+            .cascade(),
+    );
+    db.execute(stmt).await?;
+
+    let stmt = builder.build(create);
     assert_eq!(
         builder.build(&Schema::create_table_from_entity(entity)),
         stmt
@@ -23,7 +33,6 @@ where
 pub async fn create_bakery_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = Table::create()
         .table(bakery::Entity)
-        .if_not_exists()
         .col(
             ColumnDef::new(bakery::Column::Id)
                 .integer()
@@ -45,7 +54,6 @@ pub async fn create_bakery_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 pub async fn create_baker_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = Table::create()
         .table(baker::Entity)
-        .if_not_exists()
         .col(
             ColumnDef::new(baker::Column::Id)
                 .integer()
@@ -76,7 +84,6 @@ pub async fn create_baker_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 pub async fn create_customer_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = Table::create()
         .table(customer::Entity)
-        .if_not_exists()
         .col(
             ColumnDef::new(customer::Column::Id)
                 .integer()
@@ -94,7 +101,6 @@ pub async fn create_customer_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = Table::create()
         .table(order::Entity)
-        .if_not_exists()
         .col(
             ColumnDef::new(order::Column::Id)
                 .integer()
@@ -142,7 +148,6 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = Table::create()
         .table(lineitem::Entity)
-        .if_not_exists()
         .col(
             ColumnDef::new(lineitem::Column::Id)
                 .integer()
@@ -194,7 +199,6 @@ pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 pub async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = Table::create()
         .table(cakes_bakers::Entity)
-        .if_not_exists()
         .col(
             ColumnDef::new(cakes_bakers::Column::CakeId)
                 .integer()
@@ -235,7 +239,6 @@ pub async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, DbErr>
 pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = Table::create()
         .table(cake::Entity)
-        .if_not_exists()
         .col(
             ColumnDef::new(cake::Column::Id)
                 .integer()
@@ -272,7 +275,6 @@ pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 pub async fn create_metadata_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = sea_query::Table::create()
         .table(metadata::Entity)
-        .if_not_exists()
         .col(
             ColumnDef::new(metadata::Column::Uuid)
                 .uuid()
@@ -290,7 +292,6 @@ pub async fn create_metadata_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 pub async fn create_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = sea_query::Table::create()
         .table(applog::Entity)
-        .if_not_exists()
         .col(
             ColumnDef::new(applog::Column::Id)
                 .integer()
