@@ -125,7 +125,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.transaction(_callback).await,
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(_) => panic!("Mock"),//TODO: can it be permitted? How?
+            DatabaseConnection::MockDatabaseConnection(_) => unimplemented!(), //TODO: support transaction in mock connection
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
     }
@@ -137,13 +137,20 @@ impl ConnectionTrait for DatabaseConnection {
             _ => false,
         }
     }
+}
 
-    #[cfg(feature = "mock")]
+#[cfg(feature = "mock")]
+impl DatabaseConnection {
     fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
         match self {
             DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
             _ => panic!("not mock connection"),
         }
+    }
+
+    fn into_transaction_log(&self) -> Vec<crate::Transaction> {
+        let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
+        mocker.drain_transaction_log()
     }
 }
 

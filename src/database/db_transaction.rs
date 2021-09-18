@@ -253,11 +253,6 @@ impl<'a> ConnectionTrait for DatabaseTransaction<'a> {
             _ => unimplemented!(),
         }
     }
-
-    #[cfg(feature = "mock")]
-    fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
-        unimplemented!()
-    }
 }
 
 #[derive(Debug)]

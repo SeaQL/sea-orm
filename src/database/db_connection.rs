@@ -22,18 +22,4 @@ pub trait ConnectionTrait: Sync {
     fn is_mock_connection(&self) -> bool {
         false
     }
-
-    #[cfg(feature = "mock")]
-    fn as_mock_connection(&self) -> &crate::MockDatabaseConnection;
-
-    #[cfg(not(feature = "mock"))]
-    fn as_mock_connection(&self) -> Option<bool> {
-        None
-    }
-
-    #[cfg(feature = "mock")]
-    fn into_transaction_log(&self) -> Vec<crate::Transaction> {
-        let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
-        mocker.drain_transaction_log()
-    }
 }
