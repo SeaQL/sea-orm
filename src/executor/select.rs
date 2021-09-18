@@ -301,7 +301,7 @@ where
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, FromQueryResult, ConnectionTrait};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, FromQueryResult};
     ///
     /// #[derive(Debug, PartialEq, FromQueryResult)]
     /// struct SelectResult {
@@ -374,7 +374,7 @@ where
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, ConnectionTrait};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
     /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
@@ -426,7 +426,7 @@ where
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, ConnectionTrait};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
     /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
@@ -466,7 +466,7 @@ where
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, ConnectionTrait};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
     /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
