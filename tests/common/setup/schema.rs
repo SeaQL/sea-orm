@@ -1,6 +1,6 @@
 pub use super::super::bakery_chain::*;
 use pretty_assertions::assert_eq;
-use sea_orm::{error::*, sea_query, DbConn, EntityTrait, ExecResult, Schema};
+use sea_orm::{error::*, sea_query, DbBackend, DbConn, EntityTrait, ExecResult, Schema};
 use sea_query::{
     Alias, ColumnDef, ForeignKey, ForeignKeyAction, Index, Table, TableCreateStatement,
 };
@@ -14,13 +14,15 @@ where
     E: EntityTrait,
 {
     let builder = db.get_database_backend();
-    let stmt = builder.build(
-        Table::drop()
-            .table(Alias::new(create.get_table_name().unwrap().as_ref()))
-            .if_exists()
-            .cascade(),
-    );
-    db.execute(stmt).await?;
+    if builder != DbBackend::Sqlite {
+        let stmt = builder.build(
+            Table::drop()
+                .table(Alias::new(create.get_table_name().unwrap().as_ref()))
+                .if_exists()
+                .cascade(),
+        );
+        db.execute(stmt).await?;
+    }
 
     let stmt = builder.build(create);
     assert_eq!(
