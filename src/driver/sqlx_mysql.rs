@@ -12,7 +12,7 @@ use super::sqlx_common::*;
 #[derive(Debug)]
 pub struct SqlxMySqlConnector;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SqlxMySqlPoolConnection {
     pool: MySqlPool,
 }
