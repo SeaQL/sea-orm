@@ -141,14 +141,14 @@ impl ConnectionTrait for DatabaseConnection {
 
 #[cfg(feature = "mock")]
 impl DatabaseConnection {
-    fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
+    pub fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
         match self {
             DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
             _ => panic!("not mock connection"),
         }
     }
 
-    fn into_transaction_log(&self) -> Vec<crate::Transaction> {
+    pub fn into_transaction_log(&self) -> Vec<crate::Transaction> {
         let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
         mocker.drain_transaction_log()
     }
