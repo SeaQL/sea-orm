@@ -223,7 +223,7 @@ pub async fn find_all_filter_with_results() {
     feature = "sqlx-postgres"
 ))]
 pub async fn transaction() {
-    let ctx = TestContext::new("find_all_filter_with_results").await;
+    let ctx = TestContext::new("transaction_test").await;
 
     ctx.db.transaction::<_, (), DbErr>(|txn| Box::pin(async move {
         let _ = bakery::ActiveModel {
@@ -262,7 +262,7 @@ pub async fn transaction() {
     feature = "sqlx-postgres"
 ))]
 pub async fn transaction_with_reference() {
-    let ctx = TestContext::new("find_all_filter_with_results").await;
+    let ctx = TestContext::new("transaction_with_reference_test").await;
     let name1 = "SeaSide Bakery";
     let name2 = "Top Bakery";
     let search_name = "Bakery";
