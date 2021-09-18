@@ -1,7 +1,6 @@
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
-use sea_orm::{DbErr};
 pub use sea_orm::entity::*;
 pub use sea_orm::{QueryFilter, ConnectionTrait};
 
