@@ -1,4 +1,5 @@
 // use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use std::sync::Arc;
 
 use actix_files as fs;
 use actix_http::{body::Body, Response};
@@ -12,7 +13,7 @@ use actix_web::{
 use listenfd::ListenFd;
 use sea_orm::entity::*;
 use sea_orm::query::*;
-use sea_orm::EntityTrait;
+use sea_orm::{DatabaseConnection, EntityTrait};
 use serde::{Deserialize, Serialize};
 use std::env;
 use tera::Tera;
@@ -23,9 +24,10 @@ mod setup;
 
 const DEFAULT_POSTS_PER_PAGE: usize = 25;
 
+#[derive(Debug, Clone)]
 struct AppState {
-    db_url: String,
     templates: tera::Tera,
+    conn: Arc<DatabaseConnection>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,11 +45,11 @@ struct FlashData {
 #[get("/")]
 async fn list(
     req: HttpRequest,
-    data: web::Data<AppState>,
+    data: web::Data<Arc<AppState>>,
     opt_flash: Option<actix_flash::Message<FlashData>>,
 ) -> Result<HttpResponse, Error> {
     let template = &data.templates;
-    let conn = sea_orm::Database::connect(&data.db_url).await.unwrap();
+    let conn = &data.conn;
 
     // get params
     let params = web::Query::<Params>::from_query(req.query_string()).unwrap();
@@ -79,7 +81,7 @@ async fn list(
 }
 
 #[get("/new")]
-async fn new(data: web::Data<AppState>) -> Result<HttpResponse, Error> {
+async fn new(data: web::Data<Arc<AppState>>) -> Result<HttpResponse, Error> {
     let template = &data.templates;
     let ctx = tera::Context::new();
     let body = template
@@ -90,10 +92,10 @@ async fn new(data: web::Data<AppState>) -> Result<HttpResponse, Error> {
 
 #[post("/")]
 async fn create(
-    data: web::Data<AppState>,
+    data: web::Data<Arc<AppState>>,
     post_form: web::Form<post::Model>,
 ) -> actix_flash::Response<HttpResponse, FlashData> {
-    let conn = sea_orm::Database::connect(&data.db_url).await.unwrap();
+    let conn = &data.conn;
 
     let form = post_form.into_inner();
 
@@ -115,8 +117,8 @@ async fn create(
 }
 
 #[get("/{id}")]
-async fn edit(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
-    let conn = sea_orm::Database::connect(&data.db_url).await.unwrap();
+async fn edit(data: web::Data<Arc<AppState>>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
+    let conn = &data.conn;
     let template = &data.templates;
 
     let post: post::Model = Post::find_by_id(id.into_inner())
@@ -136,11 +138,11 @@ async fn edit(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpRespo
 
 #[post("/{id}")]
 async fn update(
-    data: web::Data<AppState>,
+    data: web::Data<Arc<AppState>>,
     id: web::Path<i32>,
     post_form: web::Form<post::Model>,
 ) -> actix_flash::Response<HttpResponse, FlashData> {
-    let conn = sea_orm::Database::connect(&data.db_url).await.unwrap();
+    let conn = &data.conn;
     let form = post_form.into_inner();
 
     post::ActiveModel {
@@ -162,10 +164,10 @@ async fn update(
 
 #[post("/delete/{id}")]
 async fn delete(
-    data: web::Data<AppState>,
+    data: web::Data<Arc<AppState>>,
     id: web::Path<i32>,
 ) -> actix_flash::Response<HttpResponse, FlashData> {
-    let conn = sea_orm::Database::connect(&data.db_url).await.unwrap();
+    let conn = &data.conn;
 
     let post: post::ActiveModel = Post::find_by_id(id.into_inner())
         .one(&conn)
@@ -199,15 +201,16 @@ async fn main() -> std::io::Result<()> {
     // create post table if not exists
     let conn = sea_orm::Database::connect(&db_url).await.unwrap();
     let _ = setup::create_post_table(&conn).await;
+    let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).unwrap();
+    let state = AppState {
+        templates: templates,
+        conn: Arc::new(conn),
+    };
 
     let mut listenfd = ListenFd::from_env();
     let mut server = HttpServer::new(move || {
-        let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).unwrap();
         App::new()
-            .data(AppState {
-                db_url: db_url.to_owned(),
-                templates: templates,
-            })
+            .data(Arc::new(state.clone()))
             .wrap(middleware::Logger::default()) // enable logger
             .wrap(actix_flash::Flash::default())
             .configure(init)

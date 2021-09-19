@@ -1,6 +1,8 @@
 # Actix with SeaORM example app
 
-Rus server with auto-reloading:
+Edit `.env` to point to your database.
+
+Run server with auto-reloading:
 
 ```bash
 cargo install systemfd
