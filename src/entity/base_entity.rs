@@ -541,3 +541,58 @@ pub trait EntityTrait: EntityName {
         Delete::many(Self::default())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[cfg(feature = "macros")]
+    fn entity_model_1() {
+        use crate::entity::*;
+
+        mod hello {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "hello")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        assert_eq!(hello::Entity.table_name(), "hello");
+        assert_eq!(hello::Entity.schema_name(), None);
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn entity_model_2() {
+        use crate::entity::*;
+
+        mod hello {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "hello", schema_name = "world")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        assert_eq!(hello::Entity.table_name(), "hello");
+        assert_eq!(hello::Entity.schema_name(), Some("world"));
+    }
+}

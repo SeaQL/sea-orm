@@ -1,6 +1,6 @@
 [package]
 name = "sea-orm-codegen"
-version = "0.2.0"
+version = "0.2.2"
 authors = ["Billy Chan <ccw.billy.123@gmail.com>"]
 edition = "2018"
 description = "Code Generator for SeaORM"

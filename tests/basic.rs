@@ -2,22 +2,21 @@ pub mod common;
 
 pub use sea_orm::{entity::*, error::*, sea_query, tests_cfg::*, Database, DbConn};
 
-// DATABASE_URL="sqlite::memory:" cargo test --features sqlx-sqlite,runtime-async-std-native-tls --test basic
+// cargo test --features sqlx-sqlite,runtime-async-std-native-tls --test basic
 #[sea_orm_macros::test]
 #[cfg(feature = "sqlx-sqlite")]
-async fn main() {
-    use std::env;
-    let base_url = env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_owned());
+async fn main() -> Result<(), DbErr> {
+    let base_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_owned());
 
-    let db: DbConn = Database::connect(&base_url).await.unwrap();
+    let db: DbConn = Database::connect(&base_url).await?;
+    setup_schema(&db).await?;
+    crud_cake(&db).await?;
 
-    setup_schema(&db).await;
-
-    crud_cake(&db).await.unwrap();
+    Ok(())
 }
 
 #[cfg(feature = "sqlx-sqlite")]
-async fn setup_schema(db: &DbConn) {
+async fn setup_schema(db: &DbConn) -> Result<(), DbErr> {
     use sea_query::*;
 
     let stmt = sea_query::Table::create()
@@ -33,8 +32,10 @@ async fn setup_schema(db: &DbConn) {
         .to_owned();
 
     let builder = db.get_database_backend();
-    let result = db.execute(builder.build(&stmt)).await;
+    let result = db.execute(builder.build(&stmt)).await?;
     println!("Create table cake: {:?}", result);
+
+    Ok(())
 }
 
 #[cfg(feature = "sqlx-sqlite")]

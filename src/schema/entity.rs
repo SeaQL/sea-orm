@@ -116,7 +116,7 @@ where
         );
     }
 
-    stmt.table(entity).if_not_exists().take()
+    stmt.table(entity).take()
 }
 
 #[cfg(test)]
@@ -130,7 +130,6 @@ mod tests {
             Schema::create_table_from_entity(CakeFillingPrice).to_string(MysqlQueryBuilder),
             Table::create()
                 .table(CakeFillingPrice)
-                .if_not_exists()
                 .col(
                     ColumnDef::new(cake_filling_price::Column::CakeId)
                         .integer()

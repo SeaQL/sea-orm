@@ -1,3 +1,4 @@
+pub mod applog;
 pub mod baker;
 pub mod bakery;
 pub mod cake;
@@ -7,6 +8,7 @@ pub mod lineitem;
 pub mod metadata;
 pub mod order;
 
+pub use super::applog::Entity as Applog;
 pub use super::baker::Entity as Baker;
 pub use super::bakery::Entity as Bakery;
 pub use super::cake::Entity as Cake;

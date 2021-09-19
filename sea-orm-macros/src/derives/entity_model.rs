@@ -165,19 +165,22 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 "String" | "&str" => quote! { String(None) },
                                 "u8" | "i8" => quote! { TinyInteger },
                                 "u16" | "i16" => quote! { SmallInteger },
-                                "u32" | "u64" | "i32" | "i64" => quote! { Integer },
-                                "u128" | "i128" => quote! { BigInteger },
+                                "u32" | "i32" => quote! { Integer },
+                                "u64" | "i64" => quote! { BigInteger },
                                 "f32" => quote! { Float },
                                 "f64" => quote! { Double },
                                 "bool" => quote! { Boolean },
                                 "NaiveDate" => quote! { Date },
                                 "NaiveTime" => quote! { Time },
-                                "DateTime" | "NaiveDateTime" | "DateTimeWithTimeZone" => {
+                                "DateTime" | "NaiveDateTime" => {
                                     quote! { DateTime }
+                                }
+                                "DateTimeWithTimeZone" => {
+                                    quote! { TimestampWithTimeZone }
                                 }
                                 "Uuid" => quote! { Uuid },
                                 "Json" => quote! { Json },
-                                "Decimal" => quote! { Decimal },
+                                "Decimal" => quote! { Decimal(None) },
                                 "Vec<u8>" => quote! { Binary },
                                 _ => {
                                     return Err(Error::new(

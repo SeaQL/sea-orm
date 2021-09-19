@@ -6,6 +6,12 @@
       <form action="/{{ post.id }}" method="post">
         <div class="twelve columns">
           <input
+            type="hidden"
+            name="id"
+            id="id"
+            value="0"
+          />
+          <input
             type="text"
             placeholder="title"
             name="title"

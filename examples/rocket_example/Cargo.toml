@@ -23,11 +23,6 @@ rocket_dyn_templates = { git = "https://github.com/SergioBenitez/Rocket.git", fe
 sea-orm = { path = "../../", version = "^0.2", features = ["macros"], default-features = false }
 serde_json = { version = "^1" }
 
-[dependencies.sqlx]
-version = "^0.5"
-default-features = false
-features = ["macros", "offline", "migrate"]
-
 [features]
 default = ["sqlx-postgres"]
 sqlx-mysql = ["sea-orm/sqlx-mysql", "rocket_db_pools/sqlx_mysql"]
