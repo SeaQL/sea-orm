@@ -2,17 +2,12 @@
 use std::sync::Arc;
 
 use actix_files as fs;
-use actix_http::{body::Body, Response};
-use actix_web::dev::ServiceResponse;
-use actix_web::http::StatusCode;
-use actix_web::middleware::errhandlers::{ErrorHandlerResponse, ErrorHandlers};
 use actix_web::{
-    delete, error, get, guard, http, middleware, post, web, App, Error, HttpRequest, HttpResponse,
+    error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse,
     HttpServer, Result,
 };
 use listenfd::ListenFd;
 use sea_orm::entity::*;
-use sea_orm::query::*;
 use sea_orm::{DatabaseConnection, EntityTrait};
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -29,6 +24,7 @@ struct AppState {
     templates: tera::Tera,
     conn: Arc<DatabaseConnection>,
 }
+type SharedState = Arc<AppState>;
 
 #[derive(Debug, Deserialize)]
 pub struct Params {
@@ -45,7 +41,7 @@ struct FlashData {
 #[get("/")]
 async fn list(
     req: HttpRequest,
-    data: web::Data<Arc<AppState>>,
+    data: web::Data<SharedState>,
     opt_flash: Option<actix_flash::Message<FlashData>>,
 ) -> Result<HttpResponse, Error> {
     let template = &data.templates;
@@ -81,7 +77,7 @@ async fn list(
 }
 
 #[get("/new")]
-async fn new(data: web::Data<Arc<AppState>>) -> Result<HttpResponse, Error> {
+async fn new(data: web::Data<SharedState>) -> Result<HttpResponse, Error> {
     let template = &data.templates;
     let ctx = tera::Context::new();
     let body = template
@@ -92,7 +88,7 @@ async fn new(data: web::Data<Arc<AppState>>) -> Result<HttpResponse, Error> {
 
 #[post("/")]
 async fn create(
-    data: web::Data<Arc<AppState>>,
+    data: web::Data<SharedState>,
     post_form: web::Form<post::Model>,
 ) -> actix_flash::Response<HttpResponse, FlashData> {
     let conn = &data.conn;
@@ -117,7 +113,7 @@ async fn create(
 }
 
 #[get("/{id}")]
-async fn edit(data: web::Data<Arc<AppState>>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
+async fn edit(data: web::Data<SharedState>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
     let conn = &data.conn;
     let template = &data.templates;
 
@@ -138,7 +134,7 @@ async fn edit(data: web::Data<Arc<AppState>>, id: web::Path<i32>) -> Result<Http
 
 #[post("/{id}")]
 async fn update(
-    data: web::Data<Arc<AppState>>,
+    data: web::Data<SharedState>,
     id: web::Path<i32>,
     post_form: web::Form<post::Model>,
 ) -> actix_flash::Response<HttpResponse, FlashData> {
@@ -164,7 +160,7 @@ async fn update(
 
 #[post("/delete/{id}")]
 async fn delete(
-    data: web::Data<Arc<AppState>>,
+    data: web::Data<SharedState>,
     id: web::Path<i32>,
 ) -> actix_flash::Response<HttpResponse, FlashData> {
     let conn = &data.conn;
