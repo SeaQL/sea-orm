@@ -122,7 +122,6 @@ async fn list(
     let paginator = Post::find()
         .order_by_asc(post::Column::Id)
         .paginate(&conn, posts_per_page);
-    let num_pages = paginator.num_pages().await.ok().unwrap();
 
     // Fetch paginated posts
     let posts = paginator
@@ -130,16 +129,14 @@ async fn list(
         .await
         .expect("could not retrieve posts");
 
-    let flash = flash.map(FlashMessage::into_inner);
-
     Template::render(
         "index",
         context! {
-            posts: posts,
-            flash: flash,
             page: page,
             posts_per_page: posts_per_page,
-            num_pages: num_pages,
+            posts: posts,
+            flash: flash.map(FlashMessage::into_inner),
+            num_pages: paginator.num_pages().await.ok().unwrap(),
         },
     )
 }
