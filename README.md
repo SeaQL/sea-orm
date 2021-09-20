@@ -29,7 +29,7 @@ SeaORM is a relational ORM to help you build light weight and concurrent web ser
 
 1. Async
 
-Relying on [SQLx](https://github.com/launchbadge/sqlx), SeaORM is a new library with async support from day 1.
+    Relying on [SQLx](https://github.com/launchbadge/sqlx), SeaORM is a new library with async support from day 1.
 
 ```rust
 // execute multiple queries in parallel
@@ -39,7 +39,7 @@ let cakes_and_fruits: (Vec<cake::Model>, Vec<fruit::Model>) =
 
 2. Dynamic
 
-Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex queries without 'fighting the ORM'.
+    Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex queries without 'fighting the ORM'.
 
 ```rust
 // build subquery with ease
@@ -59,11 +59,9 @@ let cakes_with_filling: Vec<cake::Model> = cake::Entity::find()
 
 ```
 
-[more on SeaQuery](https://docs.rs/sea-query/*/sea_query/)
-
 3. Testable
 
-Use mock connections to write unit tests for your logic.
+    Use mock connections to write unit tests for your logic.
 
 ```rust
 // Setup mock connection
@@ -100,11 +98,9 @@ assert_eq!(
 );
 ```
 
-[more on testing](/docs/write-test/mock)
-
 4. Service oriented
 
-Quickly build services that join, filter, sort and paginate data in APIs.
+    Quickly build services that join, filter, sort and paginate data in APIs.
 
 ```rust
 #[get("/?<page>&<posts_per_page>")]
@@ -139,10 +135,6 @@ async fn list(
     )
 }
 ```
-
-[full Rocket example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
-
-We are building more examples for other web frameworks too.
 
 ## A quick taste of SeaORM
 
