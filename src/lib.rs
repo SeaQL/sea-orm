@@ -162,7 +162,7 @@
 //! # }
 //! ```
 //!
-//! 4. Service oriented
+//! 4. Service Oriented
 //!
 //!     Quickly build services that join, filter, sort and paginate data in APIs.
 //!
