@@ -36,7 +36,7 @@
 //!
 //! 1. Async
 //!
-//! Relying on [SQLx](https://github.com/launchbadge/sqlx), SeaORM is a new library with async support from day 1.
+//!     Relying on [SQLx](https://github.com/launchbadge/sqlx), SeaORM is a new library with async support from day 1.
 //!
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*, DatabaseConnection, DbBackend, MockDatabase, Transaction, IntoMockRow};
@@ -94,7 +94,7 @@
 //!
 //! 2. Dynamic
 //!
-//! Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex queries without 'fighting the ORM'.
+//!     Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex queries without 'fighting the ORM'.
 //!
 //! ```
 //! # use sea_query::Query;
@@ -119,11 +119,9 @@
 //! # }
 //! ```
 //!
-//! [more on SeaQuery](https://docs.rs/sea-query/*/sea_query/)
-//!
 //! 3. Testable
 //!
-//! Use mock connections to write unit tests for your logic.
+//!     Use mock connections to write unit tests for your logic.
 //!
 //! ```
 //! # use sea_orm::{error::*, entity::*, query::*, tests_cfg::*, DbConn, MockDatabase, Transaction, DbBackend};
@@ -164,11 +162,9 @@
 //! # }
 //! ```
 //!
-//! [more on testing](/docs/write-test/mock)
-//!
 //! 4. Service oriented
 //!
-//! Quickly build services that join, filter, sort and paginate data in APIs.
+//!     Quickly build services that join, filter, sort and paginate data in APIs.
 //!
 //! ```ignore
 //! #[get("/?<page>&<posts_per_page>")]
@@ -203,10 +199,6 @@
 //!     )
 //! }
 //! ```
-//!
-//! [full Rocket example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
-//!
-//! We are building more examples for other web frameworks too.
 //!
 //! ## A quick taste of SeaORM
 //!
