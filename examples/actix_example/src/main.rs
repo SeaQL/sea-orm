@@ -50,13 +50,13 @@ async fn list(
     // get params
     let params = web::Query::<Params>::from_query(req.query_string()).unwrap();
 
-    let page = params.page.unwrap_or(0);
+    let page = params.page.unwrap_or(1);
     let posts_per_page = params.posts_per_page.unwrap_or(DEFAULT_POSTS_PER_PAGE);
     let paginator = Post::find().paginate(&conn, posts_per_page);
     let num_pages = paginator.num_pages().await.ok().unwrap();
 
     let posts = paginator
-        .fetch_page(page)
+        .fetch_page(page-1)
         .await
         .expect("could not retrieve posts");
     let mut ctx = tera::Context::new();

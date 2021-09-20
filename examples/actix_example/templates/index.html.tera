@@ -28,11 +28,11 @@
       <tr>
         <td></td>
         <td>
-          {% if page == 0 %} Previous {% else %}
+          {% if page == 1 %} Previous {% else %}
           <a href="/?page={{ page - 1 }}&posts_per_page={{ posts_per_page }}"
             >Previous</a
           >
-          {% endif %} | {% if page == num_pages - 1 %} Next {% else %}
+          {% endif %} | {% if page == num_pages %} Next {% else %}
           <a href="/?page={{ page + 1 }}&posts_per_page={{ posts_per_page }}"
             >Next</a
           >
