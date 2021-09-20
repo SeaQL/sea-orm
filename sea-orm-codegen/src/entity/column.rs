@@ -109,6 +109,7 @@ impl Column {
                 let s = s.to_string();
                 quote! { ColumnType::Custom(#s.to_owned()).def() }
             }
+            #[allow(unreachable_patterns)]
             _ => unimplemented!(),
         };
         if !self.not_null {

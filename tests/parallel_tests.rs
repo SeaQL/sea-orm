@@ -47,9 +47,9 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
     )?;
 
     let find_res = futures::try_join!(
-        Metadata::find_by_id(metadata[0].uuid.clone()).one(db),
-        Metadata::find_by_id(metadata[1].uuid.clone()).one(db),
-        Metadata::find_by_id(metadata[2].uuid.clone()).one(db),
+        Metadata::find_by_id(metadata[0].uuid).one(db),
+        Metadata::find_by_id(metadata[1].uuid).one(db),
+        Metadata::find_by_id(metadata[2].uuid).one(db),
     )?;
 
     assert_eq!(
@@ -78,9 +78,9 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
     )?;
 
     let find_res = futures::try_join!(
-        Metadata::find_by_id(metadata[0].uuid.clone()).one(db),
-        Metadata::find_by_id(metadata[1].uuid.clone()).one(db),
-        Metadata::find_by_id(metadata[2].uuid.clone()).one(db),
+        Metadata::find_by_id(metadata[0].uuid).one(db),
+        Metadata::find_by_id(metadata[1].uuid).one(db),
+        Metadata::find_by_id(metadata[2].uuid).one(db),
     )?;
 
     assert_eq!(
