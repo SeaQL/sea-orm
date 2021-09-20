@@ -35,7 +35,6 @@ Relying on [SQLx](https://github.com/launchbadge/sqlx), SeaORM is a new library 
 // execute multiple queries in parallel
 let cakes_and_fruits: (Vec<cake::Model>, Vec<fruit::Model>) =
     futures::try_join!(Cake::find().all(&db), Fruit::find().all(&db))?;
-
 ```
 
 2. Dynamic

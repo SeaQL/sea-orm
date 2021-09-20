@@ -39,14 +39,57 @@
 //! Relying on [SQLx](https://github.com/launchbadge/sqlx), SeaORM is a new library with async support from day 1.
 //!
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
-//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
+//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*, DatabaseConnection, DbBackend, MockDatabase, Transaction, IntoMockRow};
+//! # let db = MockDatabase::new(DbBackend::Postgres)
+//! #     .append_query_results(vec![
+//! #         vec![cake::Model {
+//! #             id: 1,
+//! #             name: "New York Cheese".to_owned(),
+//! #         }
+//! #         .into_mock_row()],
+//! #         vec![fruit::Model {
+//! #             id: 1,
+//! #             name: "Apple".to_owned(),
+//! #             cake_id: Some(1),
+//! #         }
+//! #         .into_mock_row()],
+//! #     ])
+//! #     .into_connection();
+//! # let _: Result<(), DbErr> = smol::block_on(async {
 //! // execute multiple queries in parallel
 //! let cakes_and_fruits: (Vec<cake::Model>, Vec<fruit::Model>) =
 //!     futures::try_join!(Cake::find().all(&db), Fruit::find().all(&db))?;
-//!
+//! # assert_eq!(
+//! #     cakes_and_fruits,
+//! #     (
+//! #         vec![cake::Model {
+//! #             id: 1,
+//! #             name: "New York Cheese".to_owned(),
+//! #         }],
+//! #         vec![fruit::Model {
+//! #             id: 1,
+//! #             name: "Apple".to_owned(),
+//! #             cake_id: Some(1),
+//! #         }]
+//! #     )
+//! # );
+//! # assert_eq!(
+//! #     db.into_transaction_log(),
+//! #     vec![
+//! #         Transaction::from_sql_and_values(
+//! #             DbBackend::Postgres,
+//! #             r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
+//! #             vec![]
+//! #         ),
+//! #         Transaction::from_sql_and_values(
+//! #             DbBackend::Postgres,
+//! #             r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
+//! #             vec![]
+//! #         ),
+//! #     ]
+//! # );
 //! # Ok(())
-//! # }
+//! # });
 //! ```
 //!
 //! 2. Dynamic
