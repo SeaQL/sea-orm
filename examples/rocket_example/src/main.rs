@@ -80,8 +80,11 @@ async fn list(
     flash: Option<FlashMessage<'_>>,
 ) -> Template {
     // Set page number and items per page
-    let page = page.unwrap_or(0);
+    let page = page.unwrap_or(1);
     let posts_per_page = posts_per_page.unwrap_or(DEFAULT_POSTS_PER_PAGE);
+    if page == 0 {
+        panic!("Page number cannot be zero");
+    }
 
     // Setup paginator
     let paginator = Post::find()
@@ -90,7 +93,7 @@ async fn list(
 
     // Fetch paginated posts
     let posts = paginator
-        .fetch_page(page)
+        .fetch_page(page - 1)
         .await
         .expect("could not retrieve posts");
 
