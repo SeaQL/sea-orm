@@ -43,7 +43,6 @@ impl Column {
             ColumnType::Uuid => "Uuid",
             ColumnType::Binary(_) => "Vec<u8>",
             ColumnType::Boolean => "bool",
-            _ => unimplemented!(),
         }
         .parse()
         .unwrap();
@@ -91,6 +90,7 @@ impl Column {
             },
             ColumnType::DateTime(_) => quote! { ColumnType::DateTime.def() },
             ColumnType::Timestamp(_) => quote! { ColumnType::Timestamp.def() },
+            ColumnType::TimestampWithTimeZone(_) => quote! { ColumnType::TimestampWithTimeZone.def() },
             ColumnType::Time(_) => quote! { ColumnType::Time.def() },
             ColumnType::Date => quote! { ColumnType::Date.def() },
             ColumnType::Binary(_) => quote! { ColumnType::Binary.def() },
@@ -106,7 +106,6 @@ impl Column {
                 let s = s.to_string();
                 quote! { ColumnType::Custom(#s.to_owned()).def() }
             }
-            _ => unimplemented!(),
         };
         if !self.not_null {
             col_def.extend(quote! {
