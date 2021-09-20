@@ -176,18 +176,18 @@
 //!     // Set page number and items per page
 //!     let page = page.unwrap_or(1);
 //!     let posts_per_page = posts_per_page.unwrap_or(10);
-//! 
+//!
 //!     // Setup paginator
 //!     let paginator = Post::find()
 //!         .order_by_asc(post::Column::Id)
 //!         .paginate(&conn, posts_per_page);
-//! 
+//!
 //!     // Fetch paginated posts
 //!     let posts = paginator
 //!         .fetch_page(page - 1)
 //!         .await
 //!         .expect("could not retrieve posts");
-//! 
+//!
 //!     Template::render(
 //!         "index",
 //!         context! {
