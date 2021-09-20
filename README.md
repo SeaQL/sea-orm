@@ -106,17 +106,18 @@ assert_eq!(
 #[get("/?<page>&<posts_per_page>")]
 async fn list(
     conn: Connection<Db>,
-    posts_per_page: Option<usize>,
     page: Option<usize>,
+    per_page: Option<usize>,
 ) -> Template {
     // Set page number and items per page
     let page = page.unwrap_or(1);
-    let posts_per_page = posts_per_page.unwrap_or(10);
+    let per_page = per_page.unwrap_or(10);
 
     // Setup paginator
     let paginator = Post::find()
         .order_by_asc(post::Column::Id)
-        .paginate(&conn, posts_per_page);
+        .paginate(&conn, per_page);
+    let num_pages = paginator.num_pages().await.unwrap();
 
     // Fetch paginated posts
     let posts = paginator
@@ -128,9 +129,9 @@ async fn list(
         "index",
         context! {
             page: page,
-            posts_per_page: posts_per_page,
+            per_page: per_page,
             posts: posts,
-            num_pages: paginator.num_pages().await.ok().unwrap(),
+            num_pages: num_pages,
         },
     )
 }
