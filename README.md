@@ -31,17 +31,124 @@ SeaORM is a relational ORM to help you build light weight and concurrent web ser
 
 Relying on [SQLx](https://github.com/launchbadge/sqlx), SeaORM is a new library with async support from day 1.
 
+```rust
+// execute multiple queries in parallel
+let cakes_and_fruits: (Vec<cake::Model>, Vec<fruit::Model>) =
+    futures::try_join!(Cake::find().all(&db), Fruit::find().all(&db))?;
+
+```
+
 2. Dynamic
 
 Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex queries without 'fighting the ORM'.
+
+```rust
+// build subquery with ease
+let cakes_with_filling: Vec<cake::Model> = cake::Entity::find()
+    .filter(
+        Condition::any().add(
+            cake::Column::Id.in_subquery(
+                Query::select()
+                    .column(cake_filling::Column::CakeId)
+                    .from(cake_filling::Entity)
+                    .to_owned(),
+            ),
+        ),
+    )
+    .all(&db)
+    .await?;
+
+```
+
+[more on SeaQuery](https://docs.rs/sea-query/*/sea_query/)
 
 3. Testable
 
 Use mock connections to write unit tests for your logic.
 
+```rust
+// Setup mock connection
+let db = MockDatabase::new(DbBackend::Postgres)
+    .append_query_results(vec![
+        vec![
+            cake::Model {
+                id: 1,
+                name: "New York Cheese".to_owned(),
+            },
+        ],
+    ])
+    .into_connection();
+
+// Perform your application logic
+assert_eq!(
+    cake::Entity::find().one(&db).await?,
+    Some(cake::Model {
+        id: 1,
+        name: "New York Cheese".to_owned(),
+    })
+);
+
+// Compare it against the expected transaction log
+assert_eq!(
+    db.into_transaction_log(),
+    vec![
+        Transaction::from_sql_and_values(
+            DbBackend::Postgres,
+            r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
+            vec![1u64.into()]
+        ),
+    ]
+);
+```
+
+[more on testing](/docs/write-test/mock)
+
 4. Service oriented
 
 Quickly build services that join, filter, sort and paginate data in APIs.
+
+```rust
+#[get("/?<page>&<posts_per_page>")]
+async fn list(
+    conn: Connection<Db>,
+    posts_per_page: Option<usize>,
+    page: Option<usize>,
+    flash: Option<FlashMessage<'_>>,
+) -> Template {
+    // Set page number and items per page
+    let page = page.unwrap_or(0);
+    let posts_per_page = posts_per_page.unwrap_or(DEFAULT_POSTS_PER_PAGE);
+
+    // Setup paginator
+    let paginator = Post::find()
+        .order_by_asc(post::Column::Id)
+        .paginate(&conn, posts_per_page);
+    let num_pages = paginator.num_pages().await.ok().unwrap();
+
+    // Fetch paginated posts
+    let posts = paginator
+        .fetch_page(page)
+        .await
+        .expect("could not retrieve posts");
+
+    let flash = flash.map(FlashMessage::into_inner);
+
+    Template::render(
+        "index",
+        context! {
+            posts: posts,
+            flash: flash,
+            page: page,
+            posts_per_page: posts_per_page,
+            num_pages: num_pages,
+        },
+    )
+}
+```
+
+[full Rocket example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
+
+We are building more examples for other web frameworks too.
 
 ## A quick taste of SeaORM
 

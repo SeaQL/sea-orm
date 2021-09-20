@@ -91,7 +91,9 @@ impl Column {
             },
             ColumnType::DateTime(_) => quote! { ColumnType::DateTime.def() },
             ColumnType::Timestamp(_) => quote! { ColumnType::Timestamp.def() },
-            ColumnType::TimestampWithTimeZone(_) => quote! { ColumnType::TimestampWithTimeZone.def() },
+            ColumnType::TimestampWithTimeZone(_) => {
+                quote! { ColumnType::TimestampWithTimeZone.def() }
+            }
             ColumnType::Time(_) => quote! { ColumnType::Time.def() },
             ColumnType::Date => quote! { ColumnType::Date.def() },
             ColumnType::Binary(_) => quote! { ColumnType::Binary.def() },
