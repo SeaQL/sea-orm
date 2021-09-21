@@ -8,31 +8,22 @@ publish = false
 [workspace]
 
 [dependencies]
-async-stream = { version = "^0.3" }
-async-trait = { version = "0.1" }
-futures = { version = "^0.3" }
-futures-util = { version = "^0.3" }
 actix-http = "2"
 actix-web = "3"
 actix-flash = "0.2"
 actix-files = "0.5"
+futures = { version = "^0.3" }
+futures-util = { version = "^0.3" }
 tera = "1.8.0"
 dotenv = "0.15"
 listenfd = "0.3.3"
-
 # remove `path = ""` in your own project
-sea-orm = { path = "../../", version = "^0.2", features = [
+sea-orm = { path = "../../", version = "^0.2.2", features = [
   "macros",
-  "sqlx-all",
   "runtime-async-std-native-tls",
 ], default-features = false }
 serde = "1"
 env_logger = "0.8"
-
-[dependencies.sqlx]
-version = "^0.5"
-default-features = false
-features = ["macros", "offline", "migrate", "runtime-async-std-native-tls"]
 
 [features]
 default = ["sqlx-mysql"]
