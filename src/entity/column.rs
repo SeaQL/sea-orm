@@ -334,7 +334,7 @@ mod tests {
     use sea_query::Query;
 
     #[test]
-    fn test_in_subquery() {
+    fn test_in_subquery_1() {
         assert_eq!(
             cake::Entity::find()
                 .filter(
@@ -352,6 +352,30 @@ mod tests {
             [
                 "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
                 "WHERE `cake`.`id` IN (SELECT MAX(`cake`.`id`) FROM `cake`)",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn test_in_subquery_2() {
+        assert_eq!(
+            cake::Entity::find()
+                .filter(
+                    Condition::any().add(
+                        cake::Column::Id.in_subquery(
+                            Query::select()
+                                .column(cake_filling::Column::CakeId)
+                                .from(cake_filling::Entity)
+                                .to_owned()
+                        )
+                    )
+                )
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "WHERE `cake`.`id` IN (SELECT `cake_id` FROM `cake_filling`)",
             ]
             .join(" ")
         );

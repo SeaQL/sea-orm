@@ -386,7 +386,10 @@ pub trait EntityTrait: EntityName {
     /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
     /// assert_eq!(
-    ///     orange.clone().update(&db).await?, // Clone here because we need to assert_eq
+    ///     fruit::Entity::update(orange.clone())
+    ///         .filter(fruit::Column::Name.contains("orange"))
+    ///         .exec(&db)
+    ///         .await?,
     ///     orange
     /// );
     /// #
@@ -396,7 +399,8 @@ pub trait EntityTrait: EntityName {
     /// assert_eq!(
     ///     db.into_transaction_log(),
     ///     vec![Transaction::from_sql_and_values(
-    ///         DbBackend::Postgres, r#"UPDATE "fruit" SET "name" = $1 WHERE "fruit"."id" = $2"#, vec!["Orange".into(), 1i32.into()]
+    ///         DbBackend::Postgres, r#"UPDATE "fruit" SET "name" = $1 WHERE "fruit"."id" = $2 AND "fruit"."name" LIKE $3"#,
+    ///         vec!["Orange".into(), 1i32.into(), "%orange%".into()]
     ///     )]);
     /// ```
     fn update<A>(model: A) -> UpdateOne<A>
