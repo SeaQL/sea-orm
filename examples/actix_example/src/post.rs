@@ -8,6 +8,7 @@ pub struct Model {
     #[serde(skip_deserializing)]
     pub id: i32,
     pub title: String,
+    #[sea_orm(column_type = "Text")]
     pub text: String,
 }
 
