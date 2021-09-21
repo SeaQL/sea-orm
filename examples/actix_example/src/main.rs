@@ -14,7 +14,7 @@ mod post;
 pub use post::Entity as Post;
 mod setup;
 
-const DEFAULT_POSTS_PER_PAGE: usize = 25;
+const DEFAULT_POSTS_PER_PAGE: usize = 5;
 
 #[derive(Debug, Clone)]
 struct AppState {
@@ -47,7 +47,7 @@ async fn list(
 
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.posts_per_page.unwrap_or(DEFAULT_POSTS_PER_PAGE);
-    let paginator = Post::find().paginate(&conn, posts_per_page);
+    let paginator = Post::find().paginate(conn, posts_per_page);
     let num_pages = paginator.num_pages().await.ok().unwrap();
 
     let posts = paginator
@@ -95,7 +95,7 @@ async fn create(
         text: Set(form.text.to_owned()),
         ..Default::default()
     }
-    .save(&conn)
+    .save(conn)
     .await
     .expect("could not insert post");
 
@@ -104,7 +104,7 @@ async fn create(
         message: "Post successfully added.".to_owned(),
     };
 
-    actix_flash::Response::with_redirect(flash.clone(), "/")
+    actix_flash::Response::with_redirect(flash, "/")
 }
 
 #[get("/{id}")]
@@ -113,7 +113,7 @@ async fn edit(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpRespo
     let template = &data.templates;
 
     let post: post::Model = Post::find_by_id(id.into_inner())
-        .one(&conn)
+        .one(conn)
         .await
         .expect("could not find post")
         .unwrap();
@@ -137,11 +137,11 @@ async fn update(
     let form = post_form.into_inner();
 
     post::ActiveModel {
-        id: Set(Some(id.into_inner())),
+        id: Set(id.into_inner()),
         title: Set(form.title.to_owned()),
         text: Set(form.text.to_owned()),
     }
-    .save(&conn)
+    .save(conn)
     .await
     .expect("could not edit post");
 
@@ -150,7 +150,7 @@ async fn update(
         message: "Post successfully updated.".to_owned(),
     };
 
-    actix_flash::Response::with_redirect(flash.clone(), "/")
+    actix_flash::Response::with_redirect(flash, "/")
 }
 
 #[post("/delete/{id}")]
@@ -161,20 +161,20 @@ async fn delete(
     let conn = &data.conn;
 
     let post: post::ActiveModel = Post::find_by_id(id.into_inner())
-        .one(&conn)
+        .one(conn)
         .await
         .unwrap()
         .unwrap()
         .into();
 
-    post.delete(&conn).await.unwrap();
+    post.delete(conn).await.unwrap();
 
     let flash = FlashData {
         kind: "success".to_owned(),
         message: "Post successfully deleted.".to_owned(),
     };
 
-    actix_flash::Response::with_redirect(flash.clone(), "/")
+    actix_flash::Response::with_redirect(flash, "/")
 }
 
 #[actix_web::main]
@@ -194,8 +194,8 @@ async fn main() -> std::io::Result<()> {
     let _ = setup::create_post_table(&conn).await;
     let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).unwrap();
     let state = AppState {
-        templates: templates,
-        conn: conn,
+        templates,
+        conn,
     };
 
     let mut listenfd = ListenFd::from_env();
