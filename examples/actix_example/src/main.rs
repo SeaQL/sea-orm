@@ -1,6 +1,3 @@
-// use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
-use std::sync::Arc;
-
 use actix_files as fs;
 use actix_web::{
     error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse,
@@ -22,10 +19,8 @@ const DEFAULT_POSTS_PER_PAGE: usize = 25;
 #[derive(Debug, Clone)]
 struct AppState {
     templates: tera::Tera,
-    conn: Arc<DatabaseConnection>,
+    conn: DatabaseConnection,
 }
-type SharedState = Arc<AppState>;
-
 #[derive(Debug, Deserialize)]
 pub struct Params {
     page: Option<usize>,
@@ -41,7 +36,7 @@ struct FlashData {
 #[get("/")]
 async fn list(
     req: HttpRequest,
-    data: web::Data<SharedState>,
+    data: web::Data<AppState>,
     opt_flash: Option<actix_flash::Message<FlashData>>,
 ) -> Result<HttpResponse, Error> {
     let template = &data.templates;
@@ -77,7 +72,7 @@ async fn list(
 }
 
 #[get("/new")]
-async fn new(data: web::Data<SharedState>) -> Result<HttpResponse, Error> {
+async fn new(data: web::Data<AppState>) -> Result<HttpResponse, Error> {
     let template = &data.templates;
     let ctx = tera::Context::new();
     let body = template
@@ -88,7 +83,7 @@ async fn new(data: web::Data<SharedState>) -> Result<HttpResponse, Error> {
 
 #[post("/")]
 async fn create(
-    data: web::Data<SharedState>,
+    data: web::Data<AppState>,
     post_form: web::Form<post::Model>,
 ) -> actix_flash::Response<HttpResponse, FlashData> {
     let conn = &data.conn;
@@ -113,7 +108,7 @@ async fn create(
 }
 
 #[get("/{id}")]
-async fn edit(data: web::Data<SharedState>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
+async fn edit(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
     let conn = &data.conn;
     let template = &data.templates;
 
@@ -134,7 +129,7 @@ async fn edit(data: web::Data<SharedState>, id: web::Path<i32>) -> Result<HttpRe
 
 #[post("/{id}")]
 async fn update(
-    data: web::Data<SharedState>,
+    data: web::Data<AppState>,
     id: web::Path<i32>,
     post_form: web::Form<post::Model>,
 ) -> actix_flash::Response<HttpResponse, FlashData> {
@@ -160,7 +155,7 @@ async fn update(
 
 #[post("/delete/{id}")]
 async fn delete(
-    data: web::Data<SharedState>,
+    data: web::Data<AppState>,
     id: web::Path<i32>,
 ) -> actix_flash::Response<HttpResponse, FlashData> {
     let conn = &data.conn;
@@ -200,13 +195,13 @@ async fn main() -> std::io::Result<()> {
     let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).unwrap();
     let state = AppState {
         templates: templates,
-        conn: Arc::new(conn),
+        conn: conn,
     };
 
     let mut listenfd = ListenFd::from_env();
     let mut server = HttpServer::new(move || {
         App::new()
-            .data(Arc::new(state.clone()))
+            .data(state.clone())
             .wrap(middleware::Logger::default()) // enable logger
             .wrap(actix_flash::Flash::default())
             .configure(init)
