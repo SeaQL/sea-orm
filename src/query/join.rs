@@ -76,6 +76,7 @@ where
 mod tests {
     use crate::tests_cfg::{cake, cake_filling, cake_filling_price, filling, fruit};
     use crate::{ColumnTrait, DbBackend, EntityTrait, ModelTrait, QueryFilter, QueryTrait};
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn join_1() {
@@ -249,9 +250,9 @@ mod tests {
             [
                 r#"SELECT `filling`.`id`, `filling`.`name`"#,
                 r#"FROM `filling`"#,
-                r#"INNER JOIN `cake_filling` ON `cake_filling`.`filling_id` = `filling`.`id`"#,
-                r#"INNER JOIN `cake` ON `cake`.`id` = `cake_filling`.`cake_id`"#,
-                r#"WHERE `cake`.`id` = 12"#,
+                r#"INNER JOIN `cake_filling` AS `r0` ON `r0`.`filling_id` = `filling`.`id`"#,
+                r#"INNER JOIN `cake` AS `r1` ON `r1`.`id` = `r0`.`cake_id`"#,
+                r#"WHERE `r1`.`id` = 12"#,
             ]
             .join(" ")
         );
