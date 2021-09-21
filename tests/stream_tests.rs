@@ -10,7 +10,7 @@ pub use sea_orm::{QueryFilter, ConnectionTrait};
     feature = "sqlx-sqlite",
     feature = "sqlx-postgres"
 ))]
-pub async fn stream() {
+pub async fn stream() -> Result<(), DbErr> {
     use futures::StreamExt;
 
     let ctx = TestContext::new("stream").await;
@@ -21,19 +21,18 @@ pub async fn stream() {
         ..Default::default()
     }
     .save(&ctx.db)
-    .await
-    .expect("could not insert bakery");
+    .await?;
 
     let result = Bakery::find_by_id(bakery.id.clone().unwrap())
        .stream(&ctx.db)
-        .await
-        .unwrap()
+        .await?
         .next()
         .await
-        .unwrap()
-        .unwrap();
+        .unwrap()?;
 
     assert_eq!(result.id, bakery.id.unwrap());
 
     ctx.delete().await;
+
+    Ok(())
 }
