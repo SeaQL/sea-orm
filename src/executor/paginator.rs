@@ -1,4 +1,4 @@
-use crate::{DbBackend, ConnectionTrait, SelectorTrait, error::*};
+use crate::{ConnectionTrait, SelectorTrait, error::*};
 use async_stream::stream;
 use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
@@ -67,7 +67,7 @@ where
         };
         let num_items = match builder {
             #[cfg(feature = "sqlx-postgres")]
-            DbBackend::Postgres if !self.db.is_mock_connection() => result.try_get::<i64>("", "num_items")? as usize,
+            crate::DbBackend::Postgres if !self.db.is_mock_connection() => result.try_get::<i64>("", "num_items")? as usize,
             _ => result.try_get::<i32>("", "num_items")? as usize,
         };
         Ok(num_items)

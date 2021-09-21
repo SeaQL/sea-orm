@@ -110,6 +110,21 @@ impl ConnectionTrait for DatabaseConnection {
         }
     }
 
+    #[cfg(feature = "sqlx-dep")]
+    async fn stream(&self, stmt: Statement) -> Result<crate::QueryStream, DbErr> {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.stream(stmt).await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.stream(stmt).await,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.stream(stmt).await,
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(_) => panic!("Mock"),//TODO: can it be permitted? How?
+            DatabaseConnection::Disconnected => panic!("Disconnected"),
+        }
+    }
+
     /// Execute the function inside a transaction.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
     async fn transaction<F, T, E>(&self, _callback: F) -> Result<T, TransactionError<E>>

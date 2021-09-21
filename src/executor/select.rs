@@ -1,4 +1,8 @@
+#[cfg(feature = "sqlx-dep")]
+use std::pin::Pin;
 use crate::{ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, JsonValue, ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement, error::*};
+#[cfg(feature = "sqlx-dep")]
+use futures::{Stream, TryStreamExt};
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
 
@@ -109,6 +113,14 @@ where
         self.into_model().all(db).await
     }
 
+    #[cfg(feature = "sqlx-dep")]
+    pub async fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<impl Stream<Item=Result<E::Model, DbErr>> + 'b, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().stream(db).await
+    }
+
     pub fn paginate<C>(
         self,
         db: &C,
@@ -164,6 +176,14 @@ where
         self.into_model().all(db).await
     }
 
+    #[cfg(feature = "sqlx-dep")]
+    pub async fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<impl Stream<Item=Result<(E::Model, Option<F::Model>), DbErr>> + 'b, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().stream(db).await
+    }
+
     pub fn paginate<C>(
         self,
         db: &C,
@@ -211,6 +231,14 @@ where
         self.into_model().one(db).await
     }
 
+    #[cfg(feature = "sqlx-dep")]
+    pub async fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<impl Stream<Item=Result<(E::Model, Option<F::Model>), DbErr>> + 'b, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().stream(db).await
+    }
+
     pub async fn all<C>(
         self,
         db: &C,
@@ -254,6 +282,19 @@ where
             models.push(S::from_raw_query_result(row)?);
         }
         Ok(models)
+    }
+
+    #[cfg(feature = "sqlx-dep")]
+    pub async fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<Pin<Box<dyn Stream<Item=Result<S::Item, DbErr>> + 'b>>, DbErr>
+    where
+        C: ConnectionTrait,
+        S: 'b,
+    {
+        let builder = db.get_database_backend();
+        let stream = db.stream(builder.build(&self.query)).await?;
+        Ok(Box::pin(stream.and_then(|row| {
+            futures::future::ready(S::from_raw_query_result(row))
+        })))
     }
 
     pub fn paginate<C>(self, db: &C, page_size: usize) -> Paginator<'_, C, S>

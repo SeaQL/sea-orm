@@ -5,7 +5,7 @@ use sqlx::{Connection, Sqlite, SqlitePool, sqlite::{SqliteArguments, SqliteQuery
 sea_query::sea_query_driver_sqlite!();
 use sea_query_driver_sqlite::bind_query;
 
-use crate::{DatabaseConnection, DatabaseTransaction, Statement, TransactionError, debug_print, error::*, executor::*};
+use crate::{DatabaseConnection, DatabaseTransaction, QueryStream, Statement, TransactionError, debug_print, error::*, executor::*};
 
 use super::sqlx_common::*;
 
@@ -84,6 +84,18 @@ impl SqlxSqlitePoolConnection {
                 Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
                 Err(err) => Err(sqlx_error_to_query_err(err)),
             }
+        } else {
+            Err(DbErr::Query(
+                "Failed to acquire connection from pool.".to_owned(),
+            ))
+        }
+    }
+
+    pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
+        debug_print!("{}", stmt);
+
+        if let Ok(conn) = self.pool.acquire().await {
+            Ok(QueryStream::from((conn, stmt)))
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),

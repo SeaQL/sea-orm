@@ -11,6 +11,9 @@ pub trait ConnectionTrait: Sync {
 
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
 
+    #[cfg(feature = "sqlx-dep")]
+    async fn stream(&self, stmt: Statement) -> Result<crate::QueryStream, DbErr>;
+
     /// Execute the function inside a transaction.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
     async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>

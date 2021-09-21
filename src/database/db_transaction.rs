@@ -222,6 +222,11 @@ impl<'a> ConnectionTrait for DatabaseTransaction<'a> {
         _res.map_err(sqlx_error_to_query_err)
     }
 
+    #[cfg(feature = "sqlx-dep")]
+    async fn stream(&self, _stmt: Statement) -> Result<crate::QueryStream, DbErr> {
+        todo!();
+    }
+
     /// Execute the function inside a transaction.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
     async fn transaction<F, T, E>(&self, _callback: F) -> Result<T, TransactionError<E>>
