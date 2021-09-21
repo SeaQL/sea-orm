@@ -1,11 +1,10 @@
 use actix_files as fs;
 use actix_web::{
-    error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse,
-    HttpServer, Result,
+    error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result,
 };
 use listenfd::ListenFd;
-use sea_orm::{entity::*, query::*};
 use sea_orm::DatabaseConnection;
+use sea_orm::{entity::*, query::*};
 use serde::{Deserialize, Serialize};
 use std::env;
 use tera::Tera;
@@ -53,7 +52,7 @@ async fn list(
     let num_pages = paginator.num_pages().await.ok().unwrap();
 
     let posts = paginator
-        .fetch_page(page-1)
+        .fetch_page(page - 1)
         .await
         .expect("could not retrieve posts");
     let mut ctx = tera::Context::new();
@@ -195,10 +194,7 @@ async fn main() -> std::io::Result<()> {
     let conn = sea_orm::Database::connect(&db_url).await.unwrap();
     let _ = setup::create_post_table(&conn).await;
     let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).unwrap();
-    let state = AppState {
-        templates,
-        conn,
-    };
+    let state = AppState { templates, conn };
 
     let mut listenfd = ListenFd::from_env();
     let mut server = HttpServer::new(move || {
