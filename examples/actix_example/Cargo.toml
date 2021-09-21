@@ -1,0 +1,31 @@
+[package]
+name = "sea-orm-actix-example"
+version = "0.1.0"
+authors = ["Sam Samai <sam@studio2pi.com.au>"]
+edition = "2018"
+publish = false
+
+[workspace]
+
+[dependencies]
+actix-http = "2"
+actix-web = "3"
+actix-flash = "0.2"
+actix-files = "0.5"
+futures = { version = "^0.3" }
+futures-util = { version = "^0.3" }
+tera = "1.8.0"
+dotenv = "0.15"
+listenfd = "0.3.3"
+# remove `path = ""` in your own project
+sea-orm = { path = "../../", version = "^0.2.2", features = [
+  "macros",
+  "runtime-async-std-native-tls",
+], default-features = false }
+serde = "1"
+env_logger = "0.8"
+
+[features]
+default = ["sqlx-mysql"]
+sqlx-mysql = ["sea-orm/sqlx-mysql"]
+sqlx-postgres = ["sea-orm/sqlx-postgres"]
