@@ -2,7 +2,8 @@ pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
 pub use sea_orm::entity::*;
-pub use sea_orm::{QueryFilter, ConnectionTrait};
+pub use sea_orm::{QueryFilter, ConnectionTrait, DbErr};
+use futures::StreamExt;
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -11,8 +12,6 @@ pub use sea_orm::{QueryFilter, ConnectionTrait};
     feature = "sqlx-postgres"
 ))]
 pub async fn stream() -> Result<(), DbErr> {
-    use futures::StreamExt;
-
     let ctx = TestContext::new("stream").await;
 
     let bakery = bakery::ActiveModel {
