@@ -4,8 +4,8 @@ use actix_web::{
     HttpServer, Result,
 };
 use listenfd::ListenFd;
-use sea_orm::entity::*;
-use sea_orm::{DatabaseConnection, EntityTrait};
+use sea_orm::{entity::*, query::*};
+use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 use std::env;
 use tera::Tera;
@@ -47,7 +47,9 @@ async fn list(
 
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.posts_per_page.unwrap_or(DEFAULT_POSTS_PER_PAGE);
-    let paginator = Post::find().paginate(conn, posts_per_page);
+    let paginator = Post::find()
+        .order_by_asc(post::Column::Id)
+        .paginate(conn, posts_per_page);
     let num_pages = paginator.num_pages().await.ok().unwrap();
 
     let posts = paginator
