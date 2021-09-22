@@ -20,7 +20,7 @@ rocket_dyn_templates = { git = "https://github.com/SergioBenitez/Rocket.git", fe
   "tera",
 ] }
 # remove `path = ""` in your own project
-sea-orm = { path = "../../", version = "^0.2.2", features = ["macros"], default-features = false }
+sea-orm = { path = "../../", version = "^0.2.3", features = ["macros"], default-features = false }
 serde_json = { version = "^1" }
 
 [features]
