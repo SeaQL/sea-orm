@@ -3,7 +3,7 @@ use rocket_db_pools::{rocket::figment::Figment, Config};
 
 #[derive(Debug)]
 pub struct RocketDbPool {
-    pub db_url: String,
+    pub conn: sea_orm::DatabaseConnection,
 }
 
 #[async_trait]
@@ -14,14 +14,14 @@ impl rocket_db_pools::Pool for RocketDbPool {
 
     async fn init(figment: &Figment) -> Result<Self, Self::Error> {
         let config = figment.extract::<Config>().unwrap();
-        let db_url = config.url;
+        let conn = sea_orm::Database::connect(&config.url).await.unwrap();
 
         Ok(RocketDbPool {
-            db_url: db_url.to_owned(),
+            conn,
         })
     }
 
     async fn get(&self) -> Result<Self::Connection, Self::Error> {
-        Ok(sea_orm::Database::connect(&self.db_url).await.unwrap())
+        Ok(self.conn.clone())
     }
 }

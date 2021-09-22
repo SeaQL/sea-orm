@@ -156,9 +156,8 @@ pub fn not_found(req: &Request<'_>) -> Template {
 }
 
 async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
-    let db_url = Db::fetch(&rocket).unwrap().db_url.clone();
-    let conn = sea_orm::Database::connect(&db_url).await.unwrap();
-    let _ = setup::create_post_table(&conn).await;
+    let conn = &Db::fetch(&rocket).unwrap().conn;
+    let _ = setup::create_post_table(conn).await;
     Ok(rocket)
 }
 
