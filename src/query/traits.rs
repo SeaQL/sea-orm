@@ -47,6 +47,15 @@ where
     }
 }
 
+impl<'a, Q> DebugQuery<'a, Q, DatabaseConnection>
+where
+    Q: QueryTrait,
+{
+    pub fn build(&self) -> Statement {
+        self.query.build(self.value.get_database_backend())
+    }
+}
+
 /// Make get raw_sql becomes simply. It does not need to specify a specific `DbBackend`,
 /// but can be obtained through `get_database_backend` with `DatabaseConnection`.
 /// Return a Statement type.
@@ -69,7 +78,7 @@ where
 ///         name: ActiveValue::set("Apple Pie".to_owned()),
 /// });
 ///
-/// let raw_sql = debug_query!(&c,&conn).to_string();
+/// let raw_sql = debug_query!(&c,conn).to_string();
 /// assert_eq!(raw_sql,r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#);
 ///
 /// let raw_sql = debug_query!(&c,DbBackend::MySql).to_string();
