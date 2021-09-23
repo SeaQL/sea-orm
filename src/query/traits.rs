@@ -87,7 +87,7 @@ macro_rules! debug_query {
     };
 }
 
-/// Use `debug_query` get raw_sql.
+/// Use `debug_query` macro get raw_sql.
 ///
 /// # Example
 ///
