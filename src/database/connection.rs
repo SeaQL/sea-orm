@@ -16,10 +16,10 @@ pub enum DatabaseConnection {
 
 pub type DbConn = DatabaseConnection;
 
-pub trait IntoDbBackend{
+pub trait IntoDbBackend {
     fn build<S>(&self, statement: &S) -> Statement
-        where
-            S: StatementBuilder;
+    where
+        S: StatementBuilder;
 
     fn get_query_builder(&self) -> Box<dyn QueryBuilder>;
 }
@@ -33,8 +33,8 @@ pub enum DbBackend {
 
 impl IntoDbBackend for DbBackend {
     fn build<S>(&self, statement: &S) -> Statement
-        where
-            S: StatementBuilder,
+    where
+        S: StatementBuilder,
     {
         statement.build(self)
     }
@@ -47,7 +47,6 @@ impl IntoDbBackend for DbBackend {
         }
     }
 }
-
 
 impl Default for DatabaseConnection {
     fn default() -> Self {

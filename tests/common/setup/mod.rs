@@ -1,4 +1,4 @@
-use sea_orm::{Database, DbBackend, DatabaseConnection, Statement};
+use sea_orm::{Database, DatabaseConnection, DbBackend, Statement};
 pub mod schema;
 pub use schema::*;
 

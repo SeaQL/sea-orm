@@ -1,4 +1,4 @@
-use crate::{error::*, DatabaseConnection, SelectorTrait, IntoDbBackend};
+use crate::{error::*, DatabaseConnection, IntoDbBackend, SelectorTrait};
 use async_stream::stream;
 use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
@@ -159,7 +159,7 @@ where
 mod tests {
     use crate::entity::prelude::*;
     use crate::tests_cfg::*;
-    use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
+    use crate::{DatabaseConnection, DbBackend, IntoDbBackend, MockDatabase, Transaction};
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};
 

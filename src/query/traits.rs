@@ -1,4 +1,4 @@
-use crate::{DatabaseConnection, DbBackend, Statement, IntoDbBackend};
+use crate::{DatabaseConnection, DbBackend, IntoDbBackend, Statement};
 use sea_query::QueryStatementBuilder;
 
 pub trait QueryTrait {
