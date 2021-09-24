@@ -33,6 +33,17 @@ impl EntityTransformer {
                 .get_columns()
                 .iter()
                 .map(|col_def| col_def.into())
+                .map(|mut col: Column| {
+                    col.unique = table_create
+                        .get_indexes()
+                        .iter()
+                        .filter(|index| index.is_unique_key())
+                        .map(|index| index.get_index_spec().get_column_names())
+                        .filter(|col_names| col_names.len() == 1 && col_names[0] == col.name)
+                        .count()
+                        > 0;
+                    col
+                })
                 .collect();
             let relations = table_create
                 .get_foreign_key_create_stmts()
