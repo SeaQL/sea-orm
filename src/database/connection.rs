@@ -16,12 +16,38 @@ pub enum DatabaseConnection {
 
 pub type DbConn = DatabaseConnection;
 
+pub trait IntoDbBackend{
+    fn build<S>(&self, statement: &S) -> Statement
+        where
+            S: StatementBuilder;
+
+    fn get_query_builder(&self) -> Box<dyn QueryBuilder>;
+}
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum DbBackend {
     MySql,
     Postgres,
     Sqlite,
 }
+
+impl IntoDbBackend for DbBackend {
+    fn build<S>(&self, statement: &S) -> Statement
+        where
+            S: StatementBuilder,
+    {
+        statement.build(self)
+    }
+
+    fn get_query_builder(&self) -> Box<dyn QueryBuilder> {
+        match self {
+            Self::MySql => Box::new(MysqlQueryBuilder),
+            Self::Postgres => Box::new(PostgresQueryBuilder),
+            Self::Sqlite => Box::new(SqliteQueryBuilder),
+        }
+    }
+}
+
 
 impl Default for DatabaseConnection {
     fn default() -> Self {
@@ -123,23 +149,6 @@ impl DatabaseConnection {
     pub fn into_transaction_log(self) -> Vec<crate::Transaction> {
         let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
         mocker.drain_transaction_log()
-    }
-}
-
-impl DbBackend {
-    pub fn build<S>(&self, statement: &S) -> Statement
-    where
-        S: StatementBuilder,
-    {
-        statement.build(self)
-    }
-
-    pub fn get_query_builder(&self) -> Box<dyn QueryBuilder> {
-        match self {
-            Self::MySql => Box::new(MysqlQueryBuilder),
-            Self::Postgres => Box::new(PostgresQueryBuilder),
-            Self::Sqlite => Box::new(SqliteQueryBuilder),
-        }
     }
 }
 
