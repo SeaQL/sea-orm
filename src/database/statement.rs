@@ -1,4 +1,4 @@
-use crate::DbBackend;
+use crate::{DbBackend, IntoDbBackend};
 use sea_query::{inject_parameters, MysqlQueryBuilder, PostgresQueryBuilder, SqliteQueryBuilder};
 pub use sea_query::{Value, Values};
 use std::fmt;

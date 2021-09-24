@@ -1,7 +1,4 @@
-use crate::{
-    error::*, ActiveModelTrait, DatabaseConnection, EntityTrait, Insert, PrimaryKeyTrait,
-    Statement, TryFromU64,
-};
+use crate::{error::*, ActiveModelTrait, DatabaseConnection, EntityTrait, Insert, PrimaryKeyTrait, Statement, TryFromU64, IntoDbBackend};
 use sea_query::InsertStatement;
 use std::{future::Future, marker::PhantomData};
 
