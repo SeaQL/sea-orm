@@ -3,7 +3,7 @@
 
 [package]
 name = "sea-orm-cli"
-version = "0.2.3"
+version = "0.2.4"
 authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
 edition = "2018"
 description = "Command line utility for SeaORM"
@@ -22,7 +22,7 @@ clap = { version = "^2.33.3" }
 dotenv = { version = "^0.15" }
 async-std = { version = "^1.9", features = [ "attributes" ] }
 sea-orm-codegen = { version = "^0.2.3", path = "../sea-orm-codegen" }
-sea-schema = { version = "^0.2.8", git = "https://github.com/SeaQL/sea-schema.git", branch = "sea-query/idx-is-unique-key", default-features = false, features = [
+sea-schema = { version = "^0.2.9", git = "https://github.com/SeaQL/sea-schema.git", branch = "sea-query/idx-is-unique-key", default-features = false, features = [
     "debug-print",
     "sqlx-mysql",
     "sqlx-postgres",
