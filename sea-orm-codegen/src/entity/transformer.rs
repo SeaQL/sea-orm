@@ -63,6 +63,8 @@ impl EntityTransformer {
             entities.insert(table_name.clone(), entity.clone());
             for (i, mut rel) in relations.into_iter().enumerate() {
                 let is_conjunct_relation = entity.primary_keys.len() == entity.columns.len()
+                    && rel.columns.len() == 2
+                    && rel.ref_columns.len() == 2
                     && entity.primary_keys.len() == 2;
                 match is_conjunct_relation {
                     true => {
