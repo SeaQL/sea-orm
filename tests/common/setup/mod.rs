@@ -1,4 +1,4 @@
-use sea_orm::{Database, DatabaseBackend, DatabaseConnection, Statement};
+use sea_orm::{Database, DbBackend, DatabaseConnection, Statement};
 pub mod schema;
 pub use schema::*;
 
@@ -8,14 +8,14 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
         let db = Database::connect(&url).await.unwrap();
         let _drop_db_result = db
             .execute(Statement::from_string(
-                DatabaseBackend::MySql,
+                DbBackend::MySql,
                 format!("DROP DATABASE IF EXISTS `{}`;", db_name),
             ))
             .await;
 
         let _create_db_result = db
             .execute(Statement::from_string(
-                DatabaseBackend::MySql,
+                DbBackend::MySql,
                 format!("CREATE DATABASE `{}`;", db_name),
             ))
             .await;
@@ -27,14 +27,14 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
         let db = Database::connect(&url).await.unwrap();
         let _drop_db_result = db
             .execute(Statement::from_string(
-                DatabaseBackend::Postgres,
+                DbBackend::Postgres,
                 format!("DROP DATABASE IF EXISTS \"{}\";", db_name),
             ))
             .await;
 
         let _create_db_result = db
             .execute(Statement::from_string(
-                DatabaseBackend::Postgres,
+                DbBackend::Postgres,
                 format!("CREATE DATABASE \"{}\";", db_name),
             ))
             .await;
@@ -63,7 +63,7 @@ pub async fn tear_down(base_url: &str, db_name: &str) {
         let db = Database::connect(&url).await.unwrap();
         let _ = db
             .execute(Statement::from_string(
-                DatabaseBackend::MySql,
+                DbBackend::MySql,
                 format!("DROP DATABASE IF EXISTS \"{}\";", db_name),
             ))
             .await;
@@ -72,7 +72,7 @@ pub async fn tear_down(base_url: &str, db_name: &str) {
         let db = Database::connect(&url).await.unwrap();
         let _ = db
             .execute(Statement::from_string(
-                DatabaseBackend::Postgres,
+                DbBackend::Postgres,
                 format!("DROP DATABASE IF EXISTS \"{}\";", db_name),
             ))
             .await;

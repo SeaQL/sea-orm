@@ -17,13 +17,11 @@ pub enum DatabaseConnection {
 pub type DbConn = DatabaseConnection;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub enum DatabaseBackend {
+pub enum DbBackend {
     MySql,
     Postgres,
     Sqlite,
 }
-
-pub type DbBackend = DatabaseBackend;
 
 impl Default for DatabaseConnection {
     fn default() -> Self {
