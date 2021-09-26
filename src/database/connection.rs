@@ -130,14 +130,6 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
     }
-
-    #[cfg(feature = "mock")]
-    fn is_mock_connection(&self) -> bool {
-        match self {
-            DatabaseConnection::MockDatabaseConnection(_) => true,
-            _ => false,
-        }
-    }
 }
 
 #[cfg(feature = "mock")]

@@ -18,8 +18,4 @@ pub trait ConnectionTrait: Sync {
         F: for<'c> FnOnce(&'c DatabaseTransaction<'_>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>> + Send + Sync,
         T: Send,
         E: std::error::Error + Send;
-
-    fn is_mock_connection(&self) -> bool {
-        false
-    }
 }

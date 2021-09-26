@@ -66,8 +66,7 @@ where
             None => return Ok(0),
         };
         let num_items = match builder {
-            #[cfg(feature = "sqlx-postgres")]
-            DbBackend::Postgres if !self.db.is_mock_connection() => result.try_get::<i64>("", "num_items")? as usize,
+            DbBackend::Postgres => result.try_get::<i64>("", "num_items")? as usize,
             _ => result.try_get::<i32>("", "num_items")? as usize,
         };
         Ok(num_items)
