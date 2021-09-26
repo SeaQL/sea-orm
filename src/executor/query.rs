@@ -314,29 +314,50 @@ where
     }
 }
 
-impl<T> TryGetableMany for (T, T)
+impl<A, B> TryGetableMany for (A, B)
 where
-    T: TryGetable,
+    A: TryGetable,
+    B: TryGetable,
 {
     fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
         try_get_many_with_slice_len_of(2, cols)?;
         Ok((
-            T::try_get(res, pre, &cols[0])?,
-            T::try_get(res, pre, &cols[1])?,
+            A::try_get(res, pre, &cols[0])?,
+            B::try_get(res, pre, &cols[1])?,
         ))
     }
 }
 
-impl<T> TryGetableMany for (T, T, T)
+impl<A, B, C> TryGetableMany for (A, B, C)
 where
-    T: TryGetable,
+    A: TryGetable,
+    B: TryGetable,
+    C: TryGetable,
 {
     fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
         try_get_many_with_slice_len_of(3, cols)?;
         Ok((
-            T::try_get(res, pre, &cols[0])?,
-            T::try_get(res, pre, &cols[1])?,
-            T::try_get(res, pre, &cols[2])?,
+            A::try_get(res, pre, &cols[0])?,
+            B::try_get(res, pre, &cols[1])?,
+            C::try_get(res, pre, &cols[2])?,
+        ))
+    }
+}
+
+impl<A, B, C, D> TryGetableMany for (A, B, C, D)
+where
+    A: TryGetable,
+    B: TryGetable,
+    C: TryGetable,
+    D: TryGetable,
+{
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
+        try_get_many_with_slice_len_of(4, cols)?;
+        Ok((
+            A::try_get(res, pre, &cols[0])?,
+            B::try_get(res, pre, &cols[1])?,
+            C::try_get(res, pre, &cols[2])?,
+            D::try_get(res, pre, &cols[3])?,
         ))
     }
 }
@@ -370,14 +391,26 @@ macro_rules! try_from_u64_err {
             }
         }
     };
-}
 
-macro_rules! try_from_u64_tuple {
-    ( $type: ty ) => {
-        try_from_u64_err!(($type, $type));
-        try_from_u64_err!(($type, $type, $type));
+    ( $($gen_type: ident),* ) => {
+        impl<$( $gen_type, )*> TryFromU64 for ($( $gen_type, )*)
+        where
+            $( $gen_type: TryFromU64, )*
+        {
+            fn try_from_u64(_: u64) -> Result<Self, DbErr> {
+                Err(DbErr::Exec(format!(
+                    "{} cannot be converted from u64",
+                    stringify!(($($gen_type,)*))
+                )))
+            }
+        }
     };
 }
+
+// impl TryFromU64 for tuples with generic types
+try_from_u64_err!(A, B);
+try_from_u64_err!(A, B, C);
+try_from_u64_err!(A, B, C, D);
 
 macro_rules! try_from_u64_numeric {
     ( $type: ty ) => {
@@ -393,7 +426,6 @@ macro_rules! try_from_u64_numeric {
                 })
             }
         }
-        try_from_u64_tuple!($type);
     };
 }
 
@@ -413,19 +445,10 @@ macro_rules! try_from_u64_string {
                 Ok(n.to_string())
             }
         }
-        try_from_u64_tuple!($type);
     };
 }
 
 try_from_u64_string!(String);
 
-macro_rules! try_from_u64_dummy {
-    ( $type: ty ) => {
-        try_from_u64_err!($type);
-        try_from_u64_err!(($type, $type));
-        try_from_u64_err!(($type, $type, $type));
-    };
-}
-
 #[cfg(feature = "with-uuid")]
-try_from_u64_dummy!(uuid::Uuid);
+try_from_u64_err!(uuid::Uuid);

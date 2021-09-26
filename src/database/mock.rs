@@ -29,19 +29,6 @@ pub trait IntoMockRow {
     fn into_mock_row(self) -> MockRow;
 }
 
-impl<M> IntoMockRow for M
-where
-    M: ModelTrait,
-{
-    fn into_mock_row(self) -> MockRow {
-        let mut values = BTreeMap::new();
-        for col in <<M::Entity as EntityTrait>::Column>::iter() {
-            values.insert(col.to_string(), self.get(col));
-        }
-        MockRow { values }
-    }
-}
-
 impl MockDatabase {
     pub fn new(db_backend: DbBackend) -> Self {
         Self {
@@ -119,6 +106,25 @@ impl MockRow {
 
     pub fn into_column_value_tuples(self) -> impl Iterator<Item = (String, Value)> {
         self.values.into_iter()
+    }
+}
+
+impl IntoMockRow for MockRow {
+    fn into_mock_row(self) -> MockRow {
+        self
+    }
+}
+
+impl<M> IntoMockRow for M
+where
+    M: ModelTrait,
+{
+    fn into_mock_row(self) -> MockRow {
+        let mut values = BTreeMap::new();
+        for col in <<M::Entity as EntityTrait>::Column>::iter() {
+            values.insert(col.to_string(), self.get(col));
+        }
+        MockRow { values }
     }
 }
 

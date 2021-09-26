@@ -2,8 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Rocket SeaORM Example</title>
-    <meta name="description" content="Example Rocket - SeaORM integration" />
+    <title>Actix Example</title>
+    <meta name="description" content="Actix - SeaOrm integration example" />
     <meta name="author" content="Sam Samai" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
@@ -12,10 +12,10 @@
       rel="stylesheet"
       type="text/css"
     />
-    <link rel="stylesheet" href="/css/normalize.css" />
-    <link rel="stylesheet" href="/css/skeleton.css" />
-    <link rel="stylesheet" href="/css/style.css" />
-    <link rel="icon" type="image/png" href="/images/favicon.png" />
+    <link rel="stylesheet" href="/static/css/normalize.css" />
+    <link rel="stylesheet" href="/static/css/skeleton.css" />
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="icon" type="image/png" href="/static/images/favicon.png" />
   </head>
   <body>
     <div class="container">

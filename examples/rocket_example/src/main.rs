@@ -29,7 +29,7 @@ pub use post::Entity as Post;
 const DEFAULT_POSTS_PER_PAGE: usize = 5;
 
 #[get("/new")]
-fn new() -> Template {
+async fn new() -> Template {
     Template::render("new", &Context::default())
 }
 
@@ -79,27 +79,32 @@ async fn list(
     page: Option<usize>,
     flash: Option<FlashMessage<'_>>,
 ) -> Template {
-    let page = page.unwrap_or(0);
+    // Set page number and items per page
+    let page = page.unwrap_or(1);
     let posts_per_page = posts_per_page.unwrap_or(DEFAULT_POSTS_PER_PAGE);
+    if page == 0 {
+        panic!("Page number cannot be zero");
+    }
+
+    // Setup paginator
     let paginator = Post::find()
         .order_by_asc(post::Column::Id)
         .paginate(&*conn, posts_per_page);
     let num_pages = paginator.num_pages().await.ok().unwrap();
 
+    // Fetch paginated posts
     let posts = paginator
-        .fetch_page(page)
+        .fetch_page(page - 1)
         .await
         .expect("could not retrieve posts");
-
-    let flash = flash.map(FlashMessage::into_inner);
 
     Template::render(
         "index",
         context! {
-            posts: posts,
-            flash: flash,
             page: page,
             posts_per_page: posts_per_page,
+            posts: posts,
+            flash: flash.map(FlashMessage::into_inner),
             num_pages: num_pages,
         },
     )
@@ -151,9 +156,8 @@ pub fn not_found(req: &Request<'_>) -> Template {
 }
 
 async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
-    let db_url = Db::fetch(&rocket).unwrap().db_url.clone();
-    let conn = sea_orm::Database::connect(&db_url).await.unwrap();
-    let _ = setup::create_post_table(&conn).await;
+    let conn = &Db::fetch(&rocket).unwrap().conn;
+    let _ = setup::create_post_table(conn).await;
     Ok(rocket)
 }
 

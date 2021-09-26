@@ -26,7 +26,7 @@ where
     C: ConnectionTrait,
     S: SelectorTrait + 'db,
 {
-    /// Fetch a specific page
+    /// Fetch a specific page; page index starts from zero
     pub async fn fetch_page(&self, page: usize) -> Result<Vec<S::Item>, DbErr> {
         let query = self
             .query

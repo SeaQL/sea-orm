@@ -1,9 +1,26 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
- 
+
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
+
+## 0.2.4 - Prerelease
+
+- [[#186]] [sea-orm-cli] Foreign key handling
+- [[#191]] [sea-orm-cli] Unique key handling
+
+[#186]: https://github.com/SeaQL/sea-orm/issues/186
+[#191]: https://github.com/SeaQL/sea-orm/issues/191
+
+## 0.2.3 - 2021-09-22
+
+- [[#152]] DatabaseConnection impl `Clone`
+- [[#175]] Impl `TryGetableMany` for diffrent types of generics
+- Codegen `TimestampWithTimeZone` fixup
+
+[#152]: https://github.com/SeaQL/sea-orm/issues/152
+[#175]: https://github.com/SeaQL/sea-orm/issues/175
 
 ## 0.2.2 - 2021-09-18
 
