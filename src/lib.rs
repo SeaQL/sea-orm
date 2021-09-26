@@ -99,7 +99,7 @@
 //! ```
 //! # use sea_query::Query;
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
-//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
+//! # async fn function(db: DbConn) -> Result<(), DbErr> {
 //! // build subquery with ease
 //! let cakes_with_filling: Vec<cake::Model> = cake::Entity::find()
 //!     .filter(
@@ -125,7 +125,7 @@
 //!
 //! ```
 //! # use sea_orm::{error::*, entity::*, query::*, tests_cfg::*, DbConn, MockDatabase, Transaction, DbBackend};
-//! # async fn function(db: &DbConn) -> Result<(), DbErr> {
+//! # async fn function(db: DbConn) -> Result<(), DbErr> {
 //! // Setup mock connection
 //! let db = MockDatabase::new(DbBackend::Postgres)
 //!     .append_query_results(vec![
