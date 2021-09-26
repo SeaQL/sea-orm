@@ -346,6 +346,9 @@ impl EntityWriter {
                         attrs.push(quote! { nullable });
                     }
                 };
+                if col.unique {
+                    attrs.push(quote! { unique });
+                }
                 if !attrs.is_empty() {
                     let mut ts = TokenStream::new();
                     for (i, attr) in attrs.into_iter().enumerate() {

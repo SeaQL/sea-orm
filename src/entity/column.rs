@@ -2,7 +2,7 @@ use crate::{EntityName, IdenStatic, Iterable};
 use sea_query::{DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
 use std::str::FromStr;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ColumnDef {
     pub(crate) col_type: ColumnType,
     pub(crate) null: bool,
@@ -10,7 +10,7 @@ pub struct ColumnDef {
     pub(crate) indexed: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ColumnType {
     Char(Option<u32>),
     String(Option<u32>),
@@ -405,5 +405,58 @@ mod tests {
             fruit::Column::from_str("does_not_exist"),
             Err(crate::ColumnFromStrErr(_))
         ));
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn entity_model_column_1() {
+        use crate::entity::*;
+
+        mod hello {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "hello")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub one: i32,
+                #[sea_orm(unique)]
+                pub two: i32,
+                #[sea_orm(indexed)]
+                pub three: i32,
+                #[sea_orm(nullable)]
+                pub four: i32,
+                #[sea_orm(unique, indexed, nullable)]
+                pub five: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        assert_eq!(
+            hello::Column::One.def(),
+            ColumnType::Integer.def()
+        );
+        assert_eq!(
+            hello::Column::Two.def(),
+            ColumnType::Integer.def().unique()
+        );
+        assert_eq!(
+            hello::Column::Three.def(),
+            ColumnType::Integer.def().indexed()
+        );
+        assert_eq!(
+            hello::Column::Four.def(),
+            ColumnType::Integer.def().nullable()
+        );
+        assert_eq!(
+            hello::Column::Five.def(),
+            ColumnType::Integer.def().unique().indexed().nullable()
+        );
     }
 }
