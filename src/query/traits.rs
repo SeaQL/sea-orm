@@ -70,7 +70,7 @@ where
 /// # let conn = MockDatabase::new(DbBackend::Postgres)
 /// #     .into_connection();
 /// #
-/// use sea_orm::{entity::*, query::*, tests_cfg::cake,debug_query};
+/// use sea_orm::{entity::*, query::*, tests_cfg::cake,gen_statement};
 ///
 /// let c = cake::Entity::insert(
 ///    cake::ActiveModel {
@@ -78,15 +78,18 @@ where
 ///         name: ActiveValue::set("Apple Pie".to_owned()),
 /// });
 ///
-/// let raw_sql = debug_query!(&c,conn).to_string();
+/// let raw_sql = gen_statement!(&c,&conn).to_string();
 /// assert_eq!(raw_sql,r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#);
 ///
-/// let raw_sql = debug_query!(&c,DbBackend::MySql).to_string();
+/// let raw_sql = gen_statement!(&c,conn).to_string();
+/// assert_eq!(raw_sql,r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#);
+///
+/// let raw_sql = gen_statement!(&c,DbBackend::MySql).to_string();
 /// assert_eq!(raw_sql,r#"INSERT INTO `cake` (`id`, `name`) VALUES (1, 'Apple Pie')"#);
 ///
 /// ```
 #[macro_export]
-macro_rules! debug_query {
+macro_rules! gen_statement {
     ($query:expr,$value:expr) => {
         $crate::DebugQuery {
             query: $query,
@@ -107,7 +110,7 @@ macro_rules! debug_query {
 /// # let conn = MockDatabase::new(DbBackend::Postgres)
 /// #     .into_connection();
 /// #
-/// use sea_orm::{entity::*, query::*, tests_cfg::cake,debug_query_fmt};
+/// use sea_orm::{entity::*, query::*, tests_cfg::cake,debug_query};
 ///
 /// let c = cake::Entity::insert(
 ///    cake::ActiveModel {
@@ -115,16 +118,19 @@ macro_rules! debug_query {
 ///         name: ActiveValue::set("Apple Pie".to_owned()),
 /// });
 ///
-/// let raw_sql = debug_query_fmt!(&c,&conn);
+/// let raw_sql = debug_query!(&c,&conn);
 /// assert_eq!(raw_sql,r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#);
 ///
-/// let raw_sql = debug_query_fmt!(&c,DbBackend::Sqlite);
+/// let raw_sql = debug_query!(&c,conn);
+/// assert_eq!(raw_sql,r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#);
+///
+/// let raw_sql = debug_query!(&c,DbBackend::Sqlite);
 /// assert_eq!(raw_sql,r#"INSERT INTO `cake` (`id`, `name`) VALUES (1, 'Apple Pie')"#);
 ///
 /// ```
 #[macro_export]
-macro_rules! debug_query_fmt {
+macro_rules! debug_query {
     ($query:expr,$value:expr) => {
-        $crate::debug_query!($query, $value).to_string();
+        $crate::gen_statement!($query, $value).to_string();
     };
 }
