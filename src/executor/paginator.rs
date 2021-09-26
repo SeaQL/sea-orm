@@ -9,7 +9,7 @@ pub type PinBoxStream<'db, Item> = Pin<Box<dyn Stream<Item = Item> + 'db>>;
 #[derive(Clone, Debug)]
 pub struct Paginator<'db, C, S>
 where
-    C: ConnectionTrait,
+    C: ConnectionTrait<'db>,
     S: SelectorTrait + 'db,
 {
     pub(crate) query: SelectStatement,
@@ -23,7 +23,7 @@ where
 
 impl<'db, C, S> Paginator<'db, C, S>
 where
-    C: ConnectionTrait,
+    C: ConnectionTrait<'db>,
     S: SelectorTrait + 'db,
 {
     /// Fetch a specific page

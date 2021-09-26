@@ -4,62 +4,66 @@ use futures::{Stream, TryStreamExt};
 
 use sqlx::{pool::PoolConnection, Executor};
 
-use crate::{sqlx_error_to_query_err, DbErr, QueryResult, Statement};
-
-enum Connection {
-    #[cfg(feature = "sqlx-mysql")]
-    MySql(PoolConnection<sqlx::MySql>),
-    #[cfg(feature = "sqlx-postgres")]
-    Postgres(PoolConnection<sqlx::Postgres>),
-    #[cfg(feature = "sqlx-sqlite")]
-    Sqlite(PoolConnection<sqlx::Sqlite>),
-}
+use crate::{DatabaseTransaction, DbErr, InnerConnection, QueryResult, Statement, sqlx_error_to_query_err};
 
 #[ouroboros::self_referencing]
-pub struct QueryStream {
+pub struct QueryStream<'a> {
     stmt: Statement,
-    conn: Connection,
+    conn: InnerConnection<'a>,
     #[borrows(mut conn, stmt)]
     #[not_covariant]
     stream: Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + 'this>>,
 }
 
 #[cfg(feature = "sqlx-mysql")]
-impl From<(PoolConnection<sqlx::MySql>, Statement)> for QueryStream {
+impl<'a> From<(PoolConnection<sqlx::MySql>, Statement)> for QueryStream<'a> {
     fn from((conn, stmt): (PoolConnection<sqlx::MySql>, Statement)) -> Self {
-        QueryStream::build(stmt, Connection::MySql(conn))
+        QueryStream::build(stmt, InnerConnection::MySql(conn))
     }
 }
 
 #[cfg(feature = "sqlx-postgres")]
-impl From<(PoolConnection<sqlx::Postgres>, Statement)> for QueryStream {
+impl<'a> From<(PoolConnection<sqlx::Postgres>, Statement)> for QueryStream<'a> {
     fn from((conn, stmt): (PoolConnection<sqlx::Postgres>, Statement)) -> Self {
-        QueryStream::build(stmt, Connection::Postgres(conn))
+        QueryStream::build(stmt, InnerConnection::Postgres(conn))
     }
 }
 
 #[cfg(feature = "sqlx-sqlite")]
-impl From<(PoolConnection<sqlx::Sqlite>, Statement)> for QueryStream {
+impl<'a> From<(PoolConnection<sqlx::Sqlite>, Statement)> for QueryStream<'a> {
     fn from((conn, stmt): (PoolConnection<sqlx::Sqlite>, Statement)) -> Self {
-        QueryStream::build(stmt, Connection::Sqlite(conn))
+        QueryStream::build(stmt, InnerConnection::Sqlite(conn))
     }
 }
 
-impl std::fmt::Debug for QueryStream {
+#[cfg(feature = "mock")]
+impl<'a> From<(&'a crate::MockDatabaseConnection, Statement)> for QueryStream<'a> {
+    fn from((conn, stmt): (&'a crate::MockDatabaseConnection, Statement)) -> Self {
+        QueryStream::build(stmt, InnerConnection::Mock(conn))
+    }
+}
+
+impl<'a> From<(&'a DatabaseTransaction<'a>, Statement)> for QueryStream<'a> {
+    fn from((conn, stmt): (&'a DatabaseTransaction<'a>, Statement)) -> Self {
+        QueryStream::build(stmt, InnerConnection::Transaction(Box::new(conn)))
+    }
+}
+
+impl<'a> std::fmt::Debug for QueryStream<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "QueryStream")
     }
 }
 
-impl QueryStream {
-    fn build(stmt: Statement, conn: Connection) -> Self {
+impl<'a> QueryStream<'a> {
+    fn build(stmt: Statement, conn: InnerConnection<'a>) -> QueryStream<'a> {
         QueryStreamBuilder {
             stmt,
             conn,
             stream_builder: |conn, stmt| {
                 match conn {
                     #[cfg(feature = "sqlx-mysql")]
-                    Connection::MySql(c) => {
+                    InnerConnection::MySql(c) => {
                         let query = crate::driver::sqlx_mysql::sqlx_query(stmt);
                         Box::pin(
                             c.fetch(query)
@@ -68,7 +72,7 @@ impl QueryStream {
                         )
                     },
                     #[cfg(feature = "sqlx-postgres")]
-                    Connection::Postgres(c) => {
+                    InnerConnection::Postgres(c) => {
                         let query = crate::driver::sqlx_postgres::sqlx_query(stmt);
                         Box::pin(
                             c.fetch(query)
@@ -77,7 +81,7 @@ impl QueryStream {
                         )
                     },
                     #[cfg(feature = "sqlx-sqlite")]
-                    Connection::Sqlite(c) => {
+                    InnerConnection::Sqlite(c) => {
                         let query = crate::driver::sqlx_sqlite::sqlx_query(stmt);
                         Box::pin(
                             c.fetch(query)
@@ -85,13 +89,20 @@ impl QueryStream {
                                 .map_err(sqlx_error_to_query_err)
                         )
                     },
+                    #[cfg(feature = "mock")]
+                    InnerConnection::Mock(c) => {
+                        c.fetch(stmt)
+                    },
+                    InnerConnection::Transaction(c) => {
+                        c.fetch(stmt)
+                    },
                 }
             },
         }.build()
     }
 }
 
-impl Stream for QueryStream {
+impl<'a> Stream for QueryStream<'a> {
     type Item = Result<QueryResult, DbErr>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {

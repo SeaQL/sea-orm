@@ -2,11 +2,11 @@ use crate::{
     debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
     Statement, Transaction,
 };
-use std::fmt::Debug;
-use std::sync::{
+use std::{fmt::Debug, pin::Pin, sync::{
     atomic::{AtomicUsize, Ordering},
     Mutex,
-};
+}};
+use futures::Stream;
 
 #[derive(Debug)]
 pub struct MockDatabaseConnector;
@@ -86,23 +86,30 @@ impl MockDatabaseConnection {
         &self.mocker
     }
 
-    pub async fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
+    pub fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", statement);
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
         self.mocker.lock().unwrap().execute(counter, statement)
     }
 
-    pub async fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, DbErr> {
+    pub fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
         let result = self.mocker.lock().unwrap().query(counter, statement)?;
         Ok(result.into_iter().next())
     }
 
-    pub async fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
+    pub fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
         self.mocker.lock().unwrap().query(counter, statement)
+    }
+
+    pub fn fetch(&self, statement: &Statement) -> Pin<Box<dyn Stream<Item=Result<QueryResult, DbErr>>>> {
+        match self.query_all(statement.clone()) {
+            Ok(v) => Box::pin(futures::stream::iter(v.into_iter().map(|r| Ok(r)))),
+            Err(e) => Box::pin(futures::stream::iter(Some(Err(e)).into_iter())),
+        }
     }
 
     pub fn get_database_backend(&self) -> DbBackend {

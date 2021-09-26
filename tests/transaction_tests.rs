@@ -14,7 +14,7 @@ pub use sea_orm::{QueryFilter, ConnectionTrait};
 pub async fn transaction() {
     let ctx = TestContext::new("transaction_test").await;
 
-    ctx.db.transaction::<_, (), DbErr>(|txn| Box::pin(async move {
+    ctx.db.transaction::<_, _, DbErr>(|txn| Box::pin(async move {
         let _ = bakery::ActiveModel {
             name: Set("SeaSide Bakery".to_owned()),
             profit_margin: Set(10.4),
@@ -60,7 +60,7 @@ pub async fn transaction_with_reference() {
     ctx.delete().await;
 }
 
-fn _transaction_with_reference<'a>(txn: &'a DatabaseTransaction, name1: &'a str, name2: &'a str, search_name: &'a str) -> std::pin::Pin<Box<dyn std::future::Future<Output=Result<(), DbErr>> + Send + 'a>> {
+fn _transaction_with_reference<'a>(txn: &'a DatabaseTransaction<'_>, name1: &'a str, name2: &'a str, search_name: &'a str) -> std::pin::Pin<Box<dyn std::future::Future<Output=Result<(), DbErr>> + Send + 'a>> {
     Box::pin(async move {
         let _ = bakery::ActiveModel {
             name: Set(name1.to_owned()),

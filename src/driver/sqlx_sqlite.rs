@@ -1,6 +1,6 @@
-use std::{pin::Pin, future::Future};
+use std::{future::Future, pin::Pin};
 
-use sqlx::{Connection, Sqlite, SqlitePool, sqlite::{SqliteArguments, SqliteQueryResult, SqliteRow}};
+use sqlx::{Sqlite, SqlitePool, sqlite::{SqliteArguments, SqliteQueryResult, SqliteRow}};
 
 sea_query::sea_query_driver_sqlite!();
 use sea_query_driver_sqlite::bind_query;
@@ -91,7 +91,7 @@ impl SqlxSqlitePoolConnection {
         }
     }
 
-    pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
+    pub async fn stream(&self, stmt: Statement) -> Result<QueryStream<'_>, DbErr> {
         debug_print!("{}", stmt);
 
         if let Ok(conn) = self.pool.acquire().await {
@@ -103,18 +103,26 @@ impl SqlxSqlitePoolConnection {
         }
     }
 
-    pub async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
+    pub async fn begin(&self) -> Result<DatabaseTransaction<'_>, DbErr> {
+        if let Ok(conn) = self.pool.acquire().await {
+            DatabaseTransaction::new_sqlite(conn).await
+        } else {
+            Err(DbErr::Query(
+                "Failed to acquire connection from pool.".to_owned(),
+            ))
+        }
+    }
+
+    pub async fn transaction<'a, F, T, E/*, Fut*/>(&'a self, callback: F) -> Result<T, TransactionError<E>>
     where
-        F: for<'b> FnOnce(&'b DatabaseTransaction<'_>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>> + Send + Sync,
+        F: for<'b> FnOnce(&'b DatabaseTransaction<'a>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>> + Send + Sync,
+        // F: FnOnce(&DatabaseTransaction<'_>) -> Fut + Send,
+        // Fut: Future<Output = Result<T, E>> + Send,
         T: Send,
         E: std::error::Error + Send,
     {
-        if let Ok(conn) = &mut self.pool.acquire().await {
-            let transaction = DatabaseTransaction::from(
-                conn.begin().await.map_err(|e| {
-                    TransactionError::Connection(DbErr::Query(e.to_string()))
-                })?
-            );
+        if let Ok(conn) = self.pool.acquire().await {
+            let transaction = DatabaseTransaction::new_sqlite(conn).await.map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
             Err(TransactionError::Connection(DbErr::Query(

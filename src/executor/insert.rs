@@ -1,6 +1,6 @@
 use crate::{ActiveModelTrait, ConnectionTrait, EntityTrait, Insert, PrimaryKeyTrait, Statement, TryFromU64, error::*};
 use sea_query::InsertStatement;
-use std::{future::Future, marker::PhantomData};
+use std::marker::PhantomData;
 
 #[derive(Clone, Debug)]
 pub struct Inserter<A>
@@ -24,12 +24,12 @@ where
     A: ActiveModelTrait,
 {
     #[allow(unused_mut)]
-    pub fn exec<'a, C>(
+    pub async fn exec<'a, 'b: 'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
+    ) -> Result<InsertResult<A>, DbErr>
     where
-        C: ConnectionTrait,
+        C: ConnectionTrait<'b>,
         A: 'a,
     {
         // TODO: extract primary key's value from query
@@ -46,7 +46,7 @@ where
                 );
             }
         }
-        Inserter::<A>::new(query).exec(db)
+        Inserter::<A>::new(query).exec(db).await
         // TODO: return primary key if extracted before, otherwise use InsertResult
     }
 }
@@ -62,26 +62,26 @@ where
         }
     }
 
-    pub fn exec<'a, C>(
+    pub async fn exec<'a, 'b: 'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
+    ) -> Result<InsertResult<A>, DbErr>
     where
-        C: ConnectionTrait,
+        C: ConnectionTrait<'b>,
         A: 'a,
     {
         let builder = db.get_database_backend();
-        exec_insert(builder.build(&self.query), db)
+        exec_insert(builder.build(&self.query), db).await
     }
 }
 
 // Only Statement impl Send
-async fn exec_insert<A, C>(
+async fn exec_insert<'a, 'b: 'a, A, C>(
     statement: Statement,
     db: &C,
 ) -> Result<InsertResult<A>, DbErr>
 where
-    C: ConnectionTrait,
+    C: ConnectionTrait<'b>,
     A: ActiveModelTrait,
 {
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
