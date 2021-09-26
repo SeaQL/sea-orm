@@ -30,8 +30,7 @@ pub enum DbBackend {
 }
 
 impl IntoDbBackend for DbBackend {
-    fn build(&self, statement: &impl StatementBuilder) -> Statement
-    {
+    fn build(&self, statement: &impl StatementBuilder) -> Statement {
         statement.build(self)
     }
 
