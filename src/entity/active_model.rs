@@ -51,7 +51,7 @@ where
     ActiveValue::unchanged(value)
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 pub trait ActiveModelTrait: Clone + Debug {
     type Entity: EntityTrait;
 

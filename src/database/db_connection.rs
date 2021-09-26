@@ -15,8 +15,8 @@ pub(crate) enum InnerConnection<'a> {
     Transaction(Box<&'a DatabaseTransaction<'a>>),
 }
 
-#[async_trait::async_trait]
-pub trait ConnectionTrait<'a>: Sync {
+#[async_trait::async_trait(?Send)]
+pub trait ConnectionTrait<'a> {
     fn get_database_backend(&self) -> DbBackend;
 
     async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr>;
@@ -33,11 +33,11 @@ pub trait ConnectionTrait<'a>: Sync {
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
     async fn transaction<F, T, E/*, Fut*/>(&'a self, callback: F) -> Result<T, TransactionError<E>>
     where
-        F: for<'c> FnOnce(&'c DatabaseTransaction<'a>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>> + Send + Sync,
+        F: for<'c> FnOnce(&'c DatabaseTransaction<'a>) -> Pin<Box<dyn Future<Output = Result<T, E>> + 'c>>,
         // F: FnOnce(&DatabaseTransaction<'a>) -> Fut + Send,
         // Fut: Future<Output = Result<T, E>> + Send,
-        T: Send,
-        E: std::error::Error + Send;
+        // T: Send,
+        E: std::error::Error;
 
     fn is_mock_connection(&self) -> bool {
         false

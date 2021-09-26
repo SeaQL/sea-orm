@@ -115,11 +115,11 @@ impl SqlxPostgresPoolConnection {
 
     pub async fn transaction<'a, F, T, E/*, Fut*/>(&'a self, callback: F) -> Result<T, TransactionError<E>>
     where
-        F: for<'b> FnOnce(&'b DatabaseTransaction<'a>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>> + Send + Sync,
+        F: for<'b> FnOnce(&'b DatabaseTransaction<'a>) -> Pin<Box<dyn Future<Output = Result<T, E>> + 'b>>,
         // F: FnOnce(&DatabaseTransaction<'_>) -> Fut + Send,
         // Fut: Future<Output = Result<T, E>> + Send,
-        T: Send,
-        E: std::error::Error + Send,
+        // T: Send,
+        E: std::error::Error,
     {
         if let Ok(conn) = self.pool.acquire().await {
             let transaction = DatabaseTransaction::new_postgres(conn).await.map_err(|e| TransactionError::Connection(e))?;

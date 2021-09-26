@@ -60,7 +60,7 @@ pub async fn transaction_with_reference() {
     ctx.delete().await;
 }
 
-fn _transaction_with_reference<'a>(txn: &'a DatabaseTransaction<'_>, name1: &'a str, name2: &'a str, search_name: &'a str) -> std::pin::Pin<Box<dyn std::future::Future<Output=Result<(), DbErr>> + Send + 'a>> {
+fn _transaction_with_reference<'a>(txn: &'a DatabaseTransaction<'_>, name1: &'a str, name2: &'a str, search_name: &'a str) -> std::pin::Pin<Box<dyn std::future::Future<Output=Result<(), DbErr>> + 'a>> {
     Box::pin(async move {
         let _ = bakery::ActiveModel {
             name: Set(name1.to_owned()),

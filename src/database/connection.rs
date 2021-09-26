@@ -52,7 +52,7 @@ impl std::fmt::Debug for DatabaseConnection {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait::async_trait(?Send)]
 impl<'a> ConnectionTrait<'a> for DatabaseConnection {
     fn get_database_backend(&self) -> DbBackend {
         match self {
@@ -142,11 +142,11 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
     async fn transaction<F, T, E/*, Fut*/>(&'a self, _callback: F) -> Result<T, TransactionError<E>>
     where
-        F: for<'c> FnOnce(&'c DatabaseTransaction<'a>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>> + Send + Sync,
+        F: for<'c> FnOnce(&'c DatabaseTransaction<'a>) -> Pin<Box<dyn Future<Output = Result<T, E>> + 'c>>,
         // F: FnOnce(&DatabaseTransaction<'a>) -> Fut + Send,
         // Fut: Future<Output = Result<T, E>> + Send,
-        T: Send,
-        E: std::error::Error + Send,
+        // T: Send,
+        E: std::error::Error,
     {
         match self {
             #[cfg(feature = "sqlx-mysql")]

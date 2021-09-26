@@ -68,11 +68,11 @@ impl<'a> DatabaseTransaction<'a> {
 
     pub(crate) async fn run<F, T, E/*, Fut*/>(self, callback: F) -> Result<T, TransactionError<E>>
     where
-        F: for<'b> FnOnce(&'b DatabaseTransaction<'a>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>> + Send + Sync,
+        F: for<'b> FnOnce(&'b DatabaseTransaction<'a>) -> Pin<Box<dyn Future<Output = Result<T, E>> + 'b>>,
         // F: FnOnce(&DatabaseTransaction<'a>) -> Fut + Send,
         // Fut: Future<Output = Result<T, E>> + Send,
-        T: Send,
-        E: std::error::Error + Send,
+        // T: Send,
+        E: std::error::Error,
     {
         let res = callback(&self).await.map_err(|e| TransactionError::Transaction(e));
         if res.is_ok() {
@@ -108,7 +108,7 @@ impl<'a> DatabaseTransaction<'a> {
     }
 
     // non destructive commit
-    fn ref_commit(&'a self) -> Pin<Box<dyn Future<Output=Result<(), DbErr>> + Send + 'a>> {
+    fn ref_commit(&'a self) -> Pin<Box<dyn Future<Output=Result<(), DbErr>> + 'a>> {
         Box::pin(async move {
             if self.conn.is_some() {
                 match self.get_conn() {
@@ -158,7 +158,7 @@ impl<'a> DatabaseTransaction<'a> {
     }
 
     // non destructive rollback
-    fn ref_rollback(&'a self) -> Pin<Box<dyn Future<Output=Result<(), DbErr>> + Send + 'a>> {
+    fn ref_rollback(&'a self) -> Pin<Box<dyn Future<Output=Result<(), DbErr>> + 'a>> {
         Box::pin(async move {
             if self.conn.is_some() {
                 match self.get_conn() {
@@ -255,9 +255,9 @@ impl<'a> Drop for DatabaseTransaction<'a> {
 }
 
 // this is needed since sqlite connections aren't sync
-unsafe impl<'a> Sync for DatabaseTransaction<'a> {}
+// unsafe impl<'a> Sync for DatabaseTransaction<'a> {}
 
-#[async_trait::async_trait]
+#[async_trait::async_trait(?Send)]
 impl<'a> ConnectionTrait<'a> for DatabaseTransaction<'a> {
     fn get_database_backend(&self) -> DbBackend {
         match self.conn.as_ref().map(|c| unsafe { &*c.get() }) {
@@ -381,11 +381,11 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction<'a> {
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
     async fn transaction<F, T, E/*, Fut*/>(&'a self, _callback: F) -> Result<T, TransactionError<E>>
     where
-        F: for<'c> FnOnce(&'c DatabaseTransaction<'a>) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>> + Send + Sync,
+        F: for<'c> FnOnce(&'c DatabaseTransaction<'a>) -> Pin<Box<dyn Future<Output = Result<T, E>> + 'c>>,
         // F: FnOnce(&DatabaseTransaction<'a>) -> Fut + Send,
         // Fut: Future<Output = Result<T, E>> + Send,
-        T: Send,
-        E: std::error::Error + Send,
+        // T: Send,
+        E: std::error::Error,
     {
         let transaction = self.begin().await.map_err(|e| TransactionError::Connection(e))?;
         transaction.run(_callback).await
