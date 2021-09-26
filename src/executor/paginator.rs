@@ -191,7 +191,7 @@ mod tests {
         (db, vec![page1, page2, page3])
     }
 
-    fn setup_num_items() -> (DatabaseConnection, i32) {
+    fn setup_num_items() -> (DatabaseConnection, i64) {
         let num_items = 3;
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results(vec![vec![maplit::btreemap! {
