@@ -20,7 +20,7 @@ pub struct SqlxMySqlPoolConnection {
 
 impl SqlxMySqlConnector {
     pub fn accepts(string: &str) -> bool {
-        DbBackend::MySql::starts_with(string)
+        DbBackend::MySql.url_starts_with(string)
     }
 
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {

@@ -20,7 +20,7 @@ pub struct SqlxSqlitePoolConnection {
 
 impl SqlxSqliteConnector {
     pub fn accepts(string: &str) -> bool {
-        DbBackend::Sqlite::starts_with(string)
+        DbBackend::Sqlite.url_starts_with(string)
     }
 
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
