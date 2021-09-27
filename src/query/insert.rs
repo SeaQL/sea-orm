@@ -1,14 +1,18 @@
-use crate::{ActiveModelTrait, EntityName, EntityTrait, IntoActiveModel, Iterable, QueryTrait};
+use crate::{
+    ActiveModelTrait, EntityName, EntityTrait, IntoActiveModel, Iterable, PrimaryKeyTrait,
+    PrimaryKeyValue, QueryTrait,
+};
 use core::marker::PhantomData;
 use sea_query::InsertStatement;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Insert<A>
 where
     A: ActiveModelTrait,
 {
     pub(crate) query: InsertStatement,
     pub(crate) columns: Vec<bool>,
+    pub(crate) primary_key: Option<<<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType>,
     pub(crate) model: PhantomData<A>,
 }
 
@@ -31,6 +35,7 @@ where
                 .into_table(A::Entity::default().table_ref())
                 .to_owned(),
             columns: Vec::new(),
+            primary_key: None,
             model: PhantomData,
         }
     }
@@ -68,6 +73,8 @@ where
     pub fn one<M>(m: M) -> Insert<A>
     where
         M: IntoActiveModel<A>,
+        <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey:
+            PrimaryKeyValue<<A as ActiveModelTrait>::Entity>,
     {
         Self::new().add(m)
     }
@@ -97,6 +104,8 @@ where
     where
         M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
+        <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey:
+            PrimaryKeyValue<<A as ActiveModelTrait>::Entity>,
     {
         Self::new().add_many(models)
     }
@@ -105,8 +114,16 @@ where
     pub fn add<M>(mut self, m: M) -> Self
     where
         M: IntoActiveModel<A>,
+        <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey:
+            PrimaryKeyValue<<A as ActiveModelTrait>::Entity>,
     {
         let mut am: A = m.into_active_model();
+        self.primary_key =
+            if !<<A::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::auto_increment() {
+                Some(<<A::Entity as EntityTrait>::PrimaryKey as PrimaryKeyValue<A::Entity>>::get_primary_key_value::<A>(am.clone()))
+            } else {
+                None
+            };
         let mut columns = Vec::new();
         let mut values = Vec::new();
         let columns_empty = self.columns.is_empty();
@@ -132,6 +149,8 @@ where
     where
         M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
+        <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey:
+            PrimaryKeyValue<<A as ActiveModelTrait>::Entity>,
     {
         for model in models.into_iter() {
             self = self.add(model);

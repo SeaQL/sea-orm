@@ -1,6 +1,6 @@
 use crate::{
     error::*, DatabaseConnection, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn,
-    PrimaryKeyTrait, Value,
+    PrimaryKeyValue, Value,
 };
 use async_trait::async_trait;
 use std::fmt::Debug;
@@ -70,23 +70,18 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn insert(self, db: &DatabaseConnection) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        <<Self as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey:
+            PrimaryKeyValue<<Self as ActiveModelTrait>::Entity>,
     {
         let am = self;
         let exec = <Self::Entity as EntityTrait>::insert(am).exec(db);
         let res = exec.await?;
-        // Assume valid last_insert_id is not equals to Default::default()
-        if res.last_insert_id
-            != <<Self::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType::default()
-        {
-            let found = <Self::Entity as EntityTrait>::find_by_id(res.last_insert_id)
-                .one(db)
-                .await?;
-            match found {
-                Some(model) => Ok(model.into_active_model()),
-                None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
-            }
-        } else {
-            Ok(Self::default())
+        let found = <Self::Entity as EntityTrait>::find_by_id(res.last_insert_id)
+            .one(db)
+            .await?;
+        match found {
+            Some(model) => Ok(model.into_active_model()),
+            None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
         }
     }
 
@@ -101,6 +96,8 @@ pub trait ActiveModelTrait: Clone + Debug {
     where
         Self: ActiveModelBehavior,
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        <<Self as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey:
+            PrimaryKeyValue<<Self as ActiveModelTrait>::Entity>,
     {
         let mut am = self;
         am = ActiveModelBehavior::before_save(am);

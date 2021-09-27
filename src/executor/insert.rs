@@ -5,11 +5,12 @@ use crate::{
 use sea_query::InsertStatement;
 use std::{future::Future, marker::PhantomData};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Inserter<A>
 where
     A: ActiveModelTrait,
 {
+    primary_key: Option<<<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType>,
     query: InsertStatement,
     model: PhantomData<A>,
 }
@@ -48,7 +49,7 @@ where
                 );
             }
         }
-        Inserter::<A>::new(query).exec(db)
+        Inserter::<A>::new(self.primary_key, query).exec(db)
         // TODO: return primary key if extracted before, otherwise use InsertResult
     }
 }
@@ -57,8 +58,12 @@ impl<A> Inserter<A>
 where
     A: ActiveModelTrait,
 {
-    pub fn new(query: InsertStatement) -> Self {
+    pub fn new(
+        primary_key: Option<<<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+        query: InsertStatement,
+    ) -> Self {
         Self {
+            primary_key,
             query,
             model: PhantomData,
         }
@@ -72,12 +77,13 @@ where
         A: 'a,
     {
         let builder = db.get_database_backend();
-        exec_insert(builder.build(&self.query), db)
+        exec_insert(self.primary_key, builder.build(&self.query), db)
     }
 }
 
 // Only Statement impl Send
 async fn exec_insert<A>(
+    primary_key: Option<<<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType>,
     statement: Statement,
     db: &DatabaseConnection,
 ) -> Result<InsertResult<A>, DbErr>
@@ -86,7 +92,7 @@ where
 {
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
-    let last_insert_id = match db {
+    let last_insert_id_opt = match db {
         #[cfg(feature = "sqlx-postgres")]
         DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
             use crate::{sea_query::Iden, Iterable};
@@ -94,14 +100,19 @@ where
                 .map(|col| col.to_string())
                 .collect::<Vec<_>>();
             let res = conn.query_one(statement).await?.unwrap();
-            res.try_get_many("", cols.as_ref()).unwrap_or_default()
+            Some(res.try_get_many("", cols.as_ref()).unwrap_or_default())
         }
         _ => {
             let last_insert_id = db.execute(statement).await?.last_insert_id();
-            ValueTypeOf::<A>::try_from_u64(last_insert_id)
-                .ok()
-                .unwrap_or_default()
+            ValueTypeOf::<A>::try_from_u64(last_insert_id).ok()
         }
+    };
+    let last_insert_id = match last_insert_id_opt {
+        Some(last_insert_id) => last_insert_id,
+        None => match primary_key {
+            Some(primary_key) => primary_key,
+            None => return Err(DbErr::Exec("Fail to unpack last_insert_id".to_owned())),
+        },
     };
     Ok(InsertResult { last_insert_id })
 }
