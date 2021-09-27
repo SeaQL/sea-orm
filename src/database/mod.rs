@@ -12,6 +12,17 @@ pub use transaction::*;
 
 use crate::DbErr;
 
+#[derive(Debug)]
+pub struct DbScheme;
+
+impl DbScheme {
+    pub fn starts_with(base_url: &str) -> bool {
+        base_url.starts_with("postgres://")
+            || base_url.starts_with("postgresql://")
+            || base_url.starts_with("mysql://")
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Database;
 
