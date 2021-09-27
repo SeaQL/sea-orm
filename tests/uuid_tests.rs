@@ -31,14 +31,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     assert_eq!(Metadata::find().one(db).await?, Some(metadata.clone()));
 
-    assert_eq!(
-        res.last_insert_id,
-        if cfg!(feature = "sqlx-postgres") {
-            metadata.uuid
-        } else {
-            Default::default()
-        }
-    );
+    assert_eq!(res.last_insert_id, metadata.uuid);
 
     Ok(())
 }
