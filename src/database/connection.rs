@@ -129,7 +129,7 @@ impl DatabaseConnection {
 }
 
 impl DbBackend {
-    pub(crate) fn is_prefix_of(self, base_url: &str) -> bool {
+    pub fn is_prefix_of(self, base_url: &str) -> bool {
         match self {
             Self::Postgres => {
                 base_url.starts_with("postgres://") || base_url.starts_with("postgresql://")
