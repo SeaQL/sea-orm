@@ -20,7 +20,7 @@ pub struct SqlxPostgresPoolConnection {
 
 impl SqlxPostgresConnector {
     pub fn accepts(string: &str) -> bool {
-        DbBackend::Postgres.url_starts_with(string)
+        DbBackend::Postgres.is_prefix_of(string)
     }
 
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
