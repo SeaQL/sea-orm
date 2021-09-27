@@ -129,6 +129,16 @@ impl DatabaseConnection {
 }
 
 impl DbBackend {
+    pub fn is_prefix_of(self, base_url: &str) -> bool {
+        match self {
+            Self::Postgres => {
+                base_url.starts_with("postgres://") || base_url.starts_with("postgresql://")
+            }
+            Self::MySql => base_url.starts_with("mysql://"),
+            Self::Sqlite => base_url.starts_with("sqlite:"),
+        }
+    }
+
     pub fn build<S>(&self, statement: &S) -> Statement
     where
         S: StatementBuilder,
