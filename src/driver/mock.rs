@@ -31,15 +31,15 @@ impl MockDatabaseConnector {
     #[allow(unused_variables)]
     pub fn accepts(string: &str) -> bool {
         #[cfg(feature = "sqlx-mysql")]
-        if DbScheme::Mysql::accepts(string) {
+        if DbBackend::MySql::accepts(string) {
             return true;
         }
         #[cfg(feature = "sqlx-postgres")]
-        if DbScheme::Postgres::accepts(string) {
+        if DbBackend::Postgres::accepts(string) {
             return true;
         }
         #[cfg(feature = "sqlx-sqlite")]
-        if DbScheme::Sqlite::accepts(string) {
+        if DbBackend::Sqlite::accepts(string) {
             return true;
         }
         false

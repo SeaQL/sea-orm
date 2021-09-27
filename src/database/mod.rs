@@ -12,40 +12,21 @@ pub use transaction::*;
 
 use crate::DbErr;
 
-#[derive(Debug)]
-pub enum DbScheme {
-    Postgres,
-    Mysql,
-    Sqlite,
-}
-
-impl DbScheme {
-    pub fn starts_with(self, base_url: &str) -> bool {
-        match self {
-            DbScheme::Postgres => {
-                base_url.starts_with("postgres://") || base_url.starts_with("postgresql://")
-            }
-            DbScheme::Mysql => base_url.starts_with("mysql://"),
-            DbScheme::Sqlite => base_url.starts_with("sqlite:"),
-        }
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct Database;
 
 impl Database {
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
         #[cfg(feature = "sqlx-mysql")]
-        if DbScheme::Mysql::starts_with(string) {
+        if DbBackend::MySql::starts_with(string) {
             return crate::SqlxMySqlConnector::connect(string).await;
         }
         #[cfg(feature = "sqlx-postgres")]
-        if DbScheme::Postgres::starts_with(string) {
+        if DbBackend::Postgres::starts_with(string) {
             return crate::SqlxPostgresConnector::connect(string).await;
         }
         #[cfg(feature = "sqlx-sqlite")]
-        if DbScheme::Sqlite::starts_with(string) {
+        if DbBackend::Sqlite::starts_with(string) {
             return crate::SqlxSqliteConnector::connect(string).await;
         }
         #[cfg(feature = "mock")]

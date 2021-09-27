@@ -6,7 +6,7 @@ use sqlx::{
 sea_query::sea_query_driver_postgres!();
 use sea_query_driver_postgres::bind_query;
 
-use crate::{debug_print, error::*, executor::*, DatabaseConnection, DbScheme, Statement};
+use crate::{debug_print, error::*, executor::*, DatabaseConnection, DbBackend, Statement};
 
 use super::sqlx_common::*;
 
@@ -20,7 +20,7 @@ pub struct SqlxPostgresPoolConnection {
 
 impl SqlxPostgresConnector {
     pub fn accepts(string: &str) -> bool {
-        DbScheme::Postgres::starts_with(string)
+        DbBackend::Postgres::starts_with(string)
     }
 
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
