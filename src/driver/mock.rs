@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase,
-    QueryResult, Statement, Transaction,
+    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
+    Statement, Transaction,
 };
 use std::fmt::Debug;
 use std::sync::{

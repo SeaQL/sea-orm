@@ -438,14 +438,8 @@ mod tests {
             impl ActiveModelBehavior for ActiveModel {}
         }
 
-        assert_eq!(
-            hello::Column::One.def(),
-            ColumnType::Integer.def()
-        );
-        assert_eq!(
-            hello::Column::Two.def(),
-            ColumnType::Integer.def().unique()
-        );
+        assert_eq!(hello::Column::One.def(), ColumnType::Integer.def());
+        assert_eq!(hello::Column::Two.def(), ColumnType::Integer.def().unique());
         assert_eq!(
             hello::Column::Three.def(),
             ColumnType::Integer.def().indexed()
