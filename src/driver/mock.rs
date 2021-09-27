@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
-    Statement, Transaction,
+    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase,
+    QueryResult, Statement, Transaction,
 };
 use std::fmt::Debug;
 use std::sync::{
@@ -31,15 +31,15 @@ impl MockDatabaseConnector {
     #[allow(unused_variables)]
     pub fn accepts(string: &str) -> bool {
         #[cfg(feature = "sqlx-mysql")]
-        if crate::SqlxMySqlConnector::accepts(string) {
+        if DbScheme::Mysql::accepts(string) {
             return true;
         }
         #[cfg(feature = "sqlx-postgres")]
-        if crate::SqlxPostgresConnector::accepts(string) {
+        if DbScheme::Postgres::accepts(string) {
             return true;
         }
         #[cfg(feature = "sqlx-sqlite")]
-        if crate::SqlxSqliteConnector::accepts(string) {
+        if DbScheme::Sqlite::accepts(string) {
             return true;
         }
         false

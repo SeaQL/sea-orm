@@ -6,7 +6,7 @@ use sqlx::{
 sea_query::sea_query_driver_sqlite!();
 use sea_query_driver_sqlite::bind_query;
 
-use crate::{debug_print, error::*, executor::*, DatabaseConnection, Statement};
+use crate::{debug_print, error::*, executor::*, DatabaseConnection, DbScheme, Statement};
 
 use super::sqlx_common::*;
 
@@ -20,7 +20,7 @@ pub struct SqlxSqlitePoolConnection {
 
 impl SqlxSqliteConnector {
     pub fn accepts(string: &str) -> bool {
-        string.starts_with("sqlite:")
+        DbScheme::Sqlite::starts_with(string)
     }
 
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
