@@ -16,9 +16,7 @@ impl rocket_db_pools::Pool for RocketDbPool {
         let config = figment.extract::<Config>().unwrap();
         let conn = sea_orm::Database::connect(&config.url).await.unwrap();
 
-        Ok(RocketDbPool {
-            conn,
-        })
+        Ok(RocketDbPool { conn })
     }
 
     async fn get(&self) -> Result<Self::Connection, Self::Error> {
