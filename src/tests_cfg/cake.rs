@@ -47,4 +47,21 @@ impl Linked for CakeToFilling {
     }
 }
 
+#[derive(Debug)]
+pub struct CakeToFillingVendor;
+
+impl Linked for CakeToFillingVendor {
+    type FromEntity = Entity;
+
+    type ToEntity = super::vendor::Entity;
+
+    fn link(&self) -> Vec<RelationDef> {
+        vec![
+            super::cake_filling::Relation::Cake.def().rev(),
+            super::cake_filling::Relation::Filling.def(),
+            super::filling::Relation::Vendor.def(),
+        ]
+    }
+}
+
 impl ActiveModelBehavior for ActiveModel {}
