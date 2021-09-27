@@ -8,6 +8,7 @@ pub struct Model {
     pub key: String,
     pub value: String,
     pub bytes: Vec<u8>,
+    pub date: Date,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
