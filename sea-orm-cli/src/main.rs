@@ -56,7 +56,7 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                     .filter(|schema| filter_hidden_tables(&schema.info.name))
                     .map(|schema| schema.write())
                     .collect()
-            } else if url.starts_with("postgres://") {
+            } else if url.starts_with("postgres://") || url.starts_with("postgresql://") {
                 use sea_schema::postgres::discovery::SchemaDiscovery;
                 use sqlx::PgPool;
 
