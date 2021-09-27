@@ -4,6 +4,7 @@ pub mod cake;
 pub mod cake_expanded;
 pub mod cake_filling;
 pub mod cake_filling_price;
+pub mod entity_linked;
 pub mod filling;
 pub mod fruit;
 pub mod vendor;

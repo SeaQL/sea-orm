@@ -75,20 +75,4 @@ impl Related<super::filling::Entity> for Entity {
     }
 }
 
-#[derive(Debug)]
-pub struct CakeToFilling;
-
-impl Linked for CakeToFilling {
-    type FromEntity = Entity;
-
-    type ToEntity = super::filling::Entity;
-
-    fn link(&self) -> Vec<RelationDef> {
-        vec![
-            super::cake_filling::Relation::Cake.def().rev(),
-            super::cake_filling::Relation::Filling.def(),
-        ]
-    }
-}
-
 impl ActiveModelBehavior for ActiveModel {}

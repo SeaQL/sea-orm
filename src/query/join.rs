@@ -74,7 +74,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_cfg::{cake, cake_filling, cake_filling_price, filling, fruit};
+    use crate::tests_cfg::{cake, cake_filling, cake_filling_price, entity_linked, filling, fruit};
     use crate::{ColumnTrait, DbBackend, EntityTrait, ModelTrait, QueryFilter, QueryTrait};
     use pretty_assertions::assert_eq;
 
@@ -244,7 +244,7 @@ mod tests {
 
         assert_eq!(
             cake_model
-                .find_linked(cake::CakeToFilling)
+                .find_linked(entity_linked::CakeToFilling)
                 .build(DbBackend::MySql)
                 .to_string(),
             [
@@ -267,7 +267,7 @@ mod tests {
 
         assert_eq!(
             cake_model
-                .find_linked(cake::CakeToFillingVendor)
+                .find_linked(entity_linked::CakeToFillingVendor)
                 .build(DbBackend::MySql)
                 .to_string(),
             [
@@ -286,7 +286,7 @@ mod tests {
     fn join_12() {
         assert_eq!(
             cake::Entity::find()
-                .find_also_linked(cake::CakeToFilling)
+                .find_also_linked(entity_linked::CakeToFilling)
                 .build(DbBackend::MySql)
                 .to_string(),
             [
@@ -304,7 +304,7 @@ mod tests {
     fn join_13() {
         assert_eq!(
             cake::Entity::find()
-                .find_also_linked(cake::CakeToFillingVendor)
+                .find_also_linked(entity_linked::CakeToFillingVendor)
                 .build(DbBackend::MySql)
                 .to_string(),
             [
