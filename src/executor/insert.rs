@@ -100,7 +100,7 @@ where
                 .map(|col| col.to_string())
                 .collect::<Vec<_>>();
             let res = conn.query_one(statement).await?.unwrap();
-            Some(res.try_get_many("", cols.as_ref()).unwrap_or_default())
+            res.try_get_many("", cols.as_ref()).ok()
         }
         _ => {
             let last_insert_id = db.execute(statement).await?.last_insert_id();
