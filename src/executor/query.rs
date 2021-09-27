@@ -314,6 +314,15 @@ where
     }
 }
 
+impl<T> TryGetableMany for (T,)
+where
+    T: TryGetableMany,
+{
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
+        T::try_get_many(res, pre, cols).map(|r| (r,))
+    }
+}
+
 impl<A, B> TryGetableMany for (A, B)
 where
     A: TryGetable,
