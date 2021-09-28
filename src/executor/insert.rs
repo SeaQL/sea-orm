@@ -1,6 +1,6 @@
 use crate::{
-    error::*, ActiveModelTrait, DatabaseConnection, DbBackend, EntityTrait, Insert, PrimaryKeyTrait,
-    Statement, TryFromU64,
+    error::*, ActiveModelTrait, DatabaseConnection, DbBackend, EntityTrait, Insert,
+    PrimaryKeyTrait, Statement, TryFromU64,
 };
 use sea_query::InsertStatement;
 use std::{future::Future, marker::PhantomData};

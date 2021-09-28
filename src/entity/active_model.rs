@@ -69,11 +69,11 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     async fn insert(self, db: &DatabaseConnection) -> Result<Self, DbErr>
     where
+        Self: ActiveModelBehavior,
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
     {
-        let am = self;
-        let exec = <Self::Entity as EntityTrait>::insert(am).exec(db);
-        let res = exec.await?;
+        let am = ActiveModelBehavior::before_save(self, true, db)?;
+        let res = <Self::Entity as EntityTrait>::insert(am).exec(db).await?;
         // Assume valid last_insert_id is not equals to Default::default()
         if res.last_insert_id
             != <<Self::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType::default()
@@ -81,18 +81,23 @@ pub trait ActiveModelTrait: Clone + Debug {
             let found = <Self::Entity as EntityTrait>::find_by_id(res.last_insert_id)
                 .one(db)
                 .await?;
-            match found {
+            let am = match found {
                 Some(model) => Ok(model.into_active_model()),
                 None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
-            }
+            }?;
+            ActiveModelBehavior::after_save(am, true, db)
         } else {
             Ok(Self::default())
         }
     }
 
-    async fn update(self, db: &DatabaseConnection) -> Result<Self, DbErr> {
-        let exec = Self::Entity::update(self).exec(db);
-        exec.await
+    async fn update(self, db: &DatabaseConnection) -> Result<Self, DbErr>
+    where
+        Self: ActiveModelBehavior,
+    {
+        let am = ActiveModelBehavior::before_save(self, false, db)?;
+        let am = Self::Entity::update(am).exec(db).await?;
+        ActiveModelBehavior::after_save(am, false, db)
     }
 
     /// Insert the model if primary key is unset, update otherwise.
@@ -103,7 +108,6 @@ pub trait ActiveModelTrait: Clone + Debug {
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
     {
         let mut am = self;
-        am = ActiveModelBehavior::before_save(am);
         let mut is_update = true;
         for key in <Self::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
@@ -117,7 +121,6 @@ pub trait ActiveModelTrait: Clone + Debug {
         } else {
             am = am.update(db).await?;
         }
-        am = ActiveModelBehavior::after_save(am);
         Ok(am)
     }
 
@@ -126,14 +129,16 @@ pub trait ActiveModelTrait: Clone + Debug {
     where
         Self: ActiveModelBehavior,
     {
-        let mut am = self;
-        am = ActiveModelBehavior::before_delete(am);
-        let exec = Self::Entity::delete(am).exec(db);
-        exec.await
+        let am = ActiveModelBehavior::before_delete(self, db)?;
+        let am_clone = am.clone();
+        let delete_res = Self::Entity::delete(am).exec(db).await?;
+        ActiveModelBehavior::after_delete(am_clone, db)?;
+        Ok(delete_res)
     }
 }
 
 /// Behaviors for users to override
+#[allow(unused_variables)]
 pub trait ActiveModelBehavior: ActiveModelTrait {
     /// Create a new ActiveModel with default values. Also used by `Default::default()`.
     fn new() -> Self {
@@ -141,18 +146,23 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
     }
 
     /// Will be called before saving
-    fn before_save(self) -> Self {
-        self
+    fn before_save(self, insert: bool, db: &DatabaseConnection) -> Result<Self, DbErr> {
+        Ok(self)
     }
 
     /// Will be called after saving
-    fn after_save(self) -> Self {
-        self
+    fn after_save(self, insert: bool, db: &DatabaseConnection) -> Result<Self, DbErr> {
+        Ok(self)
     }
 
     /// Will be called before deleting
-    fn before_delete(self) -> Self {
-        self
+    fn before_delete(self, db: &DatabaseConnection) -> Result<Self, DbErr> {
+        Ok(self)
+    }
+
+    /// Will be called after deleting
+    fn after_delete(self, db: &DatabaseConnection) -> Result<Self, DbErr> {
+        Ok(self)
     }
 }
 
