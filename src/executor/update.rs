@@ -73,7 +73,7 @@ where
 // Only Statement impl Send
 async fn exec_update(statement: Statement, db: &DatabaseConnection) -> Result<UpdateResult, DbErr> {
     let result = db.execute(statement).await?;
-    if result.rows_affected() <= 0 {
+    if result.rows_affected() == 0 {
         return Err(DbErr::RecordNotFound(
             "None of the database rows are affected".to_owned(),
         ));
