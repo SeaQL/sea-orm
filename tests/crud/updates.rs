@@ -1,5 +1,6 @@
 pub use super::*;
 use rust_decimal_macros::dec;
+use sea_orm::DbErr;
 use uuid::Uuid;
 
 pub async fn test_update_cake(db: &DbConn) {
@@ -119,10 +120,14 @@ pub async fn test_update_deleted_customer(db: &DbConn) {
         ..Default::default()
     };
 
-    let _customer_update_res: customer::ActiveModel = customer
-        .update(db)
-        .await
-        .expect("could not update customer");
+    let customer_update_res = customer.update(db).await;
+
+    assert_eq!(
+        customer_update_res,
+        Err(DbErr::RecordNotFound(
+            "None of the database rows are affected".to_owned()
+        ))
+    );
 
     assert_eq!(Customer::find().count(db).await.unwrap(), init_n_customers);
 
