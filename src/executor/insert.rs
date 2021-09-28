@@ -1,5 +1,5 @@
 use crate::{
-    error::*, ActiveModelTrait, DatabaseConnection, EntityTrait, Insert, PrimaryKeyTrait,
+    error::*, ActiveModelTrait, DatabaseConnection, DbBackend, EntityTrait, Insert, PrimaryKeyTrait,
     Statement, TryFromU64,
 };
 use sea_query::InsertStatement;
@@ -38,8 +38,7 @@ where
         // TODO: extract primary key's value from query
         // so that self is dropped before entering await
         let mut query = self.query;
-        #[cfg(feature = "sqlx-postgres")]
-        if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
+        if db.get_database_backend() == DbBackend::Postgres {
             use crate::{sea_query::Query, Iterable};
             if <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
                 query.returning(

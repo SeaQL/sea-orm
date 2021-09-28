@@ -2,10 +2,11 @@ use crate::{
     ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable, ModelTrait,
     PrimaryKeyToColumn, RelationDef,
 };
-pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 use sea_query::{
-    Expr, IntoCondition, LockType, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef,
+    Alias, Expr, Iden, IntoCondition, LockType, SeaRc, SelectExpr, SelectStatement, SimpleExpr,
+    TableRef,
 };
+pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
 // LINT: when the column does not appear in tables selected from
 // LINT: when there is a group by clause, but some columns don't have aggregate functions
@@ -287,14 +288,35 @@ pub trait QueryFilter: Sized {
         }
         self
     }
+
+    fn belongs_to_tbl_alias<M>(mut self, model: &M, tbl_alias: &str) -> Self
+    where
+        M: ModelTrait,
+    {
+        for key in <M::Entity as EntityTrait>::PrimaryKey::iter() {
+            let col = key.into_column();
+            let expr = Expr::tbl(Alias::new(tbl_alias), col).eq(model.get(col));
+            self = self.filter(expr);
+        }
+        self
+    }
 }
 
-fn join_condition(rel: RelationDef) -> SimpleExpr {
+pub(crate) fn join_condition(rel: RelationDef) -> SimpleExpr {
     let from_tbl = unpack_table_ref(&rel.from_tbl);
     let to_tbl = unpack_table_ref(&rel.to_tbl);
     let owner_keys = rel.from_col;
     let foreign_keys = rel.to_col;
 
+    join_tbl_on_condition(from_tbl, to_tbl, owner_keys, foreign_keys)
+}
+
+pub(crate) fn join_tbl_on_condition(
+    from_tbl: SeaRc<dyn Iden>,
+    to_tbl: SeaRc<dyn Iden>,
+    owner_keys: Identity,
+    foreign_keys: Identity,
+) -> SimpleExpr {
     match (owner_keys, foreign_keys) {
         (Identity::Unary(o1), Identity::Unary(f1)) => {
             Expr::tbl(SeaRc::clone(&from_tbl), o1).equals(SeaRc::clone(&to_tbl), f1)
