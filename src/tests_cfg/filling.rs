@@ -9,6 +9,7 @@ pub struct Entity;
 pub struct Model {
     pub id: i32,
     pub name: String,
+    pub vendor_id: Option<i32>,
     #[sea_orm(ignore)]
     pub ignored_attr: i32,
 }
@@ -18,6 +19,7 @@ pub struct Model {
 pub enum Column {
     Id,
     Name,
+    VendorId,
 }
 
 // Then, customize each column names here.
@@ -46,7 +48,9 @@ impl PrimaryKeyTrait for PrimaryKey {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
-pub enum Relation {}
+pub enum Relation {
+    Vendor,
+}
 
 impl ColumnTrait for Column {
     type EntityName = Entity;
@@ -55,13 +59,19 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(None).def(),
+            Self::VendorId => ColumnType::Integer.def().nullable(),
         }
     }
 }
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
-        panic!()
+        match self {
+            Self::Vendor => Entity::belongs_to(super::vendor::Entity)
+                .from(Column::VendorId)
+                .to(super::vendor::Column::Id)
+                .into(),
+        }
     }
 }
 

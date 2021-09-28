@@ -24,7 +24,8 @@ pub trait ModelTrait: Clone + Send + Debug {
     where
         L: Linked<FromEntity = Self::Entity>,
     {
-        l.find_linked().belongs_to(self)
+        let tbl_alias = &format!("r{}", l.link().len() - 1);
+        l.find_linked().belongs_to_tbl_alias(self, tbl_alias)
     }
 }
 
