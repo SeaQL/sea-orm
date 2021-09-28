@@ -1,7 +1,7 @@
 use heck::{MixedCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{Data, DataEnum, Fields, Variant};
+use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Fields, Lit, Meta, Variant};
 
 pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
     let variants = match data {
@@ -25,8 +25,31 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
     let name: Vec<TokenStream> = variants
         .iter()
         .map(|v| {
-            let ident = v.ident.to_string().to_snake_case();
-            quote! { #ident }
+            let mut column_name = v.ident.to_string().to_snake_case();
+            for attr in v.attrs.iter() {
+                if let Some(ident) = attr.path.get_ident() {
+                    if ident != "sea_orm" {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+                if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
+                {
+                    for meta in list.iter() {
+                        if let Meta::NameValue(nv) = meta {
+                            if let Some(name) = nv.path.get_ident() {
+                                if name == "column_name" {
+                                    if let Lit::Str(litstr) = &nv.lit {
+                                        column_name = litstr.value();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            quote! { #column_name }
         })
         .collect();
 
