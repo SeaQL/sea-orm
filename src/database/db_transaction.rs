@@ -130,7 +130,7 @@ impl DatabaseTransaction {
     // the rollback is queued and will be performed on next async operation, like returning the connection to the pool
     fn start_rollback(&mut self) {
         if self.open {
-            if let Some(conn) = self.conn.try_lock() {
+            if let Some(mut conn) = self.conn.try_lock() {
                 match &mut *conn {
                     #[cfg(feature = "sqlx-mysql")]
                     InnerConnection::MySql(c) => {
