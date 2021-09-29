@@ -1,10 +1,13 @@
 use std::{pin::Pin, task::Poll, sync::Arc};
 
-use futures::{Stream, TryStreamExt};
+use futures::Stream;
+#[cfg(feature = "sqlx-dep")]
+use futures::TryStreamExt;
 
+#[cfg(feature = "sqlx-dep")]
 use sqlx::{pool::PoolConnection, Executor};
 
-use crate::{DbErr, InnerConnection, QueryResult, Statement, sqlx_error_to_query_err};
+use crate::{DbErr, InnerConnection, QueryResult, Statement};
 
 #[ouroboros::self_referencing]
 pub struct QueryStream {
@@ -62,7 +65,7 @@ impl QueryStream {
                         Box::pin(
                             c.fetch(query)
                                 .map_ok(Into::into)
-                                .map_err(sqlx_error_to_query_err)
+                                .map_err(crate::sqlx_error_to_query_err)
                         )
                     },
                     #[cfg(feature = "sqlx-postgres")]
@@ -71,7 +74,7 @@ impl QueryStream {
                         Box::pin(
                             c.fetch(query)
                                 .map_ok(Into::into)
-                                .map_err(sqlx_error_to_query_err)
+                                .map_err(crate::sqlx_error_to_query_err)
                         )
                     },
                     #[cfg(feature = "sqlx-sqlite")]
@@ -80,7 +83,7 @@ impl QueryStream {
                         Box::pin(
                             c.fetch(query)
                                 .map_ok(Into::into)
-                                .map_err(sqlx_error_to_query_err)
+                                .map_err(crate::sqlx_error_to_query_err)
                         )
                     },
                     #[cfg(feature = "mock")]

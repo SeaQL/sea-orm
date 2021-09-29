@@ -1,12 +1,15 @@
 use std::{ops::DerefMut, pin::Pin, task::Poll};
 
-use futures::{Stream, TryStreamExt};
+use futures::Stream;
+#[cfg(feature = "sqlx-dep")]
+use futures::TryStreamExt;
 
+#[cfg(feature = "sqlx-dep")]
 use sqlx::Executor;
 
 use futures::lock::MutexGuard;
 
-use crate::{DbErr, InnerConnection, QueryResult, Statement, sqlx_error_to_query_err};
+use crate::{DbErr, InnerConnection, QueryResult, Statement};
 
 #[ouroboros::self_referencing]
 pub struct TransactionStream<'a> {
@@ -36,7 +39,7 @@ impl<'a> TransactionStream<'a> {
                         Box::pin(
                             c.fetch(query)
                                 .map_ok(Into::into)
-                                .map_err(sqlx_error_to_query_err)
+                                .map_err(crate::sqlx_error_to_query_err)
                         ) as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>
                     },
                     #[cfg(feature = "sqlx-postgres")]
@@ -45,7 +48,7 @@ impl<'a> TransactionStream<'a> {
                         Box::pin(
                             c.fetch(query)
                                 .map_ok(Into::into)
-                                .map_err(sqlx_error_to_query_err)
+                                .map_err(crate::sqlx_error_to_query_err)
                         ) as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>
                     },
                     #[cfg(feature = "sqlx-sqlite")]
@@ -54,7 +57,7 @@ impl<'a> TransactionStream<'a> {
                         Box::pin(
                             c.fetch(query)
                                 .map_ok(Into::into)
-                                .map_err(sqlx_error_to_query_err)
+                                .map_err(crate::sqlx_error_to_query_err)
                         ) as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>
                     },
                     #[cfg(feature = "mock")]
