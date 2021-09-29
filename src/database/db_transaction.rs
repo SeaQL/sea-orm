@@ -131,7 +131,7 @@ impl DatabaseTransaction {
     fn start_rollback(&mut self) {
         if self.open {
             if let Some(conn) = self.conn.try_lock() {
-                match *conn {
+                match &mut *conn {
                     #[cfg(feature = "sqlx-mysql")]
                     InnerConnection::MySql(c) => {
                         <sqlx::MySql as sqlx::Database>::TransactionManager::start_rollback(c);
