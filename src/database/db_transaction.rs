@@ -130,24 +130,28 @@ impl DatabaseTransaction {
     // the rollback is queued and will be performed on next async operation, like returning the connection to the pool
     fn start_rollback(&mut self) {
         if self.open {
-            match Arc::get_mut(&mut self.conn).map(|o| o.get_mut()) {
-                #[cfg(feature = "sqlx-mysql")]
-                Some(InnerConnection::MySql(c)) => {
-                    <sqlx::MySql as sqlx::Database>::TransactionManager::start_rollback(c);
-                },
-                #[cfg(feature = "sqlx-postgres")]
-                Some(InnerConnection::Postgres(c)) => {
-                    <sqlx::Postgres as sqlx::Database>::TransactionManager::start_rollback(c);
-                },
-                #[cfg(feature = "sqlx-sqlite")]
-                Some(InnerConnection::Sqlite(c)) => {
-                    <sqlx::Sqlite as sqlx::Database>::TransactionManager::start_rollback(c);
-                },
-                //Should we do something for mocked connections?
-                #[cfg(feature = "mock")]
-                Some(InnerConnection::Mock(_)) => {},
-                //this happens if this is a nested transaction
-                None => unreachable!(),
+            if let Some(conn) = self.conn.try_lock() {
+                match *conn {
+                    #[cfg(feature = "sqlx-mysql")]
+                    InnerConnection::MySql(c) => {
+                        <sqlx::MySql as sqlx::Database>::TransactionManager::start_rollback(c);
+                    },
+                    #[cfg(feature = "sqlx-postgres")]
+                    InnerConnection::Postgres(c) => {
+                        <sqlx::Postgres as sqlx::Database>::TransactionManager::start_rollback(c);
+                    },
+                    #[cfg(feature = "sqlx-sqlite")]
+                    InnerConnection::Sqlite(c) => {
+                        <sqlx::Sqlite as sqlx::Database>::TransactionManager::start_rollback(c);
+                    },
+                    //Should we do something for mocked connections?
+                    #[cfg(feature = "mock")]
+                    InnerConnection::Mock(_) => {},
+                }
+            }
+            else {
+                //this should never happen
+                panic!("Dropping a locked Transaction");
             }
         }
     }
