@@ -16,7 +16,7 @@ pub(crate) enum InnerConnection {
 }
 
 #[async_trait::async_trait]
-pub trait ConnectionTrait<'a> {
+pub trait ConnectionTrait<'a>: Sync {
     type Stream: Stream<Item=Result<QueryResult, DbErr>>;
 
     fn get_database_backend(&self) -> DbBackend;

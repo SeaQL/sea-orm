@@ -70,7 +70,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn insert<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        C: ConnectionTrait<'a> + Sync,
+        C: ConnectionTrait<'a>,
         Self: 'a,
     {
         let am = self;
@@ -94,7 +94,7 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     async fn update<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
-        C: ConnectionTrait<'a> + Sync,
+        C: ConnectionTrait<'a>,
         Self: 'a,
     {
         let exec = Self::Entity::update(self).exec(db);
@@ -107,7 +107,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     where
         Self: ActiveModelBehavior + 'a,
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        C: ConnectionTrait<'a> + Sync,
+        C: ConnectionTrait<'a>,
     {
         let mut am = self;
         am = ActiveModelBehavior::before_save(am);
@@ -132,7 +132,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn delete<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
         Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait<'a> + Sync,
+        C: ConnectionTrait<'a>,
     {
         let mut am = self;
         am = ActiveModelBehavior::before_delete(am);
