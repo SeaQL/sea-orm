@@ -2,7 +2,7 @@ use crate::{
     debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
     Statement, Transaction,
 };
-use std::{fmt::Debug, pin::Pin, sync::{
+use std::{fmt::Debug, pin::Pin, sync::{Arc,
     atomic::{AtomicUsize, Ordering},
     Mutex,
 }};
@@ -50,7 +50,7 @@ impl MockDatabaseConnector {
         macro_rules! connect_mock_db {
             ( $syntax: expr ) => {
                 Ok(DatabaseConnection::MockDatabaseConnection(
-                    MockDatabaseConnection::new(MockDatabase::new($syntax)),
+                    Arc::new(MockDatabaseConnection::new(MockDatabase::new($syntax))),
                 ))
             };
         }

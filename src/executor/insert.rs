@@ -24,12 +24,12 @@ where
     A: ActiveModelTrait,
 {
     #[allow(unused_mut)]
-    pub async fn exec<'a, 'b: 'a, C>(
+    pub async fn exec<'a, C>(
         self,
         db: &'a C,
     ) -> Result<InsertResult<A>, DbErr>
     where
-        C: ConnectionTrait<'b>,
+        C: ConnectionTrait<'a>,
         A: 'a,
     {
         // TODO: extract primary key's value from query
@@ -62,12 +62,12 @@ where
         }
     }
 
-    pub async fn exec<'a, 'b: 'a, C>(
+    pub async fn exec<'a, C>(
         self,
         db: &'a C,
     ) -> Result<InsertResult<A>, DbErr>
     where
-        C: ConnectionTrait<'b>,
+        C: ConnectionTrait<'a>,
         A: 'a,
     {
         let builder = db.get_database_backend();
@@ -76,12 +76,12 @@ where
 }
 
 // Only Statement impl Send
-async fn exec_insert<'a, 'b: 'a, A, C>(
+async fn exec_insert<'a, A, C>(
     statement: Statement,
     db: &C,
 ) -> Result<InsertResult<A>, DbErr>
 where
-    C: ConnectionTrait<'b>,
+    C: ConnectionTrait<'a>,
     A: ActiveModelTrait,
 {
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;

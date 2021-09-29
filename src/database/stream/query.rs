@@ -1,62 +1,56 @@
-use std::{pin::Pin, task::Poll};
+use std::{pin::Pin, task::Poll, sync::Arc};
 
 use futures::{Stream, TryStreamExt};
 
 use sqlx::{pool::PoolConnection, Executor};
 
-use crate::{DatabaseTransaction, DbErr, InnerConnection, QueryResult, Statement, sqlx_error_to_query_err};
+use crate::{DbErr, InnerConnection, QueryResult, Statement, sqlx_error_to_query_err};
 
 #[ouroboros::self_referencing]
-pub struct QueryStream<'a> {
+pub struct QueryStream {
     stmt: Statement,
-    conn: InnerConnection<'a>,
+    conn: InnerConnection,
     #[borrows(mut conn, stmt)]
     #[not_covariant]
     stream: Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + 'this>>,
 }
 
 #[cfg(feature = "sqlx-mysql")]
-impl<'a> From<(PoolConnection<sqlx::MySql>, Statement)> for QueryStream<'a> {
+impl From<(PoolConnection<sqlx::MySql>, Statement)> for QueryStream {
     fn from((conn, stmt): (PoolConnection<sqlx::MySql>, Statement)) -> Self {
         QueryStream::build(stmt, InnerConnection::MySql(conn))
     }
 }
 
 #[cfg(feature = "sqlx-postgres")]
-impl<'a> From<(PoolConnection<sqlx::Postgres>, Statement)> for QueryStream<'a> {
+impl From<(PoolConnection<sqlx::Postgres>, Statement)> for QueryStream {
     fn from((conn, stmt): (PoolConnection<sqlx::Postgres>, Statement)) -> Self {
         QueryStream::build(stmt, InnerConnection::Postgres(conn))
     }
 }
 
 #[cfg(feature = "sqlx-sqlite")]
-impl<'a> From<(PoolConnection<sqlx::Sqlite>, Statement)> for QueryStream<'a> {
+impl From<(PoolConnection<sqlx::Sqlite>, Statement)> for QueryStream {
     fn from((conn, stmt): (PoolConnection<sqlx::Sqlite>, Statement)) -> Self {
         QueryStream::build(stmt, InnerConnection::Sqlite(conn))
     }
 }
 
 #[cfg(feature = "mock")]
-impl<'a> From<(&'a crate::MockDatabaseConnection, Statement)> for QueryStream<'a> {
-    fn from((conn, stmt): (&'a crate::MockDatabaseConnection, Statement)) -> Self {
+impl From<(Arc<crate::MockDatabaseConnection>, Statement)> for QueryStream {
+    fn from((conn, stmt): (Arc<crate::MockDatabaseConnection>, Statement)) -> Self {
         QueryStream::build(stmt, InnerConnection::Mock(conn))
     }
 }
 
-impl<'a> From<(&'a DatabaseTransaction<'a>, Statement)> for QueryStream<'a> {
-    fn from((conn, stmt): (&'a DatabaseTransaction<'a>, Statement)) -> Self {
-        QueryStream::build(stmt, InnerConnection::Transaction(Box::new(conn)))
-    }
-}
-
-impl<'a> std::fmt::Debug for QueryStream<'a> {
+impl std::fmt::Debug for QueryStream {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "QueryStream")
     }
 }
 
-impl<'a> QueryStream<'a> {
-    fn build(stmt: Statement, conn: InnerConnection<'a>) -> QueryStream<'a> {
+impl QueryStream {
+    fn build(stmt: Statement, conn: InnerConnection) -> QueryStream {
         QueryStreamBuilder {
             stmt,
             conn,
@@ -93,16 +87,13 @@ impl<'a> QueryStream<'a> {
                     InnerConnection::Mock(c) => {
                         c.fetch(stmt)
                     },
-                    InnerConnection::Transaction(c) => {
-                        c.fetch(stmt)
-                    },
                 }
             },
         }.build()
     }
 }
 
-impl<'a> Stream for QueryStream<'a> {
+impl Stream for QueryStream {
     type Item = Result<QueryResult, DbErr>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {

@@ -91,7 +91,7 @@ impl SqlxPostgresPoolConnection {
         }
     }
 
-    pub async fn stream(&self, stmt: Statement) -> Result<QueryStream<'_>, DbErr> {
+    pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
 
         if let Ok(conn) = self.pool.acquire().await {
@@ -103,7 +103,7 @@ impl SqlxPostgresPoolConnection {
         }
     }
 
-    pub async fn begin(&self) -> Result<DatabaseTransaction<'_>, DbErr> {
+    pub async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_postgres(conn).await
         } else {
@@ -113,13 +113,11 @@ impl SqlxPostgresPoolConnection {
         }
     }
 
-    pub async fn transaction<'a, F, T, E/*, Fut*/>(&'a self, callback: F) -> Result<T, TransactionError<E>>
+    pub async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
     where
-        F: for<'b> FnOnce(&'b DatabaseTransaction<'a>) -> Pin<Box<dyn Future<Output = Result<T, E>> + 'b>>,
-        // F: FnOnce(&DatabaseTransaction<'_>) -> Fut + Send,
-        // Fut: Future<Output = Result<T, E>> + Send,
-        // T: Send,
-        E: std::error::Error,
+        F: for<'b> FnOnce(&'b DatabaseTransaction) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>> + Send,
+        T: Send,
+        E: std::error::Error + Send,
     {
         if let Ok(conn) = self.pool.acquire().await {
             let transaction = DatabaseTransaction::new_postgres(conn).await.map_err(|e| TransactionError::Connection(e))?;

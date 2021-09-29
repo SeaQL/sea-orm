@@ -51,7 +51,7 @@ where
     ActiveValue::unchanged(value)
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
     type Entity: EntityTrait;
 
@@ -67,10 +67,10 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     fn default() -> Self;
 
-    async fn insert<'a, 'b: 'a, C>(self, db: &'a C) -> Result<Self, DbErr>
+    async fn insert<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        C: ConnectionTrait<'b>,
+        C: ConnectionTrait<'a> + Sync,
         Self: 'a,
     {
         let am = self;
@@ -92,9 +92,9 @@ pub trait ActiveModelTrait: Clone + Debug {
         }
     }
 
-    async fn update<'a, 'b: 'a, C>(self, db: &'a C) -> Result<Self, DbErr>
+    async fn update<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
-        C: ConnectionTrait<'b>,
+        C: ConnectionTrait<'a> + Sync,
         Self: 'a,
     {
         let exec = Self::Entity::update(self).exec(db);
@@ -103,11 +103,11 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     /// Insert the model if primary key is unset, update otherwise.
     /// Only works if the entity has auto increment primary key.
-    async fn save<'a, 'b: 'a, C>(self, db: &'a C) -> Result<Self, DbErr>
+    async fn save<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
         Self: ActiveModelBehavior + 'a,
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        C: ConnectionTrait<'b>,
+        C: ConnectionTrait<'a> + Sync,
     {
         let mut am = self;
         am = ActiveModelBehavior::before_save(am);
@@ -132,7 +132,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn delete<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
         Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait<'a> + Sync,
     {
         let mut am = self;
         am = ActiveModelBehavior::before_delete(am);

@@ -23,7 +23,7 @@ pub async fn stream() -> Result<(), DbErr> {
     .await?;
 
     let result = Bakery::find_by_id(bakery.id.clone().unwrap())
-       .stream(&ctx.db)
+        .stream(&ctx.db)
         .await?
         .next()
         .await
