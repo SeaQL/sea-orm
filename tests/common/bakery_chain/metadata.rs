@@ -5,6 +5,8 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub uuid: Uuid,
+    #[sea_orm(column_name = "type", enum_name = "Type")]
+    pub ty: String,
     pub key: String,
     pub value: String,
     pub bytes: Vec<u8>,

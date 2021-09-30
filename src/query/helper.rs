@@ -276,7 +276,9 @@ pub trait QueryFilter: Sized {
     /// struct Input {
     ///     name: Option<String>,
     /// }
-    /// let input = Input { name: Some("cheese".to_owned()) };
+    /// let input = Input {
+    ///     name: Some("cheese".to_owned()),
+    /// };
     ///
     /// let mut conditions = Condition::all();
     /// if let Some(name) = input.name {
@@ -298,13 +300,14 @@ pub trait QueryFilter: Sized {
     /// struct Input {
     ///     name: Option<String>,
     /// }
-    /// let input = Input { name: Some("cheese".to_owned()) };
+    /// let input = Input {
+    ///     name: Some("cheese".to_owned()),
+    /// };
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(
-    ///             Condition::all()
-    ///                 .add_option(input.name.map(|n| cake::Column::Name.contains(&n)))
+    ///             Condition::all().add_option(input.name.map(|n| cake::Column::Name.contains(&n)))
     ///         )
     ///         .build(DbBackend::MySql)
     ///         .to_string(),

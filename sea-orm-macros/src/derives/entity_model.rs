@@ -60,9 +60,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         if let Fields::Named(fields) = item_struct.fields {
             for field in fields.named {
                 if let Some(ident) = &field.ident {
-                    let field_name =
+                    let mut field_name =
                         Ident::new(&ident.to_string().to_case(Case::Pascal), Span::call_site());
-                    columns_enum.push(quote! { #field_name });
 
                     let mut nullable = false;
                     let mut default_value = None;
@@ -71,7 +70,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut ignore = false;
                     let mut unique = false;
                     let mut sql_type = None;
-                    // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(Some(255))", default_value = "new user", default_expr = "gen_random_uuid()", nullable, indexed, unique)]
+                    let mut column_name = None;
+                    let mut enum_name = None;
+                    let mut is_primary_key = false;
+                    // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(Some(255))", default_value = "new user", default_expr = "gen_random_uuid()", column_name = "name", enum_name = "Name", nullable, indexed, unique)]
                     for attr in field.attrs.iter() {
                         if let Some(ident) = attr.path.get_ident() {
                             if ident != "sea_orm" {
@@ -116,6 +118,26 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                                 default_value = Some(nv.lit.to_owned());
                                             } else if name == "default_expr" {
                                                 default_expr = Some(nv.lit.to_owned());
+                                            } else if name == "column_name" {
+                                                if let Lit::Str(litstr) = &nv.lit {
+                                                    column_name = Some(litstr.value());
+                                                } else {
+                                                    return Err(Error::new(
+                                                        field.span(),
+                                                        format!("Invalid column_name {:?}", nv.lit),
+                                                    ));
+                                                }
+                                            } else if name == "enum_name" {
+                                                if let Lit::Str(litstr) = &nv.lit {
+                                                    let ty: Ident =
+                                                        syn::parse_str(&litstr.value())?;
+                                                    enum_name = Some(ty);
+                                                } else {
+                                                    return Err(Error::new(
+                                                        field.span(),
+                                                        format!("Invalid enum_name {:?}", nv.lit),
+                                                    ));
+                                                }
                                             }
                                         }
                                     }
@@ -125,7 +147,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                                 ignore = true;
                                                 break;
                                             } else if name == "primary_key" {
-                                                primary_keys.push(quote! { #field_name });
+                                                is_primary_key = true;
                                                 primary_key_types.push(field.ty.clone());
                                             } else if name == "nullable" {
                                                 nullable = true;
@@ -142,9 +164,27 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         }
                     }
 
+                    if let Some(enum_name) = enum_name {
+                        field_name = enum_name;
+                    }
+
                     if ignore {
-                        columns_enum.pop();
                         continue;
+                    } else {
+                        let variant_attrs = match &column_name {
+                            Some(column_name) => quote! {
+                                #[sea_orm(column_name = #column_name)]
+                            },
+                            None => quote! {},
+                        };
+                        columns_enum.push(quote! {
+                            #variant_attrs
+                            #field_name
+                        });
+                    }
+
+                    if is_primary_key {
+                        primary_keys.push(quote! { #field_name });
                     }
 
                     let field_type = match sql_type {
