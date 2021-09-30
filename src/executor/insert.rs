@@ -91,14 +91,13 @@ where
 {
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
-    let last_insert_id_opt = match db {
-        #[cfg(feature = "sqlx-postgres")]
-        DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
+    let last_insert_id_opt = match db.get_database_backend() {
+        DbBackend::Postgres => {
             use crate::{sea_query::Iden, Iterable};
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
                 .collect::<Vec<_>>();
-            let res = conn.query_one(statement).await?.unwrap();
+            let res = db.query_one(statement).await?.unwrap();
             res.try_get_many("", cols.as_ref()).ok()
         }
         _ => {
