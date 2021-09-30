@@ -210,8 +210,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 "f32" => quote! { Float },
                                 "f64" => quote! { Double },
                                 "bool" => quote! { Boolean },
-                                "NaiveDate" => quote! { Date },
-                                "NaiveTime" => quote! { Time },
+                                "Date" | "NaiveDate" => quote! { Date },
+                                "Time" | "NaiveTime" => quote! { Time },
                                 "DateTime" | "NaiveDateTime" => {
                                     quote! { DateTime }
                                 }

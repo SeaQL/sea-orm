@@ -15,6 +15,12 @@ pub use crate::{
 pub use serde_json::Value as Json;
 
 #[cfg(feature = "with-chrono")]
+pub use chrono::NaiveDate as Date;
+
+#[cfg(feature = "with-chrono")]
+pub use chrono::NaiveTime as Time;
+
+#[cfg(feature = "with-chrono")]
 pub use chrono::NaiveDateTime as DateTime;
 
 #[cfg(feature = "with-chrono")]
