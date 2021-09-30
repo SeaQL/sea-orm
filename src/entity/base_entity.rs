@@ -49,7 +49,9 @@ pub trait EntityTrait: EntityName {
 
     type Relation: RelationTrait;
 
-    type PrimaryKey: PrimaryKeyTrait + PrimaryKeyToColumn<Column = Self::Column>;
+    type PrimaryKey: PrimaryKeyTrait
+        + PrimaryKeyToColumn<Column = Self::Column>
+        + PrimaryKeyValue<Self>;
 
     fn belongs_to<R>(related: R) -> RelationBuilder<Self, R>
     where
@@ -299,8 +301,6 @@ pub trait EntityTrait: EntityName {
     fn insert<A>(model: A) -> Insert<A>
     where
         A: ActiveModelTrait<Entity = Self>,
-        <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey:
-            PrimaryKeyValue<<A as ActiveModelTrait>::Entity>,
     {
         Insert::one(model)
     }
@@ -354,8 +354,6 @@ pub trait EntityTrait: EntityName {
     where
         A: ActiveModelTrait<Entity = Self>,
         I: IntoIterator<Item = A>,
-        <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey:
-            PrimaryKeyValue<<A as ActiveModelTrait>::Entity>,
     {
         Insert::many(models)
     }

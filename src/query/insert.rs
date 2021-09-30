@@ -73,8 +73,6 @@ where
     pub fn one<M>(m: M) -> Insert<A>
     where
         M: IntoActiveModel<A>,
-        <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey:
-            PrimaryKeyValue<<A as ActiveModelTrait>::Entity>,
     {
         Self::new().add(m)
     }
@@ -104,8 +102,6 @@ where
     where
         M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
-        <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey:
-            PrimaryKeyValue<<A as ActiveModelTrait>::Entity>,
     {
         Self::new().add_many(models)
     }
@@ -114,8 +110,6 @@ where
     pub fn add<M>(mut self, m: M) -> Self
     where
         M: IntoActiveModel<A>,
-        <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey:
-            PrimaryKeyValue<<A as ActiveModelTrait>::Entity>,
     {
         let mut am: A = m.into_active_model();
         self.primary_key =
@@ -149,8 +143,6 @@ where
     where
         M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
-        <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey:
-            PrimaryKeyValue<<A as ActiveModelTrait>::Entity>,
     {
         for model in models.into_iter() {
             self = self.add(model);

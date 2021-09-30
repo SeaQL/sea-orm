@@ -1,6 +1,5 @@
 use crate::{
-    error::*, DatabaseConnection, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn,
-    PrimaryKeyValue, Value,
+    error::*, DatabaseConnection, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn, Value,
 };
 use async_trait::async_trait;
 use std::fmt::Debug;
@@ -70,8 +69,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn insert(self, db: &DatabaseConnection) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        <<Self as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey:
-            PrimaryKeyValue<<Self as ActiveModelTrait>::Entity>,
     {
         let am = self;
         let exec = <Self::Entity as EntityTrait>::insert(am).exec(db);
@@ -96,8 +93,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     where
         Self: ActiveModelBehavior,
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        <<Self as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey:
-            PrimaryKeyValue<<Self as ActiveModelTrait>::Entity>,
     {
         let mut am = self;
         am = ActiveModelBehavior::before_save(am);
