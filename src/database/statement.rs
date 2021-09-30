@@ -1,12 +1,12 @@
 use crate::DbBackend;
+pub use sea_query::Value;
 use sea_query::{inject_parameters, MysqlQueryBuilder, PostgresQueryBuilder, SqliteQueryBuilder};
-pub use sea_query::{Value, Values};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Statement {
     pub sql: String,
-    pub values: Option<Values>,
+    pub values: Option<Vec<Value>>,
     pub db_backend: DbBackend,
 }
 
@@ -27,15 +27,12 @@ impl Statement {
     where
         I: IntoIterator<Item = Value>,
     {
-        Self::from_string_values_tuple(
-            db_backend,
-            (sql.to_owned(), Values(values.into_iter().collect())),
-        )
+        Self::from_string_values_tuple(db_backend, (sql.to_owned(), values.into_iter().collect()))
     }
 
     pub(crate) fn from_string_values_tuple(
         db_backend: DbBackend,
-        stmt: (String, Values),
+        stmt: (String, Vec<Value>),
     ) -> Statement {
         Statement {
             sql: stmt.0,
@@ -51,7 +48,7 @@ impl fmt::Display for Statement {
             Some(values) => {
                 let string = inject_parameters(
                     &self.sql,
-                    values.0.clone(),
+                    &values.iter().map(Value::as_ref).collect::<Vec<_>>(),
                     self.db_backend.get_query_builder().as_ref(),
                 );
                 write!(f, "{}", &string)

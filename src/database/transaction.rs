@@ -1,5 +1,5 @@
 use crate::{DbBackend, Statement};
-use sea_query::{Value, Values};
+use sea_query::Value;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Transaction {
@@ -13,7 +13,7 @@ impl Transaction {
     {
         Self::one(Statement::from_string_values_tuple(
             db_backend,
-            (sql.to_string(), Values(values.into_iter().collect())),
+            (sql.to_string(), values.into_iter().collect()),
         ))
     }
 

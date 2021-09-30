@@ -5,10 +5,10 @@ use std::fmt;
 
 #[derive(Debug)]
 pub struct QueryResult {
-    pub(crate) row: QueryResultRow,
+    pub row: QueryResultRow,
 }
 
-pub(crate) enum QueryResultRow {
+pub enum QueryResultRow {
     #[cfg(feature = "sqlx-mysql")]
     SqlxMySql(sqlx::mysql::MySqlRow),
     #[cfg(feature = "sqlx-postgres")]

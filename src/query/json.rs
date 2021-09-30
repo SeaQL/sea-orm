@@ -128,7 +128,7 @@ impl FromQueryResult for JsonValue {
                     } else {
                         column.replacen(pre, "", 1)
                     };
-                    map.insert(col, sea_query::sea_value_to_json_value(&value));
+                    map.insert(col, value.into());
                 }
                 Ok(JsonValue::Object(map))
             }
