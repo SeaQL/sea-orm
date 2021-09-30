@@ -1,6 +1,6 @@
 #[cfg(feature = "mock")]
 use crate::debug_print;
-use crate::DbErr;
+use crate::{DbErr, SelectGetableValue, SelectorRaw, Statement};
 use std::fmt;
 
 #[derive(Debug)]
@@ -302,6 +302,79 @@ try_getable_all!(uuid::Uuid);
 
 pub trait TryGetableMany: Sized {
     fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError>;
+
+    /// ```
+    /// # #[cfg(feature = "mock")]
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![vec![
+    /// #         maplit::btreemap! {
+    /// #             "name" => Into::<Value>::into("Chocolate Forest"),
+    /// #             "num_of_cakes" => Into::<Value>::into(1),
+    /// #         },
+    /// #         maplit::btreemap! {
+    /// #             "name" => Into::<Value>::into("New York Cheese"),
+    /// #             "num_of_cakes" => Into::<Value>::into(1),
+    /// #         },
+    /// #     ]])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, EnumIter, TryGetableMany};
+    ///
+    /// #[derive(EnumIter)]
+    /// enum ResultCol {
+    ///     Name,
+    ///     NumOfCakes,
+    /// }
+    ///
+    /// // this can be derived using derive_more crate
+    /// impl std::fmt::Display for ResultCol {
+    ///     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    ///         match self {
+    ///             Self::Name => write!(f, "name"),
+    ///             Self::NumOfCakes => write!(f, "num_of_cakes"),
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// # let _: Result<(), DbErr> = smol::block_on(async {
+    /// #
+    /// let res: Vec<(String, i32)> =
+    ///     <(String, i32)>::find_by_statement::<ResultCol>(Statement::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#,
+    ///         vec![],
+    ///     ))
+    ///     .all(&db)
+    ///     .await?;
+    ///
+    /// assert_eq!(
+    ///     res,
+    ///     vec![
+    ///         ("Chocolate Forest".to_owned(), 1),
+    ///         ("New York Cheese".to_owned(), 1),
+    ///     ]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # });
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#,
+    ///         vec![]
+    ///     ),]
+    /// );
+    /// ```
+    fn find_by_statement<C>(stmt: Statement) -> SelectorRaw<SelectGetableValue<Self, C>>
+    where
+        C: sea_strum::IntoEnumIterator + ToString,
+    {
+        SelectorRaw::<SelectGetableValue<Self, C>>::with_columns(stmt)
+    }
 }
 
 impl<T> TryGetableMany for T
@@ -311,6 +384,15 @@ where
     fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
         try_get_many_with_slice_len_of(1, cols)?;
         T::try_get(res, pre, &cols[0])
+    }
+}
+
+impl<T> TryGetableMany for (T,)
+where
+    T: TryGetableMany,
+{
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
+        T::try_get_many(res, pre, cols).map(|r| (r,))
     }
 }
 
