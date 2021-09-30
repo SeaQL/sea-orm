@@ -243,13 +243,13 @@
 //!     pub id: i32,
 //!     pub name: String,
 //! }
-//! 
+//!
 //! #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 //! pub enum Relation {
 //!     #[sea_orm(has_many = "super::fruit::Entity")]
 //!     Fruit,
 //! }
-//! 
+//!
 //! impl Related<super::fruit::Entity> for Entity {
 //!     fn to() -> RelationDef {
 //!         Relation::Fruit.def()
@@ -433,6 +433,7 @@ pub use executor::*;
 pub use query::*;
 pub use schema::*;
 
+#[cfg(feature = "macros")]
 pub use sea_orm_macros::{
     DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveCustomColumn, DeriveEntity,
     DeriveEntityModel, DeriveModel, DerivePrimaryKey, DeriveRelation, FromQueryResult,
@@ -440,7 +441,9 @@ pub use sea_orm_macros::{
 
 pub use sea_query;
 pub use sea_query::Iden;
+#[cfg(feature = "macros")]
 pub use sea_query::Iden as DeriveIden;
 
 pub use sea_strum;
+#[cfg(feature = "macros")]
 pub use sea_strum::EnumIter;

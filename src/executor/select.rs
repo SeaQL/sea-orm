@@ -127,7 +127,7 @@ where
     }
 
     /// ```
-    /// # #[cfg(feature = "mock")]
+    /// # #[cfg(all(feature = "mock", feature = "macros"))]
     /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
