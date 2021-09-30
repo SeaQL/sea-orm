@@ -34,7 +34,7 @@ pub trait SelectorTrait {
 pub struct SelectGetableValue<T, C>
 where
     T: TryGetableMany,
-    C: sea_strum::IntoEnumIterator + ToString,
+    C: sea_strum::IntoEnumIterator + sea_query::Iden,
 {
     columns: PhantomData<C>,
     model: PhantomData<T>,
@@ -60,7 +60,7 @@ where
 impl<T, C> SelectorTrait for SelectGetableValue<T, C>
 where
     T: TryGetableMany,
-    C: sea_strum::IntoEnumIterator + ToString,
+    C: sea_strum::IntoEnumIterator + sea_query::Iden,
 {
     type Item = T;
 
@@ -143,20 +143,11 @@ where
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, EnumIter, TryGetableMany};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, EnumIter, DeriveIden, TryGetableMany};
     ///
-    /// #[derive(EnumIter)]
+    /// #[derive(EnumIter, DeriveIden)]
     /// enum ResultCol {
     ///     Name,
-    /// }
-    ///
-    /// // this can be derived using derive_more crate
-    /// impl std::fmt::Display for ResultCol {
-    ///     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    ///         match self {
-    ///             Self::Name => write!(f, "name"),
-    ///         }
-    ///     }
     /// }
     ///
     /// # let _: Result<(), DbErr> = smol::block_on(async {
@@ -188,7 +179,7 @@ where
     pub fn into_values<T, C>(self) -> Selector<SelectGetableValue<T, C>>
     where
         T: TryGetableMany,
-        C: sea_strum::IntoEnumIterator + ToString,
+        C: sea_strum::IntoEnumIterator + sea_query::Iden,
     {
         Selector::<SelectGetableValue<T, C>>::with_columns(self.query)
     }
@@ -323,7 +314,7 @@ where
     pub fn with_columns<T, C>(query: SelectStatement) -> Selector<SelectGetableValue<T, C>>
     where
         T: TryGetableMany,
-        C: sea_strum::IntoEnumIterator + ToString,
+        C: sea_strum::IntoEnumIterator + sea_query::Iden,
     {
         Selector {
             query,
@@ -386,7 +377,7 @@ where
     pub fn with_columns<T, C>(stmt: Statement) -> SelectorRaw<SelectGetableValue<T, C>>
     where
         T: TryGetableMany,
-        C: sea_strum::IntoEnumIterator + ToString,
+        C: sea_strum::IntoEnumIterator + sea_query::Iden,
     {
         SelectorRaw {
             stmt,

@@ -320,22 +320,12 @@ pub trait TryGetableMany: Sized {
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, EnumIter, TryGetableMany};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, EnumIter, DeriveIden, TryGetableMany};
     ///
-    /// #[derive(EnumIter)]
+    /// #[derive(EnumIter, DeriveIden)]
     /// enum ResultCol {
     ///     Name,
     ///     NumOfCakes,
-    /// }
-    ///
-    /// // this can be derived using derive_more crate
-    /// impl std::fmt::Display for ResultCol {
-    ///     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    ///         match self {
-    ///             Self::Name => write!(f, "name"),
-    ///             Self::NumOfCakes => write!(f, "num_of_cakes"),
-    ///         }
-    ///     }
     /// }
     ///
     /// # let _: Result<(), DbErr> = smol::block_on(async {
@@ -371,7 +361,7 @@ pub trait TryGetableMany: Sized {
     /// ```
     fn find_by_statement<C>(stmt: Statement) -> SelectorRaw<SelectGetableValue<Self, C>>
     where
-        C: sea_strum::IntoEnumIterator + ToString,
+        C: sea_strum::IntoEnumIterator + sea_query::Iden,
     {
         SelectorRaw::<SelectGetableValue<Self, C>>::with_columns(stmt)
     }

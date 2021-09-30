@@ -440,5 +440,7 @@ pub use sea_orm_macros::{
 
 pub use sea_query;
 pub use sea_query::Iden;
+pub use sea_query::Iden as DeriveIden;
+
 pub use sea_strum;
 pub use sea_strum::EnumIter;
