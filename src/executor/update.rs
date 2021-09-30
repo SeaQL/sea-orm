@@ -91,14 +91,6 @@ mod tests {
     #[smol_potat::test]
     async fn update_record_not_found_1() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![
-                vec![cake::Model {
-                    id: 1,
-                    name: "Cheese Cake".to_owned(),
-                }],
-                vec![],
-                vec![],
-            ])
             .append_exec_results(vec![
                 MockExecResult {
                     last_insert_id: 0,
