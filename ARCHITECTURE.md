@@ -1,5 +1,7 @@
 # Architecture
 
+> Let's dive under the Sea 🤿
+
 To understand the architecture of SeaORM, let's discuss what is an ORM. ORM exists to provide abstractions over common operations you would do against a database and hide the implementation details like the actual SQL queries.
 
 With a good ORM, you shouldn't bother to look under the API surface. Until you do. I hear you say *'abstraction leaks'*, and yes, it does.
