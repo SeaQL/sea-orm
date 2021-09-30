@@ -139,6 +139,31 @@ async fn list(
 
 ## A quick taste of SeaORM
 
+### Entity
+```rust
+use sea_orm::entity::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[sea_orm(table_name = "cake")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {
+    #[sea_orm(has_many = "super::fruit::Entity")]
+    Fruit,
+}
+
+impl Related<super::fruit::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Fruit.def()
+    }
+}
+```
+
 ### Select
 ```rust
 // find all models
@@ -239,7 +264,7 @@ fruit::Entity::delete_many()
 
 1. [Design](https://github.com/SeaQL/sea-orm/tree/master/DESIGN.md)
 1. [Architecture](https://github.com/SeaQL/sea-orm/tree/master/ARCHITECTURE.md)
-1. [Compare with Diesel](https://www.sea-ql.org/SeaORM/docs/internal-design/diesel)
+1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 
 ## License
 

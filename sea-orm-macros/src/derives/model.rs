@@ -3,7 +3,7 @@ use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use std::iter::FromIterator;
-use syn::Ident;
+use syn::{punctuated::Punctuated, token::Comma, Ident, Lit, Meta};
 
 enum Error {
     InputNotStruct,
@@ -43,10 +43,35 @@ impl DeriveModel {
         let column_idents = fields
             .iter()
             .map(|field| {
-                format_ident!(
+                let mut ident = format_ident!(
                     "{}",
                     field.ident.as_ref().unwrap().to_string().to_camel_case()
-                )
+                );
+                for attr in field.attrs.iter() {
+                    if let Some(ident) = attr.path.get_ident() {
+                        if ident != "sea_orm" {
+                            continue;
+                        }
+                    } else {
+                        continue;
+                    }
+                    if let Ok(list) =
+                        attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
+                    {
+                        for meta in list.iter() {
+                            if let Meta::NameValue(nv) = meta {
+                                if let Some(name) = nv.path.get_ident() {
+                                    if name == "enum_name" {
+                                        if let Lit::Str(litstr) = &nv.lit {
+                                            ident = syn::parse_str(&litstr.value()).unwrap();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                ident
             })
             .collect();
 

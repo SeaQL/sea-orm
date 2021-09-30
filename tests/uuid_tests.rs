@@ -20,9 +20,12 @@ async fn main() -> Result<(), DbErr> {
 pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
     let metadata = metadata::Model {
         uuid: Uuid::new_v4(),
+        ty: "Type".to_owned(),
         key: "markup".to_owned(),
         value: "1.18".to_owned(),
         bytes: vec![1, 2, 3],
+        date: Date::from_ymd(2021, 9, 27),
+        time: Time::from_hms(11, 32, 55),
     };
 
     let res = Metadata::insert(metadata.clone().into_active_model())

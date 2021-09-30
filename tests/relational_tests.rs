@@ -708,6 +708,26 @@ pub async fn linked() -> Result<(), DbErr> {
         ]
     );
 
+    let baker_bob = Baker::find()
+        .filter(baker::Column::Id.eq(1))
+        .one(&ctx.db)
+        .await?
+        .unwrap();
+
+    let baker_bob_customers = baker_bob
+        .find_linked(baker::BakedForCustomer)
+        .all(&ctx.db)
+        .await?;
+
+    assert_eq!(
+        baker_bob_customers,
+        vec![customer::Model {
+            id: 2,
+            name: "Kara".to_owned(),
+            notes: Some("Loves all cakes".to_owned()),
+        }]
+    );
+
     ctx.delete().await;
 
     Ok(())

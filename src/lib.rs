@@ -203,6 +203,63 @@
 //!
 //! ## A quick taste of SeaORM
 //!
+//! ### Entity
+//! ```
+//! # #[cfg(feature = "macros")]
+//! # mod entities {
+//! # mod fruit {
+//! # use sea_orm::entity::prelude::*;
+//! # #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+//! # #[sea_orm(table_name = "fruit")]
+//! # pub struct Model {
+//! #     #[sea_orm(primary_key)]
+//! #     pub id: i32,
+//! #     pub name: String,
+//! #     pub cake_id: Option<i32>,
+//! # }
+//! # #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+//! # pub enum Relation {
+//! #     #[sea_orm(
+//! #         belongs_to = "super::cake::Entity",
+//! #         from = "Column::CakeId",
+//! #         to = "super::cake::Column::Id"
+//! #     )]
+//! #     Cake,
+//! # }
+//! # impl Related<super::cake::Entity> for Entity {
+//! #     fn to() -> RelationDef {
+//! #         Relation::Cake.def()
+//! #     }
+//! # }
+//! # impl ActiveModelBehavior for ActiveModel {}
+//! # }
+//! # mod cake {
+//! use sea_orm::entity::prelude::*;
+//!
+//! #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+//! #[sea_orm(table_name = "cake")]
+//! pub struct Model {
+//!     #[sea_orm(primary_key)]
+//!     pub id: i32,
+//!     pub name: String,
+//! }
+//!
+//! #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+//! pub enum Relation {
+//!     #[sea_orm(has_many = "super::fruit::Entity")]
+//!     Fruit,
+//! }
+//!
+//! impl Related<super::fruit::Entity> for Entity {
+//!     fn to() -> RelationDef {
+//!         Relation::Fruit.def()
+//!     }
+//! }
+//! # impl ActiveModelBehavior for ActiveModel {}
+//! # }
+//! # }
+//! ```
+//!
 //! ### Select
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
@@ -335,7 +392,7 @@
 //!
 //! 1. [Design](https://github.com/SeaQL/sea-orm/tree/master/DESIGN.md)
 //! 1. [Architecture](https://github.com/SeaQL/sea-orm/tree/master/ARCHITECTURE.md)
-//! 1. [Compare with Diesel](https://www.sea-ql.org/SeaORM/docs/internal-design/diesel)
+//! 1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 //!
 //! ## License
 //!
@@ -376,6 +433,7 @@ pub use executor::*;
 pub use query::*;
 pub use schema::*;
 
+#[cfg(feature = "macros")]
 pub use sea_orm_macros::{
     DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveCustomColumn, DeriveEntity,
     DeriveEntityModel, DeriveModel, DerivePrimaryKey, DeriveRelation, FromQueryResult,
@@ -383,5 +441,9 @@ pub use sea_orm_macros::{
 
 pub use sea_query;
 pub use sea_query::Iden;
+#[cfg(feature = "macros")]
+pub use sea_query::Iden as DeriveIden;
+
 pub use sea_strum;
+#[cfg(feature = "macros")]
 pub use sea_strum::EnumIter;

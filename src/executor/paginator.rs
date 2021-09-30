@@ -1,4 +1,4 @@
-use crate::{error::*, DatabaseConnection, IntoDbBackend, SelectorTrait};
+use crate::{error::*, DatabaseConnection, DbBackend, IntoDbBackend, SelectorTrait};
 use async_stream::stream;
 use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
@@ -63,11 +63,8 @@ where
             Some(res) => res,
             None => return Ok(0),
         };
-        let num_items = match self.db {
-            #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(_) => {
-                result.try_get::<i64>("", "num_items")? as usize
-            }
+        let num_items = match builder {
+            DbBackend::Postgres => result.try_get::<i64>("", "num_items")? as usize,
             _ => result.try_get::<i32>("", "num_items")? as usize,
         };
         Ok(num_items)
@@ -192,7 +189,7 @@ mod tests {
         (db, vec![page1, page2, page3])
     }
 
-    fn setup_num_items() -> (DatabaseConnection, i32) {
+    fn setup_num_items() -> (DatabaseConnection, i64) {
         let num_items = 3;
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results(vec![vec![maplit::btreemap! {
