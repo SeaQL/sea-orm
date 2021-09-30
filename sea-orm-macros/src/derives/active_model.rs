@@ -82,7 +82,7 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
 
             fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: sea_orm::Value) {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::set(v.primitive_value().unwrap()),)*
+                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::set(v.primitive_value()),)*
                     _ => panic!("This ActiveModel does not have this field"),
                 }
             }

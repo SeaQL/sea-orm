@@ -22,3 +22,8 @@ quote = "^1"
 heck = "^0.3"
 proc-macro2 = "^1"
 convert_case = "0.4"
+
+[features]
+sqlx-mysql = []
+sqlx-postgres = []
+sqlx-sqlite = []

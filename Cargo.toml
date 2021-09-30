@@ -71,9 +71,9 @@ sqlx-json = ["sqlx/json", "with-json"]
 sqlx-chrono = ["sqlx/chrono", "with-chrono"]
 sqlx-decimal = ["sqlx/decimal", "with-rust_decimal"]
 sqlx-uuid = ["sqlx/uuid", "with-uuid"]
-sqlx-mysql = ["sqlx-dep", "sea-query/sqlx-mysql", "sqlx/mysql"]
-sqlx-postgres = ["sqlx-dep", "sea-query/sqlx-postgres", "sqlx/postgres"]
-sqlx-sqlite = ["sqlx-dep", "sea-query/sqlx-sqlite", "sqlx/sqlite"]
+sqlx-mysql = ["sqlx-dep", "sea-query/sqlx-mysql", "sqlx/mysql", "sea-orm-macros/sqlx-mysql"]
+sqlx-postgres = ["sqlx-dep", "sea-query/sqlx-postgres", "sqlx/postgres", "sea-orm-macros/sqlx-postgres"]
+sqlx-sqlite = ["sqlx-dep", "sea-query/sqlx-sqlite", "sqlx/sqlite", "sea-orm-macros/sqlx-sqlite"]
 runtime-async-std = []
 runtime-async-std-native-tls = [
     "sqlx/runtime-async-std-native-tls",

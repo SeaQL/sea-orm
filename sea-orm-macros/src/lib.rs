@@ -66,6 +66,22 @@ pub fn derive_custom_column(input: TokenStream) -> TokenStream {
     }
 }
 
+#[proc_macro_derive(DeriveDecode, attributes(sea_orm))]
+pub fn derive_decode(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_decode(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
+#[proc_macro_derive(DeriveEncode, attributes(sea_orm))]
+pub fn derive_encode(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_encode(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
 #[proc_macro_derive(DeriveModel, attributes(sea_orm))]
 pub fn derive_model(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -108,6 +124,14 @@ pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
 pub fn derive_relation(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     derives::expand_derive_relation(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
+#[proc_macro_derive(DeriveType, attributes(sea_orm))]
+pub fn derive_type(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_type(input)
         .unwrap_or_else(Error::into_compile_error)
         .into()
 }

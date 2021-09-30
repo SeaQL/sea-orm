@@ -144,7 +144,7 @@ impl DeriveModel {
 
                 fn set(&mut self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column, v: sea_orm::Value) {
                     match c {
-                        #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_idents => self.#field_idents = v.primitive_value().unwrap(),)*
+                        #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_idents => self.#field_idents = v.primitive_value(),)*
                         _ => panic!(#missing_field_msg),
                     }
                 }

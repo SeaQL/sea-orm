@@ -1,3 +1,5 @@
+pub mod r#type;
+
 pub mod derive_attr {
     use bae::FromAttributes;
 
