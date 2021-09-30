@@ -269,6 +269,48 @@ pub trait QueryFilter: Sized {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 4 OR `cake`.`id` = 5"
     /// );
     /// ```
+    ///
+    /// Add a runtime-built condition tree.
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// struct Input {
+    ///     name: Option<String>,
+    /// }
+    /// let input = Input { name: Some("cheese".to_owned()) };
+    ///
+    /// let mut conditions = Condition::all();
+    /// if let Some(name) = input.name {
+    ///     conditions = conditions.add(cake::Column::Name.contains(&name));
+    /// }
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(conditions)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese%'"
+    /// );
+    /// ```
+    ///
+    /// Add a runtime-built condition tree, functional-way.
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// struct Input {
+    ///     name: Option<String>,
+    /// }
+    /// let input = Input { name: Some("cheese".to_owned()) };
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(
+    ///             Condition::all()
+    ///                 .add_option(input.name.map(|n| cake::Column::Name.contains(&n)))
+    ///         )
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese%'"
+    /// );
+    /// ```
     fn filter<F>(mut self, filter: F) -> Self
     where
         F: IntoCondition,
