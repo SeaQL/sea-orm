@@ -20,8 +20,7 @@ listenfd = "0.3.3"
 # remove `path = ""` in your own project
 sea-orm = { path = "../../", version = "^0.2.3", features = [
   "macros",
-  "runtime-tokio-native-tls",
-  # "runtime-actix-native-tls",
+  "runtime-actix-native-tls",
 ], default-features = false }
 serde = "1"
 env_logger = "0.8"
