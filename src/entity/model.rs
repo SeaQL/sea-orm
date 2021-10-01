@@ -49,7 +49,7 @@ pub trait FromQueryResult: Sized {
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, FromQueryResult};
+    /// use sea_orm::{query::*, FromQueryResult};
     ///
     /// #[derive(Debug, PartialEq, FromQueryResult)]
     /// struct SelectResult {

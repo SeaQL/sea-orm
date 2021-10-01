@@ -134,16 +134,14 @@ where
     /// #     .append_query_results(vec![vec![
     /// #         maplit::btreemap! {
     /// #             "cake_name" => Into::<Value>::into("Chocolate Forest"),
-    /// #             "num_of_cakes" => Into::<Value>::into(1),
     /// #         },
     /// #         maplit::btreemap! {
     /// #             "cake_name" => Into::<Value>::into("New York Cheese"),
-    /// #             "num_of_cakes" => Into::<Value>::into(1),
     /// #         },
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveColumn, EnumIter, TryGetableMany};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveColumn, EnumIter};
     ///
     /// #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
     /// enum QueryAs {
@@ -161,7 +159,7 @@ where
     ///
     /// assert_eq!(
     ///     res,
-    ///     vec!["Chocolate Forest".to_owned(), "New York Cheese".to_owned(),]
+    ///     vec!["Chocolate Forest".to_owned(), "New York Cheese".to_owned()]
     /// );
     /// #
     /// # Ok(())
@@ -173,7 +171,60 @@ where
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."name" AS "cake_name" FROM "cake""#,
     ///         vec![]
-    ///     ),]
+    ///     )]
+    /// );
+    /// ```
+    ///
+    /// ```
+    /// # #[cfg(all(feature = "mock", feature = "macros"))]
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![vec![
+    /// #         maplit::btreemap! {
+    /// #             "cake_name" => Into::<Value>::into("Chocolate Forest"),
+    /// #             "num_of_cakes" => Into::<Value>::into(2i64),
+    /// #         },
+    /// #     ]])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveColumn, EnumIter};
+    ///
+    /// #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+    /// enum QueryAs {
+    ///     CakeName,
+    ///     NumOfCakes,
+    /// }
+    ///
+    /// # let _: Result<(), DbErr> = smol::block_on(async {
+    /// #
+    /// let res: Vec<(String, i64)> = cake::Entity::find()
+    ///     .select_only()
+    ///     .column_as(cake::Column::Name, QueryAs::CakeName)
+    ///     .column_as(cake::Column::Id.count(), QueryAs::NumOfCakes)
+    ///     .group_by(cake::Column::Name)
+    ///     .into_values::<_, QueryAs>()
+    ///     .all(&db)
+    ///     .await?;
+    ///
+    /// assert_eq!(
+    ///     res,
+    ///     vec![("Chocolate Forest".to_owned(), 2i64)]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # });
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         vec![
+    ///             r#"SELECT "cake"."name" AS "cake_name", COUNT("cake"."id") AS "num_of_cakes""#,
+    ///             r#"FROM "cake" GROUP BY "cake"."name""#,
+    ///         ].join(" ").as_str(),
+    ///         vec![]
+    ///     )]
     /// );
     /// ```
     pub fn into_values<T, C>(self) -> Selector<SelectGetableValue<T, C>>
