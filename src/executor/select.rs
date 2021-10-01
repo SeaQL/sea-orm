@@ -133,29 +133,29 @@ where
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
     /// #         maplit::btreemap! {
-    /// #             "name" => Into::<Value>::into("Chocolate Forest"),
+    /// #             "cake_name" => Into::<Value>::into("Chocolate Forest"),
     /// #             "num_of_cakes" => Into::<Value>::into(1),
     /// #         },
     /// #         maplit::btreemap! {
-    /// #             "name" => Into::<Value>::into("New York Cheese"),
+    /// #             "cake_name" => Into::<Value>::into("New York Cheese"),
     /// #             "num_of_cakes" => Into::<Value>::into(1),
     /// #         },
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, EnumIter, DeriveIden, TryGetableMany};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveColumn, EnumIter, TryGetableMany};
     ///
-    /// #[derive(EnumIter, DeriveIden)]
-    /// enum ResultCol {
-    ///     Name,
+    /// #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+    /// enum QueryAs {
+    ///     CakeName,
     /// }
     ///
     /// # let _: Result<(), DbErr> = smol::block_on(async {
     /// #
     /// let res: Vec<String> = cake::Entity::find()
     ///     .select_only()
-    ///     .column(cake::Column::Name)
-    ///     .into_values::<_, ResultCol>()
+    ///     .column_as(cake::Column::Name, QueryAs::CakeName)
+    ///     .into_values::<_, QueryAs>()
     ///     .all(&db)
     ///     .await?;
     ///
@@ -171,7 +171,7 @@ where
     ///     db.into_transaction_log(),
     ///     vec![Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
-    ///         r#"SELECT "cake"."name" FROM "cake""#,
+    ///         r#"SELECT "cake"."name" AS "cake_name" FROM "cake""#,
     ///         vec![]
     ///     ),]
     /// );
