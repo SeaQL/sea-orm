@@ -774,4 +774,32 @@ mod tests {
         assert_eq!(hello::Column::Two.to_string().as_str(), "two");
         assert_eq!(hello::Column::Three3.to_string().as_str(), "THREE");
     }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn column_name_enum_name_3() {
+        use sea_query::Iden;
+
+        mod my_entity {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "my_entity")]
+            pub struct Model {
+                #[sea_orm(primary_key, enum_name = "IdentityColumn", column_name = "id")]
+                pub id: i32,
+                #[sea_orm(column_name = "type")]
+                pub type_: String,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        assert_eq!(my_entity::Column::IdentityColumn.to_string().as_str(), "id");
+        assert_eq!(my_entity::Column::Type.to_string().as_str(), "type");
+    }
 }
