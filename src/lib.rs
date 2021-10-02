@@ -265,6 +265,7 @@
 )]
 
 mod database;
+mod docs;
 mod driver;
 pub mod entity;
 pub mod error;
@@ -273,7 +274,6 @@ pub mod query;
 pub mod schema;
 #[doc(hidden)]
 pub mod tests_cfg;
-mod docs;
 mod util;
 
 pub use database::*;
