@@ -29,41 +29,30 @@ pub struct DebugQuery<'a, Q, T> {
     pub value: T,
 }
 
-impl<'a, Q> DebugQuery<'a, Q, DbBackend>
-where
-    Q: QueryTrait,
-{
-    pub fn build(&self) -> Statement {
-        self.query.build(self.value)
-    }
+macro_rules! impl_debug_query {
+    ($impl_obj:ty,$db_expr:tt) => {
+        impl<'a, Q> DebugQuery<'a, Q, $impl_obj>
+        where
+            Q: QueryTrait,
+        {
+            pub fn build(&self) -> Statement {
+                let db_backend = $db_expr(self);
+                self.query.build(db_backend)
+            }
+        }
+    };
 }
 
-impl<'a, Q> DebugQuery<'a, Q, &DbBackend>
-where
-    Q: QueryTrait,
-{
-    pub fn build(&self) -> Statement {
-        self.query.build(*self.value)
-    }
-}
-
-impl<'a, Q> DebugQuery<'a, Q, &DatabaseConnection>
-where
-    Q: QueryTrait,
-{
-    pub fn build(&self) -> Statement {
-        self.query.build(self.value.get_database_backend())
-    }
-}
-
-impl<'a, Q> DebugQuery<'a, Q, DatabaseConnection>
-where
-    Q: QueryTrait,
-{
-    pub fn build(&self) -> Statement {
-        self.query.build(self.value.get_database_backend())
-    }
-}
+debug_query_build!(DbBackend, (|x: &DebugQuery<_, DbBackend>| x.value));
+debug_query_build!(&DbBackend, (|x: &DebugQuery<_, &DbBackend>| *x.value));
+debug_query_build!(
+    DatabaseConnection,
+    (|x: &DebugQuery<_, DatabaseConnection>| x.value.get_database_backend())
+);
+debug_query_build!(
+    &DatabaseConnection,
+    (|x: &DebugQuery<_, &DatabaseConnection>| x.value.get_database_backend())
+);
 
 /// Make get raw_sql becomes simply. It does not need to specify a specific `DbBackend`,
 /// but can be obtained through `get_database_backend` with `DatabaseConnection`.
