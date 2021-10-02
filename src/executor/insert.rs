@@ -1,5 +1,5 @@
 use crate::{
-    error::*, ActiveModelTrait, DatabaseConnection, DbBackend, EntityTrait, Insert, IntoDbBackend,
+    error::*, ActiveModelTrait, DatabaseConnection, DbBackend, EntityTrait, Insert,
     PrimaryKeyTrait, Statement, TryFromU64,
 };
 use sea_query::InsertStatement;

@@ -24,8 +24,6 @@ impl std::error::Error for ColumnFromStrErr {}
 
 impl std::fmt::Display for ColumnFromStrErr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        use chrono::format;
-
         write!(f, "{}", self.0.as_str())
     }
 }

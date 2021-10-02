@@ -16,32 +16,14 @@ pub enum DatabaseConnection {
 
 pub type DbConn = DatabaseConnection;
 
-pub trait IntoDbBackend {
-    fn build(&self, statement: &impl StatementBuilder) -> Statement;
-
-    fn get_query_builder(&self) -> Box<dyn QueryBuilder>;
-}
-
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub enum DbBackend {
+pub enum DatabaseBackend {
     MySql,
     Postgres,
     Sqlite,
 }
 
-impl IntoDbBackend for DbBackend {
-    fn build(&self, statement: &impl StatementBuilder) -> Statement {
-        statement.build(self)
-    }
-
-    fn get_query_builder(&self) -> Box<dyn QueryBuilder> {
-        match self {
-            Self::MySql => Box::new(MysqlQueryBuilder),
-            Self::Postgres => Box::new(PostgresQueryBuilder),
-            Self::Sqlite => Box::new(SqliteQueryBuilder),
-        }
-    }
-}
+pub type DbBackend = DatabaseBackend;
 
 impl Default for DatabaseConnection {
     fn default() -> Self {
@@ -154,6 +136,18 @@ impl DbBackend {
             }
             Self::MySql => base_url.starts_with("mysql://"),
             Self::Sqlite => base_url.starts_with("sqlite:"),
+        }
+    }
+
+    pub fn build(&self, statement: &impl StatementBuilder) -> Statement {
+        statement.build(self)
+    }
+
+    pub fn get_query_builder(&self) -> Box<dyn QueryBuilder> {
+        match self {
+            Self::MySql => Box::new(MysqlQueryBuilder),
+            Self::Postgres => Box::new(PostgresQueryBuilder),
+            Self::Sqlite => Box::new(SqliteQueryBuilder),
         }
     }
 }
