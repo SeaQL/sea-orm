@@ -15,5 +15,6 @@ pub async fn main() {
     tokio::spawn(async move {
         cake::Entity::find().one(&db).await.unwrap();
     })
-    .await.unwrap();
+    .await
+    .unwrap();
 }

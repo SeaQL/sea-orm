@@ -92,7 +92,9 @@ async fn create(
     .await
     .expect("could not insert post");
 
-    Ok(HttpResponse::Found().append_header(("location", "/")).finish())
+    Ok(HttpResponse::Found()
+        .append_header(("location", "/"))
+        .finish())
 }
 
 #[get("/{id}")]
@@ -133,7 +135,9 @@ async fn update(
     .await
     .expect("could not edit post");
 
-    Ok(HttpResponse::Found().append_header(("location", "/")).finish())
+    Ok(HttpResponse::Found()
+        .append_header(("location", "/"))
+        .finish())
 }
 
 #[post("/delete/{id}")]
@@ -149,7 +153,9 @@ async fn delete(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpRes
 
     post.delete(conn).await.unwrap();
 
-    Ok(HttpResponse::Found().append_header(("location", "/")).finish())
+    Ok(HttpResponse::Found()
+        .append_header(("location", "/"))
+        .finish())
 }
 
 #[actix_web::main]

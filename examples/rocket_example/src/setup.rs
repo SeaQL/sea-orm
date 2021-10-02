@@ -1,5 +1,5 @@
 use sea_orm::sea_query::{ColumnDef, TableCreateStatement};
-use sea_orm::{error::*, sea_query, DbConn, ExecResult, };
+use sea_orm::{error::*, sea_query, DbConn, ExecResult};
 
 async fn create_table(db: &DbConn, stmt: &TableCreateStatement) -> Result<ExecResult, DbErr> {
     let builder = db.get_database_backend();
