@@ -314,6 +314,32 @@ pub trait QueryFilter: Sized {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese%'"
     /// );
     /// ```
+    ///
+    /// A slightly more complex example.
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::Expr, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(
+    ///             Condition::all()
+    ///                 .add(
+    ///                     Condition::all()
+    ///                         .not()
+    ///                         .add(Expr::val(1).eq(1))
+    ///                         .add(Expr::val(2).eq(2))
+    ///                 )
+    ///                 .add(
+    ///                     Condition::any()
+    ///                         .add(Expr::val(3).eq(3))
+    ///                         .add(Expr::val(4).eq(4))
+    ///                 )
+    ///         )
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE (NOT (1 = 1 AND 2 = 2)) AND (3 = 3 OR 4 = 4)"#
+    /// );
+    /// ```
     fn filter<F>(mut self, filter: F) -> Self
     where
         F: IntoCondition,
