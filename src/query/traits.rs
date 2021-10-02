@@ -29,7 +29,7 @@ pub struct DebugQuery<'a, Q, T> {
     pub value: T,
 }
 
-macro_rules! impl_debug_query {
+macro_rules! debug_query_build {
     ($impl_obj:ty,$db_expr:tt) => {
         impl<'a, Q> DebugQuery<'a, Q, $impl_obj>
         where
