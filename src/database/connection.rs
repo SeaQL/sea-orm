@@ -139,7 +139,7 @@ impl DbBackend {
         }
     }
 
-    pub fn build<S>(&self, statement: S) -> Statement
+    pub fn build<S>(&self, statement: &S) -> Statement
     where
         S: StatementBuilder,
     {
