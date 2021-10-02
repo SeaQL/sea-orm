@@ -38,6 +38,15 @@ where
     }
 }
 
+impl<'a, Q> DebugQuery<'a, Q, &DbBackend>
+where
+    Q: QueryTrait,
+{
+    pub fn build(&self) -> Statement {
+        self.query.build(*self.value)
+    }
+}
+
 impl<'a, Q> DebugQuery<'a, Q, &DatabaseConnection>
 where
     Q: QueryTrait,
@@ -85,6 +94,9 @@ where
 /// assert_eq!(raw_sql,r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#);
 ///
 /// let raw_sql = gen_statement!(&c,DbBackend::MySql).to_string();
+/// assert_eq!(raw_sql,r#"INSERT INTO `cake` (`id`, `name`) VALUES (1, 'Apple Pie')"#);
+///
+/// let raw_sql = gen_statement!(&c,&DbBackend::MySql).to_string();
 /// assert_eq!(raw_sql,r#"INSERT INTO `cake` (`id`, `name`) VALUES (1, 'Apple Pie')"#);
 ///
 /// ```
