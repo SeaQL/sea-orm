@@ -42,6 +42,15 @@ pub fn build_cli() -> App<'static, 'static> {
                         .takes_value(false),
                 )
                 .arg(
+                    Arg::with_name("TABLES")
+                        .long("tables")
+                        .short("t")
+                        .use_delimiter(true)
+                        .help("Generate entity file for specified tables only (comma seperated)")
+                        .takes_value(true)
+                        .conflicts_with("INCLUDE_HIDDEN_TABLES"),
+                )
+                .arg(
                     Arg::with_name("EXPANDED_FORMAT")
                         .long("expanded-format")
                         .help("Generate entity file of expanded format")
