@@ -110,15 +110,15 @@ impl DatabaseTransaction {
     {
         let res = callback(&self)
             .await
-            .map_err(|e| TransactionError::Transaction(e));
+            .map_err(TransactionError::Transaction);
         if res.is_ok() {
             self.commit()
                 .await
-                .map_err(|e| TransactionError::Connection(e))?;
+                .map_err(TransactionError::Connection)?;
         } else {
             self.rollback()
                 .await
-                .map_err(|e| TransactionError::Connection(e))?;
+                .map_err(TransactionError::Connection)?;
         }
         res
     }
@@ -341,7 +341,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
         let transaction = self
             .begin()
             .await
-            .map_err(|e| TransactionError::Connection(e))?;
+            .map_err(TransactionError::Connection)?;
         transaction.run(_callback).await
     }
 }

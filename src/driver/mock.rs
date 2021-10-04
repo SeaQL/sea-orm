@@ -114,7 +114,7 @@ impl MockDatabaseConnection {
         statement: &Statement,
     ) -> Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>> {
         match self.query_all(statement.clone()) {
-            Ok(v) => Box::pin(futures::stream::iter(v.into_iter().map(|r| Ok(r)))),
+            Ok(v) => Box::pin(futures::stream::iter(v.into_iter().map(Ok))),
             Err(e) => Box::pin(futures::stream::iter(Some(Err(e)).into_iter())),
         }
     }

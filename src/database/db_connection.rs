@@ -193,7 +193,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
             DatabaseConnection::MockDatabaseConnection(conn) => {
                 let transaction = DatabaseTransaction::new_mock(Arc::clone(conn))
                     .await
-                    .map_err(|e| TransactionError::Connection(e))?;
+                    .map_err(TransactionError::Connection)?;
                 transaction.run(_callback).await
             }
             DatabaseConnection::Disconnected => panic!("Disconnected"),
@@ -202,10 +202,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
 
     #[cfg(feature = "mock")]
     fn is_mock_connection(&self) -> bool {
-        match self {
-            DatabaseConnection::MockDatabaseConnection(_) => true,
-            _ => false,
-        }
+        matches!(self, DatabaseConnection::MockDatabaseConnection(_))
     }
 }
 
