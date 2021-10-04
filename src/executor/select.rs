@@ -1,8 +1,8 @@
-use crate::{
-    error::*, DatabaseConnection, EntityTrait, FromQueryResult, IdenStatic, Iterable, JsonValue,
-    ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo,
-    SelectTwoMany, Statement, TryGetableMany,
-};
+#[cfg(feature = "sqlx-dep")]
+use std::pin::Pin;
+use crate::{ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, JsonValue, ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement, error::*};
+#[cfg(feature = "sqlx-dep")]
+use futures::{Stream, TryStreamExt};
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
 
@@ -235,23 +235,35 @@ where
         Selector::<SelectGetableValue<T, C>>::with_columns(self.query)
     }
 
-    pub async fn one(self, db: &DatabaseConnection) -> Result<Option<E::Model>, DbErr> {
+    pub async fn one<'a, C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
+    where C: ConnectionTrait<'a> {
         self.into_model().one(db).await
     }
 
-    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<E::Model>, DbErr> {
+    pub async fn all<'a, C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
+    where C: ConnectionTrait<'a> {
         self.into_model().all(db).await
     }
 
-    pub fn paginate(
+    #[cfg(feature = "sqlx-dep")]
+    pub async fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<impl Stream<Item=Result<E::Model, DbErr>> + 'b, DbErr>
+    where
+        C: ConnectionTrait<'a>,
+    {
+        self.into_model().stream(db).await
+    }
+
+    pub fn paginate<'a, C>(
         self,
-        db: &DatabaseConnection,
+        db: &'a C,
         page_size: usize,
-    ) -> Paginator<'_, SelectModel<E::Model>> {
+    ) -> Paginator<'a, C, SelectModel<E::Model>>
+    where C: ConnectionTrait<'a> {
         self.into_model().paginate(db, page_size)
     }
 
-    pub async fn count(self, db: &DatabaseConnection) -> Result<usize, DbErr> {
+    pub async fn count<'a, C>(self, db: &'a C) -> Result<usize, DbErr>
+    where C: ConnectionTrait<'a> {
         self.paginate(db, 1).num_items().await
     }
 }
@@ -280,29 +292,41 @@ where
         }
     }
 
-    pub async fn one(
+    pub async fn one<'a, C>(
         self,
-        db: &DatabaseConnection,
-    ) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr> {
+        db: &C,
+    ) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
+    where C: ConnectionTrait<'a> {
         self.into_model().one(db).await
     }
 
-    pub async fn all(
+    pub async fn all<'a, C>(
         self,
-        db: &DatabaseConnection,
-    ) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr> {
+        db: &C,
+    ) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr>
+    where C: ConnectionTrait<'a> {
         self.into_model().all(db).await
     }
 
-    pub fn paginate(
+    #[cfg(feature = "sqlx-dep")]
+    pub async fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<impl Stream<Item=Result<(E::Model, Option<F::Model>), DbErr>> + 'b, DbErr>
+    where
+        C: ConnectionTrait<'a>,
+    {
+        self.into_model().stream(db).await
+    }
+
+    pub fn paginate<'a, C>(
         self,
-        db: &DatabaseConnection,
+        db: &'a C,
         page_size: usize,
-    ) -> Paginator<'_, SelectTwoModel<E::Model, F::Model>> {
+    ) -> Paginator<'a, C, SelectTwoModel<E::Model, F::Model>>
+    where C: ConnectionTrait<'a> {
         self.into_model().paginate(db, page_size)
     }
 
-    pub async fn count(self, db: &DatabaseConnection) -> Result<usize, DbErr> {
+    pub async fn count<'a, C>(self, db: &'a C) -> Result<usize, DbErr>
+    where C: ConnectionTrait<'a> {
         self.paginate(db, 1).num_items().await
     }
 }
@@ -331,17 +355,27 @@ where
         }
     }
 
-    pub async fn one(
+    pub async fn one<'a, C>(
         self,
-        db: &DatabaseConnection,
-    ) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr> {
+        db: &C,
+    ) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
+    where C: ConnectionTrait<'a> {
         self.into_model().one(db).await
     }
 
-    pub async fn all(
+    #[cfg(feature = "sqlx-dep")]
+    pub async fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<impl Stream<Item=Result<(E::Model, Option<F::Model>), DbErr>> + 'b, DbErr>
+    where
+        C: ConnectionTrait<'a>,
+    {
+        self.into_model().stream(db).await
+    }
+
+    pub async fn all<'a, C>(
         self,
-        db: &DatabaseConnection,
-    ) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr> {
+        db: &C,
+    ) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>
+    where C: ConnectionTrait<'a> {
         let rows = self.into_model().all(db).await?;
         Ok(consolidate_query_result::<E, F>(rows))
     }
@@ -376,7 +410,8 @@ where
         }
     }
 
-    pub async fn one(mut self, db: &DatabaseConnection) -> Result<Option<S::Item>, DbErr> {
+    pub async fn one<'a, C>(mut self, db: &C) -> Result<Option<S::Item>, DbErr>
+    where C: ConnectionTrait<'a> {
         let builder = db.get_database_backend();
         self.query.limit(1);
         let row = db.query_one(builder.build(&self.query)).await?;
@@ -386,7 +421,8 @@ where
         }
     }
 
-    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, DbErr> {
+    pub async fn all<'a, C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
+    where C: ConnectionTrait<'a> {
         let builder = db.get_database_backend();
         let rows = db.query_all(builder.build(&self.query)).await?;
         let mut models = Vec::new();
@@ -396,7 +432,21 @@ where
         Ok(models)
     }
 
-    pub fn paginate(self, db: &DatabaseConnection, page_size: usize) -> Paginator<'_, S> {
+    #[cfg(feature = "sqlx-dep")]
+    pub async fn stream<'a: 'b, 'b, C>(self, db: &'a C) -> Result<Pin<Box<dyn Stream<Item=Result<S::Item, DbErr>> + 'b>>, DbErr>
+    where
+        C: ConnectionTrait<'a>,
+        S: 'b,
+    {
+        let builder = db.get_database_backend();
+        let stream = db.stream(builder.build(&self.query)).await?;
+        Ok(Box::pin(stream.and_then(|row| {
+            futures::future::ready(S::from_raw_query_result(row))
+        })))
+    }
+
+    pub fn paginate<'a, C>(self, db: &'a C, page_size: usize) -> Paginator<'a, C, S>
+    where C: ConnectionTrait<'a> {
         Paginator {
             query: self.query,
             page: 0,
@@ -606,7 +656,8 @@ where
     ///     ),]
     /// );
     /// ```
-    pub async fn one(self, db: &DatabaseConnection) -> Result<Option<S::Item>, DbErr> {
+    pub async fn one<'a, C>(self, db: &C) -> Result<Option<S::Item>, DbErr>
+    where C: ConnectionTrait<'a> {
         let row = db.query_one(self.stmt).await?;
         match row {
             Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
@@ -645,7 +696,8 @@ where
     ///     ),]
     /// );
     /// ```
-    pub async fn all(self, db: &DatabaseConnection) -> Result<Vec<S::Item>, DbErr> {
+    pub async fn all<'a, C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
+    where C: ConnectionTrait<'a> {
         let rows = db.query_all(self.stmt).await?;
         let mut models = Vec::new();
         for row in rows.into_iter() {

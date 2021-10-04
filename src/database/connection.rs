@@ -1,4 +1,5 @@
-use crate::{error::*, ExecResult, QueryResult, Statement, StatementBuilder};
+use std::{future::Future, pin::Pin, sync::Arc};
+use crate::{DatabaseTransaction, ConnectionTrait, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError, error::*};
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 
 #[cfg_attr(not(feature = "mock"), derive(Clone))]
@@ -10,7 +11,7 @@ pub enum DatabaseConnection {
     #[cfg(feature = "sqlx-sqlite")]
     SqlxSqlitePoolConnection(crate::SqlxSqlitePoolConnection),
     #[cfg(feature = "mock")]
-    MockDatabaseConnection(crate::MockDatabaseConnection),
+    MockDatabaseConnection(Arc<crate::MockDatabaseConnection>),
     Disconnected,
 }
 
@@ -51,8 +52,11 @@ impl std::fmt::Debug for DatabaseConnection {
     }
 }
 
-impl DatabaseConnection {
-    pub fn get_database_backend(&self) -> DbBackend {
+#[async_trait::async_trait]
+impl<'a> ConnectionTrait<'a> for DatabaseConnection {
+    type Stream = crate::QueryStream;
+
+    fn get_database_backend(&self) -> DbBackend {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(_) => DbBackend::MySql,
@@ -66,7 +70,7 @@ impl DatabaseConnection {
         }
     }
 
-    pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
+    async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.execute(stmt).await,
@@ -75,12 +79,12 @@ impl DatabaseConnection {
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.execute(stmt).await,
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn) => conn.execute(stmt).await,
+            DatabaseConnection::MockDatabaseConnection(conn) => conn.execute(stmt),
             DatabaseConnection::Disconnected => Err(DbErr::Conn("Disconnected".to_owned())),
         }
     }
 
-    pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
+    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_one(stmt).await,
@@ -89,12 +93,12 @@ impl DatabaseConnection {
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.query_one(stmt).await,
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn) => conn.query_one(stmt).await,
+            DatabaseConnection::MockDatabaseConnection(conn) => conn.query_one(stmt),
             DatabaseConnection::Disconnected => Err(DbErr::Conn("Disconnected".to_owned())),
         }
     }
 
-    pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
+    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_all(stmt).await,
@@ -103,12 +107,76 @@ impl DatabaseConnection {
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.query_all(stmt).await,
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn) => conn.query_all(stmt).await,
+            DatabaseConnection::MockDatabaseConnection(conn) => conn.query_all(stmt),
             DatabaseConnection::Disconnected => Err(DbErr::Conn("Disconnected".to_owned())),
         }
     }
 
+    fn stream(&'a self, stmt: Statement) -> Pin<Box<dyn Future<Output=Result<Self::Stream, DbErr>> + 'a>> {
+        Box::pin(async move {
+            Ok(match self {
+                #[cfg(feature = "sqlx-mysql")]
+                DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.stream(stmt).await?,
+                #[cfg(feature = "sqlx-postgres")]
+                DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.stream(stmt).await?,
+                #[cfg(feature = "sqlx-sqlite")]
+                DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.stream(stmt).await?,
+                #[cfg(feature = "mock")]
+                DatabaseConnection::MockDatabaseConnection(conn) => crate::QueryStream::from((Arc::clone(conn), stmt)),
+                DatabaseConnection::Disconnected => panic!("Disconnected"),
+            })
+        })
+    }
+
+    async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.begin().await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.begin().await,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.begin().await,
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(conn) => DatabaseTransaction::new_mock(Arc::clone(conn)).await,
+            DatabaseConnection::Disconnected => panic!("Disconnected"),
+        }
+    }
+
+    /// Execute the function inside a transaction.
+    /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
+    async fn transaction<F, T, E>(&self, _callback: F) -> Result<T, TransactionError<E>>
+    where
+        F: for<'c> FnOnce(&'c DatabaseTransaction) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>> + Send,
+        T: Send,
+        E: std::error::Error + Send,
+    {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.transaction(_callback).await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.transaction(_callback).await,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.transaction(_callback).await,
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(conn) => {
+                let transaction = DatabaseTransaction::new_mock(Arc::clone(conn)).await.map_err(|e| TransactionError::Connection(e))?;
+                transaction.run(_callback).await
+            },
+            DatabaseConnection::Disconnected => panic!("Disconnected"),
+        }
+    }
+
     #[cfg(feature = "mock")]
+    fn is_mock_connection(&self) -> bool {
+        match self {
+            DatabaseConnection::MockDatabaseConnection(_) => true,
+            _ => false,
+        }
+    }
+}
+
+#[cfg(feature = "mock")]
+impl DatabaseConnection {
     pub fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
         match self {
             DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
@@ -116,12 +184,6 @@ impl DatabaseConnection {
         }
     }
 
-    #[cfg(not(feature = "mock"))]
-    pub fn as_mock_connection(&self) -> Option<bool> {
-        None
-    }
-
-    #[cfg(feature = "mock")]
     pub fn into_transaction_log(self) -> Vec<crate::Transaction> {
         let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
         mocker.drain_transaction_log()

@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
 pub use sea_orm::entity::*;
-pub use sea_orm::QueryFilter;
+pub use sea_orm::{QueryFilter, ConnectionTrait};
 
 // Run the test locally:
 // DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std --test query_tests

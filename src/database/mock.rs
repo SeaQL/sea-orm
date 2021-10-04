@@ -4,7 +4,7 @@ use crate::{
     Statement, Transaction,
 };
 use sea_query::{Value, ValueType};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Debug)]
 pub struct MockDatabase {
@@ -40,7 +40,7 @@ impl MockDatabase {
     }
 
     pub fn into_connection(self) -> DatabaseConnection {
-        DatabaseConnection::MockDatabaseConnection(MockDatabaseConnection::new(self))
+        DatabaseConnection::MockDatabaseConnection(Arc::new(MockDatabaseConnection::new(self)))
     }
 
     pub fn append_exec_results(mut self, mut vec: Vec<MockExecResult>) -> Self {
@@ -100,7 +100,8 @@ impl MockRow {
     where
         T: ValueType,
     {
-        Ok(self.values.get(col).unwrap().clone().unwrap())
+        T::try_from(self.values.get(col).unwrap().clone())
+            .map_err(|e| DbErr::Query(e.to_string()))
     }
 
     pub fn into_column_value_tuples(self) -> impl Iterator<Item = (String, Value)> {

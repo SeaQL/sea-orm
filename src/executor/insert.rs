@@ -1,9 +1,6 @@
-use crate::{
-    error::*, ActiveModelTrait, DatabaseConnection, DbBackend, EntityTrait, Insert,
-    PrimaryKeyTrait, Statement, TryFromU64,
-};
+use crate::{ActiveModelTrait, ConnectionTrait, EntityTrait, Insert, PrimaryKeyTrait, Statement, TryFromU64, error::*};
 use sea_query::InsertStatement;
-use std::{future::Future, marker::PhantomData};
+use std::marker::PhantomData;
 
 #[derive(Clone, Debug)]
 pub struct Inserter<A>
@@ -27,11 +24,12 @@ where
     A: ActiveModelTrait,
 {
     #[allow(unused_mut)]
-    pub fn exec<'a>(
+    pub async fn exec<'a, C>(
         self,
-        db: &'a DatabaseConnection,
-    ) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
+        db: &'a C,
+    ) -> Result<InsertResult<A>, DbErr>
     where
+        C: ConnectionTrait<'a>,
         A: 'a,
     {
         // TODO: extract primary key's value from query
@@ -47,7 +45,7 @@ where
                 );
             }
         }
-        Inserter::<A>::new(query).exec(db)
+        Inserter::<A>::new(query).exec(db).await
         // TODO: return primary key if extracted before, otherwise use InsertResult
     }
 }
@@ -63,24 +61,26 @@ where
         }
     }
 
-    pub fn exec<'a>(
+    pub async fn exec<'a, C>(
         self,
-        db: &'a DatabaseConnection,
-    ) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
+        db: &'a C,
+    ) -> Result<InsertResult<A>, DbErr>
     where
+        C: ConnectionTrait<'a>,
         A: 'a,
     {
         let builder = db.get_database_backend();
-        exec_insert(builder.build(&self.query), db)
+        exec_insert(builder.build(&self.query), db).await
     }
 }
 
 // Only Statement impl Send
-async fn exec_insert<A>(
+async fn exec_insert<'a, A, C>(
     statement: Statement,
-    db: &DatabaseConnection,
+    db: &C,
 ) -> Result<InsertResult<A>, DbErr>
 where
+    C: ConnectionTrait<'a>,
     A: ActiveModelTrait,
 {
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
@@ -93,13 +93,13 @@ where
                 .collect::<Vec<_>>();
             let res = db.query_one(statement).await?.unwrap();
             res.try_get_many("", cols.as_ref()).unwrap_or_default()
-        }
+        },
         _ => {
             let last_insert_id = db.execute(statement).await?.last_insert_id();
             ValueTypeOf::<A>::try_from_u64(last_insert_id)
                 .ok()
                 .unwrap_or_default()
-        }
+        },
     };
     Ok(InsertResult { last_insert_id })
 }
