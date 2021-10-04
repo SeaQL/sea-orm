@@ -326,7 +326,7 @@ pub trait TryGetableMany: Sized {
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, EnumIter, DeriveIden, TryGetableMany};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveIden, EnumIter, TryGetableMany};
     ///
     /// #[derive(EnumIter, DeriveIden)]
     /// enum ResultCol {
