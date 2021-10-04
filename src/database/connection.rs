@@ -3,7 +3,10 @@ use crate::{
     StatementBuilder, TransactionError,
 };
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
-use std::{future::Future, pin::Pin, sync::Arc};
+use std::{future::Future, pin::Pin};
+
+#[cfg(feature = "mock")]
+use std::sync::Arc;
 
 #[cfg_attr(not(feature = "mock"), derive(Clone))]
 pub enum DatabaseConnection {

@@ -1,4 +1,7 @@
-use std::{pin::Pin, sync::Arc, task::Poll};
+use std::{pin::Pin, task::Poll};
+
+#[cfg(feature = "mock")]
+use std::sync::Arc;
 
 use futures::Stream;
 #[cfg(feature = "sqlx-dep")]
