@@ -276,7 +276,9 @@ pub trait QueryFilter: Sized {
     /// struct Input {
     ///     name: Option<String>,
     /// }
-    /// let input = Input { name: Some("cheese".to_owned()) };
+    /// let input = Input {
+    ///     name: Some("cheese".to_owned()),
+    /// };
     ///
     /// let mut conditions = Condition::all();
     /// if let Some(name) = input.name {
@@ -298,17 +300,44 @@ pub trait QueryFilter: Sized {
     /// struct Input {
     ///     name: Option<String>,
     /// }
-    /// let input = Input { name: Some("cheese".to_owned()) };
+    /// let input = Input {
+    ///     name: Some("cheese".to_owned()),
+    /// };
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(
+    ///             Condition::all().add_option(input.name.map(|n| cake::Column::Name.contains(&n)))
+    ///         )
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese%'"
+    /// );
+    /// ```
+    ///
+    /// A slightly more complex example.
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, sea_query::Expr, DbBackend};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(
     ///             Condition::all()
-    ///                 .add_option(input.name.map(|n| cake::Column::Name.contains(&n)))
+    ///                 .add(
+    ///                     Condition::all()
+    ///                         .not()
+    ///                         .add(Expr::val(1).eq(1))
+    ///                         .add(Expr::val(2).eq(2))
+    ///                 )
+    ///                 .add(
+    ///                     Condition::any()
+    ///                         .add(Expr::val(3).eq(3))
+    ///                         .add(Expr::val(4).eq(4))
+    ///                 )
     ///         )
-    ///         .build(DbBackend::MySql)
+    ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese%'"
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE (NOT (1 = 1 AND 2 = 2)) AND (3 = 3 OR 4 = 4)"#
     /// );
     /// ```
     fn filter<F>(mut self, filter: F) -> Self

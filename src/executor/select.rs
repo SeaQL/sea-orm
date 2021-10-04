@@ -1,7 +1,7 @@
 use crate::{
     error::*, DatabaseConnection, EntityTrait, FromQueryResult, IdenStatic, Iterable, JsonValue,
     ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo,
-    SelectTwoMany, Statement,
+    SelectTwoMany, Statement, TryGetableMany,
 };
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
@@ -31,6 +31,16 @@ pub trait SelectorTrait {
 }
 
 #[derive(Debug)]
+pub struct SelectGetableValue<T, C>
+where
+    T: TryGetableMany,
+    C: sea_strum::IntoEnumIterator + sea_query::Iden,
+{
+    columns: PhantomData<C>,
+    model: PhantomData<T>,
+}
+
+#[derive(Debug)]
 pub struct SelectModel<M>
 where
     M: FromQueryResult,
@@ -45,6 +55,19 @@ where
     N: FromQueryResult,
 {
     model: PhantomData<(M, N)>,
+}
+
+impl<T, C> SelectorTrait for SelectGetableValue<T, C>
+where
+    T: TryGetableMany,
+    C: sea_strum::IntoEnumIterator + sea_query::Iden,
+{
+    type Item = T;
+
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr> {
+        let cols: Vec<String> = C::iter().map(|col| col.to_string()).collect();
+        T::try_get_many(&res, "", &cols).map_err(Into::into)
+    }
 }
 
 impl<M> SelectorTrait for SelectModel<M>
@@ -101,6 +124,114 @@ where
             query: self.query,
             selector: SelectModel { model: PhantomData },
         }
+    }
+
+    /// ```
+    /// # #[cfg(all(feature = "mock", feature = "macros"))]
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![vec![
+    /// #         maplit::btreemap! {
+    /// #             "cake_name" => Into::<Value>::into("Chocolate Forest"),
+    /// #         },
+    /// #         maplit::btreemap! {
+    /// #             "cake_name" => Into::<Value>::into("New York Cheese"),
+    /// #         },
+    /// #     ]])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveColumn, EnumIter};
+    ///
+    /// #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+    /// enum QueryAs {
+    ///     CakeName,
+    /// }
+    ///
+    /// # let _: Result<(), DbErr> = smol::block_on(async {
+    /// #
+    /// let res: Vec<String> = cake::Entity::find()
+    ///     .select_only()
+    ///     .column_as(cake::Column::Name, QueryAs::CakeName)
+    ///     .into_values::<_, QueryAs>()
+    ///     .all(&db)
+    ///     .await?;
+    ///
+    /// assert_eq!(
+    ///     res,
+    ///     vec!["Chocolate Forest".to_owned(), "New York Cheese".to_owned()]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # });
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "cake"."name" AS "cake_name" FROM "cake""#,
+    ///         vec![]
+    ///     )]
+    /// );
+    /// ```
+    ///
+    /// ```
+    /// # #[cfg(all(feature = "mock", feature = "macros"))]
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![vec![
+    /// #         maplit::btreemap! {
+    /// #             "cake_name" => Into::<Value>::into("Chocolate Forest"),
+    /// #             "num_of_cakes" => Into::<Value>::into(2i64),
+    /// #         },
+    /// #     ]])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveColumn, EnumIter};
+    ///
+    /// #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+    /// enum QueryAs {
+    ///     CakeName,
+    ///     NumOfCakes,
+    /// }
+    ///
+    /// # let _: Result<(), DbErr> = smol::block_on(async {
+    /// #
+    /// let res: Vec<(String, i64)> = cake::Entity::find()
+    ///     .select_only()
+    ///     .column_as(cake::Column::Name, QueryAs::CakeName)
+    ///     .column_as(cake::Column::Id.count(), QueryAs::NumOfCakes)
+    ///     .group_by(cake::Column::Name)
+    ///     .into_values::<_, QueryAs>()
+    ///     .all(&db)
+    ///     .await?;
+    ///
+    /// assert_eq!(res, vec![("Chocolate Forest".to_owned(), 2i64)]);
+    /// #
+    /// # Ok(())
+    /// # });
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         vec![
+    ///             r#"SELECT "cake"."name" AS "cake_name", COUNT("cake"."id") AS "num_of_cakes""#,
+    ///             r#"FROM "cake" GROUP BY "cake"."name""#,
+    ///         ]
+    ///         .join(" ")
+    ///         .as_str(),
+    ///         vec![]
+    ///     )]
+    /// );
+    /// ```
+    pub fn into_values<T, C>(self) -> Selector<SelectGetableValue<T, C>>
+    where
+        T: TryGetableMany,
+        C: sea_strum::IntoEnumIterator + sea_query::Iden,
+    {
+        Selector::<SelectGetableValue<T, C>>::with_columns(self.query)
     }
 
     pub async fn one(self, db: &DatabaseConnection) -> Result<Option<E::Model>, DbErr> {
@@ -228,6 +359,22 @@ impl<S> Selector<S>
 where
     S: SelectorTrait,
 {
+    /// Create `Selector` from Statment and columns. Executing this `Selector`
+    /// will return a type `T` which implement `TryGetableMany`.
+    pub fn with_columns<T, C>(query: SelectStatement) -> Selector<SelectGetableValue<T, C>>
+    where
+        T: TryGetableMany,
+        C: sea_strum::IntoEnumIterator + sea_query::Iden,
+    {
+        Selector {
+            query,
+            selector: SelectGetableValue {
+                columns: PhantomData,
+                model: PhantomData,
+            },
+        }
+    }
+
     pub async fn one(mut self, db: &DatabaseConnection) -> Result<Option<S::Item>, DbErr> {
         let builder = db.get_database_backend();
         self.query.limit(1);
@@ -272,6 +419,22 @@ where
         SelectorRaw {
             stmt,
             selector: SelectModel { model: PhantomData },
+        }
+    }
+
+    /// Create `SelectorRaw` from Statment and columns. Executing this `SelectorRaw` will
+    /// return a type `T` which implement `TryGetableMany`.
+    pub fn with_columns<T, C>(stmt: Statement) -> SelectorRaw<SelectGetableValue<T, C>>
+    where
+        T: TryGetableMany,
+        C: sea_strum::IntoEnumIterator + sea_query::Iden,
+    {
+        SelectorRaw {
+            stmt,
+            selector: SelectGetableValue {
+                columns: PhantomData,
+                model: PhantomData,
+            },
         }
     }
 

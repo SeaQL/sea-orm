@@ -26,7 +26,15 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
             let url = args.value_of("DATABASE_URL").unwrap();
             let output_dir = args.value_of("OUTPUT_DIR").unwrap();
             let include_hidden_tables = args.is_present("INCLUDE_HIDDEN_TABLES");
+            let tables = args.values_of("TABLES").unwrap_or_default().collect::<Vec<_>>();
             let expanded_format = args.is_present("EXPANDED_FORMAT");
+            let filter_tables = |table: &str| -> bool {
+                if tables.len() > 0 {
+                    return tables.contains(&table);
+                }
+                
+                true
+            };
             let filter_hidden_tables = |table: &str| -> bool {
                 if include_hidden_tables {
                     true
@@ -53,6 +61,7 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                 schema
                     .tables
                     .into_iter()
+                    .filter(|schema| filter_tables(&schema.info.name))
                     .filter(|schema| filter_hidden_tables(&schema.info.name))
                     .map(|schema| schema.write())
                     .collect()
@@ -67,6 +76,7 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                 schema
                     .tables
                     .into_iter()
+                    .filter(|schema| filter_tables(&schema.info.name))
                     .filter(|schema| filter_hidden_tables(&schema.info.name))
                     .map(|schema| schema.write())
                     .collect()

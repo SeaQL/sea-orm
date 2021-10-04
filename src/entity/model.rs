@@ -44,16 +44,12 @@ pub trait FromQueryResult: Sized {
     /// #     .append_query_results(vec![vec![
     /// #         maplit::btreemap! {
     /// #             "name" => Into::<Value>::into("Chocolate Forest"),
-    /// #             "num_of_cakes" => Into::<Value>::into(1),
-    /// #         },
-    /// #         maplit::btreemap! {
-    /// #             "name" => Into::<Value>::into("New York Cheese"),
-    /// #             "num_of_cakes" => Into::<Value>::into(1),
+    /// #             "num_of_cakes" => Into::<Value>::into(2),
     /// #         },
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, FromQueryResult};
+    /// use sea_orm::{query::*, FromQueryResult};
     ///
     /// #[derive(Debug, PartialEq, FromQueryResult)]
     /// struct SelectResult {
@@ -65,7 +61,7 @@ pub trait FromQueryResult: Sized {
     /// #
     /// let res: Vec<SelectResult> = SelectResult::find_by_statement(Statement::from_sql_and_values(
     ///     DbBackend::Postgres,
-    ///     r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#,
+    ///     r#"SELECT "name", COUNT(*) AS "num_of_cakes" FROM "cake" GROUP BY("name")"#,
     ///     vec![],
     /// ))
     /// .all(&db)
@@ -73,29 +69,22 @@ pub trait FromQueryResult: Sized {
     ///
     /// assert_eq!(
     ///     res,
-    ///     vec![
-    ///         SelectResult {
-    ///             name: "Chocolate Forest".to_owned(),
-    ///             num_of_cakes: 1,
-    ///         },
-    ///         SelectResult {
-    ///             name: "New York Cheese".to_owned(),
-    ///             num_of_cakes: 1,
-    ///         },
-    ///     ]
+    ///     vec![SelectResult {
+    ///         name: "Chocolate Forest".to_owned(),
+    ///         num_of_cakes: 2,
+    ///     },]
     /// );
     /// #
     /// # Ok(())
     /// # });
-    ///
-    /// assert_eq!(
-    ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
-    ///         DbBackend::Postgres,
-    ///         r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#,
-    ///         vec![]
-    ///     ),]
-    /// );
+    /// # assert_eq!(
+    /// #     db.into_transaction_log(),
+    /// #     vec![Transaction::from_sql_and_values(
+    /// #         DbBackend::Postgres,
+    /// #         r#"SELECT "name", COUNT(*) AS "num_of_cakes" FROM "cake" GROUP BY("name")"#,
+    /// #         vec![]
+    /// #     ),]
+    /// # );
     /// ```
     fn find_by_statement(stmt: Statement) -> SelectorRaw<SelectModel<Self>> {
         SelectorRaw::<SelectModel<Self>>::from_statement(stmt)

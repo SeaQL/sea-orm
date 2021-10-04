@@ -5,13 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.2.4 - Prerelease
+## 0.2.4 - 2021-10-01
 
 - [[#186]] [sea-orm-cli] Foreign key handling
 - [[#191]] [sea-orm-cli] Unique key handling
+- [[#182]] `find_linked` join with alias
+- [[#202]] Accept both `postgres://` and `postgresql://`
+- [[#208]] Support feteching T, (T, U), (T, U, P) etc
+- [[#209]] Rename column name & column enum variant
+- [[#207]] Support `chrono::NaiveDate` & `chrono::NaiveTime`
+- Support `Condition::not` (from sea-query)
 
 [#186]: https://github.com/SeaQL/sea-orm/issues/186
 [#191]: https://github.com/SeaQL/sea-orm/issues/191
+[#182]: https://github.com/SeaQL/sea-orm/pull/182
+[#202]: https://github.com/SeaQL/sea-orm/pull/202
+[#208]: https://github.com/SeaQL/sea-orm/pull/208
+[#209]: https://github.com/SeaQL/sea-orm/pull/209
+[#207]: https://github.com/SeaQL/sea-orm/pull/207
 
 ## 0.2.3 - 2021-09-22
 
