@@ -82,7 +82,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![
@@ -137,12 +137,12 @@ pub trait EntityTrait: EntityName {
     /// assert_eq!(
     ///     db.into_transaction_log(),
     ///     vec![
-    ///         Transaction::from_sql_and_values(
+    ///         MockTransaction::from_sql_and_values(
     ///             DbBackend::Postgres,
     ///             r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
     ///             vec![1u64.into()]
     ///         ),
-    ///         Transaction::from_sql_and_values(
+    ///         MockTransaction::from_sql_and_values(
     ///             DbBackend::Postgres,
     ///             r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
     ///             vec![]
@@ -160,7 +160,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![
@@ -190,7 +190,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     vec![MockTransaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = $1"#,
     ///         vec![11i32.into()]
@@ -200,7 +200,7 @@ pub trait EntityTrait: EntityName {
     /// Find by composite key
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![
@@ -230,7 +230,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     vec![MockTransaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         [
     ///             r#"SELECT "cake_filling"."cake_id", "cake_filling"."filling_id" FROM "cake_filling""#,
@@ -262,7 +262,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results(vec![
@@ -292,7 +292,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     vec![MockTransaction::from_sql_and_values(
     ///         DbBackend::Postgres, r#"INSERT INTO "cake" ("name") VALUES ($1) RETURNING "id""#, vec!["Apple Pie".into()]
     ///     )]);
     /// ```
@@ -309,7 +309,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results(vec![
@@ -343,7 +343,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     vec![MockTransaction::from_sql_and_values(
     ///         DbBackend::Postgres, r#"INSERT INTO "cake" ("name") VALUES ($1), ($2) RETURNING "id""#,
     ///         vec!["Apple Pie".into(), "Orange Scone".into()]
     ///     )]);
@@ -364,7 +364,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results(vec![
@@ -398,7 +398,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     vec![MockTransaction::from_sql_and_values(
     ///         DbBackend::Postgres, r#"UPDATE "fruit" SET "name" = $1 WHERE "fruit"."id" = $2 AND "fruit"."name" LIKE $3"#,
     ///         vec!["Orange".into(), 1i32.into(), "%orange%".into()]
     ///     )]);
@@ -418,7 +418,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results(vec![
@@ -446,7 +446,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     vec![MockTransaction::from_sql_and_values(
     ///         DbBackend::Postgres, r#"UPDATE "fruit" SET "cake_id" = $1 WHERE "fruit"."name" LIKE $2"#, vec![Value::Int(None), "%Apple%".into()]
     ///     )]);
     /// ```
@@ -462,7 +462,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results(vec![
@@ -491,7 +491,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     vec![MockTransaction::from_sql_and_values(
     ///         DbBackend::Postgres, r#"DELETE FROM "fruit" WHERE "fruit"."id" = $1"#, vec![3i32.into()]
     ///     )]);
     /// ```
@@ -510,7 +510,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{entity::*, error::*, query::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # use sea_orm::{entity::*, error::*, query::*, tests_cfg::*, MockDatabase, MockExecResult, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results(vec![
@@ -537,7 +537,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     vec![MockTransaction::from_sql_and_values(
     ///         DbBackend::Postgres, r#"DELETE FROM "fruit" WHERE "fruit"."name" LIKE $1"#, vec!["%Apple%".into()]
     ///     )]);
     /// ```

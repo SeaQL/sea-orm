@@ -9,7 +9,7 @@ use std::{collections::BTreeMap, sync::Arc};
 #[derive(Debug)]
 pub struct MockDatabase {
     db_backend: DbBackend,
-    transaction_log: Vec<Transaction>,
+    transaction_log: Vec<MockTransaction>,
     exec_results: Vec<MockExecResult>,
     query_results: Vec<Vec<MockRow>>,
 }
@@ -30,7 +30,7 @@ pub trait IntoMockRow {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Transaction {
+pub struct MockTransaction {
     stmts: Vec<Statement>,
 }
 
@@ -67,7 +67,7 @@ impl MockDatabase {
 
 impl MockDatabaseTrait for MockDatabase {
     fn execute(&mut self, counter: usize, statement: Statement) -> Result<ExecResult, DbErr> {
-        self.transaction_log.push(Transaction::one(statement));
+        self.transaction_log.push(MockTransaction::one(statement));
         if counter < self.exec_results.len() {
             Ok(ExecResult {
                 result: ExecResultHolder::Mock(std::mem::take(&mut self.exec_results[counter])),
@@ -78,7 +78,7 @@ impl MockDatabaseTrait for MockDatabase {
     }
 
     fn query(&mut self, counter: usize, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
-        self.transaction_log.push(Transaction::one(statement));
+        self.transaction_log.push(MockTransaction::one(statement));
         if counter < self.query_results.len() {
             Ok(std::mem::take(&mut self.query_results[counter])
                 .into_iter()
@@ -91,7 +91,7 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
-    fn drain_transaction_log(&mut self) -> Vec<Transaction> {
+    fn drain_transaction_log(&mut self) -> Vec<MockTransaction> {
         std::mem::take(&mut self.transaction_log)
     }
 
@@ -140,7 +140,7 @@ impl IntoMockRow for BTreeMap<&str, Value> {
     }
 }
 
-impl Transaction {
+impl MockTransaction {
     pub fn from_sql_and_values<I>(db_backend: DbBackend, sql: &str, values: I) -> Self
     where
         I: IntoIterator<Item = Value>,
@@ -151,12 +151,12 @@ impl Transaction {
         ))
     }
 
-    /// Create a Transaction with one statement
+    /// Create a MockTransaction with one statement
     pub fn one(stmt: Statement) -> Self {
         Self { stmts: vec![stmt] }
     }
 
-    /// Create a Transaction with many statements
+    /// Create a MockTransaction with many statements
     pub fn many<I>(stmts: I) -> Self
     where
         I: IntoIterator<Item = Statement>,
@@ -166,7 +166,7 @@ impl Transaction {
         }
     }
 
-    /// Wrap each Statement as a single-statement Transaction
+    /// Wrap each Statement as a single-statement MockTransaction
     pub fn wrap<I>(stmts: I) -> Vec<Self>
     where
         I: IntoIterator<Item = Statement>,

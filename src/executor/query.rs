@@ -311,7 +311,7 @@ pub trait TryGetableMany: Sized {
 
     /// ```
     /// # #[cfg(all(feature = "mock", feature = "macros"))]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
@@ -326,7 +326,7 @@ pub trait TryGetableMany: Sized {
     /// #     ]])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, EnumIter, DeriveIden, TryGetableMany};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DeriveIden, EnumIter, TryGetableMany};
     ///
     /// #[derive(EnumIter, DeriveIden)]
     /// enum ResultCol {
@@ -358,7 +358,7 @@ pub trait TryGetableMany: Sized {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     vec![MockTransaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#,
     ///         vec![]

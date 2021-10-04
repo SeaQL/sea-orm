@@ -38,7 +38,7 @@ pub trait FromQueryResult: Sized {
 
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
@@ -81,7 +81,7 @@ pub trait FromQueryResult: Sized {
     /// # });
     /// # assert_eq!(
     /// #     db.into_transaction_log(),
-    /// #     vec![Transaction::from_sql_and_values(
+    /// #     vec![MockTransaction::from_sql_and_values(
     /// #         DbBackend::Postgres,
     /// #         r#"SELECT "name", COUNT(*) AS "num_of_cakes" FROM "cake" GROUP BY("name")"#,
     /// #         vec![]

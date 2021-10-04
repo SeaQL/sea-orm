@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
-    Statement, Transaction,
+    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase,
+    MockTransaction, QueryResult, Statement,
 };
 use futures::Stream;
 use std::{
@@ -26,7 +26,7 @@ pub trait MockDatabaseTrait: Send + Debug {
 
     fn query(&mut self, counter: usize, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
 
-    fn drain_transaction_log(&mut self) -> Vec<Transaction>;
+    fn drain_transaction_log(&mut self) -> Vec<MockTransaction>;
 
     fn get_database_backend(&self) -> DbBackend;
 }

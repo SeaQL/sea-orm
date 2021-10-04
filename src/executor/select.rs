@@ -132,7 +132,7 @@ where
 
     /// ```
     /// # #[cfg(all(feature = "mock", feature = "macros"))]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
@@ -171,7 +171,7 @@ where
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     vec![MockTransaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."name" AS "cake_name" FROM "cake""#,
     ///         vec![]
@@ -181,7 +181,7 @@ where
     ///
     /// ```
     /// # #[cfg(all(feature = "mock", feature = "macros"))]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
@@ -221,7 +221,7 @@ where
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     vec![MockTransaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         vec![
     ///             r#"SELECT "cake"."name" AS "cake_name", COUNT("cake"."id") AS "num_of_cakes""#,
@@ -521,7 +521,7 @@ where
 
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
@@ -575,7 +575,7 @@ where
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     vec![MockTransaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#,
     ///         vec![]
@@ -594,7 +594,7 @@ where
 
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
@@ -642,7 +642,7 @@ where
     /// assert_eq!(
     ///     db.into_transaction_log(),
     ///     vec![
-    ///     Transaction::from_sql_and_values(
+    ///     MockTransaction::from_sql_and_values(
     ///             DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
     ///     ),
     /// ]);
@@ -657,7 +657,7 @@ where
 
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
     /// #
@@ -679,7 +679,7 @@ where
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     vec![MockTransaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#,
     ///         vec![1.into()]
@@ -699,7 +699,7 @@ where
 
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockTransaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
     /// #
@@ -721,7 +721,7 @@ where
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     vec![MockTransaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
     ///         vec![]

@@ -3,7 +3,7 @@
 //!     Relying on [SQLx](https://github.com/launchbadge/sqlx), SeaORM is a new library with async support from day 1.
 //!
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*, DatabaseConnection, DbBackend, MockDatabase, Transaction, IntoMockRow};
+//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*, DatabaseConnection, DbBackend, MockDatabase, MockTransaction, IntoMockRow};
 //! # let db = MockDatabase::new(DbBackend::Postgres)
 //! #     .append_query_results(vec![
 //! #         vec![cake::Model {
@@ -40,12 +40,12 @@
 //! # assert_eq!(
 //! #     db.into_transaction_log(),
 //! #     vec![
-//! #         Transaction::from_sql_and_values(
+//! #         MockTransaction::from_sql_and_values(
 //! #             DbBackend::Postgres,
 //! #             r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
 //! #             vec![]
 //! #         ),
-//! #         Transaction::from_sql_and_values(
+//! #         MockTransaction::from_sql_and_values(
 //! #             DbBackend::Postgres,
 //! #             r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
 //! #             vec![]
@@ -88,7 +88,7 @@
 //!     Use mock connections to write unit tests for your logic.
 //!
 //! ```
-//! # use sea_orm::{error::*, entity::*, query::*, tests_cfg::*, DbConn, MockDatabase, Transaction, DbBackend};
+//! # use sea_orm::{error::*, entity::*, query::*, tests_cfg::*, DbConn, MockDatabase, MockTransaction, DbBackend};
 //! # async fn function(db: DbConn) -> Result<(), DbErr> {
 //! // Setup mock connection
 //! let db = MockDatabase::new(DbBackend::Postgres)
@@ -115,7 +115,7 @@
 //! assert_eq!(
 //!     db.into_transaction_log(),
 //!     vec![
-//!         Transaction::from_sql_and_values(
+//!         MockTransaction::from_sql_and_values(
 //!             DbBackend::Postgres,
 //!             r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
 //!             vec![1u64.into()]
