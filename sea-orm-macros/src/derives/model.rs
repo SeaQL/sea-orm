@@ -1,4 +1,7 @@
-use crate::{attributes::derive_attr, util::field_not_ignored};
+use crate::{
+    attributes::derive_attr,
+    util::{escape_rust_keyword, field_not_ignored, trim_starting_raw_identifier},
+};
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
@@ -43,10 +46,10 @@ impl DeriveModel {
         let column_idents = fields
             .iter()
             .map(|field| {
-                let mut ident = format_ident!(
-                    "{}",
-                    field.ident.as_ref().unwrap().to_string().to_camel_case()
-                );
+                let ident = field.ident.as_ref().unwrap().to_string();
+                let ident = trim_starting_raw_identifier(ident).to_camel_case();
+                let ident = escape_rust_keyword(ident);
+                let mut ident = format_ident!("{}", &ident);
                 for attr in field.attrs.iter() {
                     if let Some(ident) = attr.path.get_ident() {
                         if ident != "sea_orm" {
