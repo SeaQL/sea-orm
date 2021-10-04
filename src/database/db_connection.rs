@@ -1,5 +1,5 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-use crate::{DatabaseTransaction, DbBackend, DbErr, ExecResult, MockDatabaseConnection, QueryResult, Statement, TransactionError};
+use std::{future::Future, pin::Pin};
+use crate::{DatabaseTransaction, DbBackend, DbErr, ExecResult, QueryResult, Statement, TransactionError};
 use futures::Stream;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::pool::PoolConnection;
@@ -12,7 +12,7 @@ pub(crate) enum InnerConnection {
     #[cfg(feature = "sqlx-sqlite")]
     Sqlite(PoolConnection<sqlx::Sqlite>),
     #[cfg(feature = "mock")]
-    Mock(Arc<MockDatabaseConnection>),
+    Mock(std::sync::Arc<crate::MockDatabaseConnection>),
 }
 
 #[async_trait::async_trait]

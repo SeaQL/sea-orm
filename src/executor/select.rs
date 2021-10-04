@@ -1,6 +1,6 @@
 #[cfg(feature = "sqlx-dep")]
 use std::pin::Pin;
-use crate::{ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, JsonValue, ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement, error::*};
+use crate::{ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, JsonValue, ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement, TryGetableMany, error::*};
 #[cfg(feature = "sqlx-dep")]
 use futures::{Stream, TryStreamExt};
 use sea_query::SelectStatement;

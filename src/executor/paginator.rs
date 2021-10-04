@@ -1,4 +1,4 @@
-use crate::{ConnectionTrait, SelectorTrait, error::*};
+use crate::{ConnectionTrait, DbBackend, SelectorTrait, error::*};
 use async_stream::stream;
 use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
