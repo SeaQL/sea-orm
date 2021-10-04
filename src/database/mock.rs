@@ -1,9 +1,9 @@
 use crate::{
     error::*, DatabaseConnection, DbBackend, EntityTrait, ExecResult, ExecResultHolder, Iden,
     Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult, QueryResultRow,
-    Statement, Transaction,
+    Statement,
 };
-use sea_query::{Value, ValueType};
+use sea_query::{Value, ValueType, Values};
 use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Debug)]
@@ -27,6 +27,11 @@ pub struct MockRow {
 
 pub trait IntoMockRow {
     fn into_mock_row(self) -> MockRow;
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Transaction {
+    stmts: Vec<Statement>,
 }
 
 impl MockDatabase {
@@ -132,5 +137,40 @@ impl IntoMockRow for BTreeMap<&str, Value> {
         MockRow {
             values: self.into_iter().map(|(k, v)| (k.to_owned(), v)).collect(),
         }
+    }
+}
+
+impl Transaction {
+    pub fn from_sql_and_values<I>(db_backend: DbBackend, sql: &str, values: I) -> Self
+    where
+        I: IntoIterator<Item = Value>,
+    {
+        Self::one(Statement::from_string_values_tuple(
+            db_backend,
+            (sql.to_string(), Values(values.into_iter().collect())),
+        ))
+    }
+
+    /// Create a Transaction with one statement
+    pub fn one(stmt: Statement) -> Self {
+        Self { stmts: vec![stmt] }
+    }
+
+    /// Create a Transaction with many statements
+    pub fn many<I>(stmts: I) -> Self
+    where
+        I: IntoIterator<Item = Statement>,
+    {
+        Self {
+            stmts: stmts.into_iter().collect(),
+        }
+    }
+
+    /// Wrap each Statement as a single-statement Transaction
+    pub fn wrap<I>(stmts: I) -> Vec<Self>
+    where
+        I: IntoIterator<Item = Statement>,
+    {
+        stmts.into_iter().map(Self::one).collect()
     }
 }
