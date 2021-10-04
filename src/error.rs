@@ -1,8 +1,11 @@
-#[derive(Debug, PartialEq)]
+use std::error::Error;
+
+#[derive(Debug)]
 pub enum DbErr {
     Conn(String),
     Exec(String),
     Query(String),
+    Custom(Box<dyn Error>),
 }
 
 impl std::error::Error for DbErr {}
@@ -13,6 +16,7 @@ impl std::fmt::Display for DbErr {
             Self::Conn(s) => write!(f, "Connection Error: {}", s),
             Self::Exec(s) => write!(f, "Execution Error: {}", s),
             Self::Query(s) => write!(f, "Query Error: {}", s),
+            Self::Custom(e) => write!(f, "Custom Error: {}", e),
         }
     }
 }
