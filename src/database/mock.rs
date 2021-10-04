@@ -100,8 +100,7 @@ impl MockRow {
     where
         T: ValueType,
     {
-        T::try_from(self.values.get(col).unwrap().clone())
-            .map_err(|e| DbErr::Query(e.to_string()))
+        T::try_from(self.values.get(col).unwrap().clone()).map_err(|e| DbErr::Query(e.to_string()))
     }
 
     pub fn into_column_value_tuples(self) -> impl Iterator<Item = (String, Value)> {

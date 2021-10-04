@@ -1,9 +1,9 @@
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
-pub use sea_orm::entity::*;
-pub use sea_orm::{QueryFilter, ConnectionTrait, DbErr};
 use futures::StreamExt;
+pub use sea_orm::entity::*;
+pub use sea_orm::{ConnectionTrait, DbErr, QueryFilter};
 
 #[sea_orm_macros::test]
 #[cfg(any(

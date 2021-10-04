@@ -1,6 +1,9 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-use crate::{DatabaseTransaction, ConnectionTrait, ExecResult, QueryResult, Statement, StatementBuilder, TransactionError, error::*};
+use crate::{
+    error::*, ConnectionTrait, DatabaseTransaction, ExecResult, QueryResult, Statement,
+    StatementBuilder, TransactionError,
+};
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
+use std::{future::Future, pin::Pin, sync::Arc};
 
 #[cfg_attr(not(feature = "mock"), derive(Clone))]
 pub enum DatabaseConnection {
@@ -112,7 +115,10 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
         }
     }
 
-    fn stream(&'a self, stmt: Statement) -> Pin<Box<dyn Future<Output=Result<Self::Stream, DbErr>> + 'a>> {
+    fn stream(
+        &'a self,
+        stmt: Statement,
+    ) -> Pin<Box<dyn Future<Output = Result<Self::Stream, DbErr>> + 'a>> {
         Box::pin(async move {
             Ok(match self {
                 #[cfg(feature = "sqlx-mysql")]
@@ -122,7 +128,9 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
                 #[cfg(feature = "sqlx-sqlite")]
                 DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.stream(stmt).await?,
                 #[cfg(feature = "mock")]
-                DatabaseConnection::MockDatabaseConnection(conn) => crate::QueryStream::from((Arc::clone(conn), stmt)),
+                DatabaseConnection::MockDatabaseConnection(conn) => {
+                    crate::QueryStream::from((Arc::clone(conn), stmt))
+                }
                 DatabaseConnection::Disconnected => panic!("Disconnected"),
             })
         })
@@ -137,7 +145,9 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.begin().await,
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn) => DatabaseTransaction::new_mock(Arc::clone(conn)).await,
+            DatabaseConnection::MockDatabaseConnection(conn) => {
+                DatabaseTransaction::new_mock(Arc::clone(conn)).await
+            }
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
     }
@@ -146,7 +156,10 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
     async fn transaction<F, T, E>(&self, _callback: F) -> Result<T, TransactionError<E>>
     where
-        F: for<'c> FnOnce(&'c DatabaseTransaction) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>> + Send,
+        F: for<'c> FnOnce(
+                &'c DatabaseTransaction,
+            ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
+            + Send,
         T: Send,
         E: std::error::Error + Send,
     {
@@ -154,14 +167,18 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.transaction(_callback).await,
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.transaction(_callback).await,
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
+                conn.transaction(_callback).await
+            }
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.transaction(_callback).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => {
-                let transaction = DatabaseTransaction::new_mock(Arc::clone(conn)).await.map_err(|e| TransactionError::Connection(e))?;
+                let transaction = DatabaseTransaction::new_mock(Arc::clone(conn))
+                    .await
+                    .map_err(|e| TransactionError::Connection(e))?;
                 transaction.run(_callback).await
-            },
+            }
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
     }

@@ -1,11 +1,17 @@
 use std::{future::Future, pin::Pin};
 
-use sqlx::{PgPool, Postgres, postgres::{PgArguments, PgQueryResult, PgRow}};
+use sqlx::{
+    postgres::{PgArguments, PgQueryResult, PgRow},
+    PgPool, Postgres,
+};
 
 sea_query::sea_query_driver_postgres!();
 use sea_query_driver_postgres::bind_query;
 
-use crate::{DatabaseConnection, DatabaseTransaction, QueryStream, Statement, TransactionError, debug_print, error::*, executor::*};
+use crate::{
+    debug_print, error::*, executor::*, DatabaseConnection, DatabaseTransaction, QueryStream,
+    Statement, TransactionError,
+};
 
 use super::sqlx_common::*;
 
@@ -115,12 +121,17 @@ impl SqlxPostgresPoolConnection {
 
     pub async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
     where
-        F: for<'b> FnOnce(&'b DatabaseTransaction) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>> + Send,
+        F: for<'b> FnOnce(
+                &'b DatabaseTransaction,
+            ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>
+            + Send,
         T: Send,
         E: std::error::Error + Send,
     {
         if let Ok(conn) = self.pool.acquire().await {
-            let transaction = DatabaseTransaction::new_postgres(conn).await.map_err(|e| TransactionError::Connection(e))?;
+            let transaction = DatabaseTransaction::new_postgres(conn)
+                .await
+                .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
             Err(TransactionError::Connection(DbErr::Query(

@@ -2,11 +2,15 @@ use crate::{
     debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
     Statement, Transaction,
 };
-use std::{fmt::Debug, pin::Pin, sync::{Arc,
-    atomic::{AtomicUsize, Ordering},
-    Mutex,
-}};
 use futures::Stream;
+use std::{
+    fmt::Debug,
+    pin::Pin,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, Mutex,
+    },
+};
 
 #[derive(Debug)]
 pub struct MockDatabaseConnector;
@@ -49,9 +53,9 @@ impl MockDatabaseConnector {
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
         macro_rules! connect_mock_db {
             ( $syntax: expr ) => {
-                Ok(DatabaseConnection::MockDatabaseConnection(
-                    Arc::new(MockDatabaseConnection::new(MockDatabase::new($syntax))),
-                ))
+                Ok(DatabaseConnection::MockDatabaseConnection(Arc::new(
+                    MockDatabaseConnection::new(MockDatabase::new($syntax)),
+                )))
             };
         }
 
@@ -105,7 +109,10 @@ impl MockDatabaseConnection {
         self.mocker.lock().unwrap().query(counter, statement)
     }
 
-    pub fn fetch(&self, statement: &Statement) -> Pin<Box<dyn Stream<Item=Result<QueryResult, DbErr>>>> {
+    pub fn fetch(
+        &self,
+        statement: &Statement,
+    ) -> Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>> {
         match self.query_all(statement.clone()) {
             Ok(v) => Box::pin(futures::stream::iter(v.into_iter().map(|r| Ok(r)))),
             Err(e) => Box::pin(futures::stream::iter(Some(Err(e)).into_iter())),

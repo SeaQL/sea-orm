@@ -1,4 +1,7 @@
-use crate::{ActiveModelTrait, ConnectionTrait, DbBackend, EntityTrait, Insert, PrimaryKeyTrait, Statement, TryFromU64, error::*};
+use crate::{
+    error::*, ActiveModelTrait, ConnectionTrait, DbBackend, EntityTrait, Insert, PrimaryKeyTrait,
+    Statement, TryFromU64,
+};
 use sea_query::InsertStatement;
 use std::marker::PhantomData;
 
@@ -24,10 +27,7 @@ where
     A: ActiveModelTrait,
 {
     #[allow(unused_mut)]
-    pub async fn exec<'a, C>(
-        self,
-        db: &'a C,
-    ) -> Result<InsertResult<A>, DbErr>
+    pub async fn exec<'a, C>(self, db: &'a C) -> Result<InsertResult<A>, DbErr>
     where
         C: ConnectionTrait<'a>,
         A: 'a,
@@ -61,10 +61,7 @@ where
         }
     }
 
-    pub async fn exec<'a, C>(
-        self,
-        db: &'a C,
-    ) -> Result<InsertResult<A>, DbErr>
+    pub async fn exec<'a, C>(self, db: &'a C) -> Result<InsertResult<A>, DbErr>
     where
         C: ConnectionTrait<'a>,
         A: 'a,
@@ -75,10 +72,7 @@ where
 }
 
 // Only Statement impl Send
-async fn exec_insert<'a, A, C>(
-    statement: Statement,
-    db: &C,
-) -> Result<InsertResult<A>, DbErr>
+async fn exec_insert<'a, A, C>(statement: Statement, db: &C) -> Result<InsertResult<A>, DbErr>
 where
     C: ConnectionTrait<'a>,
     A: ActiveModelTrait,
@@ -93,13 +87,13 @@ where
                 .collect::<Vec<_>>();
             let res = db.query_one(statement).await?.unwrap();
             res.try_get_many("", cols.as_ref()).unwrap_or_default()
-        },
+        }
         _ => {
             let last_insert_id = db.execute(statement).await?.last_insert_id();
             ValueTypeOf::<A>::try_from_u64(last_insert_id)
                 .ok()
                 .unwrap_or_default()
-        },
+        }
     };
     Ok(InsertResult { last_insert_id })
 }

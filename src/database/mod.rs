@@ -1,20 +1,20 @@
 mod connection;
+mod db_connection;
+mod db_transaction;
 #[cfg(feature = "mock")]
 mod mock;
 mod statement;
-mod transaction;
-mod db_connection;
-mod db_transaction;
 mod stream;
+mod transaction;
 
 pub use connection::*;
+pub use db_connection::*;
+pub use db_transaction::*;
 #[cfg(feature = "mock")]
 pub use mock::*;
 pub use statement::*;
-pub use transaction::*;
-pub use db_connection::*;
-pub use db_transaction::*;
 pub use stream::*;
+pub use transaction::*;
 
 use crate::DbErr;
 

@@ -1,4 +1,4 @@
-use std::{pin::Pin, task::Poll, sync::Arc};
+use std::{pin::Pin, sync::Arc, task::Poll};
 
 use futures::Stream;
 #[cfg(feature = "sqlx-dep")]
@@ -57,52 +57,50 @@ impl QueryStream {
         QueryStreamBuilder {
             stmt,
             conn,
-            stream_builder: |conn, stmt| {
-                match conn {
-                    #[cfg(feature = "sqlx-mysql")]
-                    InnerConnection::MySql(c) => {
-                        let query = crate::driver::sqlx_mysql::sqlx_query(stmt);
-                        Box::pin(
-                            c.fetch(query)
-                                .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err)
-                        )
-                    },
-                    #[cfg(feature = "sqlx-postgres")]
-                    InnerConnection::Postgres(c) => {
-                        let query = crate::driver::sqlx_postgres::sqlx_query(stmt);
-                        Box::pin(
-                            c.fetch(query)
-                                .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err)
-                        )
-                    },
-                    #[cfg(feature = "sqlx-sqlite")]
-                    InnerConnection::Sqlite(c) => {
-                        let query = crate::driver::sqlx_sqlite::sqlx_query(stmt);
-                        Box::pin(
-                            c.fetch(query)
-                                .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err)
-                        )
-                    },
-                    #[cfg(feature = "mock")]
-                    InnerConnection::Mock(c) => {
-                        c.fetch(stmt)
-                    },
+            stream_builder: |conn, stmt| match conn {
+                #[cfg(feature = "sqlx-mysql")]
+                InnerConnection::MySql(c) => {
+                    let query = crate::driver::sqlx_mysql::sqlx_query(stmt);
+                    Box::pin(
+                        c.fetch(query)
+                            .map_ok(Into::into)
+                            .map_err(crate::sqlx_error_to_query_err),
+                    )
                 }
+                #[cfg(feature = "sqlx-postgres")]
+                InnerConnection::Postgres(c) => {
+                    let query = crate::driver::sqlx_postgres::sqlx_query(stmt);
+                    Box::pin(
+                        c.fetch(query)
+                            .map_ok(Into::into)
+                            .map_err(crate::sqlx_error_to_query_err),
+                    )
+                }
+                #[cfg(feature = "sqlx-sqlite")]
+                InnerConnection::Sqlite(c) => {
+                    let query = crate::driver::sqlx_sqlite::sqlx_query(stmt);
+                    Box::pin(
+                        c.fetch(query)
+                            .map_ok(Into::into)
+                            .map_err(crate::sqlx_error_to_query_err),
+                    )
+                }
+                #[cfg(feature = "mock")]
+                InnerConnection::Mock(c) => c.fetch(stmt),
             },
-        }.build()
+        }
+        .build()
     }
 }
 
 impl Stream for QueryStream {
     type Item = Result<QueryResult, DbErr>;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
-        this.with_stream_mut(|stream| {
-            stream.as_mut().poll_next(cx)
-        })
+        this.with_stream_mut(|stream| stream.as_mut().poll_next(cx))
     }
 }
