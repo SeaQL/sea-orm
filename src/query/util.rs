@@ -1,4 +1,4 @@
-use crate::{DatabaseConnection, DbBackend, QueryTrait, Statement};
+use crate::{database::*, QueryTrait, Statement};
 
 #[derive(Debug)]
 pub struct DebugQuery<'a, Q, T> {
@@ -38,7 +38,7 @@ debug_query_build!(
 ///
 /// ```
 /// # #[cfg(feature = "mock")]
-/// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+/// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, DbBackend};
 /// #
 /// # let conn = MockDatabase::new(DbBackend::Postgres)
 /// #     .into_connection();
@@ -81,7 +81,7 @@ macro_rules! debug_query_stmt {
 ///
 /// ```
 /// # #[cfg(feature = "mock")]
-/// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+/// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, DbBackend};
 /// #
 /// # let conn = MockDatabase::new(DbBackend::Postgres)
 /// #     .into_connection();
