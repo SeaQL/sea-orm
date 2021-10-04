@@ -46,7 +46,7 @@ pub fn derive_primary_key(input: TokenStream) -> TokenStream {
     }
 }
 
-#[proc_macro_derive(DeriveColumn)]
+#[proc_macro_derive(DeriveColumn, attributes(sea_orm))]
 pub fn derive_column(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
 

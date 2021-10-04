@@ -1,4 +1,4 @@
-# Actix with SeaORM example app
+# Actix 4 Beta with SeaORM example app
 
 Edit `Cargo.toml` to use `sqlx-mysql` or `sqlx-postgres`.
 

@@ -1,14 +1,24 @@
 pub use crate::{
     error::*, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait, ColumnType,
-    DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveCustomColumn, DeriveEntity,
-    DeriveEntityModel, DeriveModel, DerivePrimaryKey, DeriveRelation, EntityName, EntityTrait,
-    EnumIter, ForeignKeyAction, Iden, IdenStatic, IntoActiveModel, Linked, ModelTrait,
+    EntityName, EntityTrait, EnumIter, ForeignKeyAction, Iden, IdenStatic, Linked, ModelTrait,
     PrimaryKeyToColumn, PrimaryKeyTrait, PrimaryKeyValue, QueryFilter, QueryResult, Related,
     RelationDef, RelationTrait, Select, Value,
 };
 
+#[cfg(feature = "macros")]
+pub use crate::{
+    DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveCustomColumn, DeriveEntity,
+    DeriveEntityModel, DeriveModel, DerivePrimaryKey, DeriveRelation,
+};
+
 #[cfg(feature = "with-json")]
 pub use serde_json::Value as Json;
+
+#[cfg(feature = "with-chrono")]
+pub use chrono::NaiveDate as Date;
+
+#[cfg(feature = "with-chrono")]
+pub use chrono::NaiveTime as Time;
 
 #[cfg(feature = "with-chrono")]
 pub use chrono::NaiveDateTime as DateTime;

@@ -453,4 +453,353 @@ mod tests {
             ColumnType::Integer.def().unique().indexed().nullable()
         );
     }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn column_name_1() {
+        use sea_query::Iden;
+
+        mod hello {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "hello")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                #[sea_orm(column_name = "ONE")]
+                pub one: i32,
+                pub two: i32,
+                #[sea_orm(column_name = "3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        assert_eq!(hello::Column::One.to_string().as_str(), "ONE");
+        assert_eq!(hello::Column::Two.to_string().as_str(), "two");
+        assert_eq!(hello::Column::Three.to_string().as_str(), "3");
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn column_name_2() {
+        use sea_query::Iden;
+
+        mod hello {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+            pub struct Entity;
+
+            impl EntityName for Entity {
+                fn table_name(&self) -> &str {
+                    "hello"
+                }
+            }
+
+            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+            pub struct Model {
+                pub id: i32,
+                pub one: i32,
+                pub two: i32,
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+            pub enum Column {
+                Id,
+                #[sea_orm(column_name = "ONE")]
+                One,
+                Two,
+                #[sea_orm(column_name = "3")]
+                Three,
+            }
+
+            impl ColumnTrait for Column {
+                type EntityName = Entity;
+
+                fn def(&self) -> ColumnDef {
+                    match self {
+                        Column::Id => ColumnType::Integer.def(),
+                        Column::One => ColumnType::Integer.def(),
+                        Column::Two => ColumnType::Integer.def(),
+                        Column::Three => ColumnType::Integer.def(),
+                    }
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+            pub enum PrimaryKey {
+                Id,
+            }
+
+            impl PrimaryKeyTrait for PrimaryKey {
+                type ValueType = i32;
+
+                fn auto_increment() -> bool {
+                    true
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        assert_eq!(hello::Column::One.to_string().as_str(), "ONE");
+        assert_eq!(hello::Column::Two.to_string().as_str(), "two");
+        assert_eq!(hello::Column::Three.to_string().as_str(), "3");
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn enum_name_1() {
+        use sea_query::Iden;
+
+        mod hello {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "hello")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        assert_eq!(hello::Column::One1.to_string().as_str(), "one1");
+        assert_eq!(hello::Column::Two.to_string().as_str(), "two");
+        assert_eq!(hello::Column::Three3.to_string().as_str(), "three3");
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn enum_name_2() {
+        use sea_query::Iden;
+
+        mod hello {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+            pub struct Entity;
+
+            impl EntityName for Entity {
+                fn table_name(&self) -> &str {
+                    "hello"
+                }
+            }
+
+            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+            pub struct Model {
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+            pub enum Column {
+                Id,
+                One1,
+                Two,
+                Three3,
+            }
+
+            impl ColumnTrait for Column {
+                type EntityName = Entity;
+
+                fn def(&self) -> ColumnDef {
+                    match self {
+                        Column::Id => ColumnType::Integer.def(),
+                        Column::One1 => ColumnType::Integer.def(),
+                        Column::Two => ColumnType::Integer.def(),
+                        Column::Three3 => ColumnType::Integer.def(),
+                    }
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+            pub enum PrimaryKey {
+                Id,
+            }
+
+            impl PrimaryKeyTrait for PrimaryKey {
+                type ValueType = i32;
+
+                fn auto_increment() -> bool {
+                    true
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        assert_eq!(hello::Column::One1.to_string().as_str(), "one1");
+        assert_eq!(hello::Column::Two.to_string().as_str(), "two");
+        assert_eq!(hello::Column::Three3.to_string().as_str(), "three3");
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn column_name_enum_name_1() {
+        use sea_query::Iden;
+
+        mod hello {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "hello")]
+            pub struct Model {
+                #[sea_orm(primary_key, column_name = "ID", enum_name = "IdentityColumn")]
+                pub id: i32,
+                #[sea_orm(column_name = "ONE", enum_name = "One1")]
+                pub one: i32,
+                pub two: i32,
+                #[sea_orm(column_name = "THREE", enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        assert_eq!(hello::Column::IdentityColumn.to_string().as_str(), "ID");
+        assert_eq!(hello::Column::One1.to_string().as_str(), "ONE");
+        assert_eq!(hello::Column::Two.to_string().as_str(), "two");
+        assert_eq!(hello::Column::Three3.to_string().as_str(), "THREE");
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn column_name_enum_name_2() {
+        use sea_query::Iden;
+
+        mod hello {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+            pub struct Entity;
+
+            impl EntityName for Entity {
+                fn table_name(&self) -> &str {
+                    "hello"
+                }
+            }
+
+            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+            pub struct Model {
+                #[sea_orm(enum_name = "IdentityCol")]
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+            pub enum Column {
+                #[sea_orm(column_name = "ID")]
+                IdentityCol,
+                #[sea_orm(column_name = "ONE")]
+                One1,
+                Two,
+                #[sea_orm(column_name = "THREE")]
+                Three3,
+            }
+
+            impl ColumnTrait for Column {
+                type EntityName = Entity;
+
+                fn def(&self) -> ColumnDef {
+                    match self {
+                        Column::IdentityCol => ColumnType::Integer.def(),
+                        Column::One1 => ColumnType::Integer.def(),
+                        Column::Two => ColumnType::Integer.def(),
+                        Column::Three3 => ColumnType::Integer.def(),
+                    }
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+            pub enum PrimaryKey {
+                IdentityCol,
+            }
+
+            impl PrimaryKeyTrait for PrimaryKey {
+                type ValueType = i32;
+
+                fn auto_increment() -> bool {
+                    true
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        assert_eq!(hello::Column::IdentityCol.to_string().as_str(), "ID");
+        assert_eq!(hello::Column::One1.to_string().as_str(), "ONE");
+        assert_eq!(hello::Column::Two.to_string().as_str(), "two");
+        assert_eq!(hello::Column::Three3.to_string().as_str(), "THREE");
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn column_name_enum_name_3() {
+        use sea_query::Iden;
+
+        mod my_entity {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "my_entity")]
+            pub struct Model {
+                #[sea_orm(primary_key, enum_name = "IdentityColumn", column_name = "id")]
+                pub id: i32,
+                #[sea_orm(column_name = "type")]
+                pub type_: String,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        assert_eq!(my_entity::Column::IdentityColumn.to_string().as_str(), "id");
+        assert_eq!(my_entity::Column::Type.to_string().as_str(), "type");
+    }
 }
