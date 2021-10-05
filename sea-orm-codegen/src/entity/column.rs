@@ -27,8 +27,6 @@ impl Column {
             ColumnType::Char(_)
             | ColumnType::String(_)
             | ColumnType::Text
-            | ColumnType::Time(_)
-            | ColumnType::Date
             | ColumnType::Custom(_) => "String",
             ColumnType::TinyInteger(_) => "i8",
             ColumnType::SmallInteger(_) => "i16",
@@ -37,6 +35,8 @@ impl Column {
             ColumnType::Float(_) => "f32",
             ColumnType::Double(_) => "f64",
             ColumnType::Json | ColumnType::JsonBinary => "Json",
+            ColumnType::Date => "Date",
+            ColumnType::Time(_) => "Time",
             ColumnType::DateTime(_) | ColumnType::Timestamp(_) => "DateTime",
             ColumnType::TimestampWithTimeZone(_) => "DateTimeWithTimeZone",
             ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal",
@@ -194,6 +194,11 @@ mod tests {
             make_col!("CAKE_FILLING_ID", ColumnType::Double(None)),
             make_col!("CAKE-FILLING-ID", ColumnType::Binary(None)),
             make_col!("CAKE", ColumnType::Boolean),
+            make_col!("date", ColumnType::Date),
+            make_col!("time", ColumnType::Time(None)),
+            make_col!("date_time", ColumnType::DateTime(None)),
+            make_col!("timestamp", ColumnType::Timestamp(None)),
+            make_col!("timestamp_tz", ColumnType::TimestampWithTimeZone(None)),
         ]
     }
 
@@ -211,6 +216,11 @@ mod tests {
             "cake_filling_id",
             "cake_filling_id",
             "cake",
+            "date",
+            "time",
+            "date_time",
+            "timestamp",
+            "timestamp_tz",
         ];
         for (col, snack_case) in columns.into_iter().zip(snack_cases) {
             assert_eq!(col.get_name_snake_case().to_string(), snack_case);
@@ -231,6 +241,11 @@ mod tests {
             "CakeFillingId",
             "CakeFillingId",
             "Cake",
+            "Date",
+            "Time",
+            "DateTime",
+            "Timestamp",
+            "TimestampTz",
         ];
         for (col, camel_case) in columns.into_iter().zip(camel_cases) {
             assert_eq!(col.get_name_camel_case().to_string(), camel_case);
@@ -241,7 +256,21 @@ mod tests {
     fn test_get_rs_type() {
         let columns = setup();
         let rs_types = vec![
-            "String", "String", "i8", "i16", "i32", "i64", "f32", "f64", "Vec<u8>", "bool",
+            "String",
+            "String",
+            "i8",
+            "i16",
+            "i32",
+            "i64",
+            "f32",
+            "f64",
+            "Vec<u8>",
+            "bool",
+            "Date",
+            "Time",
+            "DateTime",
+            "DateTime",
+            "DateTimeWithTimeZone",
         ];
         for (mut col, rs_type) in columns.into_iter().zip(rs_types) {
             let rs_type: TokenStream = rs_type.parse().unwrap();
@@ -271,6 +300,11 @@ mod tests {
             "ColumnType::Double.def()",
             "ColumnType::Binary.def()",
             "ColumnType::Boolean.def()",
+            "ColumnType::Date.def()",
+            "ColumnType::Time.def()",
+            "ColumnType::DateTime.def()",
+            "ColumnType::Timestamp.def()",
+            "ColumnType::TimestampWithTimeZone.def()",
         ];
         for (mut col, col_def) in columns.into_iter().zip(col_defs) {
             let mut col_def: TokenStream = col_def.parse().unwrap();
