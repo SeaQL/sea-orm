@@ -92,9 +92,10 @@ impl DatabaseTransaction {
                     .await
                     .map_err(sqlx_error_to_query_err)?
             }
-            // should we do something for mocked connections?
             #[cfg(feature = "mock")]
-            InnerConnection::Mock(_) => {}
+            InnerConnection::Mock(ref mut c) => {
+                c.begin();
+            }
         }
         Ok(res)
     }
@@ -108,13 +109,9 @@ impl DatabaseTransaction {
         T: Send,
         E: std::error::Error + Send,
     {
-        let res = callback(&self)
-            .await
-            .map_err(TransactionError::Transaction);
+        let res = callback(&self).await.map_err(TransactionError::Transaction);
         if res.is_ok() {
-            self.commit()
-                .await
-                .map_err(TransactionError::Connection)?;
+            self.commit().await.map_err(TransactionError::Connection)?;
         } else {
             self.rollback()
                 .await
@@ -144,9 +141,10 @@ impl DatabaseTransaction {
                     .await
                     .map_err(sqlx_error_to_query_err)?
             }
-            //Should we do something for mocked connections?
             #[cfg(feature = "mock")]
-            InnerConnection::Mock(_) => {}
+            InnerConnection::Mock(ref mut c) => {
+                c.commit();
+            }
         }
         Ok(())
     }
@@ -172,9 +170,10 @@ impl DatabaseTransaction {
                     .await
                     .map_err(sqlx_error_to_query_err)?
             }
-            //Should we do something for mocked connections?
             #[cfg(feature = "mock")]
-            InnerConnection::Mock(_) => {}
+            InnerConnection::Mock(ref mut c) => {
+                c.rollback();
+            }
         }
         Ok(())
     }
@@ -196,9 +195,10 @@ impl DatabaseTransaction {
                     InnerConnection::Sqlite(c) => {
                         <sqlx::Sqlite as sqlx::Database>::TransactionManager::start_rollback(c);
                     }
-                    //Should we do something for mocked connections?
                     #[cfg(feature = "mock")]
-                    InnerConnection::Mock(_) => {}
+                    InnerConnection::Mock(c) => {
+                        c.rollback();
+                    }
                 }
             } else {
                 //this should never happen
@@ -338,10 +338,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
         T: Send,
         E: std::error::Error + Send,
     {
-        let transaction = self
-            .begin()
-            .await
-            .map_err(TransactionError::Connection)?;
+        let transaction = self.begin().await.map_err(TransactionError::Connection)?;
         transaction.run(_callback).await
     }
 }

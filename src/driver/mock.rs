@@ -26,6 +26,12 @@ pub trait MockDatabaseTrait: Send + Debug {
 
     fn query(&mut self, counter: usize, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
 
+    fn begin(&mut self);
+
+    fn commit(&mut self);
+
+    fn rollback(&mut self);
+
     fn drain_transaction_log(&mut self) -> Vec<MockTransaction>;
 
     fn get_database_backend(&self) -> DbBackend;
@@ -86,8 +92,12 @@ impl MockDatabaseConnection {
         }
     }
 
-    pub fn get_mocker_mutex(&self) -> &Mutex<Box<dyn MockDatabaseTrait>> {
+    pub(crate) fn get_mocker_mutex(&self) -> &Mutex<Box<dyn MockDatabaseTrait>> {
         &self.mocker
+    }
+
+    pub fn get_database_backend(&self) -> DbBackend {
+        self.mocker.lock().unwrap().get_database_backend()
     }
 
     pub fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
@@ -119,7 +129,15 @@ impl MockDatabaseConnection {
         }
     }
 
-    pub fn get_database_backend(&self) -> DbBackend {
-        self.mocker.lock().unwrap().get_database_backend()
+    pub fn begin(&self) {
+        self.mocker.lock().unwrap().begin()
+    }
+
+    pub fn commit(&self) {
+        self.mocker.lock().unwrap().commit()
+    }
+
+    pub fn rollback(&self) {
+        self.mocker.lock().unwrap().rollback()
     }
 }

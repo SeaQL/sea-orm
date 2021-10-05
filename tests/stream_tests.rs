@@ -1,7 +1,6 @@
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
-use futures::StreamExt;
 pub use sea_orm::entity::*;
 pub use sea_orm::{ConnectionTrait, DbErr, QueryFilter};
 
@@ -12,6 +11,8 @@ pub use sea_orm::{ConnectionTrait, DbErr, QueryFilter};
     feature = "sqlx-postgres"
 ))]
 pub async fn stream() -> Result<(), DbErr> {
+    use futures::StreamExt;
+
     let ctx = TestContext::new("stream").await;
 
     let bakery = bakery::ActiveModel {
