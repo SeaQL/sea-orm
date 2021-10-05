@@ -9,6 +9,7 @@ pub struct Model {
     pub testing: i32,
     pub rust: i32,
     pub keywords: i32,
+    pub r#raw_identifier: i32,
     pub r#as: i32,
     pub r#async: i32,
     pub r#await: i32,
@@ -69,3 +70,66 @@ impl RelationTrait for Relation {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_cfg::*;
+    use sea_query::Iden;
+
+    #[test]
+    fn test_columns() {
+        assert_eq!(rust_keyword::Column::Id.to_string(), "id".to_owned());
+        assert_eq!(rust_keyword::Column::Testing.to_string(), "testing".to_owned());
+        assert_eq!(rust_keyword::Column::Rust.to_string(), "rust".to_owned());
+        assert_eq!(rust_keyword::Column::Keywords.to_string(), "keywords".to_owned());
+        assert_eq!(rust_keyword::Column::RawIdentifier.to_string(), "raw_identifier".to_owned());
+        assert_eq!(rust_keyword::Column::As.to_string(), "as".to_owned());
+        assert_eq!(rust_keyword::Column::Async.to_string(), "async".to_owned());
+        assert_eq!(rust_keyword::Column::Await.to_string(), "await".to_owned());
+        assert_eq!(rust_keyword::Column::Break.to_string(), "break".to_owned());
+        assert_eq!(rust_keyword::Column::Const.to_string(), "const".to_owned());
+        assert_eq!(rust_keyword::Column::Continue.to_string(), "continue".to_owned());
+        assert_eq!(rust_keyword::Column::Dyn.to_string(), "dyn".to_owned());
+        assert_eq!(rust_keyword::Column::Else.to_string(), "else".to_owned());
+        assert_eq!(rust_keyword::Column::Enum.to_string(), "enum".to_owned());
+        assert_eq!(rust_keyword::Column::Extern.to_string(), "extern".to_owned());
+        assert_eq!(rust_keyword::Column::False.to_string(), "false".to_owned());
+        assert_eq!(rust_keyword::Column::Fn.to_string(), "fn".to_owned());
+        assert_eq!(rust_keyword::Column::For.to_string(), "for".to_owned());
+        assert_eq!(rust_keyword::Column::If.to_string(), "if".to_owned());
+        assert_eq!(rust_keyword::Column::Impl.to_string(), "impl".to_owned());
+        assert_eq!(rust_keyword::Column::In.to_string(), "in".to_owned());
+        assert_eq!(rust_keyword::Column::Let.to_string(), "let".to_owned());
+        assert_eq!(rust_keyword::Column::Loop.to_string(), "loop".to_owned());
+        assert_eq!(rust_keyword::Column::Match.to_string(), "match".to_owned());
+        assert_eq!(rust_keyword::Column::Mod.to_string(), "mod".to_owned());
+        assert_eq!(rust_keyword::Column::Move.to_string(), "move".to_owned());
+        assert_eq!(rust_keyword::Column::Mut.to_string(), "mut".to_owned());
+        assert_eq!(rust_keyword::Column::Pub.to_string(), "pub".to_owned());
+        assert_eq!(rust_keyword::Column::Ref.to_string(), "ref".to_owned());
+        assert_eq!(rust_keyword::Column::Return.to_string(), "return".to_owned());
+        assert_eq!(rust_keyword::Column::Static.to_string(), "static".to_owned());
+        assert_eq!(rust_keyword::Column::Struct.to_string(), "struct".to_owned());
+        assert_eq!(rust_keyword::Column::Trait.to_string(), "trait".to_owned());
+        assert_eq!(rust_keyword::Column::True.to_string(), "true".to_owned());
+        assert_eq!(rust_keyword::Column::Type.to_string(), "type".to_owned());
+        assert_eq!(rust_keyword::Column::Union.to_string(), "union".to_owned());
+        assert_eq!(rust_keyword::Column::Unsafe.to_string(), "unsafe".to_owned());
+        assert_eq!(rust_keyword::Column::Use.to_string(), "use".to_owned());
+        assert_eq!(rust_keyword::Column::Where.to_string(), "where".to_owned());
+        assert_eq!(rust_keyword::Column::While.to_string(), "while".to_owned());
+        assert_eq!(rust_keyword::Column::Abstract.to_string(), "abstract".to_owned());
+        assert_eq!(rust_keyword::Column::Become.to_string(), "become".to_owned());
+        assert_eq!(rust_keyword::Column::Box.to_string(), "box".to_owned());
+        assert_eq!(rust_keyword::Column::Do.to_string(), "do".to_owned());
+        assert_eq!(rust_keyword::Column::Final.to_string(), "final".to_owned());
+        assert_eq!(rust_keyword::Column::Macro.to_string(), "macro".to_owned());
+        assert_eq!(rust_keyword::Column::Override.to_string(), "override".to_owned());
+        assert_eq!(rust_keyword::Column::Priv.to_string(), "priv".to_owned());
+        assert_eq!(rust_keyword::Column::Try.to_string(), "try".to_owned());
+        assert_eq!(rust_keyword::Column::Typeof.to_string(), "typeof".to_owned());
+        assert_eq!(rust_keyword::Column::Unsized.to_string(), "unsized".to_owned());
+        assert_eq!(rust_keyword::Column::Virtual.to_string(), "virtual".to_owned());
+        assert_eq!(rust_keyword::Column::Yield.to_string(), "yield".to_owned());
+    }
+}
