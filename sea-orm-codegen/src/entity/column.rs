@@ -1,3 +1,4 @@
+use crate::util::escape_rust_keyword;
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
@@ -14,11 +15,11 @@ pub struct Column {
 
 impl Column {
     pub fn get_name_snake_case(&self) -> Ident {
-        format_ident!("{}", self.name.to_snake_case())
+        format_ident!("{}", escape_rust_keyword(self.name.to_snake_case()))
     }
 
     pub fn get_name_camel_case(&self) -> Ident {
-        format_ident!("{}", self.name.to_camel_case())
+        format_ident!("{}", escape_rust_keyword(self.name.to_camel_case()))
     }
 
     pub fn get_rs_type(&self) -> TokenStream {
