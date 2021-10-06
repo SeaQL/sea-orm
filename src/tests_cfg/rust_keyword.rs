@@ -16,6 +16,7 @@ pub struct Model {
     pub r#break: i32,
     pub r#const: i32,
     pub r#continue: i32,
+    pub crate_: i32,
     pub r#dyn: i32,
     pub r#else: i32,
     pub r#enum: i32,
@@ -35,6 +36,7 @@ pub struct Model {
     pub r#pub: i32,
     pub r#ref: i32,
     pub r#return: i32,
+    pub self_: i32,
     pub r#static: i32,
     pub r#struct: i32,
     pub r#trait: i32,
@@ -92,6 +94,7 @@ mod tests {
         assert_eq!(Column::Const.to_string().as_str(), "const");
         assert_eq!(Column::Continue.to_string().as_str(), "continue");
         assert_eq!(Column::Dyn.to_string().as_str(), "dyn");
+        assert_eq!(Column::Crate.to_string().as_str(), "crate");
         assert_eq!(Column::Else.to_string().as_str(), "else");
         assert_eq!(Column::Enum.to_string().as_str(), "enum");
         assert_eq!(Column::Extern.to_string().as_str(), "extern");
@@ -110,6 +113,7 @@ mod tests {
         assert_eq!(Column::Pub.to_string().as_str(), "pub");
         assert_eq!(Column::Ref.to_string().as_str(), "ref");
         assert_eq!(Column::Return.to_string().as_str(), "return");
+        assert_eq!(Column::Self_.to_string().as_str(), "self");
         assert_eq!(Column::Static.to_string().as_str(), "static");
         assert_eq!(Column::Struct.to_string().as_str(), "struct");
         assert_eq!(Column::Trait.to_string().as_str(), "trait");

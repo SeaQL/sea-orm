@@ -12,6 +12,8 @@ pub struct Model {
     pub keywords: i32,
     pub r#type: i32,
     pub r#typeof: i32,
+    pub crate_: i32,
+    pub self_: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]

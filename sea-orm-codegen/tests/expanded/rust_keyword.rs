@@ -19,6 +19,8 @@ pub struct Model {
     pub keywords: i32,
     pub r#type: i32,
     pub r#typeof: i32,
+    pub crate_: i32,
+    pub self_: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -29,6 +31,8 @@ pub enum Column {
     Keywords,
     Type,
     Typeof,
+    Crate,
+    Self_,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -58,6 +62,8 @@ impl ColumnTrait for Column {
             Self::Keywords => ColumnType::Integer.def(),
             Self::Type => ColumnType::Integer.def(),
             Self::Typeof => ColumnType::Integer.def(),
+            Self::Crate => ColumnType::Integer.def(),
+            Self::Self_ => ColumnType::Integer.def(),
         }
     }
 }
