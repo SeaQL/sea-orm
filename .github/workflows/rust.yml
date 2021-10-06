@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - master
+      - 0.2.x
 
 env:
   CARGO_TERM_COLOR: always

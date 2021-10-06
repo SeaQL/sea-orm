@@ -8,6 +8,7 @@ mod json;
 mod select;
 mod traits;
 mod update;
+mod util;
 
 pub use combine::{SelectA, SelectB};
 pub use delete::*;
@@ -19,5 +20,6 @@ pub use json::*;
 pub use select::*;
 pub use traits::*;
 pub use update::*;
+pub use util::*;
 
 pub use crate::{InsertResult, Statement, UpdateResult, Value, Values};
