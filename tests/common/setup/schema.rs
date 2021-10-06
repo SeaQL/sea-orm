@@ -287,8 +287,8 @@ pub async fn create_metadata_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(metadata::Column::Key).string().not_null())
         .col(ColumnDef::new(metadata::Column::Value).string().not_null())
         .col(ColumnDef::new(metadata::Column::Bytes).binary().not_null())
-        .col(ColumnDef::new(metadata::Column::Date).date().not_null())
-        .col(ColumnDef::new(metadata::Column::Time).time().not_null())
+        .col(ColumnDef::new(metadata::Column::Date).date())
+        .col(ColumnDef::new(metadata::Column::Time).time())
         .to_owned();
 
     create_table(db, &stmt, Metadata).await

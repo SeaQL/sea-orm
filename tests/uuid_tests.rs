@@ -1,7 +1,7 @@
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
-use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
+use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel, Set};
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -24,8 +24,8 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
         key: "markup".to_owned(),
         value: "1.18".to_owned(),
         bytes: vec![1, 2, 3],
-        date: Date::from_ymd(2021, 9, 27),
-        time: Time::from_hms(11, 32, 55),
+        date: Some(Date::from_ymd(2021, 9, 27)),
+        time: Some(Time::from_hms(11, 32, 55)),
     };
 
     let res = Metadata::insert(metadata.clone().into_active_model())
@@ -41,6 +41,21 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
         } else {
             Default::default()
         }
+    );
+
+    let update_res = Metadata::update(metadata::ActiveModel {
+        value: Set("0.22".to_owned()),
+        ..metadata.clone().into_active_model()
+    })
+    .filter(metadata::Column::Uuid.eq(Uuid::default()))
+    .exec(db)
+    .await;
+
+    assert_eq!(
+        update_res,
+        Err(DbErr::RecordNotFound(
+            "None of the database rows are affected".to_owned()
+        ))
     );
 
     Ok(())
