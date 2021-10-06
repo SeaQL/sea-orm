@@ -26,8 +26,8 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
             key: "markup".to_owned(),
             value: "1.18".to_owned(),
             bytes: vec![1, 2, 3],
-            date: Date::from_ymd(2021, 9, 27),
-            time: Time::from_hms(11, 32, 55),
+            date: Some(Date::from_ymd(2021, 9, 27)),
+            time: Some(Time::from_hms(11, 32, 55)),
         },
         metadata::Model {
             uuid: Uuid::new_v4(),
@@ -35,8 +35,8 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
             key: "exchange_rate".to_owned(),
             value: "0.78".to_owned(),
             bytes: vec![1, 2, 3],
-            date: Date::from_ymd(2021, 9, 27),
-            time: Time::from_hms(11, 32, 55),
+            date: Some(Date::from_ymd(2021, 9, 27)),
+            time: Some(Time::from_hms(11, 32, 55)),
         },
         metadata::Model {
             uuid: Uuid::new_v4(),
@@ -44,8 +44,8 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
             key: "service_charge".to_owned(),
             value: "1.1".to_owned(),
             bytes: vec![1, 2, 3],
-            date: Date::from_ymd(2021, 9, 27),
-            time: Time::from_hms(11, 32, 55),
+            date: None,
+            time: None,
         },
     ];
 
