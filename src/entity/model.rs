@@ -69,12 +69,10 @@ pub trait FromQueryResult: Sized {
     ///
     /// assert_eq!(
     ///     res,
-    ///     vec![
-    ///         SelectResult {
-    ///             name: "Chocolate Forest".to_owned(),
-    ///             num_of_cakes: 2,
-    ///         },
-    ///     ]
+    ///     vec![SelectResult {
+    ///         name: "Chocolate Forest".to_owned(),
+    ///         num_of_cakes: 2,
+    ///     },]
     /// );
     /// #
     /// # Ok(())

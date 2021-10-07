@@ -1,11 +1,11 @@
+use crate::util::{escape_rust_keyword, trim_starting_raw_identifier};
+use convert_case::{Case, Casing};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{
     parse::Error, punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, Fields,
     Lit, Meta,
 };
-
-use convert_case::{Case, Casing};
 
 pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
     // if #[sea_orm(table_name = "foo", schema_name = "bar")] specified, create Entity struct
@@ -60,8 +60,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         if let Fields::Named(fields) = item_struct.fields {
             for field in fields.named {
                 if let Some(ident) = &field.ident {
-                    let mut field_name =
-                        Ident::new(&ident.to_string().to_case(Case::Pascal), Span::call_site());
+                    let mut field_name = Ident::new(
+                        &trim_starting_raw_identifier(&ident).to_case(Case::Pascal),
+                        Span::call_site(),
+                    );
 
                     let mut nullable = false;
                     let mut default_value = None;
@@ -167,6 +169,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     if let Some(enum_name) = enum_name {
                         field_name = enum_name;
                     }
+
+                    field_name = Ident::new(&escape_rust_keyword(field_name), Span::call_site());
 
                     if ignore {
                         continue;

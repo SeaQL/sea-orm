@@ -211,10 +211,7 @@ where
     ///     .all(&db)
     ///     .await?;
     ///
-    /// assert_eq!(
-    ///     res,
-    ///     vec![("Chocolate Forest".to_owned(), 2i64)]
-    /// );
+    /// assert_eq!(res, vec![("Chocolate Forest".to_owned(), 2i64)]);
     /// #
     /// # Ok(())
     /// # });
@@ -226,7 +223,9 @@ where
     ///         vec![
     ///             r#"SELECT "cake"."name" AS "cake_name", COUNT("cake"."id") AS "num_of_cakes""#,
     ///             r#"FROM "cake" GROUP BY "cake"."name""#,
-    ///         ].join(" ").as_str(),
+    ///         ]
+    ///         .join(" ")
+    ///         .as_str(),
     ///         vec![]
     ///     )]
     /// );
