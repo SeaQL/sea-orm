@@ -211,27 +211,27 @@ mod tests {
         assert_eq!(
             db.into_transaction_log(),
             vec![
-                MockTransaction::from_sql_and_values(
+                Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2"#,
                     vec!["Cheese Cake".into(), 1i32.into()]
                 ),
-                MockTransaction::from_sql_and_values(
+                Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2"#,
                     vec!["Cheese Cake".into(), 2i32.into()]
                 ),
-                MockTransaction::from_sql_and_values(
+                Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2"#,
                     vec!["Cheese Cake".into(), 2i32.into()]
                 ),
-                MockTransaction::from_sql_and_values(
+                Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2"#,
                     vec!["Cheese Cake".into(), 2i32.into()]
                 ),
-                MockTransaction::from_sql_and_values(
+                Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2"#,
                     vec!["Cheese Cake".into(), 2i32.into()]

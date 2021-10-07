@@ -158,7 +158,7 @@ where
 mod tests {
     use crate::entity::prelude::*;
     use crate::{tests_cfg::*, ConnectionTrait};
-    use crate::{DatabaseConnection, DbBackend, MockDatabase, MockTransaction};
+    use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};
 
@@ -228,7 +228,7 @@ mod tests {
             query_builder.build(select.offset(4).limit(2)),
         ];
 
-        assert_eq!(db.into_transaction_log(), MockTransaction::wrap(stmts));
+        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 
@@ -262,7 +262,7 @@ mod tests {
             query_builder.build(select.offset(4).limit(2)),
         ];
 
-        assert_eq!(db.into_transaction_log(), MockTransaction::wrap(stmts));
+        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 
@@ -294,7 +294,7 @@ mod tests {
         let query_builder = db.get_database_backend();
         let stmts = vec![query_builder.build(&select)];
 
-        assert_eq!(db.into_transaction_log(), MockTransaction::wrap(stmts));
+        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 
@@ -345,7 +345,7 @@ mod tests {
             query_builder.build(select.offset(4).limit(2)),
         ];
 
-        assert_eq!(db.into_transaction_log(), MockTransaction::wrap(stmts));
+        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 
@@ -377,7 +377,7 @@ mod tests {
             query_builder.build(select.offset(4).limit(2)),
         ];
 
-        assert_eq!(db.into_transaction_log(), MockTransaction::wrap(stmts));
+        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
     }
 }

@@ -10,7 +10,7 @@ use std::{collections::BTreeMap, sync::Arc};
 pub struct MockDatabase {
     db_backend: DbBackend,
     transaction: Option<OpenTransaction>,
-    transaction_log: Vec<MockTransaction>,
+    transaction_log: Vec<Transaction>,
     exec_results: Vec<MockExecResult>,
     query_results: Vec<Vec<MockRow>>,
 }
@@ -37,7 +37,7 @@ pub struct OpenTransaction {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct MockTransaction {
+pub struct Transaction {
     stmts: Vec<Statement>,
 }
 
@@ -78,7 +78,7 @@ impl MockDatabaseTrait for MockDatabase {
         if let Some(transaction) = &mut self.transaction {
             transaction.push(statement);
         } else {
-            self.transaction_log.push(MockTransaction::one(statement));
+            self.transaction_log.push(Transaction::one(statement));
         }
         if counter < self.exec_results.len() {
             Ok(ExecResult {
@@ -93,7 +93,7 @@ impl MockDatabaseTrait for MockDatabase {
         if let Some(transaction) = &mut self.transaction {
             transaction.push(statement);
         } else {
-            self.transaction_log.push(MockTransaction::one(statement));
+            self.transaction_log.push(Transaction::one(statement));
         }
         if counter < self.query_results.len() {
             Ok(std::mem::take(&mut self.query_results[counter])
@@ -119,7 +119,7 @@ impl MockDatabaseTrait for MockDatabase {
         if self.transaction.is_some() {
             let transaction = self.transaction.take().unwrap();
             self.transaction_log
-                .push(transaction.into_mock_transaction());
+                .push(transaction.into_transaction());
         } else {
             panic!("There is no open transaction to commit");
         }
@@ -133,7 +133,7 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
-    fn drain_transaction_log(&mut self) -> Vec<MockTransaction> {
+    fn drain_transaction_log(&mut self) -> Vec<Transaction> {
         std::mem::take(&mut self.transaction_log)
     }
 
@@ -182,7 +182,7 @@ impl IntoMockRow for BTreeMap<&str, Value> {
     }
 }
 
-impl MockTransaction {
+impl Transaction {
     pub fn from_sql_and_values<I>(db_backend: DbBackend, sql: &str, values: I) -> Self
     where
         I: IntoIterator<Item = Value>,
@@ -193,12 +193,12 @@ impl MockTransaction {
         ))
     }
 
-    /// Create a MockTransaction with one statement
+    /// Create a Transaction with one statement
     pub fn one(stmt: Statement) -> Self {
         Self { stmts: vec![stmt] }
     }
 
-    /// Create a MockTransaction with many statements
+    /// Create a Transaction with many statements
     pub fn many<I>(stmts: I) -> Self
     where
         I: IntoIterator<Item = Statement>,
@@ -208,7 +208,7 @@ impl MockTransaction {
         }
     }
 
-    /// Wrap each Statement as a single-statement MockTransaction
+    /// Wrap each Statement as a single-statement Transaction
     pub fn wrap<I>(stmts: I) -> Vec<Self>
     where
         I: IntoIterator<Item = Statement>,
@@ -229,8 +229,8 @@ impl OpenTransaction {
         self.stmts.push(stmt);
     }
 
-    fn into_mock_transaction(self) -> MockTransaction {
-        MockTransaction { stmts: self.stmts }
+    fn into_transaction(self) -> Transaction {
+        Transaction { stmts: self.stmts }
     }
 }
 
@@ -238,7 +238,7 @@ impl OpenTransaction {
 #[cfg(feature = "mock")]
 mod tests {
     use crate::{
-        entity::*, tests_cfg::*, ConnectionTrait, DbBackend, DbErr, MockDatabase, MockTransaction,
+        entity::*, tests_cfg::*, ConnectionTrait, DbBackend, DbErr, MockDatabase, Transaction,
         Statement,
     };
 
@@ -262,7 +262,7 @@ mod tests {
         assert_eq!(
             db.into_transaction_log(),
             vec![
-                MockTransaction::many(vec![
+                Transaction::many(vec![
                     Statement::from_sql_and_values(
                         DbBackend::Postgres,
                         r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
@@ -274,7 +274,7 @@ mod tests {
                         vec![]
                     ),
                 ]),
-                MockTransaction::from_sql_and_values(
+                Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
                     vec![]
