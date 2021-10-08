@@ -68,6 +68,7 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     fn default() -> Self;
 
+    #[allow(clippy::question_mark)]
     fn get_primary_key_value(&self) -> Option<ValueTuple> {
         let mut cols = <Self::Entity as EntityTrait>::PrimaryKey::iter();
         macro_rules! next {
