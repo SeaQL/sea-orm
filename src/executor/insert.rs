@@ -2,7 +2,7 @@ use crate::{
     error::*, ActiveModelTrait, DatabaseConnection, DbBackend, EntityTrait, Insert,
     PrimaryKeyTrait, Statement, TryFromU64,
 };
-use sea_query::InsertStatement;
+use sea_query::{FromValueTuple, InsertStatement, ValueTuple};
 use std::{future::Future, marker::PhantomData};
 
 #[derive(Debug)]
@@ -10,7 +10,7 @@ pub struct Inserter<A>
 where
     A: ActiveModelTrait,
 {
-    primary_key: Option<<<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+    primary_key: Option<ValueTuple>,
     query: InsertStatement,
     model: PhantomData<A>,
 }
@@ -35,7 +35,6 @@ where
     where
         A: 'a,
     {
-        // TODO: extract primary key's value from query
         // so that self is dropped before entering await
         let mut query = self.query;
         if db.get_database_backend() == DbBackend::Postgres {
@@ -49,7 +48,6 @@ where
             }
         }
         Inserter::<A>::new(self.primary_key, query).exec(db)
-        // TODO: return primary key if extracted before, otherwise use InsertResult
     }
 }
 
@@ -57,10 +55,7 @@ impl<A> Inserter<A>
 where
     A: ActiveModelTrait,
 {
-    pub fn new(
-        primary_key: Option<<<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType>,
-        query: InsertStatement,
-    ) -> Self {
+    pub fn new(primary_key: Option<ValueTuple>, query: InsertStatement) -> Self {
         Self {
             primary_key,
             query,
@@ -82,7 +77,7 @@ where
 
 // Only Statement impl Send
 async fn exec_insert<A>(
-    primary_key: Option<<<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+    primary_key: Option<ValueTuple>,
     statement: Statement,
     db: &DatabaseConnection,
 ) -> Result<InsertResult<A>, DbErr>
@@ -108,7 +103,7 @@ where
     let last_insert_id = match last_insert_id_opt {
         Some(last_insert_id) => last_insert_id,
         None => match primary_key {
-            Some(primary_key) => primary_key,
+            Some(value_tuple) => FromValueTuple::from_value_tuple(value_tuple),
             None => return Err(DbErr::Exec("Fail to unpack last_insert_id".to_owned())),
         },
     };

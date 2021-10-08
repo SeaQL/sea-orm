@@ -1,11 +1,18 @@
 use super::{ColumnTrait, IdenStatic, Iterable};
-use crate::{ActiveModelTrait, EntityTrait, TryFromU64, TryGetableMany};
-use sea_query::IntoValueTuple;
+use crate::{TryFromU64, TryGetableMany};
+use sea_query::{FromValueTuple, IntoValueTuple};
 use std::fmt::Debug;
 
 //LINT: composite primary key cannot auto increment
 pub trait PrimaryKeyTrait: IdenStatic + Iterable {
-    type ValueType: Sized + Send + Debug + PartialEq + IntoValueTuple + TryGetableMany + TryFromU64;
+    type ValueType: Sized
+        + Send
+        + Debug
+        + PartialEq
+        + IntoValueTuple
+        + FromValueTuple
+        + TryGetableMany
+        + TryFromU64;
 
     fn auto_increment() -> bool;
 }
@@ -18,13 +25,4 @@ pub trait PrimaryKeyToColumn {
     fn from_column(col: Self::Column) -> Option<Self>
     where
         Self: Sized;
-}
-
-pub trait PrimaryKeyValue<E>
-where
-    E: EntityTrait,
-{
-    fn get_primary_key_value<A>(active_model: A) -> <E::PrimaryKey as PrimaryKeyTrait>::ValueType
-    where
-        A: ActiveModelTrait<Entity = E>;
 }

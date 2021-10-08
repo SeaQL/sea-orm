@@ -2,6 +2,7 @@ use crate::{
     error::*, DatabaseConnection, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn, Value,
 };
 use async_trait::async_trait;
+use sea_query::ValueTuple;
 use std::fmt::Debug;
 
 #[derive(Clone, Debug, Default)]
@@ -9,7 +10,8 @@ pub struct ActiveValue<V>
 where
     V: Into<Value>,
 {
-    value: Option<V>,
+    // Don't want to call ActiveValue::unwrap() and cause panic
+    pub(self) value: Option<V>,
     state: ActiveValueState,
 }
 
@@ -65,6 +67,41 @@ pub trait ActiveModelTrait: Clone + Debug {
     fn is_unset(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
 
     fn default() -> Self;
+
+    fn get_primary_key_value(&self) -> Option<ValueTuple> {
+        let mut cols = <Self::Entity as EntityTrait>::PrimaryKey::iter();
+        macro_rules! next {
+            () => {
+                if let Some(col) = cols.next() {
+                    if let Some(val) = self.get(col.into_column()).value {
+                        val
+                    } else {
+                        return None;
+                    }
+                } else {
+                    return None;
+                }
+            };
+        }
+        match <Self::Entity as EntityTrait>::PrimaryKey::iter().count() {
+            1 => {
+                let s1 = next!();
+                Some(ValueTuple::One(s1))
+            }
+            2 => {
+                let s1 = next!();
+                let s2 = next!();
+                Some(ValueTuple::Two(s1, s2))
+            }
+            3 => {
+                let s1 = next!();
+                let s2 = next!();
+                let s3 = next!();
+                Some(ValueTuple::Three(s1, s2, s3))
+            }
+            _ => panic!("The arity cannot be larger than 3"),
+        }
+    }
 
     async fn insert(self, db: &DatabaseConnection) -> Result<Self, DbErr>
     where

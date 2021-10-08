@@ -1,7 +1,7 @@
 use crate::{
     ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne, FromQueryResult, Insert,
-    ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, PrimaryKeyValue, QueryFilter, Related,
-    RelationBuilder, RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
+    ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related, RelationBuilder,
+    RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
 };
 use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 pub use sea_strum::IntoEnumIterator as Iterable;
@@ -49,9 +49,7 @@ pub trait EntityTrait: EntityName {
 
     type Relation: RelationTrait;
 
-    type PrimaryKey: PrimaryKeyTrait
-        + PrimaryKeyToColumn<Column = Self::Column>
-        + PrimaryKeyValue<Self>;
+    type PrimaryKey: PrimaryKeyTrait + PrimaryKeyToColumn<Column = Self::Column>;
 
     fn belongs_to<R>(related: R) -> RelationBuilder<Self, R>
     where

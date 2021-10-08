@@ -1,9 +1,9 @@
 use crate::{
     ActiveModelTrait, EntityName, EntityTrait, IntoActiveModel, Iterable, PrimaryKeyTrait,
-    PrimaryKeyValue, QueryTrait,
+    QueryTrait,
 };
 use core::marker::PhantomData;
-use sea_query::InsertStatement;
+use sea_query::{InsertStatement, ValueTuple};
 
 #[derive(Debug)]
 pub struct Insert<A>
@@ -12,7 +12,7 @@ where
 {
     pub(crate) query: InsertStatement,
     pub(crate) columns: Vec<bool>,
-    pub(crate) primary_key: Option<<<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+    pub(crate) primary_key: Option<ValueTuple>,
     pub(crate) model: PhantomData<A>,
 }
 
@@ -114,7 +114,7 @@ where
         let mut am: A = m.into_active_model();
         self.primary_key =
             if !<<A::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::auto_increment() {
-                Some(<<A::Entity as EntityTrait>::PrimaryKey as PrimaryKeyValue<A::Entity>>::get_primary_key_value::<A>(am.clone()))
+                am.get_primary_key_value()
             } else {
                 None
             };
