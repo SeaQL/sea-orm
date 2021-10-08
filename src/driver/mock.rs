@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase,
-    Transaction, QueryResult, Statement,
+    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
+    Statement, Transaction,
 };
 use futures::Stream;
 use std::{

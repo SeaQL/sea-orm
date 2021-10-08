@@ -118,8 +118,7 @@ impl MockDatabaseTrait for MockDatabase {
     fn commit(&mut self) {
         if self.transaction.is_some() {
             let transaction = self.transaction.take().unwrap();
-            self.transaction_log
-                .push(transaction.into_transaction());
+            self.transaction_log.push(transaction.into_transaction());
         } else {
             panic!("There is no open transaction to commit");
         }
@@ -238,15 +237,15 @@ impl OpenTransaction {
 #[cfg(feature = "mock")]
 mod tests {
     use crate::{
-        entity::*, tests_cfg::*, ConnectionTrait, DbBackend, DbErr, MockDatabase, Transaction,
-        Statement,
+        entity::*, tests_cfg::*, ConnectionTrait, DbBackend, DbErr, MockDatabase, Statement,
+        Transaction, TransactionError,
     };
 
     #[smol_potat::test]
     async fn test_transaction_1() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
-        db.transaction::<_, _, DbErr>(|txn| {
+        db.transaction::<_, (), DbErr>(|txn| {
             Box::pin(async move {
                 let _1 = cake::Entity::find().one(txn).await;
                 let _2 = fruit::Entity::find().all(txn).await;
@@ -281,5 +280,39 @@ mod tests {
                 ),
             ]
         );
+    }
+
+    #[smol_potat::test]
+    async fn test_transaction_2() {
+        let db = MockDatabase::new(DbBackend::Postgres).into_connection();
+
+        #[derive(Debug, PartialEq)]
+        pub struct MyErr(String);
+
+        impl std::error::Error for MyErr {}
+
+        impl std::fmt::Display for MyErr {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(f, "{}", self.0.as_str())
+            }
+        }
+
+        let result = db
+            .transaction::<_, (), MyErr>(|txn| {
+                Box::pin(async move {
+                    let _ = cake::Entity::find().one(txn).await;
+                    Err(MyErr("test".to_owned()))
+                })
+            })
+            .await;
+
+        match result {
+            Err(TransactionError::Transaction(err)) => {
+                assert_eq!(err, MyErr("test".to_owned()))
+            }
+            _ => panic!(),
+        }
+
+        assert_eq!(db.into_transaction_log(), vec![]);
     }
 }
