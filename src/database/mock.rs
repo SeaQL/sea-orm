@@ -241,6 +241,17 @@ mod tests {
         Transaction, TransactionError,
     };
 
+    #[derive(Debug, PartialEq)]
+    pub struct MyErr(String);
+
+    impl std::error::Error for MyErr {}
+
+    impl std::fmt::Display for MyErr {
+        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(f, "{}", self.0.as_str())
+        }
+    }
+
     #[smol_potat::test]
     async fn test_transaction_1() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
@@ -285,17 +296,6 @@ mod tests {
     #[smol_potat::test]
     async fn test_transaction_2() {
         let db = MockDatabase::new(DbBackend::Postgres).into_connection();
-
-        #[derive(Debug, PartialEq)]
-        pub struct MyErr(String);
-
-        impl std::error::Error for MyErr {}
-
-        impl std::fmt::Display for MyErr {
-            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                write!(f, "{}", self.0.as_str())
-            }
-        }
 
         let result = db
             .transaction::<_, (), MyErr>(|txn| {
@@ -343,6 +343,43 @@ mod tests {
         assert_eq!(stream.try_next().await?, Some(orange));
 
         assert_eq!(stream.try_next().await?, None);
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn test_stream_in_transaction() -> Result<(), DbErr> {
+        use futures::TryStreamExt;
+
+        let apple = fruit::Model {
+            id: 1,
+            name: "Apple".to_owned(),
+            cake_id: Some(1),
+        };
+
+        let orange = fruit::Model {
+            id: 2,
+            name: "orange".to_owned(),
+            cake_id: None,
+        };
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(vec![vec![apple.clone(), orange.clone()]])
+            .into_connection();
+
+        let txn = db.begin().await?;
+
+        let mut stream = fruit::Entity::find().stream(&txn).await?;
+
+        assert_eq!(stream.try_next().await?, Some(apple));
+
+        assert_eq!(stream.try_next().await?, Some(orange));
+
+        assert_eq!(stream.try_next().await?, None);
+
+        std::mem::drop(stream);
+
+        txn.commit().await?;
 
         Ok(())
     }
