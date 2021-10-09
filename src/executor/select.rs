@@ -3,11 +3,9 @@ use crate::{
     ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo,
     SelectTwoMany, Statement, TryGetableMany,
 };
-#[cfg(feature = "sqlx-dep")]
 use futures::{Stream, TryStreamExt};
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
-#[cfg(feature = "sqlx-dep")]
 use std::pin::Pin;
 
 #[derive(Clone, Debug)]
@@ -252,7 +250,6 @@ where
         self.into_model().all(db).await
     }
 
-    #[cfg(feature = "sqlx-dep")]
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -320,7 +317,6 @@ where
         self.into_model().all(db).await
     }
 
-    #[cfg(feature = "sqlx-dep")]
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -381,7 +377,6 @@ where
         self.into_model().one(db).await
     }
 
-    #[cfg(feature = "sqlx-dep")]
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -456,7 +451,6 @@ where
         Ok(models)
     }
 
-    #[cfg(feature = "sqlx-dep")]
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,

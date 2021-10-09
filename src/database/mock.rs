@@ -315,4 +315,35 @@ mod tests {
 
         assert_eq!(db.into_transaction_log(), vec![]);
     }
+
+    #[smol_potat::test]
+    async fn test_stream_1() -> Result<(), DbErr> {
+        use futures::TryStreamExt;
+
+        let apple = fruit::Model {
+            id: 1,
+            name: "Apple".to_owned(),
+            cake_id: Some(1),
+        };
+
+        let orange = fruit::Model {
+            id: 2,
+            name: "orange".to_owned(),
+            cake_id: None,
+        };
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(vec![vec![apple.clone(), orange.clone()]])
+            .into_connection();
+
+        let mut stream = fruit::Entity::find().stream(&db).await?;
+
+        assert_eq!(stream.try_next().await?, Some(apple));
+
+        assert_eq!(stream.try_next().await?, Some(orange));
+
+        assert_eq!(stream.try_next().await?, None);
+
+        Ok(())
+    }
 }
