@@ -81,19 +81,3 @@ async fn write_table_stmts(table_stmts: Vec<TableStatement>) -> Result<(), Error
 
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-
-    #[tokio::test]
-    async fn test_1() {
-        #[cfg(feature = "postgres")]
-        crate::generate_models(
-            "public",
-            "postgres://ari@0.0.0.0:5432/product",
-            &["product", "variant"],
-        )
-        .await
-        .expect("could not generate models");
-    }
-}
