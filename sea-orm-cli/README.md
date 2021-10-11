@@ -9,7 +9,7 @@ cargo run -- -h
 Running Entity Generator:
 
 ```sh
-# MySQL (`--database-schema` option is ignored) 
+# MySQL (`--database-schema` option is ignored)
 cargo run -- generate entity -u mysql://sea:sea@localhost/bakery -o out
 
 # PostgreSQL

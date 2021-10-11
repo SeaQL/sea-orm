@@ -18,20 +18,22 @@ pub struct OutputFile {
 }
 
 impl EntityWriter {
-    pub fn generate(self, expanded_format: bool) -> WriterOutput {
+    pub fn generate(self, expanded_format: bool, doc_comment: bool) -> WriterOutput {
         let mut files = Vec::new();
-        files.extend(self.write_entities(expanded_format));
-        files.push(self.write_mod());
-        files.push(self.write_prelude());
+        files.extend(self.write_entities(expanded_format, doc_comment));
+        files.push(self.write_mod(doc_comment));
+        files.push(self.write_prelude(doc_comment));
         WriterOutput { files }
     }
 
-    pub fn write_entities(&self, expanded_format: bool) -> Vec<OutputFile> {
+    pub fn write_entities(&self, expanded_format: bool, doc_comment: bool) -> Vec<OutputFile> {
         self.entities
             .iter()
             .map(|entity| {
                 let mut lines = Vec::new();
-                Self::write_doc_comment(&mut lines);
+                if doc_comment {
+                    Self::write_doc_comment(&mut lines);
+                }
                 let code_blocks = if expanded_format {
                     Self::gen_expanded_code_blocks(entity)
                 } else {
@@ -46,9 +48,11 @@ impl EntityWriter {
             .collect()
     }
 
-    pub fn write_mod(&self) -> OutputFile {
+    pub fn write_mod(&self, doc_comment: bool) -> OutputFile {
         let mut lines = Vec::new();
-        Self::write_doc_comment(&mut lines);
+        if doc_comment {
+            Self::write_doc_comment(&mut lines);
+        }
         let code_blocks: Vec<TokenStream> = self
             .entities
             .iter()
@@ -68,9 +72,11 @@ impl EntityWriter {
         }
     }
 
-    pub fn write_prelude(&self) -> OutputFile {
+    pub fn write_prelude(&self, doc_comment: bool) -> OutputFile {
         let mut lines = Vec::new();
-        Self::write_doc_comment(&mut lines);
+        if doc_comment {
+            Self::write_doc_comment(&mut lines);
+        }
         let code_blocks = self
             .entities
             .iter()

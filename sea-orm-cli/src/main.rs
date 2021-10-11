@@ -84,7 +84,7 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                 panic!("This database is not supported ({})", url)
             };
 
-            let output = EntityTransformer::transform(table_stmts)?.generate(expanded_format);
+            let output = EntityTransformer::transform(table_stmts)?.generate(expanded_format, true);
 
             let dir = Path::new(output_dir);
             fs::create_dir_all(dir)?;
