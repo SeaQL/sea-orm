@@ -1,0 +1,52 @@
+[package]
+name = "sea-orm-build"
+version = "0.2.6"
+authors = ["Ari Seyhun <ariseyhun@live.com.au>"]
+edition = "2018"
+description = "Utility for generating models via build scripts"
+license = "MIT OR Apache-2.0"
+documentation = "https://docs.rs/sea-orm"
+repository = "https://github.com/SeaQL/sea-orm"
+categories = ["database"]
+keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
+
+[dependencies]
+sea-orm-codegen = { version = "^0.2.6", path = "../sea-orm-codegen" }
+sea-schema = { version = "^0.2.9", default-features = false, features = [
+    "debug-print",
+    "sqlx-mysql",
+    "sqlx-postgres",
+    "discovery",
+    "writer",
+] }
+sqlx = { version = "^0.5", default-features = false }
+tokio = { version = "1", features = ["full"] }
+
+[features]
+default = []
+mysql = ["sqlx/mysql"]
+postgres = ["sqlx/postgres"]
+runtime-actix-native-tls = [
+    "sqlx/runtime-actix-native-tls",
+    "sea-schema/runtime-actix-native-tls",
+]
+runtime-async-std-native-tls = [
+    "sqlx/runtime-async-std-native-tls",
+    "sea-schema/runtime-async-std-native-tls",
+]
+runtime-tokio-native-tls = [
+    "sqlx/runtime-tokio-native-tls",
+    "sea-schema/runtime-tokio-native-tls",
+]
+runtime-actix-rustls = [
+    "sqlx/runtime-actix-rustls",
+    "sea-schema/runtime-actix-rustls",
+]
+runtime-async-std-rustls = [
+    "sqlx/runtime-async-std-rustls",
+    "sea-schema/runtime-async-std-rustls",
+]
+runtime-tokio-rustls = [
+    "sqlx/runtime-tokio-rustls",
+    "sea-schema/runtime-tokio-rustls",
+]

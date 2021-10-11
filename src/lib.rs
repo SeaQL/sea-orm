@@ -290,6 +290,14 @@ pub use sea_orm_macros::{
     DeriveEntityModel, DeriveModel, DerivePrimaryKey, DeriveRelation, FromQueryResult,
 };
 
+#[cfg(feature = "macros")]
+#[macro_export]
+macro_rules! include_model {
+    ($model: tt) => {
+        include!(concat!(env!("OUT_DIR"), concat!("/", $model, ".rs")));
+    };
+}
+
 pub use sea_query;
 pub use sea_query::Iden;
 #[cfg(feature = "macros")]
