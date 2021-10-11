@@ -542,15 +542,15 @@ mod tests {
 
         let txn = db.begin().await?;
 
-        let mut stream = fruit::Entity::find().stream(&txn).await?;
+        if let Ok(mut stream) = fruit::Entity::find().stream(&txn).await {
+            assert_eq!(stream.try_next().await?, Some(apple));
 
-        assert_eq!(stream.try_next().await?, Some(apple));
+            assert_eq!(stream.try_next().await?, Some(orange));
 
-        assert_eq!(stream.try_next().await?, Some(orange));
+            assert_eq!(stream.try_next().await?, None);
 
-        assert_eq!(stream.try_next().await?, None);
-
-        std::mem::drop(stream);
+            // stream will be dropped end of scope OR std::mem::drop(stream);
+        }
 
         txn.commit().await?;
 
