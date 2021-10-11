@@ -3,6 +3,7 @@ use std::path::Path;
 
 use error::Error;
 use sea_orm_codegen::EntityTransformer;
+use sea_schema::sea_query::TableStatement;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
