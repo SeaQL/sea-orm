@@ -3,6 +3,7 @@ use crate::{
     PrimaryKeyTrait, Value,
 };
 use async_trait::async_trait;
+use sea_query::Nullable;
 use std::fmt::Debug;
 
 #[derive(Clone, Debug, Default)]
@@ -172,6 +173,78 @@ where
     }
 }
 
+pub trait IntoActiveValue<V>
+where
+    V: Into<Value>,
+{
+    fn into_active_value(self) -> ActiveValue<V>;
+}
+
+macro_rules! impl_into_active_value {
+    ($ty: ty, $fn: ident) => {
+        impl IntoActiveValue<$ty> for $ty {
+            fn into_active_value(self) -> ActiveValue<$ty> {
+                $fn(self)
+            }
+        }
+    };
+}
+
+impl_into_active_value!(bool, Set);
+impl_into_active_value!(i8, Set);
+impl_into_active_value!(i16, Set);
+impl_into_active_value!(i32, Set);
+impl_into_active_value!(i64, Set);
+impl_into_active_value!(u8, Set);
+impl_into_active_value!(u16, Set);
+impl_into_active_value!(u32, Set);
+impl_into_active_value!(u64, Set);
+impl_into_active_value!(f32, Set);
+impl_into_active_value!(f64, Set);
+impl_into_active_value!(&'static [u8], Set);
+impl_into_active_value!(&'static str, Set);
+impl_into_active_value!(String, Set);
+
+#[cfg(feature = "with-json")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-json")))]
+impl_into_active_value!(crate::prelude::Json, Set);
+
+#[cfg(feature = "with-chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
+impl_into_active_value!(crate::prelude::Date, Set);
+
+#[cfg(feature = "with-chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
+impl_into_active_value!(crate::prelude::Time, Set);
+
+#[cfg(feature = "with-chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
+impl_into_active_value!(crate::prelude::DateTime, Set);
+
+#[cfg(feature = "with-chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
+impl_into_active_value!(crate::prelude::DateTimeWithTimeZone, Set);
+
+#[cfg(feature = "with-rust_decimal")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-rust_decimal")))]
+impl_into_active_value!(crate::prelude::Decimal, Set);
+
+#[cfg(feature = "with-uuid")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-uuid")))]
+impl_into_active_value!(crate::prelude::Uuid, Set);
+
+impl<V> IntoActiveValue<Option<V>> for Option<V>
+where
+    V: Into<Value> + Nullable,
+{
+    fn into_active_value(self) -> ActiveValue<Option<V>> {
+        match self {
+            Some(value) => Set(Some(value)),
+            None => Unset(None),
+        }
+    }
+}
+
 impl<V> ActiveValue<V>
 where
     V: Into<Value>,
@@ -246,5 +319,18 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         self.value.as_ref() == other.value.as_ref()
+    }
+}
+
+impl<V> From<ActiveValue<V>> for ActiveValue<Option<V>>
+where
+    V: Into<Value> + Nullable,
+{
+    fn from(value: ActiveValue<V>) -> Self {
+        match value.state {
+            ActiveValueState::Set => Set(value.value),
+            ActiveValueState::Unset => Unset(None),
+            ActiveValueState::Unchanged => ActiveValue::unchanged(value.value),
+        }
     }
 }
