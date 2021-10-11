@@ -192,10 +192,6 @@ impl<D: Database> Initializer<D> {
 impl<'a, D: Database> Connection<'a, D> {
     /// Returns the internal connection value. See the [`Connection` Deref
     /// column](crate#supported-drivers) for the expected type of this value.
-    ///
-    /// Note that `Connection<D>` derefs to the internal connection type, so
-    /// using this method is likely unnecessary. See [deref](Connection#deref)
-    /// for examples.
     pub fn into_inner(self) -> &'a <D::Pool as Pool>::Connection {
         self.0
     }

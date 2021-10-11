@@ -5,13 +5,21 @@ use rocket::figment::Figment;
 /// This trait provides a generic interface to various database pooling
 /// implementations in the Rust ecosystem. It can be implemented by anyone, but
 /// this crate provides implementations for common drivers.
+///
+/// This is adapted from the original `rocket_db_pools`. But on top we require
+/// `Connection` itself to be `Sync`. Hence, instead of cloning or allocating
+/// a new connection per request, here we only borrow a reference to the pool.
+///
+/// In SeaORM, only *when* you are about to execute a SQL statement will a
+/// connection be acquired from the pool, and returned as soon as the query finishes.
+/// This helps a bit with concurrency if the lifecycle of a request is long enough.
 /// ```
 #[rocket::async_trait]
 pub trait Pool: Sized + Send + Sync + 'static {
-    /// The connection type managed by this pool, returned by [`Self::get()`].
+    /// The connection type managed by this pool.
     type Connection;
 
-    /// The error type returned by [`Self::init()`] and [`Self::get()`].
+    /// The error type returned by [`Self::init()`].
     type Error: std::error::Error;
 
     /// Constructs a pool from a [Value](rocket::figment::value::Value).
@@ -28,7 +36,7 @@ pub trait Pool: Sized + Send + Sync + 'static {
     /// insufficient resources, or another database-specific error.
     async fn init(figment: &Figment) -> Result<Self, Self::Error>;
 
-    /// Borrow the inner connection
+    /// Borrow a database connection
     fn borrow(&self) -> &Self::Connection;
 }
 
