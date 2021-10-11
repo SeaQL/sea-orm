@@ -15,15 +15,21 @@ futures-util = { version = "^0.3" }
 rocket = { git = "https://github.com/SergioBenitez/Rocket.git", features = [
   "json",
 ] }
-rocket_db_pools = { git = "https://github.com/SergioBenitez/Rocket.git" }
 rocket_dyn_templates = { git = "https://github.com/SergioBenitez/Rocket.git", features = [
   "tera",
 ] }
-# remove `path = ""` in your own project
-sea-orm = { path = "../../", version = "^0.2.3", features = ["macros"], default-features = false }
 serde_json = { version = "^1" }
+
+[dependencies.sea-orm]
+path = "../../" # remove this line in your own project
+version = "^0.2.3"
+features = ["macros", "runtime-tokio-native-tls"]
+default-features = false
+
+[dependencies.sea-orm-rocket]
+path = "../../sea-orm-rocket/lib"
 
 [features]
 default = ["sqlx-postgres"]
-sqlx-mysql = ["sea-orm/sqlx-mysql", "rocket_db_pools/sqlx_mysql"]
-sqlx-postgres = ["sea-orm/sqlx-postgres", "rocket_db_pools/sqlx_postgres"]
+sqlx-mysql = ["sea-orm/sqlx-mysql"]
+sqlx-postgres = ["sea-orm/sqlx-postgres"]

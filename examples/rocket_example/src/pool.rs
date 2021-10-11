@@ -1,13 +1,17 @@
 use async_trait::async_trait;
-use rocket_db_pools::{rocket::figment::Figment, Config};
+use sea_orm_rocket::{rocket::figment::Figment, Config, Database};
+
+#[derive(Database, Debug)]
+#[database("sea_orm")]
+pub struct Db(SeaOrmPool);
 
 #[derive(Debug)]
-pub struct RocketDbPool {
+pub struct SeaOrmPool {
     pub conn: sea_orm::DatabaseConnection,
 }
 
 #[async_trait]
-impl rocket_db_pools::Pool for RocketDbPool {
+impl sea_orm_rocket::Pool for SeaOrmPool {
     type Error = sea_orm::DbErr;
 
     type Connection = sea_orm::DatabaseConnection;
@@ -16,10 +20,10 @@ impl rocket_db_pools::Pool for RocketDbPool {
         let config = figment.extract::<Config>().unwrap();
         let conn = sea_orm::Database::connect(&config.url).await.unwrap();
 
-        Ok(RocketDbPool { conn })
+        Ok(SeaOrmPool { conn })
     }
 
-    async fn get(&self) -> Result<Self::Connection, Self::Error> {
-        Ok(self.conn.clone())
+    fn borrow(&self) -> &Self::Connection {
+        &self.conn
     }
 }
