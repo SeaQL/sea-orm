@@ -290,6 +290,13 @@ pub use sea_orm_macros::{
     DeriveEntityModel, DeriveModel, DerivePrimaryKey, DeriveRelation, FromQueryResult,
 };
 
+/// Include generated model.
+///
+/// ```rust,ignore
+/// mod cake {
+///     sea_orm::include_proto!("cake");
+/// }
+/// ```
 #[cfg(feature = "macros")]
 #[macro_export]
 macro_rules! include_model {
