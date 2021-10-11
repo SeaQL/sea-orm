@@ -12,6 +12,8 @@ use futures::lock::MutexGuard;
 use crate::{DbErr, InnerConnection, QueryResult, Statement};
 
 #[ouroboros::self_referencing]
+/// `TransactionStream` cannot be used in a `transaction` closure as it does not impl `Send`.
+/// It seems to be a Rust limitation right now, and solution to work around this deemed to be extremely hard.
 pub struct TransactionStream<'a> {
     stmt: Statement,
     conn: MutexGuard<'a, InnerConnection>,

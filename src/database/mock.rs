@@ -117,7 +117,8 @@ impl MockDatabaseTrait for MockDatabase {
 
     fn commit(&mut self) {
         if self.transaction.is_some() {
-            let transaction = self.transaction.take().unwrap();
+            let mut transaction = self.transaction.take().unwrap();
+            transaction.push(Statement::from_string(self.db_backend, "COMMIT".to_owned()));
             self.transaction_log.push(transaction.into_transaction());
         } else {
             panic!("There is no open transaction to commit");
@@ -126,7 +127,12 @@ impl MockDatabaseTrait for MockDatabase {
 
     fn rollback(&mut self) {
         if self.transaction.is_some() {
-            self.transaction = None;
+            let mut transaction = self.transaction.take().unwrap();
+            transaction.push(Statement::from_string(
+                self.db_backend,
+                "ROLLBACK".to_owned(),
+            ));
+            self.transaction_log.push(transaction.into_transaction());
         } else {
             panic!("There is no open transaction to rollback");
         }
@@ -283,6 +289,7 @@ mod tests {
                         r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
                         vec![]
                     ),
+                    Statement::from_string(DbBackend::Postgres, "COMMIT".to_owned()),
                 ]),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
@@ -313,7 +320,17 @@ mod tests {
             _ => panic!(),
         }
 
-        assert_eq!(db.into_transaction_log(), vec![]);
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![Transaction::many(vec![
+                Statement::from_sql_and_values(
+                    DbBackend::Postgres,
+                    r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
+                    vec![1u64.into()]
+                ),
+                Statement::from_string(DbBackend::Postgres, "ROLLBACK".to_owned()),
+            ]),]
+        );
     }
 
     #[smol_potat::test]
