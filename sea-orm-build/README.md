@@ -8,9 +8,9 @@ A utility to generate models through a build script.
 
 ```toml
 [build-dependencies]
-sea-orm-build = { version = "0.2", features = [
-    "mysql", # or "postgres"
-    "runtime-tokio-rustls", # or "runtime-tokio-native-tls"
+sea-orm-build = { version = "0.2", default-features = false, features = [
+    "mysql",                # or "postgres"
+    "runtime-tokio-rustls", # or "runtime-async-std-native-tls", "runtime-tokio-native-tls", "runtime-async-std-rustls"
 ] }
 tokio = { version = "1", features = ["full"] }
 ```

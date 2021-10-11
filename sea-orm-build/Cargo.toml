@@ -23,13 +23,9 @@ sqlx = { version = "^0.5", default-features = false }
 tokio = { version = "1", features = ["full"] }
 
 [features]
-default = []
+default = ["runtime-async-std-native-tls"]
 mysql = ["sqlx/mysql"]
 postgres = ["sqlx/postgres"]
-runtime-actix-native-tls = [
-    "sqlx/runtime-actix-native-tls",
-    "sea-schema/runtime-actix-native-tls",
-]
 runtime-async-std-native-tls = [
     "sqlx/runtime-async-std-native-tls",
     "sea-schema/runtime-async-std-native-tls",
@@ -37,10 +33,6 @@ runtime-async-std-native-tls = [
 runtime-tokio-native-tls = [
     "sqlx/runtime-tokio-native-tls",
     "sea-schema/runtime-tokio-native-tls",
-]
-runtime-actix-rustls = [
-    "sqlx/runtime-actix-rustls",
-    "sea-schema/runtime-actix-rustls",
 ]
 runtime-async-std-rustls = [
     "sqlx/runtime-async-std-rustls",
