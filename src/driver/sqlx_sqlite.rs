@@ -1,7 +1,7 @@
 use std::{future::Future, pin::Pin};
 
 use sqlx::{
-    sqlite::{SqliteArguments, SqliteQueryResult, SqliteRow},
+    sqlite::{SqliteArguments, SqlitePoolOptions, SqliteQueryResult, SqliteRow},
     Sqlite, SqlitePool,
 };
 
@@ -29,7 +29,11 @@ impl SqlxSqliteConnector {
     }
 
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
-        if let Ok(pool) = SqlitePool::connect(string).await {
+        if let Ok(pool) = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect(string)
+            .await
+        {
             Ok(DatabaseConnection::SqlxSqlitePoolConnection(
                 SqlxSqlitePoolConnection { pool },
             ))

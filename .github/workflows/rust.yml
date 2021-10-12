@@ -177,7 +177,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        path: [async-std, tokio, actix_example, actix4_example, rocket_example]
+        path: [basic, actix_example, actix4_example, rocket_example]
     steps:
       - uses: actions/checkout@v2
 
@@ -192,6 +192,28 @@ jobs:
           command: build
           args: >
             --manifest-path examples/${{ matrix.path }}/Cargo.toml
+
+  issues:
+    name: Issues
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        path: [86]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: >
+            --manifest-path issues/${{ matrix.path }}/Cargo.toml
 
   sqlite:
     name: SQLite
