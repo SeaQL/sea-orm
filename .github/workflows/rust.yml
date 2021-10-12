@@ -148,7 +148,7 @@ jobs:
         with:
           command: test
           args: >
-            --path sea-orm-rocket
+            --manifest-path sea-orm-rocket/Cargo.toml
 
   cli:
     name: CLI

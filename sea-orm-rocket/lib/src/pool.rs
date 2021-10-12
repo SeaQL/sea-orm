@@ -3,8 +3,7 @@ use rocket::figment::Figment;
 /// Generic [`Database`](crate::Database) driver connection pool trait.
 ///
 /// This trait provides a generic interface to various database pooling
-/// implementations in the Rust ecosystem. It can be implemented by anyone, but
-/// this crate provides implementations for common drivers.
+/// implementations in the Rust ecosystem. It can be implemented by anyone.
 ///
 /// This is adapted from the original `rocket_db_pools`. But on top we require
 /// `Connection` itself to be `Sync`. Hence, instead of cloning or allocating
@@ -36,7 +35,7 @@ pub trait Pool: Sized + Send + Sync + 'static {
     /// insufficient resources, or another database-specific error.
     async fn init(figment: &Figment) -> Result<Self, Self::Error>;
 
-    /// Borrow a database connection
+    /// Borrows a reference to the pool
     fn borrow(&self) -> &Self::Connection;
 }
 
