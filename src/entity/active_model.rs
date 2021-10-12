@@ -209,23 +209,23 @@ where
         matches!(self.state, ActiveValueState::Unset)
     }
 
-    pub fn take(&mut self) -> V {
+    pub fn take(&mut self) -> Option<V> {
         self.state = ActiveValueState::Unset;
-        self.value.take().unwrap()
+        self.value.take()
     }
 
     pub fn unwrap(self) -> V {
         self.value.unwrap()
     }
 
-    pub fn into_value(self) -> Value {
-        self.value.unwrap().into()
+    pub fn into_value(self) -> Option<Value> {
+        self.value.map(Into::into)
     }
 
     pub fn into_wrapped_value(self) -> ActiveValue<Value> {
         match self.state {
-            ActiveValueState::Set => ActiveValue::set(self.into_value()),
-            ActiveValueState::Unchanged => ActiveValue::unchanged(self.into_value()),
+            ActiveValueState::Set => ActiveValue::set(self.into_value().unwrap()),
+            ActiveValueState::Unchanged => ActiveValue::unchanged(self.into_value().unwrap()),
             ActiveValueState::Unset => ActiveValue::unset(),
         }
     }

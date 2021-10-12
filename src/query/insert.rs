@@ -120,7 +120,7 @@ where
             }
             if av_has_val {
                 columns.push(col);
-                values.push(av.into_value());
+                values.push(av.into_value().unwrap());
             }
         }
         self.query.columns(columns);
