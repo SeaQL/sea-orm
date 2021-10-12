@@ -57,11 +57,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
         .expect("could not insert cake_baker");
     assert_eq!(
         cake_baker_res.last_insert_id,
-        if cfg!(feature = "sqlx-postgres") {
-            (cake_baker.cake_id.unwrap(), cake_baker.baker_id.unwrap())
-        } else {
-            Default::default()
-        }
+        (cake_baker.cake_id.unwrap(), cake_baker.baker_id.unwrap())
     );
 
     // Customer

@@ -1,14 +1,18 @@
-use crate::{ActiveModelTrait, EntityName, EntityTrait, IntoActiveModel, Iterable, QueryTrait};
+use crate::{
+    ActiveModelTrait, EntityName, EntityTrait, IntoActiveModel, Iterable, PrimaryKeyTrait,
+    QueryTrait,
+};
 use core::marker::PhantomData;
-use sea_query::InsertStatement;
+use sea_query::{InsertStatement, ValueTuple};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Insert<A>
 where
     A: ActiveModelTrait,
 {
     pub(crate) query: InsertStatement,
     pub(crate) columns: Vec<bool>,
+    pub(crate) primary_key: Option<ValueTuple>,
     pub(crate) model: PhantomData<A>,
 }
 
@@ -31,6 +35,7 @@ where
                 .into_table(A::Entity::default().table_ref())
                 .to_owned(),
             columns: Vec::new(),
+            primary_key: None,
             model: PhantomData,
         }
     }
@@ -107,6 +112,12 @@ where
         M: IntoActiveModel<A>,
     {
         let mut am: A = m.into_active_model();
+        self.primary_key =
+            if !<<A::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::auto_increment() {
+                am.get_primary_key_value()
+            } else {
+                None
+            };
         let mut columns = Vec::new();
         let mut values = Vec::new();
         let columns_empty = self.columns.is_empty();
