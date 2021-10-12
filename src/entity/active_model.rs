@@ -1,5 +1,5 @@
 use crate::{
-    error::*, DatabaseConnection, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn, Value,
+    error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn, Value,
 };
 use async_trait::async_trait;
 use sea_query::ValueTuple;
@@ -104,9 +104,11 @@ pub trait ActiveModelTrait: Clone + Debug {
         }
     }
 
-    async fn insert(self, db: &DatabaseConnection) -> Result<Self, DbErr>
+    async fn insert<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        C: ConnectionTrait<'a>,
+        Self: 'a,
     {
         let am = self;
         let exec = <Self::Entity as EntityTrait>::insert(am).exec(db);
@@ -120,17 +122,22 @@ pub trait ActiveModelTrait: Clone + Debug {
         }
     }
 
-    async fn update(self, db: &DatabaseConnection) -> Result<Self, DbErr> {
+    async fn update<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
+    where
+        C: ConnectionTrait<'a>,
+        Self: 'a,
+    {
         let exec = Self::Entity::update(self).exec(db);
         exec.await
     }
 
     /// Insert the model if primary key is unset, update otherwise.
     /// Only works if the entity has auto increment primary key.
-    async fn save(self, db: &DatabaseConnection) -> Result<Self, DbErr>
+    async fn save<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
-        Self: ActiveModelBehavior,
+        Self: ActiveModelBehavior + 'a,
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        C: ConnectionTrait<'a>,
     {
         let mut am = self;
         am = ActiveModelBehavior::before_save(am);
@@ -152,9 +159,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     /// Delete an active model by its primary key
-    async fn delete(self, db: &DatabaseConnection) -> Result<DeleteResult, DbErr>
+    async fn delete<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
-        Self: ActiveModelBehavior,
+        Self: ActiveModelBehavior + 'a,
+        C: ConnectionTrait<'a>,
     {
         let mut am = self;
         am = ActiveModelBehavior::before_delete(am);

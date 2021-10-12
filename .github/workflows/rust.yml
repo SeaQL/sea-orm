@@ -144,6 +144,12 @@ jobs:
           args: >
             --all
 
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --manifest-path sea-orm-rocket/Cargo.toml
+
   cli:
     name: CLI
     runs-on: ${{ matrix.os }}

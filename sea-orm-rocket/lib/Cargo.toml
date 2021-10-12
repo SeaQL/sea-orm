@@ -1,0 +1,27 @@
+[package]
+name = "sea-orm-rocket"
+version = "0.1.0"
+authors = ["Sergio Benitez <sb@sergio.bz>", "Jeb Rosen <jeb@jebrosen.com>"]
+description = "SeaORM Rocket support crate"
+repository = "https://github.com/SeaQL/sea-orm"
+readme = "../README.md"
+keywords = ["rocket", "framework", "database", "pools"]
+license = "MIT OR Apache-2.0"
+edition = "2018"
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies.rocket]
+git = "https://github.com/SergioBenitez/Rocket.git"
+version = "0.5.0-rc.1"
+default-features = false
+
+[dependencies.sea-orm-rocket-codegen]
+path = "../codegen"
+version = "0.1.0-rc"
+
+[dev-dependencies.rocket]
+git = "https://github.com/SergioBenitez/Rocket.git"
+default-features = false
+features = ["json"]

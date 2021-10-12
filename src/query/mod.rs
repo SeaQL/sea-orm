@@ -22,4 +22,4 @@ pub use traits::*;
 pub use update::*;
 pub use util::*;
 
-pub use crate::{InsertResult, Statement, UpdateResult, Value, Values};
+pub use crate::{ConnectionTrait, InsertResult, Statement, UpdateResult, Value, Values};

@@ -1,6 +1,8 @@
 pub use super::super::bakery_chain::*;
 use pretty_assertions::assert_eq;
-use sea_orm::{error::*, sea_query, DbBackend, DbConn, EntityTrait, ExecResult, Schema};
+use sea_orm::{
+    error::*, sea_query, ConnectionTrait, DbBackend, DbConn, EntityTrait, ExecResult, Schema,
+};
 use sea_query::{
     Alias, ColumnDef, ForeignKey, ForeignKeyAction, Index, Table, TableCreateStatement,
 };

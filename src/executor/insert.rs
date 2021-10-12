@@ -1,6 +1,6 @@
 use crate::{
-    error::*, ActiveModelTrait, DatabaseConnection, DbBackend, EntityTrait, Insert,
-    PrimaryKeyTrait, Statement, TryFromU64,
+    error::*, ActiveModelTrait, ConnectionTrait, DbBackend, EntityTrait, Insert, PrimaryKeyTrait,
+    Statement, TryFromU64,
 };
 use sea_query::{FromValueTuple, InsertStatement, ValueTuple};
 use std::{future::Future, marker::PhantomData};
@@ -28,11 +28,12 @@ where
     A: ActiveModelTrait,
 {
     #[allow(unused_mut)]
-    pub fn exec<'a>(
+    pub fn exec<'a, C>(
         self,
-        db: &'a DatabaseConnection,
+        db: &'a C,
     ) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
     where
+        C: ConnectionTrait<'a>,
         A: 'a,
     {
         // so that self is dropped before entering await
@@ -63,11 +64,12 @@ where
         }
     }
 
-    pub fn exec<'a>(
+    pub fn exec<'a, C>(
         self,
-        db: &'a DatabaseConnection,
+        db: &'a C,
     ) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
     where
+        C: ConnectionTrait<'a>,
         A: 'a,
     {
         let builder = db.get_database_backend();
@@ -76,12 +78,13 @@ where
 }
 
 // Only Statement impl Send
-async fn exec_insert<A>(
+async fn exec_insert<'a, A, C>(
     primary_key: Option<ValueTuple>,
     statement: Statement,
-    db: &DatabaseConnection,
+    db: &'a C,
 ) -> Result<InsertResult<A>, DbErr>
 where
+    C: ConnectionTrait<'a>,
     A: ActiveModelTrait,
 {
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
