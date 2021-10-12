@@ -23,14 +23,14 @@ macro_rules! debug_query_build {
 
 debug_query_build!(DbBackend, |x: &DebugQuery<_, DbBackend>| x.value);
 debug_query_build!(&DbBackend, |x: &DebugQuery<_, &DbBackend>| *x.value);
-debug_query_build!(
+debug_query_build!(DatabaseConnection, |x: &DebugQuery<
+    _,
     DatabaseConnection,
-    |x: &DebugQuery<_, DatabaseConnection>| x.value.get_database_backend()
-);
-debug_query_build!(
+>| x.value.get_database_backend());
+debug_query_build!(&DatabaseConnection, |x: &DebugQuery<
+    _,
     &DatabaseConnection,
-    |x: &DebugQuery<_, &DatabaseConnection>| x.value.get_database_backend()
-);
+>| x.value.get_database_backend());
 
 /// Helper to get a `Statement` from an object that impl `QueryTrait`.
 ///

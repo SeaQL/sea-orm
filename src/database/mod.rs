@@ -1,13 +1,17 @@
 mod connection;
+mod db_connection;
 #[cfg(feature = "mock")]
 mod mock;
 mod statement;
+mod stream;
 mod transaction;
 
 pub use connection::*;
+pub use db_connection::*;
 #[cfg(feature = "mock")]
 pub use mock::*;
 pub use statement::*;
+pub use stream::*;
 pub use transaction::*;
 
 use crate::DbErr;
