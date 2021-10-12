@@ -10,8 +10,7 @@ pub struct ActiveValue<V>
 where
     V: Into<Value>,
 {
-    // Don't want to call ActiveValue::unwrap() and cause panic
-    pub(self) value: Option<V>,
+    value: Option<V>,
     state: ActiveValueState,
 }
 
@@ -74,7 +73,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         macro_rules! next {
             () => {
                 if let Some(col) = cols.next() {
-                    if let Some(val) = self.get(col.into_column()).value {
+                    if let Some(val) = self.get(col.into_column()).into_value() {
                         val
                     } else {
                         return None;
