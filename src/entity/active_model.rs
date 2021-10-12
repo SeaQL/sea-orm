@@ -106,12 +106,11 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     async fn insert<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
-        Self: ActiveModelBehavior,
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
-        Self: 'a,
     {
-        let am = ActiveModelBehavior::before_save(self, true, db)?;
+        let am = ActiveModelBehavior::before_save(self, true)?;
         let res = <Self::Entity as EntityTrait>::insert(am).exec(db).await?;
         let found = <Self::Entity as EntityTrait>::find_by_id(res.last_insert_id)
             .one(db)
@@ -124,20 +123,20 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     async fn update<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
+        Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
-        Self: 'a,
     {
-        let am = ActiveModelBehavior::before_save(self, false, db)?;
+        let am = ActiveModelBehavior::before_save(self, false)?;
         let am = Self::Entity::update(am).exec(db).await?;
-        ActiveModelBehavior::after_save(am, false, db)
+        ActiveModelBehavior::after_save(am, false)
     }
 
     /// Insert the model if primary key is unset, update otherwise.
     /// Only works if the entity has auto increment primary key.
     async fn save<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
-        Self: ActiveModelBehavior + 'a,
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
     {
         let mut am = self;
@@ -163,10 +162,10 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
     {
-        let am = ActiveModelBehavior::before_delete(self, db)?;
+        let am = ActiveModelBehavior::before_delete(self)?;
         let am_clone = am.clone();
         let delete_res = Self::Entity::delete(am).exec(db).await?;
-        ActiveModelBehavior::after_delete(am_clone, db)?;
+        ActiveModelBehavior::after_delete(am_clone)?;
         Ok(delete_res)
     }
 }
@@ -180,22 +179,22 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
     }
 
     /// Will be called before saving
-    fn before_save(self, insert: bool, db: &DatabaseConnection) -> Result<Self, DbErr> {
+    fn before_save(self, insert: bool) -> Result<Self, DbErr> {
         Ok(self)
     }
 
     /// Will be called after saving
-    fn after_save(self, insert: bool, db: &DatabaseConnection) -> Result<Self, DbErr> {
+    fn after_save(self, insert: bool) -> Result<Self, DbErr> {
         Ok(self)
     }
 
     /// Will be called before deleting
-    fn before_delete(self, db: &DatabaseConnection) -> Result<Self, DbErr> {
+    fn before_delete(self) -> Result<Self, DbErr> {
         Ok(self)
     }
 
     /// Will be called after deleting
-    fn after_delete(self, db: &DatabaseConnection) -> Result<Self, DbErr> {
+    fn after_delete(self) -> Result<Self, DbErr> {
         Ok(self)
     }
 }
