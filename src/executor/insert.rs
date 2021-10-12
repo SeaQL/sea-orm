@@ -28,7 +28,7 @@ where
     A: ActiveModelTrait,
 {
     #[allow(unused_mut)]
-    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
+    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + '_
     where
         C: ConnectionTrait<'a>,
         A: 'a,
@@ -61,7 +61,7 @@ where
         }
     }
 
-    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
+    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + '_
     where
         C: ConnectionTrait<'a>,
         A: 'a,
@@ -71,7 +71,6 @@ where
     }
 }
 
-// Only Statement impl Send
 async fn exec_insert<'a, A, C>(
     primary_key: Option<ValueTuple>,
     statement: Statement,

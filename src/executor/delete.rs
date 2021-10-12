@@ -18,7 +18,7 @@ impl<'a, A: 'a> DeleteOne<A>
 where
     A: ActiveModelTrait,
 {
-    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<DeleteResult, DbErr>> + 'a
+    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<DeleteResult, DbErr>> + '_
     where
         C: ConnectionTrait<'a>,
     {
@@ -31,7 +31,7 @@ impl<'a, E> DeleteMany<E>
 where
     E: EntityTrait,
 {
-    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<DeleteResult, DbErr>> + 'a
+    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<DeleteResult, DbErr>> + '_
     where
         C: ConnectionTrait<'a>,
     {
@@ -61,8 +61,7 @@ where
     Deleter::new(query).exec(db).await
 }
 
-// Only Statement impl Send
-async fn exec_delete<'a, C>(statement: Statement, db: &C) -> Result<DeleteResult, DbErr>
+async fn exec_delete<'a, C>(statement: Statement, db: &'a C) -> Result<DeleteResult, DbErr>
 where
     C: ConnectionTrait<'a>,
 {

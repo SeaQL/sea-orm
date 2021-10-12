@@ -32,7 +32,7 @@ impl<'a, E> UpdateMany<E>
 where
     E: EntityTrait,
 {
-    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<UpdateResult, DbErr>> + 'a
+    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_
     where
         C: ConnectionTrait<'a>,
     {
@@ -83,7 +83,6 @@ where
     Ok(model)
 }
 
-// Only Statement impl Send
 async fn exec_update<'a, C>(
     statement: Statement,
     db: &'a C,
