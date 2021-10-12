@@ -59,4 +59,3 @@ runtime-tokio-rustls = [
     "sqlx/runtime-tokio-rustls",
     "sea-schema/runtime-tokio-rustls",
 ]
-

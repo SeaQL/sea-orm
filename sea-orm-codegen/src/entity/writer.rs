@@ -27,6 +27,37 @@ pub enum WithSerde {
     Both,
 }
 
+impl WithSerde {
+    pub fn extra_derive(&self) -> TokenStream {
+        let mut extra_derive = match self {
+            Self::None => {
+                quote! {}
+            }
+            Self::Serialize => {
+                quote! {
+                    Serialize
+                }
+            }
+            Self::Deserialize => {
+                quote! {
+                    Deserialize
+                }
+            }
+            Self::Both => {
+                quote! {
+                    Serialize, Deserialize
+                }
+            }
+        };
+
+        if !extra_derive.is_empty() {
+            extra_derive = quote! { , #extra_derive }
+        }
+
+        extra_derive
+    }
+}
+
 impl FromStr for WithSerde {
     type Err = crate::Error;
 
@@ -171,29 +202,29 @@ impl EntityWriter {
     }
 
     pub fn gen_import(with_serde: &WithSerde) -> TokenStream {
+        let prelude_import = quote!(
+            use sea_orm::entity::prelude::*;
+        );
+
         match with_serde {
-            WithSerde::None => {
-                quote! {
-                    use sea_orm::entity::prelude::*;
-                }
-            }
+            WithSerde::None => prelude_import,
             WithSerde::Serialize => {
                 quote! {
-                    use sea_orm::entity::prelude::*;
+                    #prelude_import
                     use serde::Serialize;
                 }
             }
 
             WithSerde::Deserialize => {
                 quote! {
-                    use sea_orm::entity::prelude::*;
+                    #prelude_import
                     use serde::Deserialize;
                 }
             }
 
             WithSerde::Both => {
                 quote! {
-                    use sea_orm::entity::prelude::*;
+                    #prelude_import
                     use serde::{Deserialize,Serialize};
                 }
             }
@@ -222,40 +253,12 @@ impl EntityWriter {
         let column_names_snake_case = entity.get_column_names_snake_case();
         let column_rs_types = entity.get_column_rs_types();
 
-        match with_serde {
-            WithSerde::None => {
-                quote! {
-                    #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
-                    pub struct Model {
-                        #(pub #column_names_snake_case: #column_rs_types,)*
-                    }
-                }
-            }
-            WithSerde::Serialize => {
-                quote! {
-                    #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Serialize)]
-                    pub struct Model {
-                        #(pub #column_names_snake_case: #column_rs_types,)*
-                    }
-                }
-            }
+        let extra_derive = with_serde.extra_derive();
 
-            WithSerde::Deserialize => {
-                quote! {
-                    #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Deserialize)]
-                    pub struct Model {
-                        #(pub #column_names_snake_case: #column_rs_types,)*
-                    }
-                }
-            }
-
-            WithSerde::Both => {
-                quote! {
-                    #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Serialize, Deserialize)]
-                    pub struct Model {
-                        #(pub #column_names_snake_case: #column_rs_types,)*
-                    }
-                }
+        quote! {
+            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel #extra_derive)]
+            pub struct Model {
+                #(pub #column_names_snake_case: #column_rs_types,)*
             }
         }
     }
@@ -453,56 +456,16 @@ impl EntityWriter {
             })
             .collect();
 
-        match with_serde {
-            WithSerde::None => {
-                quote! {
-                    #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-                    #[sea_orm(table_name = #table_name)]
-                    pub struct Model {
-                        #(
-                            #attrs
-                            pub #column_names_snake_case: #column_rs_types,
-                        )*
-                    }
-                }
-            }
-            WithSerde::Serialize => {
-                quote! {
-                    #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize)]
-                    #[sea_orm(table_name = #table_name)]
-                    pub struct Model {
-                        #(
-                            #attrs
-                            pub #column_names_snake_case: #column_rs_types,
-                        )*
-                    }
-                }
-            }
+        let extra_derive = with_serde.extra_derive();
 
-            WithSerde::Deserialize => {
-                quote! {
-                    #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize)]
-                    #[sea_orm(table_name = #table_name)]
-                    pub struct Model {
-                        #(
-                            #attrs
-                            pub #column_names_snake_case: #column_rs_types,
-                        )*
-                    }
-                }
-            }
-
-            WithSerde::Both => {
-                quote! {
-                    #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-                    #[sea_orm(table_name = #table_name)]
-                    pub struct Model {
-                        #(
-                            #attrs
-                            pub #column_names_snake_case: #column_rs_types,
-                        )*
-                    }
-                }
+        quote! {
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel #extra_derive)]
+            #[sea_orm(table_name = #table_name)]
+            pub struct Model {
+                #(
+                    #attrs
+                    pub #column_names_snake_case: #column_rs_types,
+                )*
             }
         }
     }
