@@ -1,7 +1,7 @@
 use std::{future::Future, pin::Pin};
 
 use sqlx::{
-    mysql::{MySqlArguments, MySqlQueryResult, MySqlRow},
+    mysql::{MySqlArguments, MySqlConnectOptions, MySqlQueryResult, MySqlRow},
     MySql, MySqlPool,
 };
 
@@ -9,8 +9,8 @@ sea_query::sea_query_driver_mysql!();
 use sea_query_driver_mysql::bind_query;
 
 use crate::{
-    debug_print, error::*, executor::*, DatabaseConnection, DatabaseTransaction, QueryStream,
-    Statement, TransactionError,
+    debug_print, error::*, executor::*, ConnectOptions, DatabaseConnection, DatabaseTransaction,
+    QueryStream, Statement, TransactionError,
 };
 
 use super::sqlx_common::*;
@@ -25,11 +25,16 @@ pub struct SqlxMySqlPoolConnection {
 
 impl SqlxMySqlConnector {
     pub fn accepts(string: &str) -> bool {
-        string.starts_with("mysql://")
+        string.starts_with("mysql://") && string.parse::<MySqlConnectOptions>().is_ok()
     }
 
-    pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
-        if let Ok(pool) = MySqlPool::connect(string).await {
+    pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
+        let opt = options
+            .url
+            .parse::<MySqlConnectOptions>()
+            .map_err(|e| DbErr::Conn(e.to_string()))?;
+        // opt.disable_statement_logging();
+        if let Ok(pool) = options.pool_options().connect_with(opt).await {
             Ok(DatabaseConnection::SqlxMySqlPoolConnection(
                 SqlxMySqlPoolConnection { pool },
             ))

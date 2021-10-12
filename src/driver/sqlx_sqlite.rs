@@ -1,7 +1,7 @@
 use std::{future::Future, pin::Pin};
 
 use sqlx::{
-    sqlite::{SqliteArguments, SqlitePoolOptions, SqliteQueryResult, SqliteRow},
+    sqlite::{SqliteArguments, SqliteConnectOptions, SqliteQueryResult, SqliteRow},
     Sqlite, SqlitePool,
 };
 
@@ -9,8 +9,8 @@ sea_query::sea_query_driver_sqlite!();
 use sea_query_driver_sqlite::bind_query;
 
 use crate::{
-    debug_print, error::*, executor::*, DatabaseConnection, DatabaseTransaction, QueryStream,
-    Statement, TransactionError,
+    debug_print, error::*, executor::*, ConnectOptions, DatabaseConnection, DatabaseTransaction,
+    QueryStream, Statement, TransactionError,
 };
 
 use super::sqlx_common::*;
@@ -25,13 +25,19 @@ pub struct SqlxSqlitePoolConnection {
 
 impl SqlxSqliteConnector {
     pub fn accepts(string: &str) -> bool {
-        string.starts_with("sqlite:")
+        string.starts_with("sqlite:") && string.parse::<SqliteConnectOptions>().is_ok()
     }
 
-    pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
-        if let Ok(pool) = SqlitePoolOptions::new()
+    pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
+        let opt = options
+            .url
+            .parse::<SqliteConnectOptions>()
+            .map_err(|e| DbErr::Conn(e.to_string()))?;
+        // opt.disable_statement_logging();
+        if let Ok(pool) = options
+            .pool_options()
             .max_connections(1)
-            .connect(string)
+            .connect_with(opt)
             .await
         {
             Ok(DatabaseConnection::SqlxSqlitePoolConnection(
