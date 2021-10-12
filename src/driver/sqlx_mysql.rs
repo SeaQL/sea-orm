@@ -1,3 +1,5 @@
+use std::{future::Future, pin::Pin};
+
 use sqlx::{
     mysql::{MySqlArguments, MySqlQueryResult, MySqlRow},
     MySql, MySqlPool,
@@ -6,7 +8,10 @@ use sqlx::{
 sea_query::sea_query_driver_mysql!();
 use sea_query_driver_mysql::bind_query;
 
-use crate::{debug_print, error::*, executor::*, DatabaseConnection, DbBackend, Statement};
+use crate::{
+    debug_print, error::*, executor::*, DatabaseConnection, DatabaseTransaction, QueryStream,
+    Statement, TransactionError,
+};
 
 use super::sqlx_common::*;
 
@@ -20,7 +25,7 @@ pub struct SqlxMySqlPoolConnection {
 
 impl SqlxMySqlConnector {
     pub fn accepts(string: &str) -> bool {
-        DbBackend::MySql.is_prefix_of(string)
+        string.starts_with("mysql://")
     }
 
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
@@ -91,6 +96,49 @@ impl SqlxMySqlPoolConnection {
             ))
         }
     }
+
+    pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
+        debug_print!("{}", stmt);
+
+        if let Ok(conn) = self.pool.acquire().await {
+            Ok(QueryStream::from((conn, stmt)))
+        } else {
+            Err(DbErr::Query(
+                "Failed to acquire connection from pool.".to_owned(),
+            ))
+        }
+    }
+
+    pub async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
+        if let Ok(conn) = self.pool.acquire().await {
+            DatabaseTransaction::new_mysql(conn).await
+        } else {
+            Err(DbErr::Query(
+                "Failed to acquire connection from pool.".to_owned(),
+            ))
+        }
+    }
+
+    pub async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
+    where
+        F: for<'b> FnOnce(
+                &'b DatabaseTransaction,
+            ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>
+            + Send,
+        T: Send,
+        E: std::error::Error + Send,
+    {
+        if let Ok(conn) = self.pool.acquire().await {
+            let transaction = DatabaseTransaction::new_mysql(conn)
+                .await
+                .map_err(|e| TransactionError::Connection(e))?;
+            transaction.run(callback).await
+        } else {
+            Err(TransactionError::Connection(DbErr::Query(
+                "Failed to acquire connection from pool.".to_owned(),
+            )))
+        }
+    }
 }
 
 impl From<MySqlRow> for QueryResult {
@@ -109,7 +157,7 @@ impl From<MySqlQueryResult> for ExecResult {
     }
 }
 
-fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, MySqlArguments> {
+pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, MySqlArguments> {
     let mut query = sqlx::query(&stmt.sql);
     if let Some(values) = &stmt.values {
         query = bind_query(query, values);

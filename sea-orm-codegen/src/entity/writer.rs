@@ -597,18 +597,85 @@ mod tests {
                     name: "id".to_owned(),
                 }],
             },
+            Entity {
+                table_name: "rust_keyword".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "id".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "testing".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "rust".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "keywords".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "type".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "typeof".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "crate".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "self".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                ],
+                relations: vec![],
+                conjunct_relations: vec![],
+                primary_keys: vec![PrimaryKey {
+                    name: "id".to_owned(),
+                }],
+            },
         ]
     }
 
     #[test]
     fn test_gen_expanded_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 5] = [
+        const ENTITY_FILES: [&str; 6] = [
             include_str!("../../tests/expanded/cake.rs"),
             include_str!("../../tests/expanded/cake_filling.rs"),
             include_str!("../../tests/expanded/filling.rs"),
             include_str!("../../tests/expanded/fruit.rs"),
             include_str!("../../tests/expanded/vendor.rs"),
+            include_str!("../../tests/expanded/rust_keyword.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
@@ -642,12 +709,13 @@ mod tests {
     #[test]
     fn test_gen_compact_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 5] = [
+        const ENTITY_FILES: [&str; 6] = [
             include_str!("../../tests/compact/cake.rs"),
             include_str!("../../tests/compact/cake_filling.rs"),
             include_str!("../../tests/compact/filling.rs"),
             include_str!("../../tests/compact/fruit.rs"),
             include_str!("../../tests/compact/vendor.rs"),
+            include_str!("../../tests/compact/rust_keyword.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());

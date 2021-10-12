@@ -1,6 +1,8 @@
 pub use super::super::bakery_chain::*;
 use pretty_assertions::assert_eq;
-use sea_orm::{error::*, sea_query, DbBackend, DbConn, EntityTrait, ExecResult, Schema};
+use sea_orm::{
+    error::*, sea_query, ConnectionTrait, DbBackend, DbConn, EntityTrait, ExecResult, Schema,
+};
 use sea_query::{
     Alias, ColumnDef, ForeignKey, ForeignKeyAction, Index, Table, TableCreateStatement,
 };
@@ -287,8 +289,8 @@ pub async fn create_metadata_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(metadata::Column::Key).string().not_null())
         .col(ColumnDef::new(metadata::Column::Value).string().not_null())
         .col(ColumnDef::new(metadata::Column::Bytes).binary().not_null())
-        .col(ColumnDef::new(metadata::Column::Date).date().not_null())
-        .col(ColumnDef::new(metadata::Column::Time).time().not_null())
+        .col(ColumnDef::new(metadata::Column::Date).date())
+        .col(ColumnDef::new(metadata::Column::Time).time())
         .to_owned();
 
     create_table(db, &stmt, Metadata).await
