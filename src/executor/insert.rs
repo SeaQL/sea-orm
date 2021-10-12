@@ -28,10 +28,7 @@ where
     A: ActiveModelTrait,
 {
     #[allow(unused_mut)]
-    pub fn exec<'a, C>(
-        self,
-        db: &'a C,
-    ) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
+    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
     where
         C: ConnectionTrait<'a>,
         A: 'a,
@@ -64,10 +61,7 @@ where
         }
     }
 
-    pub fn exec<'a, C>(
-        self,
-        db: &'a C,
-    ) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
+    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
     where
         C: ConnectionTrait<'a>,
         A: 'a,

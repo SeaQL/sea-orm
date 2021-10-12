@@ -54,10 +54,7 @@ impl Updater {
         self
     }
 
-    pub fn exec<'a, C>(
-        self,
-        db: &'a C
-    ) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_
+    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_
     where
         C: ConnectionTrait<'a>,
     {
