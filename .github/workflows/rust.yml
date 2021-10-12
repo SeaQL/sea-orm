@@ -144,6 +144,12 @@ jobs:
           args: >
             --all
 
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --path sea-orm-rocket
+
   cli:
     name: CLI
     runs-on: ${{ matrix.os }}
