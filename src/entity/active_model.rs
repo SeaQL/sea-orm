@@ -187,6 +187,24 @@ macro_rules! impl_into_active_value {
                 $fn(self)
             }
         }
+
+        impl IntoActiveValue<Option<$ty>> for Option<$ty> {
+            fn into_active_value(self) -> ActiveValue<Option<$ty>> {
+                match self {
+                    Some(value) => Set(Some(value)),
+                    None => Unset(None),
+                }
+            }
+        }
+
+        impl IntoActiveValue<Option<$ty>> for Option<Option<$ty>> {
+            fn into_active_value(self) -> ActiveValue<Option<$ty>> {
+                match self {
+                    Some(value) => Set(value),
+                    None => Unset(None),
+                }
+            }
+        }
     };
 }
 
@@ -201,7 +219,6 @@ impl_into_active_value!(u32, Set);
 impl_into_active_value!(u64, Set);
 impl_into_active_value!(f32, Set);
 impl_into_active_value!(f64, Set);
-impl_into_active_value!(&'static [u8], Set);
 impl_into_active_value!(&'static str, Set);
 impl_into_active_value!(String, Set);
 
@@ -232,18 +249,6 @@ impl_into_active_value!(crate::prelude::Decimal, Set);
 #[cfg(feature = "with-uuid")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-uuid")))]
 impl_into_active_value!(crate::prelude::Uuid, Set);
-
-impl<V> IntoActiveValue<Option<V>> for Option<V>
-where
-    V: Into<Value> + Nullable,
-{
-    fn into_active_value(self) -> ActiveValue<Option<V>> {
-        match self {
-            Some(value) => Set(Some(value)),
-            None => Unset(None),
-        }
-    }
-}
 
 impl<V> ActiveValue<V>
 where
