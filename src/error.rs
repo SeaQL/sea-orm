@@ -1,11 +1,10 @@
-use std::error::Error;
-
 #[derive(Debug)]
 pub enum DbErr {
     Conn(String),
     Exec(String),
     Query(String),
-    Custom(Box<dyn Error>),
+    RecordNotFound(String),
+    Custom(String),
 }
 
 impl std::error::Error for DbErr {}
@@ -16,7 +15,8 @@ impl std::fmt::Display for DbErr {
             Self::Conn(s) => write!(f, "Connection Error: {}", s),
             Self::Exec(s) => write!(f, "Execution Error: {}", s),
             Self::Query(s) => write!(f, "Query Error: {}", s),
-            Self::Custom(e) => write!(f, "Custom Error: {}", e),
+            Self::RecordNotFound(s) => write!(f, "RecordNotFound Error: {}", s),
+            Self::Custom(s) => write!(f, "Custom Error: {}", s),
         }
     }
 }
