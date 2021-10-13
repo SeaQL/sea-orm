@@ -115,22 +115,26 @@ impl ConnectOptions {
     }
 
     /// Set the maximum number of connections of the pool
-    pub fn max_connections(&mut self, value: u32) {
+    pub fn max_connections(&mut self, value: u32) -> &mut Self {
         self.max_connections = Some(value);
+        self
     }
 
     /// Set the minimum number of connections of the pool
-    pub fn min_connections(&mut self, value: u32) {
+    pub fn min_connections(&mut self, value: u32) -> &mut Self {
         self.min_connections = Some(value);
+        self
     }
 
     /// Set the timeout duration when acquiring a connection
-    pub fn connect_timeout(&mut self, value: Duration) {
+    pub fn connect_timeout(&mut self, value: Duration) -> &mut Self {
         self.connect_timeout = Some(value);
+        self
     }
 
     /// Set the idle duration before closing a connection
-    pub fn idle_timeout(&mut self, value: Duration) {
+    pub fn idle_timeout(&mut self, value: Duration) -> &mut Self {
         self.idle_timeout = Some(value);
+        self
     }
 }

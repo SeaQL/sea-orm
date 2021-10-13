@@ -48,15 +48,14 @@ async fn create(conn: Connection<'_, Db>, post_form: Form<post::Model>) -> Flash
 }
 
 #[post("/<id>", data = "<post_form>")]
-async fn update(conn: Connection<'_, Db>, id: i32, post_form: Form<post::Model>) -> Flash<Redirect> {
+async fn update(
+    conn: Connection<'_, Db>,
+    id: i32,
+    post_form: Form<post::Model>,
+) -> Flash<Redirect> {
     let db = conn.into_inner();
 
-    let post: post::ActiveModel = Post::find_by_id(id)
-        .one(db)
-        .await
-        .unwrap()
-        .unwrap()
-        .into();
+    let post: post::ActiveModel = Post::find_by_id(id).one(db).await.unwrap().unwrap().into();
 
     let form = post_form.into_inner();
 
@@ -133,12 +132,7 @@ async fn edit(conn: Connection<'_, Db>, id: i32) -> Template {
 async fn delete(conn: Connection<'_, Db>, id: i32) -> Flash<Redirect> {
     let db = conn.into_inner();
 
-    let post: post::ActiveModel = Post::find_by_id(id)
-        .one(db)
-        .await
-        .unwrap()
-        .unwrap()
-        .into();
+    let post: post::ActiveModel = Post::find_by_id(id).one(db).await.unwrap().unwrap().into();
 
     post.delete(db).await.unwrap();
 
