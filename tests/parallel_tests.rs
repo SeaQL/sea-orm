@@ -22,6 +22,7 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
     let metadata = vec![
         metadata::Model {
             uuid: Uuid::new_v4(),
+            uuid_ref: None,
             ty: "Type".to_owned(),
             key: "markup".to_owned(),
             value: "1.18".to_owned(),
@@ -31,6 +32,7 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
         },
         metadata::Model {
             uuid: Uuid::new_v4(),
+            uuid_ref: None,
             ty: "Type".to_owned(),
             key: "exchange_rate".to_owned(),
             value: "0.78".to_owned(),
@@ -40,6 +42,7 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
         },
         metadata::Model {
             uuid: Uuid::new_v4(),
+            uuid_ref: None,
             ty: "Type".to_owned(),
             key: "service_charge".to_owned(),
             value: "1.1".to_owned(),

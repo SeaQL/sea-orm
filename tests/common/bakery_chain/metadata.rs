@@ -5,6 +5,7 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub uuid: Uuid,
+    pub uuid_ref: Option<Uuid>,
     #[sea_orm(column_name = "type", enum_name = "Type")]
     pub ty: String,
     pub key: String,
@@ -15,6 +16,21 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+    #[sea_orm(belongs_to = "Entity", from = "Column::Uuid", to = "Column::UuidRef")]
+    SelfReferencing,
+}
+
+pub struct SelfReferencingLink;
+
+impl Linked for SelfReferencingLink {
+    type FromEntity = Entity;
+
+    type ToEntity = Entity;
+
+    fn link(&self) -> Vec<RelationDef> {
+        vec![Relation::SelfReferencing.def()]
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {}
