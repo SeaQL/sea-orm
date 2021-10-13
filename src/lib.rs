@@ -287,7 +287,7 @@ pub use schema::*;
 #[cfg(feature = "macros")]
 pub use sea_orm_macros::{
     DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveCustomColumn, DeriveEntity,
-    DeriveEntityModel, DeriveModel, DerivePrimaryKey, DeriveRelation, FromQueryResult,
+    DeriveEntityModel, DeriveModel, DerivePrimaryKey, DeriveRelation, FromQueryResult, DeriveIntoActiveModel,
 };
 
 pub use sea_query;
