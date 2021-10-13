@@ -1,5 +1,9 @@
-use crate::{EntityTrait, Linked, QuerySelect, Related, Select, SelectTwo, SelectTwoMany};
+use crate::{
+    join_tbl_on_condition, unpack_table_ref, EntityTrait, IdenStatic, Iterable, Linked,
+    QuerySelect, Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
+};
 pub use sea_query::JoinType;
+use sea_query::{Alias, Expr, IntoIden, SeaRc, SelectExpr};
 
 impl<E> Select<E>
 where
@@ -65,10 +69,35 @@ where
         T: EntityTrait,
     {
         let mut slf = self;
-        for rel in l.link() {
-            slf = slf.join(JoinType::LeftJoin, rel);
+        for (i, rel) in l.link().into_iter().enumerate() {
+            let to_tbl = Alias::new(&format!("r{}", i)).into_iden();
+            let from_tbl = if i > 0 {
+                Alias::new(&format!("r{}", i - 1)).into_iden()
+            } else {
+                unpack_table_ref(&rel.from_tbl)
+            };
+
+            slf.query().join_as(
+                JoinType::LeftJoin,
+                unpack_table_ref(&rel.to_tbl),
+                SeaRc::clone(&to_tbl),
+                join_tbl_on_condition(from_tbl, to_tbl, rel.from_col, rel.to_col),
+            );
         }
-        slf.select_also(T::default())
+        slf = slf.apply_alias(SelectA.as_str());
+        let mut select_two = SelectTwo::new_without_prepare(slf.query);
+        for col in <T::Column as Iterable>::iter() {
+            let alias = format!("{}{}", SelectB.as_str(), col.as_str());
+            select_two.query().expr(SelectExpr {
+                expr: Expr::tbl(
+                    Alias::new(&format!("r{}", l.link().len() - 1)).into_iden(),
+                    col.into_iden(),
+                )
+                .into(),
+                alias: Some(SeaRc::new(Alias::new(&alias))),
+            });
+        }
+        select_two
     }
 }
 
@@ -291,10 +320,10 @@ mod tests {
                 .to_string(),
             [
                 r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
-                r#"`filling`.`id` AS `B_id`, `filling`.`name` AS `B_name`, `filling`.`vendor_id` AS `B_vendor_id`"#,
+                r#"`r1`.`id` AS `B_id`, `r1`.`name` AS `B_name`, `r1`.`vendor_id` AS `B_vendor_id`"#,
                 r#"FROM `cake`"#,
-                r#"LEFT JOIN `cake_filling` ON `cake`.`id` = `cake_filling`.`cake_id`"#,
-                r#"LEFT JOIN `filling` ON `cake_filling`.`filling_id` = `filling`.`id`"#,
+                r#"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id`"#,
+                r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
             ]
             .join(" ")
         );
@@ -309,11 +338,11 @@ mod tests {
                 .to_string(),
             [
                 r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
-                r#"`vendor`.`id` AS `B_id`, `vendor`.`name` AS `B_name`"#,
+                r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
                 r#"FROM `cake`"#,
-                r#"LEFT JOIN `cake_filling` ON `cake`.`id` = `cake_filling`.`cake_id`"#,
-                r#"LEFT JOIN `filling` ON `cake_filling`.`filling_id` = `filling`.`id`"#,
-                r#"LEFT JOIN `vendor` ON `filling`.`vendor_id` = `vendor`.`id`"#,
+                r#"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id`"#,
+                r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
+                r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
             ]
             .join(" ")
         );

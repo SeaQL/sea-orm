@@ -31,7 +31,7 @@ impl<E> Select<E>
 where
     E: EntityTrait,
 {
-    fn apply_alias(mut self, pre: &str) -> Self {
+    pub(crate) fn apply_alias(mut self, pre: &str) -> Self {
         self.query().exprs_mut_for_each(|sel| {
             match &sel.alias {
                 Some(alias) => {
@@ -77,11 +77,14 @@ where
     F: EntityTrait,
 {
     pub(crate) fn new(query: SelectStatement) -> Self {
+        Self::new_without_prepare(query).prepare_select()
+    }
+
+    pub(crate) fn new_without_prepare(query: SelectStatement) -> Self {
         Self {
             query,
             entity: PhantomData,
         }
-        .prepare_select()
     }
 
     fn prepare_select(mut self) -> Self {

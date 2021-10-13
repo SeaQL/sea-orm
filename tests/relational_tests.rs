@@ -485,6 +485,7 @@ pub async fn having() {
 pub async fn linked() -> Result<(), DbErr> {
     use common::bakery_chain::Order;
     use sea_orm::{SelectA, SelectB};
+    use sea_query::{Alias, Expr};
 
     let ctx = TestContext::new("test_linked").await;
 
@@ -667,13 +668,16 @@ pub async fn linked() -> Result<(), DbErr> {
         .find_also_linked(baker::BakedForCustomer)
         .select_only()
         .column_as(baker::Column::Name, (SelectA, baker::Column::Name))
-        .column_as(customer::Column::Name, (SelectB, customer::Column::Name))
+        .column_as(
+            Expr::tbl(Alias::new("r4"), customer::Column::Name).into_simple_expr(),
+            (SelectB, customer::Column::Name),
+        )
         .group_by(baker::Column::Id)
-        .group_by(customer::Column::Id)
+        .group_by(Expr::tbl(Alias::new("r4"), customer::Column::Id).into_simple_expr())
         .group_by(baker::Column::Name)
-        .group_by(customer::Column::Name)
+        .group_by(Expr::tbl(Alias::new("r4"), customer::Column::Name).into_simple_expr())
         .order_by_asc(baker::Column::Id)
-        .order_by_asc(customer::Column::Id)
+        .order_by_asc(Expr::tbl(Alias::new("r4"), customer::Column::Id).into_simple_expr())
         .into_model()
         .all(&ctx.db)
         .await?;
