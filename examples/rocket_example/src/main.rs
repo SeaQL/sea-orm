@@ -17,8 +17,6 @@ use pool::Db;
 
 mod setup;
 
-type Result<T, E = rocket::response::Debug<sea_orm::DbErr>> = std::result::Result<T, E>;
-
 mod post;
 pub use post::Entity as Post;
 
@@ -82,8 +80,8 @@ async fn update(
 #[get("/?<page>&<posts_per_page>")]
 async fn list(
     conn: Connection<'_, Db>,
-    posts_per_page: Option<usize>,
     page: Option<usize>,
+    posts_per_page: Option<usize>,
     flash: Option<FlashMessage<'_>>,
 ) -> Template {
     let db = conn.into_inner();
@@ -112,9 +110,9 @@ async fn list(
         context! {
             page: page,
             posts_per_page: posts_per_page,
+            num_pages: num_pages,
             posts: posts,
             flash: flash.map(FlashMessage::into_inner),
-            num_pages: num_pages,
         },
     )
 }
@@ -148,7 +146,7 @@ async fn delete(conn: Connection<'_, Db>, id: i32) -> Flash<Redirect> {
 }
 
 #[delete("/")]
-async fn destroy(conn: Connection<'_, Db>) -> Result<()> {
+async fn destroy(conn: Connection<'_, Db>) -> Result<(), rocket::response::Debug<sea_orm::DbErr>> {
     let db = conn.into_inner();
 
     Post::delete_many().exec(db).await.unwrap();
