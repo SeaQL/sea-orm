@@ -59,14 +59,22 @@ async fn update(
 
     let form = post_form.into_inner();
 
-    post::ActiveModel {
-        id: post.id,
-        title: Set(form.title.to_owned()),
-        text: Set(form.text.to_owned()),
-    }
-    .save(db)
+    db.transaction::<_, (), sea_orm::DbErr>(|txn| {
+        Box::pin(async move {
+            post::ActiveModel {
+                id: post.id,
+                title: Set(form.title.to_owned()),
+                text: Set(form.text.to_owned()),
+            }
+            .save(txn)
+            .await
+            .expect("could not edit post");
+
+            Ok(())
+        })
+    })
     .await
-    .expect("could not edit post");
+    .unwrap();
 
     Flash::success(Redirect::to("/"), "Post successfully edited.")
 }
