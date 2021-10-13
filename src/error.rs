@@ -4,6 +4,7 @@ pub enum DbErr {
     Exec(String),
     Query(String),
     RecordNotFound(String),
+    Custom(String),
 }
 
 impl std::error::Error for DbErr {}
@@ -15,6 +16,7 @@ impl std::fmt::Display for DbErr {
             Self::Exec(s) => write!(f, "Execution Error: {}", s),
             Self::Query(s) => write!(f, "Query Error: {}", s),
             Self::RecordNotFound(s) => write!(f, "RecordNotFound Error: {}", s),
+            Self::Custom(s) => write!(f, "Custom Error: {}", s),
         }
     }
 }

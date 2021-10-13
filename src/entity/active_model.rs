@@ -10,8 +10,7 @@ pub struct ActiveValue<V>
 where
     V: Into<Value>,
 {
-    // Don't want to call ActiveValue::unwrap() and cause panic
-    pub(self) value: Option<V>,
+    value: Option<V>,
     state: ActiveValueState,
 }
 
@@ -74,7 +73,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         macro_rules! next {
             () => {
                 if let Some(col) = cols.next() {
-                    if let Some(val) = self.get(col.into_column()).value {
+                    if let Some(val) = self.get(col.into_column()).into_value() {
                         val
                     } else {
                         return None;
@@ -107,12 +106,11 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn insert<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
-        Self: 'a,
     {
-        let am = self;
-        let exec = <Self::Entity as EntityTrait>::insert(am).exec(db);
-        let res = exec.await?;
+        let am = ActiveModelBehavior::before_save(self, true)?;
+        let res = <Self::Entity as EntityTrait>::insert(am).exec(db).await?;
         let found = <Self::Entity as EntityTrait>::find_by_id(res.last_insert_id)
             .one(db)
             .await?;
@@ -124,23 +122,23 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     async fn update<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
+        Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
-        Self: 'a,
     {
-        let exec = Self::Entity::update(self).exec(db);
-        exec.await
+        let am = ActiveModelBehavior::before_save(self, false)?;
+        let am = Self::Entity::update(am).exec(db).await?;
+        ActiveModelBehavior::after_save(am, false)
     }
 
     /// Insert the model if primary key is unset, update otherwise.
     /// Only works if the entity has auto increment primary key.
     async fn save<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
-        Self: ActiveModelBehavior + 'a,
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
     {
         let mut am = self;
-        am = ActiveModelBehavior::before_save(am);
         let mut is_update = true;
         for key in <Self::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
@@ -154,7 +152,6 @@ pub trait ActiveModelTrait: Clone + Debug {
         } else {
             am = am.update(db).await?;
         }
-        am = ActiveModelBehavior::after_save(am);
         Ok(am)
     }
 
@@ -164,14 +161,16 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
     {
-        let mut am = self;
-        am = ActiveModelBehavior::before_delete(am);
-        let exec = Self::Entity::delete(am).exec(db);
-        exec.await
+        let am = ActiveModelBehavior::before_delete(self)?;
+        let am_clone = am.clone();
+        let delete_res = Self::Entity::delete(am).exec(db).await?;
+        ActiveModelBehavior::after_delete(am_clone)?;
+        Ok(delete_res)
     }
 }
 
 /// Behaviors for users to override
+#[allow(unused_variables)]
 pub trait ActiveModelBehavior: ActiveModelTrait {
     /// Create a new ActiveModel with default values. Also used by `Default::default()`.
     fn new() -> Self {
@@ -179,18 +178,23 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
     }
 
     /// Will be called before saving
-    fn before_save(self) -> Self {
-        self
+    fn before_save(self, insert: bool) -> Result<Self, DbErr> {
+        Ok(self)
     }
 
     /// Will be called after saving
-    fn after_save(self) -> Self {
-        self
+    fn after_save(self, insert: bool) -> Result<Self, DbErr> {
+        Ok(self)
     }
 
     /// Will be called before deleting
-    fn before_delete(self) -> Self {
-        self
+    fn before_delete(self) -> Result<Self, DbErr> {
+        Ok(self)
+    }
+
+    /// Will be called after deleting
+    fn after_delete(self) -> Result<Self, DbErr> {
+        Ok(self)
     }
 }
 
