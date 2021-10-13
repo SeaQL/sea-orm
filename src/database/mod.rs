@@ -28,6 +28,7 @@ pub struct ConnectOptions {
     pub(crate) min_connections: Option<u32>,
     pub(crate) connect_timeout: Option<Duration>,
     pub(crate) idle_timeout: Option<Duration>,
+    pub(crate) sqlx_logging: bool,
 }
 
 impl Database {
@@ -86,6 +87,7 @@ impl ConnectOptions {
             min_connections: None,
             connect_timeout: None,
             idle_timeout: None,
+            sqlx_logging: true,
         }
     }
 

@@ -29,11 +29,14 @@ impl SqlxMySqlConnector {
     }
 
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
-        let opt = options
+        let mut opt = options
             .url
             .parse::<MySqlConnectOptions>()
             .map_err(|e| DbErr::Conn(e.to_string()))?;
-        // opt.disable_statement_logging();
+        if !options.sqlx_logging {
+            use sqlx::ConnectOptions;
+            opt.disable_statement_logging();
+        }
         if let Ok(pool) = options.pool_options().connect_with(opt).await {
             Ok(DatabaseConnection::SqlxMySqlPoolConnection(
                 SqlxMySqlPoolConnection { pool },

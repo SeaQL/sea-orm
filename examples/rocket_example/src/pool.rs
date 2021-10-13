@@ -28,7 +28,7 @@ impl sea_orm_rocket::Pool for SeaOrmPool {
         if let Some(idle_timeout) = config.idle_timeout {
             options.idle_timeout(Duration::from_secs(idle_timeout));
         }
-        let conn = sea_orm::Database::connect(options).await.unwrap();
+        let conn = sea_orm::Database::connect(options).await?;
 
         Ok(SeaOrmPool { conn })
     }
