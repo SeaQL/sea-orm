@@ -71,12 +71,12 @@ impl IntoActiveModel {
             let field_ident = field.ident.as_ref().unwrap();
 
             quote!(
-                ::sea_orm::IntoActiveValue::<_>::into_active_value(self.#field_ident).into()
+                sea_orm::IntoActiveValue::<_>::into_active_value(self.#field_ident).into()
             )
         });
 
         quote!(
-            impl ::sea_orm::IntoActiveModel<#active_model_ident> for #ident {
+            impl sea_orm::IntoActiveModel<#active_model_ident> for #ident {
                 fn into_active_model(self) -> #active_model_ident {
                     #active_model_ident {
                         #( #field_idents: #expanded_fields_into_active_model, )*

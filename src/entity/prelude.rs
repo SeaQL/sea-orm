@@ -8,7 +8,7 @@ pub use crate::{
 #[cfg(feature = "macros")]
 pub use crate::{
     DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn, DeriveCustomColumn, DeriveEntity,
-    DeriveEntityModel, DeriveModel, DerivePrimaryKey, DeriveRelation, DeriveIntoActiveModel
+    DeriveEntityModel, DeriveIntoActiveModel, DeriveModel, DerivePrimaryKey, DeriveRelation,
 };
 
 #[cfg(feature = "with-json")]

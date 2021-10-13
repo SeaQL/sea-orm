@@ -380,3 +380,41 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_cfg::*;
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_1() {
+        use crate::entity::*;
+
+        mod my_fruit {
+            pub use super::fruit::*;
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(DeriveIntoActiveModel)]
+            pub struct NewFruit {
+                // id is omitted
+                pub name: String,
+                // it is required as opposed to optional in Model
+                pub cake_id: i32,
+            }
+        }
+
+        assert_eq!(
+            my_fruit::NewFruit {
+                name: "Apple".to_owned(),
+                cake_id: 1,
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Unset(None),
+                name: Set("Apple".to_owned()),
+                cake_id: Set(Some(1)),
+            }
+        );
+    }
+}
