@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
+use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel, QueryOrder};
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -27,7 +27,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
         value: "1.18".to_owned(),
         bytes: vec![1, 2, 3],
         date: Some(Date::from_ymd(2021, 9, 27)),
-        time: Some(Time::from_hms(11, 32, 55)),
+        time: Some(Time::from_hms(1, 00, 00)),
     };
 
     model.clone().into_active_model().insert(db).await?;
@@ -35,6 +35,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
     let linked_model = metadata::Model {
         uuid: Uuid::new_v4(),
         uuid_ref: Some(model.clone().uuid),
+        time: Some(Time::from_hms(2, 00, 00)),
         ..model.clone()
     };
 
@@ -42,6 +43,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     let not_linked_model = metadata::Model {
         uuid: Uuid::new_v4(),
+        time: Some(Time::from_hms(3, 00, 00)),
         ..model.clone()
     };
 
@@ -78,6 +80,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(
         metadata::Entity::find()
             .find_also_linked(metadata::SelfReferencingLink)
+            .order_by_asc(metadata::Column::Time)
             .all(db)
             .await?,
         vec![
