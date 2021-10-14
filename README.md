@@ -171,6 +171,7 @@ fruit::Entity::delete_many()
 
 1. [Design](https://github.com/SeaQL/sea-orm/tree/master/DESIGN.md)
 1. [Architecture](https://github.com/SeaQL/sea-orm/tree/master/ARCHITECTURE.md)
+1. [Release Model](https://www.sea-ql.org/SeaORM/blog/2021-08-30-release-model)
 1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 
 ## License
