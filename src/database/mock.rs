@@ -227,7 +227,10 @@ impl Transaction {
 impl OpenTransaction {
     fn init() -> Self {
         Self {
-            stmts: Vec::new(),
+            stmts: vec![Statement::from_string(
+                DbBackend::Postgres,
+                "BEGIN".to_owned(),
+            )],
             transaction_depth: 0,
         }
     }
@@ -321,6 +324,7 @@ mod tests {
             db.into_transaction_log(),
             vec![
                 Transaction::many(vec![
+                    Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
                     Statement::from_sql_and_values(
                         DbBackend::Postgres,
                         r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
@@ -365,6 +369,7 @@ mod tests {
         assert_eq!(
             db.into_transaction_log(),
             vec![Transaction::many(vec![
+                Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
@@ -402,6 +407,7 @@ mod tests {
         assert_eq!(
             db.into_transaction_log(),
             vec![Transaction::many(vec![
+                Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
@@ -459,6 +465,7 @@ mod tests {
         assert_eq!(
             db.into_transaction_log(),
             vec![Transaction::many(vec![
+                Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,

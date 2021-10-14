@@ -1,7 +1,7 @@
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
-use sea_orm::{entity::*, entity::prelude::*, DatabaseConnection};
+use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -27,7 +27,8 @@ pub async fn insert_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
         bytes: vec![1, 2, 3],
         date: Some(Date::from_ymd(2021, 9, 27)),
         time: Some(Time::from_hms(11, 32, 55)),
-    }.into_active_model();
+    }
+    .into_active_model();
 
     let result = metadata.clone().insert(db).await?;
 
