@@ -298,7 +298,7 @@ pub async fn transaction_closure_commit() -> Result<(), DbErr> {
     feature = "sqlx-postgres"
 ))]
 pub async fn transaction_closure_rollback() -> Result<(), DbErr> {
-    let ctx = TestContext::new("transaction_closure_commit_test").await;
+    let ctx = TestContext::new("transaction_closure_rollback_test").await;
     create_tables(&ctx.db).await?;
 
     assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
