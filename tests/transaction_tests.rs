@@ -1,9 +1,9 @@
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
+use pretty_assertions::assert_eq;
 pub use sea_orm::entity::*;
-pub use sea_orm::{ConnectionTrait, QueryFilter};
-use sea_orm::{DatabaseTransaction, DbErr};
+pub use sea_orm::*;
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -103,6 +103,101 @@ fn _transaction_with_reference<'a>(
 
         Ok(())
     })
+}
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
+pub async fn transaction_with_active_model_behaviour() -> Result<(), DbErr> {
+    use rust_decimal_macros::dec;
+    let ctx = TestContext::new("transaction_with_active_model_behaviour_test").await;
+
+    if let Ok(txn) = ctx.db.begin().await {
+        assert_eq!(
+            cake::ActiveModel {
+                name: Set("Cake with invalid price".to_owned()),
+                price: Set(dec!(0)),
+                gluten_free: Set(false),
+                ..Default::default()
+            }
+            .save(&txn)
+            .await,
+            Err(DbErr::Custom(
+                "[before_save] Invalid Price, insert: true".to_owned()
+            ))
+        );
+
+        assert_eq!(cake::Entity::find().all(&txn).await?.len(), 0);
+
+        assert_eq!(
+            cake::ActiveModel {
+                name: Set("Cake with invalid price".to_owned()),
+                price: Set(dec!(-10)),
+                gluten_free: Set(false),
+                ..Default::default()
+            }
+            .save(&txn)
+            .await,
+            Err(DbErr::Custom(
+                "[after_save] Invalid Price, insert: true".to_owned()
+            ))
+        );
+
+        assert_eq!(cake::Entity::find().all(&txn).await?.len(), 1);
+
+        let readonly_cake_1 = cake::ActiveModel {
+            name: Set("Readonly cake (err_on_before_delete)".to_owned()),
+            price: Set(dec!(10)),
+            gluten_free: Set(true),
+            ..Default::default()
+        }
+        .save(&txn)
+        .await?;
+
+        assert_eq!(cake::Entity::find().all(&txn).await?.len(), 2);
+
+        assert_eq!(
+            readonly_cake_1.delete(&txn).await.err(),
+            Some(DbErr::Custom(
+                "[before_delete] Cannot be deleted".to_owned()
+            ))
+        );
+
+        assert_eq!(cake::Entity::find().all(&txn).await?.len(), 2);
+
+        let readonly_cake_2 = cake::ActiveModel {
+            name: Set("Readonly cake (err_on_after_delete)".to_owned()),
+            price: Set(dec!(10)),
+            gluten_free: Set(true),
+            ..Default::default()
+        }
+        .save(&txn)
+        .await?;
+
+        assert_eq!(cake::Entity::find().all(&txn).await?.len(), 3);
+
+        assert_eq!(
+            readonly_cake_2.delete(&txn).await.err(),
+            Some(DbErr::Custom("[after_delete] Cannot be deleted".to_owned()))
+        );
+
+        assert_eq!(cake::Entity::find().all(&txn).await?.len(), 2);
+    }
+
+    assert_eq!(cake::Entity::find().all(&ctx.db).await?.len(), 0);
+
+    ctx.delete().await;
+    Ok(())
 }
 
 #[sea_orm_macros::test]
