@@ -17,7 +17,7 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(belongs_to = "Entity", from = "Column::Uuid", to = "Column::UuidRef")]
+    #[sea_orm(belongs_to = "Entity", from = "Column::UuidRef", to = "Column::Uuid")]
     SelfReferencing,
 }
 

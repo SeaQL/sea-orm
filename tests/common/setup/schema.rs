@@ -27,10 +27,10 @@ where
     }
 
     let stmt = builder.build(create);
-    // assert_eq!(
-    //     builder.build(&Schema::create_table_from_entity(entity)),
-    //     stmt
-    // );
+    assert_eq!(
+        builder.build(&Schema::create_table_from_entity(entity)),
+        stmt
+    );
     db.execute(stmt).await
 }
 
@@ -292,6 +292,12 @@ pub async fn create_metadata_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(metadata::Column::Bytes).binary().not_null())
         .col(ColumnDef::new(metadata::Column::Date).date())
         .col(ColumnDef::new(metadata::Column::Time).time())
+        .foreign_key(
+            ForeignKey::create()
+                .name("fk-metadata-metadata")
+                .from(metadata::Entity, metadata::Column::UuidRef)
+                .to(metadata::Entity, metadata::Column::Uuid),
+        )
         .to_owned();
 
     create_table(db, &stmt, Metadata).await
