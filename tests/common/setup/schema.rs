@@ -317,3 +317,24 @@ pub async fn create_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 
     create_table(db, &stmt, Applog).await
 }
+
+pub async fn create_repository_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(repository::Entity)
+        .col(
+            ColumnDef::new(repository::Column::Id)
+                .string()
+                .not_null()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(repository::Column::Owner)
+                .string()
+                .not_null(),
+        )
+        .col(ColumnDef::new(repository::Column::Name).string().not_null())
+        .col(ColumnDef::new(repository::Column::Description).string())
+        .to_owned();
+
+    create_table(db, &stmt, Repository).await
+}
