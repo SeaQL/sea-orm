@@ -2,7 +2,7 @@ use std::env;
 use std::path::Path;
 
 use error::Error;
-use sea_orm_codegen::EntityTransformer;
+use sea_orm_codegen::{EntityTransformer, WithSerde};
 use sea_schema::sea_query::TableStatement;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
@@ -53,10 +53,17 @@ pub async fn generate_models(schema: &str, url: &str, tables: &[&str]) -> Result
     write_table_stmts(table_stmts).await
 }
 
+#[allow(dead_code)]
 async fn write_table_stmts(table_stmts: Vec<TableStatement>) -> Result<(), Error> {
+    let with_serde = if cfg!(feature = "with-serde") {
+        WithSerde::Both
+    } else {
+        WithSerde::None
+    };
+
     let output = EntityTransformer::transform(table_stmts)
         .map_err(Error::SeaOrmCodegen)?
-        .generate(false, false);
+        .generate(false, false, with_serde);
 
     let out_dir_string = env::var("OUT_DIR").unwrap();
     let out_dir = Path::new(&out_dir_string);

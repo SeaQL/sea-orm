@@ -26,6 +26,7 @@ tokio = { version = "1", features = ["full"] }
 default = ["runtime-async-std-native-tls"]
 mysql = ["sqlx/mysql"]
 postgres = ["sqlx/postgres"]
+with-serde = []
 runtime-async-std-native-tls = [
     "sqlx/runtime-async-std-native-tls",
     "sea-schema/runtime-async-std-native-tls",
