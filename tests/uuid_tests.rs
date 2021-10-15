@@ -21,6 +21,7 @@ async fn main() -> Result<(), DbErr> {
 pub async fn insert_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
     let metadata = metadata::Model {
         uuid: Uuid::new_v4(),
+        uuid_ref: None,
         ty: "Type".to_owned(),
         key: "markup".to_owned(),
         value: "1.18".to_owned(),
