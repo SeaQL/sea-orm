@@ -1,6 +1,6 @@
 pub mod common;
 
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{features::*, setup::*, TestContext};
 pub use sea_orm::entity::*;
 pub use sea_orm::{ConnectionTrait, QueryFilter};
 use sea_orm::{DatabaseTransaction, DbErr};
@@ -13,6 +13,7 @@ use sea_orm::{DatabaseTransaction, DbErr};
 ))]
 pub async fn transaction() {
     let ctx = TestContext::new("transaction_test").await;
+    create_tables(&ctx.db).await;
 
     ctx.db
         .transaction::<_, _, DbErr>(|txn| {

@@ -17,6 +17,7 @@ use sea_orm::DatabaseConnection;
 ))]
 async fn main() {
     let ctx = TestContext::new("bakery_chain_schema_crud_tests").await;
+    create_tables(&ctx.db).await;
     create_entities(&ctx.db).await;
     ctx.delete().await;
 }

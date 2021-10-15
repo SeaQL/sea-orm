@@ -1,6 +1,6 @@
 pub mod common;
 
-pub use common::{bakery_chain::*, setup::*, TestContext};
+pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
 use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel, Set};
 
@@ -11,7 +11,8 @@ use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel, Set};
     feature = "sqlx-postgres"
 ))]
 async fn main() -> Result<(), DbErr> {
-    let ctx = TestContext::new("bakery_chain_parallel_tests").await;
+    let ctx = TestContext::new("features_parallel_tests").await;
+    create_tables(&ctx.db).await;
     crud_in_parallel(&ctx.db).await?;
     ctx.delete().await;
 
