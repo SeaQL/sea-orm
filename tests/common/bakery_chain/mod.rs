@@ -7,6 +7,7 @@ pub mod customer;
 pub mod lineitem;
 pub mod metadata;
 pub mod order;
+pub mod repository;
 
 pub use super::applog::Entity as Applog;
 pub use super::baker::Entity as Baker;
@@ -17,3 +18,4 @@ pub use super::customer::Entity as Customer;
 pub use super::lineitem::Entity as Lineitem;
 pub use super::metadata::Entity as Metadata;
 pub use super::order::Entity as Order;
+pub use super::repository::Entity as Repository;
