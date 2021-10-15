@@ -96,10 +96,10 @@ where
             ValueTypeOf::<A>::try_from_u64(last_insert_id).ok()
         }
     };
-    let last_insert_id = match last_insert_id_opt {
-        Some(last_insert_id) => last_insert_id,
-        None => match primary_key {
-            Some(value_tuple) => FromValueTuple::from_value_tuple(value_tuple),
+    let last_insert_id = match primary_key {
+        Some(value_tuple) => FromValueTuple::from_value_tuple(value_tuple),
+        None => match last_insert_id_opt {
+            Some(last_insert_id) => last_insert_id,
             None => return Err(DbErr::Exec("Fail to unpack last_insert_id".to_owned())),
         },
     };
