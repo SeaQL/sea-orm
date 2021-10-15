@@ -150,7 +150,7 @@ mod tests {
 
     #[smol_potat::test]
     async fn connect_options_001() -> Result<(), DbErr> {
-        let mut opt = ConnectOptions::from_str("sqlite::memory:");
+        let mut opt = ConnectOptions::new("sqlite::memory:".to_owned());
         opt.max_connections(100)
             .min_connections(5)
             .connect_timeout(Duration::from_secs(8))
