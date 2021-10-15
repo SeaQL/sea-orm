@@ -76,6 +76,7 @@ impl IntoActiveModel {
         });
 
         quote!(
+            #[automatically_derived]
             impl sea_orm::IntoActiveModel<#active_model_ident> for #ident {
                 fn into_active_model(self) -> #active_model_ident {
                     #active_model_ident {
