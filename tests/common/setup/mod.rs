@@ -1,6 +1,9 @@
-use sea_orm::{Database, DatabaseBackend, DatabaseConnection, Statement};
-pub mod schema;
-pub use schema::*;
+use sea_orm::{
+    ConnectionTrait, Database, DatabaseBackend, DatabaseConnection, DbBackend, DbConn, DbErr,
+    EntityTrait, ExecResult, Schema, Statement,
+};
+
+use sea_query::{Alias, Table, TableCreateStatement};
 
 pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
     let db = if cfg!(feature = "sqlx-mysql") {
@@ -45,15 +48,6 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
         Database::connect(base_url).await.unwrap()
     };
 
-    schema::create_bakery_table(&db).await.unwrap();
-    schema::create_baker_table(&db).await.unwrap();
-    schema::create_customer_table(&db).await.unwrap();
-    schema::create_order_table(&db).await.unwrap();
-    schema::create_cake_table(&db).await.unwrap();
-    schema::create_cakes_bakers_table(&db).await.unwrap();
-    schema::create_lineitem_table(&db).await.unwrap();
-    schema::create_metadata_table(&db).await.unwrap();
-    schema::create_log_table(&db).await.unwrap();
     db
 }
 
@@ -78,4 +72,31 @@ pub async fn tear_down(base_url: &str, db_name: &str) {
             .await;
     } else {
     };
+}
+
+pub async fn create_table<E>(
+    db: &DbConn,
+    create: &TableCreateStatement,
+    entity: E,
+) -> Result<ExecResult, DbErr>
+where
+    E: EntityTrait,
+{
+    let builder = db.get_database_backend();
+    if builder != DbBackend::Sqlite {
+        let stmt = builder.build(
+            Table::drop()
+                .table(Alias::new(create.get_table_name().unwrap().as_ref()))
+                .if_exists()
+                .cascade(),
+        );
+        db.execute(stmt).await?;
+    }
+
+    let stmt = builder.build(create);
+    assert_eq!(
+        builder.build(&Schema::create_table_from_entity(entity)),
+        stmt
+    );
+    db.execute(stmt).await
 }

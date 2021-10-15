@@ -37,6 +37,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                 #[derive(Copy, Clone, Default, Debug, sea_orm::prelude::DeriveEntity)]
                 pub struct Entity;
 
+                #[automatically_derived]
                 impl sea_orm::prelude::EntityName for Entity {
                     fn schema_name(&self) -> Option<&str> {
                         #schema_name
@@ -273,6 +274,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                 #primary_keys
             }
 
+            #[automatically_derived]
             impl PrimaryKeyTrait for PrimaryKey {
                 type ValueType = #primary_key_types;
 
@@ -290,6 +292,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
             #columns_enum
         }
 
+        #[automatically_derived]
         impl sea_orm::prelude::ColumnTrait for Column {
             type EntityName = Entity;
 

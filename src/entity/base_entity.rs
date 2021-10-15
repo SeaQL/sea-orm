@@ -510,7 +510,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// ```
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # use sea_orm::{entity::*, error::*, query::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results(vec![

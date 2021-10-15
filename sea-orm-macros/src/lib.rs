@@ -84,6 +84,14 @@ pub fn derive_active_model(input: TokenStream) -> TokenStream {
     }
 }
 
+#[proc_macro_derive(DeriveIntoActiveModel, attributes(sea_orm))]
+pub fn derive_into_active_model(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_into_active_model(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
 #[proc_macro_derive(DeriveActiveModelBehavior)]
 pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);

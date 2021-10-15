@@ -5,6 +5,7 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
+    pub action: String,
     pub json: Json,
     pub created_at: DateTimeWithTimeZone,
 }

@@ -143,6 +143,7 @@ impl DeriveRelation {
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(quote!(
+            #[automatically_derived]
             impl sea_orm::entity::RelationTrait for #ident {
                 fn def(&self) -> sea_orm::entity::RelationDef {
                     match self {

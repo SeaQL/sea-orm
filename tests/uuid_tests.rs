@@ -1,7 +1,7 @@
 pub mod common;
 
-pub use common::{bakery_chain::*, setup::*, TestContext};
-use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel, Set};
+pub use common::{features::*, setup::*, TestContext};
+use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -11,13 +11,34 @@ use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel, Set};
 ))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("bakery_chain_schema_uuid_tests").await;
-    create_metadata(&ctx.db).await?;
+    create_tables(&ctx.db).await?;
+    create_and_update_metadata(&ctx.db).await?;
+    insert_metadata(&ctx.db).await?;
     ctx.delete().await;
 
     Ok(())
 }
 
-pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
+pub async fn insert_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
+    let metadata = metadata::Model {
+        uuid: Uuid::new_v4(),
+        ty: "Type".to_owned(),
+        key: "markup".to_owned(),
+        value: "1.18".to_owned(),
+        bytes: vec![1, 2, 3],
+        date: Some(Date::from_ymd(2021, 9, 27)),
+        time: Some(Time::from_hms(11, 32, 55)),
+    }
+    .into_active_model();
+
+    let result = metadata.clone().insert(db).await?;
+
+    assert_eq!(metadata, result);
+
+    Ok(())
+}
+
+pub async fn create_and_update_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
     let metadata = metadata::Model {
         uuid: Uuid::new_v4(),
         ty: "Type".to_owned(),
@@ -34,14 +55,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     assert_eq!(Metadata::find().one(db).await?, Some(metadata.clone()));
 
-    assert_eq!(
-        res.last_insert_id,
-        if cfg!(feature = "sqlx-postgres") {
-            metadata.uuid
-        } else {
-            Default::default()
-        }
-    );
+    assert_eq!(res.last_insert_id, metadata.uuid);
 
     let update_res = Metadata::update(metadata::ActiveModel {
         value: Set("0.22".to_owned()),

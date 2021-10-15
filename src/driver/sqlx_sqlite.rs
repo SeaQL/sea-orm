@@ -1,12 +1,17 @@
+use std::{future::Future, pin::Pin};
+
 use sqlx::{
-    sqlite::{SqliteArguments, SqliteQueryResult, SqliteRow},
+    sqlite::{SqliteArguments, SqliteConnectOptions, SqliteQueryResult, SqliteRow},
     Sqlite, SqlitePool,
 };
 
 sea_query::sea_query_driver_sqlite!();
 use sea_query_driver_sqlite::bind_query;
 
-use crate::{debug_print, error::*, executor::*, DatabaseConnection, DbBackend, Statement};
+use crate::{
+    debug_print, error::*, executor::*, ConnectOptions, DatabaseConnection, DatabaseTransaction,
+    QueryStream, Statement, TransactionError,
+};
 
 use super::sqlx_common::*;
 
@@ -20,11 +25,24 @@ pub struct SqlxSqlitePoolConnection {
 
 impl SqlxSqliteConnector {
     pub fn accepts(string: &str) -> bool {
-        DbBackend::Sqlite.is_prefix_of(string)
+        string.starts_with("sqlite:") && string.parse::<SqliteConnectOptions>().is_ok()
     }
 
-    pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
-        if let Ok(pool) = SqlitePool::connect(string).await {
+    pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
+        let mut opt = options
+            .url
+            .parse::<SqliteConnectOptions>()
+            .map_err(|e| DbErr::Conn(e.to_string()))?;
+        if !options.sqlx_logging {
+            use sqlx::ConnectOptions;
+            opt.disable_statement_logging();
+        }
+        if let Ok(pool) = options
+            .pool_options()
+            .max_connections(1)
+            .connect_with(opt)
+            .await
+        {
             Ok(DatabaseConnection::SqlxSqlitePoolConnection(
                 SqlxSqlitePoolConnection { pool },
             ))
@@ -91,6 +109,49 @@ impl SqlxSqlitePoolConnection {
             ))
         }
     }
+
+    pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
+        debug_print!("{}", stmt);
+
+        if let Ok(conn) = self.pool.acquire().await {
+            Ok(QueryStream::from((conn, stmt)))
+        } else {
+            Err(DbErr::Query(
+                "Failed to acquire connection from pool.".to_owned(),
+            ))
+        }
+    }
+
+    pub async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
+        if let Ok(conn) = self.pool.acquire().await {
+            DatabaseTransaction::new_sqlite(conn).await
+        } else {
+            Err(DbErr::Query(
+                "Failed to acquire connection from pool.".to_owned(),
+            ))
+        }
+    }
+
+    pub async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
+    where
+        F: for<'b> FnOnce(
+                &'b DatabaseTransaction,
+            ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'b>>
+            + Send,
+        T: Send,
+        E: std::error::Error + Send,
+    {
+        if let Ok(conn) = self.pool.acquire().await {
+            let transaction = DatabaseTransaction::new_sqlite(conn)
+                .await
+                .map_err(|e| TransactionError::Connection(e))?;
+            transaction.run(callback).await
+        } else {
+            Err(TransactionError::Connection(DbErr::Query(
+                "Failed to acquire connection from pool.".to_owned(),
+            )))
+        }
+    }
 }
 
 impl From<SqliteRow> for QueryResult {
@@ -109,7 +170,7 @@ impl From<SqliteQueryResult> for ExecResult {
     }
 }
 
-fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, SqliteArguments> {
+pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, SqliteArguments> {
     let mut query = sqlx::query(&stmt.sql);
     if let Some(values) = &stmt.values {
         query = bind_query(query, values);

@@ -59,6 +59,7 @@ jobs:
         with:
           command: test
           args: >
+            --test '*'
             --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
             --no-run
 
@@ -91,6 +92,7 @@ jobs:
         with:
           command: test
           args: >
+            --test '*'
             --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
             --no-run
 
@@ -123,6 +125,7 @@ jobs:
         with:
           command: test
           args: >
+            --test '*'
             --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
             --no-run
 
@@ -143,6 +146,12 @@ jobs:
           command: test
           args: >
             --all
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --manifest-path sea-orm-rocket/Cargo.toml
 
   cli:
     name: CLI
@@ -241,6 +250,7 @@ jobs:
         with:
           command: test
           args: >
+            --test '*'
             --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   mysql:
@@ -293,6 +303,7 @@ jobs:
         with:
           command: test
           args: >
+            --test '*'
             --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   mariadb:
@@ -345,6 +356,7 @@ jobs:
         with:
           command: test
           args: >
+            --test '*'
             --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   postgres:
@@ -394,4 +406,5 @@ jobs:
         with:
           command: test
           args: >
+            --test '*'
             --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}

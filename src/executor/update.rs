@@ -1,5 +1,5 @@
 use crate::{
-    error::*, ActiveModelTrait, DatabaseConnection, EntityTrait, Statement, UpdateMany, UpdateOne,
+    error::*, ActiveModelTrait, ConnectionTrait, EntityTrait, Statement, UpdateMany, UpdateOne,
 };
 use sea_query::UpdateStatement;
 use std::future::Future;
@@ -19,9 +19,12 @@ impl<'a, A: 'a> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
-    pub fn exec(self, db: &'a DatabaseConnection) -> impl Future<Output = Result<A, DbErr>> + 'a {
+    pub async fn exec<'b, C>(self, db: &'b C) -> Result<A, DbErr>
+    where
+        C: ConnectionTrait<'b>,
+    {
         // so that self is dropped before entering await
-        exec_update_and_return_original(self.query, self.model, db)
+        exec_update_and_return_original(self.query, self.model, db).await
     }
 }
 
@@ -29,10 +32,10 @@ impl<'a, E> UpdateMany<E>
 where
     E: EntityTrait,
 {
-    pub fn exec(
-        self,
-        db: &'a DatabaseConnection,
-    ) -> impl Future<Output = Result<UpdateResult, DbErr>> + 'a {
+    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_
+    where
+        C: ConnectionTrait<'a>,
+    {
         // so that self is dropped before entering await
         exec_update_only(self.query, db)
     }
@@ -51,40 +54,43 @@ impl Updater {
         self
     }
 
-    pub fn exec(
-        self,
-        db: &DatabaseConnection,
-    ) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_ {
+    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_
+    where
+        C: ConnectionTrait<'a>,
+    {
         let builder = db.get_database_backend();
         exec_update(builder.build(&self.query), db, self.check_record_exists)
     }
 }
 
-async fn exec_update_only(
-    query: UpdateStatement,
-    db: &DatabaseConnection,
-) -> Result<UpdateResult, DbErr> {
+async fn exec_update_only<'a, C>(query: UpdateStatement, db: &'a C) -> Result<UpdateResult, DbErr>
+where
+    C: ConnectionTrait<'a>,
+{
     Updater::new(query).exec(db).await
 }
 
-async fn exec_update_and_return_original<A>(
+async fn exec_update_and_return_original<'a, A, C>(
     query: UpdateStatement,
     model: A,
-    db: &DatabaseConnection,
+    db: &'a C,
 ) -> Result<A, DbErr>
 where
     A: ActiveModelTrait,
+    C: ConnectionTrait<'a>,
 {
     Updater::new(query).check_record_exists().exec(db).await?;
     Ok(model)
 }
 
-// Only Statement impl Send
-async fn exec_update(
+async fn exec_update<'a, C>(
     statement: Statement,
-    db: &DatabaseConnection,
+    db: &'a C,
     check_record_exists: bool,
-) -> Result<UpdateResult, DbErr> {
+) -> Result<UpdateResult, DbErr>
+where
+    C: ConnectionTrait<'a>,
+{
     let result = db.execute(statement).await?;
     if check_record_exists && result.rows_affected() == 0 {
         return Err(DbErr::RecordNotFound(

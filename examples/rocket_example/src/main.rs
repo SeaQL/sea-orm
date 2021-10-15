@@ -7,21 +7,15 @@ use rocket::fs::{relative, FileServer};
 use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};
 use rocket::{Build, Request, Rocket};
-use rocket_db_pools::{sqlx, Connection, Database};
 use rocket_dyn_templates::{context, Template};
 
 use sea_orm::{entity::*, query::*};
+use sea_orm_rocket::{Connection, Database};
 
 mod pool;
-use pool::RocketDbPool;
+use pool::Db;
 
 mod setup;
-
-#[derive(Database, Debug)]
-#[database("rocket_example")]
-struct Db(RocketDbPool);
-
-type Result<T, E = rocket::response::Debug<sqlx::Error>> = std::result::Result<T, E>;
 
 mod post;
 pub use post::Entity as Post;
@@ -34,7 +28,9 @@ async fn new() -> Template {
 }
 
 #[post("/", data = "<post_form>")]
-async fn create(conn: Connection<Db>, post_form: Form<post::Model>) -> Flash<Redirect> {
+async fn create(conn: Connection<'_, Db>, post_form: Form<post::Model>) -> Flash<Redirect> {
+    let db = conn.into_inner();
+
     let form = post_form.into_inner();
 
     post::ActiveModel {
@@ -42,7 +38,7 @@ async fn create(conn: Connection<Db>, post_form: Form<post::Model>) -> Flash<Red
         text: Set(form.text.to_owned()),
         ..Default::default()
     }
-    .save(&conn)
+    .save(db)
     .await
     .expect("could not insert post");
 
@@ -50,35 +46,46 @@ async fn create(conn: Connection<Db>, post_form: Form<post::Model>) -> Flash<Red
 }
 
 #[post("/<id>", data = "<post_form>")]
-async fn update(conn: Connection<Db>, id: i32, post_form: Form<post::Model>) -> Flash<Redirect> {
-    let post: post::ActiveModel = Post::find_by_id(id)
-        .one(&conn)
-        .await
-        .unwrap()
-        .unwrap()
-        .into();
+async fn update(
+    conn: Connection<'_, Db>,
+    id: i32,
+    post_form: Form<post::Model>,
+) -> Flash<Redirect> {
+    let db = conn.into_inner();
+
+    let post: post::ActiveModel = Post::find_by_id(id).one(db).await.unwrap().unwrap().into();
 
     let form = post_form.into_inner();
 
-    post::ActiveModel {
-        id: post.id,
-        title: Set(form.title.to_owned()),
-        text: Set(form.text.to_owned()),
-    }
-    .save(&conn)
+    db.transaction::<_, (), sea_orm::DbErr>(|txn| {
+        Box::pin(async move {
+            post::ActiveModel {
+                id: post.id,
+                title: Set(form.title.to_owned()),
+                text: Set(form.text.to_owned()),
+            }
+            .save(txn)
+            .await
+            .expect("could not edit post");
+
+            Ok(())
+        })
+    })
     .await
-    .expect("could not edit post");
+    .unwrap();
 
     Flash::success(Redirect::to("/"), "Post successfully edited.")
 }
 
 #[get("/?<page>&<posts_per_page>")]
 async fn list(
-    conn: Connection<Db>,
-    posts_per_page: Option<usize>,
+    conn: Connection<'_, Db>,
     page: Option<usize>,
+    posts_per_page: Option<usize>,
     flash: Option<FlashMessage<'_>>,
 ) -> Template {
+    let db = conn.into_inner();
+
     // Set page number and items per page
     let page = page.unwrap_or(1);
     let posts_per_page = posts_per_page.unwrap_or(DEFAULT_POSTS_PER_PAGE);
@@ -89,7 +96,7 @@ async fn list(
     // Setup paginator
     let paginator = Post::find()
         .order_by_asc(post::Column::Id)
-        .paginate(&conn, posts_per_page);
+        .paginate(db, posts_per_page);
     let num_pages = paginator.num_pages().await.ok().unwrap();
 
     // Fetch paginated posts
@@ -103,17 +110,19 @@ async fn list(
         context! {
             page: page,
             posts_per_page: posts_per_page,
+            num_pages: num_pages,
             posts: posts,
             flash: flash.map(FlashMessage::into_inner),
-            num_pages: num_pages,
         },
     )
 }
 
 #[get("/<id>")]
-async fn edit(conn: Connection<Db>, id: i32) -> Template {
+async fn edit(conn: Connection<'_, Db>, id: i32) -> Template {
+    let db = conn.into_inner();
+
     let post: Option<post::Model> = Post::find_by_id(id)
-        .one(&conn)
+        .one(db)
         .await
         .expect("could not find post");
 
@@ -126,22 +135,21 @@ async fn edit(conn: Connection<Db>, id: i32) -> Template {
 }
 
 #[delete("/<id>")]
-async fn delete(conn: Connection<Db>, id: i32) -> Flash<Redirect> {
-    let post: post::ActiveModel = Post::find_by_id(id)
-        .one(&conn)
-        .await
-        .unwrap()
-        .unwrap()
-        .into();
+async fn delete(conn: Connection<'_, Db>, id: i32) -> Flash<Redirect> {
+    let db = conn.into_inner();
 
-    post.delete(&conn).await.unwrap();
+    let post: post::ActiveModel = Post::find_by_id(id).one(db).await.unwrap().unwrap().into();
+
+    post.delete(db).await.unwrap();
 
     Flash::success(Redirect::to("/"), "Post successfully deleted.")
 }
 
 #[delete("/")]
-async fn destroy(conn: Connection<Db>) -> Result<()> {
-    Post::delete_many().exec(&conn).await.unwrap();
+async fn destroy(conn: Connection<'_, Db>) -> Result<(), rocket::response::Debug<sea_orm::DbErr>> {
+    let db = conn.into_inner();
+
+    Post::delete_many().exec(db).await.unwrap();
     Ok(())
 }
 

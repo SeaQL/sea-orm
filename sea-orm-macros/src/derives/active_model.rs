@@ -68,12 +68,14 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
             #(pub #field: sea_orm::ActiveValue<#ty>),*
         }
 
+        #[automatically_derived]
         impl std::default::Default for ActiveModel {
             fn default() -> Self {
                 <Self as sea_orm::ActiveModelBehavior>::new()
             }
         }
 
+        #[automatically_derived]
         impl std::convert::From<<Entity as EntityTrait>::Model> for ActiveModel {
             fn from(m: <Entity as EntityTrait>::Model) -> Self {
                 Self {
@@ -82,12 +84,14 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
             }
         }
 
+        #[automatically_derived]
         impl sea_orm::IntoActiveModel<ActiveModel> for <Entity as EntityTrait>::Model {
             fn into_active_model(self) -> ActiveModel {
                 self.into()
             }
         }
 
+        #[automatically_derived]
         impl sea_orm::ActiveModelTrait for ActiveModel {
             type Entity = Entity;
 

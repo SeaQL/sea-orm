@@ -63,6 +63,13 @@ pub fn build_cli() -> App<'static, 'static> {
                         .help("Generate entity file of compact format")
                         .takes_value(false)
                         .conflicts_with("EXPANDED_FORMAT"),
+                )
+                .arg(
+                    Arg::with_name("WITH_SERDE")
+                        .long("with-serde")
+                        .help("Automatically derive serde Serialize / Deserialize traits for the entity (none, serialize, deserialize, both)")
+                        .takes_value(true)
+                        .default_value("none")
                 ),
         )
         .setting(AppSettings::SubcommandRequiredElseHelp);
