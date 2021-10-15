@@ -114,10 +114,11 @@ pub trait ActiveModelTrait: Clone + Debug {
         let found = <Self::Entity as EntityTrait>::find_by_id(res.last_insert_id)
             .one(db)
             .await?;
-        match found {
-            Some(model) => Ok(model.into_active_model()),
-            None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
-        }
+        let am = match found {
+            Some(model) => model.into_active_model(),
+            None => return Err(DbErr::Exec("Failed to find inserted item".to_owned())),
+        };
+        ActiveModelBehavior::after_save(am, true)
     }
 
     async fn update<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
