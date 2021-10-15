@@ -140,3 +140,24 @@ impl ConnectOptions {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+    use crate::tests_cfg::*;
+    use core::time::Duration;
+    use crate::*;
+
+    #[smol_potat::test]
+    async fn connect_options_001() -> Result<(), DbErr> {
+        let mut opt = ConnectOptions::from_str("sqlite::memory:");
+        opt.max_connections(100)
+            .min_connections(5)
+            .connect_timeout(Duration::from_secs(8))
+            .idle_timeout(Duration::from_secs(8));
+
+        let _db = Database::connect(opt).await?;
+
+        Ok(())
+    }
+}
