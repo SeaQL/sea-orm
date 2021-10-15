@@ -12,7 +12,7 @@ use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 ))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("features_schema_string_primary_key_tests").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await?;
     create_and_update_repository(&ctx.db).await?;
     insert_repository(&ctx.db).await?;
     ctx.delete().await;

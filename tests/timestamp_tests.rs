@@ -7,7 +7,7 @@ use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
 #[cfg(feature = "sqlx-postgres")]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("bakery_chain_schema_timestamp_tests").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await?;
     create_applog(&ctx.db).await?;
     ctx.delete().await;
 

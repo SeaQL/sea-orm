@@ -12,7 +12,7 @@ use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel, Set};
 ))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("features_parallel_tests").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await?;
     crud_in_parallel(&ctx.db).await?;
     ctx.delete().await;
 

@@ -14,8 +14,8 @@ pub use uuid::Uuid;
 pub async fn test_multiple_operations() {
     let ctx = TestContext::new("multiple_sequential_operations").await;
 
-    create_tables(&ctx.db).await;
-    init_setup(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
+    seed_data(&ctx.db).await;
     let baker_least_sales = find_baker_least_sales(&ctx.db).await.unwrap();
     assert_eq!(baker_least_sales.name, "Baker 2");
 
@@ -29,7 +29,7 @@ pub async fn test_multiple_operations() {
 }
 
 #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
-async fn init_setup(db: &DatabaseConnection) {
+async fn seed_data(db: &DatabaseConnection) {
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
         profit_margin: Set(10.4),

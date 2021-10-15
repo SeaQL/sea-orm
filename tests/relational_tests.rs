@@ -17,7 +17,7 @@ pub use uuid::Uuid;
 ))]
 pub async fn left_join() {
     let ctx = TestContext::new("test_left_join").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -95,7 +95,7 @@ pub async fn left_join() {
 #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 pub async fn right_join() {
     let ctx = TestContext::new("test_right_join").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -181,7 +181,7 @@ pub async fn right_join() {
 ))]
 pub async fn inner_join() {
     let ctx = TestContext::new("test_inner_join").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -271,7 +271,7 @@ pub async fn inner_join() {
 ))]
 pub async fn group_by() {
     let ctx = TestContext::new("test_group_by").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -377,7 +377,7 @@ pub async fn group_by() {
 pub async fn having() {
     // customers with orders with total equal to $90
     let ctx = TestContext::new("test_having").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -492,7 +492,7 @@ pub async fn linked() -> Result<(), DbErr> {
     use sea_orm::{SelectA, SelectB};
 
     let ctx = TestContext::new("test_linked").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await?;
 
     // SeaSide Bakery
     let seaside_bakery = bakery::ActiveModel {

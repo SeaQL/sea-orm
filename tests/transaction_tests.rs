@@ -1,6 +1,6 @@
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
+pub use common::{bakery_chain::*, setup::*, TestContext};
 pub use sea_orm::entity::*;
 pub use sea_orm::{ConnectionTrait, QueryFilter};
 use sea_orm::{DatabaseTransaction, DbErr};
@@ -13,7 +13,7 @@ use sea_orm::{DatabaseTransaction, DbErr};
 ))]
 pub async fn transaction() {
     let ctx = TestContext::new("transaction_test").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
 
     ctx.db
         .transaction::<_, _, DbErr>(|txn| {
@@ -58,6 +58,8 @@ pub async fn transaction() {
 ))]
 pub async fn transaction_with_reference() {
     let ctx = TestContext::new("transaction_with_reference_test").await;
+    create_tables(&ctx.db).await.unwrap();
+
     let name1 = "SeaSide Bakery";
     let name2 = "Top Bakery";
     let search_name = "Bakery";
@@ -111,6 +113,7 @@ fn _transaction_with_reference<'a>(
 ))]
 pub async fn transaction_nested() {
     let ctx = TestContext::new("transaction_nested_test").await;
+    create_tables(&ctx.db).await.unwrap();
 
     ctx.db
         .transaction::<_, _, DbErr>(|txn| {

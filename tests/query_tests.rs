@@ -14,7 +14,7 @@ pub use sea_orm::{ConnectionTrait, QueryFilter};
 ))]
 pub async fn find_one_with_no_result() {
     let ctx = TestContext::new("find_one_with_no_result").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
 
     let bakery = Bakery::find().one(&ctx.db).await.unwrap();
     assert_eq!(bakery, None);
@@ -30,7 +30,7 @@ pub async fn find_one_with_no_result() {
 ))]
 pub async fn find_one_with_result() {
     let ctx = TestContext::new("find_one_with_result").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -56,7 +56,7 @@ pub async fn find_one_with_result() {
 ))]
 pub async fn find_by_id_with_no_result() {
     let ctx = TestContext::new("find_by_id_with_no_result").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
 
     let bakery = Bakery::find_by_id(999).one(&ctx.db).await.unwrap();
     assert_eq!(bakery, None);
@@ -72,7 +72,7 @@ pub async fn find_by_id_with_no_result() {
 ))]
 pub async fn find_by_id_with_result() {
     let ctx = TestContext::new("find_by_id_with_result").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
 
     let bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -102,7 +102,7 @@ pub async fn find_by_id_with_result() {
 ))]
 pub async fn find_all_with_no_result() {
     let ctx = TestContext::new("find_all_with_no_result").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
 
     let bakeries = Bakery::find().all(&ctx.db).await.unwrap();
     assert_eq!(bakeries.len(), 0);
@@ -118,7 +118,7 @@ pub async fn find_all_with_no_result() {
 ))]
 pub async fn find_all_with_result() {
     let ctx = TestContext::new("find_all_with_result").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
 
     let _ = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -153,7 +153,7 @@ pub async fn find_all_with_result() {
 ))]
 pub async fn find_all_filter_no_result() {
     let ctx = TestContext::new("find_all_filter_no_result").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
 
     let _ = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -192,7 +192,7 @@ pub async fn find_all_filter_no_result() {
 ))]
 pub async fn find_all_filter_with_results() {
     let ctx = TestContext::new("find_all_filter_with_results").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await.unwrap();
 
     let _ = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),

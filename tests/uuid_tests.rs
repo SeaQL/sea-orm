@@ -11,7 +11,7 @@ use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 ))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("bakery_chain_schema_uuid_tests").await;
-    create_tables(&ctx.db).await;
+    create_tables(&ctx.db).await?;
     create_and_update_metadata(&ctx.db).await?;
     insert_metadata(&ctx.db).await?;
     ctx.delete().await;
