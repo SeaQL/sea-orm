@@ -113,6 +113,7 @@ fn _transaction_with_reference<'a>(
 ))]
 pub async fn transaction_begin_out_of_scope() -> Result<(), DbErr> {
     let ctx = TestContext::new("transaction_begin_out_of_scope_test").await;
+    create_tables(&ctx.db).await?;
 
     assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
 
@@ -157,6 +158,7 @@ pub async fn transaction_begin_out_of_scope() -> Result<(), DbErr> {
 ))]
 pub async fn transaction_begin_commit() -> Result<(), DbErr> {
     let ctx = TestContext::new("transaction_begin_commit_test").await;
+    create_tables(&ctx.db).await?;
 
     assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
 
@@ -202,6 +204,7 @@ pub async fn transaction_begin_commit() -> Result<(), DbErr> {
 ))]
 pub async fn transaction_begin_rollback() -> Result<(), DbErr> {
     let ctx = TestContext::new("transaction_begin_rollback_test").await;
+    create_tables(&ctx.db).await?;
 
     assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
 
@@ -247,6 +250,7 @@ pub async fn transaction_begin_rollback() -> Result<(), DbErr> {
 ))]
 pub async fn transaction_closure_commit() -> Result<(), DbErr> {
     let ctx = TestContext::new("transaction_closure_commit_test").await;
+    create_tables(&ctx.db).await?;
 
     assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
 
@@ -295,6 +299,7 @@ pub async fn transaction_closure_commit() -> Result<(), DbErr> {
 ))]
 pub async fn transaction_closure_rollback() -> Result<(), DbErr> {
     let ctx = TestContext::new("transaction_closure_commit_test").await;
+    create_tables(&ctx.db).await?;
 
     assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
 
@@ -356,6 +361,7 @@ pub async fn transaction_closure_rollback() -> Result<(), DbErr> {
 pub async fn transaction_with_active_model_behaviour() -> Result<(), DbErr> {
     use rust_decimal_macros::dec;
     let ctx = TestContext::new("transaction_with_active_model_behaviour_test").await;
+    create_tables(&ctx.db).await?;
 
     if let Ok(txn) = ctx.db.begin().await {
         assert_eq!(
