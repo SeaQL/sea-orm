@@ -143,8 +143,6 @@ impl ConnectOptions {
 
 #[cfg(test)]
 mod tests {
-    use pretty_assertions::assert_eq;
-    use crate::tests_cfg::*;
     use core::time::Duration;
     use crate::*;
 
