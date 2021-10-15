@@ -60,65 +60,43 @@ impl ActiveModelBehavior for ActiveModel {
 
     fn before_save(self, insert: bool) -> Result<Self, DbErr> {
         use rust_decimal_macros::dec;
-        if let Some(price) = self.price.clone().take() {
-            if price == dec!(0) {
-                Err(DbErr::Custom(format!(
-                    "[before_save] Invalid Price, insert: {}",
-                    insert
-                )))
-            } else {
-                Ok(self)
-            }
-        } else {
+        if self.price.as_ref() == &dec!(0) {
             Err(DbErr::Custom(format!(
-                "[before_save] Price must be set, insert: {}",
+                "[before_save] Invalid Price, insert: {}",
                 insert
             )))
+        } else {
+            Ok(self)
         }
     }
 
     fn after_save(self, insert: bool) -> Result<Self, DbErr> {
         use rust_decimal_macros::dec;
-        if let Some(price) = dbg!(self.price.clone()).take() {
-            if price < dec!(0) {
-                Err(DbErr::Custom(format!(
-                    "[after_save] Invalid Price, insert: {}",
-                    insert
-                )))
-            } else {
-                Ok(self)
-            }
-        } else {
+        if self.price.as_ref() < &dec!(0) {
             Err(DbErr::Custom(format!(
-                "[after_save] Price must be set, insert: {}",
+                "[after_save] Invalid Price, insert: {}",
                 insert
             )))
+        } else {
+            Ok(self)
         }
     }
 
     fn before_delete(self) -> Result<Self, DbErr> {
-        if let Some(name) = self.name.clone().take() {
-            if name.contains("(err_on_before_delete)") {
-                Err(DbErr::Custom(
-                    "[before_delete] Cannot be deleted".to_owned(),
-                ))
-            } else {
-                Ok(self)
-            }
+        if self.name.as_ref().contains("(err_on_before_delete)") {
+            Err(DbErr::Custom(
+                "[before_delete] Cannot be deleted".to_owned(),
+            ))
         } else {
-            Err(DbErr::Custom("[before_delete] Name must be set".to_owned()))
+            Ok(self)
         }
     }
 
     fn after_delete(self) -> Result<Self, DbErr> {
-        if let Some(name) = self.name.clone().take() {
-            if name.contains("(err_on_after_delete)") {
-                Err(DbErr::Custom("[after_delete] Cannot be deleted".to_owned()))
-            } else {
-                Ok(self)
-            }
+        if self.name.as_ref().contains("(err_on_after_delete)") {
+            Err(DbErr::Custom("[after_delete] Cannot be deleted".to_owned()))
         } else {
-            Err(DbErr::Custom("[after_delete] Name must be set".to_owned()))
+            Ok(self)
         }
     }
 }
