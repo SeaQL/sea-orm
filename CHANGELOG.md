@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.3.0 - 2021-10-15
+
+- Built-in Rocket support
+- `ConnectOptions`
+
+```rust
+let mut opt = ConnectOptions::new("protocol://username:password@host/database".to_owned());
+opt.max_connections(100)
+    .min_connections(5)
+    .connect_timeout(Duration::from_secs(8))
+    .idle_timeout(Duration::from_secs(8));
+let db = Database::connect(opt).await?;
+```
+
+- [[#211]] Throw error if none of the db rows are affected
+
+```rust
+assert_eq!(
+    Update::one(cake::ActiveModel {
+        name: Set("Cheese Cake".to_owned()),
+        ..model.into_active_model()
+    })
+    .exec(&db)
+    .await,
+    Err(DbErr::RecordNotFound(
+        "None of the database rows are affected".to_owned()
+    ))
+);
+
+assert_eq!(
+    Update::many(cake::Entity)
+        .col_expr(cake::Column::Name, Expr::value("Cheese Cake".to_owned()))
+        .filter(cake::Column::Id.eq(2))
+        .exec(&db)
+        .await,
+    Ok(UpdateResult { rows_affected: 0 })
+);
+```
+
+- [[#223]] `ActiveValue::take()` & `ActiveValue::into_value()` without `unwrap()`
+- [[#205]] Drop `Default` trait bound of `PrimaryKeyTrait::ValueType`
+- [[#222]] Transaction & streaming
+- [[#210]] Update `ActiveModelBehavior` API
+- [[#240]] Add derive `DeriveIntoActiveModel` and `IntoActiveValue` trait
+- [[#237]] Introduce optional serde support for model code generation
+- [[#246]] Add `#[automatically_derived]` to all derived implementations
+
+[#211]: https://github.com/SeaQL/sea-orm/pull/211
+[#223]: https://github.com/SeaQL/sea-orm/pull/223
+[#205]: https://github.com/SeaQL/sea-orm/pull/205
+[#222]: https://github.com/SeaQL/sea-orm/pull/222
+[#210]: https://github.com/SeaQL/sea-orm/pull/210
+[#240]: https://github.com/SeaQL/sea-orm/pull/240
+[#237]: https://github.com/SeaQL/sea-orm/pull/237
+[#246]: https://github.com/SeaQL/sea-orm/pull/246
+
 ## 0.2.6 - 2021-10-09
 
 - [[#224]] [sea-orm-cli] Date & Time column type mapping
