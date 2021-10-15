@@ -59,6 +59,7 @@ jobs:
         with:
           command: test
           args: >
+            --test '*'
             --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
             --no-run
 
@@ -91,6 +92,7 @@ jobs:
         with:
           command: test
           args: >
+            --test '*'
             --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
             --no-run
 
@@ -123,6 +125,7 @@ jobs:
         with:
           command: test
           args: >
+            --test '*'
             --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
             --no-run
 
@@ -247,6 +250,7 @@ jobs:
         with:
           command: test
           args: >
+            --test '*'
             --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   mysql:
@@ -299,6 +303,7 @@ jobs:
         with:
           command: test
           args: >
+            --test '*'
             --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   mariadb:
@@ -351,6 +356,7 @@ jobs:
         with:
           command: test
           args: >
+            --test '*'
             --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   postgres:
@@ -400,4 +406,5 @@ jobs:
         with:
           command: test
           args: >
+            --test '*'
             --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
