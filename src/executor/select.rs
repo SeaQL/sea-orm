@@ -1,5 +1,5 @@
 use crate::{
-    error::*, ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, JsonValue,
+    error::*, ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable,
     ModelTrait, Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo,
     SelectTwoMany, Statement, TryGetableMany,
 };
@@ -7,6 +7,9 @@ use futures::{Stream, TryStreamExt};
 use sea_query::SelectStatement;
 use std::marker::PhantomData;
 use std::pin::Pin;
+
+#[cfg(feature = "with-json")]
+use crate::JsonValue;
 
 #[derive(Clone, Debug)]
 pub struct Selector<S>

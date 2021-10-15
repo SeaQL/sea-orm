@@ -274,6 +274,7 @@ mod executor;
 pub mod query;
 pub mod schema;
 #[doc(hidden)]
+#[cfg(feature = "macros")]
 pub mod tests_cfg;
 mod util;
 
@@ -298,5 +299,4 @@ pub use sea_query::Iden;
 pub use sea_query::Iden as DeriveIden;
 
 pub use sea_strum;
-#[cfg(feature = "macros")]
 pub use sea_strum::EnumIter;

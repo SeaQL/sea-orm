@@ -2,7 +2,7 @@
 # A separate workspace
 
 [package]
-name = "sea-orm-example-tokio"
+name = "sea-orm-issues-86"
 version = "0.1.0"
 edition = "2018"
 publish = false
