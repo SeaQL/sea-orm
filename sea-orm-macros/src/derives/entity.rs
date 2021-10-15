@@ -70,6 +70,7 @@ impl DeriveEntity {
             .unwrap_or_else(|| quote!(None));
 
         quote!(
+            #[automatically_derived]
             impl sea_orm::entity::EntityName for #ident {
                 fn schema_name(&self) -> Option<&str> {
                     #expanded_schema_name
@@ -93,6 +94,7 @@ impl DeriveEntity {
         } = self;
 
         quote!(
+            #[automatically_derived]
             impl sea_orm::entity::EntityTrait for #ident {
                 type Model = #model_ident;
 
@@ -109,6 +111,7 @@ impl DeriveEntity {
         let ident = &self.ident;
 
         quote!(
+            #[automatically_derived]
             impl sea_orm::Iden for #ident {
                 fn unquoted(&self, s: &mut dyn std::fmt::Write) {
                     write!(s, "{}", self.as_str()).unwrap();
@@ -121,6 +124,7 @@ impl DeriveEntity {
         let ident = &self.ident;
 
         quote!(
+            #[automatically_derived]
             impl sea_orm::IdenStatic for #ident {
                 fn as_str(&self) -> &str {
                     <Self as sea_orm::EntityName>::table_name(self)

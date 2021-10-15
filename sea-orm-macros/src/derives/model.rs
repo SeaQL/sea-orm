@@ -123,6 +123,7 @@ impl DeriveModel {
             .collect();
 
         quote!(
+            #[automatically_derived]
             impl sea_orm::FromQueryResult for #ident {
                 fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::DbErr> {
                     Ok(Self {
@@ -160,6 +161,7 @@ impl DeriveModel {
         let missing_field_msg = format!("field does not exist on {}", ident);
 
         quote!(
+            #[automatically_derived]
             impl sea_orm::ModelTrait for #ident {
                 type Entity = #entity_ident;
 

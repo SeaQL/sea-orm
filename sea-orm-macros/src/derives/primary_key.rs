@@ -31,12 +31,14 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
         .collect();
 
     Ok(quote!(
+        #[automatically_derived]
         impl sea_orm::Iden for #ident {
             fn unquoted(&self, s: &mut dyn std::fmt::Write) {
                 write!(s, "{}", self.as_str()).unwrap();
             }
         }
 
+        #[automatically_derived]
         impl sea_orm::IdenStatic for #ident {
             fn as_str(&self) -> &str {
                 match self {
@@ -45,6 +47,7 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
             }
         }
 
+        #[automatically_derived]
         impl sea_orm::PrimaryKeyToColumn for #ident {
             type Column = Column;
 

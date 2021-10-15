@@ -54,6 +54,7 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
         .collect();
 
     Ok(quote!(
+        #[automatically_derived]
         impl #ident {
             fn default_as_str(&self) -> &str {
                 match self {
@@ -84,6 +85,7 @@ pub fn impl_col_from_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream>
     });
 
     Ok(quote!(
+        #[automatically_derived]
         impl std::str::FromStr for #ident {
             type Err = sea_orm::ColumnFromStrErr;
 
@@ -103,6 +105,7 @@ pub fn expand_derive_column(ident: &Ident, data: &Data) -> syn::Result<TokenStre
     Ok(quote!(
         #impl_iden
 
+        #[automatically_derived]
         impl sea_orm::IdenStatic for #ident {
             fn as_str(&self) -> &str {
                 self.default_as_str()
@@ -120,6 +123,7 @@ pub fn expand_derive_custom_column(ident: &Ident, data: &Data) -> syn::Result<To
 
         #impl_col_from_str
 
+        #[automatically_derived]
         impl sea_orm::Iden for #ident {
             fn unquoted(&self, s: &mut dyn std::fmt::Write) {
                 write!(s, "{}", self.as_str()).unwrap();
