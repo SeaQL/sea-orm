@@ -528,6 +528,24 @@ mod tests {
     }
 
     #[smol_potat::test]
+    async fn test_stream_2() -> Result<(), DbErr> {
+        use fruit::Entity as Fruit;
+        use futures::TryStreamExt;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(vec![Vec::<fruit::Model>::new()])
+            .into_connection();
+
+        let mut stream = Fruit::find().stream(&db).await?;
+
+        while let Some(item) = stream.try_next().await? {
+            let _item: fruit::ActiveModel = item.into();
+        }
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
     async fn test_stream_in_transaction() -> Result<(), DbErr> {
         use futures::TryStreamExt;
 
@@ -556,7 +574,7 @@ mod tests {
 
             assert_eq!(stream.try_next().await?, None);
 
-            // stream will be dropped end of scope OR std::mem::drop(stream);
+            // stream will be dropped end of scope
         }
 
         txn.commit().await?;
