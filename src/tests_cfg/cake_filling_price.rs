@@ -49,7 +49,7 @@ pub enum Relation {
     CakeFilling,
     // This `SelfRef` relation was created to test self joins,
     // it's not intended to be used in real life
-    // SelfRef,
+    SelfRef,
 }
 
 impl ColumnTrait for Column {
@@ -74,10 +74,10 @@ impl RelationTrait for Relation {
                     super::cake_filling::Column::FillingId,
                 ))
                 .into(),
-            // Self::SelfRef => Entity::belongs_to(Entity)
-            //     .from(Column::FillingId)
-            //     .to(Column::CakeId)
-            //     .into(),
+            Self::SelfRef => Entity::belongs_to(Entity)
+                .from(Column::FillingId)
+                .to(Column::CakeId)
+                .into(),
         }
     }
 }

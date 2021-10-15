@@ -162,6 +162,14 @@ mod tests {
                         .to_col(cake_filling::Column::CakeId)
                         .to_col(cake_filling::Column::FillingId)
                 )
+                .foreign_key(
+                    ForeignKeyCreateStatement::new()
+                        .name("fk-cake_filling_price-cake_filling_price")
+                        .from_tbl(CakeFillingPrice)
+                        .from_col(cake_filling_price::Column::FillingId)
+                        .to_tbl(CakeFillingPrice)
+                        .to_col(cake_filling_price::Column::CakeId)
+                )
                 .to_string(MysqlQueryBuilder)
         );
     }
