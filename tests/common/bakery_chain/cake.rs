@@ -49,4 +49,54 @@ impl Related<super::lineitem::Entity> for Entity {
     }
 }
 
-impl ActiveModelBehavior for ActiveModel {}
+impl ActiveModelBehavior for ActiveModel {
+    fn new() -> Self {
+        use sea_orm::Set;
+        Self {
+            serial: Set(Uuid::new_v4()),
+            ..ActiveModelTrait::default()
+        }
+    }
+
+    fn before_save(self, insert: bool) -> Result<Self, DbErr> {
+        use rust_decimal_macros::dec;
+        if self.price.as_ref() == &dec!(0) {
+            Err(DbErr::Custom(format!(
+                "[before_save] Invalid Price, insert: {}",
+                insert
+            )))
+        } else {
+            Ok(self)
+        }
+    }
+
+    fn after_save(self, insert: bool) -> Result<Self, DbErr> {
+        use rust_decimal_macros::dec;
+        if self.price.as_ref() < &dec!(0) {
+            Err(DbErr::Custom(format!(
+                "[after_save] Invalid Price, insert: {}",
+                insert
+            )))
+        } else {
+            Ok(self)
+        }
+    }
+
+    fn before_delete(self) -> Result<Self, DbErr> {
+        if self.name.as_ref().contains("(err_on_before_delete)") {
+            Err(DbErr::Custom(
+                "[before_delete] Cannot be deleted".to_owned(),
+            ))
+        } else {
+            Ok(self)
+        }
+    }
+
+    fn after_delete(self) -> Result<Self, DbErr> {
+        if self.name.as_ref().contains("(err_on_after_delete)") {
+            Err(DbErr::Custom("[after_delete] Cannot be deleted".to_owned()))
+        } else {
+            Ok(self)
+        }
+    }
+}
