@@ -111,6 +111,241 @@ fn _transaction_with_reference<'a>(
     feature = "sqlx-sqlite",
     feature = "sqlx-postgres"
 ))]
+pub async fn transaction_begin_out_of_scope() -> Result<(), DbErr> {
+    let ctx = TestContext::new("transaction_begin_out_of_scope_test").await;
+
+    assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
+
+    {
+        // Transaction begin in this scope
+        let txn = ctx.db.begin().await?;
+
+        bakery::ActiveModel {
+            name: Set("SeaSide Bakery".to_owned()),
+            profit_margin: Set(10.4),
+            ..Default::default()
+        }
+        .save(&txn)
+        .await?;
+
+        assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 1);
+
+        bakery::ActiveModel {
+            name: Set("Top Bakery".to_owned()),
+            profit_margin: Set(15.0),
+            ..Default::default()
+        }
+        .save(&txn)
+        .await?;
+
+        assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 2);
+
+        // The scope ended and transaction is dropped without commit
+    }
+
+    assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
+
+    ctx.delete().await;
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
+pub async fn transaction_begin_commit() -> Result<(), DbErr> {
+    let ctx = TestContext::new("transaction_begin_commit_test").await;
+
+    assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
+
+    {
+        // Transaction begin in this scope
+        let txn = ctx.db.begin().await?;
+
+        bakery::ActiveModel {
+            name: Set("SeaSide Bakery".to_owned()),
+            profit_margin: Set(10.4),
+            ..Default::default()
+        }
+        .save(&txn)
+        .await?;
+
+        assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 1);
+
+        bakery::ActiveModel {
+            name: Set("Top Bakery".to_owned()),
+            profit_margin: Set(15.0),
+            ..Default::default()
+        }
+        .save(&txn)
+        .await?;
+
+        assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 2);
+
+        // Commit changes before the end of scope
+        txn.commit().await?;
+    }
+
+    assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 2);
+
+    ctx.delete().await;
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
+pub async fn transaction_begin_rollback() -> Result<(), DbErr> {
+    let ctx = TestContext::new("transaction_begin_rollback_test").await;
+
+    assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
+
+    {
+        // Transaction begin in this scope
+        let txn = ctx.db.begin().await?;
+
+        bakery::ActiveModel {
+            name: Set("SeaSide Bakery".to_owned()),
+            profit_margin: Set(10.4),
+            ..Default::default()
+        }
+        .save(&txn)
+        .await?;
+
+        assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 1);
+
+        bakery::ActiveModel {
+            name: Set("Top Bakery".to_owned()),
+            profit_margin: Set(15.0),
+            ..Default::default()
+        }
+        .save(&txn)
+        .await?;
+
+        assert_eq!(bakery::Entity::find().all(&txn).await?.len(), 2);
+
+        // Rollback changes before the end of scope
+        txn.rollback().await?;
+    }
+
+    assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
+
+    ctx.delete().await;
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
+pub async fn transaction_closure_commit() -> Result<(), DbErr> {
+    let ctx = TestContext::new("transaction_closure_commit_test").await;
+
+    assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
+
+    let res = ctx
+        .db
+        .transaction::<_, _, DbErr>(|txn| {
+            Box::pin(async move {
+                bakery::ActiveModel {
+                    name: Set("SeaSide Bakery".to_owned()),
+                    profit_margin: Set(10.4),
+                    ..Default::default()
+                }
+                .save(txn)
+                .await?;
+
+                assert_eq!(bakery::Entity::find().all(txn).await?.len(), 1);
+
+                bakery::ActiveModel {
+                    name: Set("Top Bakery".to_owned()),
+                    profit_margin: Set(15.0),
+                    ..Default::default()
+                }
+                .save(txn)
+                .await?;
+
+                assert_eq!(bakery::Entity::find().all(txn).await?.len(), 2);
+
+                Ok(())
+            })
+        })
+        .await;
+
+    assert!(res.is_ok());
+
+    assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 2);
+
+    ctx.delete().await;
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
+pub async fn transaction_closure_rollback() -> Result<(), DbErr> {
+    let ctx = TestContext::new("transaction_closure_commit_test").await;
+
+    assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
+
+    let res = ctx
+        .db
+        .transaction::<_, _, DbErr>(|txn| {
+            Box::pin(async move {
+                bakery::ActiveModel {
+                    name: Set("SeaSide Bakery".to_owned()),
+                    profit_margin: Set(10.4),
+                    ..Default::default()
+                }
+                .save(txn)
+                .await?;
+
+                assert_eq!(bakery::Entity::find().all(txn).await?.len(), 1);
+
+                bakery::ActiveModel {
+                    name: Set("Top Bakery".to_owned()),
+                    profit_margin: Set(15.0),
+                    ..Default::default()
+                }
+                .save(txn)
+                .await?;
+
+                assert_eq!(bakery::Entity::find().all(txn).await?.len(), 2);
+
+                bakery::ActiveModel {
+                    id: Set(1),
+                    name: Set("Duplicated primary key".to_owned()),
+                    profit_margin: Set(20.0),
+                    ..Default::default()
+                }
+                .insert(txn)
+                .await?; // Throw error and rollback
+
+                // This line won't be reached
+                assert!(false);
+
+                Ok(())
+            })
+        })
+        .await;
+
+    assert!(res.is_err());
+
+    assert_eq!(bakery::Entity::find().all(&ctx.db).await?.len(), 0);
+
+    ctx.delete().await;
+    Ok(())
+}
 
 #[sea_orm_macros::test]
 #[cfg(any(
