@@ -418,4 +418,57 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_into_active_model_2() {
+        use crate::entity::*;
+
+        mod my_fruit {
+            pub use super::fruit::*;
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(DeriveIntoActiveModel)]
+            pub struct UpdateFruit {
+                pub cake_id: Option<Option<i32>>,
+            }
+        }
+
+        assert_eq!(
+            my_fruit::UpdateFruit {
+                cake_id: Some(Some(1)),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Unset(None),
+                name: Unset(None),
+                cake_id: Set(Some(1)),
+            }
+        );
+
+        assert_eq!(
+            my_fruit::UpdateFruit {
+                cake_id: Some(None),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Unset(None),
+                name: Unset(None),
+                cake_id: Set(None),
+            }
+        );
+
+        assert_eq!(
+            my_fruit::UpdateFruit {
+                cake_id: None,
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Unset(None),
+                name: Unset(None),
+                cake_id: Unset(None),
+            }
+        );
+    }
 }
