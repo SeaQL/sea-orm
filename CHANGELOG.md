@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.3.0 - 2021-10-15
 
+https://www.sea-ql.org/SeaORM/blog/2021-10-15-whats-new-in-0.3.0
+
 - Built-in Rocket support
 - `ConnectOptions`
 
@@ -79,6 +81,8 @@ assert_eq!(
 [#189]: https://github.com/SeaQL/sea-orm/pull/189
 
 ## 0.2.4 - 2021-10-01
+
+https://www.sea-ql.org/SeaORM/blog/2021-10-01-whats-new-in-0.2.4
 
 - [[#186]] [sea-orm-cli] Foreign key handling
 - [[#191]] [sea-orm-cli] Unique key handling
