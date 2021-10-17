@@ -460,10 +460,7 @@ mod tests {
         );
 
         assert_eq!(
-            my_fruit::UpdateFruit {
-                cake_id: None,
-            }
-            .into_active_model(),
+            my_fruit::UpdateFruit { cake_id: None }.into_active_model(),
             fruit::ActiveModel {
                 id: Unset(None),
                 name: Unset(None),
