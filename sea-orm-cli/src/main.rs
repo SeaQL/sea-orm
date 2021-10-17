@@ -3,6 +3,7 @@ use dotenv::dotenv;
 use log::LevelFilter;
 use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
+use url::Url;
 
 mod cli;
 
@@ -23,7 +24,8 @@ async fn main() {
 async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
     match matches.subcommand() {
         ("entity", Some(args)) => {
-            let url = args.value_of("DATABASE_URL").unwrap();
+            // The database should be a valid URL that can be parsed
+            let url = Url::parse(args.value_of("DATABASE_URL").unwrap())?;
             let output_dir = args.value_of("OUTPUT_DIR").unwrap();
             let include_hidden_tables = args.is_present("INCLUDE_HIDDEN_TABLES");
             let tables = args
@@ -33,7 +35,7 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
             let expanded_format = args.is_present("EXPANDED_FORMAT");
             let with_serde = args.value_of("WITH_SERDE").unwrap();
             let filter_tables = |table: &str| -> bool {
-                if tables.len() > 0 {
+                if !tables.is_empty() {
                     return tables.contains(&table);
                 }
 
@@ -43,7 +45,7 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                 if include_hidden_tables {
                     true
                 } else {
-                    !table.starts_with("_")
+                    !table.starts_with('_')
                 }
             };
             if args.is_present("VERBOSE") {
@@ -53,39 +55,43 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                     .try_init();
             }
 
-            let table_stmts = if url.starts_with("mysql://") {
-                use sea_schema::mysql::discovery::SchemaDiscovery;
-                use sqlx::MySqlPool;
+            let table_stmts = match url.scheme() {
+                "mysql" => {
+                    use sea_schema::mysql::discovery::SchemaDiscovery;
+                    use sqlx::MySqlPool;
 
-                let url_parts: Vec<&str> = url.split("/").collect();
-                let schema = url_parts.last().unwrap();
-                let connection = MySqlPool::connect(url).await?;
-                let schema_discovery = SchemaDiscovery::new(connection, schema);
-                let schema = schema_discovery.discover().await;
-                schema
-                    .tables
-                    .into_iter()
-                    .filter(|schema| filter_tables(&schema.info.name))
-                    .filter(|schema| filter_hidden_tables(&schema.info.name))
-                    .map(|schema| schema.write())
-                    .collect()
-            } else if url.starts_with("postgres://") || url.starts_with("postgresql://") {
-                use sea_schema::postgres::discovery::SchemaDiscovery;
-                use sqlx::PgPool;
+                    // TODO: as far as I can tell, this used to be the last
+                    // value of the url, which should have been the database
+                    // name?
+                    let schema = url.path_segments().unwrap().last().unwrap();
+                    let connection = MySqlPool::connect(url.as_str()).await?;
+                    let schema_discovery = SchemaDiscovery::new(connection, schema);
+                    let schema = schema_discovery.discover().await;
+                    schema
+                        .tables
+                        .into_iter()
+                        .filter(|schema| filter_tables(&schema.info.name))
+                        .filter(|schema| filter_hidden_tables(&schema.info.name))
+                        .map(|schema| schema.write())
+                        .collect()
+                }
+                "postgres" | "postgresql" => {
+                    use sea_schema::postgres::discovery::SchemaDiscovery;
+                    use sqlx::PgPool;
 
-                let schema = args.value_of("DATABASE_SCHEMA").unwrap_or("public");
-                let connection = PgPool::connect(url).await?;
-                let schema_discovery = SchemaDiscovery::new(connection, schema);
-                let schema = schema_discovery.discover().await;
-                schema
-                    .tables
-                    .into_iter()
-                    .filter(|schema| filter_tables(&schema.info.name))
-                    .filter(|schema| filter_hidden_tables(&schema.info.name))
-                    .map(|schema| schema.write())
-                    .collect()
-            } else {
-                panic!("This database is not supported ({})", url)
+                    let schema = args.value_of("DATABASE_SCHEMA").unwrap_or("public");
+                    let connection = PgPool::connect(url.as_str()).await?;
+                    let schema_discovery = SchemaDiscovery::new(connection, schema);
+                    let schema = schema_discovery.discover().await;
+                    schema
+                        .tables
+                        .into_iter()
+                        .filter(|schema| filter_tables(&schema.info.name))
+                        .filter(|schema| filter_hidden_tables(&schema.info.name))
+                        .map(|schema| schema.write())
+                        .collect()
+                }
+                _ => unimplemented!("{} is not supported", url.scheme()),
             };
 
             let output = EntityTransformer::transform(table_stmts)?
@@ -99,6 +105,8 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                 let mut file = fs::File::create(file_path)?;
                 file.write_all(content.as_bytes())?;
             }
+
+            // Format each of the files
             for OutputFile { name, .. } in output.files.iter() {
                 Command::new("rustfmt")
                     .arg(dir.join(name))
