@@ -36,6 +36,7 @@ assert_eq!(
     ))
 );
 
+// update many remains the same
 assert_eq!(
     Update::many(cake::Entity)
         .col_expr(cake::Column::Name, Expr::value("Cheese Cake".to_owned()))
