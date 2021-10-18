@@ -25,7 +25,15 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
     match matches.subcommand() {
         ("entity", Some(args)) => {
             // The database should be a valid URL that can be parsed
-            let url = Url::parse(args.value_of("DATABASE_URL").unwrap())?;
+            // protocol://username:password@host/database_name
+            let url = match Url::parse(
+                args.value_of("DATABASE_URL")
+                    .expect("No database url could be found"),
+            ) {
+                Ok(url) => url,
+                Err(e) => panic!("Invalid database url: {}", e),
+            };
+
             let output_dir = args.value_of("OUTPUT_DIR").unwrap();
             let include_hidden_tables = args.is_present("INCLUDE_HIDDEN_TABLES");
             let tables = args
@@ -34,6 +42,36 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                 .collect::<Vec<_>>();
             let expanded_format = args.is_present("EXPANDED_FORMAT");
             let with_serde = args.value_of("WITH_SERDE").unwrap();
+            if args.is_present("VERBOSE") {
+                let _ = ::env_logger::builder()
+                    .filter_level(LevelFilter::Debug)
+                    .is_test(true)
+                    .try_init();
+            }
+
+            // The database name should be the first element of the path string
+            //
+            // Throwing an error if there is no database name since it might be
+            // accepted by the database without it, while we're looking to dump
+            // information from a particular database
+            let database_name = url
+                .path_segments()
+                .expect(&format!(
+                    "There is no database name as part of the url path: {}",
+                    url.as_str()
+                ))
+                .next()
+                .unwrap();
+
+            // An empty string as the database name is also an error
+            if database_name.is_empty() {
+                panic!(
+                    "There is no database name as part of the url path: {}",
+                    url.as_str()
+                );
+            }
+
+            // Closures for filtering tables
             let filter_tables = |table: &str| -> bool {
                 if !tables.is_empty() {
                     return tables.contains(&table);
@@ -48,24 +86,14 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                     !table.starts_with('_')
                 }
             };
-            if args.is_present("VERBOSE") {
-                let _ = ::env_logger::builder()
-                    .filter_level(LevelFilter::Debug)
-                    .is_test(true)
-                    .try_init();
-            }
 
             let table_stmts = match url.scheme() {
                 "mysql" => {
                     use sea_schema::mysql::discovery::SchemaDiscovery;
                     use sqlx::MySqlPool;
 
-                    // TODO: as far as I can tell, this used to be the last
-                    // value of the url, which should have been the database
-                    // name?
-                    let schema = url.path_segments().unwrap().last().unwrap();
                     let connection = MySqlPool::connect(url.as_str()).await?;
-                    let schema_discovery = SchemaDiscovery::new(connection, schema);
+                    let schema_discovery = SchemaDiscovery::new(connection, database_name);
                     let schema = schema_discovery.discover().await;
                     schema
                         .tables
