@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
 pub use sea_orm::entity::*;
-pub use sea_orm::{ConnectionTrait, DbErr, QueryFilter};
+pub use sea_orm::{ConnectionTrait, DbErr, QueryFilter, QueryOrder};
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -24,12 +24,31 @@ pub async fn stream() -> Result<(), DbErr> {
     .save(&ctx.db)
     .await?;
 
+    {
+        let result = Bakery::find()
+            .filter(bakery::Column::Name.contains("a"))
+            .order_by_asc(bakery::Column::Name)
+            .stream(&ctx.db)
+            .await?;
+    }
+
+    let result = Bakery::find()
+        .filter(bakery::Column::Name.contains("a"))
+        .order_by_asc(bakery::Column::Name)
+        .stream(&ctx.db)
+        .await?;
+
+    println!("--- This line is visible ---");
+
+    // Error: Query("Failed to acquire connection from pool.")
     let result = Bakery::find_by_id(bakery.id.clone().unwrap())
         .stream(&ctx.db)
         .await?
         .next()
         .await
         .unwrap()?;
+    
+    println!("--- Not visible ---");
 
     assert_eq!(result.id, bakery.id.unwrap());
 
