@@ -1,3 +1,4 @@
+mod active_enum;
 mod active_model;
 mod active_model_behavior;
 mod column;
@@ -9,6 +10,7 @@ mod model;
 mod primary_key;
 mod relation;
 
+pub use active_enum::*;
 pub use active_model::*;
 pub use active_model_behavior::*;
 pub use column::*;

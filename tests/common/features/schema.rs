@@ -9,6 +9,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_log_table(db).await?;
     create_metadata_table(db).await?;
     create_repository_table(db).await?;
+    create_active_enum_table(db).await?;
 
     Ok(())
 }
@@ -74,4 +75,25 @@ pub async fn create_repository_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &stmt, Repository).await
+}
+
+pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(active_enum::Entity)
+        .col(
+            ColumnDef::new(active_enum::Column::Id)
+                .integer()
+                .not_null()
+                .primary_key()
+                .auto_increment(),
+        )
+        .col(
+            ColumnDef::new(active_enum::Column::Category)
+                .string_len(1)
+                .not_null(),
+        )
+        .col(ColumnDef::new(active_enum::Column::CategoryOpt).string_len(1))
+        .to_owned();
+
+    create_table(db, &stmt, ActiveEnum).await
 }

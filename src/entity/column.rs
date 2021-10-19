@@ -262,6 +262,10 @@ impl ColumnDef {
         self.indexed = true;
         self
     }
+
+    pub fn get_column_type(&self) -> &ColumnType {
+        &self.col_type
+    }
 }
 
 impl From<ColumnType> for sea_query::ColumnType {
