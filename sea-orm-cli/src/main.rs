@@ -24,16 +24,6 @@ async fn main() {
 async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
     match matches.subcommand() {
         ("entity", Some(args)) => {
-            // The database should be a valid URL that can be parsed
-            // protocol://username:password@host/database_name
-            let url = match Url::parse(
-                args.value_of("DATABASE_URL")
-                    .expect("No database url could be found"),
-            ) {
-                Ok(url) => url,
-                Err(e) => panic!("Invalid database url: {}", e),
-            };
-
             let output_dir = args.value_of("OUTPUT_DIR").unwrap();
             let include_hidden_tables = args.is_present("INCLUDE_HIDDEN_TABLES");
             let tables = args
@@ -49,6 +39,33 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                     .try_init();
             }
 
+            // The database should be a valid URL that can be parsed
+            // protocol://username:password@host/database_name
+            let url = Url::parse(
+                args.value_of("DATABASE_URL")
+                    .expect("No database url could be found"),
+            )?;
+
+            // Make sure we have all the required url components
+            //
+            // Missing scheme will have been caught by the Url::parse() call
+            // above
+
+            let url_username = url.username();
+            let url_password = url.password();
+            let url_host = url.host_str();
+
+            // Panic on any that are missing
+            if url_username.is_empty() {
+                panic!("No username was found in the database url");
+            }
+            if url_password.is_none() {
+                panic!("No password was found in the database url");
+            }
+            if url_host.is_none() {
+                panic!("No host was found in the database url");
+            }
+
             // The database name should be the first element of the path string
             //
             // Throwing an error if there is no database name since it might be
@@ -56,10 +73,12 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
             // information from a particular database
             let database_name = url
                 .path_segments()
-                .expect(&format!(
-                    "There is no database name as part of the url path: {}",
-                    url.as_str()
-                ))
+                .unwrap_or_else(|| {
+                    panic!(
+                        "There is no database name as part of the url path: {}",
+                        url.as_str()
+                    )
+                })
                 .next()
                 .unwrap();
 
@@ -154,4 +173,126 @@ where
 {
     eprintln!("{}", error);
     ::std::process::exit(1);
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::AppSettings;
+    use url::ParseError;
+
+    use super::*;
+
+    #[async_std::test]
+    async fn test_generate_entity_no_protocol() {
+        let matches = cli::build_cli()
+            .setting(AppSettings::NoBinaryName)
+            .get_matches_from(vec![
+                "generate",
+                "entity",
+                "--database-url",
+                "://root:root@localhost:3306/database",
+            ]);
+
+        let result = std::panic::catch_unwind(|| {
+            smol::block_on(run_generate_command(matches.subcommand().1.unwrap()))
+        });
+
+        // Make sure result is a ParseError
+        match result {
+            Ok(Err(e)) => match e.downcast::<ParseError>() {
+                Ok(_) => (),
+                Err(e) => panic!("Expected ParseError but got: {:?}", e),
+            },
+            _ => panic!("Should have panicked"),
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_generate_entity_no_database_section() {
+        let matches = cli::build_cli()
+            .setting(AppSettings::NoBinaryName)
+            .get_matches_from(vec![
+                "generate",
+                "entity",
+                "--database-url",
+                "postgresql://root:root@localhost:3306",
+            ]);
+
+        smol::block_on(run_generate_command(matches.subcommand().1.unwrap()))
+            .unwrap_or_else(handle_error);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_generate_entity_no_database_path() {
+        let matches = cli::build_cli()
+            .setting(AppSettings::NoBinaryName)
+            .get_matches_from(vec![
+                "generate",
+                "entity",
+                "--database-url",
+                "mysql://root:root@localhost:3306/",
+            ]);
+
+        smol::block_on(run_generate_command(matches.subcommand().1.unwrap()))
+            .unwrap_or_else(handle_error);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_generate_entity_no_username() {
+        let matches = cli::build_cli()
+            .setting(AppSettings::NoBinaryName)
+            .get_matches_from(vec![
+                "generate",
+                "entity",
+                "--database-url",
+                "mysql://:root@localhost:3306/database",
+            ]);
+
+        smol::block_on(run_generate_command(matches.subcommand().1.unwrap()))
+            .unwrap_or_else(handle_error);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_generate_entity_no_password() {
+        let matches = cli::build_cli()
+            .setting(AppSettings::NoBinaryName)
+            .get_matches_from(vec![
+                "generate",
+                "entity",
+                "--database-url",
+                "mysql://root:@localhost:3306/database",
+            ]);
+
+        smol::block_on(run_generate_command(matches.subcommand().1.unwrap()))
+            .unwrap_or_else(handle_error);
+    }
+
+    #[async_std::test]
+    async fn test_generate_entity_no_host() {
+        let matches = cli::build_cli()
+            .setting(AppSettings::NoBinaryName)
+            .get_matches_from(vec![
+                "generate",
+                "entity",
+                "--database-url",
+                "postgres://root:root@/database",
+            ]);
+
+        let result = std::panic::catch_unwind(|| {
+            smol::block_on(run_generate_command(matches.subcommand().1.unwrap()))
+        });
+
+        // Make sure result is a ParseError
+        match result {
+            Ok(Err(e)) => match e.downcast::<ParseError>() {
+                Ok(_) => (),
+                Err(e) => panic!("Expected ParseError but got: {:?}", e),
+            },
+            _ => panic!("Should have panicked"),
+        }
+    }
 }
