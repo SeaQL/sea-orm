@@ -1,0 +1,9 @@
+[package]
+name = "sea-orm-issues-249-app"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+core = { path = "../core" }
+sea-orm = { path = "../../../", default-features = false, features = ["macros", "sqlx-sqlite", "runtime-async-std-native-tls"] }
