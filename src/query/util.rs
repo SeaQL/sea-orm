@@ -43,26 +43,36 @@ debug_query_build!(&DatabaseConnection, |x: &DebugQuery<
 /// # let conn = MockDatabase::new(DbBackend::Postgres)
 /// #     .into_connection();
 /// #
-/// use sea_orm::{entity::*, query::*, tests_cfg::cake, debug_query_stmt};
+/// use sea_orm::{debug_query_stmt, entity::*, query::*, tests_cfg::cake};
 ///
-/// let c = cake::Entity::insert(
-///    cake::ActiveModel {
-///         id: ActiveValue::set(1),
-///         name: ActiveValue::set("Apple Pie".to_owned()),
+/// let c = cake::Entity::insert(cake::ActiveModel {
+///     id: ActiveValue::set(1),
+///     name: ActiveValue::set("Apple Pie".to_owned()),
 /// });
 ///
 /// let raw_sql = debug_query_stmt!(&c, &conn).to_string();
-/// assert_eq!(raw_sql, r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#);
+/// assert_eq!(
+///     raw_sql,
+///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#
+/// );
 ///
 /// let raw_sql = debug_query_stmt!(&c, conn).to_string();
-/// assert_eq!(raw_sql, r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#);
+/// assert_eq!(
+///     raw_sql,
+///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#
+/// );
 ///
 /// let raw_sql = debug_query_stmt!(&c, DbBackend::MySql).to_string();
-/// assert_eq!(raw_sql, r#"INSERT INTO `cake` (`id`, `name`) VALUES (1, 'Apple Pie')"#);
+/// assert_eq!(
+///     raw_sql,
+///     r#"INSERT INTO `cake` (`id`, `name`) VALUES (1, 'Apple Pie')"#
+/// );
 ///
 /// let raw_sql = debug_query_stmt!(&c, &DbBackend::MySql).to_string();
-/// assert_eq!(raw_sql, r#"INSERT INTO `cake` (`id`, `name`) VALUES (1, 'Apple Pie')"#);
-///
+/// assert_eq!(
+///     raw_sql,
+///     r#"INSERT INTO `cake` (`id`, `name`) VALUES (1, 'Apple Pie')"#
+/// );
 /// ```
 #[macro_export]
 macro_rules! debug_query_stmt {
@@ -86,23 +96,30 @@ macro_rules! debug_query_stmt {
 /// # let conn = MockDatabase::new(DbBackend::Postgres)
 /// #     .into_connection();
 /// #
-/// use sea_orm::{entity::*, query::*, tests_cfg::cake,debug_query};
+/// use sea_orm::{debug_query, entity::*, query::*, tests_cfg::cake};
 ///
-/// let c = cake::Entity::insert(
-///    cake::ActiveModel {
-///         id: ActiveValue::set(1),
-///         name: ActiveValue::set("Apple Pie".to_owned()),
+/// let c = cake::Entity::insert(cake::ActiveModel {
+///     id: ActiveValue::set(1),
+///     name: ActiveValue::set("Apple Pie".to_owned()),
 /// });
 ///
 /// let raw_sql = debug_query!(&c, &conn);
-/// assert_eq!(raw_sql, r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#);
+/// assert_eq!(
+///     raw_sql,
+///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#
+/// );
 ///
 /// let raw_sql = debug_query!(&c, conn);
-/// assert_eq!(raw_sql, r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#);
+/// assert_eq!(
+///     raw_sql,
+///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#
+/// );
 ///
 /// let raw_sql = debug_query!(&c, DbBackend::Sqlite);
-/// assert_eq!(raw_sql, r#"INSERT INTO `cake` (`id`, `name`) VALUES (1, 'Apple Pie')"#);
-///
+/// assert_eq!(
+///     raw_sql,
+///     r#"INSERT INTO `cake` (`id`, `name`) VALUES (1, 'Apple Pie')"#
+/// );
 /// ```
 #[macro_export]
 macro_rules! debug_query {
