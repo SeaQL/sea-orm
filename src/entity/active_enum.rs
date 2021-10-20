@@ -1,9 +1,8 @@
 use crate::{ColumnDef, DbErr, TryGetable};
 use sea_query::{Nullable, Value, ValueType};
-use std::fmt::Debug;
 
 pub trait ActiveEnum: Sized {
-    type Value: Sized + Send + Debug + PartialEq + Into<Value> + ValueType + Nullable + TryGetable;
+    type Value: Into<Value> + ValueType + Nullable + TryGetable;
 
     fn to_value(&self) -> Self::Value;
 
