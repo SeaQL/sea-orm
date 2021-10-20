@@ -84,8 +84,8 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
             ColumnDef::new(active_enum::Column::Id)
                 .integer()
                 .not_null()
-                .primary_key()
-                .auto_increment(),
+                .auto_increment()
+                .primary_key(),
         )
         .col(
             ColumnDef::new(active_enum::Column::Category)
