@@ -1,11 +1,2 @@
 [workspace]
-# A separate workspace
-
-[package]
-name = "sea-orm-issues-249"
-version = "0.1.0"
-edition = "2018"
-publish = false
-
-[dependencies]
-sea-orm = { path = "../../", default-features = false, features = ["mock"] }
+members = ["core", "app"]

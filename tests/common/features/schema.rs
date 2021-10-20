@@ -2,13 +2,14 @@ pub use super::super::bakery_chain::*;
 
 use super::*;
 use crate::common::setup::create_table;
-use sea_orm::{ConnectionTrait, DatabaseConnection, DbConn, ExecResult, Statement, error::*, sea_query};
-use sea_query::{Alias, ColumnDef};
+use sea_orm::{error::*, sea_query, DatabaseConnection, DbConn, ExecResult};
+use sea_query::{ColumnDef, ForeignKeyCreateStatement};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_log_table(db).await?;
     create_metadata_table(db).await?;
     create_repository_table(db).await?;
+    create_self_join_table(db).await?;
     create_active_enum_table(db).await?;
 
     Ok(())
@@ -75,6 +76,30 @@ pub async fn create_repository_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &stmt, Repository).await
+}
+
+pub async fn create_self_join_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(self_join::Entity)
+        .col(
+            ColumnDef::new(self_join::Column::Uuid)
+                .uuid()
+                .not_null()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(self_join::Column::UuidRef).uuid())
+        .col(ColumnDef::new(self_join::Column::Time).time())
+        .foreign_key(
+            ForeignKeyCreateStatement::new()
+                .name("fk-self_join-self_join")
+                .from_tbl(SelfJoin)
+                .from_col(self_join::Column::UuidRef)
+                .to_tbl(SelfJoin)
+                .to_col(self_join::Column::Uuid),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, SelfJoin).await
 }
 
 pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> {

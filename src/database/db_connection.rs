@@ -4,6 +4,7 @@ use crate::{
 };
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 use std::{future::Future, pin::Pin};
+use url::Url;
 
 #[cfg(feature = "sqlx-dep")]
 use sqlx::pool::PoolConnection;
@@ -223,12 +224,13 @@ impl DatabaseConnection {
 
 impl DbBackend {
     pub fn is_prefix_of(self, base_url: &str) -> bool {
+        let base_url_parsed = Url::parse(base_url).unwrap();
         match self {
             Self::Postgres => {
-                base_url.starts_with("postgres://") || base_url.starts_with("postgresql://")
+                base_url_parsed.scheme() == "postgres" || base_url_parsed.scheme() == "postgresql"
             }
-            Self::MySql => base_url.starts_with("mysql://"),
-            Self::Sqlite => base_url.starts_with("sqlite:"),
+            Self::MySql => base_url_parsed.scheme() == "mysql",
+            Self::Sqlite => base_url_parsed.scheme() == "sqlite",
         }
     }
 

@@ -145,13 +145,19 @@ jobs:
         with:
           command: test
           args: >
-            --all
+            --workspace
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: >
             --manifest-path sea-orm-rocket/Cargo.toml
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --manifest-path sea-orm-cli/Cargo.toml
 
   cli:
     name: CLI
