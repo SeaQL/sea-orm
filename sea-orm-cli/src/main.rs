@@ -50,7 +50,6 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
             //
             // Missing scheme will have been caught by the Url::parse() call
             // above
-
             let url_username = url.username();
             let url_password = url.password();
             let url_host = url.host_str();
