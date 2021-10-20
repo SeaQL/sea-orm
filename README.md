@@ -4,9 +4,7 @@
 
   <h1>SeaORM</h1>
 
-  <p>
-    <strong>🐚 An async & dynamic ORM for Rust</strong>
-  </p>
+  <h3>🐚 An async & dynamic ORM for Rust</h3>
 
   [![crate](https://img.shields.io/crates/v/sea-orm.svg)](https://crates.io/crates/sea-orm)
   [![docs](https://docs.rs/sea-orm/badge.svg)](https://docs.rs/sea-orm)
@@ -18,7 +16,7 @@
 
 # SeaORM
 
-SeaORM is a relational ORM to help you build light weight and concurrent web services in Rust.
+#### SeaORM is a relational ORM to help you build light weight and concurrent web services in Rust.
 
 [![Getting Started](https://img.shields.io/badge/Getting%20Started-brightgreen)](https://www.sea-ql.org/SeaORM/docs/index)
 [![Usage Example](https://img.shields.io/badge/Usage%20Example-yellow)](https://github.com/SeaQL/sea-orm/tree/master/examples/basic)
