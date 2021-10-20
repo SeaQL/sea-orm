@@ -14,6 +14,8 @@ use sea_query::{Nullable, Value, ValueType};
 /// > See [DeriveActiveEnum](sea_orm_macros::DeriveActiveEnum) for the full specification of macro attributes.
 ///
 /// ```rust
+/// use sea_orm::entity::prelude::*;
+/// 
 /// // Using the derive macro
 /// #[derive(Debug, PartialEq, DeriveActiveEnum)]
 /// #[sea_orm(rs_type = "String", db_type = "String(Some(1))")]
