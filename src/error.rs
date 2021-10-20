@@ -1,10 +1,23 @@
+/// Represents all the errors in SeaORM.
 #[derive(Debug, PartialEq)]
 pub enum DbErr {
+    /// Error occurred while connecting to database engine.
     Conn(String),
+
+    /// Error occurred while executing SQL statement.
     Exec(String),
+
+    /// Error occurred while querying SQL statement.
     Query(String),
+
+    /// Error occurred while updating a non-existing row in database.
     RecordNotFound(String),
+
+    /// Error occurred while performing custom validation logics in [ActiveModelBehavior](crate::ActiveModelBehavior)
     Custom(String),
+
+    /// Error occurred while parsing value into [ActiveEnum](crate::ActiveEnum)
+    Type(String),
 }
 
 impl std::error::Error for DbErr {}
@@ -17,6 +30,7 @@ impl std::fmt::Display for DbErr {
             Self::Query(s) => write!(f, "Query Error: {}", s),
             Self::RecordNotFound(s) => write!(f, "RecordNotFound Error: {}", s),
             Self::Custom(s) => write!(f, "Custom Error: {}", s),
+            Self::Type(s) => write!(f, "Type Error: {}", s),
         }
     }
 }

@@ -15,7 +15,7 @@ use sea_query::{Nullable, Value, ValueType};
 ///
 /// ```rust
 /// use sea_orm::entity::prelude::*;
-/// 
+///
 /// // Using the derive macro
 /// #[derive(Debug, PartialEq, DeriveActiveEnum)]
 /// #[sea_orm(rs_type = "String", db_type = "String(Some(1))")]
@@ -51,7 +51,7 @@ use sea_query::{Nullable, Value, ValueType};
 ///         match v.as_ref() {
 ///             "B" => Ok(Self::Big),
 ///             "S" => Ok(Self::Small),
-///             _ => Err(DbErr::Query(format!(
+///             _ => Err(DbErr::Type(format!(
 ///                 "unexpected value for Category enum: {}",
 ///                 v
 ///             ))),
@@ -138,7 +138,7 @@ mod tests {
                 match v.as_ref() {
                     "B" => Ok(Self::Big),
                     "S" => Ok(Self::Small),
-                    _ => Err(DbErr::Query(format!(
+                    _ => Err(DbErr::Type(format!(
                         "unexpected value for Category enum: {}",
                         v
                     ))),
@@ -166,7 +166,7 @@ mod tests {
 
         assert_eq!(
             Category::try_from_value(&"A".to_owned()).err(),
-            Some(DbErr::Query(
+            Some(DbErr::Type(
                 "unexpected value for Category enum: A".to_owned()
             ))
         );
@@ -180,7 +180,7 @@ mod tests {
         );
         assert_eq!(
             DeriveCategory::try_from_value(&"A".to_owned()).err(),
-            Some(DbErr::Query(
+            Some(DbErr::Type(
                 "unexpected value for DeriveCategory enum: A".to_owned()
             ))
         );
@@ -221,7 +221,7 @@ mod tests {
                 assert_eq!($ident::try_from_value(&-10).ok(), Some($ident::Negative));
                 assert_eq!(
                     $ident::try_from_value(&2).err(),
-                    Some(DbErr::Query(format!(
+                    Some(DbErr::Type(format!(
                         "unexpected value for {} enum: 2",
                         stringify!($ident)
                     )))
@@ -257,7 +257,7 @@ mod tests {
                 assert_eq!($ident::try_from_value(&0).ok(), Some($ident::Small));
                 assert_eq!(
                     $ident::try_from_value(&2).err(),
-                    Some(DbErr::Query(format!(
+                    Some(DbErr::Type(format!(
                         "unexpected value for {} enum: 2",
                         stringify!($ident)
                     )))

@@ -191,7 +191,7 @@ impl ActiveEnum {
                 fn try_from_value(v: &Self::Value) -> Result<Self, sea_orm::DbErr> {
                     match #val {
                         #( #variant_values => Ok(Self::#variant_idents), )*
-                        _ => Err(sea_orm::DbErr::Query(format!(
+                        _ => Err(sea_orm::DbErr::Type(format!(
                             "unexpected value for {} enum: {}",
                             stringify!(#ident),
                             v
