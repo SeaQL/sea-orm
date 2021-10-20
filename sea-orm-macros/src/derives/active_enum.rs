@@ -205,6 +205,7 @@ impl ActiveEnum {
             }
 
             #[automatically_derived]
+            #[allow(clippy::from_over_into)]
             impl Into<sea_query::Value> for #ident {
                 fn into(self) -> sea_query::Value {
                     <Self as sea_orm::ActiveEnum>::to_value(&self).into()
@@ -215,7 +216,7 @@ impl ActiveEnum {
             impl sea_orm::TryGetable for #ident {
                 fn try_get(res: &sea_orm::QueryResult, pre: &str, col: &str) -> Result<Self, sea_orm::TryGetError> {
                     let value = <<Self as sea_orm::ActiveEnum>::Value as sea_orm::TryGetable>::try_get(res, pre, col)?;
-                    <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(|e| sea_orm::TryGetError::DbErr(e))
+                    <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(sea_orm::TryGetError::DbErr)
                 }
             }
 
