@@ -2,8 +2,8 @@ pub use super::super::bakery_chain::*;
 
 use super::*;
 use crate::common::setup::create_table;
-use sea_orm::{error::*, sea_query, DatabaseConnection, DbConn, ExecResult};
-use sea_query::ColumnDef;
+use sea_orm::{ConnectionTrait, DatabaseConnection, DbConn, ExecResult, Statement, error::*, sea_query};
+use sea_query::{Alias, ColumnDef};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_log_table(db).await?;
@@ -87,12 +87,9 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
                 .auto_increment()
                 .primary_key(),
         )
-        .col(
-            ColumnDef::new(active_enum::Column::Category)
-                .string_len(1)
-                .not_null(),
-        )
-        .col(ColumnDef::new(active_enum::Column::CategoryOpt).string_len(1))
+        .col(ColumnDef::new(active_enum::Column::Category).string_len(1))
+        .col(ColumnDef::new(active_enum::Column::Color).integer())
+        // .col(ColumnDef::new(active_enum::Column::Tea).custom(Alias::new("tea")))
         .to_owned();
 
     create_table(db, &stmt, ActiveEnum).await

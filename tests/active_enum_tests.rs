@@ -19,19 +19,43 @@ async fn main() -> Result<(), DbErr> {
 }
 
 pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
-    active_enum::ActiveModel {
-        category: Set(active_enum::Category::Big),
+    use active_enum::*;
+
+    let am = ActiveModel {
+        category: Set(None),
+        color: Set(None),
+        // tea: Set(None),
         ..Default::default()
     }
     .insert(db)
     .await?;
 
     assert_eq!(
-        active_enum::Entity::find().one(db).await?.unwrap(),
-        active_enum::Model {
+        Entity::find().one(db).await?.unwrap(),
+        Model {
             id: 1,
-            category: active_enum::Category::Big,
-            category_opt: None,
+            category: None,
+            color: None,
+            // tea: None,
+        }
+    );
+
+    ActiveModel {
+        category: Set(Some(Category::Big)),
+        color: Set(Some(Color::Black)),
+        // tea: Set(Some(Tea::EverydayTea)),
+        ..am
+    }
+    .save(db)
+    .await?;
+
+    assert_eq!(
+        Entity::find().one(db).await?.unwrap(),
+        Model {
+            id: 1,
+            category: Some(Category::Big),
+            color: Some(Color::Black),
+            // tea: Some(Tea::EverydayTea),
         }
     );
 

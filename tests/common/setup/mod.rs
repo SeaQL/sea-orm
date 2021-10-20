@@ -1,8 +1,8 @@
+use pretty_assertions::assert_eq;
 use sea_orm::{
     ConnectionTrait, Database, DatabaseBackend, DatabaseConnection, DbBackend, DbConn, DbErr,
     EntityTrait, ExecResult, Schema, Statement,
 };
-
 use sea_query::{Alias, Table, TableCreateStatement};
 
 pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
