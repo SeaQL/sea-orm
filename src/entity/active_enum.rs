@@ -1,13 +1,53 @@
 use crate::{ColumnDef, DbErr, TryGetable};
 use sea_query::{Nullable, Value, ValueType};
 
+/// A Rust representation of enum defined in database.
+///
+/// # Implementations
+///
+/// You can implement [ActiveEnum] manually by hand or use the derive macro [DeriveActiveEnum](sea_orm_macros::DeriveActiveEnum).
+///
+/// # Examples
+///
+/// ```
+/// use sea_orm::entity::prelude::*;
+///
+/// // Define the `Category` active enum
+/// #[derive(Debug, Clone, PartialEq, DeriveActiveEnum)]
+/// #[sea_orm(rs_type = "String", db_type = "String(Some(1))")]
+/// pub enum Category {
+///     #[sea_orm(string_value = "B")]
+///     Big,
+///     #[sea_orm(string_value = "S")]
+///     Small,
+/// }
+///
+/// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+/// #[sea_orm(table_name = "active_enum")]
+/// pub struct Model {
+///     #[sea_orm(primary_key)]
+///     pub id: i32,
+///     // Represents a db column using `Category` active enum
+///     pub category: Category,
+///     pub category_opt: Option<Category>,
+/// }
+///
+/// #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+/// pub enum Relation {}
+///
+/// impl ActiveModelBehavior for ActiveModel {}
+/// ```
 pub trait ActiveEnum: Sized {
+    /// Define the Rust type that each enum variant represents.
     type Value: Into<Value> + ValueType + Nullable + TryGetable;
 
+    /// Convert enum variant into the corresponding value.
     fn to_value(&self) -> Self::Value;
 
+    /// Try to convert the corresponding value into enum variant.
     fn try_from_value(v: &Self::Value) -> Result<Self, DbErr>;
 
+    /// Get the database column definition of this active enum.
     fn db_type() -> ColumnDef;
 }
 
