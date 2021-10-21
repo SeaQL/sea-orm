@@ -35,14 +35,14 @@ jobs:
   job2:
     runs-on: ubuntu-latest
     needs: init
-    if: ${{ needs.init.outputs.is-test }}
+    if: ${{ needs.init.outputs.is-test == 'true' }}
     steps:
       - run: echo ${{ needs.init.outputs.is-test }}
 
-      - if: ${{ needs.init.outputs.is-test }}
+      - if: ${{ needs.init.outputs.is-test == 'true' }}
         run: echo 'aaa'
 
-      - if: ${{ !needs.init.outputs.is-test }}
+      - if: ${{ needs.init.outputs.is-test == 'true' }}
         run: echo 'bbb'
 
 
