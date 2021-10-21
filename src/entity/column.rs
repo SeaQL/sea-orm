@@ -669,6 +669,7 @@ mod tests {
     fn column_name_enum_name_1() {
         use sea_query::Iden;
 
+        #[allow(clippy::enum_variant_names)]
         mod hello {
             use crate as sea_orm;
             use crate::entity::prelude::*;
