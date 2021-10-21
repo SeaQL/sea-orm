@@ -186,6 +186,7 @@ jobs:
           command: install
           args: >
             --path sea-orm-cli
+            --debug
 
   examples:
     name: Examples
