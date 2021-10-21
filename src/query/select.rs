@@ -120,12 +120,11 @@ where
                 let col_def = col.def();
                 let enum_name = col_def.get_column_type().get_enum_name();
                 let col_expr = Expr::tbl(table.clone(), col);
-                let col_expr = if let Some(_) = enum_name {
+                if enum_name.is_some() {
                     Func::cast_expr_as(col_expr, Alias::new("text"))
                 } else {
                     col_expr.into()
-                };
-                col_expr
+                }
             })
             .collect()
     }

@@ -110,7 +110,7 @@ where
             if av.is_set() {
                 let val = av.into_value().unwrap();
                 let expr = if let Some(enum_name) = enum_name {
-                    Func::cast_as(val, Alias::new(&enum_name))
+                    Func::cast_as(val, Alias::new(enum_name))
                 } else {
                     Expr::val(val).into()
                 };
