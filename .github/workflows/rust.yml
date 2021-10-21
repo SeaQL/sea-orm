@@ -16,7 +16,11 @@ jobs:
     name: Init
     runs-on: ubuntu-20.04
     outputs:
-      is-test: ${{ contains(steps.git-log.outputs.message, '[test]') }}
+      is-test: >-
+        ${{
+          contains(steps.git-log.outputs.message, '[test]') ||
+          contains(steps.git-log.outputs.message, '[testing]')
+        }}
     steps:
       - uses: actions/checkout@v2
         with:
