@@ -16,14 +16,14 @@ jobs:
     name: Init
     runs-on: ubuntu-20.04
     outputs:
-      gitlog: ${{ steps.git-log.outputs.message }}
+      is-test: ${{ contains(steps.git-log.outputs.message, '[test]') }}
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
 
       - id: git-log
-        run: echo "::set-output name=message::$(git log --no-merges -1 --oneline | grep -q 'testing')"
+        run: echo "::set-output name=message::$(git log --no-merges -1 --oneline)"
 
       # - if: "contains(steps.git-log.outputs.message, '[issues]')"
       #   uses: actions-rs/toolchain@v1
@@ -36,7 +36,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: init
     steps:
-      - run: echo ${{ needs.init.outputs.gitlog }} && echo '-a-'
+      - run: echo ${{ needs.init.outputs.is-test }}
+
+      - if: ${{ needs.init.outputs.is-test }}
+        run: echo 'aaa'
+
+      - if: ${{ !needs.init.outputs.is-test }}
+        run: echo 'bbb'
 
 
   # clippy:
