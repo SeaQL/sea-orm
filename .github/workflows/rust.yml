@@ -35,7 +35,7 @@ jobs:
       #     profile: minimal
       #     toolchain: stable
       #     override: true
-  
+
   job2:
     runs-on: ubuntu-latest
     needs: init
