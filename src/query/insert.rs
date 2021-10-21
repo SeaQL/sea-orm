@@ -1,9 +1,9 @@
 use crate::{
-    ActiveModelTrait, EntityName, EntityTrait, IntoActiveModel, Iterable, PrimaryKeyTrait,
-    QueryTrait,
+    ActiveModelTrait, ColumnTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
+    PrimaryKeyTrait, QueryTrait,
 };
 use core::marker::PhantomData;
-use sea_query::{InsertStatement, ValueTuple};
+use sea_query::{Alias, Expr, Func, InsertStatement, ValueTuple};
 
 #[derive(Debug)]
 pub struct Insert<A>
@@ -124,6 +124,9 @@ where
         for (idx, col) in <A::Entity as EntityTrait>::Column::iter().enumerate() {
             let av = am.take(col);
             let av_has_val = av.is_set() || av.is_unchanged();
+            let col_def = col.def();
+            let enum_name = col_def.get_column_type().get_enum_name();
+
             if columns_empty {
                 self.columns.push(av_has_val);
             } else if self.columns[idx] != av_has_val {
@@ -131,11 +134,17 @@ where
             }
             if av_has_val {
                 columns.push(col);
-                values.push(av.into_value().unwrap());
+                let val = av.into_value().unwrap();
+                let expr = if let Some(enum_name) = enum_name {
+                    Func::cast_as(val, Alias::new(&enum_name))
+                } else {
+                    Expr::val(val).into()
+                };
+                values.push(expr);
             }
         }
         self.query.columns(columns);
-        self.query.values_panic(values);
+        self.query.exprs_panic(values);
         self
     }
 

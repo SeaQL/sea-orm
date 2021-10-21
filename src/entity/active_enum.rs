@@ -71,7 +71,7 @@ use sea_query::{Nullable, Value, ValueType};
 /// use sea_orm::entity::prelude::*;
 ///
 /// // Define the `Category` active enum
-/// #[derive(Debug, Clone, PartialEq, DeriveActiveEnum)]
+/// #[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum)]
 /// #[sea_orm(rs_type = "String", db_type = "String(Some(1))")]
 /// pub enum Category {
 ///     #[sea_orm(string_value = "B")]

@@ -40,7 +40,7 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
         }
     );
 
-    ActiveModel {
+    let am = ActiveModel {
         category: Set(Some(Category::Big)),
         color: Set(Some(Color::Black)),
         tea: Set(Some(Tea::EverydayTea)),
@@ -58,6 +58,11 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             tea: Some(Tea::EverydayTea),
         }
     );
+
+    let res = am.delete(db).await?;
+
+    assert_eq!(res.rows_affected, 1);
+    assert_eq!(Entity::find().one(db).await?, None);
 
     Ok(())
 }

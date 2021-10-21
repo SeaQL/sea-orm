@@ -242,6 +242,13 @@ impl ColumnType {
             indexed: false,
         }
     }
+
+    pub(crate) fn get_enum_name(&self) -> Option<&String> {
+        match self {
+            ColumnType::Enum(s) => Some(s),
+            _ => None,
+        }
+    }
 }
 
 impl ColumnDef {
