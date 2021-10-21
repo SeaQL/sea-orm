@@ -35,6 +35,7 @@ jobs:
   job2:
     runs-on: ubuntu-latest
     needs: init
+    if: ${{ needs.init.outputs.is-test }}
     steps:
       - run: echo ${{ needs.init.outputs.is-test }}
 
