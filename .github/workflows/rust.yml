@@ -20,7 +20,6 @@ jobs:
       run-mysql: ${{ contains(steps.git-log.outputs.message, '[mysql]') }}
       run-postgres: ${{ contains(steps.git-log.outputs.message, '[postgres]') }}
       run-cli: ${{ contains(steps.git-log.outputs.message, '[cli]') }}
-      run-examples: ${{ contains(steps.git-log.outputs.message, '[examples]') }}
       run-issues: ${{ contains(steps.git-log.outputs.message, '[issues]') }}
       run-partial: >-
         ${{
@@ -28,7 +27,6 @@ jobs:
           contains(steps.git-log.outputs.message, '[mysql]') ||
           contains(steps.git-log.outputs.message, '[postgres]') ||
           contains(steps.git-log.outputs.message, '[cli]') ||
-          contains(steps.git-log.outputs.message, '[examples]') ||
           contains(steps.git-log.outputs.message, '[issues]')
         }}
     steps:
@@ -229,8 +227,6 @@ jobs:
 
   examples:
     name: Examples
-    needs: init
-    if: ${{ (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-examples == 'true') }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
