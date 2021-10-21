@@ -12,419 +12,445 @@ env:
 
 jobs:
 
-  clippy:
-    name: Clippy
+  init:
+    name: Init
     runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          components: clippy
-          override: true
-          
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets --all
-
-  compile-sqlite:
-    name: Compile SQLite
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        runtime: [async-std, actix, tokio]
-        tls: [native-tls, rustls]
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            Cargo.lock
-            target
-          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ matrix.tls }}
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --test '*'
-            --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-            --no-run
-
-  compile-mysql:
-    name: Compile MySQL
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        runtime: [async-std, actix, tokio]
-        tls: [native-tls, rustls]
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            Cargo.lock
-            target
-          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --test '*'
-            --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-            --no-run
-
-  compile-postgres:
-    name: Compile PostgreSQL
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        runtime: [async-std, actix, tokio]
-        tls: [native-tls, rustls]
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            Cargo.lock
-            target
-          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --test '*'
-            --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-            --no-run
-
-  test:
-    name: Unit Test
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --workspace
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --manifest-path sea-orm-rocket/Cargo.toml
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --manifest-path sea-orm-cli/Cargo.toml
-
-  cli:
-    name: CLI
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: >
-            --path sea-orm-cli
-
-  examples:
-    name: Examples
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        path: [basic, actix_example, actix4_example, rocket_example]
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: >
-            --manifest-path examples/${{ matrix.path }}/Cargo.toml
-
-  issues:
-    name: Issues
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        path: [86, 249, 262]
+    outputs:
+      git-log: ${{ steps.git-log.outputs.message }}
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
 
       - id: git-log
-        run: echo "::set-output name=message::$(git log --no-merges -1 --oneline)"
+        run: echo "::set-output name=message::$(git log --no-merges -1 --oneline | grep -q 'testing')"
 
-      - if: "contains(steps.git-log.outputs.message, '[issues]')"
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - if: "contains(steps.git-log.outputs.message, '[issues]')"
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: >
-            --manifest-path issues/${{ matrix.path }}/Cargo.toml
-
-      - if: "contains(steps.git-log.outputs.message, '[issues]')"
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --manifest-path issues/${{ matrix.path }}/Cargo.toml
-
-  sqlite:
-    name: SQLite
-    runs-on: ubuntu-20.04
-    needs: compile-sqlite
-    env:
-      DATABASE_URL: "sqlite::memory:"
-    strategy:
-      matrix:
-        runtime: [async-std, actix, tokio]
-        tls: [native-tls, rustls]
+      # - if: "contains(steps.git-log.outputs.message, '[issues]')"
+      #   uses: actions-rs/toolchain@v1
+      #   with:
+      #     profile: minimal
+      #     toolchain: stable
+      #     override: true
+  
+  job2:
+    runs-on: ubuntu-latest
+    needs: init
     steps:
-      - uses: actions/checkout@v2
+      - run: echo ${{needs.init.outputs.git-log}} && echo '-a-'
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+  # clippy:
+  #   name: Clippy
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #     - uses: actions/checkout@v2
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            Cargo.lock
-            target
-          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ matrix.tls }}
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         components: clippy
+  #         override: true
+          
+  #     - uses: actions-rs/clippy-check@v1
+  #       with:
+  #         token: ${{ secrets.GITHUB_TOKEN }}
+  #         args: --all-targets --all
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --test '*'
-            --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+  # compile-sqlite:
+  #   name: Compile SQLite
+  #   runs-on: ubuntu-20.04
+  #   strategy:
+  #     matrix:
+  #       runtime: [async-std, actix, tokio]
+  #       tls: [native-tls, rustls]
+  #   steps:
+  #     - uses: actions/checkout@v2
 
-  mysql:
-    name: MySQL
-    runs-on: ubuntu-20.04
-    needs: compile-mysql
-    env:
-      DATABASE_URL: "mysql://root:@localhost"
-    strategy:
-      matrix:
-        version: [8.0, 5.7]
-        runtime: [async-std, actix, tokio]
-        tls: [native-tls]
-    services:
-      mysql:
-        image: mysql:${{ matrix.version }}
-        env:
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_DB: mysql
-          MYSQL_USER: sea
-          MYSQL_PASSWORD: sea
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_ROOT_PASSWORD:
-        ports:
-          - "3306:3306"
-        options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-    steps:
-      - uses: actions/checkout@v2
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+  #     - uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ~/.cargo/registry
+  #           ~/.cargo/git
+  #           Cargo.lock
+  #           target
+  #         key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ matrix.tls }}
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            Cargo.lock
-            target
-          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
+  #     - uses: actions-rs/cargo@v1
+  #       with:
+  #         command: test
+  #         args: >
+  #           --test '*'
+  #           --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+  #           --no-run
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --test '*'
-            --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+  # compile-mysql:
+  #   name: Compile MySQL
+  #   runs-on: ubuntu-20.04
+  #   strategy:
+  #     matrix:
+  #       runtime: [async-std, actix, tokio]
+  #       tls: [native-tls, rustls]
+  #   steps:
+  #     - uses: actions/checkout@v2
 
-  mariadb:
-    name: MariaDB
-    runs-on: ubuntu-20.04
-    needs: compile-mysql
-    env:
-      DATABASE_URL: "mysql://root:@localhost"
-    strategy:
-      matrix:
-        version: [10.6]
-        runtime: [async-std, actix, tokio]
-        tls: [native-tls]
-    services:
-      mysql:
-        image: mariadb:${{ matrix.version }}
-        env:
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_DB: mysql
-          MYSQL_USER: sea
-          MYSQL_PASSWORD: sea
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_ROOT_PASSWORD:
-        ports:
-          - "3306:3306"
-        options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-    steps:
-      - uses: actions/checkout@v2
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+  #     - uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ~/.cargo/registry
+  #           ~/.cargo/git
+  #           Cargo.lock
+  #           target
+  #         key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            Cargo.lock
-            target
-          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
+  #     - uses: actions-rs/cargo@v1
+  #       with:
+  #         command: test
+  #         args: >
+  #           --test '*'
+  #           --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+  #           --no-run
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --test '*'
-            --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+  # compile-postgres:
+  #   name: Compile PostgreSQL
+  #   runs-on: ubuntu-20.04
+  #   strategy:
+  #     matrix:
+  #       runtime: [async-std, actix, tokio]
+  #       tls: [native-tls, rustls]
+  #   steps:
+  #     - uses: actions/checkout@v2
 
-  postgres:
-    name: Postgres
-    runs-on: ubuntu-20.04
-    needs: compile-postgres
-    env:
-      DATABASE_URL: "postgres://root:root@localhost"
-    strategy:
-      matrix:
-        version: [13.3, 12.7, 11.12, 10.17, 9.6.22]
-        runtime: [tokio]
-        tls: [native-tls]
-    services:
-      postgres:
-        image: postgres:${{ matrix.version }}
-        env:
-          POSTGRES_HOST: 127.0.0.1
-          POSTGRES_USER: root
-          POSTGRES_PASSWORD: root
-        ports:
-          - "5432:5432"
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v2
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+  #     - uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ~/.cargo/registry
+  #           ~/.cargo/git
+  #           Cargo.lock
+  #           target
+  #         key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            Cargo.lock
-            target
-          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
+  #     - uses: actions-rs/cargo@v1
+  #       with:
+  #         command: test
+  #         args: >
+  #           --test '*'
+  #           --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+  #           --no-run
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --test '*'
-            --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+  # test:
+  #   name: Unit Test
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #     - uses: actions/checkout@v2
+
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
+
+  #     - uses: actions-rs/cargo@v1
+  #       with:
+  #         command: test
+  #         args: >
+  #           --workspace
+
+  #     - uses: actions-rs/cargo@v1
+  #       with:
+  #         command: test
+  #         args: >
+  #           --manifest-path sea-orm-rocket/Cargo.toml
+
+  #     - uses: actions-rs/cargo@v1
+  #       with:
+  #         command: test
+  #         args: >
+  #           --manifest-path sea-orm-cli/Cargo.toml
+
+  # cli:
+  #   name: CLI
+  #   runs-on: ${{ matrix.os }}
+  #   strategy:
+  #     matrix:
+  #       os: [ubuntu-latest]
+  #   steps:
+  #     - uses: actions/checkout@v2
+
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
+
+  #     - uses: actions-rs/cargo@v1
+  #       with:
+  #         command: install
+  #         args: >
+  #           --path sea-orm-cli
+
+  # examples:
+  #   name: Examples
+  #   runs-on: ${{ matrix.os }}
+  #   strategy:
+  #     matrix:
+  #       os: [ubuntu-latest]
+  #       path: [basic, actix_example, actix4_example, rocket_example]
+  #   steps:
+  #     - uses: actions/checkout@v2
+
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
+
+  #     - uses: actions-rs/cargo@v1
+  #       with:
+  #         command: build
+  #         args: >
+  #           --manifest-path examples/${{ matrix.path }}/Cargo.toml
+
+  # issues:
+  #   name: Issues
+  #   runs-on: ${{ matrix.os }}
+  #   strategy:
+  #     matrix:
+  #       os: [ubuntu-latest]
+  #       path: [86, 249, 262]
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #       with:
+  #         fetch-depth: 0
+
+  #     - id: git-log
+  #       run: echo "::set-output name=message::$(git log --no-merges -1 --oneline)"
+
+  #     - if: "contains(steps.git-log.outputs.message, '[issues]')"
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
+
+  #     - if: "contains(steps.git-log.outputs.message, '[issues]')"
+  #       uses: actions-rs/cargo@v1
+  #       with:
+  #         command: build
+  #         args: >
+  #           --manifest-path issues/${{ matrix.path }}/Cargo.toml
+
+  #     - if: "contains(steps.git-log.outputs.message, '[issues]')"
+  #       uses: actions-rs/cargo@v1
+  #       with:
+  #         command: test
+  #         args: >
+  #           --manifest-path issues/${{ matrix.path }}/Cargo.toml
+
+  # sqlite:
+  #   name: SQLite
+  #   runs-on: ubuntu-20.04
+  #   needs: compile-sqlite
+  #   env:
+  #     DATABASE_URL: "sqlite::memory:"
+  #   strategy:
+  #     matrix:
+  #       runtime: [async-std, actix, tokio]
+  #       tls: [native-tls, rustls]
+  #   steps:
+  #     - uses: actions/checkout@v2
+
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
+
+  #     - uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ~/.cargo/registry
+  #           ~/.cargo/git
+  #           Cargo.lock
+  #           target
+  #         key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ matrix.tls }}
+
+  #     - uses: actions-rs/cargo@v1
+  #       with:
+  #         command: test
+  #         args: >
+  #           --test '*'
+  #           --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+
+  # mysql:
+  #   name: MySQL
+  #   runs-on: ubuntu-20.04
+  #   needs: compile-mysql
+  #   env:
+  #     DATABASE_URL: "mysql://root:@localhost"
+  #   strategy:
+  #     matrix:
+  #       version: [8.0, 5.7]
+  #       runtime: [async-std, actix, tokio]
+  #       tls: [native-tls]
+  #   services:
+  #     mysql:
+  #       image: mysql:${{ matrix.version }}
+  #       env:
+  #         MYSQL_HOST: 127.0.0.1
+  #         MYSQL_DB: mysql
+  #         MYSQL_USER: sea
+  #         MYSQL_PASSWORD: sea
+  #         MYSQL_ALLOW_EMPTY_PASSWORD: yes
+  #         MYSQL_ROOT_PASSWORD:
+  #       ports:
+  #         - "3306:3306"
+  #       options: >-
+  #         --health-cmd="mysqladmin ping"
+  #         --health-interval=10s
+  #         --health-timeout=5s
+  #         --health-retries=3
+  #   steps:
+  #     - uses: actions/checkout@v2
+
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
+
+  #     - uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ~/.cargo/registry
+  #           ~/.cargo/git
+  #           Cargo.lock
+  #           target
+  #         key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
+
+  #     - uses: actions-rs/cargo@v1
+  #       with:
+  #         command: test
+  #         args: >
+  #           --test '*'
+  #           --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+
+  # mariadb:
+  #   name: MariaDB
+  #   runs-on: ubuntu-20.04
+  #   needs: compile-mysql
+  #   env:
+  #     DATABASE_URL: "mysql://root:@localhost"
+  #   strategy:
+  #     matrix:
+  #       version: [10.6]
+  #       runtime: [async-std, actix, tokio]
+  #       tls: [native-tls]
+  #   services:
+  #     mysql:
+  #       image: mariadb:${{ matrix.version }}
+  #       env:
+  #         MYSQL_HOST: 127.0.0.1
+  #         MYSQL_DB: mysql
+  #         MYSQL_USER: sea
+  #         MYSQL_PASSWORD: sea
+  #         MYSQL_ALLOW_EMPTY_PASSWORD: yes
+  #         MYSQL_ROOT_PASSWORD:
+  #       ports:
+  #         - "3306:3306"
+  #       options: >-
+  #         --health-cmd="mysqladmin ping"
+  #         --health-interval=10s
+  #         --health-timeout=5s
+  #         --health-retries=3
+  #   steps:
+  #     - uses: actions/checkout@v2
+
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
+
+  #     - uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ~/.cargo/registry
+  #           ~/.cargo/git
+  #           Cargo.lock
+  #           target
+  #         key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
+
+  #     - uses: actions-rs/cargo@v1
+  #       with:
+  #         command: test
+  #         args: >
+  #           --test '*'
+  #           --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+
+  # postgres:
+  #   name: Postgres
+  #   runs-on: ubuntu-20.04
+  #   needs: compile-postgres
+  #   env:
+  #     DATABASE_URL: "postgres://root:root@localhost"
+  #   strategy:
+  #     matrix:
+  #       version: [13.3, 12.7, 11.12, 10.17, 9.6.22]
+  #       runtime: [tokio]
+  #       tls: [native-tls]
+  #   services:
+  #     postgres:
+  #       image: postgres:${{ matrix.version }}
+  #       env:
+  #         POSTGRES_HOST: 127.0.0.1
+  #         POSTGRES_USER: root
+  #         POSTGRES_PASSWORD: root
+  #       ports:
+  #         - "5432:5432"
+  #       options: >-
+  #         --health-cmd pg_isready
+  #         --health-interval 10s
+  #         --health-timeout 5s
+  #         --health-retries 5
+  #   steps:
+  #     - uses: actions/checkout@v2
+
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
+
+  #     - uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ~/.cargo/registry
+  #           ~/.cargo/git
+  #           Cargo.lock
+  #           target
+  #         key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
+
+  #     - uses: actions-rs/cargo@v1
+  #       with:
+  #         command: test
+  #         args: >
+  #           --test '*'
+  #           --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
