@@ -202,7 +202,6 @@ jobs:
           args: >
             --manifest-path examples/${{ matrix.path }}/Cargo.toml
 
-
   issues:
     name: Issues
     runs-on: ${{ matrix.os }}
