@@ -308,28 +308,20 @@ jobs:
         path: [86, 249, 262]
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
 
-      - id: git-log
-        run: echo "::set-output name=message::$(git log --no-merges -1 --oneline)"
-
-      - if: "contains(steps.git-log.outputs.message, '[issues]')"
-        uses: actions-rs/toolchain@v1
+      - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
 
-      - if: "contains(steps.git-log.outputs.message, '[issues]')"
-        uses: actions-rs/cargo@v1
+      - uses: actions-rs/cargo@v1
         with:
           command: build
           args: >
             --manifest-path issues/${{ matrix.path }}/Cargo.toml
 
-      - if: "contains(steps.git-log.outputs.message, '[issues]')"
-        uses: actions-rs/cargo@v1
+      - uses: actions-rs/cargo@v1
         with:
           command: test
           args: >
