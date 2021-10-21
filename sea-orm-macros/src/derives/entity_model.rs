@@ -1,5 +1,5 @@
 use crate::util::{escape_rust_keyword, trim_starting_raw_identifier};
-use convert_case::{Case, Casing};
+use heck::CamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{
@@ -62,7 +62,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
             for field in fields.named {
                 if let Some(ident) = &field.ident {
                     let mut field_name = Ident::new(
-                        &trim_starting_raw_identifier(&ident).to_case(Case::Pascal),
+                        &trim_starting_raw_identifier(&ident).to_camel_case(),
                         Span::call_site(),
                     );
 

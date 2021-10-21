@@ -1,0 +1,12 @@
+[workspace]
+# A separate workspace
+
+[package]
+name = "sea-orm-issues-262"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+sea-orm = { path = "../../", features = [ "sqlx-all", "runtime-async-std-native-tls", "debug-print" ] }
+async-std = { version = "^1", features = ["attributes"] }
