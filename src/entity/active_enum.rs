@@ -80,7 +80,7 @@ use sea_query::{Nullable, Value, ValueType};
 ///     Small,
 /// }
 ///
-/// #[derive(Clone, Debug, PartialEq, EnumIter, DeriveEntityModel)]
+/// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 /// #[sea_orm(table_name = "active_enum")]
 /// pub struct Model {
 ///     #[sea_orm(primary_key)]
