@@ -16,7 +16,7 @@ jobs:
     name: Init
     runs-on: ubuntu-20.04
     outputs:
-      git-log: ${{ steps.git-log.outputs.message }}
+      gitlog: ${{ steps.git-log.outputs.message }}
     steps:
       - uses: actions/checkout@v2
         with:
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: init
     steps:
-      - run: echo ${{needs.init.outputs.git-log}} && echo '-a-'
+      - run: echo ${{ needs.init.outputs.gitlog }} && echo '-a-'
 
 
   # clippy:
