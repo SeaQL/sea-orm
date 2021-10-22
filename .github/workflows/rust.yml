@@ -87,8 +87,8 @@ jobs:
       - id: git-log
         run: echo "::set-output name=message::$(git log --no-merges -1 --oneline)"
 
-  clippy:
-    name: Clippy
+  clippy-fmt:
+    name: Clippy + Fmt
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -97,9 +97,17 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-          components: clippy
+          components: clippy, rustfmt
           override: true
-          
+
+      # Make sure files are formatted
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: >
+            --all
+
+      # Run clippy
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -274,6 +282,7 @@ jobs:
           command: install
           args: >
             --path sea-orm-cli
+            --debug
 
   examples:
     name: Examples
