@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.3.1 - 2021-10-23
 
+(We are changing our Changelog format from now on)
+
 ### Fixed Issues
 * Align case trasforms across derive macros https://github.com/SeaQL/sea-orm/issues/262
 * Added `is_null` and `is_not_null` to `ColumnTrait` https://github.com/SeaQL/sea-orm/issues/267
@@ -19,9 +21,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Unify case-transform using the same crate by @billy1624 in https://github.com/SeaQL/sea-orm/pull/264
 * CI cleaning by @AngelOnFira in https://github.com/SeaQL/sea-orm/pull/263
 * CI install sea-orm-cli in debug mode by @billy1624 in https://github.com/SeaQL/sea-orm/pull/265
-
-### New Contributors
-* @AngelOnFira made their first contribution in https://github.com/SeaQL/sea-orm/pull/253
 
 **Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.3.0...0.3.1
 
