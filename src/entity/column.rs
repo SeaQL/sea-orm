@@ -47,8 +47,9 @@ macro_rules! bind_oper {
     };
 }
 
-macro_rules! bind_agg_func {
+macro_rules! bind_func_no_params {
     ( $func: ident ) => {
+        /// See also SeaQuery's method with same name.
         fn $func(&self) -> SimpleExpr {
             Expr::tbl(self.entity_name(), *self).$func()
         }
@@ -213,10 +214,12 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         Expr::tbl(self.entity_name(), *self).like(&pattern)
     }
 
-    bind_agg_func!(max);
-    bind_agg_func!(min);
-    bind_agg_func!(sum);
-    bind_agg_func!(count);
+    bind_func_no_params!(max);
+    bind_func_no_params!(min);
+    bind_func_no_params!(sum);
+    bind_func_no_params!(count);
+    bind_func_no_params!(is_null);
+    bind_func_no_params!(is_not_null);
 
     fn if_null<V>(&self, v: V) -> SimpleExpr
     where
