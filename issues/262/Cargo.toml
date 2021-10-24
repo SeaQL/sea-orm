@@ -4,7 +4,7 @@
 [package]
 name = "sea-orm-issues-262"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 publish = false
 
 [dependencies]
