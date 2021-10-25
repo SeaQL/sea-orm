@@ -34,7 +34,7 @@ pub enum ColumnType {
     JsonBinary,
     Custom(String),
     Uuid,
-    Enum(String),
+    Enum(String, Vec<String>),
 }
 
 macro_rules! bind_oper {
@@ -245,7 +245,8 @@ impl ColumnType {
 
     pub(crate) fn get_enum_name(&self) -> Option<&String> {
         match self {
-            ColumnType::Enum(s) => Some(s),
+            // FIXME: How to get rid of this feature gate?
+            ColumnType::Enum(s, _) if cfg!(feature = "sqlx-postgres") => Some(s),
             _ => None,
         }
     }
@@ -303,7 +304,7 @@ impl From<ColumnType> for sea_query::ColumnType {
                 sea_query::ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(&s)))
             }
             ColumnType::Uuid => sea_query::ColumnType::Uuid,
-            ColumnType::Enum(s) => {
+            ColumnType::Enum(s, _) => {
                 sea_query::ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(&s)))
             }
         }

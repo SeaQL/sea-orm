@@ -1,6 +1,6 @@
 use crate::{
-    unpack_table_ref, ColumnTrait, DbBackend, EntityTrait, Identity, Iterable, PrimaryKeyToColumn,
-    PrimaryKeyTrait, RelationTrait, Schema,
+    unpack_table_ref, ColumnTrait, ColumnType, DbBackend, EntityTrait, Identity, Iterable,
+    PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{ColumnDef, ForeignKeyCreateStatement, Iden, Index, TableCreateStatement};
 
@@ -21,7 +21,15 @@ where
 
     for column in E::Column::iter() {
         let orm_column_def = column.def();
-        let types = match db_backend {
+        let types = match orm_column_def.col_type {
+            ColumnType::Enum(s, variants) => match db_backend {
+                DbBackend::MySql => {
+                    ColumnType::Custom(format!("ENUM('{}')", variants.join("', '")))
+                }
+                DbBackend::Postgres => ColumnType::Custom(s),
+                DbBackend::Sqlite => ColumnType::Text,
+            }
+            .into(),
             _ => orm_column_def.col_type.into(),
         };
         let mut column_def = ColumnDef::new_with_type(column, types);

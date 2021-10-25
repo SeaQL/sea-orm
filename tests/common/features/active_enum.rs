@@ -34,7 +34,10 @@ pub enum Color {
 }
 
 #[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = r#"Enum("tea".to_owned())"#)]
+#[sea_orm(
+    rs_type = "String",
+    db_type = r#"Enum("tea".to_owned(), vec!["EverydayTea".to_owned(), "BreakfastTea".to_owned()])"#
+)]
 pub enum Tea {
     #[sea_orm(string_value = "EverydayTea")]
     EverydayTea,
