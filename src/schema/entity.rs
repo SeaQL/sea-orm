@@ -1,19 +1,19 @@
 use crate::{
-    unpack_table_ref, ColumnTrait, EntityTrait, Identity, Iterable, PrimaryKeyToColumn,
+    unpack_table_ref, ColumnTrait, DbBackend, EntityTrait, Identity, Iterable, PrimaryKeyToColumn,
     PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{ColumnDef, ForeignKeyCreateStatement, Iden, Index, TableCreateStatement};
 
 impl Schema {
-    pub fn create_table_from_entity<E>(entity: E) -> TableCreateStatement
+    pub fn create_table_from_entity<E>(entity: E, db_backend: DbBackend) -> TableCreateStatement
     where
         E: EntityTrait,
     {
-        create_table_from_entity(entity)
+        create_table_from_entity(entity, db_backend)
     }
 }
 
-pub(crate) fn create_table_from_entity<E>(entity: E) -> TableCreateStatement
+pub(crate) fn create_table_from_entity<E>(entity: E, db_backend: DbBackend) -> TableCreateStatement
 where
     E: EntityTrait,
 {
@@ -21,7 +21,9 @@ where
 
     for column in E::Column::iter() {
         let orm_column_def = column.def();
-        let types = orm_column_def.col_type.into();
+        let types = match db_backend {
+            _ => orm_column_def.col_type.into(),
+        };
         let mut column_def = ColumnDef::new_with_type(column, types);
         if !orm_column_def.null {
             column_def.not_null();
@@ -121,13 +123,14 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{sea_query::*, tests_cfg::*, Schema};
+    use crate::{sea_query::*, tests_cfg::*, DbBackend, Schema};
     use pretty_assertions::assert_eq;
 
     #[test]
     fn test_create_table_from_entity() {
         assert_eq!(
-            Schema::create_table_from_entity(CakeFillingPrice).to_string(MysqlQueryBuilder),
+            Schema::create_table_from_entity(CakeFillingPrice, DbBackend::MySql)
+                .to_string(MysqlQueryBuilder),
             Table::create()
                 .table(CakeFillingPrice)
                 .col(

@@ -95,7 +95,10 @@ where
 
     let stmt = builder.build(create);
     assert_eq!(
-        builder.build(&Schema::create_table_from_entity(entity)),
+        builder.build(&Schema::create_table_from_entity(
+            entity,
+            db.get_database_backend()
+        )),
         stmt
     );
     db.execute(stmt).await
