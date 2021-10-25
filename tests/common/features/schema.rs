@@ -132,7 +132,7 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
         .col(&mut tea_col)
         .to_owned();
 
-    if db_backend = DbBackend::Postgres {
+    if db_backend == DbBackend::Postgres {
         let drop_type_stmt = Type::drop()
             .name(tea_enum.clone())
             .cascade()
