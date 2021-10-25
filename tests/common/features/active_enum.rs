@@ -15,7 +15,7 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum)]
+#[derive(Debug, Clone, PartialEq, DeriveActiveEnum)]
 #[sea_orm(rs_type = "String", db_type = "String(Some(1))")]
 pub enum Category {
     #[sea_orm(string_value = "B")]
@@ -24,7 +24,7 @@ pub enum Category {
     Small,
 }
 
-#[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum)]
+#[derive(Debug, Clone, PartialEq, DeriveActiveEnum)]
 #[sea_orm(rs_type = "i32", db_type = r#"Integer"#)]
 pub enum Color {
     #[sea_orm(num_value = 0)]
@@ -33,7 +33,7 @@ pub enum Color {
     White,
 }
 
-#[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum)]
+#[derive(Debug, Clone, PartialEq, DeriveActiveEnum)]
 #[sea_orm(
     rs_type = "String",
     db_type = r#"Enum("tea".to_owned(), vec!["EverydayTea".to_owned(), "BreakfastTea".to_owned()])"#

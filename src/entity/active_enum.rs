@@ -1,4 +1,4 @@
-use crate::{ColumnDef, DbErr, Iterable, TryGetable};
+use crate::{ColumnDef, DbErr, TryGetable};
 use sea_query::{Nullable, Value, ValueType};
 
 /// A Rust representation of enum defined in database.
@@ -17,7 +17,7 @@ use sea_query::{Nullable, Value, ValueType};
 /// use sea_orm::entity::prelude::*;
 ///
 /// // Using the derive macro
-/// #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+/// #[derive(Debug, PartialEq, DeriveActiveEnum)]
 /// #[sea_orm(rs_type = "String", db_type = "String(Some(1))")]
 /// pub enum DeriveCategory {
 ///     #[sea_orm(string_value = "B")]
@@ -27,7 +27,7 @@ use sea_query::{Nullable, Value, ValueType};
 /// }
 ///
 /// // Implementing it manually
-/// #[derive(Debug, PartialEq, EnumIter)]
+/// #[derive(Debug, PartialEq)]
 /// pub enum Category {
 ///     Big,
 ///     Small,
@@ -71,7 +71,7 @@ use sea_query::{Nullable, Value, ValueType};
 /// use sea_orm::entity::prelude::*;
 ///
 /// // Define the `Category` active enum
-/// #[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum)]
+/// #[derive(Debug, Clone, PartialEq, DeriveActiveEnum)]
 /// #[sea_orm(rs_type = "String", db_type = "String(Some(1))")]
 /// pub enum Category {
 ///     #[sea_orm(string_value = "B")]
@@ -95,7 +95,7 @@ use sea_query::{Nullable, Value, ValueType};
 ///
 /// impl ActiveModelBehavior for ActiveModel {}
 /// ```
-pub trait ActiveEnum: Sized + Iterable {
+pub trait ActiveEnum: Sized {
     /// Define the Rust type that each enum variant represents.
     type Value: Into<Value> + ValueType + Nullable + TryGetable;
 
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn active_enum_string() {
-        #[derive(Debug, PartialEq, EnumIter)]
+        #[derive(Debug, PartialEq)]
         pub enum Category {
             Big,
             Small,
@@ -150,7 +150,7 @@ mod tests {
             }
         }
 
-        #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+        #[derive(Debug, PartialEq, DeriveActiveEnum)]
         #[sea_orm(rs_type = "String", db_type = "String(Some(1))")]
         pub enum DeriveCategory {
             #[sea_orm(string_value = "B")]
@@ -201,7 +201,7 @@ mod tests {
     fn active_enum_derive_signed_integers() {
         macro_rules! test_int {
             ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, DeriveActiveEnum)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 pub enum $ident {
                     #[sea_orm(num_value = 1)]
@@ -241,7 +241,7 @@ mod tests {
     fn active_enum_derive_unsigned_integers() {
         macro_rules! test_uint {
             ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, DeriveActiveEnum)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 pub enum $ident {
                     #[sea_orm(num_value = 1)]
