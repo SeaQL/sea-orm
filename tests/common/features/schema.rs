@@ -132,34 +132,31 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
         .col(&mut tea_col)
         .to_owned();
 
-    match db_backend {
-        DbBackend::Postgres => {
-            let drop_type_stmt = Type::drop()
-                .name(tea_enum.clone())
-                .cascade()
-                .if_exists()
-                .to_owned();
-            let (sql, values) = drop_type_stmt.build(PostgresQueryBuilder);
-            let stmt = Statement::from_sql_and_values(db.get_database_backend(), &sql, values);
-            db.execute(stmt).await?;
+    if db_backend = DbBackend::Postgres {
+        let drop_type_stmt = Type::drop()
+            .name(tea_enum.clone())
+            .cascade()
+            .if_exists()
+            .to_owned();
+        let (sql, values) = drop_type_stmt.build(PostgresQueryBuilder);
+        let stmt = Statement::from_sql_and_values(db.get_database_backend(), &sql, values);
+        db.execute(stmt).await?;
 
-            let create_type_stmt = Type::create()
-                .as_enum(tea_enum)
-                .values(vec![Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
-                .to_owned();
-            // FIXME: This is not working
-            {
-                let (sql, values) = create_type_stmt.build(PostgresQueryBuilder);
-                let _stmt = Statement::from_sql_and_values(db.get_database_backend(), &sql, values);
-            }
-            // But this is working...
-            let stmt = Statement::from_string(
-                db.get_database_backend(),
-                create_type_stmt.to_string(PostgresQueryBuilder),
-            );
-            db.execute(stmt).await?;
+        let create_type_stmt = Type::create()
+            .as_enum(tea_enum)
+            .values(vec![Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
+            .to_owned();
+        // FIXME: This is not working
+        {
+            let (sql, values) = create_type_stmt.build(PostgresQueryBuilder);
+            let _stmt = Statement::from_sql_and_values(db.get_database_backend(), &sql, values);
         }
-        _ => {}
+        // But this is working...
+        let stmt = Statement::from_string(
+            db.get_database_backend(),
+            create_type_stmt.to_string(PostgresQueryBuilder),
+        );
+        db.execute(stmt).await?;
     }
 
     create_table(db, &stmt, ActiveEnum).await
