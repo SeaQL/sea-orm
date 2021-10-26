@@ -3,7 +3,7 @@ use crate::{
     QueryTrait,
 };
 use core::marker::PhantomData;
-use sea_query::{Alias, Expr, Func, IntoIden, SimpleExpr, UpdateStatement};
+use sea_query::{Expr, IntoIden, SimpleExpr, UpdateStatement};
 
 #[derive(Clone, Debug)]
 pub struct Update;
@@ -110,7 +110,7 @@ where
             if av.is_set() {
                 let val = av.into_value().unwrap();
                 let expr = if let Some(enum_name) = enum_name {
-                    Func::cast_as(val, Alias::new(enum_name))
+                    SimpleExpr::EnumValue(enum_name.to_owned(), Box::new(Expr::val(val).into()))
                 } else {
                     Expr::val(val).into()
                 };

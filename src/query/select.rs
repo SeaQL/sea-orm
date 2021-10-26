@@ -2,7 +2,7 @@ use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySe
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{Alias, DynIden, Expr, Func, IntoColumnRef, SeaRc, SelectStatement, SimpleExpr};
+use sea_query::{DynIden, Expr, IntoColumnRef, SeaRc, SelectStatement, SimpleExpr};
 
 #[derive(Clone, Debug)]
 pub struct Select<E>
@@ -121,7 +121,7 @@ where
                 let enum_name = col_def.get_column_type().get_enum_name();
                 let col_expr = Expr::tbl(table.clone(), col);
                 if enum_name.is_some() {
-                    Func::cast_expr_as(col_expr, Alias::new("text"))
+                    SimpleExpr::EnumValue("text".to_owned(), Box::new(col_expr.into()))
                 } else {
                     col_expr.into()
                 }

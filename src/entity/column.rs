@@ -245,8 +245,7 @@ impl ColumnType {
 
     pub(crate) fn get_enum_name(&self) -> Option<&String> {
         match self {
-            // FIXME: How to get rid of this feature gate?
-            ColumnType::Enum(s, _) if cfg!(feature = "sqlx-postgres") => Some(s),
+            ColumnType::Enum(s, _) => Some(s),
             _ => None,
         }
     }
