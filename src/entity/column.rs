@@ -299,13 +299,10 @@ impl From<ColumnType> for sea_query::ColumnType {
             ColumnType::Money(s) => sea_query::ColumnType::Money(s),
             ColumnType::Json => sea_query::ColumnType::Json,
             ColumnType::JsonBinary => sea_query::ColumnType::JsonBinary,
-            ColumnType::Custom(s) => {
+            ColumnType::Custom(s) | ColumnType::Enum(s, _) => {
                 sea_query::ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(&s)))
             }
             ColumnType::Uuid => sea_query::ColumnType::Uuid,
-            ColumnType::Enum(s, _) => {
-                sea_query::ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(&s)))
-            }
         }
     }
 }
