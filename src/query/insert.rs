@@ -3,7 +3,7 @@ use crate::{
     PrimaryKeyTrait, QueryTrait,
 };
 use core::marker::PhantomData;
-use sea_query::{Expr, InsertStatement, SimpleExpr, ValueTuple};
+use sea_query::{Expr, InsertStatement, ValueTuple};
 
 #[derive(Debug)]
 pub struct Insert<A>
@@ -134,11 +134,11 @@ where
             }
             if av_has_val {
                 columns.push(col);
-                let val = av.into_value().unwrap();
+                let val = Expr::val(av.into_value().unwrap());
                 let expr = if let Some(enum_name) = enum_name {
-                    SimpleExpr::EnumValue(enum_name.to_owned(), Box::new(Expr::val(val).into()))
+                    Expr::enum_value(enum_name, val)
                 } else {
-                    Expr::val(val).into()
+                    val.into()
                 };
                 values.push(expr);
             }

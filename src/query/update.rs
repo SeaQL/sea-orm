@@ -108,11 +108,11 @@ where
             let enum_name = col_def.get_column_type().get_enum_name();
             let av = self.model.get(col);
             if av.is_set() {
-                let val = av.into_value().unwrap();
+                let val = Expr::val(av.into_value().unwrap());
                 let expr = if let Some(enum_name) = enum_name {
-                    SimpleExpr::EnumValue(enum_name.to_owned(), Box::new(Expr::val(val).into()))
+                    Expr::enum_value(enum_name, val)
                 } else {
-                    Expr::val(val).into()
+                    val.into()
                 };
                 self.query.value_expr(col, expr);
             }

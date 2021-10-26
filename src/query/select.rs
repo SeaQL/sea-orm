@@ -121,7 +121,7 @@ where
                 let enum_name = col_def.get_column_type().get_enum_name();
                 let col_expr = Expr::tbl(table.clone(), col);
                 if enum_name.is_some() {
-                    SimpleExpr::EnumValue("text".to_owned(), Box::new(col_expr.into()))
+                    Expr::enum_value("text", col_expr)
                 } else {
                     col_expr.into()
                 }
