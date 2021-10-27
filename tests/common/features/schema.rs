@@ -1,9 +1,11 @@
 pub use super::super::bakery_chain::*;
 
 use super::*;
-use crate::common::setup::create_table;
-use sea_orm::{error::*, sea_query, DatabaseConnection, DbConn, ExecResult};
-use sea_query::{ColumnDef, ForeignKeyCreateStatement};
+use crate::common::setup::{create_table, create_enum};
+use sea_orm::{
+    error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, ExecResult,
+};
+use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_log_table(db).await?;
@@ -103,7 +105,26 @@ pub async fn create_self_join_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 }
 
 pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> {
-    let stmt = sea_query::Table::create()
+    let db_backend = db.get_database_backend();
+    let tea_enum = Alias::new("tea");
+
+    let create_enum_stmts = match db_backend {
+        DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
+        DbBackend::Postgres => vec![Type::create()
+            .as_enum(tea_enum.clone())
+            .values(vec![Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
+            .to_owned()],
+    };
+
+    create_enum(db, &create_enum_stmts, ActiveEnum).await?;
+
+    let mut tea_col = ColumnDef::new(active_enum::Column::Tea);
+    match db_backend {
+        DbBackend::MySql => tea_col.custom(Alias::new("ENUM('EverydayTea', 'BreakfastTea')")),
+        DbBackend::Sqlite => tea_col.text(),
+        DbBackend::Postgres => tea_col.custom(tea_enum),
+    };
+    let create_table_stmt = sea_query::Table::create()
         .table(active_enum::Entity)
         .col(
             ColumnDef::new(active_enum::Column::Id)
@@ -114,8 +135,8 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
         )
         .col(ColumnDef::new(active_enum::Column::Category).string_len(1))
         .col(ColumnDef::new(active_enum::Column::Color).integer())
-        // .col(ColumnDef::new(active_enum::Column::Tea).custom(Alias::new("tea")))
+        .col(&mut tea_col)
         .to_owned();
 
-    create_table(db, &stmt, ActiveEnum).await
+    create_table(db, &create_table_stmt, ActiveEnum).await
 }

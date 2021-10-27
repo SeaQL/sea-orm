@@ -1,19 +1,56 @@
 use crate::{
-    unpack_table_ref, ColumnTrait, EntityTrait, Identity, Iterable, PrimaryKeyToColumn,
-    PrimaryKeyTrait, RelationTrait, Schema,
+    unpack_table_ref, ColumnTrait, ColumnType, DbBackend, EntityTrait, Identity, Iterable,
+    PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
-use sea_query::{ColumnDef, ForeignKeyCreateStatement, Iden, Index, TableCreateStatement};
+use sea_query::{
+    extension::postgres::{Type, TypeCreateStatement},
+    Alias, ColumnDef, ForeignKeyCreateStatement, Iden, Index, TableCreateStatement,
+};
 
 impl Schema {
-    pub fn create_table_from_entity<E>(entity: E) -> TableCreateStatement
+    pub fn create_enum_from_entity<E>(entity: E, db_backend: DbBackend) -> Vec<TypeCreateStatement>
     where
         E: EntityTrait,
     {
-        create_table_from_entity(entity)
+        create_enum_from_entity(entity, db_backend)
+    }
+
+    pub fn create_table_from_entity<E>(entity: E, db_backend: DbBackend) -> TableCreateStatement
+    where
+        E: EntityTrait,
+    {
+        create_table_from_entity(entity, db_backend)
     }
 }
 
-pub(crate) fn create_table_from_entity<E>(entity: E) -> TableCreateStatement
+pub(crate) fn create_enum_from_entity<E>(_: E, db_backend: DbBackend) -> Vec<TypeCreateStatement>
+where
+    E: EntityTrait,
+{
+    if matches!(db_backend, DbBackend::MySql | DbBackend::Sqlite) {
+        return Vec::new();
+    }
+    let mut vec = Vec::new();
+    for col in E::Column::iter() {
+        let col_def = col.def();
+        let col_type = col_def.get_column_type();
+        if !matches!(col_type, ColumnType::Enum(_, _)) {
+            continue;
+        }
+        let (name, values) = match col_type {
+            ColumnType::Enum(s, v) => (s.as_str(), v),
+            _ => unreachable!(),
+        };
+        let stmt = Type::create()
+            .as_enum(Alias::new(name))
+            .values(values.into_iter().map(|val| Alias::new(val.as_str())))
+            .to_owned();
+        vec.push(stmt);
+    }
+    vec
+}
+
+pub(crate) fn create_table_from_entity<E>(entity: E, db_backend: DbBackend) -> TableCreateStatement
 where
     E: EntityTrait,
 {
@@ -21,7 +58,17 @@ where
 
     for column in E::Column::iter() {
         let orm_column_def = column.def();
-        let types = orm_column_def.col_type.into();
+        let types = match orm_column_def.col_type {
+            ColumnType::Enum(s, variants) => match db_backend {
+                DbBackend::MySql => {
+                    ColumnType::Custom(format!("ENUM('{}')", variants.join("', '")))
+                }
+                DbBackend::Postgres => ColumnType::Custom(s),
+                DbBackend::Sqlite => ColumnType::Text,
+            }
+            .into(),
+            _ => orm_column_def.col_type.into(),
+        };
         let mut column_def = ColumnDef::new_with_type(column, types);
         if !orm_column_def.null {
             column_def.not_null();
@@ -121,13 +168,14 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{sea_query::*, tests_cfg::*, Schema};
+    use crate::{sea_query::*, tests_cfg::*, DbBackend, Schema};
     use pretty_assertions::assert_eq;
 
     #[test]
     fn test_create_table_from_entity() {
         assert_eq!(
-            Schema::create_table_from_entity(CakeFillingPrice).to_string(MysqlQueryBuilder),
+            Schema::create_table_from_entity(CakeFillingPrice, DbBackend::MySql)
+                .to_string(MysqlQueryBuilder),
             Table::create()
                 .table(CakeFillingPrice)
                 .col(

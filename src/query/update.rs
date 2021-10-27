@@ -3,7 +3,7 @@ use crate::{
     QueryTrait,
 };
 use core::marker::PhantomData;
-use sea_query::{IntoIden, SimpleExpr, UpdateStatement};
+use sea_query::{Alias, Expr, IntoIden, SimpleExpr, UpdateStatement};
 
 #[derive(Clone, Debug)]
 pub struct Update;
@@ -106,7 +106,12 @@ where
             }
             let av = self.model.get(col);
             if av.is_set() {
-                self.query.value(col, av.unwrap());
+                let val = Expr::val(av.into_value().unwrap());
+                let expr = match col.def().get_column_type().get_enum_name() {
+                    Some(enum_name) => val.as_enum(Alias::new(enum_name)),
+                    None => val.into(),
+                };
+                self.query.value_expr(col, expr);
             }
         }
         self

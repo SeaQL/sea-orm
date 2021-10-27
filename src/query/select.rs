@@ -2,7 +2,7 @@ use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySe
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{DynIden, IntoColumnRef, SeaRc, SelectStatement, SimpleExpr};
+use sea_query::{Alias, DynIden, Expr, IntoColumnRef, SeaRc, SelectStatement, SimpleExpr};
 
 #[derive(Clone, Debug)]
 pub struct Select<E>
@@ -109,13 +109,22 @@ where
     }
 
     fn prepare_select(mut self) -> Self {
-        self.query.columns(self.column_list());
+        self.query.exprs(self.column_list());
         self
     }
 
-    fn column_list(&self) -> Vec<(DynIden, E::Column)> {
+    fn column_list(&self) -> Vec<SimpleExpr> {
         let table = SeaRc::new(E::default()) as DynIden;
-        E::Column::iter().map(|col| (table.clone(), col)).collect()
+        let text_type = SeaRc::new(Alias::new("text")) as DynIden;
+        E::Column::iter()
+            .map(|col| {
+                let expr = Expr::tbl(table.clone(), col);
+                match col.def().get_column_type().get_enum_name() {
+                    Some(_) => expr.as_enum(text_type.clone()),
+                    None => expr.into(),
+                }
+            })
+            .collect()
     }
 
     fn prepare_from(mut self) -> Self {

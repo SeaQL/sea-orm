@@ -1,9 +1,9 @@
 use crate::{
-    ActiveModelTrait, EntityName, EntityTrait, IntoActiveModel, Iterable, PrimaryKeyTrait,
-    QueryTrait,
+    ActiveModelTrait, ColumnTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
+    PrimaryKeyTrait, QueryTrait,
 };
 use core::marker::PhantomData;
-use sea_query::{InsertStatement, ValueTuple};
+use sea_query::{Alias, Expr, InsertStatement, ValueTuple};
 
 #[derive(Debug)]
 pub struct Insert<A>
@@ -131,11 +131,16 @@ where
             }
             if av_has_val {
                 columns.push(col);
-                values.push(av.into_value().unwrap());
+                let val = Expr::val(av.into_value().unwrap());
+                let expr = match col.def().get_column_type().get_enum_name() {
+                    Some(enum_name) => val.as_enum(Alias::new(enum_name)),
+                    None => val.into(),
+                };
+                values.push(expr);
             }
         }
         self.query.columns(columns);
-        self.query.values_panic(values);
+        self.query.exprs_panic(values);
         self
     }
 

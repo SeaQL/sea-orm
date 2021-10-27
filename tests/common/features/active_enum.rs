@@ -7,7 +7,7 @@ pub struct Model {
     pub id: i32,
     pub category: Option<Category>,
     pub color: Option<Color>,
-    // pub tea: Option<Tea>,
+    pub tea: Option<Tea>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -34,7 +34,10 @@ pub enum Color {
 }
 
 #[derive(Debug, Clone, PartialEq, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = r#"Custom("tea".to_owned())"#)]
+#[sea_orm(
+    rs_type = "String",
+    db_type = r#"Enum("tea".to_owned(), vec!["EverydayTea".to_owned(), "BreakfastTea".to_owned()])"#
+)]
 pub enum Tea {
     #[sea_orm(string_value = "EverydayTea")]
     EverydayTea,

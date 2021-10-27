@@ -34,6 +34,7 @@ pub enum ColumnType {
     JsonBinary,
     Custom(String),
     Uuid,
+    Enum(String, Vec<String>),
 }
 
 macro_rules! bind_oper {
@@ -241,6 +242,13 @@ impl ColumnType {
             indexed: false,
         }
     }
+
+    pub(crate) fn get_enum_name(&self) -> Option<&String> {
+        match self {
+            ColumnType::Enum(s, _) => Some(s),
+            _ => None,
+        }
+    }
 }
 
 impl ColumnDef {
@@ -291,7 +299,7 @@ impl From<ColumnType> for sea_query::ColumnType {
             ColumnType::Money(s) => sea_query::ColumnType::Money(s),
             ColumnType::Json => sea_query::ColumnType::Json,
             ColumnType::JsonBinary => sea_query::ColumnType::JsonBinary,
-            ColumnType::Custom(s) => {
+            ColumnType::Custom(s) | ColumnType::Enum(s, _) => {
                 sea_query::ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(&s)))
             }
             ColumnType::Uuid => sea_query::ColumnType::Uuid,
