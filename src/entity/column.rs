@@ -245,8 +245,7 @@ impl ColumnType {
 
     pub(crate) fn get_enum_name(&self) -> Option<&String> {
         match self {
-            // FIXME: How to get rid of this feature gate?
-            ColumnType::Enum(s, _) if cfg!(feature = "sqlx-postgres") => Some(s),
+            ColumnType::Enum(s, _) => Some(s),
             _ => None,
         }
     }
@@ -300,13 +299,10 @@ impl From<ColumnType> for sea_query::ColumnType {
             ColumnType::Money(s) => sea_query::ColumnType::Money(s),
             ColumnType::Json => sea_query::ColumnType::Json,
             ColumnType::JsonBinary => sea_query::ColumnType::JsonBinary,
-            ColumnType::Custom(s) => {
+            ColumnType::Custom(s) | ColumnType::Enum(s, _) => {
                 sea_query::ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(&s)))
             }
             ColumnType::Uuid => sea_query::ColumnType::Uuid,
-            ColumnType::Enum(s, _) => {
-                sea_query::ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(&s)))
-            }
         }
     }
 }
