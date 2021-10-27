@@ -1,7 +1,7 @@
 pub use super::super::bakery_chain::*;
 
 use super::*;
-use crate::{common::setup::create_table, create_enum};
+use crate::common::setup::{create_table, create_enum};
 use sea_orm::{
     error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, ExecResult,
 };
