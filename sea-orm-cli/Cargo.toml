@@ -3,9 +3,9 @@
 
 [package]
 name = "sea-orm-cli"
-version = "0.3.0"
+version = "0.3.1"
 authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
-edition = "2018"
+edition = "2021"
 description = "Command line utility for SeaORM"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/sea-orm"
@@ -21,7 +21,7 @@ path = "src/main.rs"
 clap = { version = "^2.33.3" }
 dotenv = { version = "^0.15" }
 async-std = { version = "^1.9", features = [ "attributes" ] }
-sea-orm-codegen = { version = "^0.3.0", path = "../sea-orm-codegen" }
+sea-orm-codegen = { version = "^0.3.1", path = "../sea-orm-codegen" }
 sea-schema = { version = "^0.2.9", default-features = false, features = [
     "debug-print",
     "sqlx-mysql",

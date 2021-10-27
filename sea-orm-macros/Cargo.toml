@@ -1,8 +1,8 @@
 [package]
 name = "sea-orm-macros"
-version = "0.3.0"
+version = "0.3.1"
 authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
-edition = "2018"
+edition = "2021"
 description = "Derive macros for SeaORM"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/sea-orm"
@@ -21,4 +21,3 @@ syn = { version = "^1", default-features = false, features = [ "full", "derive",
 quote = "^1"
 heck = "^0.3"
 proc-macro2 = "^1"
-convert_case = "0.4"

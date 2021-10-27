@@ -1,3 +1,53 @@
+# GitHub Actions with Conditional Job Running Based on Commit Message
+# 
+# --------------------------------------------------------------------------------
+# 
+# Following jobs will always run
+# 
+#   - `clippy`
+#   - `test`
+#   - `examples`
+# 
+# Following jobs will be run when no keywords were found in commit message)
+# 
+#   - `compile-sqlite`
+#   - `sqlite`
+#   - `compile-mysql`
+#   - `mysql`
+#   - `mariadb`
+#   - `compile-postgres`
+#   - `postgres`
+# 
+# Following jobs will be run if keywords `[issues]` were found in commit message
+# 
+#   - Jobs that will always run
+#   - `issues`
+# 
+# Following jobs will be run if keywords `[cli]` were found in commit message
+# 
+#   - Jobs that will always run
+#   - `cli`
+# 
+# Following jobs will be run if keywords `[sqlite]` were found in commit message
+# 
+#   - Jobs that will always run
+#   - `compile-sqlite`
+#   - `sqlite`
+# 
+# Following jobs will be run if keywords `[mysql]` were found in commit message
+# 
+#   - Jobs that will always run
+#   - `compile-mysql`
+#   - `mysql`
+#   - `mariadb`
+# 
+# Following jobs will be run if keywords `[postgres]` were found in commit message
+# 
+#   - Jobs that will always run
+#   - `compile-postgres`
+#   - `postgres`
+
+
 name: tests
 
 on:
@@ -12,8 +62,33 @@ env:
 
 jobs:
 
-  clippy:
-    name: Clippy
+  init:
+    name: Init
+    runs-on: ubuntu-20.04
+    outputs:
+      run-sqlite: ${{ contains(steps.git-log.outputs.message, '[sqlite]') }}
+      run-mysql: ${{ contains(steps.git-log.outputs.message, '[mysql]') }}
+      run-postgres: ${{ contains(steps.git-log.outputs.message, '[postgres]') }}
+      run-cli: ${{ contains(steps.git-log.outputs.message, '[cli]') }}
+      run-issues: ${{ contains(steps.git-log.outputs.message, '[issues]') }}
+      run-partial: >-
+        ${{
+          contains(steps.git-log.outputs.message, '[sqlite]') ||
+          contains(steps.git-log.outputs.message, '[mysql]') ||
+          contains(steps.git-log.outputs.message, '[postgres]') ||
+          contains(steps.git-log.outputs.message, '[cli]') ||
+          contains(steps.git-log.outputs.message, '[issues]')
+        }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - id: git-log
+        run: echo "::set-output name=message::$(git log --no-merges -1 --oneline)"
+
+  clippy-fmt:
+    name: Clippy + Fmt
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -22,9 +97,17 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-          components: clippy
+          components: clippy, rustfmt
           override: true
-          
+
+      # Make sure files are formatted
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: >
+            --all
+
+      # Run clippy
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -32,6 +115,12 @@ jobs:
 
   compile-sqlite:
     name: Compile SQLite
+    needs: init
+    if: >-
+      ${{
+        needs.init.outputs.run-partial == 'false' ||
+        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-sqlite == 'true')
+      }}
     runs-on: ubuntu-20.04
     strategy:
       matrix:
@@ -65,6 +154,12 @@ jobs:
 
   compile-mysql:
     name: Compile MySQL
+    needs: init
+    if: >-
+      ${{
+        needs.init.outputs.run-partial == 'false' ||
+        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-mysql == 'true')
+      }}
     runs-on: ubuntu-20.04
     strategy:
       matrix:
@@ -98,6 +193,12 @@ jobs:
 
   compile-postgres:
     name: Compile PostgreSQL
+    needs: init
+    if: >-
+      ${{
+        needs.init.outputs.run-partial == 'false' ||
+        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-postgres == 'true')
+      }}
     runs-on: ubuntu-20.04
     strategy:
       matrix:
@@ -161,6 +262,8 @@ jobs:
 
   cli:
     name: CLI
+    needs: init
+    if: ${{ (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-cli == 'true') }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -179,6 +282,7 @@ jobs:
           command: install
           args: >
             --path sea-orm-cli
+            --debug
 
   examples:
     name: Examples
@@ -204,11 +308,13 @@ jobs:
 
   issues:
     name: Issues
+    needs: init
+    if: ${{ (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-issues == 'true') }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
-        path: [86]
+        path: [86, 249, 262]
     steps:
       - uses: actions/checkout@v2
 
@@ -224,10 +330,23 @@ jobs:
           args: >
             --manifest-path issues/${{ matrix.path }}/Cargo.toml
 
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --manifest-path issues/${{ matrix.path }}/Cargo.toml
+
   sqlite:
     name: SQLite
+    needs:
+      - init
+      - compile-sqlite
+    if: >-
+      ${{
+        needs.init.outputs.run-partial == 'false' ||
+        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-sqlite == 'true')
+      }}
     runs-on: ubuntu-20.04
-    needs: compile-sqlite
     env:
       DATABASE_URL: "sqlite::memory:"
     strategy:
@@ -261,8 +380,15 @@ jobs:
 
   mysql:
     name: MySQL
+    needs:
+      - init
+      - compile-mysql
+    if: >-
+      ${{
+        needs.init.outputs.run-partial == 'false' ||
+        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-mysql == 'true')
+      }}
     runs-on: ubuntu-20.04
-    needs: compile-mysql
     env:
       DATABASE_URL: "mysql://root:@localhost"
     strategy:
@@ -314,8 +440,15 @@ jobs:
 
   mariadb:
     name: MariaDB
+    needs:
+      - init
+      - compile-mysql
+    if: >-
+      ${{
+        needs.init.outputs.run-partial == 'false' ||
+        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-mysql == 'true')
+      }}
     runs-on: ubuntu-20.04
-    needs: compile-mysql
     env:
       DATABASE_URL: "mysql://root:@localhost"
     strategy:
@@ -367,8 +500,15 @@ jobs:
 
   postgres:
     name: Postgres
+    needs:
+      - init
+      - compile-postgres
+    if: >-
+      ${{
+        needs.init.outputs.run-partial == 'false' ||
+        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-postgres == 'true')
+      }}
     runs-on: ubuntu-20.04
-    needs: compile-postgres
     env:
       DATABASE_URL: "postgres://root:root@localhost"
     strategy:

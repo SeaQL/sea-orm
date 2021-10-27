@@ -3,9 +3,9 @@ members = [".", "sea-orm-macros", "sea-orm-codegen"]
 
 [package]
 name = "sea-orm"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Chris Tsang <tyt2y7@gmail.com>"]
-edition = "2018"
+edition = "2021"
 description = "🐚 An async & dynamic ORM for Rust"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/sea-orm"
@@ -29,7 +29,7 @@ futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 log = { version = "^0.4", optional = true }
 rust_decimal = { version = "^1", optional = true }
-sea-orm-macros = { version = "^0.3.0", path = "sea-orm-macros", optional = true }
+sea-orm-macros = { version = "^0.3.1", path = "sea-orm-macros", optional = true }
 sea-query = { version = "^0.18.0", git = "https://github.com/SeaQL/sea-query.git", branch = "sea-orm/active-enum-1", features = ["thread-safe"] }
 sea-strum = { version = "^0.21", features = ["derive", "sea-orm"] }
 serde = { version = "^1.0", features = ["derive"] }

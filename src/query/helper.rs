@@ -340,6 +340,18 @@ pub trait QueryFilter: Sized {
     ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE (NOT (1 = 1 AND 2 = 2)) AND (3 = 3 OR 4 = 4)"#
     /// );
     /// ```
+    /// Use a sea_query expression
+    /// ```
+    /// use sea_orm::{entity::*, query::*, sea_query::Expr, tests_cfg::fruit, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     fruit::Entity::find()
+    ///         .filter(Expr::col(fruit::Column::CakeId).is_null())
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `cake_id` IS NULL"
+    /// );
+    /// ```
     fn filter<F>(mut self, filter: F) -> Self
     where
         F: IntoCondition,
