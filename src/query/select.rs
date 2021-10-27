@@ -119,12 +119,10 @@ where
         E::Column::iter()
             .map(|col| {
                 let col_def = col.def();
-                let enum_name = col_def.get_column_type().get_enum_name();
-                let col_expr = Expr::tbl(table.clone(), col);
-                if enum_name.is_some() {
-                    col_expr.as_enum(text_type.clone())
-                } else {
-                    col_expr.into()
+                let expr = Expr::tbl(table.clone(), col);
+                match col_def.get_column_type().get_enum_name() {
+                    Some(_) => expr.as_enum(text_type.clone()),
+                    None => expr.into(),
                 }
             })
             .collect()
