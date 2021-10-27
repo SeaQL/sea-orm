@@ -118,9 +118,8 @@ where
         let text_type = SeaRc::new(Alias::new("text")) as DynIden;
         E::Column::iter()
             .map(|col| {
-                let col_def = col.def();
                 let expr = Expr::tbl(table.clone(), col);
-                match col_def.get_column_type().get_enum_name() {
+                match col.def().get_column_type().get_enum_name() {
                     Some(_) => expr.as_enum(text_type.clone()),
                     None => expr.into(),
                 }

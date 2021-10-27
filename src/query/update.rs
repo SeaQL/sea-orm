@@ -104,11 +104,10 @@ where
             if <A::Entity as EntityTrait>::PrimaryKey::from_column(col).is_some() {
                 continue;
             }
-            let col_def = col.def();
             let av = self.model.get(col);
             if av.is_set() {
                 let val = Expr::val(av.into_value().unwrap());
-                let expr = match col_def.get_column_type().get_enum_name() {
+                let expr = match col.def().get_column_type().get_enum_name() {
                     Some(enum_name) => val.as_enum(Alias::new(enum_name)),
                     None => val.into(),
                 };

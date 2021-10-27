@@ -124,8 +124,6 @@ where
         for (idx, col) in <A::Entity as EntityTrait>::Column::iter().enumerate() {
             let av = am.take(col);
             let av_has_val = av.is_set() || av.is_unchanged();
-            let col_def = col.def();
-
             if columns_empty {
                 self.columns.push(av_has_val);
             } else if self.columns[idx] != av_has_val {
@@ -134,7 +132,7 @@ where
             if av_has_val {
                 columns.push(col);
                 let val = Expr::val(av.into_value().unwrap());
-                let expr = match col_def.get_column_type().get_enum_name() {
+                let expr = match col.def().get_column_type().get_enum_name() {
                     Some(enum_name) => val.as_enum(Alias::new(enum_name)),
                     None => val.into(),
                 };
