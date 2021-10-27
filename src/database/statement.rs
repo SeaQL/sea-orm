@@ -73,6 +73,15 @@ macro_rules! build_any_stmt {
     };
 }
 
+macro_rules! build_postgres_stmt {
+    ($stmt: expr, $db_backend: expr) => {
+        match $db_backend {
+            DbBackend::Postgres => $stmt.to_string(PostgresQueryBuilder),
+            DbBackend::MySql | DbBackend::Sqlite => unimplemented!(),
+        }
+    };
+}
+
 macro_rules! build_query_stmt {
     ($stmt: ty) => {
         impl StatementBuilder for $stmt {
@@ -105,3 +114,18 @@ build_schema_stmt!(sea_query::TableDropStatement);
 build_schema_stmt!(sea_query::TableAlterStatement);
 build_schema_stmt!(sea_query::TableRenameStatement);
 build_schema_stmt!(sea_query::TableTruncateStatement);
+
+macro_rules! build_type_stmt {
+    ($stmt: ty) => {
+        impl StatementBuilder for $stmt {
+            fn build(&self, db_backend: &DbBackend) -> Statement {
+                let stmt = build_postgres_stmt!(self, db_backend);
+                Statement::from_string(*db_backend, stmt)
+            }
+        }
+    };
+}
+
+build_type_stmt!(sea_query::extension::postgres::TypeAlterStatement);
+build_type_stmt!(sea_query::extension::postgres::TypeCreateStatement);
+build_type_stmt!(sea_query::extension::postgres::TypeDropStatement);

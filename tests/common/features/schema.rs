@@ -1,14 +1,11 @@
 pub use super::super::bakery_chain::*;
 
 use super::*;
-use crate::common::setup::create_table;
+use crate::{common::setup::create_table, create_enum};
 use sea_orm::{
     error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, ExecResult,
-    Statement,
 };
-use sea_query::{
-    extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement, PostgresQueryBuilder,
-};
+use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_log_table(db).await?;
@@ -111,14 +108,23 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
     let db_backend = db.get_database_backend();
     let tea_enum = Alias::new("tea");
 
+    let create_enum_stmts = match db_backend {
+        DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
+        DbBackend::Postgres => vec![Type::create()
+            .as_enum(tea_enum.clone())
+            .values(vec![Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
+            .to_owned()],
+    };
+
+    create_enum(db, &create_enum_stmts, ActiveEnum).await?;
+
     let mut tea_col = ColumnDef::new(active_enum::Column::Tea);
     match db_backend {
         DbBackend::MySql => tea_col.custom(Alias::new("ENUM('EverydayTea', 'BreakfastTea')")),
-        DbBackend::Postgres => tea_col.custom(tea_enum.clone()),
         DbBackend::Sqlite => tea_col.text(),
+        DbBackend::Postgres => tea_col.custom(tea_enum),
     };
-
-    let stmt = sea_query::Table::create()
+    let create_table_stmt = sea_query::Table::create()
         .table(active_enum::Entity)
         .col(
             ColumnDef::new(active_enum::Column::Id)
@@ -132,32 +138,5 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
         .col(&mut tea_col)
         .to_owned();
 
-    if db_backend == DbBackend::Postgres {
-        let drop_type_stmt = Type::drop()
-            .name(tea_enum.clone())
-            .cascade()
-            .if_exists()
-            .to_owned();
-        let (sql, values) = drop_type_stmt.build(PostgresQueryBuilder);
-        let stmt = Statement::from_sql_and_values(db.get_database_backend(), &sql, values);
-        db.execute(stmt).await?;
-
-        let create_type_stmt = Type::create()
-            .as_enum(tea_enum)
-            .values(vec![Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
-            .to_owned();
-        // FIXME: This is not working
-        {
-            let (sql, values) = create_type_stmt.build(PostgresQueryBuilder);
-            let _stmt = Statement::from_sql_and_values(db.get_database_backend(), &sql, values);
-        }
-        // But this is working...
-        let stmt = Statement::from_string(
-            db.get_database_backend(),
-            create_type_stmt.to_string(PostgresQueryBuilder),
-        );
-        db.execute(stmt).await?;
-    }
-
-    create_table(db, &stmt, ActiveEnum).await
+    create_table(db, &create_table_stmt, ActiveEnum).await
 }

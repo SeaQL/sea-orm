@@ -2,15 +2,52 @@ use crate::{
     unpack_table_ref, ColumnTrait, ColumnType, DbBackend, EntityTrait, Identity, Iterable,
     PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
-use sea_query::{ColumnDef, ForeignKeyCreateStatement, Iden, Index, TableCreateStatement};
+use sea_query::{
+    extension::postgres::{Type, TypeCreateStatement},
+    Alias, ColumnDef, ForeignKeyCreateStatement, Iden, Index, TableCreateStatement,
+};
 
 impl Schema {
+    pub fn create_enum_from_entity<E>(entity: E, db_backend: DbBackend) -> Vec<TypeCreateStatement>
+    where
+        E: EntityTrait,
+    {
+        create_enum_from_entity(entity, db_backend)
+    }
+
     pub fn create_table_from_entity<E>(entity: E, db_backend: DbBackend) -> TableCreateStatement
     where
         E: EntityTrait,
     {
         create_table_from_entity(entity, db_backend)
     }
+}
+
+pub(crate) fn create_enum_from_entity<E>(_: E, db_backend: DbBackend) -> Vec<TypeCreateStatement>
+where
+    E: EntityTrait,
+{
+    if matches!(db_backend, DbBackend::MySql | DbBackend::Sqlite) {
+        return Vec::new();
+    }
+    let mut vec = Vec::new();
+    for col in E::Column::iter() {
+        let col_def = col.def();
+        let col_type = col_def.get_column_type();
+        if !matches!(col_type, ColumnType::Enum(_, _)) {
+            continue;
+        }
+        let (name, values) = match col_type {
+            ColumnType::Enum(s, v) => (s.as_str(), v),
+            _ => unreachable!(),
+        };
+        let stmt = Type::create()
+            .as_enum(Alias::new(name))
+            .values(values.into_iter().map(|val| Alias::new(val.as_str())))
+            .to_owned();
+        vec.push(stmt);
+    }
+    vec
 }
 
 pub(crate) fn create_table_from_entity<E>(entity: E, db_backend: DbBackend) -> TableCreateStatement
