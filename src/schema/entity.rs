@@ -43,7 +43,7 @@ where
         };
         let stmt = Type::create()
             .as_enum(Alias::new(name))
-            .values(values.into_iter().map(|val| Alias::new(val.as_str())))
+            .values(values.iter().map(|val| Alias::new(val.as_str())))
             .to_owned();
         vec.push(stmt);
     }
