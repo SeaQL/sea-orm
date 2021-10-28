@@ -1,4 +1,6 @@
-use crate::{EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select};
+use crate::{
+    ColumnTrait, EntityTrait, Identity, IdentityOf, Iterable, ModelTrait, QuerySelect, Select,
+};
 use core::marker::PhantomData;
 use sea_query::{JoinType, TableRef};
 use std::fmt::Debug;
@@ -25,8 +27,18 @@ where
         None
     }
 
-    fn find_related() -> Select<R> {
-        Select::<R>::new().join_join_rev(JoinType::InnerJoin, Self::to(), Self::via())
+    fn find_related() -> Select<R>
+    where
+        Self: EntityTrait,
+    {
+        let mut select =
+            Select::<R>::new().join_join_rev(JoinType::InnerJoin, Self::to(), Self::via());
+        if let Some(soft_delete_column) =
+            <<Self as EntityTrait>::Model as ModelTrait>::soft_delete_column()
+        {
+            select.query().and_where(soft_delete_column.is_null());
+        }
+        select
     }
 }
 

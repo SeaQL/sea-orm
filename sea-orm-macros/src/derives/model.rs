@@ -19,6 +19,7 @@ struct DeriveModel {
     field_idents: Vec<syn::Ident>,
     ident: syn::Ident,
     ignore_attrs: Vec<bool>,
+    soft_delete_column: TokenStream,
 }
 
 impl DeriveModel {
@@ -37,6 +38,7 @@ impl DeriveModel {
 
         let ident = input.ident;
         let entity_ident = sea_attr.entity.unwrap_or_else(|| format_ident!("Entity"));
+        let mut soft_delete_column = quote! { None };
 
         let field_idents = fields
             .iter()
@@ -62,14 +64,26 @@ impl DeriveModel {
                         attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
                     {
                         for meta in list.iter() {
-                            if let Meta::NameValue(nv) = meta {
-                                if let Some(name) = nv.path.get_ident() {
-                                    if name == "enum_name" {
-                                        if let Lit::Str(litstr) = &nv.lit {
-                                            ident = syn::parse_str(&litstr.value()).unwrap();
+                            match meta {
+                                Meta::NameValue(nv) => {
+                                    if let Some(name) = nv.path.get_ident() {
+                                        if name == "enum_name" {
+                                            if let Lit::Str(litstr) = &nv.lit {
+                                                ident = syn::parse_str(&litstr.value()).unwrap();
+                                            }
                                         }
                                     }
                                 }
+                                Meta::Path(p) => {
+                                    if let Some(name) = p.get_ident() {
+                                        if name == "soft_delete_column" {
+                                            soft_delete_column = quote! {
+                                                Some(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#ident)
+                                            };
+                                        }
+                                    }
+                                }
+                                _ => {}
                             }
                         }
                     }
@@ -89,6 +103,7 @@ impl DeriveModel {
             field_idents,
             ident,
             ignore_attrs,
+            soft_delete_column,
         })
     }
 
@@ -138,6 +153,7 @@ impl DeriveModel {
         let ident = &self.ident;
         let entity_ident = &self.entity_ident;
         let ignore_attrs = &self.ignore_attrs;
+        let soft_delete_column = &self.soft_delete_column;
         let ignore = |(ident, ignore): (&'a Ident, &bool)| -> Option<&'a Ident> {
             if *ignore {
                 None
@@ -177,6 +193,10 @@ impl DeriveModel {
                         #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_idents => self.#field_idents = v.unwrap(),)*
                         _ => panic!(#missing_field_msg),
                     }
+                }
+
+                fn soft_delete_column() -> Option<<Self::Entity as sea_orm::entity::EntityTrait>::Column> {
+                    #soft_delete_column
                 }
             }
         )

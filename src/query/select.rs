@@ -1,4 +1,7 @@
-use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySelect, QueryTrait};
+use crate::{
+    ColumnTrait, EntityTrait, Iterable, ModelTrait, QueryFilter, QueryOrder, QuerySelect,
+    QueryTrait,
+};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
@@ -100,6 +103,10 @@ where
     E: EntityTrait,
 {
     pub(crate) fn new() -> Self {
+        Self::with_deleted().prepare_soft_delete_filter()
+    }
+
+    pub(crate) fn with_deleted() -> Self {
         Self {
             query: SelectStatement::new(),
             entity: PhantomData,
@@ -120,6 +127,15 @@ where
 
     fn prepare_from(mut self) -> Self {
         self.query.from(E::default().table_ref());
+        self
+    }
+
+    fn prepare_soft_delete_filter(mut self) -> Self {
+        if let Some(soft_delete_column) =
+            <<E as EntityTrait>::Model as ModelTrait>::soft_delete_column()
+        {
+            self.query.and_where(soft_delete_column.is_null());
+        }
         self
     }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    join_tbl_on_condition, unpack_table_ref, EntityTrait, IdenStatic, Iterable, Linked,
+    join_tbl_on_condition, unpack_table_ref, EntityTrait, IdenStatic, Iterable, Linked, ModelTrait,
     QuerySelect, Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
 };
 pub use sea_query::JoinType;
@@ -86,16 +86,20 @@ where
         }
         slf = slf.apply_alias(SelectA.as_str());
         let mut select_two = SelectTwo::new_without_prepare(slf.query);
+        let tbl = Alias::new(&format!("r{}", l.link().len() - 1));
         for col in <T::Column as Iterable>::iter() {
             let alias = format!("{}{}", SelectB.as_str(), col.as_str());
             select_two.query().expr(SelectExpr {
-                expr: Expr::tbl(
-                    Alias::new(&format!("r{}", l.link().len() - 1)).into_iden(),
-                    col.into_iden(),
-                )
-                .into(),
+                expr: Expr::tbl(tbl.clone(), col).into(),
                 alias: Some(SeaRc::new(Alias::new(&alias))),
             });
+        }
+        if let Some(soft_delete_column) =
+            <<T as EntityTrait>::Model as ModelTrait>::soft_delete_column()
+        {
+            select_two
+                .query()
+                .and_where(Expr::tbl(tbl, soft_delete_column).is_null());
         }
         select_two
     }

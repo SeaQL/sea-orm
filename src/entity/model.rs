@@ -3,6 +3,7 @@ use crate::{
     SelectorRaw, Statement,
 };
 pub use sea_query::Value;
+use sea_query::{Alias, Expr};
 use std::fmt::Debug;
 
 pub trait ModelTrait: Clone + Send + Debug {
@@ -11,6 +12,10 @@ pub trait ModelTrait: Clone + Send + Debug {
     fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> Value;
 
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
+
+    fn soft_delete_column() -> Option<<Self::Entity as EntityTrait>::Column> {
+        None
+    }
 
     fn find_related<R>(&self, _: R) -> Select<R>
     where
@@ -25,7 +30,15 @@ pub trait ModelTrait: Clone + Send + Debug {
         L: Linked<FromEntity = Self::Entity>,
     {
         let tbl_alias = &format!("r{}", l.link().len() - 1);
-        l.find_linked().belongs_to_tbl_alias(self, tbl_alias)
+        let mut select = l.find_linked();
+        if let Some(soft_delete_column) =
+            <<Self::Entity as EntityTrait>::Model as ModelTrait>::soft_delete_column()
+        {
+            select
+                .query()
+                .and_where(Expr::tbl(Alias::new(tbl_alias), soft_delete_column).is_null());
+        }
+        select.belongs_to_tbl_alias(self, tbl_alias)
     }
 }
 

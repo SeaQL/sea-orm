@@ -154,6 +154,20 @@ pub trait EntityTrait: EntityName {
         Select::new()
     }
 
+    /// Construct select statement to find one / all models (with soft deleted rows)
+    ///
+    /// - To select columns, join tables and group by expressions, see [`QuerySelect`](crate::query::QuerySelect)
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    /// - To apply order by expressions, see [`QueryOrder`](crate::query::QueryOrder)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// ```
+    fn find_with_deleted() -> Select<Self> {
+        Select::with_deleted()
+    }
+
     /// Find a model by primary key
     ///
     /// # Example
