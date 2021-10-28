@@ -3,6 +3,8 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Fields, Lit, Meta, Variant};
 
+/// FIXME
+/// Method to derive default column names from a &str
 pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
     let variants = match data {
         syn::Data::Enum(DataEnum { variants, .. }) => variants,
@@ -65,6 +67,7 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
     ))
 }
 
+/// Implement a column using for an enum using [DeriveColumn](sea_orm::DeriveColumn)
 pub fn impl_col_from_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
     let data_enum = match data {
         Data::Enum(data_enum) => data_enum,
@@ -114,6 +117,7 @@ pub fn expand_derive_column(ident: &Ident, data: &Data) -> syn::Result<TokenStre
     ))
 }
 
+/// Derive a column with a non_snake_case name
 pub fn expand_derive_custom_column(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
     let impl_default_as_str = impl_default_as_str(ident, data)?;
     let impl_col_from_str = impl_col_from_str(ident, data)?;

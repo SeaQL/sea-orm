@@ -7,6 +7,7 @@ use syn::{
     Lit, Meta,
 };
 
+/// Method to derive an Model
 pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
     // if #[sea_orm(table_name = "foo", schema_name = "bar")] specified, create Entity struct
     let mut table_name = None;
