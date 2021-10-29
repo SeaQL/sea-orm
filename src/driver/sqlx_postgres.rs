@@ -15,19 +15,23 @@ use crate::{
 
 use super::sqlx_common::*;
 
+/// Defines the [sqlx::postgres] connector
 #[derive(Debug)]
 pub struct SqlxPostgresConnector;
 
+/// Defines a sqlx PostgreSQL pool
 #[derive(Debug, Clone)]
 pub struct SqlxPostgresPoolConnection {
     pool: PgPool,
 }
 
 impl SqlxPostgresConnector {
+    /// Check if the URI provided corresponds to `postgres://` for a PostgreSQL database
     pub fn accepts(string: &str) -> bool {
         string.starts_with("postgres://") && string.parse::<PgConnectOptions>().is_ok()
     }
 
+    /// Add configuration options for the MySQL database
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
         let mut opt = options
             .url
@@ -48,12 +52,14 @@ impl SqlxPostgresConnector {
 }
 
 impl SqlxPostgresConnector {
+    /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_postgres_pool(pool: PgPool) -> DatabaseConnection {
         DatabaseConnection::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection { pool })
     }
 }
 
 impl SqlxPostgresPoolConnection {
+    /// Execute a [Statement] on a PostgreSQL backend
     pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
@@ -70,6 +76,7 @@ impl SqlxPostgresPoolConnection {
         }
     }
 
+    /// Get one result from a SQL query. Returns [Option::None] if no match was found
     pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -89,6 +96,7 @@ impl SqlxPostgresPoolConnection {
         }
     }
 
+    /// Get the results of a query returning them as a Vec<[QueryResult]>
     pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -105,6 +113,7 @@ impl SqlxPostgresPoolConnection {
         }
     }
 
+    /// Stream the results of executing a SQL query
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
 
@@ -117,6 +126,7 @@ impl SqlxPostgresPoolConnection {
         }
     }
 
+    /// Bundle a set of SQL statements that execute together.
     pub async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_postgres(conn).await
@@ -127,6 +137,7 @@ impl SqlxPostgresPoolConnection {
         }
     }
 
+    /// Create a PostgreSQL transaction
     pub async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
     where
         F: for<'b> FnOnce(
