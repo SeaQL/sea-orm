@@ -1,9 +1,8 @@
-use sea_query::{DeleteStatement, Expr, UpdateStatement};
-
 use crate::{
     error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, ModelTrait,
     Statement, StatementBuilder,
 };
+use sea_query::{ConditionalStatement, DeleteStatement, Expr, UpdateStatement};
 use std::future::Future;
 
 #[derive(Clone, Debug)]
@@ -79,6 +78,8 @@ where
                 .table(E::default())
                 .col_expr(soft_delete_column, Expr::value(value))
                 .set_conditions(delete_stmt.take_conditions())
+                // FIXME: Should use `append_conditions`
+                // .append_conditions(delete_stmt.take_conditions())
                 .to_owned();
             Deleter::new(update_stmt).exec(db).await
         }

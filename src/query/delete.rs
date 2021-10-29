@@ -3,7 +3,7 @@ use crate::{
     PrimaryKeyToColumn, QueryFilter, QueryTrait, Statement,
 };
 use core::marker::PhantomData;
-use sea_query::{DeleteStatement, Expr, IntoIden, UpdateStatement};
+use sea_query::{ConditionalStatement, DeleteStatement, Expr, IntoIden, UpdateStatement};
 
 #[derive(Clone, Debug)]
 pub struct Delete;
@@ -225,6 +225,8 @@ where
                 .table(E::default())
                 .col_expr(soft_delete_column, Expr::value(value))
                 .set_conditions(delete_stmt.take_conditions())
+                // FIXME: Should use `append_conditions`
+                // .append_conditions(delete_stmt.take_conditions())
                 .to_owned();
             Statement::from_string_values_tuple(
                 db_backend,
