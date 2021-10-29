@@ -41,9 +41,9 @@ pub async fn create_soft_delete_model_table(db: &DbConn) -> Result<ExecResult, D
                 .primary_key(),
         )
         .col(ColumnDef::new(Column::Name).string().not_null())
-        .col(ColumnDef::new(Column::CreatedAt).timestamp())
-        .col(ColumnDef::new(Column::UpdatedAt).timestamp())
-        .col(ColumnDef::new(Column::DeletedAt).timestamp())
+        .col(ColumnDef::new(Column::CreatedAt).date_time())
+        .col(ColumnDef::new(Column::UpdatedAt).date_time())
+        .col(ColumnDef::new(Column::DeletedAt).date_time())
         .to_owned();
 
     create_table(db, &stmt, Entity).await
@@ -62,9 +62,9 @@ pub async fn create_model_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .primary_key(),
         )
         .col(ColumnDef::new(Column::Name).string().not_null())
-        .col(ColumnDef::new(Column::CreatedAt).timestamp())
-        .col(ColumnDef::new(Column::UpdatedAt).timestamp())
-        .col(ColumnDef::new(Column::DeletedAt).timestamp())
+        .col(ColumnDef::new(Column::CreatedAt).date_time())
+        .col(ColumnDef::new(Column::UpdatedAt).date_time())
+        .col(ColumnDef::new(Column::DeletedAt).date_time())
         .to_owned();
 
     create_table(db, &stmt, Entity).await
