@@ -4,6 +4,7 @@ use core::marker::PhantomData;
 pub use sea_query::JoinType;
 use sea_query::{DynIden, IntoColumnRef, SeaRc, SelectStatement, SimpleExpr};
 
+/// Defines a structure to perform select operations
 #[derive(Clone, Debug)]
 pub struct Select<E>
 where
@@ -13,6 +14,7 @@ where
     pub(crate) entity: PhantomData<E>,
 }
 
+/// Defines a structure to perform a SELECT operation on two Models
 #[derive(Clone, Debug)]
 pub struct SelectTwo<E, F>
 where
@@ -23,6 +25,7 @@ where
     pub(crate) entity: PhantomData<(E, F)>,
 }
 
+/// Defines a structure to perform a SELECT operation on many Models
 #[derive(Clone, Debug)]
 pub struct SelectTwoMany<E, F>
 where
@@ -33,7 +36,9 @@ where
     pub(crate) entity: PhantomData<(E, F)>,
 }
 
+/// Performs a conversion to [SimpleExpr]
 pub trait IntoSimpleExpr {
+    /// Method to perform the conversion
     fn into_simple_expr(self) -> SimpleExpr;
 }
 

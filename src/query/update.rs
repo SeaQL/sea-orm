@@ -5,9 +5,11 @@ use crate::{
 use core::marker::PhantomData;
 use sea_query::{IntoIden, SimpleExpr, UpdateStatement};
 
+/// Defines a structure to perform UPDATE query operations on a ActiveModel
 #[derive(Clone, Debug)]
 pub struct Update;
 
+/// Defines an UPDATE operation on one ActiveModel
 #[derive(Clone, Debug)]
 pub struct UpdateOne<A>
 where
@@ -17,6 +19,7 @@ where
     pub(crate) model: A,
 }
 
+/// Defines an UPDATE operation on multiple ActiveModels
 #[derive(Clone, Debug)]
 pub struct UpdateMany<E>
 where
@@ -177,6 +180,7 @@ impl<E> UpdateMany<E>
 where
     E: EntityTrait,
 {
+    /// Add the models to update to Self
     pub fn set<A>(mut self, model: A) -> Self
     where
         A: ActiveModelTrait<Entity = E>,
@@ -190,6 +194,7 @@ where
         self
     }
 
+    /// Creates a [SimpleExpr] from a column
     pub fn col_expr<T>(mut self, col: T, expr: SimpleExpr) -> Self
     where
         T: IntoIden,

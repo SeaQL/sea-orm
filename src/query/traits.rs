@@ -1,7 +1,9 @@
 use crate::{DbBackend, Statement};
 use sea_query::QueryStatementBuilder;
 
+/// Enforces a set of constraints to any type performing queries on a Model or ActiveModel
 pub trait QueryTrait {
+    /// Constrain the QueryStatement to [QueryStatementBuilder] trait
     type QueryStatement: QueryStatementBuilder;
 
     /// Get a mutable ref to the query builder
