@@ -30,7 +30,7 @@ impl SqlxSqliteConnector {
     pub fn accepts(string: &str) -> bool {
         string.starts_with("sqlite:") && string.parse::<SqliteConnectOptions>().is_ok()
     }
-
+    
     /// Add configuration options for the SQLite database
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
         let mut opt = options
@@ -41,12 +41,10 @@ impl SqlxSqliteConnector {
             use sqlx::ConnectOptions;
             opt.disable_statement_logging();
         }
-        if let Ok(pool) = options
-            .pool_options()
-            .max_connections(1)
-            .connect_with(opt)
-            .await
-        {
+        if options.get_max_connections().is_none() {
+            options.max_connections(1);
+        }
+        if let Ok(pool) = options.pool_options().connect_with(opt).await {
             Ok(DatabaseConnection::SqlxSqlitePoolConnection(
                 SqlxSqlitePoolConnection { pool },
             ))
