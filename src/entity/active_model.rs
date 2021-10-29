@@ -51,6 +51,16 @@ where
     ActiveValue::unchanged(value)
 }
 
+macro_rules! do_delete {
+    ($self: ident, $db: ident, $fn: ident) => {{
+        let am = ActiveModelBehavior::before_delete($self)?;
+        let am_clone = am.clone();
+        let delete_res = Self::Entity::$fn(am).exec($db).await?;
+        ActiveModelBehavior::after_delete(am_clone)?;
+        Ok(delete_res)
+    }};
+}
+
 #[async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
     type Entity: EntityTrait;
@@ -162,11 +172,15 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
     {
-        let am = ActiveModelBehavior::before_delete(self)?;
-        let am_clone = am.clone();
-        let delete_res = Self::Entity::delete(am).exec(db).await?;
-        ActiveModelBehavior::after_delete(am_clone)?;
-        Ok(delete_res)
+        do_delete!(self, db, delete)
+    }
+
+    async fn delete_forcefully<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
+    where
+        Self: ActiveModelBehavior + 'a,
+        C: ConnectionTrait<'a>,
+    {
+        do_delete!(self, db, delete_forcefully)
     }
 }
 

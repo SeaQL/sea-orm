@@ -88,6 +88,37 @@ pub mod model_with_soft_delete {
                 )
             );
         }
+
+        #[test]
+        fn delete_one_forcefully() {
+            let model = Model {
+                id: 12,
+                name: "".to_owned(),
+                created_at: None,
+                updated_at: None,
+                deleted_at: None,
+            };
+
+            assert_eq!(
+                Entity::delete_forcefully(model.into_active_model())
+                    .build(DbBackend::MySql)
+                    .to_string()
+                    .as_str(),
+                "DELETE FROM `soft_delete_model` WHERE `soft_delete_model`.`id` = 12",
+            );
+        }
+
+        #[test]
+        fn delete_many_forcefully() {
+            assert_eq!(
+                Entity::delete_many_forcefully()
+                    .filter(Column::Id.eq(12))
+                    .build(DbBackend::MySql)
+                    .to_string()
+                    .as_str(),
+                "DELETE FROM `soft_delete_model` WHERE `soft_delete_model`.`id` = 12",
+            );
+        }
     }
 }
 pub mod model {
@@ -166,6 +197,37 @@ pub mod model {
         fn delete_many() {
             assert_eq!(
                 Entity::delete_many()
+                    .filter(Column::Id.eq(12))
+                    .build(DbBackend::MySql)
+                    .to_string()
+                    .as_str(),
+                "DELETE FROM `model` WHERE `model`.`id` = 12",
+            );
+        }
+
+        #[test]
+        fn delete_one_forcefully() {
+            let model = Model {
+                id: 12,
+                name: "".to_owned(),
+                created_at: None,
+                updated_at: None,
+                deleted_at: None,
+            };
+
+            assert_eq!(
+                Entity::delete_forcefully(model.into_active_model())
+                    .build(DbBackend::MySql)
+                    .to_string()
+                    .as_str(),
+                "DELETE FROM `model` WHERE `model`.`id` = 12",
+            );
+        }
+
+        #[test]
+        fn delete_many_forcefully() {
+            assert_eq!(
+                Entity::delete_many_forcefully()
                     .filter(Column::Id.eq(12))
                     .build(DbBackend::MySql)
                     .to_string()

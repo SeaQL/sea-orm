@@ -14,6 +14,7 @@ where
     A: ActiveModelTrait,
 {
     pub(crate) query: DeleteStatement,
+    pub(crate) force_delete: bool,
     pub(crate) model: A,
 }
 
@@ -23,6 +24,7 @@ where
     E: EntityTrait,
 {
     pub(crate) query: DeleteStatement,
+    pub(crate) force_delete: bool,
     pub(crate) entity: PhantomData<E>,
 }
 
@@ -67,9 +69,21 @@ impl Delete {
             query: DeleteStatement::new()
                 .from_table(A::Entity::default().table_ref())
                 .to_owned(),
+            force_delete: false,
             model: model.into_active_model(),
         };
         myself.prepare()
+    }
+
+    pub fn one_forcefully<E, A, M>(model: M) -> DeleteOne<A>
+    where
+        E: EntityTrait,
+        A: ActiveModelTrait<Entity = E>,
+        M: IntoActiveModel<A>,
+    {
+        let mut delete_one = Self::one(model);
+        delete_one.force_delete = true;
+        delete_one
     }
 
     /// Delete many ActiveModel
@@ -93,8 +107,18 @@ impl Delete {
             query: DeleteStatement::new()
                 .from_table(entity.into_iden())
                 .to_owned(),
+            force_delete: false,
             entity: PhantomData,
         }
+    }
+
+    pub fn many_forcefully<E>(entity: E) -> DeleteMany<E>
+    where
+        E: EntityTrait,
+    {
+        let mut delete_many = Self::many(entity);
+        delete_many.force_delete = true;
+        delete_many
     }
 }
 
@@ -157,7 +181,7 @@ where
     }
 
     fn build(&self, db_backend: DbBackend) -> Statement {
-        build_delete_stmt::<A::Entity>(self.as_query(), db_backend)
+        build_delete_stmt::<A::Entity>(self.as_query(), self.force_delete, db_backend)
     }
 }
 
@@ -180,17 +204,21 @@ where
     }
 
     fn build(&self, db_backend: DbBackend) -> Statement {
-        build_delete_stmt::<E>(self.as_query(), db_backend)
+        build_delete_stmt::<E>(self.as_query(), self.force_delete, db_backend)
     }
 }
 
-fn build_delete_stmt<E>(delete_stmt: &DeleteStatement, db_backend: DbBackend) -> Statement
+fn build_delete_stmt<E>(
+    delete_stmt: &DeleteStatement,
+    force_delete: bool,
+    db_backend: DbBackend,
+) -> Statement
 where
     E: EntityTrait,
 {
     let query_builder = db_backend.get_query_builder();
     match <<E as EntityTrait>::Model as ModelTrait>::soft_delete_column() {
-        Some(soft_delete_column) => {
+        Some(soft_delete_column) if !force_delete => {
             let mut delete_stmt = delete_stmt.clone();
             let value = <E::Model as ModelTrait>::soft_delete_column_value();
             let update_stmt = UpdateStatement::new()
@@ -203,7 +231,7 @@ where
                 update_stmt.build_any(query_builder.as_ref()),
             )
         }
-        None => Statement::from_string_values_tuple(
+        _ => Statement::from_string_values_tuple(
             db_backend,
             delete_stmt.build_any(query_builder.as_ref()),
         ),

@@ -28,7 +28,7 @@ where
         C: ConnectionTrait<'a>,
     {
         // so that self is dropped before entering await
-        exec_delete_only::<_, A::Entity>(self.query, db)
+        exec_delete_only::<_, A::Entity>(self.query, self.force_delete, db)
     }
 }
 
@@ -41,7 +41,7 @@ where
         C: ConnectionTrait<'a>,
     {
         // so that self is dropped before entering await
-        exec_delete_only::<_, E>(self.query, db)
+        exec_delete_only::<_, E>(self.query, self.force_delete, db)
     }
 }
 
@@ -64,6 +64,7 @@ where
 
 async fn exec_delete_only<'a, C, E>(
     delete_stmt: DeleteStatement,
+    force_delete: bool,
     db: &'a C,
 ) -> Result<DeleteResult, DbErr>
 where
@@ -72,7 +73,7 @@ where
 {
     let mut delete_stmt = delete_stmt;
     match <<E as EntityTrait>::Model as ModelTrait>::soft_delete_column() {
-        Some(soft_delete_column) => {
+        Some(soft_delete_column) if !force_delete => {
             let value = <E::Model as ModelTrait>::soft_delete_column_value();
             let update_stmt = UpdateStatement::new()
                 .table(E::default())
@@ -81,7 +82,7 @@ where
                 .to_owned();
             Deleter::new(update_stmt).exec(db).await
         }
-        None => Deleter::new(delete_stmt).exec(db).await,
+        _ => Deleter::new(delete_stmt).exec(db).await,
     }
 }
 
