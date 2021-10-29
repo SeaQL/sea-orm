@@ -106,12 +106,15 @@ pub fn derive_column(input: TokenStream) -> TokenStream {
 }
 
 /// Derive a column if column names are not in snake-case
+/// ### Usage
+/// ```
 /// #[derive(Copy, Clone, Debug, EnumIter, DeriveCustomColumn)]
 /// pub enum Column {
 ///     Id,
 ///     Name,
 ///     VendorId,
 /// }
+/// ```
 #[proc_macro_derive(DeriveCustomColumn)]
 pub fn derive_custom_column(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
@@ -165,7 +168,7 @@ pub fn derive_active_model(input: TokenStream) -> TokenStream {
     }
 }
 
-/// FIXME Derive into an active model
+/// Derive into an active model
 #[proc_macro_derive(DeriveIntoActiveModel, attributes(sea_orm))]
 pub fn derive_into_active_model(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
