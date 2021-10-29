@@ -1,9 +1,9 @@
 use crate::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, Iterable, PrimaryKeyToColumn,
-    QueryFilter, QueryTrait,
+    ActiveModelTrait, ColumnTrait, DbBackend, EntityTrait, IntoActiveModel, Iterable, ModelTrait,
+    PrimaryKeyToColumn, QueryFilter, QueryTrait, Statement,
 };
 use core::marker::PhantomData;
-use sea_query::{DeleteStatement, IntoIden};
+use sea_query::{DeleteStatement, Expr, IntoIden, UpdateStatement};
 
 #[derive(Clone, Debug)]
 pub struct Delete;
@@ -155,6 +155,10 @@ where
     fn into_query(self) -> DeleteStatement {
         self.query
     }
+
+    fn build(&self, db_backend: DbBackend) -> Statement {
+        build_delete_stmt::<A::Entity>(self.as_query(), db_backend)
+    }
 }
 
 impl<E> QueryTrait for DeleteMany<E>
@@ -173,6 +177,36 @@ where
 
     fn into_query(self) -> DeleteStatement {
         self.query
+    }
+
+    fn build(&self, db_backend: DbBackend) -> Statement {
+        build_delete_stmt::<E>(self.as_query(), db_backend)
+    }
+}
+
+fn build_delete_stmt<E>(delete_stmt: &DeleteStatement, db_backend: DbBackend) -> Statement
+where
+    E: EntityTrait,
+{
+    let query_builder = db_backend.get_query_builder();
+    match <<E as EntityTrait>::Model as ModelTrait>::soft_delete_column() {
+        Some(soft_delete_column) => {
+            let mut delete_stmt = delete_stmt.clone();
+            let value = <E::Model as ModelTrait>::soft_delete_column_value();
+            let update_stmt = UpdateStatement::new()
+                .table(E::default())
+                .col_expr(soft_delete_column, Expr::value(value))
+                .set_conditions(delete_stmt.take_conditions())
+                .to_owned();
+            Statement::from_string_values_tuple(
+                db_backend,
+                update_stmt.build_any(query_builder.as_ref()),
+            )
+        }
+        None => Statement::from_string_values_tuple(
+            db_backend,
+            delete_stmt.build_any(query_builder.as_ref()),
+        ),
     }
 }
 

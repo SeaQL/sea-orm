@@ -17,6 +17,14 @@ pub trait ModelTrait: Clone + Send + Debug {
         None
     }
 
+    fn soft_delete_column_value() -> Value {
+        if cfg!(feature = "with-chrono") {
+            chrono::offset::Local::now().naive_local().into()
+        } else {
+            panic!("Feature 'with-chrono' should be enabled")
+        }
+    }
+
     fn find_related<R>(&self, _: R) -> Select<R>
     where
         R: EntityTrait,

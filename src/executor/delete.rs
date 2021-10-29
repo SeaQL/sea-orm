@@ -1,6 +1,6 @@
 use crate::{
-    error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, QueryTrait,
-    Statement, StatementBuilder,
+    error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, Statement,
+    StatementBuilder,
 };
 use std::future::Future;
 
