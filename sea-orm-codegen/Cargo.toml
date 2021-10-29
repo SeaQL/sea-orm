@@ -16,12 +16,7 @@ path = "src/lib.rs"
 
 [dependencies]
 sea-query = { version = "^0.16.4" }
-syn = { version = "^1", default-features = false, features = [
-    "derive",
-    "parsing",
-    "proc-macro",
-    "printing",
-] }
+syn = { version = "^1", default-features = false }
 quote = "^1"
 heck = "^0.3"
 proc-macro2 = "^1"

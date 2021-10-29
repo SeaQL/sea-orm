@@ -17,7 +17,7 @@ proc-macro = true
 
 [dependencies]
 bae = "^0.1"
-syn = { version = "^1", default-features = false, features = [ "full", "derive", "clone-impls", "parsing", "proc-macro", "printing", "extra-traits" ] }
+syn = { version = "^1", default-features = false }
 quote = "^1"
 heck = "^0.3"
 proc-macro2 = "^1"
