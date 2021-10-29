@@ -1,12 +1,15 @@
 use crate::{
-    error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, Statement,
+    error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, QueryTrait,
+    Statement, StatementBuilder,
 };
-use sea_query::DeleteStatement;
 use std::future::Future;
 
 #[derive(Clone, Debug)]
-pub struct Deleter {
-    query: DeleteStatement,
+pub struct Deleter<Q>
+where
+    Q: StatementBuilder,
+{
+    query: Q,
 }
 
 #[derive(Clone, Debug)]
@@ -40,8 +43,11 @@ where
     }
 }
 
-impl Deleter {
-    pub fn new(query: DeleteStatement) -> Self {
+impl<Q> Deleter<Q>
+where
+    Q: StatementBuilder,
+{
+    pub fn new(query: Q) -> Self {
         Self { query }
     }
 
@@ -54,9 +60,10 @@ impl Deleter {
     }
 }
 
-async fn exec_delete_only<'a, C>(query: DeleteStatement, db: &'a C) -> Result<DeleteResult, DbErr>
+async fn exec_delete_only<'a, C, Q>(query: Q, db: &'a C) -> Result<DeleteResult, DbErr>
 where
     C: ConnectionTrait<'a>,
+    Q: StatementBuilder,
 {
     Deleter::new(query).exec(db).await
 }
