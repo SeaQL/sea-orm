@@ -4,14 +4,17 @@ use crate::{
 use sea_query::UpdateStatement;
 use std::future::Future;
 
+/// Defines an update operation
 #[derive(Clone, Debug)]
 pub struct Updater {
     query: UpdateStatement,
     check_record_exists: bool,
 }
 
+/// The result of an update operation on an ActiveModel
 #[derive(Clone, Debug, PartialEq)]
 pub struct UpdateResult {
+    /// The rows affected by the update operation
     pub rows_affected: u64,
 }
 
@@ -19,6 +22,7 @@ impl<'a, A: 'a> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
+    /// Execute an update operation on an ActiveModel
     pub async fn exec<'b, C>(self, db: &'b C) -> Result<A, DbErr>
     where
         C: ConnectionTrait<'b>,
@@ -32,6 +36,7 @@ impl<'a, E> UpdateMany<E>
 where
     E: EntityTrait,
 {
+    /// Execute an update operation on multiple ActiveModels
     pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_
     where
         C: ConnectionTrait<'a>,
@@ -42,6 +47,7 @@ where
 }
 
 impl Updater {
+    /// Instantiate an update using an [UpdateStatement]
     pub fn new(query: UpdateStatement) -> Self {
         Self {
             query,
@@ -49,11 +55,13 @@ impl Updater {
         }
     }
 
+    /// Check if a record exists on the ActiveModel to perform the update operation on
     pub fn check_record_exists(mut self) -> Self {
         self.check_record_exists = true;
         self
     }
 
+    /// Execute an update operation
     pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_
     where
         C: ConnectionTrait<'a>,

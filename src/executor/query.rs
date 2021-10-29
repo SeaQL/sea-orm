@@ -3,6 +3,7 @@ use crate::debug_print;
 use crate::{DbErr, SelectGetableValue, SelectorRaw, Statement};
 use std::fmt;
 
+/// Defines the result of a query operation on a Model
 #[derive(Debug)]
 pub struct QueryResult {
     pub(crate) row: QueryResultRow,
@@ -19,13 +20,18 @@ pub(crate) enum QueryResultRow {
     Mock(crate::MockRow),
 }
 
+/// Constrain any type trying to get a Row in a database
 pub trait TryGetable: Sized {
+    /// Ensure the type implements this method
     fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError>;
 }
 
+/// An error from trying to get a row from a Model
 #[derive(Debug)]
 pub enum TryGetError {
+    /// A database error was encountered as defined in [crate::DbErr]
     DbErr(DbErr),
+    /// A null value was encountered
     Null,
 }
 
@@ -41,6 +47,7 @@ impl From<TryGetError> for DbErr {
 // QueryResult //
 
 impl QueryResult {
+    /// Get a Row from a Column
     pub fn try_get<T>(&self, pre: &str, col: &str) -> Result<T, DbErr>
     where
         T: TryGetable,
@@ -48,6 +55,7 @@ impl QueryResult {
         Ok(T::try_get(self, pre, col)?)
     }
 
+    /// Perform query operations on multiple Columns
     pub fn try_get_many<T>(&self, pre: &str, cols: &[String]) -> Result<T, DbErr>
     where
         T: TryGetableMany,
@@ -306,7 +314,9 @@ try_getable_all!(uuid::Uuid);
 
 // TryGetableMany //
 
+/// Perform a query on multiple columns
 pub trait TryGetableMany: Sized {
+    /// THe method to perform a query on multiple columns
     fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError>;
 
     /// ```
@@ -453,8 +463,9 @@ fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), Try
 }
 
 // TryFromU64 //
-
+/// Try to convert a type to a u64
 pub trait TryFromU64: Sized {
+    /// The method to convert the type to a u64
     fn try_from_u64(n: u64) -> Result<Self, DbErr>;
 }
 

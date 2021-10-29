@@ -4,8 +4,10 @@ use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
 use std::{marker::PhantomData, pin::Pin};
 
+/// Pin a Model so that stream operations can be performed on the model
 pub type PinBoxStream<'db, Item> = Pin<Box<dyn Stream<Item = Item> + 'db>>;
 
+/// Defined a structure to handle pagination of a result from a query operation on a Model
 #[derive(Clone, Debug)]
 pub struct Paginator<'db, C, S>
 where
