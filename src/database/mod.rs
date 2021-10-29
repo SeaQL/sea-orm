@@ -18,20 +18,30 @@ pub use transaction::*;
 
 use crate::DbErr;
 
+/// Defines a database
 #[derive(Debug, Default)]
 pub struct Database;
 
+/// Defines the configuration options of a database
 #[derive(Debug)]
 pub struct ConnectOptions {
+    /// The URI of the database
     pub(crate) url: String,
+    /// Maximum number of connections for a pool
     pub(crate) max_connections: Option<u32>,
+    /// Minimum number of connections for a pool
     pub(crate) min_connections: Option<u32>,
+    /// The connection timeout for a packet connection
     pub(crate) connect_timeout: Option<Duration>,
+    /// Maximum idle time for a particular connection to prevent
+    /// network resource exhaustion
     pub(crate) idle_timeout: Option<Duration>,
+    /// Enables or disables logging
     pub(crate) sqlx_logging: bool,
 }
 
 impl Database {
+    /// Method to create a [DatabaseConnection] on a database
     pub async fn connect<C>(opt: C) -> Result<DatabaseConnection, DbErr>
     where
         C: Into<ConnectOptions>,
@@ -80,6 +90,7 @@ impl From<String> for ConnectOptions {
 }
 
 impl ConnectOptions {
+    /// Create new [ConnectOptions] for a [Database] by passing in a URI string
     pub fn new(url: String) -> Self {
         Self {
             url,

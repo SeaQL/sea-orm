@@ -3,18 +3,25 @@ use sea_query::{inject_parameters, MysqlQueryBuilder, PostgresQueryBuilder, Sqli
 pub use sea_query::{Value, Values};
 use std::fmt;
 
+/// Defines an SQL statement
 #[derive(Debug, Clone, PartialEq)]
 pub struct Statement {
+    /// The SQL query
     pub sql: String,
+    /// The values for the SQL statement
     pub values: Option<Values>,
+    /// The database backend to use
     pub db_backend: DbBackend,
 }
 
+/// Constraints for building a [Statement]
 pub trait StatementBuilder {
+    /// Method to call in order to build a [Statement]
     fn build(&self, db_backend: &DbBackend) -> Statement;
 }
 
 impl Statement {
+    /// Create a [Statement] from a [crate::DatabaseBackend] and a raw SQL statement
     pub fn from_string(db_backend: DbBackend, stmt: String) -> Statement {
         Statement {
             sql: stmt,
@@ -23,6 +30,8 @@ impl Statement {
         }
     }
 
+    /// Create a SQL statement from a [crate::DatabaseBackend], a
+    /// raw SQL statement and defined values
     pub fn from_sql_and_values<I>(db_backend: DbBackend, sql: &str, values: I) -> Self
     where
         I: IntoIterator<Item = Value>,
