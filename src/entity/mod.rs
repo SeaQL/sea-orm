@@ -4,6 +4,7 @@ mod column;
 mod identity;
 mod link;
 mod model;
+/// Re-export common types from the entity
 pub mod prelude;
 mod primary_key;
 mod relation;

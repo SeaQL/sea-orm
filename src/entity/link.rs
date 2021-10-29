@@ -3,15 +3,21 @@ use crate::{
 };
 use sea_query::{Alias, IntoIden, JoinType, SeaRc};
 
+/// Same as [RelationDef]
 pub type LinkDef = RelationDef;
 
+/// A set of constraints for links between Entities
 pub trait Linked {
+    #[allow(missing_docs)]
     type FromEntity: EntityTrait;
 
+    #[allow(missing_docs)]
     type ToEntity: EntityTrait;
 
+    /// Link for an Entity
     fn link(&self) -> Vec<LinkDef>;
 
+    /// Find all the Entities that are linked to the Entity
     fn find_linked(&self) -> Select<Self::ToEntity> {
         let mut select = Select::new();
         for (i, rel) in self.link().into_iter().rev().enumerate() {

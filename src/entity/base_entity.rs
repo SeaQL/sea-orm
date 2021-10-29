@@ -7,21 +7,28 @@ use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 pub use sea_strum::IntoEnumIterator as Iterable;
 use std::fmt::Debug;
 
+/// Ensure the identifier for an Entity can be converted to a static str
 pub trait IdenStatic: Iden + Copy + Debug + 'static {
+    /// Method to call to get the static string identity
     fn as_str(&self) -> &str;
 }
 
+/// Enforces the naming of an entity to a set of constraints
 pub trait EntityName: IdenStatic + Default {
+    /// Method to get the name for the schema, defaults to [Option::None] if not set
     fn schema_name(&self) -> Option<&str> {
         None
     }
 
+    /// Get the name of the table
     fn table_name(&self) -> &str;
 
+    /// Get the name of the module from the invoking `self.table_name()`
     fn module_name(&self) -> &str {
         self.table_name()
     }
 
+    /// Get the [TableRef] from invoking the `self.schema_name()`
     fn table_ref(&self) -> TableRef {
         match self.schema_name() {
             Some(schema) => (Alias::new(schema).into_iden(), self.into_iden()).into_table_ref(),
@@ -43,14 +50,19 @@ pub trait EntityName: IdenStatic + Default {
 /// - Update: `update`, `update_*`
 /// - Delete: `delete`, `delete_*`
 pub trait EntityTrait: EntityName {
+    #[allow(missing_docs)]
     type Model: ModelTrait<Entity = Self> + FromQueryResult;
 
+    #[allow(missing_docs)]
     type Column: ColumnTrait;
 
+    #[allow(missing_docs)]
     type Relation: RelationTrait;
 
+    #[allow(missing_docs)]
     type PrimaryKey: PrimaryKeyTrait + PrimaryKeyToColumn<Column = Self::Column>;
 
+    /// Check if the relation belongs to an Entity
     fn belongs_to<R>(related: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait,
@@ -58,6 +70,7 @@ pub trait EntityTrait: EntityName {
         RelationBuilder::new(RelationType::HasOne, Self::default(), related, false)
     }
 
+    /// Check if the entity has at least one relation
     fn has_one<R>(_: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait + Related<Self>,
@@ -65,6 +78,7 @@ pub trait EntityTrait: EntityName {
         RelationBuilder::from_rel(RelationType::HasOne, R::to().rev(), true)
     }
 
+    /// Chech if the Entity has many relations
     fn has_many<R>(_: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait + Related<Self>,

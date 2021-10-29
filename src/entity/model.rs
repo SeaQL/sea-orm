@@ -5,13 +5,18 @@ use crate::{
 pub use sea_query::Value;
 use std::fmt::Debug;
 
+/// A set of constraints for a Model
 pub trait ModelTrait: Clone + Send + Debug {
+    #[allow(missing_docs)]
     type Entity: EntityTrait;
 
+    /// Get the [Value] of a column from an Entity
     fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> Value;
 
+    /// Set the [Value] of a column in an Entity
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
 
+    /// Find related Models
     fn find_related<R>(&self, _: R) -> Select<R>
     where
         R: EntityTrait,
@@ -20,6 +25,7 @@ pub trait ModelTrait: Clone + Send + Debug {
         <Self::Entity as Related<R>>::find_related().belongs_to(self)
     }
 
+    /// Find linked Models
     fn find_linked<L>(&self, l: L) -> Select<L::ToEntity>
     where
         L: Linked<FromEntity = Self::Entity>,
@@ -29,9 +35,13 @@ pub trait ModelTrait: Clone + Send + Debug {
     }
 }
 
+/// A set of constraints for implementing a [QueryResult]
 pub trait FromQueryResult: Sized {
+    /// Instantiate a Model from a [QueryResult]
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr>;
 
+    /// Transform the error from instantiating a Model from a [QueryResult]
+    /// and converting it to an [Option]
     fn from_query_result_optional(res: &QueryResult, pre: &str) -> Result<Option<Self>, DbErr> {
         Ok(Self::from_query_result(res, pre).ok())
     }

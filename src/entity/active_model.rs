@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
 use std::fmt::Debug;
 
+/// Defines a value from an ActiveModel and its state
 #[derive(Clone, Debug, Default)]
 pub struct ActiveValue<V>
 where
@@ -14,6 +15,7 @@ where
     state: ActiveValueState,
 }
 
+/// Defines a set operation on an [ActiveValue]
 #[allow(non_snake_case)]
 pub fn Set<V>(v: V) -> ActiveValue<V>
 where
@@ -22,6 +24,7 @@ where
     ActiveValue::set(v)
 }
 
+/// Defines an unset operation on an [ActiveValue]
 #[allow(non_snake_case)]
 pub fn Unset<V>(_: Option<bool>) -> ActiveValue<V>
 where
@@ -30,6 +33,7 @@ where
     ActiveValue::unset()
 }
 
+// Defines the state of an [ActiveValue]
 #[derive(Clone, Debug)]
 enum ActiveValueState {
     Set,
@@ -51,22 +55,31 @@ where
     ActiveValue::unchanged(value)
 }
 
+/// Enforces a set of constraints on any type performing an Create, Update or Delete operation
 #[async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
+    /// Enforce the type to the constraints of the [EntityTrait]
     type Entity: EntityTrait;
 
+    /// Get a mutable [ActiveValue] from an ActiveModel
     fn take(&mut self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value>;
 
+    /// Get a immutable [ActiveValue] from an ActiveModel
     fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> ActiveValue<Value>;
 
+    /// Set the Value into an ActiveModel
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
 
+    /// Set the state of an [ActiveValue] to the Unset state
     fn unset(&mut self, c: <Self::Entity as EntityTrait>::Column);
 
+    /// Check the state of a [ActiveValue]
     fn is_unset(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
 
+    /// The default implementation of the ActiveModel
     fn default() -> Self;
 
+    /// Get the primary key of the ActiveModel
     #[allow(clippy::question_mark)]
     fn get_primary_key_value(&self) -> Option<ValueTuple> {
         let mut cols = <Self::Entity as EntityTrait>::PrimaryKey::iter();
@@ -103,6 +116,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         }
     }
 
+    /// Perform an `INSERT` operation on the ActiveModel
     async fn insert<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
@@ -121,6 +135,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         ActiveModelBehavior::after_save(am, true)
     }
 
+    /// Perform the `UPDATE` operation on an ActiveModel
     async fn update<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
         Self: ActiveModelBehavior + 'a,
@@ -170,6 +185,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 }
 
+/// Enforce a set of constraints to a override the ActiveModel behavior
 /// Behaviors for users to override
 #[allow(unused_variables)]
 pub trait ActiveModelBehavior: ActiveModelTrait {
@@ -199,10 +215,12 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
     }
 }
 
+/// Enforce constraints for conversion to  an ActiveModel
 pub trait IntoActiveModel<A>
 where
     A: ActiveModelTrait,
 {
+    /// Method to call to perform the conversion
     fn into_active_model(self) -> A;
 }
 
@@ -215,10 +233,12 @@ where
     }
 }
 
+/// Constraints to perform the conversion of a type into an [ActiveValue]
 pub trait IntoActiveValue<V>
 where
     V: Into<Value>,
 {
+    /// Method to perform the conversion
     fn into_active_value(self) -> ActiveValue<V>;
 }
 
@@ -296,6 +316,7 @@ impl<V> ActiveValue<V>
 where
     V: Into<Value>,
 {
+    /// Set the value of an [ActiveValue] and also set its state to `ActiveValueState::Set`
     pub fn set(value: V) -> Self {
         Self {
             value: Some(value),
@@ -303,6 +324,7 @@ where
         }
     }
 
+    /// Check if the state of an [ActiveValue] is `ActiveValueState::Set` which returns true
     pub fn is_set(&self) -> bool {
         matches!(self.state, ActiveValueState::Set)
     }
@@ -314,10 +336,14 @@ where
         }
     }
 
+    /// Check if the status of the [ActiveValue] is `ActiveValueState::Unchanged`
+    /// which returns `true` if it is
     pub fn is_unchanged(&self) -> bool {
         matches!(self.state, ActiveValueState::Unchanged)
     }
 
+    /// Set the `value` field of the ActiveModel to [Option::None] and the
+    /// `state` field to `ActiveValueState::Unset`
     pub fn unset() -> Self {
         Self {
             value: None,
@@ -325,23 +351,30 @@ where
         }
     }
 
+    /// Check if the state of an [ActiveValue] is `ActiveValueState::Unset`
+    /// which returns true if it is
     pub fn is_unset(&self) -> bool {
         matches!(self.state, ActiveValueState::Unset)
     }
 
+    /// Get the mutable value of the `value` field of an [ActiveValue]
+    /// also setting it's state to `ActiveValueState::Unset`
     pub fn take(&mut self) -> Option<V> {
         self.state = ActiveValueState::Unset;
         self.value.take()
     }
 
+    /// Get an owned value of the `value` field of the [ActiveValue]
     pub fn unwrap(self) -> V {
         self.value.unwrap()
     }
 
+    /// Check is a [Value] exists or not
     pub fn into_value(self) -> Option<Value> {
         self.value.map(Into::into)
     }
 
+    /// Wrap the [Value] into a `ActiveValue<Value>`
     pub fn into_wrapped_value(self) -> ActiveValue<Value> {
         match self.state {
             ActiveValueState::Set => ActiveValue::set(self.into_value().unwrap()),
