@@ -30,7 +30,7 @@ impl SqlxSqliteConnector {
     pub fn accepts(string: &str) -> bool {
         string.starts_with("sqlite:") && string.parse::<SqliteConnectOptions>().is_ok()
     }
-    
+
     /// Add configuration options for the SQLite database
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
         let mut opt = options
@@ -129,7 +129,7 @@ impl SqlxSqlitePoolConnection {
         }
     }
 
-    /// Bundle a set of SQL statements that execute together. 
+    /// Bundle a set of SQL statements that execute together.
     pub async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_sqlite(conn).await

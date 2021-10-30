@@ -37,6 +37,7 @@ pub trait EntityName: IdenStatic + Default {
     }
 }
 
+/// FIXME Add docs for manual impl
 /// An Entity implementing `EntityTrait` represents a table in a database.
 ///
 /// This trait provides an API for you to inspect it's properties

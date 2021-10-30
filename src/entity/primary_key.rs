@@ -4,7 +4,38 @@ use sea_query::{FromValueTuple, IntoValueTuple};
 use std::fmt::Debug;
 
 //LINT: composite primary key cannot auto increment
-/// A set of constraints to be used to define a Primary Key
+/// A set of constraints to be used to define a Primary Key.
+///
+/// A primary key can be derived manually
+///
+/// ### Example
+/// ```
+/// use sea_orm::entity::prelude::*;
+///
+/// #[derive(Copy, Clone, Debug, EnumIter)]
+/// pub enum PrimaryKey {
+///     Id,
+/// }
+/// impl PrimaryKeyTrait for PrimaryKey {
+///     type ValueType = i32;
+///
+///     fn auto_increment() -> bool {
+///         true
+///     }
+/// }
+/// ```
+///
+/// Alternatively, use derive macros to automatically implement the trait for a Primary Key
+///
+/// ### Example
+/// ```
+/// use sea_orm::entity::prelude::*;
+///
+/// #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+/// pub enum PrimaryKey {
+///     Id,
+/// }
+/// ```
 pub trait PrimaryKeyTrait: IdenStatic + Iterable {
     #[allow(missing_docs)]
     type ValueType: Sized

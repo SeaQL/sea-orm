@@ -55,7 +55,27 @@ where
     ActiveValue::unchanged(value)
 }
 
-/// Enforces a set of constraints on any type performing an Create, Update or Delete operation
+/// Enforces a set of constraints on any type performing an Create, Update or Delete operation.
+/// The type must also implement the [EntityTrait].
+/// #### Example
+/// ```
+/// use sea_orm::entity::prelude::*;
+///
+/// #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+/// pub struct Entity;
+///
+/// impl EntityName for Entity {
+///     fn table_name(&self) -> &str {
+///         "cake"
+///     }
+/// }
+///
+/// #[derive(Clone, Debug, PartialEq, DeriveActiveModel)]
+/// pub struct Model {
+///     pub id: i32,
+///     pub name: Option<String> ,
+/// }
+/// ```
 #[async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
     /// Enforce the type to the constraints of the [EntityTrait]
@@ -186,7 +206,21 @@ pub trait ActiveModelTrait: Clone + Debug {
 }
 
 /// Enforce a set of constraints to a override the ActiveModel behavior
-/// Behaviors for users to override
+/// Behaviors for users to override.
+/// The type must also implement the [ActiveModelTrait]
+///
+/// ### Example
+/// ```
+/// /// Derive the active
+/// #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+/// pub struct Model {
+///     pub id: i32,
+///     pub name: String,
+///     pub cake_id: Option<i32>,
+/// }
+/// ```
+/// impl ActiveModelBehavior for ActiveModel {}
+///
 #[allow(unused_variables)]
 pub trait ActiveModelBehavior: ActiveModelTrait {
     /// Create a new ActiveModel with default values. Also used by `Default::default()`.

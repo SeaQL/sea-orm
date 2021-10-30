@@ -126,7 +126,7 @@ impl SqlxMySqlPoolConnection {
         }
     }
 
-    /// Bundle a set of SQL statements that execute together. 
+    /// Bundle a set of SQL statements that execute together.
     pub async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_mysql(conn).await
