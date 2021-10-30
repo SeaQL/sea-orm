@@ -37,7 +37,6 @@ pub trait EntityName: IdenStatic + Default {
     }
 }
 
-/// FIXME Add docs for manual impl
 /// An Entity implementing `EntityTrait` represents a table in a database.
 ///
 /// This trait provides an API for you to inspect it's properties
@@ -79,7 +78,7 @@ pub trait EntityTrait: EntityName {
         RelationBuilder::from_rel(RelationType::HasOne, R::to().rev(), true)
     }
 
-    /// Chech if the Entity has many relations
+    /// Check if the Entity has many relations
     fn has_many<R>(_: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait + Related<Self>,

@@ -12,8 +12,8 @@ mod util;
 /// ```
 /// use sea_orm::entity::prelude::*;
 ///
-///#[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-///pub struct Entity;
+/// #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+/// pub struct Entity;
 /// ```
 #[proc_macro_derive(DeriveEntity, attributes(sea_orm))]
 pub fn derive_entity(input: TokenStream) -> TokenStream {
@@ -150,13 +150,11 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 /// ### Usage
 ///
 /// ```
-///
 /// #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 /// pub struct Model {
 ///     pub id: i32,
 ///     pub name: String,
 /// }
-///
 /// ```
 #[proc_macro_derive(DeriveActiveModel, attributes(sea_orm))]
 pub fn derive_active_model(input: TokenStream) -> TokenStream {
@@ -183,7 +181,9 @@ pub fn derive_into_active_model(input: TokenStream) -> TokenStream {
 /// ```
 /// use sea_orm::entity::prelude::*;
 ///
-/// #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, DeriveActiveModelBehavior,)]
+/// #[derive(
+///     Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, DeriveActiveModelBehavior,
+/// )]
 /// pub struct Model {
 ///     pub id: i32,
 ///     pub name: String,
@@ -203,11 +203,11 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 /// ### Usage
 ///
 /// ```
-///  #[derive(Debug, FromQueryResult)]
-///    struct SelectResult {
-///        name: String,
-///        num_of_fruits: i32,
-///    }
+/// #[derive(Debug, FromQueryResult)]
+/// struct SelectResult {
+///     name: String,
+///     num_of_fruits: i32,
+/// }
 /// ```
 #[proc_macro_derive(FromQueryResult)]
 pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
@@ -224,7 +224,7 @@ pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
 /// ```
 /// #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 /// pub enum Relation {
-///    #[sea_orm(
+///     #[sea_orm(
 ///         belongs_to = "super::cake::Entity",
 ///         from = "Column::CakeId",
 ///         to = "super::cake::Column::Id"

@@ -73,7 +73,7 @@ where
 /// #[derive(Clone, Debug, PartialEq, DeriveActiveModel)]
 /// pub struct Model {
 ///     pub id: i32,
-///     pub name: Option<String> ,
+///     pub name: Option<String>,
 /// }
 /// ```
 #[async_trait]
@@ -211,6 +211,8 @@ pub trait ActiveModelTrait: Clone + Debug {
 ///
 /// ### Example
 /// ```
+/// use sea_orm::entity::prelude::*;
+///
 /// /// Derive the active
 /// #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 /// pub struct Model {
@@ -220,7 +222,6 @@ pub trait ActiveModelTrait: Clone + Debug {
 /// }
 /// ```
 /// impl ActiveModelBehavior for ActiveModel {}
-///
 #[allow(unused_variables)]
 pub trait ActiveModelBehavior: ActiveModelTrait {
     /// Create a new ActiveModel with default values. Also used by `Default::default()`.

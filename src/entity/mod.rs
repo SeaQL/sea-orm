@@ -40,7 +40,7 @@
 //! #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 //! pub struct Model {
 //!     pub id: i32,
-//!     pub name: Option<String> ,
+//!     pub name: Option<String>,
 //! }
 //!
 //! // Use the [DeriveColumn] to create a Column for an the table called Entity
