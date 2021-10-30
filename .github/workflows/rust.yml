@@ -260,6 +260,27 @@ jobs:
           args: >
             --manifest-path sea-orm-cli/Cargo.toml
 
+  test-temp:
+    name: Unit Test (Temp)
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        args: ["--workspace", "--doc", "--all-targets"]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: ${{ matrix.args }}
+
   cli:
     name: CLI
     needs: init
