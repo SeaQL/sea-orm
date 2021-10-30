@@ -9,7 +9,7 @@ use std::fmt::Debug;
 /// A primary key can be derived manually
 ///
 /// ### Example
-/// ```
+/// ```text
 /// use sea_orm::entity::prelude::*;
 ///
 /// #[derive(Copy, Clone, Debug, EnumIter)]
@@ -28,7 +28,7 @@ use std::fmt::Debug;
 /// Alternatively, use derive macros to automatically implement the trait for a Primary Key
 ///
 /// ### Example
-/// ```
+/// ```text
 /// use sea_orm::entity::prelude::*;
 ///
 /// #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -36,6 +36,7 @@ use std::fmt::Debug;
 ///     Id,
 /// }
 /// ```
+/// See module level docs [crate::entity] for a full example
 pub trait PrimaryKeyTrait: IdenStatic + Iterable {
     #[allow(missing_docs)]
     type ValueType: Sized

@@ -57,25 +57,7 @@ where
 
 /// Enforces a set of constraints on any type performing an Create, Update or Delete operation.
 /// The type must also implement the [EntityTrait].
-/// #### Example
-/// ```
-/// use sea_orm::entity::prelude::*;
-///
-/// #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-/// pub struct Entity;
-///
-/// impl EntityName for Entity {
-///     fn table_name(&self) -> &str {
-///         "cake"
-///     }
-/// }
-///
-/// #[derive(Clone, Debug, PartialEq, DeriveActiveModel)]
-/// pub struct Model {
-///     pub id: i32,
-///     pub name: Option<String>,
-/// }
-/// ```
+/// See module level docs [crate::entity] for a full example
 #[async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
     /// Enforce the type to the constraints of the [EntityTrait]
@@ -210,18 +192,30 @@ pub trait ActiveModelTrait: Clone + Debug {
 /// The type must also implement the [ActiveModelTrait]
 ///
 /// ### Example
-/// ```
+/// ```ignore
 /// use sea_orm::entity::prelude::*;
 ///
-/// /// Derive the active
+///  // Use [DeriveEntity] to derive the EntityTrait automatically
+/// #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+/// pub struct Entity;
+///
+/// /// The [EntityName] describes the name of a table
+/// impl EntityName for Entity {
+///     fn table_name(&self) -> &str {
+///         "cake"
+///     }
+/// }
+///
+/// // Derive the ActiveModel
 /// #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 /// pub struct Model {
 ///     pub id: i32,
 ///     pub name: String,
-///     pub cake_id: Option<i32>,
 /// }
-/// ```
+///
 /// impl ActiveModelBehavior for ActiveModel {}
+/// ```
+/// See module level docs [crate::entity] for a full example
 #[allow(unused_variables)]
 pub trait ActiveModelBehavior: ActiveModelTrait {
     /// Create a new ActiveModel with default values. Also used by `Default::default()`.
