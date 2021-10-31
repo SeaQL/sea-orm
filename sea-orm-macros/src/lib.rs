@@ -8,12 +8,67 @@ mod derives;
 mod util;
 
 /// Create an Entity
+///
 /// ### Usage
+///
 /// ```
 /// use sea_orm::entity::prelude::*;
 ///
 /// #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 /// pub struct Entity;
+///
+/// # impl EntityName for Entity {
+/// #     fn table_name(&self) -> &str {
+/// #         "cake"
+/// #     }
+/// # }
+/// #
+/// # #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+/// # pub struct Model {
+/// #     pub id: i32,
+/// #     pub name: String,
+/// # }
+/// #
+/// # #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+/// # pub enum Column {
+/// #     Id,
+/// #     Name,
+/// # }
+/// #
+/// # #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+/// # pub enum PrimaryKey {
+/// #     Id,
+/// # }
+/// #
+/// # impl PrimaryKeyTrait for PrimaryKey {
+/// #     type ValueType = i32;
+/// #
+/// #     fn auto_increment() -> bool {
+/// #         true
+/// #     }
+/// # }
+/// #
+/// # #[derive(Copy, Clone, Debug, EnumIter)]
+/// # pub enum Relation {}
+/// #
+/// # impl ColumnTrait for Column {
+/// #     type EntityName = Entity;
+/// #
+/// #     fn def(&self) -> ColumnDef {
+/// #         match self {
+/// #             Self::Id => ColumnType::Integer.def(),
+/// #             Self::Name => ColumnType::String(None).def(),
+/// #         }
+/// #     }
+/// # }
+/// #
+/// # impl RelationTrait for Relation {
+/// #     fn def(&self) -> RelationDef {
+/// #         panic!("No Relation");
+/// #     }
+/// # }
+/// #
+/// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
 #[proc_macro_derive(DeriveEntity, attributes(sea_orm))]
 pub fn derive_entity(input: TokenStream) -> TokenStream {
@@ -25,10 +80,14 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
 
 /// This derive macro is the 'almighty' macro which automatically generates
 /// Entity, Column, and PrimaryKey from a given Model.
-/// ### Usage
-/// use sea_orm::entity::prelude::*;
 ///
-/// #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize, FromForm)]
+/// ### Usage
+///
+/// ```
+/// use sea_orm::entity::prelude::*;
+/// use serde::{Deserialize, Serialize};
+///
+/// #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
 /// #[sea_orm(table_name = "posts")]
 /// pub struct Model {
 ///     #[sea_orm(primary_key)]
@@ -37,6 +96,17 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
 ///     #[sea_orm(column_type = "Text")]
 ///     pub text: String,
 /// }
+///
+/// # #[derive(Copy, Clone, Debug, EnumIter)]
+/// # pub enum Relation {}
+/// #
+/// # impl RelationTrait for Relation {
+/// #     fn def(&self) -> RelationDef {
+/// #         panic!("No Relation");
+/// #     }
+/// # }
+/// #
+/// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
 #[proc_macro_derive(DeriveEntityModel, attributes(sea_orm))]
 pub fn derive_entity_model(input: TokenStream) -> TokenStream {
@@ -62,7 +132,9 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
 /// The DerivePrimaryKey derive macro will implement [PrimaryKeyToColumn]
 /// for PrimaryKey which defines tedious mappings between primary keys and columns.
 /// The [EnumIter] is also derived, allowing iteration over all enum variants.
+///
 /// ### Usage
+///
 /// ```
 /// use sea_orm::entity::prelude::*;
 ///
@@ -71,6 +143,57 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
 ///     CakeId,
 ///     FillingId,
 /// }
+///
+/// # #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+/// # pub struct Entity;
+/// #
+/// # impl EntityName for Entity {
+/// #     fn table_name(&self) -> &str {
+/// #         "cake"
+/// #     }
+/// # }
+/// #
+/// # #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+/// # pub struct Model {
+/// #     pub cake_id: i32,
+/// #     pub filling_id: i32,
+/// # }
+/// #
+/// # #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+/// # pub enum Column {
+/// #     CakeId,
+/// #     FillingId,
+/// # }
+/// #
+/// # #[derive(Copy, Clone, Debug, EnumIter)]
+/// # pub enum Relation {}
+/// #
+/// # impl ColumnTrait for Column {
+/// #     type EntityName = Entity;
+/// #
+/// #     fn def(&self) -> ColumnDef {
+/// #         match self {
+/// #             Self::CakeId => ColumnType::Integer.def(),
+/// #             Self::FillingId => ColumnType::Integer.def(),
+/// #         }
+/// #     }
+/// # }
+/// #
+/// # impl PrimaryKeyTrait for PrimaryKey {
+/// #     type ValueType = (i32, i32);
+/// #
+/// #     fn auto_increment() -> bool {
+/// #         false
+/// #     }
+/// # }
+/// #
+/// # impl RelationTrait for Relation {
+/// #     fn def(&self) -> RelationDef {
+/// #         panic!("No Relation");
+/// #     }
+/// # }
+/// #
+/// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
 #[proc_macro_derive(DerivePrimaryKey)]
 pub fn derive_primary_key(input: TokenStream) -> TokenStream {
@@ -85,7 +208,9 @@ pub fn derive_primary_key(input: TokenStream) -> TokenStream {
 /// The DeriveColumn derive macro will implement [ColumnTrait] for Columns.
 /// It defines the identifier of each column by implementing Iden and IdenStatic.
 /// The EnumIter is also derived, allowing iteration over all enum variants.
+///
 /// ### Usage
+///
 /// ```
 /// use sea_orm::entity::prelude::*;
 ///
@@ -106,13 +231,26 @@ pub fn derive_column(input: TokenStream) -> TokenStream {
 }
 
 /// Derive a column if column names are not in snake-case
+///
 /// ### Usage
+///
 /// ```
+/// use sea_orm::entity::prelude::*;
+///
 /// #[derive(Copy, Clone, Debug, EnumIter, DeriveCustomColumn)]
 /// pub enum Column {
 ///     Id,
 ///     Name,
 ///     VendorId,
+/// }
+///
+/// impl IdenStatic for Column {
+///     fn as_str(&self) -> &str {
+///         match self {
+///             Self::Id => "id",
+///             _ => self.default_as_str(),
+///         }
+///     }
 /// }
 /// ```
 #[proc_macro_derive(DeriveCustomColumn)]
@@ -128,14 +266,67 @@ pub fn derive_custom_column(input: TokenStream) -> TokenStream {
 /// The DeriveModel derive macro will implement ModelTrait for Model,
 /// which provides setters and getters for all attributes in the mod
 /// It also implements FromQueryResult to convert a query result into the corresponding Model.
+///
 /// ### Usage
 ///
 /// ```
+/// use sea_orm::entity::prelude::*;
+///
 /// #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 /// pub struct Model {
 ///     pub id: i32,
 ///     pub name: String,
 /// }
+///
+/// # #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+/// # pub struct Entity;
+/// #
+/// # impl EntityName for Entity {
+/// #     fn table_name(&self) -> &str {
+/// #         "cake"
+/// #     }
+/// # }
+/// #
+/// # #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+/// # pub enum Column {
+/// #     Id,
+/// #     Name,
+/// # }
+/// #
+/// # #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+/// # pub enum PrimaryKey {
+/// #     Id,
+/// # }
+/// #
+/// # impl PrimaryKeyTrait for PrimaryKey {
+/// #     type ValueType = i32;
+/// #
+/// #     fn auto_increment() -> bool {
+/// #         true
+/// #     }
+/// # }
+/// #
+/// # #[derive(Copy, Clone, Debug, EnumIter)]
+/// # pub enum Relation {}
+/// #
+/// # impl ColumnTrait for Column {
+/// #     type EntityName = Entity;
+/// #
+/// #     fn def(&self) -> ColumnDef {
+/// #         match self {
+/// #             Self::Id => ColumnType::Integer.def(),
+/// #             Self::Name => ColumnType::String(None).def(),
+/// #         }
+/// #     }
+/// # }
+/// #
+/// # impl RelationTrait for Relation {
+/// #     fn def(&self) -> RelationDef {
+/// #         panic!("No Relation");
+/// #     }
+/// # }
+/// #
+/// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
 #[proc_macro_derive(DeriveModel, attributes(sea_orm))]
 pub fn derive_model(input: TokenStream) -> TokenStream {
@@ -147,14 +338,67 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 
 /// The DeriveActiveModel derive macro will implement ActiveModelTrait for ActiveModel
 /// which provides setters and getters for all active values in the active model.
+///
 /// ### Usage
 ///
 /// ```
+/// use sea_orm::entity::prelude::*;
+///
 /// #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 /// pub struct Model {
 ///     pub id: i32,
 ///     pub name: String,
 /// }
+///
+/// # #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+/// # pub struct Entity;
+/// #
+/// # impl EntityName for Entity {
+/// #     fn table_name(&self) -> &str {
+/// #         "cake"
+/// #     }
+/// # }
+/// #
+/// # #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+/// # pub enum Column {
+/// #     Id,
+/// #     Name,
+/// # }
+/// #
+/// # #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+/// # pub enum PrimaryKey {
+/// #     Id,
+/// # }
+/// #
+/// # impl PrimaryKeyTrait for PrimaryKey {
+/// #     type ValueType = i32;
+/// #
+/// #     fn auto_increment() -> bool {
+/// #         true
+/// #     }
+/// # }
+/// #
+/// # #[derive(Copy, Clone, Debug, EnumIter)]
+/// # pub enum Relation {}
+/// #
+/// # impl ColumnTrait for Column {
+/// #     type EntityName = Entity;
+/// #
+/// #     fn def(&self) -> ColumnDef {
+/// #         match self {
+/// #             Self::Id => ColumnType::Integer.def(),
+/// #             Self::Name => ColumnType::String(None).def(),
+/// #         }
+/// #     }
+/// # }
+/// #
+/// # impl RelationTrait for Relation {
+/// #     fn def(&self) -> RelationDef {
+/// #         panic!("No Relation");
+/// #     }
+/// # }
+/// #
+/// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
 #[proc_macro_derive(DeriveActiveModel, attributes(sea_orm))]
 pub fn derive_active_model(input: TokenStream) -> TokenStream {
@@ -176,6 +420,7 @@ pub fn derive_into_active_model(input: TokenStream) -> TokenStream {
 }
 
 /// Models that a user can override
+///
 /// ### Usage
 ///
 /// ```
@@ -188,6 +433,54 @@ pub fn derive_into_active_model(input: TokenStream) -> TokenStream {
 ///     pub id: i32,
 ///     pub name: String,
 /// }
+///
+/// # #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+/// # pub struct Entity;
+/// #
+/// # impl EntityName for Entity {
+/// #     fn table_name(&self) -> &str {
+/// #         "cake"
+/// #     }
+/// # }
+/// #
+/// # #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+/// # pub enum Column {
+/// #     Id,
+/// #     Name,
+/// # }
+/// #
+/// # #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+/// # pub enum PrimaryKey {
+/// #     Id,
+/// # }
+/// #
+/// # impl PrimaryKeyTrait for PrimaryKey {
+/// #     type ValueType = i32;
+/// #
+/// #     fn auto_increment() -> bool {
+/// #         true
+/// #     }
+/// # }
+/// #
+/// # #[derive(Copy, Clone, Debug, EnumIter)]
+/// # pub enum Relation {}
+/// #
+/// # impl ColumnTrait for Column {
+/// #     type EntityName = Entity;
+/// #
+/// #     fn def(&self) -> ColumnDef {
+/// #         match self {
+/// #             Self::Id => ColumnType::Integer.def(),
+/// #             Self::Name => ColumnType::String(None).def(),
+/// #         }
+/// #     }
+/// # }
+/// #
+/// # impl RelationTrait for Relation {
+/// #     fn def(&self) -> RelationDef {
+/// #         panic!("No Relation");
+/// #     }
+/// # }
 /// ```
 #[proc_macro_derive(DeriveActiveModelBehavior)]
 pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
@@ -200,9 +493,12 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 }
 
 /// Convert a query result into the corresponding Model.
+///
 /// ### Usage
 ///
 /// ```
+/// use sea_orm::{entity::prelude::*, FromQueryResult};
+///
 /// #[derive(Debug, FromQueryResult)]
 /// struct SelectResult {
 ///     name: String,
@@ -220,20 +516,25 @@ pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
 }
 
 /// The DeriveRelation derive macro will implement RelationTrait for Relation.
+///
 /// ### Usage
+///
 /// ```
+/// # use sea_orm::tests_cfg::fruit::Entity;
+/// use sea_orm::entity::prelude::*;
+///
 /// #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 /// pub enum Relation {
 ///     #[sea_orm(
-///         belongs_to = "super::cake::Entity",
-///         from = "Column::CakeId",
-///         to = "super::cake::Column::Id"
+///         belongs_to = "sea_orm::tests_cfg::cake::Entity",
+///         from = "sea_orm::tests_cfg::fruit::Column::CakeId",
+///         to = "sea_orm::tests_cfg::cake::Column::Id"
 ///     )]
 ///     Cake,
 ///     #[sea_orm(
-///         belongs_to = "super::cake_expanded::Entity",
-///         from = "Column::CakeId",
-///         to = "super::cake_expanded::Column::Id"
+///         belongs_to = "sea_orm::tests_cfg::cake_expanded::Entity",
+///         from = "sea_orm::tests_cfg::fruit::Column::CakeId",
+///         to = "sea_orm::tests_cfg::cake_expanded::Column::Id"
 ///     )]
 ///     CakeExpanded,
 /// }
