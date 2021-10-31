@@ -17,8 +17,7 @@
 /// ```
 /// #[cfg(feature = "macros")]
 ///
-/// # use crate::entity::prelude::*;
-/// # use sea_orm_macros::*;
+/// # use sea_orm::entity::prelude::*;
 /// use sea_orm::ActiveModelBehavior;
 /// use sea_orm::RelationDef;
 /// use sea_orm::RelationTrait;

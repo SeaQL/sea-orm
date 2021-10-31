@@ -33,6 +33,7 @@ impl SqlxSqliteConnector {
 
     /// Add configuration options for the SQLite database
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
+        let mut options = options;
         let mut opt = options
             .url
             .parse::<SqliteConnectOptions>()

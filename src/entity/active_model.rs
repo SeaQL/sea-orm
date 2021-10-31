@@ -16,8 +16,8 @@ use std::fmt::Debug;
 /// // The code snipped below does an UPDATE operation on a [ActiveValue]
 /// // yielding the the SQL statement ` r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"# `
 ///
-/// use crate::tests_cfg::{cake, fruit};
-/// use crate::{entity::*, query::*, DbBackend};
+/// use sea_orm::tests_cfg::{cake, fruit};
+/// use sea_orm::{entity::*, query::*, DbBackend};
 ///
 /// Update::one(fruit::ActiveModel {
 ///     id: ActiveValue::set(1),
