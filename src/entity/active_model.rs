@@ -5,7 +5,28 @@ use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
 use std::fmt::Debug;
 
-/// Defines a value from an ActiveModel and its state
+/// Defines a value from an ActiveModel and its state.
+/// The field `value` takes in an [Option] type where `Option::Some(V)` , with `V` holding
+/// the value that operations like `UPDATE` are being performed on and
+/// the `state` field is either `ActiveValueState::Set` or `ActiveValueState::Unchanged`.
+/// [Option::None] in the `value` field indicates no value being performed by an operation
+/// and that the `state` field of the [ActiveValue] is set to `ActiveValueState::Unset` .
+/// #### Example snippet
+/// ```no_run
+/// // The code snipped below does an UPDATE operation on a [ActiveValue]
+/// // yielding the the SQL statement ` r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"# `
+///
+/// use crate::tests_cfg::{cake, fruit};
+/// use crate::{entity::*, query::*, DbBackend};
+///
+/// Update::one(fruit::ActiveModel {
+///     id: ActiveValue::set(1),
+///     name: ActiveValue::set("Orange".to_owned()),
+///     cake_id: ActiveValue::unset(),
+/// })
+/// .build(DbBackend::Postgres)
+/// .to_string();
+/// ```
 #[derive(Clone, Debug, Default)]
 pub struct ActiveValue<V>
 where
