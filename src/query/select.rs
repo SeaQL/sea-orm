@@ -13,6 +13,7 @@ where
     E: EntityTrait,
 {
     pub(crate) query: SelectStatement,
+    pub(crate) with_deleted: bool,
     pub(crate) entity: PhantomData<E>,
 }
 
@@ -103,16 +104,27 @@ where
     E: EntityTrait,
 {
     pub(crate) fn new() -> Self {
-        Self::with_deleted().prepare_soft_delete_filter()
+        Self {
+            query: SelectStatement::new(),
+            with_deleted: false,
+            entity: PhantomData,
+        }
+        .prepare()
     }
 
     pub(crate) fn with_deleted() -> Self {
         Self {
             query: SelectStatement::new(),
+            with_deleted: true,
             entity: PhantomData,
         }
-        .prepare_select()
-        .prepare_from()
+        .prepare()
+    }
+
+    fn prepare(self) -> Self {
+        self.prepare_select()
+            .prepare_from()
+            .prepare_soft_delete_filter()
     }
 
     fn prepare_select(mut self) -> Self {
@@ -131,10 +143,11 @@ where
     }
 
     fn prepare_soft_delete_filter(mut self) -> Self {
-        if let Some(soft_delete_column) =
-            <<E as EntityTrait>::Model as ModelTrait>::soft_delete_column()
-        {
-            self.query.and_where(soft_delete_column.is_null());
+        match <<E as EntityTrait>::Model as ModelTrait>::soft_delete_column() {
+            Some(soft_delete_column) if !self.with_deleted => {
+                self.query.and_where(soft_delete_column.is_null());
+            }
+            _ => {}
         }
         self
     }

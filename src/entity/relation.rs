@@ -33,10 +33,11 @@ where
     {
         let mut select =
             Select::<R>::new().join_join_rev(JoinType::InnerJoin, Self::to(), Self::via());
-        if let Some(soft_delete_column) =
-            <<Self as EntityTrait>::Model as ModelTrait>::soft_delete_column()
-        {
-            select.query().and_where(soft_delete_column.is_null());
+        match <<Self as EntityTrait>::Model as ModelTrait>::soft_delete_column() {
+            Some(soft_delete_column) if !select.with_deleted => {
+                select.query().and_where(soft_delete_column.is_null());
+            }
+            _ => {}
         }
         select
     }

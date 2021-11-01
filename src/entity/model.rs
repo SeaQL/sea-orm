@@ -39,12 +39,13 @@ pub trait ModelTrait: Clone + Send + Debug {
     {
         let tbl_alias = &format!("r{}", l.link().len() - 1);
         let mut select = l.find_linked();
-        if let Some(soft_delete_column) =
-            <<Self::Entity as EntityTrait>::Model as ModelTrait>::soft_delete_column()
-        {
-            select
-                .query()
-                .and_where(Expr::tbl(Alias::new(tbl_alias), soft_delete_column).is_null());
+        match <<Self::Entity as EntityTrait>::Model as ModelTrait>::soft_delete_column() {
+            Some(soft_delete_column) if !select.with_deleted => {
+                select
+                    .query()
+                    .and_where(Expr::tbl(Alias::new(tbl_alias), soft_delete_column).is_null());
+            }
+            _ => {}
         }
         select.belongs_to_tbl_alias(self, tbl_alias)
     }

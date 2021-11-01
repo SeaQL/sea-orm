@@ -92,7 +92,7 @@ pub async fn create_and_delete_soft_delete_model(db: &DatabaseConnection) -> Res
     }
     assert_eq!(Entity::find().count(db).await?, 10);
 
-    // Retrieve the first model out
+    // Retrieve the first model
     let model = Entity::find()
         .order_by_asc(Column::Id)
         .one(db)
@@ -130,7 +130,7 @@ pub async fn create_and_delete_soft_delete_model(db: &DatabaseConnection) -> Res
     assert_eq!(Entity::find().count(db).await?, 9);
     assert_eq!(Entity::find_with_deleted().count(db).await?, 9);
 
-    // Retrieve the second model out
+    // Retrieve the second model
     let model = Entity::find()
         .order_by_asc(Column::Id)
         .one(db)
@@ -152,7 +152,7 @@ pub async fn create_and_delete_soft_delete_model(db: &DatabaseConnection) -> Res
     assert_eq!(Entity::find().count(db).await?, 8);
     assert_eq!(Entity::find_with_deleted().count(db).await?, 8);
 
-    // Retrieve the third model out
+    // Retrieve the third model
     let model = Entity::find()
         .order_by_asc(Column::Id)
         .one(db)
@@ -202,7 +202,7 @@ pub async fn create_and_delete_model(db: &DatabaseConnection) -> Result<(), DbEr
     }
     assert_eq!(Entity::find().count(db).await?, 10);
 
-    // Retrieve the first model out
+    // Retrieve the first model
     let model = Entity::find()
         .order_by_asc(Column::Id)
         .one(db)
@@ -232,7 +232,7 @@ pub async fn create_and_delete_model(db: &DatabaseConnection) -> Result<(), DbEr
         .await?;
     assert!(deleted_model.is_none());
 
-    // Retrieve the second model out
+    // Retrieve the second model
     let model = Entity::find()
         .order_by_asc(Column::Id)
         .one(db)
@@ -254,7 +254,7 @@ pub async fn create_and_delete_model(db: &DatabaseConnection) -> Result<(), DbEr
     assert_eq!(Entity::find().count(db).await?, 8);
     assert_eq!(Entity::find_with_deleted().count(db).await?, 8);
 
-    // Retrieve the third model out
+    // Retrieve the third model
     let model = Entity::find()
         .order_by_asc(Column::Id)
         .one(db)

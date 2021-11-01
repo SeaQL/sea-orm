@@ -50,7 +50,17 @@ where
         R: EntityTrait,
         E: Related<R>,
     {
-        self.left_join(r).select_also(r)
+        let with_deleted = self.with_deleted;
+        let mut select_two = self.left_join(r).select_also(r);
+        match <<R as EntityTrait>::Model as ModelTrait>::soft_delete_column() {
+            Some(soft_delete_column) if !with_deleted => {
+                select_two
+                    .query()
+                    .and_where(Expr::tbl(R::default(), soft_delete_column).is_null());
+            }
+            _ => {}
+        }
+        select_two
     }
 
     /// Left Join with a Related Entity and select the related Entity as a `Vec`
@@ -59,7 +69,17 @@ where
         R: EntityTrait,
         E: Related<R>,
     {
-        self.left_join(r).select_with(r)
+        let with_deleted = self.with_deleted;
+        let mut select_two_many = self.left_join(r).select_with(r);
+        match <<R as EntityTrait>::Model as ModelTrait>::soft_delete_column() {
+            Some(soft_delete_column) if !with_deleted => {
+                select_two_many
+                    .query()
+                    .and_where(Expr::tbl(R::default(), soft_delete_column).is_null());
+            }
+            _ => {}
+        }
+        select_two_many
     }
 
     /// Left Join with a Linked Entity and select both Entity.
@@ -68,6 +88,7 @@ where
         L: Linked<FromEntity = E, ToEntity = T>,
         T: EntityTrait,
     {
+        let with_deleted = self.with_deleted;
         let mut slf = self;
         for (i, rel) in l.link().into_iter().enumerate() {
             let to_tbl = Alias::new(&format!("r{}", i)).into_iden();
@@ -94,12 +115,13 @@ where
                 alias: Some(SeaRc::new(Alias::new(&alias))),
             });
         }
-        if let Some(soft_delete_column) =
-            <<T as EntityTrait>::Model as ModelTrait>::soft_delete_column()
-        {
-            select_two
-                .query()
-                .and_where(Expr::tbl(tbl, soft_delete_column).is_null());
+        match <<T as EntityTrait>::Model as ModelTrait>::soft_delete_column() {
+            Some(soft_delete_column) if !with_deleted => {
+                select_two
+                    .query()
+                    .and_where(Expr::tbl(tbl, soft_delete_column).is_null());
+            }
+            _ => {}
         }
         select_two
     }
