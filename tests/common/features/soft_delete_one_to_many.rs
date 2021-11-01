@@ -4,7 +4,7 @@ pub mod parent {
     use sea_orm::entity::prelude::*;
 
     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-    #[sea_orm(table_name = "soft_delete")]
+    #[sea_orm(table_name = "parent")]
     pub struct Model {
         #[sea_orm(primary_key)]
         pub id: i32,
@@ -66,10 +66,10 @@ pub mod parent {
                 [
                     "SELECT `soft_delete_child`.`id`, `soft_delete_child`.`parent_id`, `soft_delete_child`.`name`, `soft_delete_child`.`created_at`, `soft_delete_child`.`updated_at`, `soft_delete_child`.`deleted_at`",
                     "FROM `soft_delete_child`",
-                    "INNER JOIN `soft_delete` ON `soft_delete`.`id` = `soft_delete_child`.`parent_id`",
+                    "INNER JOIN `parent` ON `parent`.`id` = `soft_delete_child`.`parent_id`",
                     "WHERE `soft_delete_child`.`deleted_at` IS NULL",
-                    "AND `soft_delete`.`deleted_at` IS NULL",
-                    "AND `soft_delete`.`id` = 11",
+                    "AND `parent`.`deleted_at` IS NULL",
+                    "AND `parent`.`id` = 11",
                 ]
                 .join(" ")
             );
@@ -93,10 +93,10 @@ pub mod parent {
                 [
                     "SELECT `soft_delete_child`.`id`, `soft_delete_child`.`parent_id`, `soft_delete_child`.`name`, `soft_delete_child`.`created_at`, `soft_delete_child`.`updated_at`, `soft_delete_child`.`deleted_at`",
                     "FROM `soft_delete_child`",
-                    "INNER JOIN `soft_delete` ON `soft_delete`.`id` = `soft_delete_child`.`parent_id`",
+                    "INNER JOIN `parent` ON `parent`.`id` = `soft_delete_child`.`parent_id`",
                     "WHERE `soft_delete_child`.`deleted_at` IS NULL",
-                    "AND `soft_delete`.`deleted_at` IS NULL",
-                    "AND `soft_delete`.`id` = 12",
+                    "AND `parent`.`deleted_at` IS NULL",
+                    "AND `parent`.`id` = 12",
                 ]
                 .join(" ")
             );
@@ -110,11 +110,11 @@ pub mod parent {
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
-                    "SELECT `soft_delete`.`id` AS `A_id`, `soft_delete`.`name` AS `A_name`, `soft_delete`.`created_at` AS `A_created_at`, `soft_delete`.`updated_at` AS `A_updated_at`, `soft_delete`.`deleted_at` AS `A_deleted_at`,",
+                    "SELECT `parent`.`id` AS `A_id`, `parent`.`name` AS `A_name`, `parent`.`created_at` AS `A_created_at`, `parent`.`updated_at` AS `A_updated_at`, `parent`.`deleted_at` AS `A_deleted_at`,",
                     "`r0`.`id` AS `B_id`, `r0`.`parent_id` AS `B_parent_id`, `r0`.`name` AS `B_name`, `r0`.`created_at` AS `B_created_at`, `r0`.`updated_at` AS `B_updated_at`, `r0`.`deleted_at` AS `B_deleted_at`",
-                    "FROM `soft_delete`",
-                    "LEFT JOIN `soft_delete_child` AS `r0` ON `soft_delete`.`id` = `r0`.`parent_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
+                    "FROM `parent`",
+                    "LEFT JOIN `soft_delete_child` AS `r0` ON `parent`.`id` = `r0`.`parent_id`",
+                    "WHERE `parent`.`deleted_at` IS NULL",
                     "AND `r0`.`deleted_at` IS NULL",
                 ]
                 .join(" ")
@@ -139,7 +139,7 @@ pub mod parent {
                 [
                     "SELECT `soft_delete_child`.`id`, `soft_delete_child`.`parent_id`, `soft_delete_child`.`name`, `soft_delete_child`.`created_at`, `soft_delete_child`.`updated_at`, `soft_delete_child`.`deleted_at`",
                     "FROM `soft_delete_child`",
-                    "INNER JOIN `soft_delete` AS `r0` ON `r0`.`id` = `soft_delete_child`.`parent_id`",
+                    "INNER JOIN `parent` AS `r0` ON `r0`.`id` = `soft_delete_child`.`parent_id`",
                     "WHERE `soft_delete_child`.`deleted_at` IS NULL",
                     "AND `r0`.`deleted_at` IS NULL",
                     "AND `r0`.`id` = 18",
@@ -159,9 +159,9 @@ pub mod parent {
                 [
                     "SELECT `child`.`id`, `child`.`parent_id`, `child`.`name`, `child`.`created_at`, `child`.`updated_at`, `child`.`deleted_at`",
                     "FROM `child`",
-                    "INNER JOIN `soft_delete` ON `soft_delete`.`id` = `child`.`parent_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
-                    "AND `soft_delete`.`id` = 11",
+                    "INNER JOIN `parent` ON `parent`.`id` = `child`.`parent_id`",
+                    "WHERE `parent`.`deleted_at` IS NULL",
+                    "AND `parent`.`id` = 11",
                 ]
                 .join(" ")
             );
@@ -185,9 +185,9 @@ pub mod parent {
                 [
                     "SELECT `child`.`id`, `child`.`parent_id`, `child`.`name`, `child`.`created_at`, `child`.`updated_at`, `child`.`deleted_at`",
                     "FROM `child`",
-                    "INNER JOIN `soft_delete` ON `soft_delete`.`id` = `child`.`parent_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
-                    "AND `soft_delete`.`id` = 12",
+                    "INNER JOIN `parent` ON `parent`.`id` = `child`.`parent_id`",
+                    "WHERE `parent`.`deleted_at` IS NULL",
+                    "AND `parent`.`id` = 12",
                 ]
                 .join(" ")
             );

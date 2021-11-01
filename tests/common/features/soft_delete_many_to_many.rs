@@ -2,7 +2,7 @@ pub mod parent {
     use sea_orm::entity::prelude::*;
 
     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-    #[sea_orm(table_name = "soft_delete")]
+    #[sea_orm(table_name = "parent")]
     pub struct Model {
         #[sea_orm(primary_key)]
         pub id: i32,
@@ -172,11 +172,11 @@ pub mod child_with_sd_via_sd_junction {
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
-                    "SELECT `soft_delete`.`id`, `soft_delete`.`name`, `soft_delete`.`created_at`, `soft_delete`.`updated_at`, `soft_delete`.`deleted_at`",
-                    "FROM `soft_delete`",
-                    "INNER JOIN `soft_delete_junction` ON `soft_delete_junction`.`parent_id` = `soft_delete`.`id`",
+                    "SELECT `parent`.`id`, `parent`.`name`, `parent`.`created_at`, `parent`.`updated_at`, `parent`.`deleted_at`",
+                    "FROM `parent`",
+                    "INNER JOIN `soft_delete_junction` ON `soft_delete_junction`.`parent_id` = `parent`.`id`",
                     "INNER JOIN `soft_delete_child` ON `soft_delete_child`.`id` = `soft_delete_junction`.`child_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
+                    "WHERE `parent`.`deleted_at` IS NULL",
                     // FIXME: No way to know if the junction have soft delete enabled with only RelationDef on hand
                     // "AND `soft_delete_junction`.`deleted_at` IS NULL",
                     "AND `soft_delete_child`.`deleted_at` IS NULL",
@@ -203,11 +203,11 @@ pub mod child_with_sd_via_sd_junction {
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
-                    "SELECT `soft_delete`.`id`, `soft_delete`.`name`, `soft_delete`.`created_at`, `soft_delete`.`updated_at`, `soft_delete`.`deleted_at`",
-                    "FROM `soft_delete`",
-                    "INNER JOIN `soft_delete_junction` ON `soft_delete_junction`.`parent_id` = `soft_delete`.`id`",
+                    "SELECT `parent`.`id`, `parent`.`name`, `parent`.`created_at`, `parent`.`updated_at`, `parent`.`deleted_at`",
+                    "FROM `parent`",
+                    "INNER JOIN `soft_delete_junction` ON `soft_delete_junction`.`parent_id` = `parent`.`id`",
                     "INNER JOIN `soft_delete_child` ON `soft_delete_child`.`id` = `soft_delete_junction`.`child_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
+                    "WHERE `parent`.`deleted_at` IS NULL",
                     // FIXME: No way to know if the junction have soft delete enabled with only RelationDef on hand
                     // "AND `soft_delete_junction`.`deleted_at` IS NULL",
                     "AND `soft_delete_child`.`deleted_at` IS NULL",
@@ -229,7 +229,7 @@ pub mod child_with_sd_via_sd_junction {
                     "`r1`.`id` AS `B_id`, `r1`.`name` AS `B_name`, `r1`.`created_at` AS `B_created_at`, `r1`.`updated_at` AS `B_updated_at`, `r1`.`deleted_at` AS `B_deleted_at`",
                     "FROM `soft_delete_child`",
                     "LEFT JOIN `soft_delete_junction` AS `r0` ON `soft_delete_child`.`id` = `r0`.`child_id`",
-                    "LEFT JOIN `soft_delete` AS `r1` ON `r0`.`parent_id` = `r1`.`id`",
+                    "LEFT JOIN `parent` AS `r1` ON `r0`.`parent_id` = `r1`.`id`",
                     "WHERE `soft_delete_child`.`deleted_at` IS NULL",
                     // FIXME: No way to know if the junction have soft delete enabled with only RelationDef on hand
                     // "AND `r0`.`deleted_at` IS NULL",
@@ -256,11 +256,11 @@ pub mod child_with_sd_via_sd_junction {
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
-                    "SELECT `soft_delete`.`id`, `soft_delete`.`name`, `soft_delete`.`created_at`, `soft_delete`.`updated_at`, `soft_delete`.`deleted_at`",
-                    "FROM `soft_delete`",
-                    "INNER JOIN `soft_delete_junction` AS `r0` ON `r0`.`parent_id` = `soft_delete`.`id`",
+                    "SELECT `parent`.`id`, `parent`.`name`, `parent`.`created_at`, `parent`.`updated_at`, `parent`.`deleted_at`",
+                    "FROM `parent`",
+                    "INNER JOIN `soft_delete_junction` AS `r0` ON `r0`.`parent_id` = `parent`.`id`",
                     "INNER JOIN `soft_delete_child` AS `r1` ON `r1`.`id` = `r0`.`child_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
+                    "WHERE `parent`.`deleted_at` IS NULL",
                     // FIXME: No way to know if the junction have soft delete enabled with only RelationDef on hand
                     // "AND `r0`.`deleted_at` IS NULL",
                     "AND `r1`.`deleted_at` IS NULL",
@@ -340,11 +340,11 @@ pub mod child_via_sd_junction {
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
-                    "SELECT `soft_delete`.`id`, `soft_delete`.`name`, `soft_delete`.`created_at`, `soft_delete`.`updated_at`, `soft_delete`.`deleted_at`",
-                    "FROM `soft_delete`",
-                    "INNER JOIN `soft_delete_junction` ON `soft_delete_junction`.`parent_id` = `soft_delete`.`id`",
+                    "SELECT `parent`.`id`, `parent`.`name`, `parent`.`created_at`, `parent`.`updated_at`, `parent`.`deleted_at`",
+                    "FROM `parent`",
+                    "INNER JOIN `soft_delete_junction` ON `soft_delete_junction`.`parent_id` = `parent`.`id`",
                     "INNER JOIN `child` ON `child`.`id` = `soft_delete_junction`.`child_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
+                    "WHERE `parent`.`deleted_at` IS NULL",
                     // FIXME: No way to know if the junction have soft delete enabled with only RelationDef on hand
                     // "AND `soft_delete_junction`.`deleted_at` IS NULL",
                     "AND `child`.`id` = 11",
@@ -370,11 +370,11 @@ pub mod child_via_sd_junction {
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
-                    "SELECT `soft_delete`.`id`, `soft_delete`.`name`, `soft_delete`.`created_at`, `soft_delete`.`updated_at`, `soft_delete`.`deleted_at`",
-                    "FROM `soft_delete`",
-                    "INNER JOIN `soft_delete_junction` ON `soft_delete_junction`.`parent_id` = `soft_delete`.`id`",
+                    "SELECT `parent`.`id`, `parent`.`name`, `parent`.`created_at`, `parent`.`updated_at`, `parent`.`deleted_at`",
+                    "FROM `parent`",
+                    "INNER JOIN `soft_delete_junction` ON `soft_delete_junction`.`parent_id` = `parent`.`id`",
                     "INNER JOIN `child` ON `child`.`id` = `soft_delete_junction`.`child_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
+                    "WHERE `parent`.`deleted_at` IS NULL",
                     // FIXME: No way to know if the junction have soft delete enabled with only RelationDef on hand
                     // "AND `soft_delete_junction`.`deleted_at` IS NULL",
                     "AND `child`.`id` = 12",
@@ -395,7 +395,7 @@ pub mod child_via_sd_junction {
                     "`r1`.`id` AS `B_id`, `r1`.`name` AS `B_name`, `r1`.`created_at` AS `B_created_at`, `r1`.`updated_at` AS `B_updated_at`, `r1`.`deleted_at` AS `B_deleted_at`",
                     "FROM `child`",
                     "LEFT JOIN `soft_delete_junction` AS `r0` ON `child`.`id` = `r0`.`child_id`",
-                    "LEFT JOIN `soft_delete` AS `r1` ON `r0`.`parent_id` = `r1`.`id`",
+                    "LEFT JOIN `parent` AS `r1` ON `r0`.`parent_id` = `r1`.`id`",
                     "WHERE `r1`.`deleted_at` IS NULL",
                     // FIXME: No way to know if the junction have soft delete enabled with only RelationDef on hand
                     // "AND `r0`.`deleted_at` IS NULL",
@@ -421,11 +421,11 @@ pub mod child_via_sd_junction {
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
-                    "SELECT `soft_delete`.`id`, `soft_delete`.`name`, `soft_delete`.`created_at`, `soft_delete`.`updated_at`, `soft_delete`.`deleted_at`",
-                    "FROM `soft_delete`",
-                    "INNER JOIN `soft_delete_junction` AS `r0` ON `r0`.`parent_id` = `soft_delete`.`id`",
+                    "SELECT `parent`.`id`, `parent`.`name`, `parent`.`created_at`, `parent`.`updated_at`, `parent`.`deleted_at`",
+                    "FROM `parent`",
+                    "INNER JOIN `soft_delete_junction` AS `r0` ON `r0`.`parent_id` = `parent`.`id`",
                     "INNER JOIN `child` AS `r1` ON `r1`.`id` = `r0`.`child_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
+                    "WHERE `parent`.`deleted_at` IS NULL",
                     // FIXME: No way to know if the junction have soft delete enabled with only RelationDef on hand
                     // "AND `r0`.`deleted_at` IS NULL",
                     "AND `r1`.`id` = 18",
@@ -499,11 +499,11 @@ pub mod child_with_sd_via_junction {
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
-                    "SELECT `soft_delete`.`id`, `soft_delete`.`name`, `soft_delete`.`created_at`, `soft_delete`.`updated_at`, `soft_delete`.`deleted_at`",
-                    "FROM `soft_delete`",
-                    "INNER JOIN `junction` ON `junction`.`parent_id` = `soft_delete`.`id`",
+                    "SELECT `parent`.`id`, `parent`.`name`, `parent`.`created_at`, `parent`.`updated_at`, `parent`.`deleted_at`",
+                    "FROM `parent`",
+                    "INNER JOIN `junction` ON `junction`.`parent_id` = `parent`.`id`",
                     "INNER JOIN `soft_delete_child` ON `soft_delete_child`.`id` = `junction`.`child_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
+                    "WHERE `parent`.`deleted_at` IS NULL",
                     "AND `soft_delete_child`.`deleted_at` IS NULL",
                     "AND `soft_delete_child`.`id` = 11",
                 ]
@@ -528,11 +528,11 @@ pub mod child_with_sd_via_junction {
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
-                    "SELECT `soft_delete`.`id`, `soft_delete`.`name`, `soft_delete`.`created_at`, `soft_delete`.`updated_at`, `soft_delete`.`deleted_at`",
-                    "FROM `soft_delete`",
-                    "INNER JOIN `junction` ON `junction`.`parent_id` = `soft_delete`.`id`",
+                    "SELECT `parent`.`id`, `parent`.`name`, `parent`.`created_at`, `parent`.`updated_at`, `parent`.`deleted_at`",
+                    "FROM `parent`",
+                    "INNER JOIN `junction` ON `junction`.`parent_id` = `parent`.`id`",
                     "INNER JOIN `soft_delete_child` ON `soft_delete_child`.`id` = `junction`.`child_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
+                    "WHERE `parent`.`deleted_at` IS NULL",
                     "AND `soft_delete_child`.`deleted_at` IS NULL",
                     "AND `soft_delete_child`.`id` = 12",
                 ]
@@ -552,7 +552,7 @@ pub mod child_with_sd_via_junction {
                     "`r1`.`id` AS `B_id`, `r1`.`name` AS `B_name`, `r1`.`created_at` AS `B_created_at`, `r1`.`updated_at` AS `B_updated_at`, `r1`.`deleted_at` AS `B_deleted_at`",
                     "FROM `soft_delete_child`",
                     "LEFT JOIN `junction` AS `r0` ON `soft_delete_child`.`id` = `r0`.`child_id`",
-                    "LEFT JOIN `soft_delete` AS `r1` ON `r0`.`parent_id` = `r1`.`id`",
+                    "LEFT JOIN `parent` AS `r1` ON `r0`.`parent_id` = `r1`.`id`",
                     "WHERE `soft_delete_child`.`deleted_at` IS NULL",
                     "AND `r1`.`deleted_at` IS NULL",
                 ]
@@ -577,11 +577,11 @@ pub mod child_with_sd_via_junction {
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
-                    "SELECT `soft_delete`.`id`, `soft_delete`.`name`, `soft_delete`.`created_at`, `soft_delete`.`updated_at`, `soft_delete`.`deleted_at`",
-                    "FROM `soft_delete`",
-                    "INNER JOIN `junction` AS `r0` ON `r0`.`parent_id` = `soft_delete`.`id`",
+                    "SELECT `parent`.`id`, `parent`.`name`, `parent`.`created_at`, `parent`.`updated_at`, `parent`.`deleted_at`",
+                    "FROM `parent`",
+                    "INNER JOIN `junction` AS `r0` ON `r0`.`parent_id` = `parent`.`id`",
                     "INNER JOIN `soft_delete_child` AS `r1` ON `r1`.`id` = `r0`.`child_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
+                    "WHERE `parent`.`deleted_at` IS NULL",
                     "AND `r1`.`deleted_at` IS NULL",
                     "AND `r1`.`id` = 18",
                 ]
@@ -653,11 +653,11 @@ pub mod child_via_junction {
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
-                    "SELECT `soft_delete`.`id`, `soft_delete`.`name`, `soft_delete`.`created_at`, `soft_delete`.`updated_at`, `soft_delete`.`deleted_at`",
-                    "FROM `soft_delete`",
-                    "INNER JOIN `junction` ON `junction`.`parent_id` = `soft_delete`.`id`",
+                    "SELECT `parent`.`id`, `parent`.`name`, `parent`.`created_at`, `parent`.`updated_at`, `parent`.`deleted_at`",
+                    "FROM `parent`",
+                    "INNER JOIN `junction` ON `junction`.`parent_id` = `parent`.`id`",
                     "INNER JOIN `child` ON `child`.`id` = `junction`.`child_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
+                    "WHERE `parent`.`deleted_at` IS NULL",
                     "AND `child`.`id` = 11",
                 ]
                 .join(" ")
@@ -681,11 +681,11 @@ pub mod child_via_junction {
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
-                    "SELECT `soft_delete`.`id`, `soft_delete`.`name`, `soft_delete`.`created_at`, `soft_delete`.`updated_at`, `soft_delete`.`deleted_at`",
-                    "FROM `soft_delete`",
-                    "INNER JOIN `junction` ON `junction`.`parent_id` = `soft_delete`.`id`",
+                    "SELECT `parent`.`id`, `parent`.`name`, `parent`.`created_at`, `parent`.`updated_at`, `parent`.`deleted_at`",
+                    "FROM `parent`",
+                    "INNER JOIN `junction` ON `junction`.`parent_id` = `parent`.`id`",
                     "INNER JOIN `child` ON `child`.`id` = `junction`.`child_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
+                    "WHERE `parent`.`deleted_at` IS NULL",
                     "AND `child`.`id` = 12",
                 ]
                 .join(" ")
@@ -704,7 +704,7 @@ pub mod child_via_junction {
                     "`r1`.`id` AS `B_id`, `r1`.`name` AS `B_name`, `r1`.`created_at` AS `B_created_at`, `r1`.`updated_at` AS `B_updated_at`, `r1`.`deleted_at` AS `B_deleted_at`",
                     "FROM `child`",
                     "LEFT JOIN `junction` AS `r0` ON `child`.`id` = `r0`.`child_id`",
-                    "LEFT JOIN `soft_delete` AS `r1` ON `r0`.`parent_id` = `r1`.`id`",
+                    "LEFT JOIN `parent` AS `r1` ON `r0`.`parent_id` = `r1`.`id`",
                     "WHERE `r1`.`deleted_at` IS NULL",
                 ]
                 .join(" ")
@@ -728,11 +728,11 @@ pub mod child_via_junction {
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
-                    "SELECT `soft_delete`.`id`, `soft_delete`.`name`, `soft_delete`.`created_at`, `soft_delete`.`updated_at`, `soft_delete`.`deleted_at`",
-                    "FROM `soft_delete`",
-                    "INNER JOIN `junction` AS `r0` ON `r0`.`parent_id` = `soft_delete`.`id`",
+                    "SELECT `parent`.`id`, `parent`.`name`, `parent`.`created_at`, `parent`.`updated_at`, `parent`.`deleted_at`",
+                    "FROM `parent`",
+                    "INNER JOIN `junction` AS `r0` ON `r0`.`parent_id` = `parent`.`id`",
                     "INNER JOIN `child` AS `r1` ON `r1`.`id` = `r0`.`child_id`",
-                    "WHERE `soft_delete`.`deleted_at` IS NULL",
+                    "WHERE `parent`.`deleted_at` IS NULL",
                     "AND `r1`.`id` = 18",
                 ]
                 .join(" ")
