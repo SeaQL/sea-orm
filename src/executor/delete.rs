@@ -77,9 +77,7 @@ where
             let update_stmt = UpdateStatement::new()
                 .table(E::default())
                 .col_expr(soft_delete_column, Expr::value(value))
-                .set_conditions(delete_stmt.take_conditions())
-                // FIXME: Should use `append_conditions`
-                // .append_conditions(delete_stmt.take_conditions())
+                .extend_conditions(delete_stmt.take_conditions())
                 .to_owned();
             Deleter::new(update_stmt).exec(db).await
         }
