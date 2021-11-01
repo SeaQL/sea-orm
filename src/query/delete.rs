@@ -1,9 +1,9 @@
 use crate::{
-    ActiveModelTrait, ColumnTrait, DbBackend, EntityTrait, IntoActiveModel, Iterable, ModelTrait,
-    PrimaryKeyToColumn, QueryFilter, QueryTrait, Statement,
+    convert_to_soft_delete, ActiveModelTrait, ColumnTrait, DbBackend, EntityTrait, IntoActiveModel,
+    Iterable, ModelTrait, PrimaryKeyToColumn, QueryFilter, QueryTrait, Statement,
 };
 use core::marker::PhantomData;
-use sea_query::{ConditionalStatement, DeleteStatement, Expr, IntoIden, UpdateStatement};
+use sea_query::{DeleteStatement, IntoIden};
 
 #[derive(Clone, Debug)]
 pub struct Delete;
@@ -219,13 +219,7 @@ where
     let query_builder = db_backend.get_query_builder();
     match <<E as EntityTrait>::Model as ModelTrait>::soft_delete_column() {
         Some(soft_delete_column) if !force_delete => {
-            let mut delete_stmt = delete_stmt.clone();
-            let value = <E::Model as ModelTrait>::soft_delete_column_value();
-            let update_stmt = UpdateStatement::new()
-                .table(E::default())
-                .col_expr(soft_delete_column, Expr::value(value))
-                .extend_conditions(delete_stmt.take_conditions())
-                .to_owned();
+            let update_stmt = convert_to_soft_delete::<E>(delete_stmt.clone(), soft_delete_column);
             Statement::from_string_values_tuple(
                 db_backend,
                 update_stmt.build_any(query_builder.as_ref()),

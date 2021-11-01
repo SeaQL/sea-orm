@@ -70,19 +70,29 @@ where
     C: ConnectionTrait<'a>,
     E: EntityTrait,
 {
-    let mut delete_stmt = delete_stmt;
     match <<E as EntityTrait>::Model as ModelTrait>::soft_delete_column() {
         Some(soft_delete_column) if !force_delete => {
-            let value = <E::Model as ModelTrait>::soft_delete_column_value();
-            let update_stmt = UpdateStatement::new()
-                .table(E::default())
-                .col_expr(soft_delete_column, Expr::value(value))
-                .extend_conditions(delete_stmt.take_conditions())
-                .to_owned();
+            let update_stmt = convert_to_soft_delete::<E>(delete_stmt, soft_delete_column);
             Deleter::new(update_stmt).exec(db).await
         }
         _ => Deleter::new(delete_stmt).exec(db).await,
     }
+}
+
+pub(crate) fn convert_to_soft_delete<E>(
+    delete_stmt: DeleteStatement,
+    soft_delete_column: E::Column,
+) -> UpdateStatement
+where
+    E: EntityTrait,
+{
+    let mut delete_stmt = delete_stmt;
+    let value = <E::Model as ModelTrait>::soft_delete_column_value();
+    UpdateStatement::new()
+        .table(E::default())
+        .col_expr(soft_delete_column, Expr::value(value))
+        .extend_conditions(delete_stmt.take_conditions())
+        .to_owned()
 }
 
 async fn exec_delete<'a, C>(statement: Statement, db: &'a C) -> Result<DeleteResult, DbErr>
