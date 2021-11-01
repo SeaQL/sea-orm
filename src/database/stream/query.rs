@@ -12,6 +12,7 @@ use sqlx::{pool::PoolConnection, Executor};
 
 use crate::{DbErr, InnerConnection, QueryResult, Statement};
 
+/// Creates a stream from a [QueryResult]
 #[ouroboros::self_referencing]
 pub struct QueryStream {
     stmt: Statement,

@@ -5,6 +5,7 @@ use crate::{
 use core::marker::PhantomData;
 use sea_query::{InsertStatement, ValueTuple};
 
+/// Performs INSERT operations on a ActiveModel
 #[derive(Debug)]
 pub struct Insert<A>
 where
@@ -106,6 +107,7 @@ where
         Self::new().add_many(models)
     }
 
+    /// Add a Model to Self
     #[allow(clippy::should_implement_trait)]
     pub fn add<M>(mut self, m: M) -> Self
     where
@@ -139,6 +141,7 @@ where
         self
     }
 
+    /// Add many Models to Self
     pub fn add_many<M, I>(mut self, models: I) -> Self
     where
         M: IntoActiveModel<A>,

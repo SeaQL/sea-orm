@@ -6,6 +6,7 @@ use crate::{
 use sea_query::{Value, ValueType, Values};
 use std::{collections::BTreeMap, sync::Arc};
 
+/// Defines a Mock database suitable for testing
 #[derive(Debug)]
 pub struct MockDatabase {
     db_backend: DbBackend,
@@ -15,33 +16,44 @@ pub struct MockDatabase {
     query_results: Vec<Vec<MockRow>>,
 }
 
+/// Defines the results obtained from a [MockDatabase]
 #[derive(Clone, Debug, Default)]
 pub struct MockExecResult {
+    /// The last inserted id on auto-increment
     pub last_insert_id: u64,
+    /// The number of rows affected by the database operation
     pub rows_affected: u64,
 }
 
+/// Defines the structure of a test Row for the [MockDatabase]
+/// which is just a [BTreeMap]<[String], [Value]>
 #[derive(Clone, Debug)]
 pub struct MockRow {
     values: BTreeMap<String, Value>,
 }
 
+/// A trait to get a [MockRow] from a type useful for testing in the [MockDatabase]
 pub trait IntoMockRow {
+    /// The method to perform this operation
     fn into_mock_row(self) -> MockRow;
 }
 
+/// Defines a transaction that is has not been committed
 #[derive(Debug)]
 pub struct OpenTransaction {
     stmts: Vec<Statement>,
     transaction_depth: usize,
 }
 
+/// Defines a database transaction as it holds a Vec<[Statement]>
 #[derive(Debug, Clone, PartialEq)]
 pub struct Transaction {
     stmts: Vec<Statement>,
 }
 
 impl MockDatabase {
+    /// Instantiate a mock database with a [DbBackend] to simulate real
+    /// world SQL databases
     pub fn new(db_backend: DbBackend) -> Self {
         Self {
             db_backend,
@@ -52,15 +64,18 @@ impl MockDatabase {
         }
     }
 
+    /// Create a database connection
     pub fn into_connection(self) -> DatabaseConnection {
         DatabaseConnection::MockDatabaseConnection(Arc::new(MockDatabaseConnection::new(self)))
     }
 
+    /// Add the [MockExecResult]s to the `exec_results` field for `Self`
     pub fn append_exec_results(mut self, mut vec: Vec<MockExecResult>) -> Self {
         self.exec_results.append(&mut vec);
         self
     }
 
+    /// Add the [MockExecResult]s to the `exec_results` field for `Self`
     pub fn append_query_results<T>(mut self, vec: Vec<Vec<T>>) -> Self
     where
         T: IntoMockRow,
@@ -150,6 +165,7 @@ impl MockDatabaseTrait for MockDatabase {
 }
 
 impl MockRow {
+    /// Try to get the values of a [MockRow] and fail gracefully on error
     pub fn try_get<T>(&self, col: &str) -> Result<T, DbErr>
     where
         T: ValueType,
@@ -157,6 +173,7 @@ impl MockRow {
         T::try_from(self.values.get(col).unwrap().clone()).map_err(|e| DbErr::Query(e.to_string()))
     }
 
+    /// An iterator over the keys and values of a mock row
     pub fn into_column_value_tuples(self) -> impl Iterator<Item = (String, Value)> {
         self.values.into_iter()
     }
@@ -190,6 +207,7 @@ impl IntoMockRow for BTreeMap<&str, Value> {
 }
 
 impl Transaction {
+    /// Get the [Value]s from s raw SQL statement depending on the [DatabaseBackend](crate::DatabaseBackend)
     pub fn from_sql_and_values<I>(db_backend: DbBackend, sql: &str, values: I) -> Self
     where
         I: IntoIterator<Item = Value>,

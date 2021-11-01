@@ -15,20 +15,25 @@ use crate::{
 
 use super::sqlx_common::*;
 
+/// Defines the [sqlx::sqlite] connector
 #[derive(Debug)]
 pub struct SqlxSqliteConnector;
 
+/// Defines a sqlx SQLite pool
 #[derive(Debug, Clone)]
 pub struct SqlxSqlitePoolConnection {
     pool: SqlitePool,
 }
 
 impl SqlxSqliteConnector {
+    /// Check if the URI provided corresponds to `sqlite:` for a SQLite database
     pub fn accepts(string: &str) -> bool {
         string.starts_with("sqlite:") && string.parse::<SqliteConnectOptions>().is_ok()
     }
 
-    pub async fn connect(mut options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
+    /// Add configuration options for the SQLite database
+    pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
+        let mut options = options;
         let mut opt = options
             .url
             .parse::<SqliteConnectOptions>()
@@ -51,12 +56,14 @@ impl SqlxSqliteConnector {
 }
 
 impl SqlxSqliteConnector {
+    /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_sqlite_pool(pool: SqlitePool) -> DatabaseConnection {
         DatabaseConnection::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection { pool })
     }
 }
 
 impl SqlxSqlitePoolConnection {
+    /// Execute a [Statement] on a SQLite backend
     pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
@@ -73,6 +80,7 @@ impl SqlxSqlitePoolConnection {
         }
     }
 
+    /// Get one result from a SQL query. Returns [Option::None] if no match was found
     pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -92,6 +100,7 @@ impl SqlxSqlitePoolConnection {
         }
     }
 
+    /// Get the results of a query returning them as a Vec<[QueryResult]>
     pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -108,6 +117,7 @@ impl SqlxSqlitePoolConnection {
         }
     }
 
+    /// Stream the results of executing a SQL query
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
 
@@ -120,6 +130,7 @@ impl SqlxSqlitePoolConnection {
         }
     }
 
+    /// Bundle a set of SQL statements that execute together.
     pub async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_sqlite(conn).await
@@ -130,6 +141,7 @@ impl SqlxSqlitePoolConnection {
         }
     }
 
+    /// Create a MySQL transaction
     pub async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
     where
         F: for<'b> FnOnce(

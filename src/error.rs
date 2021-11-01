@@ -1,9 +1,15 @@
+/// An error from unsuccessful database operations
 #[derive(Debug, PartialEq)]
 pub enum DbErr {
+    /// There was a problem with the database connection
     Conn(String),
+    /// An operation did not execute successfully
     Exec(String),
+    /// An error occurred while performing a query
     Query(String),
+    /// The record was not found in the database
     RecordNotFound(String),
+    /// A custom error
     Custom(String),
 }
 
@@ -21,6 +27,7 @@ impl std::fmt::Display for DbErr {
     }
 }
 
+/// An error from a failed column operation when trying to convert the column to a string
 #[derive(Debug, Clone)]
 pub struct ColumnFromStrErr(pub String);
 

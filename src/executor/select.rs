@@ -11,6 +11,7 @@ use std::pin::Pin;
 #[cfg(feature = "with-json")]
 use crate::JsonValue;
 
+/// Defines a type to do `SELECT` operations though a [SelectStatement] on a Model
 #[derive(Clone, Debug)]
 pub struct Selector<S>
 where
@@ -20,6 +21,7 @@ where
     selector: S,
 }
 
+/// Performs a raw `SELECT` operation on a model
 #[derive(Clone, Debug)]
 pub struct SelectorRaw<S>
 where
@@ -29,12 +31,16 @@ where
     selector: S,
 }
 
+/// Used to enforce constraints on any type that wants to perform SELECT queries
 pub trait SelectorTrait {
+    #[allow(missing_docs)]
     type Item: Sized;
 
+    /// The method to perform a query on a Model
     fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr>;
 }
 
+/// Perform an operation on an entity that can yield a Value
 #[derive(Debug)]
 pub struct SelectGetableValue<T, C>
 where
@@ -45,6 +51,7 @@ where
     model: PhantomData<T>,
 }
 
+/// Defines a type to get a Model
 #[derive(Debug)]
 pub struct SelectModel<M>
 where
@@ -53,6 +60,7 @@ where
     model: PhantomData<M>,
 }
 
+/// Defines a type to get two Modelss
 #[derive(Clone, Debug)]
 pub struct SelectTwoModel<M, N>
 where
@@ -105,6 +113,7 @@ impl<E> Select<E>
 where
     E: EntityTrait,
 {
+    /// Perform a Select operation on a Model using a [Statement]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_raw_sql(self, stmt: Statement) -> SelectorRaw<SelectModel<E::Model>> {
         SelectorRaw {
@@ -113,6 +122,7 @@ where
         }
     }
 
+    /// Return a [Selector] from `Self` that wraps a [SelectModel]
     pub fn into_model<M>(self) -> Selector<SelectModel<M>>
     where
         M: FromQueryResult,
@@ -123,6 +133,7 @@ where
         }
     }
 
+    /// Get a selectable Model as a [JsonValue] for SQL JSON operations
     #[cfg(feature = "with-json")]
     pub fn into_json(self) -> Selector<SelectModel<JsonValue>> {
         Selector {
@@ -239,6 +250,7 @@ where
         Selector::<SelectGetableValue<T, C>>::with_columns(self.query)
     }
 
+    /// Get one Model from a SELECT operation
     pub async fn one<'a, C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -246,6 +258,7 @@ where
         self.into_model().one(db).await
     }
 
+    /// Get all the Models from a SELECT operation
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -253,6 +266,7 @@ where
         self.into_model().all(db).await
     }
 
+    /// Stream the results of a SELECT operation on a Model
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -263,6 +277,7 @@ where
         self.into_model().stream(db).await
     }
 
+    /// Paginate the results of a SELECT operation on a Model
     pub fn paginate<'a, C>(
         self,
         db: &'a C,
@@ -274,6 +289,7 @@ where
         self.into_model().paginate(db, page_size)
     }
 
+    /// Perform a `COUNT` operation on a items on a Model using pagination
     pub async fn count<'a, C>(self, db: &'a C) -> Result<usize, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -287,6 +303,7 @@ where
     E: EntityTrait,
     F: EntityTrait,
 {
+    /// Perform a conversion into a [SelectTwoModel]
     pub fn into_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
     where
         M: FromQueryResult,
@@ -298,6 +315,7 @@ where
         }
     }
 
+    /// Convert the Models into JsonValue
     #[cfg(feature = "with-json")]
     pub fn into_json(self) -> Selector<SelectTwoModel<JsonValue, JsonValue>> {
         Selector {
@@ -306,6 +324,7 @@ where
         }
     }
 
+    /// Get one Model from a Select operation
     pub async fn one<'a, C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -313,6 +332,7 @@ where
         self.into_model().one(db).await
     }
 
+    /// Get all Models from a Select operation
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -320,6 +340,7 @@ where
         self.into_model().all(db).await
     }
 
+    /// Stream the results of a Select operation on a Model
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -330,6 +351,7 @@ where
         self.into_model().stream(db).await
     }
 
+    /// Paginate the results of a select operation on two models
     pub fn paginate<'a, C>(
         self,
         db: &'a C,
@@ -341,6 +363,7 @@ where
         self.into_model().paginate(db, page_size)
     }
 
+    /// Perform a count on the paginated results
     pub async fn count<'a, C>(self, db: &'a C) -> Result<usize, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -354,6 +377,7 @@ where
     E: EntityTrait,
     F: EntityTrait,
 {
+    /// Performs a conversion to [Selector]
     fn into_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
     where
         M: FromQueryResult,
@@ -365,6 +389,7 @@ where
         }
     }
 
+    /// Convert the results to JSON
     #[cfg(feature = "with-json")]
     pub fn into_json(self) -> Selector<SelectTwoModel<JsonValue, JsonValue>> {
         Selector {
@@ -373,6 +398,7 @@ where
         }
     }
 
+    /// Select one Model
     pub async fn one<'a, C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -380,6 +406,7 @@ where
         self.into_model().one(db).await
     }
 
+    /// Stream the result of the operation
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -390,6 +417,7 @@ where
         self.into_model().stream(db).await
     }
 
+    /// Get all the Models from the select operation
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -428,6 +456,7 @@ where
         }
     }
 
+    /// Get a Model from a Select operation
     pub async fn one<'a, C>(mut self, db: &C) -> Result<Option<S::Item>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -441,6 +470,7 @@ where
         }
     }
 
+    /// Get all results from a Select operation
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -454,6 +484,7 @@ where
         Ok(models)
     }
 
+    /// Stream the results of the operation
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -469,6 +500,7 @@ where
         })))
     }
 
+    /// Paginate the result of a select operation on a Model
     pub fn paginate<'a, C>(self, db: &'a C, page_size: usize) -> Paginator<'a, C, S>
     where
         C: ConnectionTrait<'a>,
@@ -499,7 +531,7 @@ where
         }
     }
 
-    /// Create `SelectorRaw` from Statment and columns. Executing this `SelectorRaw` will
+    /// Create `SelectorRaw` from Statement and columns. Executing this `SelectorRaw` will
     /// return a type `T` which implement `TryGetableMany`.
     pub fn with_columns<T, C>(stmt: Statement) -> SelectorRaw<SelectGetableValue<T, C>>
     where

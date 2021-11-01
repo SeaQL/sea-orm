@@ -1,6 +1,7 @@
 pub mod derive_attr {
     use bae::FromAttributes;
 
+    /// Attributes for Models and ActiveModels
     #[derive(Default, FromAttributes)]
     pub struct SeaOrm {
         pub column: Option<syn::Ident>,
@@ -16,6 +17,7 @@ pub mod derive_attr {
 pub mod field_attr {
     use bae::FromAttributes;
 
+    /// Operations for Models and ActiveModels
     #[derive(Default, FromAttributes)]
     pub struct SeaOrm {
         pub belongs_to: Option<syn::Lit>,

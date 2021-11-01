@@ -2,6 +2,7 @@ use bae::FromAttributes;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
 
+/// Attributes to derive an ActiveModel
 #[derive(Default, FromAttributes)]
 pub struct SeaOrm {
     pub active_model: Option<syn::Ident>,
@@ -89,6 +90,7 @@ impl IntoActiveModel {
     }
 }
 
+/// Method to derive the ActiveModel from the [ActiveModelTrait](sea_orm::ActiveModelTrait)
 pub fn expand_into_active_model(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     let ident_span = input.ident.span();
 

@@ -12,30 +12,43 @@ use sqlx::pool::PoolConnection;
 #[cfg(feature = "mock")]
 use std::sync::Arc;
 
+/// Handle a database connection depending on the backend
+/// enabled by the feature flags. This creates a database pool.
 #[cfg_attr(not(feature = "mock"), derive(Clone))]
 pub enum DatabaseConnection {
+    /// Create a MYSQL database connection and pool
     #[cfg(feature = "sqlx-mysql")]
     SqlxMySqlPoolConnection(crate::SqlxMySqlPoolConnection),
+    /// Create a  PostgreSQL database connection and pool
     #[cfg(feature = "sqlx-postgres")]
     SqlxPostgresPoolConnection(crate::SqlxPostgresPoolConnection),
+    /// Create a  SQLite database connection and pool
     #[cfg(feature = "sqlx-sqlite")]
     SqlxSqlitePoolConnection(crate::SqlxSqlitePoolConnection),
+    /// Create a  Mock database connection useful for testing
     #[cfg(feature = "mock")]
     MockDatabaseConnection(Arc<crate::MockDatabaseConnection>),
+    /// The connection to the database has been severed
     Disconnected,
 }
 
+/// The same as a [DatabaseConnection]
 pub type DbConn = DatabaseConnection;
 
+/// The type of database backend for real world databases.
+/// This is enabled by feature flags as specified in the crate documentation
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum DatabaseBackend {
+    /// A MySQL backend
     MySql,
+    /// A PostgreSQL backend
     Postgres,
+    /// A SQLite backend
     Sqlite,
 }
 
+/// The same as [DatabaseBackend] just shorter :)
 pub type DbBackend = DatabaseBackend;
-
 pub(crate) enum InnerConnection {
     #[cfg(feature = "sqlx-mysql")]
     MySql(PoolConnection<sqlx::MySql>),
@@ -209,6 +222,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
 
 #[cfg(feature = "mock")]
 impl DatabaseConnection {
+    /// Generate a database connection for testing the Mock database
     pub fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
         match self {
             DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
@@ -216,6 +230,7 @@ impl DatabaseConnection {
         }
     }
 
+    /// Get the transaction log as a collection  Vec<[crate::Transaction]>
     pub fn into_transaction_log(self) -> Vec<crate::Transaction> {
         let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
         mocker.drain_transaction_log()
@@ -223,6 +238,8 @@ impl DatabaseConnection {
 }
 
 impl DbBackend {
+    /// Check if the URI is the same as the specified database backend.
+    /// Returns true if they match.
     pub fn is_prefix_of(self, base_url: &str) -> bool {
         let base_url_parsed = Url::parse(base_url).unwrap();
         match self {
@@ -234,6 +251,7 @@ impl DbBackend {
         }
     }
 
+    /// Build an SQL [Statement]
     pub fn build<S>(&self, statement: &S) -> Statement
     where
         S: StatementBuilder,
@@ -241,6 +259,7 @@ impl DbBackend {
         statement.build(self)
     }
 
+    /// A helper for building SQL queries
     pub fn get_query_builder(&self) -> Box<dyn QueryBuilder> {
         match self {
             Self::MySql => Box::new(MysqlQueryBuilder),

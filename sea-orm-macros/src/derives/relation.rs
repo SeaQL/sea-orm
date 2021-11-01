@@ -166,6 +166,7 @@ impl DeriveRelation {
     }
 }
 
+/// Method to derive a Relation
 pub fn expand_derive_relation(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     let ident_span = input.ident.span();
 

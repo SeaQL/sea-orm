@@ -1,16 +1,24 @@
+/// Defines the result of executing an operation
 #[derive(Debug)]
 pub struct ExecResult {
+    /// The type of result from the execution depending on the feature flag enabled
+    /// to choose a database backend
     pub(crate) result: ExecResultHolder,
 }
 
+/// Holds a result depending on the database backend chosen by the feature flag
 #[derive(Debug)]
 pub(crate) enum ExecResultHolder {
+    /// Holds the result of executing an operation on a MySQL database
     #[cfg(feature = "sqlx-mysql")]
     SqlxMySql(sqlx::mysql::MySqlQueryResult),
+    /// Holds the result of executing an operation on a PostgreSQL database
     #[cfg(feature = "sqlx-postgres")]
     SqlxPostgres(sqlx::postgres::PgQueryResult),
+    /// Holds the result of executing an operation on a SQLite database
     #[cfg(feature = "sqlx-sqlite")]
     SqlxSqlite(sqlx::sqlite::SqliteQueryResult),
+    /// Holds the result of executing an operation on the Mock database
     #[cfg(feature = "mock")]
     Mock(crate::MockExecResult),
 }
@@ -18,6 +26,7 @@ pub(crate) enum ExecResultHolder {
 // ExecResult //
 
 impl ExecResult {
+    /// Get the last id after `AUTOINCREMENT` is done on the primary key
     pub fn last_insert_id(&self) -> u64 {
         match &self.result {
             #[cfg(feature = "sqlx-mysql")]
@@ -40,6 +49,7 @@ impl ExecResult {
         }
     }
 
+    /// Get the number of rows affedted by the operation
     pub fn rows_affected(&self) -> u64 {
         match &self.result {
             #[cfg(feature = "sqlx-mysql")]

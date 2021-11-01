@@ -5,6 +5,7 @@ use crate::{
 use sea_query::{ColumnDef, ForeignKeyCreateStatement, Iden, Index, TableCreateStatement};
 
 impl Schema {
+    /// Creates a table from an Entity. See [TableCreateStatement] for more details
     pub fn create_table_from_entity<E>(entity: E) -> TableCreateStatement
     where
         E: EntityTrait,
