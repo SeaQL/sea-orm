@@ -5,28 +5,39 @@ use core::marker::PhantomData;
 use sea_query::{JoinType, TableRef};
 use std::fmt::Debug;
 
+/// Defines the type of relationship
 #[derive(Clone, Debug)]
 pub enum RelationType {
+    /// An Entity has one relationship
     HasOne,
+    /// An Entity has many relationships
     HasMany,
 }
 
+/// Action to perform on a foreign key whenever there are changes
+/// to an ActiveModel
 pub type ForeignKeyAction = sea_query::ForeignKeyAction;
 
+/// Constraints a type to implement the trait to create a relationship
 pub trait RelationTrait: Iterable + Debug + 'static {
+    /// The method to call
     fn def(&self) -> RelationDef;
 }
 
+/// Checks if Entities are related
 pub trait Related<R>
 where
     R: EntityTrait,
 {
+    /// Check if an entity is related to another entity
     fn to() -> RelationDef;
 
+    /// Check if an entity is related through another entity
     fn via() -> Option<RelationDef> {
         None
     }
 
+    /// Find related Entities
     fn find_related() -> Select<R>
     where
         Self: EntityTrait,
@@ -43,18 +54,30 @@ where
     }
 }
 
+/// Defines a relationship
 #[derive(Debug)]
 pub struct RelationDef {
+    /// The type of relationship defined in [RelationType]
     pub rel_type: RelationType,
+    /// Reference from another Entity
     pub from_tbl: TableRef,
+    /// Reference to another ENtity
     pub to_tbl: TableRef,
+    /// Reference to from a Column
     pub from_col: Identity,
+    /// Reference to another column
     pub to_col: Identity,
+    /// Defines the owner of the Relation
     pub is_owner: bool,
+    /// Defines an operation to be performed on a Foreign Key when a
+    /// `DELETE` Operation is performed
     pub on_delete: Option<ForeignKeyAction>,
+    /// Defines an operation to be performed on a Foreign Key when a
+    /// `UPDATE` Operation is performed
     pub on_update: Option<ForeignKeyAction>,
 }
 
+/// Defines a helper to build a relation
 #[derive(Debug)]
 pub struct RelationBuilder<E, R>
 where
@@ -121,6 +144,7 @@ where
         }
     }
 
+    /// Build a relationship from an Entity
     pub fn from<T>(mut self, identifier: T) -> Self
     where
         T: IdentityOf<E>,
@@ -129,6 +153,7 @@ where
         self
     }
 
+    /// Build a relationship to an Entity
     pub fn to<T>(mut self, identifier: T) -> Self
     where
         T: IdentityOf<R>,
@@ -137,11 +162,13 @@ where
         self
     }
 
+    /// An operation to perform on a foreign key when a delete operation occurs
     pub fn on_delete(mut self, action: ForeignKeyAction) -> Self {
         self.on_delete = Some(action);
         self
     }
 
+    /// An operation to perform on a foreign key when an update operation occurs
     pub fn on_update(mut self, action: ForeignKeyAction) -> Self {
         self.on_update = Some(action);
         self

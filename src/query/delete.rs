@@ -5,9 +5,11 @@ use crate::{
 use core::marker::PhantomData;
 use sea_query::{DeleteStatement, IntoIden};
 
+/// Defines the structure for a delete operation
 #[derive(Clone, Debug)]
 pub struct Delete;
 
+/// Perform a delete operation on a model
 #[derive(Clone, Debug)]
 pub struct DeleteOne<A>
 where
@@ -18,6 +20,7 @@ where
     pub(crate) model: A,
 }
 
+/// Perform a delete operation on multiple models
 #[derive(Clone, Debug)]
 pub struct DeleteMany<E>
 where

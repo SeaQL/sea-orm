@@ -2,6 +2,7 @@ use crate::{EntityName, IdenStatic, Iterable};
 use sea_query::{DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
 use std::str::FromStr;
 
+/// Defines a Column for an Entity
 #[derive(Debug, Clone, PartialEq)]
 pub struct ColumnDef {
     pub(crate) col_type: ColumnType,
@@ -10,34 +11,62 @@ pub struct ColumnDef {
     pub(crate) indexed: bool,
 }
 
+/// The type of column as defined in the SQL format
 #[derive(Debug, Clone, PartialEq)]
 pub enum ColumnType {
+    /// `CHAR` type of specified fixed length
     Char(Option<u32>),
+    /// `STRING` type for variable string length
     String(Option<u32>),
+    /// `TEXT` type used for large pieces of string data and stored out of row in case size is too big
     Text,
+    /// `TINYINT` useful for storing one byte of data (range of 0-255)
     TinyInteger,
+    /// `SMALLINT` data type stores small whole numbers that range from –32,767 to 32,767
     SmallInteger,
+    /// `INTEGER` data types hold numbers that are whole, or without a decimal point
     Integer,
+    /// `BIGINT` is a 64-bit representation of an integer taking up 8 bytes of storage and
+    /// ranging from -2^63 (-9,223,372,036,854,775,808) to 2^63 (9,223,372,036,854,775,807).
     BigInteger,
+    /// `FLOAT` an approximate-number data type, where values range cannot be represented exactly.
     Float,
+    /// `DOUBLE` is a normal-size floating point number where the
+    /// total number of digits is specified in size.
     Double,
+    /// `DECIMAL` type store numbers that have fixed precision and scale
     Decimal(Option<(u32, u32)>),
+    /// `DATETIME` type is used for values that contain both date and time parts.
     DateTime,
+    /// `TIMESTAMP` is a temporal data type that holds the combination of date and time.
     Timestamp,
+    /// `TIMESTAMP WITH TIME ZONE` (or `TIMESTAMPTZ`) data type stores 8-byte
+    /// date values that include timestamp and time zone information in UTC format.
     TimestampWithTimeZone,
+    /// `TIME` data type defines a time of a day based on 24-hour clock
     Time,
+    /// `DATE` data type stores the calendar date
     Date,
+    /// `BINARY` data types contain byte strings—a sequence of octets or bytes.
     Binary,
+    /// `BOOLEAN` is the result of a comparison operator
     Boolean,
+    /// `MONEY` data type handles monetary data
     Money(Option<(u32, u32)>),
+    /// `JSON` represents the JavaScript Object Notation type
     Json,
+    /// JSON binary format is structured in the way that permits the server to search for
+    /// values within the JSON document directly by key or array index, which is very fast.
     JsonBinary,
+    /// A custom implementation of a data type
     Custom(String),
+    /// A Universally Unique IDentifier that is specified in  RFC 4122
     Uuid,
 }
 
 macro_rules! bind_oper {
     ( $op: ident ) => {
+        #[allow(missing_docs)]
         fn $op<V>(&self, v: V) -> SimpleExpr
         where
             V: Into<Value>,
@@ -58,6 +87,7 @@ macro_rules! bind_func_no_params {
 
 macro_rules! bind_vec_func {
     ( $func: ident ) => {
+        #[allow(missing_docs)]
         #[allow(clippy::wrong_self_convention)]
         fn $func<V, I>(&self, v: I) -> SimpleExpr
         where
@@ -72,6 +102,7 @@ macro_rules! bind_vec_func {
 macro_rules! bind_subquery_func {
     ( $func: ident ) => {
         #[allow(clippy::wrong_self_convention)]
+        #[allow(missing_docs)]
         fn $func(&self, s: SelectStatement) -> SimpleExpr {
             Expr::tbl(self.entity_name(), *self).$func(s)
         }
@@ -81,14 +112,18 @@ macro_rules! bind_subquery_func {
 // LINT: when the operand value does not match column type
 /// Wrapper of the identically named method in [`sea_query::Expr`]
 pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
+    #[allow(missing_docs)]
     type EntityName: EntityName;
 
+    /// Define a column for an Entity
     fn def(&self) -> ColumnDef;
 
+    /// Get the name of the entity the column belongs to
     fn entity_name(&self) -> DynIden {
         SeaRc::new(Self::EntityName::default()) as DynIden
     }
 
+    /// get the name of the entity the column belongs to
     fn as_column_ref(&self) -> (DynIden, DynIden) {
         (self.entity_name(), SeaRc::new(*self) as DynIden)
     }
@@ -221,6 +256,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     bind_func_no_params!(is_null);
     bind_func_no_params!(is_not_null);
 
+    /// Perform an operation if the column is null
     fn if_null<V>(&self, v: V) -> SimpleExpr
     where
         V: Into<Value>,
@@ -236,6 +272,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
 }
 
 impl ColumnType {
+    /// instantiate a new [ColumnDef]
     pub fn def(self) -> ColumnDef {
         ColumnDef {
             col_type: self,
@@ -247,20 +284,24 @@ impl ColumnType {
 }
 
 impl ColumnDef {
+    /// Marks the column as `UNIQUE`
     pub fn unique(mut self) -> Self {
         self.unique = true;
         self
     }
 
+    /// Mark the column as nullable
     pub fn null(self) -> Self {
         self.nullable()
     }
 
+    /// Mark the column as nullable
     pub fn nullable(mut self) -> Self {
         self.null = true;
         self
     }
 
+    /// Set the `indexed` field  to `true`
     pub fn indexed(mut self) -> Self {
         self.indexed = true;
         self
