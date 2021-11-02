@@ -539,5 +539,7 @@ macro_rules! try_from_u64_string {
 
 try_from_u64_string!(String);
 
+try_from_u64_err!(Vec<u8>);
+
 #[cfg(feature = "with-uuid")]
 try_from_u64_err!(uuid::Uuid);
