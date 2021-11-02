@@ -56,6 +56,7 @@ on:
     branches:
       - master
       - 0.2.x
+      - 0.3.x
 
 env:
   CARGO_TERM_COLOR: always
