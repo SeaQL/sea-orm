@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.3.2 - 2021-11-03
+
+### Fixed Issues
+* Support for BYTEA Postgres primary keys https://github.com/SeaQL/sea-orm/issues/286
+
+### Merged PRs
+* Documentation for sea-orm by @charleschege in https://github.com/SeaQL/sea-orm/pull/280
+* Support `Vec<u8>` primary key by @billy1624 in https://github.com/SeaQL/sea-orm/pull/287
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.3.1...0.3.2
+
 ## 0.3.1 - 2021-10-23
 
 (We are changing our Changelog format from now on)
