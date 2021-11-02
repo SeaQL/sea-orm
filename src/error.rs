@@ -11,7 +11,7 @@ pub enum DbErr {
     RecordNotFound(String),
     /// A custom error
     Custom(String),
-    /// Error occurred while parsing value into [ActiveEnum](crate::ActiveEnum)
+    /// Error occurred while parsing value as target type
     Type(String),
 }
 
