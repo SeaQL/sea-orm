@@ -36,7 +36,7 @@ serde = { version = "^1.0", features = ["derive"] }
 serde_json = { version = "^1", optional = true }
 sqlx = { version = "^0.5", optional = true }
 uuid = { version = "0.8", features = ["serde", "v4"], optional = true }
-ouroboros = "0.11"
+ouroboros = { version = "0.13", git = "https://github.com/billy1624/ouroboros.git", branch = "missing-docs" }
 url = "^2.2"
 
 [dev-dependencies]
