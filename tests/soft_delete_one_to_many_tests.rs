@@ -408,7 +408,7 @@ pub async fn create_and_delete_parent_child_with_soft_delete(
 // Testing parent-child model with soft delete disabled
 pub async fn create_and_delete_parent_child(db: &DatabaseConnection) -> Result<(), DbErr> {
     #[allow(unused_imports)]
-    use soft_delete_one_to_many::child as child;
+    use soft_delete_one_to_many::child;
     use soft_delete_one_to_many::parent;
 
     // Insert 10 parent models each with i-th number of children, and count the number of rows
