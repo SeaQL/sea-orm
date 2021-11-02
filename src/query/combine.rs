@@ -7,6 +7,7 @@ use sea_query::{Alias, ColumnRef, Iden, Order, SeaRc, SelectExpr, SelectStatemen
 
 macro_rules! select_def {
     ( $ident: ident, $str: expr ) => {
+        /// Implements the traits [Iden] and [IdenStatic] for a type
         #[derive(Debug, Clone, Copy)]
         pub struct $ident;
 
@@ -54,6 +55,7 @@ where
         self
     }
 
+    /// Selects and Entity and returns it together with the Entity from `Self`
     pub fn select_also<F>(mut self, _: F) -> SelectTwo<E, F>
     where
         F: EntityTrait,
@@ -62,6 +64,7 @@ where
         SelectTwo::new(self.into_query())
     }
 
+    /// Makes a SELECT operation in conjunction to another relation
     pub fn select_with<F>(mut self, _: F) -> SelectTwoMany<E, F>
     where
         F: EntityTrait,

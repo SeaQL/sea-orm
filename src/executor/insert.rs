@@ -5,6 +5,7 @@ use crate::{
 use sea_query::{FromValueTuple, InsertStatement, ValueTuple};
 use std::{future::Future, marker::PhantomData};
 
+/// Defines a structure to perform INSERT operations in an ActiveModel
 #[derive(Debug)]
 pub struct Inserter<A>
 where
@@ -15,11 +16,13 @@ where
     model: PhantomData<A>,
 }
 
+/// The result of an INSERT operation on an ActiveModel
 #[derive(Debug)]
 pub struct InsertResult<A>
 where
     A: ActiveModelTrait,
 {
+    /// The id performed when AUTOINCREMENT was performed on the PrimaryKey
     pub last_insert_id: <<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType,
 }
 
@@ -27,6 +30,7 @@ impl<A> Insert<A>
 where
     A: ActiveModelTrait,
 {
+    /// Execute an insert operation
     #[allow(unused_mut)]
     pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + '_
     where
@@ -53,6 +57,7 @@ impl<A> Inserter<A>
 where
     A: ActiveModelTrait,
 {
+    /// Instantiate a new insert operation
     pub fn new(primary_key: Option<ValueTuple>, query: InsertStatement) -> Self {
         Self {
             primary_key,
@@ -61,6 +66,7 @@ where
         }
     }
 
+    /// Execute an insert operation
     pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + '_
     where
         C: ConnectionTrait<'a>,

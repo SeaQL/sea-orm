@@ -4,6 +4,7 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{punctuated::Punctuated, token::Comma, Data, DataStruct, Field, Fields, Lit, Meta, Type};
 
+/// Method to derive an [ActiveModel](sea_orm::ActiveModel)
 pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<TokenStream> {
     let fields = match data {
         Data::Struct(DataStruct {

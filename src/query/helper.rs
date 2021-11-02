@@ -11,9 +11,12 @@ pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, O
 // LINT: when the column does not appear in tables selected from
 // LINT: when there is a group by clause, but some columns don't have aggregate functions
 // LINT: when the join table or column does not exists
+/// Constraints for any type that needs to perform select statements on a Model
 pub trait QuerySelect: Sized {
+    #[allow(missing_docs)]
     type QueryStatement;
 
+    /// Add the select SQL statement
     fn query(&mut self) -> &mut SelectStatement;
 
     /// Clear the selection list
@@ -164,9 +167,12 @@ pub trait QuerySelect: Sized {
 }
 
 // LINT: when the column does not appear in tables selected from
+/// Performs ORDER BY operations
 pub trait QueryOrder: Sized {
+    #[allow(missing_docs)]
     type QueryStatement: OrderedStatement;
 
+    /// Add the query to perform an ORDER BY operation
     fn query(&mut self) -> &mut SelectStatement;
 
     /// Add an order_by expression
@@ -234,9 +240,12 @@ pub trait QueryOrder: Sized {
 }
 
 // LINT: when the column does not appear in tables selected from
+/// Perform a FILTER opertation on a statement
 pub trait QueryFilter: Sized {
+    #[allow(missing_docs)]
     type QueryStatement: ConditionalStatement;
 
+    /// Add the query to perform a FILTER on
     fn query(&mut self) -> &mut Self::QueryStatement;
 
     /// Add an AND WHERE expression
@@ -372,6 +381,7 @@ pub trait QueryFilter: Sized {
         self
     }
 
+    /// Perform a check to determine table belongs to a Model through it's name alias
     fn belongs_to_tbl_alias<M>(mut self, model: &M, tbl_alias: &str) -> Self
     where
         M: ModelTrait,

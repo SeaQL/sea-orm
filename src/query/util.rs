@@ -1,8 +1,11 @@
 use crate::{database::*, QueryTrait, Statement};
 
+/// This structure provides debug capabilities
 #[derive(Debug)]
 pub struct DebugQuery<'a, Q, T> {
+    /// The query to debug
     pub query: &'a Q,
+    /// The value of the query
     pub value: T,
 }
 
@@ -12,6 +15,7 @@ macro_rules! debug_query_build {
         where
             Q: QueryTrait,
         {
+            /// This macro builds a [Statement] when invoked
             pub fn build(&self) -> Statement {
                 let func = $db_expr;
                 let db_backend = func(self);

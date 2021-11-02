@@ -8,6 +8,7 @@ use sea_query::{
 };
 
 impl Schema {
+    /// Creates Postgres enums from an Entity. See [TypeCreateStatement] for more details
     pub fn create_enum_from_entity<E>(entity: E, db_backend: DbBackend) -> Vec<TypeCreateStatement>
     where
         E: EntityTrait,
@@ -15,6 +16,7 @@ impl Schema {
         create_enum_from_entity(entity, db_backend)
     }
 
+    /// Creates a table from an Entity. See [TableCreateStatement] for more details
     pub fn create_table_from_entity<E>(entity: E, db_backend: DbBackend) -> TableCreateStatement
     where
         E: EntityTrait,

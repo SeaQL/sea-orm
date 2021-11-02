@@ -1,21 +1,16 @@
-/// Represents all the errors in SeaORM.
+/// An error from unsuccessful database operations
 #[derive(Debug, PartialEq)]
 pub enum DbErr {
-    /// Error occurred while connecting to database engine.
+    /// There was a problem with the database connection
     Conn(String),
-
-    /// Error occurred while executing SQL statement.
+    /// An operation did not execute successfully
     Exec(String),
-
-    /// Error occurred while querying SQL statement.
+    /// An error occurred while performing a query
     Query(String),
-
-    /// Error occurred while updating a non-existing row in database.
+    /// The record was not found in the database
     RecordNotFound(String),
-
-    /// Error occurred while performing custom validation logics in [ActiveModelBehavior](crate::ActiveModelBehavior)
+    /// A custom error
     Custom(String),
-
     /// Error occurred while parsing value into [ActiveEnum](crate::ActiveEnum)
     Type(String),
 }
@@ -35,6 +30,7 @@ impl std::fmt::Display for DbErr {
     }
 }
 
+/// An error from a failed column operation when trying to convert the column to a string
 #[derive(Debug, Clone)]
 pub struct ColumnFromStrErr(pub String);
 

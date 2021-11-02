@@ -266,10 +266,15 @@
 mod database;
 mod docs;
 mod driver;
+/// Module for the Entity type and operations
 pub mod entity;
+/// Error types for all database operations
 pub mod error;
+/// This module performs execution of queries on a Model or ActiveModel
 mod executor;
+/// Holds types and methods to perform queries
 pub mod query;
+/// Holds types that defines the schemas of an Entity
 pub mod schema;
 #[doc(hidden)]
 #[cfg(feature = "macros")]

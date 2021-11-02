@@ -15,19 +15,23 @@ use crate::{
 
 use super::sqlx_common::*;
 
+/// Defines the [sqlx::mysql] connector
 #[derive(Debug)]
 pub struct SqlxMySqlConnector;
 
+/// Defines a sqlx MySQL pool
 #[derive(Debug, Clone)]
 pub struct SqlxMySqlPoolConnection {
     pool: MySqlPool,
 }
 
 impl SqlxMySqlConnector {
+    /// Check if the URI provided corresponds to `mysql://` for a MySQL database
     pub fn accepts(string: &str) -> bool {
         string.starts_with("mysql://") && string.parse::<MySqlConnectOptions>().is_ok()
     }
 
+    /// Add configuration options for the MySQL database
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
         let mut opt = options
             .url
@@ -48,12 +52,14 @@ impl SqlxMySqlConnector {
 }
 
 impl SqlxMySqlConnector {
+    /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_mysql_pool(pool: MySqlPool) -> DatabaseConnection {
         DatabaseConnection::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection { pool })
     }
 }
 
 impl SqlxMySqlPoolConnection {
+    /// Execute a [Statement] on a MySQL backend
     pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
@@ -70,6 +76,7 @@ impl SqlxMySqlPoolConnection {
         }
     }
 
+    /// Get one result from a SQL query. Returns [Option::None] if no match was found
     pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -89,6 +96,7 @@ impl SqlxMySqlPoolConnection {
         }
     }
 
+    /// Get the results of a query returning them as a Vec<[QueryResult]>
     pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -105,6 +113,7 @@ impl SqlxMySqlPoolConnection {
         }
     }
 
+    /// Stream the results of executing a SQL query
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
 
@@ -117,6 +126,7 @@ impl SqlxMySqlPoolConnection {
         }
     }
 
+    /// Bundle a set of SQL statements that execute together.
     pub async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_mysql(conn).await
@@ -127,6 +137,7 @@ impl SqlxMySqlPoolConnection {
         }
     }
 
+    /// Create a MySQL transaction
     pub async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
     where
         F: for<'b> FnOnce(

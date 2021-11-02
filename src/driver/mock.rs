@@ -12,32 +12,43 @@ use std::{
     },
 };
 
+/// Defines a database driver for the [MockDatabase]
 #[derive(Debug)]
 pub struct MockDatabaseConnector;
 
+/// Defines a connection for the [MockDatabase]
 #[derive(Debug)]
 pub struct MockDatabaseConnection {
     counter: AtomicUsize,
     mocker: Mutex<Box<dyn MockDatabaseTrait>>,
 }
 
+/// A set of constraints for any type wanting to perform operations on the [MockDatabase]
 pub trait MockDatabaseTrait: Send + Debug {
+    /// Execute a statement in the [MockDatabase]
     fn execute(&mut self, counter: usize, stmt: Statement) -> Result<ExecResult, DbErr>;
 
+    /// Execute a SQL query in the [MockDatabase]
     fn query(&mut self, counter: usize, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
 
+    /// Create a transaction that can be committed atomically
     fn begin(&mut self);
 
+    /// Commit a successful transaction atomically into the [MockDatabase]
     fn commit(&mut self);
 
+    /// Roll back a transaction since errors were encountered
     fn rollback(&mut self);
 
+    /// Get all logs from a [MockDatabase] and return a [Transaction]
     fn drain_transaction_log(&mut self) -> Vec<Transaction>;
 
+    /// Get the backend being used in the [MockDatabase]
     fn get_database_backend(&self) -> DbBackend;
 }
 
 impl MockDatabaseConnector {
+    /// Check if the database URI given and the [DatabaseBackend](crate::DatabaseBackend) selected are the same
     #[allow(unused_variables)]
     pub fn accepts(string: &str) -> bool {
         #[cfg(feature = "sqlx-mysql")]
@@ -55,6 +66,7 @@ impl MockDatabaseConnector {
         false
     }
 
+    /// Cpnnect to the [MockDatabase]
     #[allow(unused_variables)]
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
         macro_rules! connect_mock_db {
@@ -82,6 +94,7 @@ impl MockDatabaseConnector {
 }
 
 impl MockDatabaseConnection {
+    /// Create a connection to the [MockDatabase]
     pub fn new<M: 'static>(m: M) -> Self
     where
         M: MockDatabaseTrait,
@@ -96,16 +109,19 @@ impl MockDatabaseConnection {
         &self.mocker
     }
 
+    /// Get the [DatabaseBackend](crate::DatabaseBackend) being used by the [MockDatabase]
     pub fn get_database_backend(&self) -> DbBackend {
         self.mocker.lock().unwrap().get_database_backend()
     }
 
+    /// Execute the SQL statement in the [MockDatabase]
     pub fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", statement);
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
         self.mocker.lock().unwrap().execute(counter, statement)
     }
 
+    /// Return one [QueryResult] if the query was successful
     pub fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
@@ -113,12 +129,14 @@ impl MockDatabaseConnection {
         Ok(result.into_iter().next())
     }
 
+    /// Return all [QueryResult]s if the query was successful
     pub fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
         self.mocker.lock().unwrap().query(counter, statement)
     }
 
+    /// Return [QueryResult]s  from a multi-query operation
     pub fn fetch(
         &self,
         statement: &Statement,
@@ -129,14 +147,17 @@ impl MockDatabaseConnection {
         }
     }
 
+    /// Create a statement block  of SQL statements that execute together.
     pub fn begin(&self) {
         self.mocker.lock().unwrap().begin()
     }
 
+    /// Commit a transaction atomically to the database
     pub fn commit(&self) {
         self.mocker.lock().unwrap().commit()
     }
 
+    /// Roll back a faulty transaction
     pub fn rollback(&self) {
         self.mocker.lock().unwrap().rollback()
     }

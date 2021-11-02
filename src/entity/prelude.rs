@@ -24,6 +24,7 @@ pub use chrono::NaiveTime as Time;
 #[cfg(feature = "with-chrono")]
 pub use chrono::NaiveDateTime as DateTime;
 
+/// Handles the time and dates
 #[cfg(feature = "with-chrono")]
 pub type DateTimeWithTimeZone = chrono::DateTime<chrono::FixedOffset>;
 

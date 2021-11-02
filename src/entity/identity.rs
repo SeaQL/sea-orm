@@ -2,10 +2,14 @@ use crate::{ColumnTrait, EntityTrait, IdenStatic};
 use sea_query::{Alias, DynIden, Iden, IntoIden, SeaRc};
 use std::fmt;
 
+/// Defines an operation for an Entity
 #[derive(Debug, Clone)]
 pub enum Identity {
+    /// Performs one operation
     Unary(DynIden),
+    /// Performs two operations
     Binary(DynIden, DynIden),
+    /// Performs three operations
     Ternary(DynIden, DynIden, DynIden),
 }
 
@@ -28,14 +32,18 @@ impl Iden for Identity {
     }
 }
 
+/// Performs a conversion into an [Identity]
 pub trait IntoIdentity {
+    /// Method to perform the conversion
     fn into_identity(self) -> Identity;
 }
 
+/// Check the [Identity] of an Entity
 pub trait IdentityOf<E>
 where
     E: EntityTrait,
 {
+    /// Method to call to perform this check
     fn identity_of(self) -> Identity;
 }
 

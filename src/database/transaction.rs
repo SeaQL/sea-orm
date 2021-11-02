@@ -10,6 +10,8 @@ use sqlx::{pool::PoolConnection, TransactionManager};
 use std::{future::Future, pin::Pin, sync::Arc};
 
 // a Transaction is just a sugar for a connection where START TRANSACTION has been executed
+/// Defines a database transaction, whether it is an open transaction and the type of
+/// backend to use
 pub struct DatabaseTransaction {
     conn: Arc<Mutex<InnerConnection>>,
     backend: DbBackend,
@@ -100,6 +102,8 @@ impl DatabaseTransaction {
         Ok(res)
     }
 
+    /// Runs a transaction to completion returning an rolling back the transaction on
+    /// encountering an error if it fails
     pub(crate) async fn run<F, T, E>(self, callback: F) -> Result<T, TransactionError<E>>
     where
         F: for<'b> FnOnce(
@@ -120,6 +124,7 @@ impl DatabaseTransaction {
         res
     }
 
+    /// Commit a transaction atomically
     pub async fn commit(mut self) -> Result<(), DbErr> {
         self.open = false;
         match *self.conn.lock().await {
@@ -149,6 +154,7 @@ impl DatabaseTransaction {
         Ok(())
     }
 
+    /// rolls back a transaction in case error are encountered during the operation
     pub async fn rollback(mut self) -> Result<(), DbErr> {
         self.open = false;
         match *self.conn.lock().await {
@@ -343,12 +349,15 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
     }
 }
 
+/// Defines errors for handling transaction failures
 #[derive(Debug)]
 pub enum TransactionError<E>
 where
     E: std::error::Error,
 {
+    /// A Database connection error
     Connection(DbErr),
+    /// An error occurring when doing database transactions
     Transaction(E),
 }
 
