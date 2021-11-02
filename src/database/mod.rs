@@ -107,6 +107,7 @@ impl ConnectOptions {
     }
 
     #[cfg(feature = "sqlx-dep")]
+    /// Convert [ConnectOptions] into [sqlx::pool::PoolOptions]
     pub fn pool_options<DB>(self) -> sqlx::pool::PoolOptions<DB>
     where
         DB: sqlx::Database,
