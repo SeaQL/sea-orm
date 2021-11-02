@@ -10,6 +10,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_metadata_table(db).await?;
     create_repository_table(db).await?;
     create_self_join_table(db).await?;
+    create_byte_primary_key_table(db).await?;
 
     Ok(())
 }
@@ -99,4 +100,23 @@ pub async fn create_self_join_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &stmt, SelfJoin).await
+}
+
+pub async fn create_byte_primary_key_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(byte_primary_key::Entity)
+        .col(
+            ColumnDef::new(byte_primary_key::Column::Id)
+                .binary()
+                .not_null()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(byte_primary_key::Column::Value)
+                .string()
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, BytePrimaryKey).await
 }
