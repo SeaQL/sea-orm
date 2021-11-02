@@ -23,7 +23,7 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
     use common::features::byte_primary_key::*;
 
     let model = Model {
-        id: vec![1],
+        id: vec![1, 2, 3],
         value: "First Row".to_owned(),
     };
 
@@ -41,7 +41,7 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
     };
 
     let update_res = Entity::update(updated_active_model.clone())
-        .filter(Column::Id.eq(vec![1, 4]))
+        .filter(Column::Id.eq(vec![1, 2, 4]))
         .exec(db)
         .await;
 
@@ -53,7 +53,7 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
     );
 
     let update_res = Entity::update(updated_active_model.clone())
-        .filter(Column::Id.eq(vec![1]))
+        .filter(Column::Id.eq(vec![1, 2, 3]))
         .exec(db)
         .await?;
 
@@ -61,11 +61,11 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     assert_eq!(
         Entity::find()
-            .filter(Column::Id.eq(vec![1]))
+            .filter(Column::Id.eq(vec![1, 2, 3]))
             .one(db)
             .await?,
         Some(Model {
-            id: vec![1],
+            id: vec![1, 2, 3],
             value: "First Row (Updated)".to_owned(),
         })
     );
