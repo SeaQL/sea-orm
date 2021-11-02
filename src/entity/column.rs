@@ -62,6 +62,7 @@ pub enum ColumnType {
     Custom(String),
     /// A Universally Unique IDentifier that is specified in  RFC 4122
     Uuid,
+    /// `ENUM` data type with name and variants
     Enum(String, Vec<String>),
 }
 
@@ -315,6 +316,7 @@ impl ColumnDef {
         self
     }
 
+    /// Get [ColumnType] as reference
     pub fn get_column_type(&self) -> &ColumnType {
         &self.col_type
     }
