@@ -509,6 +509,9 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 ///     - `db_type`: Define `ColumnType` returned by `ActiveEnum::db_type()`
 ///         - Possible values: all available enum variants of `ColumnType`, e.g. `String(None)`, `String(Some(1))`, `Integer`
 ///         - Note that value has to be passed as string, i.e. `db_type = "Integer"`
+///     - `enum_name`: Define `String` returned by `ActiveEnum::name()`
+///         - This attribute is optional with default value being the name of enum in camel-case
+///         - Note that value has to be passed as string, i.e. `db_type = "Integer"`
 ///
 /// - For enum variant
 ///     - `string_value` or `num_value`:

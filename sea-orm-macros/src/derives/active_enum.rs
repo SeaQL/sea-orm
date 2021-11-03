@@ -1,3 +1,4 @@
+use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{punctuated::Punctuated, token::Comma, Lit, LitInt, LitStr, Meta};
@@ -10,6 +11,7 @@ enum Error {
 
 struct ActiveEnum {
     ident: syn::Ident,
+    enum_name: String,
     rs_type: TokenStream,
     db_type: TokenStream,
     is_string: bool,
@@ -27,6 +29,7 @@ impl ActiveEnum {
         let ident_span = input.ident.span();
         let ident = input.ident;
 
+        let mut enum_name = ident.to_string().to_camel_case();
         let mut rs_type = Err(Error::TT(quote_spanned! {
             ident_span => compile_error!("Missing macro attribute `rs_type`");
         }));
@@ -52,8 +55,22 @@ impl ActiveEnum {
                                 }
                             } else if name == "db_type" {
                                 if let Lit::Str(litstr) = &nv.lit {
-                                    db_type = syn::parse_str::<TokenStream>(&litstr.value())
-                                        .map_err(Error::Syn);
+                                    let s = litstr.value();
+                                    match s.as_ref() {
+                                        "Enum" => {
+                                            db_type = Ok(quote! {
+                                                Enum(Self::name(), Self::values())
+                                            })
+                                        }
+                                        _ => {
+                                            db_type = syn::parse_str::<TokenStream>(&s)
+                                                .map_err(Error::Syn);
+                                        }
+                                    }
+                                }
+                            } else if name == "enum_name" {
+                                if let Lit::Str(litstr) = &nv.lit {
+                                    enum_name = litstr.value();
                                 }
                             }
                         }
@@ -125,6 +142,7 @@ impl ActiveEnum {
 
         Ok(ActiveEnum {
             ident,
+            enum_name,
             rs_type: rs_type?,
             db_type: db_type?,
             is_string,
@@ -141,6 +159,7 @@ impl ActiveEnum {
     fn impl_active_enum(&self) -> TokenStream {
         let Self {
             ident,
+            enum_name,
             rs_type,
             db_type,
             is_string,
@@ -180,6 +199,10 @@ impl ActiveEnum {
             #[automatically_derived]
             impl sea_orm::ActiveEnum for #ident {
                 type Value = #rs_type;
+
+                fn name() -> String {
+                    #enum_name.to_owned()
+                }
 
                 fn to_value(&self) -> Self::Value {
                     match self {
