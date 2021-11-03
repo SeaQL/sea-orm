@@ -32,7 +32,7 @@ where
 }
 
 impl Delete {
-    /// Delete one Model or ActiveModel
+    /// Delete one Model or ActiveModel, soft delete will be performed if it's enabled
     ///
     /// Model
     /// ```
@@ -78,10 +78,7 @@ impl Delete {
         myself.prepare()
     }
 
-    /// Force delete one Model or ActiveModel
-    ///
-    /// ```
-    /// ```
+    /// Force delete one Model or ActiveModel even when soft delete is enabled
     pub fn one_forcefully<E, A, M>(model: M) -> DeleteOne<A>
     where
         E: EntityTrait,
@@ -93,7 +90,7 @@ impl Delete {
         delete_one
     }
 
-    /// Delete many ActiveModel
+    /// Delete many ActiveModel, soft delete will be performed if it's enabled
     ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, DbBackend};
@@ -119,10 +116,7 @@ impl Delete {
         }
     }
 
-    /// Force delete many ActiveModel
-    ///
-    /// ```
-    /// ```
+    /// Force delete many ActiveModel even when soft delete is enabled
     pub fn many_forcefully<E>(entity: E) -> DeleteMany<E>
     where
         E: EntityTrait,

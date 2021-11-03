@@ -86,7 +86,7 @@ pub trait EntityTrait: EntityName {
         RelationBuilder::from_rel(RelationType::HasMany, R::to().rev(), true)
     }
 
-    /// Construct select statement to find one / all models
+    /// Construct select statement to find one / all models, excluding soft deleted rows
     ///
     /// - To select columns, join tables and group by expressions, see [`QuerySelect`](crate::query::QuerySelect)
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
@@ -168,21 +168,16 @@ pub trait EntityTrait: EntityName {
         Select::new()
     }
 
-    /// Construct select statement to find one / all models (with soft deleted rows)
+    /// Construct select statement to find one / all models, including soft deleted rows
     ///
     /// - To select columns, join tables and group by expressions, see [`QuerySelect`](crate::query::QuerySelect)
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
     /// - To apply order by expressions, see [`QueryOrder`](crate::query::QueryOrder)
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// ```
     fn find_with_deleted() -> Select<Self> {
         Select::with_deleted()
     }
 
-    /// Find a model by primary key
+    /// Find a model by primary key, excluding soft deleted rows
     ///
     /// # Example
     ///
@@ -482,7 +477,7 @@ pub trait EntityTrait: EntityName {
         Update::many(Self::default())
     }
 
-    /// Delete an model from database
+    /// Delete an model from database, soft delete will be performed if it's enabled
     ///
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
     ///
@@ -530,14 +525,9 @@ pub trait EntityTrait: EntityName {
         Delete::one(model)
     }
 
-    /// Force delete an model from database
+    /// Force delete an model from database even when soft delete is enabled
     /// 
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// ```
     fn delete_forcefully<A>(model: A) -> DeleteOne<A>
     where
         A: ActiveModelTrait<Entity = Self>,
@@ -545,7 +535,7 @@ pub trait EntityTrait: EntityName {
         Delete::one_forcefully(model)
     }
 
-    /// Delete many models from database
+    /// Delete many models from database, soft delete will be performed if it's enabled
     ///
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
     ///
@@ -588,14 +578,9 @@ pub trait EntityTrait: EntityName {
         Delete::many(Self::default())
     }
 
-    /// Force delete many models from database
+    /// Force delete many models from database even when soft delete is enabled
     ///
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// ```
     fn delete_many_forcefully() -> DeleteMany<Self> {
         Delete::many_forcefully(Self::default())
     }
