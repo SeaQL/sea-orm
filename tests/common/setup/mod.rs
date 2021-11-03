@@ -108,11 +108,10 @@ where
     }
 
     let expect_stmts: Vec<Statement> = creates.iter().map(|stmt| builder.build(stmt)).collect();
-    let create_from_entity_stmts: Vec<Statement> =
-        Schema::create_enum_from_entity(entity, db.get_database_backend())
-            .iter()
-            .map(|stmt| builder.build(stmt))
-            .collect();
+    let create_from_entity_stmts: Vec<Statement> = Schema::create_enum_from_entity(entity, builder)
+        .iter()
+        .map(|stmt| builder.build(stmt))
+        .collect();
 
     assert_eq!(expect_stmts, create_from_entity_stmts);
 
@@ -133,7 +132,7 @@ where
 {
     let builder = db.get_database_backend();
     assert_eq!(
-        builder.build(&Schema::create_table_from_entity(entity)),
+        builder.build(&Schema::create_table_from_entity(entity, builder)),
         builder.build(create)
     );
 
