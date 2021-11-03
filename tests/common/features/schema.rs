@@ -1,8 +1,10 @@
 pub use super::super::bakery_chain::*;
 
 use super::*;
-use crate::common::setup::create_table;
-use sea_orm::{error::*, sea_query, DatabaseConnection, DbConn, ExecResult};
+use crate::common::setup::{create_table, create_table_without_asserts};
+use sea_orm::{
+    error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, ExecResult,
+};
 use sea_query::{ColumnDef, ForeignKeyCreateStatement};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
@@ -10,6 +12,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_metadata_table(db).await?;
     create_repository_table(db).await?;
     create_self_join_table(db).await?;
+    create_byte_primary_key_table(db).await?;
 
     Ok(())
 }
@@ -99,4 +102,24 @@ pub async fn create_self_join_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &stmt, SelfJoin).await
+}
+
+pub async fn create_byte_primary_key_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let mut primary_key_col = ColumnDef::new(byte_primary_key::Column::Id);
+    match db.get_database_backend() {
+        DbBackend::MySql => primary_key_col.binary_len(3),
+        DbBackend::Sqlite | DbBackend::Postgres => primary_key_col.binary(),
+    };
+
+    let stmt = sea_query::Table::create()
+        .table(byte_primary_key::Entity)
+        .col(primary_key_col.not_null().primary_key())
+        .col(
+            ColumnDef::new(byte_primary_key::Column::Value)
+                .string()
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table_without_asserts(db, &stmt).await
 }
