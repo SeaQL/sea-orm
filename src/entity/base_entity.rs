@@ -530,6 +530,14 @@ pub trait EntityTrait: EntityName {
         Delete::one(model)
     }
 
+    /// Force delete an model from database
+    /// 
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// ```
     fn delete_forcefully<A>(model: A) -> DeleteOne<A>
     where
         A: ActiveModelTrait<Entity = Self>,
@@ -580,6 +588,14 @@ pub trait EntityTrait: EntityName {
         Delete::many(Self::default())
     }
 
+    /// Force delete many models from database
+    ///
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// ```
     fn delete_many_forcefully() -> DeleteMany<Self> {
         Delete::many_forcefully(Self::default())
     }

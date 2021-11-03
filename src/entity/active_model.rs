@@ -213,6 +213,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         do_delete!(self, db, delete)
     }
 
+    /// Force delete an active model by its primary key
     async fn delete_forcefully<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
         Self: ActiveModelBehavior + 'a,

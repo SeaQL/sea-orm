@@ -78,6 +78,10 @@ impl Delete {
         myself.prepare()
     }
 
+    /// Force delete one Model or ActiveModel
+    ///
+    /// ```
+    /// ```
     pub fn one_forcefully<E, A, M>(model: M) -> DeleteOne<A>
     where
         E: EntityTrait,
@@ -115,6 +119,10 @@ impl Delete {
         }
     }
 
+    /// Force delete many ActiveModel
+    ///
+    /// ```
+    /// ```
     pub fn many_forcefully<E>(entity: E) -> DeleteMany<E>
     where
         E: EntityTrait,

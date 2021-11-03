@@ -17,10 +17,12 @@ pub trait ModelTrait: Clone + Send + Debug {
     /// Set the [Value] of a column in an Entity
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
 
+    /// Specify soft delete column
     fn soft_delete_column() -> Option<<Self::Entity as EntityTrait>::Column> {
         None
     }
 
+    /// Specify the [Value] assigned to soft delete column when performing soft delete
     fn soft_delete_column_value() -> Value {
         if cfg!(feature = "with-chrono") {
             chrono::offset::Local::now().naive_local().into()
