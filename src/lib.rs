@@ -1,4 +1,5 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![warn(missing_docs)]
 #![deny(
     missing_debug_implementations,
     clippy::print_stderr,

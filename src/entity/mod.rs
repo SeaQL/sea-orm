@@ -16,16 +16,15 @@
 /// #### Example for creating an Entity, Model and ActiveModel
 /// ```
 /// #[cfg(feature = "macros")]
-///
 /// # use sea_orm::entity::prelude::*;
 /// use sea_orm::ActiveModelBehavior;
-/// use sea_orm::RelationDef;
-/// use sea_orm::RelationTrait;
-/// use sea_orm::ColumnType;
 /// use sea_orm::ColumnDef;
 /// use sea_orm::ColumnTrait;
-///  use sea_orm::PrimaryKeyTrait;
+/// use sea_orm::ColumnType;
 /// use sea_orm::EntityName;
+/// use sea_orm::PrimaryKeyTrait;
+/// use sea_orm::RelationDef;
+/// use sea_orm::RelationTrait;
 ///
 /// // Use [DeriveEntity] to derive the EntityTrait automatically
 /// #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
@@ -72,7 +71,6 @@
 ///     }
 /// }
 ///
-///
 /// #[derive(Copy, Clone, Debug, EnumIter)]
 /// pub enum Relation {}
 ///
@@ -96,7 +94,6 @@
 /// // Implement user defined operations for CREATE, UPDATE and DELETE operations
 /// // to create an ActiveModel using the [ActiveModelBehavior]
 /// impl ActiveModelBehavior for ActiveModel {}
-///
 /// ```
 mod active_enum;
 mod active_model;
