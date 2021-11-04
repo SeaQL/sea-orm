@@ -526,7 +526,7 @@ pub trait EntityTrait: EntityName {
     }
 
     /// Force delete an model from database even when soft delete is enabled
-    /// 
+    ///
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
     fn delete_forcefully<A>(model: A) -> DeleteOne<A>
     where
