@@ -229,8 +229,8 @@ impl ActiveEnum {
 
             #[automatically_derived]
             #[allow(clippy::from_over_into)]
-            impl Into<sea_query::Value> for #ident {
-                fn into(self) -> sea_query::Value {
+            impl Into<sea_orm::sea_query::Value> for #ident {
+                fn into(self) -> sea_orm::sea_query::Value {
                     <Self as sea_orm::ActiveEnum>::to_value(&self).into()
                 }
             }
@@ -244,17 +244,17 @@ impl ActiveEnum {
             }
 
             #[automatically_derived]
-            impl sea_query::ValueType for #ident {
-                fn try_from(v: sea_query::Value) -> Result<Self, sea_query::ValueTypeErr> {
-                    let value = <<Self as sea_orm::ActiveEnum>::Value as sea_query::ValueType>::try_from(v)?;
-                    <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(|_| sea_query::ValueTypeErr)
+            impl sea_orm::sea_query::ValueType for #ident {
+                fn try_from(v: sea_orm::sea_query::Value) -> Result<Self, sea_orm::sea_query::ValueTypeErr> {
+                    let value = <<Self as sea_orm::ActiveEnum>::Value as sea_orm::sea_query::ValueType>::try_from(v)?;
+                    <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(|_| sea_orm::sea_query::ValueTypeErr)
                 }
 
                 fn type_name() -> String {
-                    <<Self as sea_orm::ActiveEnum>::Value as sea_query::ValueType>::type_name()
+                    <<Self as sea_orm::ActiveEnum>::Value as sea_orm::sea_query::ValueType>::type_name()
                 }
 
-                fn column_type() -> sea_query::ColumnType {
+                fn column_type() -> sea_orm::sea_query::ColumnType {
                     <Self as sea_orm::ActiveEnum>::db_type()
                         .get_column_type()
                         .to_owned()
@@ -263,9 +263,9 @@ impl ActiveEnum {
             }
 
             #[automatically_derived]
-            impl sea_query::Nullable for #ident {
-                fn null() -> sea_query::Value {
-                    <<Self as sea_orm::ActiveEnum>::Value as sea_query::Nullable>::null()
+            impl sea_orm::sea_query::Nullable for #ident {
+                fn null() -> sea_orm::sea_query::Value {
+                    <<Self as sea_orm::ActiveEnum>::Value as sea_orm::sea_query::Nullable>::null()
                 }
             }
         )
