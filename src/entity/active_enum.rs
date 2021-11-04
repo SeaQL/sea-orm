@@ -120,9 +120,14 @@ pub trait ActiveEnum: Sized + Iterable {
     /// Get the database column definition of this active enum.
     fn db_type() -> ColumnDef;
 
+    /// Convert an owned enum variant into the corresponding value.
+    fn into_value(self) -> Self::Value {
+        Self::to_value(&self)
+    }
+
     /// Get the name of all enum variants
     fn values() -> Vec<Self::Value> {
-        Self::iter().map(|s| s.to_value()).collect()
+        Self::iter().map(Self::into_value).collect()
     }
 }
 
