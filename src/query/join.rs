@@ -5,6 +5,19 @@ use crate::{
 pub use sea_query::JoinType;
 use sea_query::{Alias, Expr, IntoIden, SeaRc, SelectExpr};
 
+macro_rules! filter_soft_deleted {
+    ( $select: ident, $r: ty ) => {
+        match <<$r as EntityTrait>::Model as ModelTrait>::soft_delete_column() {
+            Some(soft_delete_column) if !$select.with_deleted => {
+                $select
+                    .query()
+                    .and_where(Expr::tbl(<$r>::default(), soft_delete_column).is_null());
+            }
+            _ => {}
+        }
+    };
+}
+
 impl<E> Select<E>
 where
     E: EntityTrait,
@@ -15,7 +28,9 @@ where
         R: EntityTrait,
         E: Related<R>,
     {
-        self.join_join(JoinType::LeftJoin, E::to(), E::via())
+        let mut select = self.join_join(JoinType::LeftJoin, E::to(), E::via());
+        filter_soft_deleted!(select, R);
+        select
     }
 
     /// Right Join with a Related Entity.
@@ -24,7 +39,9 @@ where
         R: EntityTrait,
         E: Related<R>,
     {
-        self.join_join(JoinType::RightJoin, E::to(), E::via())
+        let mut select = self.join_join(JoinType::RightJoin, E::to(), E::via());
+        filter_soft_deleted!(select, R);
+        select
     }
 
     /// Inner Join with a Related Entity.
@@ -33,7 +50,9 @@ where
         R: EntityTrait,
         E: Related<R>,
     {
-        self.join_join(JoinType::InnerJoin, E::to(), E::via())
+        let mut select = self.join_join(JoinType::InnerJoin, E::to(), E::via());
+        filter_soft_deleted!(select, R);
+        select
     }
 
     /// Join with an Entity Related to me.
@@ -41,7 +60,9 @@ where
     where
         R: EntityTrait + Related<E>,
     {
-        self.join_rev(JoinType::InnerJoin, R::to())
+        let mut select = self.join_rev(JoinType::InnerJoin, R::to());
+        filter_soft_deleted!(select, R);
+        select
     }
 
     /// Left Join with a Related Entity and select both Entity.
@@ -50,17 +71,7 @@ where
         R: EntityTrait,
         E: Related<R>,
     {
-        let with_deleted = self.with_deleted;
-        let mut select_two = self.left_join(r).select_also(r);
-        match <<R as EntityTrait>::Model as ModelTrait>::soft_delete_column() {
-            Some(soft_delete_column) if !with_deleted => {
-                select_two
-                    .query()
-                    .and_where(Expr::tbl(R::default(), soft_delete_column).is_null());
-            }
-            _ => {}
-        }
-        select_two
+        self.left_join(r).select_also(r)
     }
 
     /// Left Join with a Related Entity and select the related Entity as a `Vec`
@@ -69,17 +80,7 @@ where
         R: EntityTrait,
         E: Related<R>,
     {
-        let with_deleted = self.with_deleted;
-        let mut select_two_many = self.left_join(r).select_with(r);
-        match <<R as EntityTrait>::Model as ModelTrait>::soft_delete_column() {
-            Some(soft_delete_column) if !with_deleted => {
-                select_two_many
-                    .query()
-                    .and_where(Expr::tbl(R::default(), soft_delete_column).is_null());
-            }
-            _ => {}
-        }
-        select_two_many
+        self.left_join(r).select_with(r)
     }
 
     /// Left Join with a Linked Entity and select both Entity.
