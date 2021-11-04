@@ -1,5 +1,5 @@
 use crate::{EntityName, IdenStatic, Iterable};
-use sea_query::{DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
+use sea_query::{Alias, BinOper, DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
 use std::str::FromStr;
 
 /// Defines a Column for an Entity
@@ -67,13 +67,18 @@ pub enum ColumnType {
 }
 
 macro_rules! bind_oper {
-    ( $op: ident ) => {
+    ( $op: ident, $bin_op: ident ) => {
         #[allow(missing_docs)]
         fn $op<V>(&self, v: V) -> SimpleExpr
         where
             V: Into<Value>,
         {
-            Expr::tbl(self.entity_name(), *self).$op(v)
+            let val = Expr::val(v);
+            let expr = match self.def().get_column_type().get_enum_name() {
+                Some(enum_name) => val.as_enum(Alias::new(enum_name)),
+                None => val.into(),
+            };
+            Expr::tbl(self.entity_name(), *self).binary(BinOper::$bin_op, expr)
         }
     };
 }
@@ -130,12 +135,12 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         (self.entity_name(), SeaRc::new(*self) as DynIden)
     }
 
-    bind_oper!(eq);
-    bind_oper!(ne);
-    bind_oper!(gt);
-    bind_oper!(gte);
-    bind_oper!(lt);
-    bind_oper!(lte);
+    bind_oper!(eq, Equal);
+    bind_oper!(ne, NotEqual);
+    bind_oper!(gt, GreaterThan);
+    bind_oper!(gte, GreaterThanOrEqual);
+    bind_oper!(lt, SmallerThan);
+    bind_oper!(lte, SmallerThanOrEqual);
 
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};

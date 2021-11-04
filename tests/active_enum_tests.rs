@@ -30,14 +30,26 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     .insert(db)
     .await?;
 
+    let model = Entity::find().one(db).await?.unwrap();
     assert_eq!(
-        Entity::find().one(db).await?.unwrap(),
+        model,
         Model {
             id: 1,
             category: None,
             color: None,
             tea: None,
         }
+    );
+    assert_eq!(
+        model,
+        Entity::find()
+            .filter(Column::Id.is_not_null())
+            .filter(Column::Category.is_null())
+            .filter(Column::Color.is_null())
+            .filter(Column::Tea.is_null())
+            .one(db)
+            .await?
+            .unwrap()
     );
 
     let am = ActiveModel {
@@ -49,14 +61,26 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     .save(db)
     .await?;
 
+    let model = Entity::find().one(db).await?.unwrap();
     assert_eq!(
-        Entity::find().one(db).await?.unwrap(),
+        model,
         Model {
             id: 1,
             category: Some(Category::Big),
             color: Some(Color::Black),
             tea: Some(Tea::EverydayTea),
         }
+    );
+    assert_eq!(
+        model,
+        Entity::find()
+            .filter(Column::Id.eq(1))
+            .filter(Column::Category.eq(Category::Big))
+            .filter(Column::Color.eq(Color::Black))
+            .filter(Column::Tea.eq(Tea::EverydayTea))
+            .one(db)
+            .await?
+            .unwrap()
     );
 
     let res = am.delete(db).await?;
