@@ -134,7 +134,9 @@ where
             if av_has_val {
                 columns.push(col);
                 let val = Expr::val(av.into_value().unwrap());
-                let expr = match col.def().get_column_type().get_enum_name() {
+                let col_def = col.def();
+                let col_type = col_def.get_column_type();
+                let expr = match col_type.get_enum_name() {
                     Some(enum_name) => val.as_enum(Alias::new(enum_name)),
                     None => val.into(),
                 };

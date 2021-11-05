@@ -86,7 +86,9 @@ macro_rules! bind_oper_with_enum_casting {
             V: Into<Value>,
         {
             let val = Expr::val(v);
-            let expr = match self.def().get_column_type().get_enum_name() {
+            let col_def = self.def();
+            let col_type = col_def.get_column_type();
+            let expr = match col_type.get_enum_name() {
                 Some(enum_name) => val.as_enum(Alias::new(enum_name)),
                 None => val.into(),
             };
