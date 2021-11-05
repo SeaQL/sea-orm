@@ -51,7 +51,7 @@ where
         Inserter::<A>::new(self.primary_key, query).exec(db)
     }
 
-    /// Execute an insert operation and return inserted row
+    /// Execute an insert operation and return the inserted model
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
@@ -88,7 +88,7 @@ where
         exec_insert(self.primary_key, builder.build(&self.query), db)
     }
 
-    /// Execute an insert operation and return inserted row
+    /// Execute an insert operation and return the inserted model
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
