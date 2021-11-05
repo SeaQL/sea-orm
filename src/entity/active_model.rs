@@ -156,6 +156,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Perform the `UPDATE` operation on an ActiveModel
     async fn update<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
+        <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
     {

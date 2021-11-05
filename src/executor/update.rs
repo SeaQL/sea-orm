@@ -1,7 +1,8 @@
 use crate::{
-    error::*, ActiveModelTrait, ConnectionTrait, EntityTrait, Statement, UpdateMany, UpdateOne,
+    error::*, ActiveModelTrait, ConnectionTrait, DbBackend, EntityTrait, IntoActiveModel, Iterable,
+    SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
 };
-use sea_query::UpdateStatement;
+use sea_query::{FromValueTuple, IntoColumnRef, Returning, UpdateStatement};
 use std::future::Future;
 
 /// Defines an update operation
@@ -25,10 +26,11 @@ where
     /// Execute an update operation on an ActiveModel
     pub async fn exec<'b, C>(self, db: &'b C) -> Result<A, DbErr>
     where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait<'b>,
     {
         // so that self is dropped before entering await
-        exec_update_and_return_original(self.query, self.model, db).await
+        exec_update_and_return_updated(self.query, self.model, db).await
     }
 }
 
@@ -78,17 +80,45 @@ where
     Updater::new(query).exec(db).await
 }
 
-async fn exec_update_and_return_original<'a, A, C>(
-    query: UpdateStatement,
+async fn exec_update_and_return_updated<'a, A, C>(
+    mut query: UpdateStatement,
     model: A,
     db: &'a C,
 ) -> Result<A, DbErr>
 where
+    <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
     A: ActiveModelTrait,
     C: ConnectionTrait<'a>,
 {
-    Updater::new(query).check_record_exists().exec(db).await?;
-    Ok(model)
+    let db_backend = db.get_database_backend();
+    let found = match db_backend {
+        DbBackend::Postgres => {
+            query.returning(Returning::Columns(
+                <A::Entity as EntityTrait>::Column::iter()
+                    .map(|c| c.into_column_ref())
+                    .collect(),
+            ));
+            SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
+                db_backend.build(&query),
+            )
+            .one(db)
+            .await?
+        }
+        _ => {
+            Updater::new(query).check_record_exists().exec(db).await?;
+            let primary_key_value = match model.get_primary_key_value() {
+                Some(val) => FromValueTuple::from_value_tuple(val),
+                None => return Err(DbErr::Exec("Fail to get primary key from model".to_owned())),
+            };
+            <A::Entity as EntityTrait>::find_by_id(primary_key_value)
+                .one(db)
+                .await?
+        }
+    };
+    match found {
+        Some(model) => Ok(model.into_active_model()),
+        None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
+    }
 }
 
 async fn exec_update<'a, C>(
