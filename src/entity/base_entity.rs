@@ -413,7 +413,7 @@ pub trait EntityTrait: EntityName {
     /// assert_eq!(
     ///     db.into_transaction_log(),
     ///     vec![Transaction::from_sql_and_values(
-    ///         DbBackend::Postgres, r#"UPDATE "fruit" SET "name" = $1 WHERE "fruit"."id" = $2 AND "fruit"."name" LIKE $3"#,
+    ///         DbBackend::Postgres, r#"UPDATE "fruit" SET "name" = $1 WHERE "fruit"."id" = $2 AND "fruit"."name" LIKE $3 RETURNING "id", "name", "cake_id""#,
     ///         vec!["Orange".into(), 1i32.into(), "%orange%".into()]
     ///     )]);
     /// ```
