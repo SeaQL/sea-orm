@@ -1,8 +1,8 @@
 use crate::{
-    error::*, ActiveModelTrait, ConnectionTrait, DbBackend, EntityTrait, Insert, PrimaryKeyTrait,
-    Statement, TryFromU64,
+    error::*, ActiveModelTrait, ConnectionTrait, DbBackend, EntityTrait, Insert, Iterable,
+    PrimaryKeyTrait, Statement, TryFromU64,
 };
-use sea_query::{FromValueTuple, InsertStatement, ValueTuple};
+use sea_query::{FromValueTuple, InsertStatement, IntoColumnRef, Returning, ValueTuple};
 use std::{future::Future, marker::PhantomData};
 
 /// Defines a structure to perform INSERT operations in an ActiveModel
@@ -39,15 +39,14 @@ where
     {
         // so that self is dropped before entering await
         let mut query = self.query;
-        if db.get_database_backend() == DbBackend::Postgres {
-            use crate::{sea_query::Query, Iterable};
-            if <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
-                query.returning(
-                    Query::select()
-                        .columns(<A::Entity as EntityTrait>::PrimaryKey::iter())
-                        .take(),
-                );
-            }
+        if db.get_database_backend() == DbBackend::Postgres
+            && <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0
+        {
+            query.returning(Returning::Columns(
+                <A::Entity as EntityTrait>::PrimaryKey::iter()
+                    .map(|c| c.into_column_ref())
+                    .collect(),
+            ));
         }
         Inserter::<A>::new(self.primary_key, query).exec(db)
     }
