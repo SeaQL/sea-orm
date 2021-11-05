@@ -147,14 +147,9 @@ pub trait ActiveModelTrait: Clone + Debug {
         C: ConnectionTrait<'a>,
     {
         let am = ActiveModelBehavior::before_save(self, true)?;
-        let res = <Self::Entity as EntityTrait>::insert(am).exec(db).await?;
-        let found = <Self::Entity as EntityTrait>::find_by_id(res.last_insert_id)
-            .one(db)
+        let am = <Self::Entity as EntityTrait>::insert(am)
+            .exec_with_returning(db)
             .await?;
-        let am = match found {
-            Some(model) => model.into_active_model(),
-            None => return Err(DbErr::Exec("Failed to find inserted item".to_owned())),
-        };
         ActiveModelBehavior::after_save(am, true)
     }
 

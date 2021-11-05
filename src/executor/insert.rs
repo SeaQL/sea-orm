@@ -1,6 +1,6 @@
 use crate::{
-    error::*, ActiveModelTrait, ConnectionTrait, DbBackend, EntityTrait, Insert, Iterable,
-    PrimaryKeyTrait, Statement, TryFromU64,
+    error::*, ActiveModelTrait, ConnectionTrait, DbBackend, EntityTrait, Insert, IntoActiveModel,
+    Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
 };
 use sea_query::{FromValueTuple, InsertStatement, IntoColumnRef, Returning, ValueTuple};
 use std::{future::Future, marker::PhantomData};
@@ -50,6 +50,19 @@ where
         }
         Inserter::<A>::new(self.primary_key, query).exec(db)
     }
+
+    /// Execute an insert operation and return inserted row
+    pub fn exec_with_returning<'a, C>(
+        self,
+        db: &'a C,
+    ) -> impl Future<Output = Result<A, DbErr>> + '_
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait<'a>,
+        A: 'a,
+    {
+        Inserter::<A>::new(self.primary_key, self.query).exec_with_returning(db)
+    }
 }
 
 impl<A> Inserter<A>
@@ -74,6 +87,19 @@ where
         let builder = db.get_database_backend();
         exec_insert(self.primary_key, builder.build(&self.query), db)
     }
+
+    /// Execute an insert operation and return inserted row
+    pub fn exec_with_returning<'a, C>(
+        self,
+        db: &'a C,
+    ) -> impl Future<Output = Result<A, DbErr>> + '_
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait<'a>,
+        A: 'a,
+    {
+        exec_insert_with_returning(self.primary_key, self.query, db)
+    }
 }
 
 async fn exec_insert<'a, A, C>(
@@ -89,7 +115,7 @@ where
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
     let last_insert_id_opt = match db.get_database_backend() {
         DbBackend::Postgres => {
-            use crate::{sea_query::Iden, Iterable};
+            use crate::sea_query::Iden;
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
                 .collect::<Vec<_>>();
@@ -109,4 +135,42 @@ where
         },
     };
     Ok(InsertResult { last_insert_id })
+}
+
+async fn exec_insert_with_returning<'a, A, C>(
+    primary_key: Option<ValueTuple>,
+    mut insert_statement: InsertStatement,
+    db: &'a C,
+) -> Result<A, DbErr>
+where
+    <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+    C: ConnectionTrait<'a>,
+    A: ActiveModelTrait,
+{
+    let db_backend = db.get_database_backend();
+    let found = match db_backend {
+        DbBackend::Postgres => {
+            insert_statement.returning(Returning::Columns(
+                <A::Entity as EntityTrait>::Column::iter()
+                    .map(|c| c.into_column_ref())
+                    .collect(),
+            ));
+            SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
+                db_backend.build(&insert_statement),
+            )
+            .one(db)
+            .await?
+        }
+        _ => {
+            let insert_res =
+                exec_insert::<A, _>(primary_key, db_backend.build(&insert_statement), db).await?;
+            <A::Entity as EntityTrait>::find_by_id(insert_res.last_insert_id)
+                .one(db)
+                .await?
+        }
+    };
+    match found {
+        Some(model) => Ok(model.into_active_model()),
+        None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
+    }
 }
