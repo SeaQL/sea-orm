@@ -67,6 +67,18 @@ pub enum ColumnType {
 }
 
 macro_rules! bind_oper {
+    ( $op: ident ) => {
+        #[allow(missing_docs)]
+        fn $op<V>(&self, v: V) -> SimpleExpr
+        where
+            V: Into<Value>,
+        {
+            Expr::tbl(self.entity_name(), *self).$op(v)
+        }
+    };
+}
+
+macro_rules! bind_oper_with_enum_casting {
     ( $op: ident, $bin_op: ident ) => {
         #[allow(missing_docs)]
         fn $op<V>(&self, v: V) -> SimpleExpr
@@ -135,12 +147,12 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         (self.entity_name(), SeaRc::new(*self) as DynIden)
     }
 
-    bind_oper!(eq, Equal);
-    bind_oper!(ne, NotEqual);
-    bind_oper!(gt, GreaterThan);
-    bind_oper!(gte, GreaterThanOrEqual);
-    bind_oper!(lt, SmallerThan);
-    bind_oper!(lte, SmallerThanOrEqual);
+    bind_oper_with_enum_casting!(eq, Equal);
+    bind_oper_with_enum_casting!(ne, NotEqual);
+    bind_oper!(gt);
+    bind_oper!(gte);
+    bind_oper!(lt);
+    bind_oper!(lte);
 
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
