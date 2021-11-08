@@ -328,19 +328,19 @@ impl EntityWriter {
         let relation_defs = entity.get_relation_defs();
         let quoted = if relation_ref_tables_camel_case.is_empty() {
             quote! {
-                _ => panic!("No RelationDef"),
+                panic!("No RelationDef")
             }
         } else {
             quote! {
-                #(Self::#relation_ref_tables_camel_case => #relation_defs,)*
+                match self {
+                    #(Self::#relation_ref_tables_camel_case => #relation_defs,)*
+                }
             }
         };
         quote! {
             impl RelationTrait for Relation {
                 fn def(&self) -> RelationDef {
-                    match self {
-                        #quoted
-                    }
+                    #quoted
                 }
             }
         }
