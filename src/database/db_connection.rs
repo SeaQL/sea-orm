@@ -269,6 +269,22 @@ impl DatabaseConnection {
 }
 
 impl DatabaseConnection {
+    /// Get database version
+    pub fn version(&self) -> String {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection { version, .. } => version.to_string(),
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(_) => "".to_string(),
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(_) => "".to_string(),
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(_) => "".to_string(),
+            DatabaseConnection::Disconnected => panic!("Disconnected"),
+            _ => unimplemented!(),
+        }
+    }
+
     /// Check if database supports `RETURNING`
     pub fn support_returning(&self) -> bool {
         match self {

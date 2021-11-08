@@ -517,7 +517,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [13.3, 12.7, 11.12, 10.17, 9.6.22]
+        version: [13, 12, 11, 10, 9]
         runtime: [tokio]
         tls: [native-tls]
     services:

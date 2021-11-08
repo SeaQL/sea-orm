@@ -40,6 +40,7 @@ async fn main() -> Result<(), DbErr> {
     }
 
     create_tables(db).await?;
+    println!("db_version: {:#?}", db.version());
     db.query_one(builder.build(&insert)).await?;
     db.query_one(builder.build(&update)).await?;
     assert!(false);
