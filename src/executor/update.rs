@@ -1,8 +1,8 @@
 use crate::{
-    error::*, ActiveModelTrait, ConnectionTrait, EntityTrait, IntoActiveModel, Iterable,
-    SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
+    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
+    Iterable, SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
 };
-use sea_query::{FromValueTuple, IntoColumnRef, Returning, UpdateStatement};
+use sea_query::{Alias, Expr, FromValueTuple, Query, UpdateStatement};
 use std::future::Future;
 
 /// Defines an update operation
@@ -92,11 +92,17 @@ where
 {
     match db.support_returning() {
         true => {
-            query.returning(Returning::Columns(
-                <A::Entity as EntityTrait>::Column::iter()
-                    .map(|c| c.into_column_ref())
-                    .collect(),
-            ));
+            let mut returning = Query::select();
+            returning.exprs(<A::Entity as EntityTrait>::Column::iter().map(|c| {
+                let col = Expr::col(c);
+                let col_def = c.def();
+                let col_type = col_def.get_column_type();
+                match col_type.get_enum_name() {
+                    Some(_) => col.as_enum(Alias::new("text")),
+                    None => col.into(),
+                }
+            }));
+            query.returning(returning);
             let db_backend = db.get_database_backend();
             let found: Option<<A::Entity as EntityTrait>::Model> =
                 SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(

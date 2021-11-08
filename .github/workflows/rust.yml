@@ -350,6 +350,7 @@ jobs:
     env:
       DATABASE_URL: "sqlite::memory:"
     strategy:
+      fail-fast: false
       matrix:
         runtime: [async-std, actix, tokio]
         tls: [native-tls, rustls]
@@ -392,6 +393,7 @@ jobs:
     env:
       DATABASE_URL: "mysql://root:@localhost"
     strategy:
+      fail-fast: false
       matrix:
         version: [8.0, 5.7]
         runtime: [async-std, actix, tokio]
@@ -452,8 +454,9 @@ jobs:
     env:
       DATABASE_URL: "mysql://root:@localhost"
     strategy:
+      fail-fast: false
       matrix:
-        version: [10.6]
+        version: [10.7, 10.6, 10.5, 10.0, 5.5]
         runtime: [async-std, actix, tokio]
         tls: [native-tls]
     services:
@@ -512,6 +515,7 @@ jobs:
     env:
       DATABASE_URL: "postgres://root:root@localhost"
     strategy:
+      fail-fast: false
       matrix:
         version: [13.3, 12.7, 11.12, 10.17, 9.6.22]
         runtime: [tokio]

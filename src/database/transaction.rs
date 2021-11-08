@@ -349,11 +349,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
     }
 
     fn support_returning(&self) -> bool {
-        match self.backend {
-            DbBackend::MySql => false,
-            DbBackend::Postgres => true,
-            DbBackend::Sqlite => false,
-        }
+        panic!("FIXME: How?")
     }
 }
 

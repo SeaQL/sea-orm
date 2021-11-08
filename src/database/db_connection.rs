@@ -19,9 +19,11 @@ pub enum DatabaseConnection {
     /// Create a MYSQL database connection and pool
     #[cfg(feature = "sqlx-mysql")]
     SqlxMySqlPoolConnection {
-        /// A SQLx MySQL pool
+        /// The SQLx MySQL pool
         conn: crate::SqlxMySqlPoolConnection,
-        /// A flag indicating whether `RETURNING` syntax is supported
+        /// The MySQL version
+        version: String,
+        /// The flag indicating whether `RETURNING` syntax is supported
         support_returning: bool,
     },
     /// Create a  PostgreSQL database connection and pool
@@ -226,7 +228,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
     fn support_returning(&self) -> bool {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection { .. } => false,
+            DatabaseConnection::SqlxMySqlPoolConnection { support_returning, .. } => *support_returning,
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(_) => true,
             #[cfg(feature = "sqlx-sqlite")]
@@ -261,6 +263,40 @@ impl DatabaseConnection {
     pub fn into_transaction_log(self) -> Vec<crate::Transaction> {
         let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
         mocker.drain_transaction_log()
+    }
+}
+
+impl DatabaseConnection {
+    /// Get database version
+    pub fn db_version(&self) -> String {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection { version, .. } => version.to_string(),
+            // #[cfg(feature = "sqlx-postgres")]
+            // DatabaseConnection::SqlxPostgresPoolConnection(conn) => ,
+            // #[cfg(feature = "sqlx-sqlite")]
+            // DatabaseConnection::SqlxSqlitePoolConnection(conn) => ,
+            // #[cfg(feature = "mock")]
+            // DatabaseConnection::MockDatabaseConnection(conn) => ,
+            DatabaseConnection::Disconnected => panic!("Disconnected"),
+            _ => unimplemented!(),
+        }
+    }
+
+    /// Check if database supports `RETURNING`
+    pub fn db_support_returning(&self) -> bool {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection { support_returning, .. } => *support_returning,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(_) => true,
+            // #[cfg(feature = "sqlx-sqlite")]
+            // DatabaseConnection::SqlxSqlitePoolConnection(conn) => ,
+            // #[cfg(feature = "mock")]
+            // DatabaseConnection::MockDatabaseConnection(conn) => ,
+            DatabaseConnection::Disconnected => panic!("Disconnected"),
+            _ => unimplemented!(),
+        }
     }
 }
 

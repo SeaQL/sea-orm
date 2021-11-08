@@ -191,9 +191,9 @@ async fn into_db_connection(pool: MySqlPool) -> Result<DatabaseConnection, DbErr
             r#"SHOW VARIABLES LIKE "version""#.to_owned(),
         ))
         .await?;
-    let support_returning = if let Some(query_result) = res {
+    let (version, support_returning) = if let Some(query_result) = res {
         let version: String = query_result.try_get("", "Value")?;
-        if !version.contains("MariaDB") {
+        let support_returning = if !version.contains("MariaDB") {
             // This is MySQL
             false
         } else {
@@ -213,12 +213,14 @@ async fn into_db_connection(pool: MySqlPool) -> Result<DatabaseConnection, DbErr
             let ver_major = parse_captures!(1);
             let ver_minor = parse_captures!(2);
             ver_major >= 10 && ver_minor >= 5
-        }
+        };
+        (version, support_returning)
     } else {
         return Err(DbErr::Conn("Fail to parse MySQL version".to_owned()));
     };
     Ok(DatabaseConnection::SqlxMySqlPoolConnection {
         conn,
+        version,
         support_returning,
     })
 }
