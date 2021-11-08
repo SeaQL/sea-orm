@@ -91,33 +91,43 @@ where
     C: ConnectionTrait<'a>,
 {
     let db_backend = db.get_database_backend();
-    let found = match db_backend {
+    match db_backend {
         DbBackend::Postgres => {
             query.returning(Returning::Columns(
                 <A::Entity as EntityTrait>::Column::iter()
                     .map(|c| c.into_column_ref())
                     .collect(),
             ));
-            SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
-                db_backend.build(&query),
-            )
-            .one(db)
-            .await?
+            let found: Option<<A::Entity as EntityTrait>::Model> =
+                SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
+                    db_backend.build(&query),
+                )
+                .one(db)
+                .await?;
+            // If we got `None` then we are updating a row that does not exist.
+            match found {
+                Some(model) => Ok(model.into_active_model()),
+                None => Err(DbErr::RecordNotFound(
+                    "None of the database rows are affected".to_owned(),
+                )),
+            }
         }
         _ => {
+            // If we updating a row that does not exist, error will be thrown here.
             Updater::new(query).check_record_exists().exec(db).await?;
             let primary_key_value = match model.get_primary_key_value() {
                 Some(val) => FromValueTuple::from_value_tuple(val),
                 None => return Err(DbErr::Exec("Fail to get primary key from model".to_owned())),
             };
-            <A::Entity as EntityTrait>::find_by_id(primary_key_value)
+            let found = <A::Entity as EntityTrait>::find_by_id(primary_key_value)
                 .one(db)
-                .await?
+                .await?;
+            // If we cannot select the updated row from db by the cached primary key
+            match found {
+                Some(model) => Ok(model.into_active_model()),
+                None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
+            }
         }
-    };
-    match found {
-        Some(model) => Ok(model.into_active_model()),
-        None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
     }
 }
 
