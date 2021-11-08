@@ -51,9 +51,7 @@ impl ColumnTrait for Column {
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
-        match self {
-            _ => panic!("No RelationDef"),
-        }
+        panic!("No RelationDef")
     }
 }
 
