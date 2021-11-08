@@ -43,8 +43,9 @@ where
         let mut query = self.query;
         if db.support_returning() && <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
             let mut returning = Query::select();
-            returning
-                .columns(<A::Entity as EntityTrait>::PrimaryKey::iter().map(|c| c.into_column_ref()));
+            returning.columns(
+                <A::Entity as EntityTrait>::PrimaryKey::iter().map(|c| c.into_column_ref()),
+            );
             query.returning(returning);
         }
         Inserter::<A>::new(self.primary_key, query).exec(db)

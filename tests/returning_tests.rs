@@ -1,7 +1,8 @@
 pub mod common;
 
-pub use common::{features::*, setup::*, TestContext};
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+pub use common::{bakery_chain::*, setup::*, TestContext};
+use sea_orm::{entity::prelude::*, *};
+use sea_query::Query;
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -10,27 +11,38 @@ use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
     feature = "sqlx-postgres"
 ))]
 async fn main() -> Result<(), DbErr> {
+    use bakery::*;
+
     let ctx = TestContext::new("returning_tests").await;
     let db = &ctx.db;
+    let builder = db.get_database_backend();
 
-    match db {
-        #[cfg(feature = "sqlx-mysql")]
-        DatabaseConnection::SqlxMySqlPoolConnection { .. } => {
-            let version = db.db_version();
-            match version.as_str() {
-                "5.7.26" => assert!(!db.db_support_returning()),
-                _ => unimplemented!("Version {} is not included", version),
-            };
-        },
-        #[cfg(feature = "sqlx-postgres")]
-        DatabaseConnection::SqlxPostgresPoolConnection(_) => {
-            assert!(db.db_support_returning());
-        },
-        #[cfg(feature = "sqlx-sqlite")]
-        DatabaseConnection::SqlxSqlitePoolConnection(_) => {},
-        _ => unreachable!(),
+    let mut insert = Query::insert();
+    insert
+        .into_table(Entity)
+        .columns(vec![Column::Name, Column::ProfitMargin])
+        .values_panic(vec!["Bakery Shop".into(), 0.5.into()]);
+
+    let mut update = Query::update();
+    update
+        .table(Entity)
+        .values(vec![
+            (Column::Name, "Bakery Shop".into()),
+            (Column::ProfitMargin, 0.5.into()),
+        ])
+        .and_where(Column::Id.eq(1));
+
+    if db.support_returning() {
+        let mut returning = Query::select();
+        returning.columns(vec![Column::Id, Column::Name, Column::ProfitMargin]);
+        insert.returning(returning.clone());
+        update.returning(returning);
     }
 
+    create_tables(db).await?;
+    db.query_one(builder.build(&insert)).await?;
+    db.query_one(builder.build(&update)).await?;
+    assert!(false);
     ctx.delete().await;
 
     Ok(())

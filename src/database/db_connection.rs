@@ -228,7 +228,9 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
     fn support_returning(&self) -> bool {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection { support_returning, .. } => *support_returning,
+            DatabaseConnection::SqlxMySqlPoolConnection {
+                support_returning, ..
+            } => *support_returning,
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(_) => true,
             #[cfg(feature = "sqlx-sqlite")]
@@ -267,27 +269,13 @@ impl DatabaseConnection {
 }
 
 impl DatabaseConnection {
-    /// Get database version
-    pub fn db_version(&self) -> String {
-        match self {
-            #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection { version, .. } => version.to_string(),
-            // #[cfg(feature = "sqlx-postgres")]
-            // DatabaseConnection::SqlxPostgresPoolConnection(conn) => ,
-            // #[cfg(feature = "sqlx-sqlite")]
-            // DatabaseConnection::SqlxSqlitePoolConnection(conn) => ,
-            // #[cfg(feature = "mock")]
-            // DatabaseConnection::MockDatabaseConnection(conn) => ,
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
-            _ => unimplemented!(),
-        }
-    }
-
     /// Check if database supports `RETURNING`
-    pub fn db_support_returning(&self) -> bool {
+    pub fn support_returning(&self) -> bool {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection { support_returning, .. } => *support_returning,
+            DatabaseConnection::SqlxMySqlPoolConnection {
+                support_returning, ..
+            } => *support_returning,
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(_) => true,
             // #[cfg(feature = "sqlx-sqlite")]
