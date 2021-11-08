@@ -1,7 +1,7 @@
 use crate::util::{escape_rust_keyword, trim_starting_raw_identifier};
 use heck::CamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::quote;
+use quote::{format_ident, quote, quote_spanned};
 use syn::{
     parse::Error, punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, Fields,
     Lit, Meta,
@@ -193,8 +193,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         primary_keys.push(quote! { #field_name });
                     }
 
-                    let field_type = match sql_type {
-                        Some(t) => t,
+                    let col_type = match sql_type {
+                        Some(t) => quote! { sea_orm::prelude::ColumnType::#t.def() },
                         None => {
                             let field_type = &field.ty;
                             let temp = quote! { #field_type }
@@ -206,7 +206,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             } else {
                                 temp.as_str()
                             };
-                            match temp {
+                            let col_type = match temp {
                                 "char" => quote! { Char(None) },
                                 "String" | "&str" => quote! { String(None) },
                                 "u8" | "i8" => quote! { TinyInteger },
@@ -229,16 +229,24 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 "Decimal" => quote! { Decimal(None) },
                                 "Vec<u8>" => quote! { Binary },
                                 _ => {
-                                    return Err(Error::new(
-                                        field.span(),
-                                        format!("unrecognized type {}", temp),
-                                    ))
+                                    // Assumed it's ActiveEnum if none of the above type matches
+                                    quote! {}
                                 }
+                            };
+                            if col_type.is_empty() {
+                                let field_span = field.span();
+                                let ty = format_ident!("{}", temp);
+                                let def = quote_spanned! { field_span => {
+                                    <#ty as ActiveEnum>::db_type()
+                                }};
+                                quote! { #def }
+                            } else {
+                                quote! { sea_orm::prelude::ColumnType::#col_type.def() }
                             }
                         }
                     };
 
-                    let mut match_row = quote! { Self::#field_name => sea_orm::prelude::ColumnType::#field_type.def() };
+                    let mut match_row = quote! { Self::#field_name => #col_type };
                     if nullable {
                         match_row = quote! { #match_row.nullable() };
                     }
