@@ -294,10 +294,8 @@ impl DatabaseConnection {
             } => *support_returning,
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(_) => true,
-            // #[cfg(feature = "sqlx-sqlite")]
-            // DatabaseConnection::SqlxSqlitePoolConnection(conn) => ,
-            // #[cfg(feature = "mock")]
-            // DatabaseConnection::MockDatabaseConnection(conn) => ,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(_) => false,
             DatabaseConnection::Disconnected => panic!("Disconnected"),
             _ => unimplemented!(),
         }
