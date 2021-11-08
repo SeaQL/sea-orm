@@ -347,6 +347,14 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
         let transaction = self.begin().await.map_err(TransactionError::Connection)?;
         transaction.run(_callback).await
     }
+
+    fn support_returning(&self) -> bool {
+        match self.backend {
+            DbBackend::MySql => false,
+            DbBackend::Postgres => true,
+            DbBackend::Sqlite => false,
+        }
+    }
 }
 
 /// Defines errors for handling transaction failures

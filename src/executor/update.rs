@@ -1,5 +1,5 @@
 use crate::{
-    error::*, ActiveModelTrait, ConnectionTrait, DbBackend, EntityTrait, IntoActiveModel, Iterable,
+    error::*, ActiveModelTrait, ConnectionTrait, EntityTrait, IntoActiveModel, Iterable,
     SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
 };
 use sea_query::{FromValueTuple, IntoColumnRef, Returning, UpdateStatement};
@@ -90,14 +90,14 @@ where
     A: ActiveModelTrait,
     C: ConnectionTrait<'a>,
 {
-    let db_backend = db.get_database_backend();
-    match db_backend {
-        DbBackend::Postgres => {
+    match db.support_returning() {
+        true => {
             query.returning(Returning::Columns(
                 <A::Entity as EntityTrait>::Column::iter()
                     .map(|c| c.into_column_ref())
                     .collect(),
             ));
+            let db_backend = db.get_database_backend();
             let found: Option<<A::Entity as EntityTrait>::Model> =
                 SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
                     db_backend.build(&query),
@@ -112,7 +112,7 @@ where
                 )),
             }
         }
-        _ => {
+        false => {
             // If we updating a row that does not exist then an error will be thrown here.
             Updater::new(query).check_record_exists().exec(db).await?;
             let primary_key_value = match model.get_primary_key_value() {

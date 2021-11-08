@@ -1,6 +1,6 @@
 use crate::{
-    error::*, ActiveModelTrait, ConnectionTrait, DbBackend, EntityTrait, Insert, IntoActiveModel,
-    Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
+    error::*, ActiveModelTrait, ConnectionTrait, EntityTrait, Insert, IntoActiveModel, Iterable,
+    PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
 };
 use sea_query::{FromValueTuple, Iden, InsertStatement, IntoColumnRef, Returning, ValueTuple};
 use std::{future::Future, marker::PhantomData};
@@ -39,9 +39,7 @@ where
     {
         // so that self is dropped before entering await
         let mut query = self.query;
-        if db.get_database_backend() == DbBackend::Postgres
-            && <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0
-        {
+        if db.support_returning() && <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
             query.returning(Returning::Columns(
                 <A::Entity as EntityTrait>::PrimaryKey::iter()
                     .map(|c| c.into_column_ref())
@@ -113,15 +111,15 @@ where
 {
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
-    let last_insert_id_opt = match db.get_database_backend() {
-        DbBackend::Postgres => {
+    let last_insert_id_opt = match db.support_returning() {
+        true => {
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
                 .collect::<Vec<_>>();
             let res = db.query_one(statement).await?.unwrap();
             res.try_get_many("", cols.as_ref()).ok()
         }
-        _ => {
+        false => {
             let last_insert_id = db.execute(statement).await?.last_insert_id();
             ValueTypeOf::<A>::try_from_u64(last_insert_id).ok()
         }
@@ -147,8 +145,8 @@ where
     A: ActiveModelTrait,
 {
     let db_backend = db.get_database_backend();
-    let found = match db_backend {
-        DbBackend::Postgres => {
+    let found = match db.support_returning() {
+        true => {
             insert_statement.returning(Returning::Columns(
                 <A::Entity as EntityTrait>::Column::iter()
                     .map(|c| c.into_column_ref())
@@ -160,7 +158,7 @@ where
             .one(db)
             .await?
         }
-        _ => {
+        false => {
             let insert_res =
                 exec_insert::<A, _>(primary_key, db_backend.build(&insert_statement), db).await?;
             <A::Entity as EntityTrait>::find_by_id(insert_res.last_insert_id)

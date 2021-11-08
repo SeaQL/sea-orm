@@ -1,3 +1,4 @@
+use regex::Regex;
 use std::{future::Future, pin::Pin};
 
 use sqlx::{
@@ -10,7 +11,7 @@ use sea_query_driver_mysql::bind_query;
 
 use crate::{
     debug_print, error::*, executor::*, ConnectOptions, DatabaseConnection, DatabaseTransaction,
-    QueryStream, Statement, TransactionError,
+    DbBackend, QueryStream, Statement, TransactionError,
 };
 
 use super::sqlx_common::*;
@@ -42,9 +43,7 @@ impl SqlxMySqlConnector {
             opt.disable_statement_logging();
         }
         if let Ok(pool) = options.pool_options().connect_with(opt).await {
-            Ok(DatabaseConnection::SqlxMySqlPoolConnection(
-                SqlxMySqlPoolConnection { pool },
-            ))
+            into_db_connection(pool).await
         } else {
             Err(DbErr::Conn("Failed to connect.".to_owned()))
         }
@@ -53,8 +52,8 @@ impl SqlxMySqlConnector {
 
 impl SqlxMySqlConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
-    pub fn from_sqlx_mysql_pool(pool: MySqlPool) -> DatabaseConnection {
-        DatabaseConnection::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection { pool })
+    pub async fn from_sqlx_mysql_pool(pool: MySqlPool) -> Result<DatabaseConnection, DbErr> {
+        into_db_connection(pool).await
     }
 }
 
@@ -182,4 +181,44 @@ pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, MySq
         query = bind_query(query, values);
     }
     query
+}
+
+async fn into_db_connection(pool: MySqlPool) -> Result<DatabaseConnection, DbErr> {
+    let conn = SqlxMySqlPoolConnection { pool };
+    let res = conn
+        .query_one(Statement::from_string(
+            DbBackend::MySql,
+            r#"SHOW VARIABLES LIKE "version""#.to_owned(),
+        ))
+        .await?;
+    let support_returning = if let Some(query_result) = res {
+        let version: String = query_result.try_get("", "Value")?;
+        if !version.contains("MariaDB") {
+            // This is MySQL
+            false
+        } else {
+            // This is MariaDB
+            let regex = Regex::new(r"^(\d+)?.(\d+)?.(\*|\d+)").unwrap();
+            let captures = regex.captures(&version).unwrap();
+            macro_rules! parse_captures {
+                ( $idx: expr ) => {
+                    captures.get($idx).map_or(0, |m| {
+                        m.as_str()
+                            .parse::<usize>()
+                            .map_err(|e| DbErr::Conn(e.to_string()))
+                            .unwrap()
+                    })
+                };
+            }
+            let ver_major = parse_captures!(1);
+            let ver_minor = parse_captures!(2);
+            ver_major >= 10 && ver_minor >= 5
+        }
+    } else {
+        return Err(DbErr::Conn("Fail to parse MySQL version".to_owned()));
+    };
+    Ok(DatabaseConnection::SqlxMySqlPoolConnection {
+        conn,
+        support_returning,
+    })
 }
