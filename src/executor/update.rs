@@ -113,7 +113,7 @@ where
             }
         }
         _ => {
-            // If we updating a row that does not exist, error will be thrown here.
+            // If we updating a row that does not exist then an error will be thrown here.
             Updater::new(query).check_record_exists().exec(db).await?;
             let primary_key_value = match model.get_primary_key_value() {
                 Some(val) => FromValueTuple::from_value_tuple(val),

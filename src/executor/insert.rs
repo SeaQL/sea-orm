@@ -2,7 +2,7 @@ use crate::{
     error::*, ActiveModelTrait, ConnectionTrait, DbBackend, EntityTrait, Insert, IntoActiveModel,
     Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
 };
-use sea_query::{FromValueTuple, InsertStatement, IntoColumnRef, Returning, ValueTuple};
+use sea_query::{FromValueTuple, Iden, InsertStatement, IntoColumnRef, Returning, ValueTuple};
 use std::{future::Future, marker::PhantomData};
 
 /// Defines a structure to perform INSERT operations in an ActiveModel
@@ -51,7 +51,7 @@ where
         Inserter::<A>::new(self.primary_key, query).exec(db)
     }
 
-    /// Execute an insert operation and return the inserted model
+    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
@@ -88,7 +88,7 @@ where
         exec_insert(self.primary_key, builder.build(&self.query), db)
     }
 
-    /// Execute an insert operation and return the inserted model
+    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
@@ -115,7 +115,6 @@ where
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
     let last_insert_id_opt = match db.get_database_backend() {
         DbBackend::Postgres => {
-            use crate::sea_query::Iden;
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
                 .collect::<Vec<_>>();
