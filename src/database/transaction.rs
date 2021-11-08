@@ -349,7 +349,8 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
     }
 
     fn support_returning(&self) -> bool {
-        panic!("FIXME: How?")
+        // FIXME: How?
+        false
     }
 }
 

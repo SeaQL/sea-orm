@@ -221,6 +221,6 @@ async fn into_db_connection(pool: MySqlPool) -> Result<DatabaseConnection, DbErr
     Ok(DatabaseConnection::SqlxMySqlPoolConnection {
         conn,
         version,
-        support_returning,
+        support_returning: false,
     })
 }

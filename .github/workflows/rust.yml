@@ -395,7 +395,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [8.0, 5.7]
+        version: [8.0.27, 5.7.36]
         runtime: [async-std, actix, tokio]
         tls: [native-tls]
     services:
@@ -456,7 +456,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [10.7, 10.6, 10.5, 10.0, 5.5]
+        version: [10.6, 10.5, 10.0, 5.5]
         runtime: [async-std, actix, tokio]
         tls: [native-tls]
     services:
