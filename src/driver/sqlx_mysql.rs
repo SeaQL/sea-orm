@@ -230,5 +230,7 @@ async fn parse_support_returning(pool: &MySqlPool) -> Result<(String, bool), DbE
         // Supported if it's MariaDB with version 10.5.0 or after
         ver_major >= 10 && ver_minor >= 5
     };
+    debug_print!("db_version: {}", version);
+    debug_print!("db_support_returning: {}", support_returning);
     Ok((version, support_returning))
 }

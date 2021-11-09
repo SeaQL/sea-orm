@@ -227,5 +227,7 @@ async fn parse_support_returning(pool: &SqlitePool) -> Result<(String, bool), Db
     let ver_minor = parse_captures!(2);
     // Supported if it's version 3.35.0 (2021-03-12) or after
     let support_returning = ver_major >= 3 && ver_minor >= 35;
+    debug_print!("db_version: {}", version);
+    debug_print!("db_support_returning: {}", support_returning);
     Ok((version, support_returning))
 }
