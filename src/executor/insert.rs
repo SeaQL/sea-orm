@@ -41,7 +41,7 @@ where
     {
         // so that self is dropped before entering await
         let mut query = self.query;
-        if db.support_returning() && <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
+        if db.returning_on_insert() && <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
             let mut returning = Query::select();
             returning.columns(
                 <A::Entity as EntityTrait>::PrimaryKey::iter().map(|c| c.into_column_ref()),
@@ -113,7 +113,7 @@ where
 {
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
-    let last_insert_id_opt = match db.support_returning() {
+    let last_insert_id_opt = match db.returning_on_insert() {
         true => {
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
@@ -147,7 +147,7 @@ where
     A: ActiveModelTrait,
 {
     let db_backend = db.get_database_backend();
-    let found = match db.support_returning() {
+    let found = match db.returning_on_insert() {
         true => {
             let mut returning = Query::select();
             returning.exprs(<A::Entity as EntityTrait>::Column::iter().map(|c| {

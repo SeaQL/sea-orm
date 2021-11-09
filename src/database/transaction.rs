@@ -348,7 +348,12 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
         transaction.run(_callback).await
     }
 
-    fn support_returning(&self) -> bool {
+    fn returning_on_insert(&self) -> bool {
+        // FIXME: How?
+        false
+    }
+
+    fn returning_on_update(&self) -> bool {
         // FIXME: How?
         false
     }

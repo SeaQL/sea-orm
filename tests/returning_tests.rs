@@ -31,12 +31,14 @@ async fn main() -> Result<(), DbErr> {
             (Column::ProfitMargin, 0.5.into()),
         ])
         .and_where(Column::Id.eq(1));
-
-    if db.support_returning() {
-        let mut returning = Query::select();
-        returning.columns(vec![Column::Id, Column::Name, Column::ProfitMargin]);
+    
+    let mut returning = Query::select();
+    returning.columns(vec![Column::Id, Column::Name, Column::ProfitMargin]);
+    if db.returning_on_insert() {
         insert.returning(returning.clone());
-        update.returning(returning);
+    }
+    if db.returning_on_update() {
+        update.returning(returning.clone());
     }
 
     create_tables(db).await?;

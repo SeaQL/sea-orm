@@ -90,7 +90,7 @@ where
     A: ActiveModelTrait,
     C: ConnectionTrait<'a>,
 {
-    match db.support_returning() {
+    match db.returning_on_update() {
         true => {
             let mut returning = Query::select();
             returning.exprs(<A::Entity as EntityTrait>::Column::iter().map(|c| {

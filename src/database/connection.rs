@@ -45,8 +45,11 @@ pub trait ConnectionTrait<'a>: Sync {
         T: Send,
         E: std::error::Error + Send;
 
-    /// Check if the connection supports `RETURNING` syntax
-    fn support_returning(&self) -> bool;
+    /// Check if the connection supports `RETURNING` syntax on insert
+    fn returning_on_insert(&self) -> bool;
+
+    /// Check if the connection supports `RETURNING` syntax on update
+    fn returning_on_update(&self) -> bool;
 
     /// Check if the connection is a test connection for the Mock database
     fn is_mock_connection(&self) -> bool {
