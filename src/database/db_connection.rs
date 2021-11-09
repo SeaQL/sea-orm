@@ -230,26 +230,55 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection {
                 support_returning, ..
-            } => *support_returning,
+            } => {
+                // Supported if it's MariaDB on or after version 10.5.0
+                // Not supported in all MySQL versions
+                *support_returning
+            }
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(_) => true,
+            DatabaseConnection::SqlxPostgresPoolConnection(_) => {
+                // Supported by all Postgres versions
+                true
+            }
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(_) => false,
+            DatabaseConnection::SqlxSqlitePoolConnection(_) => {
+                // Supported by SQLite on or after version 3.35.0 (2021-03-12)
+                false
+            }
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(conn) => match conn.get_database_backend() {
+                DbBackend::MySql => false,
+                DbBackend::Postgres => true,
+                DbBackend::Sqlite => false,
+            },
             DatabaseConnection::Disconnected => panic!("Disconnected"),
-            _ => unimplemented!(),
         }
     }
 
     fn returning_on_update(&self) -> bool {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection { .. } => false,
+            DatabaseConnection::SqlxMySqlPoolConnection { .. } => {
+                // Not supported in all MySQL & MariaDB versions
+                false
+            }
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(_) => true,
+            DatabaseConnection::SqlxPostgresPoolConnection(_) => {
+                // Supported by all Postgres versions
+                true
+            }
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(_) => false,
+            DatabaseConnection::SqlxSqlitePoolConnection(_) => {
+                // Supported by SQLite on or after version 3.35.0 (2021-03-12)
+                false
+            }
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(conn) => match conn.get_database_backend() {
+                DbBackend::MySql => false,
+                DbBackend::Postgres => true,
+                DbBackend::Sqlite => false,
+            },
             DatabaseConnection::Disconnected => panic!("Disconnected"),
-            _ => unimplemented!(),
         }
     }
 

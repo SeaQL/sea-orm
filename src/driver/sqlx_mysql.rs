@@ -195,6 +195,7 @@ async fn into_db_connection(pool: MySqlPool) -> Result<DatabaseConnection, DbErr
         let version: String = query_result.try_get("", "Value")?;
         let support_returning = if !version.contains("MariaDB") {
             // This is MySQL
+            // Not supported in all MySQL versions
             false
         } else {
             // This is MariaDB
@@ -212,6 +213,7 @@ async fn into_db_connection(pool: MySqlPool) -> Result<DatabaseConnection, DbErr
             }
             let ver_major = parse_captures!(1);
             let ver_minor = parse_captures!(2);
+            // Supported if it's MariaDB with version 10.5.0 or after
             ver_major >= 10 && ver_minor >= 5
         };
         (version, support_returning)
