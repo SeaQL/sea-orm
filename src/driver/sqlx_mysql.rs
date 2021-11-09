@@ -24,7 +24,6 @@ pub struct SqlxMySqlConnector;
 #[derive(Debug, Clone)]
 pub struct SqlxMySqlPoolConnection {
     pool: MySqlPool,
-    pub(crate) version: String,
     pub(crate) support_returning: bool,
 }
 
@@ -186,17 +185,16 @@ pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, MySq
 }
 
 async fn into_db_connection(pool: MySqlPool) -> Result<DatabaseConnection, DbErr> {
-    let (version, support_returning) = parse_support_returning(&pool).await?;
+    let support_returning = parse_support_returning(&pool).await?;
     Ok(DatabaseConnection::SqlxMySqlPoolConnection(
         SqlxMySqlPoolConnection {
             pool,
-            version,
             support_returning,
         },
     ))
 }
 
-async fn parse_support_returning(pool: &MySqlPool) -> Result<(String, bool), DbErr> {
+async fn parse_support_returning(pool: &MySqlPool) -> Result<bool, DbErr> {
     let stmt = Statement::from_string(
         DbBackend::MySql,
         r#"SHOW VARIABLES LIKE "version""#.to_owned(),
@@ -232,5 +230,5 @@ async fn parse_support_returning(pool: &MySqlPool) -> Result<(String, bool), DbE
     };
     debug_print!("db_version: {}", version);
     debug_print!("db_support_returning: {}", support_returning);
-    Ok((version, support_returning))
+    Ok(support_returning)
 }

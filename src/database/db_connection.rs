@@ -292,22 +292,6 @@ impl DatabaseConnection {
     }
 }
 
-impl DatabaseConnection {
-    /// Get database version
-    pub fn version(&self) -> String {
-        match self {
-            #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.version.to_string(),
-            #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(_) => "".to_string(),
-            #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.version.to_string(),
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
-            _ => unimplemented!(),
-        }
-    }
-}
-
 impl DbBackend {
     /// Check if the URI is the same as the specified database backend.
     /// Returns true if they match.

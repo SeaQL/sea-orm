@@ -367,37 +367,13 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
     }
 
     fn returning_on_insert(&self) -> bool {
-        match self.backend {
-            DbBackend::MySql => {
-                // Supported if it's MariaDB on or after version 10.5.0
-                // Not supported in all MySQL versions
-                self.support_returning
-            }
-            DbBackend::Postgres => {
-                // Supported by all Postgres versions
-                true
-            }
-            DbBackend::Sqlite => {
-                // Supported by SQLite on or after version 3.35.0 (2021-03-12)
-                self.support_returning
-            }
-        }
+        self.support_returning
     }
 
     fn returning_on_update(&self) -> bool {
         match self.backend {
-            DbBackend::MySql => {
-                // Not supported in all MySQL & MariaDB versions
-                false
-            }
-            DbBackend::Postgres => {
-                // Supported by all Postgres versions
-                true
-            }
-            DbBackend::Sqlite => {
-                // Supported by SQLite on or after version 3.35.0 (2021-03-12)
-                self.support_returning
-            }
+            DbBackend::MySql => false,
+            _ => self.support_returning,
         }
     }
 }

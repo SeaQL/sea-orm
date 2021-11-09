@@ -36,7 +36,6 @@ async fn main() -> Result<(), DbErr> {
     returning.columns(vec![Column::Id, Column::Name, Column::ProfitMargin]);
 
     create_tables(db).await?;
-    println!("db_version: {:#?}", db.version());
 
     if db.returning_on_insert() {
         insert.returning(returning.clone());

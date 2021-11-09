@@ -24,7 +24,6 @@ pub struct SqlxSqliteConnector;
 #[derive(Debug, Clone)]
 pub struct SqlxSqlitePoolConnection {
     pool: SqlitePool,
-    pub(crate) version: String,
     pub(crate) support_returning: bool,
 }
 
@@ -190,17 +189,16 @@ pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, Sql
 }
 
 async fn into_db_connection(pool: SqlitePool) -> Result<DatabaseConnection, DbErr> {
-    let (version, support_returning) = parse_support_returning(&pool).await?;
+    let support_returning = parse_support_returning(&pool).await?;
     Ok(DatabaseConnection::SqlxSqlitePoolConnection(
         SqlxSqlitePoolConnection {
             pool,
-            version,
             support_returning,
         },
     ))
 }
 
-async fn parse_support_returning(pool: &SqlitePool) -> Result<(String, bool), DbErr> {
+async fn parse_support_returning(pool: &SqlitePool) -> Result<bool, DbErr> {
     let stmt = Statement::from_string(
         DbBackend::Sqlite,
         r#"SELECT sqlite_version() AS version"#.to_owned(),
@@ -229,5 +227,5 @@ async fn parse_support_returning(pool: &SqlitePool) -> Result<(String, bool), Db
     let support_returning = ver_major >= 3 && ver_minor >= 35;
     debug_print!("db_version: {}", version);
     debug_print!("db_support_returning: {}", support_returning);
-    Ok((version, support_returning))
+    Ok(support_returning)
 }
