@@ -43,7 +43,6 @@ async fn main() -> Result<(), DbErr> {
     println!("db_version: {:#?}", db.version());
     db.query_one(builder.build(&insert)).await?;
     db.query_one(builder.build(&update)).await?;
-    assert!(false);
     ctx.delete().await;
 
     Ok(())
