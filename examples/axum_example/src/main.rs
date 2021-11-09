@@ -12,7 +12,7 @@ use axum::{
 };
 use flash::{get_flash_cookie, post_response, PostResponse};
 use post::Entity as Post;
-use sea_orm::{prelude::*, Database, QueryOrder, Set};
+use sea_orm::{prelude::*, Database, QueryOrder, Set, PaginatorTrait};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::{env, net::SocketAddr};

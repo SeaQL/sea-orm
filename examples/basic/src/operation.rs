@@ -1,5 +1,5 @@
 use super::*;
-use sea_orm::{entity::*, error::*, query::*, DbConn};
+use sea_orm::{entity::*, error::*, DbConn};
 
 pub async fn all_about_operation(db: &DbConn) -> Result<(), DbErr> {
     insert_and_update(db).await?;
