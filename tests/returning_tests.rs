@@ -43,18 +43,32 @@ async fn main() -> Result<(), DbErr> {
 
     create_tables(db).await?;
     println!("db_version: {:#?}", db.version());
-    let insert_res = db.query_one(builder.build(&insert)).await?.expect("Insert failed");
+
     if db.returning_on_insert() {
+        let insert_res = db
+            .query_one(builder.build(&insert))
+            .await?
+            .expect("Insert failed with query_one");
         let _id: i32 = insert_res.try_get("", "id")?;
         let _name: String = insert_res.try_get("", "name")?;
         let _profit_margin: f64 = insert_res.try_get("", "profit_margin")?;
+    } else {
+        let insert_res = db.execute(builder.build(&insert)).await?;
+        assert!(insert_res.rows_affected() > 0);
     }
-    let update_res = db.query_one(builder.build(&update)).await?.expect("Update filed");
     if db.returning_on_update() {
-        let _id: i32 = insert_res.try_get("", "id")?;
-        let _name: String = insert_res.try_get("", "name")?;
-        let _profit_margin: f64 = insert_res.try_get("", "profit_margin")?;
+        let update_res = db
+            .query_one(builder.build(&update))
+            .await?
+            .expect("Update filed with query_one");
+        let _id: i32 = update_res.try_get("", "id")?;
+        let _name: String = update_res.try_get("", "name")?;
+        let _profit_margin: f64 = update_res.try_get("", "profit_margin")?;
+    } else {
+        let update_res = db.execute(builder.build(&update)).await?;
+        assert!(update_res.rows_affected() > 0);
     }
+
     ctx.delete().await;
 
     Ok(())
