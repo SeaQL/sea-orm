@@ -16,6 +16,7 @@ pub struct DatabaseTransaction {
     conn: Arc<Mutex<InnerConnection>>,
     backend: DbBackend,
     open: bool,
+    support_returning: bool,
 }
 
 impl std::fmt::Debug for DatabaseTransaction {
@@ -28,10 +29,12 @@ impl DatabaseTransaction {
     #[cfg(feature = "sqlx-mysql")]
     pub(crate) async fn new_mysql(
         inner: PoolConnection<sqlx::MySql>,
+        support_returning: bool,
     ) -> Result<DatabaseTransaction, DbErr> {
         Self::begin(
             Arc::new(Mutex::new(InnerConnection::MySql(inner))),
             DbBackend::MySql,
+            support_returning,
         )
         .await
     }
@@ -43,6 +46,7 @@ impl DatabaseTransaction {
         Self::begin(
             Arc::new(Mutex::new(InnerConnection::Postgres(inner))),
             DbBackend::Postgres,
+            true,
         )
         .await
     }
@@ -54,6 +58,7 @@ impl DatabaseTransaction {
         Self::begin(
             Arc::new(Mutex::new(InnerConnection::Sqlite(inner))),
             DbBackend::Sqlite,
+            false,
         )
         .await
     }
@@ -63,17 +68,28 @@ impl DatabaseTransaction {
         inner: Arc<crate::MockDatabaseConnection>,
     ) -> Result<DatabaseTransaction, DbErr> {
         let backend = inner.get_database_backend();
-        Self::begin(Arc::new(Mutex::new(InnerConnection::Mock(inner))), backend).await
+        Self::begin(
+            Arc::new(Mutex::new(InnerConnection::Mock(inner))),
+            backend,
+            match backend {
+                DbBackend::MySql => false,
+                DbBackend::Postgres => true,
+                DbBackend::Sqlite => false,
+            },
+        )
+        .await
     }
 
     async fn begin(
         conn: Arc<Mutex<InnerConnection>>,
         backend: DbBackend,
+        support_returning: bool,
     ) -> Result<DatabaseTransaction, DbErr> {
         let res = DatabaseTransaction {
             conn,
             backend,
             open: true,
+            support_returning,
         };
         match *res.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
@@ -330,7 +346,8 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
     }
 
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
-        DatabaseTransaction::begin(Arc::clone(&self.conn), self.backend).await
+        DatabaseTransaction::begin(Arc::clone(&self.conn), self.backend, self.support_returning)
+            .await
     }
 
     /// Execute the function inside a transaction.
@@ -349,13 +366,38 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
     }
 
     fn returning_on_insert(&self) -> bool {
-        // FIXME: How?
-        false
+        match self.backend {
+            DbBackend::MySql => {
+                // Supported if it's MariaDB on or after version 10.5.0
+                // Not supported in all MySQL versions
+                self.support_returning
+            }
+            DbBackend::Postgres => {
+                // Supported by all Postgres versions
+                true
+            }
+            DbBackend::Sqlite => {
+                // Supported by SQLite on or after version 3.35.0 (2021-03-12)
+                false
+            }
+        }
     }
 
     fn returning_on_update(&self) -> bool {
-        // FIXME: How?
-        false
+        match self.backend {
+            DbBackend::MySql => {
+                // Not supported in all MySQL & MariaDB versions
+                false
+            }
+            DbBackend::Postgres => {
+                // Supported by all Postgres versions
+                true
+            }
+            DbBackend::Sqlite => {
+                // Supported by SQLite on or after version 3.35.0 (2021-03-12)
+                false
+            }
+        }
     }
 }
 

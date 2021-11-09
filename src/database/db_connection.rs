@@ -18,14 +18,7 @@ use std::sync::Arc;
 pub enum DatabaseConnection {
     /// Create a MYSQL database connection and pool
     #[cfg(feature = "sqlx-mysql")]
-    SqlxMySqlPoolConnection {
-        /// The SQLx MySQL pool
-        conn: crate::SqlxMySqlPoolConnection,
-        /// The MySQL version
-        version: String,
-        /// The flag indicating whether `RETURNING` syntax is supported
-        support_returning: bool,
-    },
+    SqlxMySqlPoolConnection(crate::SqlxMySqlPoolConnection),
     /// Create a  PostgreSQL database connection and pool
     #[cfg(feature = "sqlx-postgres")]
     SqlxPostgresPoolConnection(crate::SqlxPostgresPoolConnection),
@@ -80,7 +73,7 @@ impl std::fmt::Debug for DatabaseConnection {
             "{}",
             match self {
                 #[cfg(feature = "sqlx-mysql")]
-                Self::SqlxMySqlPoolConnection { .. } => "SqlxMySqlPoolConnection",
+                Self::SqlxMySqlPoolConnection(_) => "SqlxMySqlPoolConnection",
                 #[cfg(feature = "sqlx-postgres")]
                 Self::SqlxPostgresPoolConnection(_) => "SqlxPostgresPoolConnection",
                 #[cfg(feature = "sqlx-sqlite")]
@@ -100,7 +93,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
     fn get_database_backend(&self) -> DbBackend {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection { .. } => DbBackend::MySql,
+            DatabaseConnection::SqlxMySqlPoolConnection(_) => DbBackend::MySql,
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(_) => DbBackend::Postgres,
             #[cfg(feature = "sqlx-sqlite")]
@@ -114,7 +107,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
     async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection { conn, .. } => conn.execute(stmt).await,
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.execute(stmt).await,
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.execute(stmt).await,
             #[cfg(feature = "sqlx-sqlite")]
@@ -128,7 +121,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
     async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection { conn, .. } => conn.query_one(stmt).await,
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_one(stmt).await,
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.query_one(stmt).await,
             #[cfg(feature = "sqlx-sqlite")]
@@ -142,7 +135,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection { conn, .. } => conn.query_all(stmt).await,
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.query_all(stmt).await,
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.query_all(stmt).await,
             #[cfg(feature = "sqlx-sqlite")]
@@ -160,9 +153,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
         Box::pin(async move {
             Ok(match self {
                 #[cfg(feature = "sqlx-mysql")]
-                DatabaseConnection::SqlxMySqlPoolConnection { conn, .. } => {
-                    conn.stream(stmt).await?
-                }
+                DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.stream(stmt).await?,
                 #[cfg(feature = "sqlx-postgres")]
                 DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.stream(stmt).await?,
                 #[cfg(feature = "sqlx-sqlite")]
@@ -179,7 +170,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection { conn, .. } => conn.begin().await,
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.begin().await,
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.begin().await,
             #[cfg(feature = "sqlx-sqlite")]
@@ -205,9 +196,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
     {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection { conn, .. } => {
-                conn.transaction(_callback).await
-            }
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.transaction(_callback).await,
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
                 conn.transaction(_callback).await
@@ -228,12 +217,10 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
     fn returning_on_insert(&self) -> bool {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection {
-                support_returning, ..
-            } => {
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => {
                 // Supported if it's MariaDB on or after version 10.5.0
                 // Not supported in all MySQL versions
-                *support_returning
+                conn.support_returning
             }
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(_) => {
@@ -258,7 +245,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
     fn returning_on_update(&self) -> bool {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection { .. } => {
+            DatabaseConnection::SqlxMySqlPoolConnection(_) => {
                 // Not supported in all MySQL & MariaDB versions
                 false
             }
@@ -310,7 +297,7 @@ impl DatabaseConnection {
     pub fn version(&self) -> String {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection { version, .. } => version.to_string(),
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.version.to_string(),
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(_) => "".to_string(),
             #[cfg(feature = "sqlx-sqlite")]

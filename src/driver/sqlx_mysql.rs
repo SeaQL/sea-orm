@@ -3,7 +3,7 @@ use std::{future::Future, pin::Pin};
 
 use sqlx::{
     mysql::{MySqlArguments, MySqlConnectOptions, MySqlQueryResult, MySqlRow},
-    MySql, MySqlPool,
+    MySql, MySqlPool, Row,
 };
 
 sea_query::sea_query_driver_mysql!();
@@ -24,6 +24,8 @@ pub struct SqlxMySqlConnector;
 #[derive(Debug, Clone)]
 pub struct SqlxMySqlPoolConnection {
     pool: MySqlPool,
+    pub(crate) version: String,
+    pub(crate) support_returning: bool,
 }
 
 impl SqlxMySqlConnector {
@@ -128,7 +130,7 @@ impl SqlxMySqlPoolConnection {
     /// Bundle a set of SQL statements that execute together.
     pub async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         if let Ok(conn) = self.pool.acquire().await {
-            DatabaseTransaction::new_mysql(conn).await
+            DatabaseTransaction::new_mysql(conn, self.support_returning).await
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),
@@ -147,7 +149,7 @@ impl SqlxMySqlPoolConnection {
         E: std::error::Error + Send,
     {
         if let Ok(conn) = self.pool.acquire().await {
-            let transaction = DatabaseTransaction::new_mysql(conn)
+            let transaction = DatabaseTransaction::new_mysql(conn, self.support_returning)
                 .await
                 .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
@@ -184,45 +186,49 @@ pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, MySq
 }
 
 async fn into_db_connection(pool: MySqlPool) -> Result<DatabaseConnection, DbErr> {
-    let conn = SqlxMySqlPoolConnection { pool };
-    let res = conn
-        .query_one(Statement::from_string(
-            DbBackend::MySql,
-            r#"SHOW VARIABLES LIKE "version""#.to_owned(),
-        ))
-        .await?;
-    let (version, support_returning) = if let Some(query_result) = res {
-        let version: String = query_result.try_get("", "Value")?;
-        let support_returning = if !version.contains("MariaDB") {
-            // This is MySQL
-            // Not supported in all MySQL versions
-            false
-        } else {
-            // This is MariaDB
-            let regex = Regex::new(r"^(\d+)?.(\d+)?.(\*|\d+)").unwrap();
-            let captures = regex.captures(&version).unwrap();
-            macro_rules! parse_captures {
-                ( $idx: expr ) => {
-                    captures.get($idx).map_or(0, |m| {
-                        m.as_str()
-                            .parse::<usize>()
-                            .map_err(|e| DbErr::Conn(e.to_string()))
-                            .unwrap()
-                    })
-                };
-            }
-            let ver_major = parse_captures!(1);
-            let ver_minor = parse_captures!(2);
-            // Supported if it's MariaDB with version 10.5.0 or after
-            ver_major >= 10 && ver_minor >= 5
-        };
-        (version, support_returning)
+    let (version, support_returning) = parse_support_returning(&pool).await?;
+    Ok(DatabaseConnection::SqlxMySqlPoolConnection(
+        SqlxMySqlPoolConnection {
+            pool,
+            version,
+            support_returning,
+        },
+    ))
+}
+
+async fn parse_support_returning(pool: &MySqlPool) -> Result<(String, bool), DbErr> {
+    let stmt = Statement::from_string(
+        DbBackend::MySql,
+        r#"SHOW VARIABLES LIKE "version""#.to_owned(),
+    );
+    let query = sqlx_query(&stmt);
+    let row = query
+        .fetch_one(pool)
+        .await
+        .map_err(sqlx_error_to_query_err)?;
+    let version: String = row.try_get("Value").map_err(sqlx_error_to_query_err)?;
+    let support_returning = if !version.contains("MariaDB") {
+        // This is MySQL
+        // Not supported in all MySQL versions
+        false
     } else {
-        return Err(DbErr::Conn("Fail to parse MySQL version".to_owned()));
+        // This is MariaDB
+        let regex = Regex::new(r"^(\d+)?.(\d+)?.(\*|\d+)").unwrap();
+        let captures = regex.captures(&version).unwrap();
+        macro_rules! parse_captures {
+            ( $idx: expr ) => {
+                captures.get($idx).map_or(0, |m| {
+                    m.as_str()
+                        .parse::<usize>()
+                        .map_err(|e| DbErr::Conn(e.to_string()))
+                        .unwrap()
+                })
+            };
+        }
+        let ver_major = parse_captures!(1);
+        let ver_minor = parse_captures!(2);
+        // Supported if it's MariaDB with version 10.5.0 or after
+        ver_major >= 10 && ver_minor >= 5
     };
-    Ok(DatabaseConnection::SqlxMySqlPoolConnection {
-        conn,
-        version,
-        support_returning,
-    })
+    Ok((version, support_returning))
 }
