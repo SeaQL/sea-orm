@@ -54,11 +54,12 @@ impl DatabaseTransaction {
     #[cfg(feature = "sqlx-sqlite")]
     pub(crate) async fn new_sqlite(
         inner: PoolConnection<sqlx::Sqlite>,
+        support_returning: bool,
     ) -> Result<DatabaseTransaction, DbErr> {
         Self::begin(
             Arc::new(Mutex::new(InnerConnection::Sqlite(inner))),
             DbBackend::Sqlite,
-            false,
+            support_returning,
         )
         .await
     }
@@ -378,7 +379,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
             }
             DbBackend::Sqlite => {
                 // Supported by SQLite on or after version 3.35.0 (2021-03-12)
-                false
+                self.support_returning
             }
         }
     }
@@ -395,7 +396,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
             }
             DbBackend::Sqlite => {
                 // Supported by SQLite on or after version 3.35.0 (2021-03-12)
-                false
+                self.support_returning
             }
         }
     }

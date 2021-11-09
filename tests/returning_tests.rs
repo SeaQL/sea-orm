@@ -34,17 +34,12 @@ async fn main() -> Result<(), DbErr> {
 
     let mut returning = Query::select();
     returning.columns(vec![Column::Id, Column::Name, Column::ProfitMargin]);
-    if db.returning_on_insert() {
-        insert.returning(returning.clone());
-    }
-    if db.returning_on_update() {
-        update.returning(returning.clone());
-    }
 
     create_tables(db).await?;
     println!("db_version: {:#?}", db.version());
 
     if db.returning_on_insert() {
+        insert.returning(returning.clone());
         let insert_res = db
             .query_one(builder.build(&insert))
             .await?
@@ -57,6 +52,7 @@ async fn main() -> Result<(), DbErr> {
         assert!(insert_res.rows_affected() > 0);
     }
     if db.returning_on_update() {
+        update.returning(returning.clone());
         let update_res = db
             .query_one(builder.build(&update))
             .await?

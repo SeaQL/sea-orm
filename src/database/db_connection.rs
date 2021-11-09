@@ -228,9 +228,9 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
                 true
             }
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(_) => {
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => {
                 // Supported by SQLite on or after version 3.35.0 (2021-03-12)
-                false
+                conn.support_returning
             }
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => match conn.get_database_backend() {
@@ -255,9 +255,9 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
                 true
             }
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(_) => {
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => {
                 // Supported by SQLite on or after version 3.35.0 (2021-03-12)
-                false
+                conn.support_returning
             }
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => match conn.get_database_backend() {
@@ -301,7 +301,7 @@ impl DatabaseConnection {
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(_) => "".to_string(),
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(_) => "".to_string(),
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.version.to_string(),
             DatabaseConnection::Disconnected => panic!("Disconnected"),
             _ => unimplemented!(),
         }
