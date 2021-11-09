@@ -8,9 +8,10 @@ use std::fmt;
 pub struct Statement {
     /// The SQL query
     pub sql: String,
-    /// The values for the SQL statement
+    /// The values for the SQL statement's parameters
     pub values: Option<Values>,
-    /// The database backend to use
+    /// The database backend this statement is constructed for.
+    /// The SQL dialect and values should be valid for the DbBackend.
     pub db_backend: DbBackend,
 }
 
@@ -31,7 +32,7 @@ impl Statement {
     }
 
     /// Create a SQL statement from a [crate::DatabaseBackend], a
-    /// raw SQL statement and defined values
+    /// raw SQL statement and param values
     pub fn from_sql_and_values<I>(db_backend: DbBackend, sql: &str, values: I) -> Self
     where
         I: IntoIterator<Item = Value>,

@@ -11,7 +11,7 @@ use std::pin::Pin;
 #[cfg(feature = "with-json")]
 use crate::JsonValue;
 
-/// Defines a type to do `SELECT` operations though a [SelectStatement] on a Model
+/// Defines a type to do `SELECT` operations through a [SelectStatement] on a Model
 #[derive(Clone, Debug)]
 pub struct Selector<S>
 where
