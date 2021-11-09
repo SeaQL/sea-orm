@@ -1,4 +1,4 @@
-use crate::{error::*, ConnectionTrait, DbBackend, SelectorTrait};
+use crate::{ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel, SelectTwo, SelectTwoModel, Selector, SelectorTrait, error::*};
 use async_stream::stream;
 use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
@@ -95,7 +95,7 @@ where
     ///
     /// ```rust
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, MockDatabase, DbBackend};
+    /// # use sea_orm::{error::*, MockDatabase, DbBackend, PaginatorTrait};
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres).into_connection();
     /// # let db = &owned_db;
     /// # let _: Result<(), DbErr> = smol::block_on(async {
@@ -123,7 +123,7 @@ where
     ///
     /// ```rust
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, MockDatabase, DbBackend};
+    /// # use sea_orm::{error::*, MockDatabase, DbBackend, PaginatorTrait};
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres).into_connection();
     /// # let db = &owned_db;
     /// # let _: Result<(), DbErr> = smol::block_on(async {
@@ -155,12 +155,92 @@ where
     }
 }
 
+/// Used to enforce constraints on any type that wants to paginate results
+pub trait PaginatorTrait<'db, C>
+where
+    C: ConnectionTrait<'db>,
+{
+    /// Select operation
+    type Selector: SelectorTrait + 'db;
+
+    /// Paginate the result of a select operation.
+    fn paginate(self, db: &'db C, page_size: usize) -> Paginator<'db, C, Self::Selector>;
+}
+
+impl<'db, C, S> PaginatorTrait<'db, C> for Selector<S>
+where
+    C: ConnectionTrait<'db>,
+    S: SelectorTrait + 'db,
+{
+    type Selector = S;
+
+    fn paginate(self, db: &'db C, page_size: usize) -> Paginator<'db, C, S> {
+        Paginator {
+            query: self.query,
+            page: 0,
+            page_size,
+            db,
+            selector: PhantomData,
+        }
+    }
+}
+
+impl<'db, C, M, E> PaginatorTrait<'db, C> for Select<E>
+where
+    C: ConnectionTrait<'db>,
+    E: EntityTrait<Model = M>,
+    M: FromQueryResult + Sized + 'db,
+{
+    type Selector = SelectModel<M>;
+
+    fn paginate(self, db: &'db C, page_size: usize) -> Paginator<'db, C, Self::Selector> {
+        self.into_model().paginate(db, page_size)
+    }
+}
+
+impl<'db, C, M, N, E, F> PaginatorTrait<'db, C> for SelectTwo<E, F>
+where
+    C: ConnectionTrait<'db>,
+    E: EntityTrait<Model = M>,
+    F: EntityTrait<Model = N>,
+    M: FromQueryResult + Sized + 'db,
+    N: FromQueryResult + Sized + 'db,
+{
+    type Selector = SelectTwoModel<M, N>;
+
+    fn paginate(self, db: &'db C, page_size: usize) -> Paginator<'db, C, Self::Selector> {
+        self.into_model().paginate(db, page_size)
+    }
+}
+
+/// Used to enforce constraints on any type that wants to count results using pagination.
+#[async_trait::async_trait]
+pub trait CountTrait<'db, C>: PaginatorTrait<'db, C>
+where
+    C: ConnectionTrait<'db>,
+{
+    /// Perform a count on the paginated results
+    async fn count(self, db: &'db C) -> Result<usize, DbErr>;
+}
+
+#[async_trait::async_trait]
+impl<'db, C, P, S> CountTrait<'db, C> for P
+where
+    C: ConnectionTrait<'db>,
+    P: PaginatorTrait<'db, C, Selector = S> + Send,
+    S: SelectorTrait + Send + Sync + 'db
+{
+    async fn count(self, db:&'db C) -> Result<usize, DbErr> {
+        self.paginate(db, 1).num_items().await
+    }
+}
 #[cfg(test)]
 #[cfg(feature = "mock")]
 mod tests {
     use crate::entity::prelude::*;
     use crate::{tests_cfg::*, ConnectionTrait};
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
+    use super::*;
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};
 

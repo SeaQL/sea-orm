@@ -1,6 +1,6 @@
 use crate::{
     error::*, ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, ModelTrait,
-    Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
+    PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
     Statement, TryGetableMany,
 };
 use futures::{Stream, TryStreamExt};
@@ -17,7 +17,7 @@ pub struct Selector<S>
 where
     S: SelectorTrait,
 {
-    query: SelectStatement,
+    pub(crate) query: SelectStatement,
     selector: S,
 }
 
@@ -276,26 +276,6 @@ where
     {
         self.into_model().stream(db).await
     }
-
-    /// Paginate the results of a SELECT operation on a Model
-    pub fn paginate<'a, C>(
-        self,
-        db: &'a C,
-        page_size: usize,
-    ) -> Paginator<'a, C, SelectModel<E::Model>>
-    where
-        C: ConnectionTrait<'a>,
-    {
-        self.into_model().paginate(db, page_size)
-    }
-
-    /// Perform a `COUNT` operation on a items on a Model using pagination
-    pub async fn count<'a, C>(self, db: &'a C) -> Result<usize, DbErr>
-    where
-        C: ConnectionTrait<'a>,
-    {
-        self.paginate(db, 1).num_items().await
-    }
 }
 
 impl<E, F> SelectTwo<E, F>
@@ -349,26 +329,6 @@ where
         C: ConnectionTrait<'a>,
     {
         self.into_model().stream(db).await
-    }
-
-    /// Paginate the results of a select operation on two models
-    pub fn paginate<'a, C>(
-        self,
-        db: &'a C,
-        page_size: usize,
-    ) -> Paginator<'a, C, SelectTwoModel<E::Model, F::Model>>
-    where
-        C: ConnectionTrait<'a>,
-    {
-        self.into_model().paginate(db, page_size)
-    }
-
-    /// Perform a count on the paginated results
-    pub async fn count<'a, C>(self, db: &'a C) -> Result<usize, DbErr>
-    where
-        C: ConnectionTrait<'a>,
-    {
-        self.paginate(db, 1).num_items().await
     }
 }
 
@@ -498,20 +458,6 @@ where
         Ok(Box::pin(stream.and_then(|row| {
             futures::future::ready(S::from_raw_query_result(row))
         })))
-    }
-
-    /// Paginate the result of a select operation on a Model
-    pub fn paginate<'a, C>(self, db: &'a C, page_size: usize) -> Paginator<'a, C, S>
-    where
-        C: ConnectionTrait<'a>,
-    {
-        Paginator {
-            query: self.query,
-            page: 0,
-            page_size,
-            db,
-            selector: PhantomData,
-        }
     }
 }
 
