@@ -36,7 +36,7 @@ pub struct ConnectOptions {
     /// Maximum idle time for a particular connection to prevent
     /// network resource exhaustion
     pub(crate) idle_timeout: Option<Duration>,
-    /// Enables or disables logging
+    /// Enable SQLx statement logging
     pub(crate) sqlx_logging: bool,
 }
 
@@ -128,6 +128,11 @@ impl ConnectOptions {
         opt
     }
 
+    /// Get the database URL of the pool
+    pub fn get_url(&self) -> &str {
+        &self.url
+    }
+
     /// Set the maximum number of connections of the pool
     pub fn max_connections(&mut self, value: u32) -> &mut Self {
         self.max_connections = Some(value);
@@ -170,5 +175,16 @@ impl ConnectOptions {
     /// Get the idle duration before closing a connection, if set
     pub fn get_idle_timeout(&self) -> Option<Duration> {
         self.idle_timeout
+    }
+
+    /// Enable SQLx statement logging (default true)
+    pub fn sqlx_logging(&mut self, value: bool) -> &mut Self {
+        self.sqlx_logging = value;
+        self
+    }
+
+    /// Get whether SQLx statement logging is enabled
+    pub fn get_sqlx_logging(&self) -> bool {
+        self.sqlx_logging
     }
 }

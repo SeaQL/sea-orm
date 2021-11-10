@@ -11,6 +11,8 @@ pub enum DbErr {
     RecordNotFound(String),
     /// A custom error
     Custom(String),
+    /// Error occurred while parsing value as target type
+    Type(String),
 }
 
 impl std::error::Error for DbErr {}
@@ -23,6 +25,7 @@ impl std::fmt::Display for DbErr {
             Self::Query(s) => write!(f, "Query Error: {}", s),
             Self::RecordNotFound(s) => write!(f, "RecordNotFound Error: {}", s),
             Self::Custom(s) => write!(f, "Custom Error: {}", s),
+            Self::Type(s) => write!(f, "Type Error: {}", s),
         }
     }
 }

@@ -1,6 +1,6 @@
 pub use super::*;
 use rust_decimal_macros::dec;
-use sea_orm::DbErr;
+use sea_orm::{DbErr, PaginatorTrait};
 use uuid::Uuid;
 
 pub async fn test_update_cake(db: &DbConn) {
