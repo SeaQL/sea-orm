@@ -16,7 +16,6 @@ pub struct DatabaseTransaction {
     conn: Arc<Mutex<InnerConnection>>,
     backend: DbBackend,
     open: bool,
-    support_returning: bool,
 }
 
 impl std::fmt::Debug for DatabaseTransaction {
@@ -29,12 +28,10 @@ impl DatabaseTransaction {
     #[cfg(feature = "sqlx-mysql")]
     pub(crate) async fn new_mysql(
         inner: PoolConnection<sqlx::MySql>,
-        support_returning: bool,
     ) -> Result<DatabaseTransaction, DbErr> {
         Self::begin(
             Arc::new(Mutex::new(InnerConnection::MySql(inner))),
             DbBackend::MySql,
-            support_returning,
         )
         .await
     }
@@ -46,7 +43,6 @@ impl DatabaseTransaction {
         Self::begin(
             Arc::new(Mutex::new(InnerConnection::Postgres(inner))),
             DbBackend::Postgres,
-            true,
         )
         .await
     }
@@ -54,12 +50,10 @@ impl DatabaseTransaction {
     #[cfg(feature = "sqlx-sqlite")]
     pub(crate) async fn new_sqlite(
         inner: PoolConnection<sqlx::Sqlite>,
-        support_returning: bool,
     ) -> Result<DatabaseTransaction, DbErr> {
         Self::begin(
             Arc::new(Mutex::new(InnerConnection::Sqlite(inner))),
             DbBackend::Sqlite,
-            support_returning,
         )
         .await
     }
@@ -69,28 +63,17 @@ impl DatabaseTransaction {
         inner: Arc<crate::MockDatabaseConnection>,
     ) -> Result<DatabaseTransaction, DbErr> {
         let backend = inner.get_database_backend();
-        Self::begin(
-            Arc::new(Mutex::new(InnerConnection::Mock(inner))),
-            backend,
-            match backend {
-                DbBackend::MySql => false,
-                DbBackend::Postgres => true,
-                DbBackend::Sqlite => false,
-            },
-        )
-        .await
+        Self::begin(Arc::new(Mutex::new(InnerConnection::Mock(inner))), backend).await
     }
 
     async fn begin(
         conn: Arc<Mutex<InnerConnection>>,
         backend: DbBackend,
-        support_returning: bool,
     ) -> Result<DatabaseTransaction, DbErr> {
         let res = DatabaseTransaction {
             conn,
             backend,
             open: true,
-            support_returning,
         };
         match *res.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
@@ -347,8 +330,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
     }
 
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
-        DatabaseTransaction::begin(Arc::clone(&self.conn), self.backend, self.support_returning)
-            .await
+        DatabaseTransaction::begin(Arc::clone(&self.conn), self.backend).await
     }
 
     /// Execute the function inside a transaction.
@@ -364,17 +346,6 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
     {
         let transaction = self.begin().await.map_err(TransactionError::Connection)?;
         transaction.run(_callback).await
-    }
-
-    fn returning_on_insert(&self) -> bool {
-        self.support_returning
-    }
-
-    fn returning_on_update(&self) -> bool {
-        match self.backend {
-            DbBackend::MySql => false,
-            _ => self.support_returning,
-        }
     }
 }
 

@@ -1,8 +1,8 @@
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
-use sea_orm::{entity::prelude::*, *};
-use sea_query::Query;
+pub use sea_orm::{entity::prelude::*, *};
+pub use sea_query::Query;
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -37,7 +37,7 @@ async fn main() -> Result<(), DbErr> {
 
     create_tables(db).await?;
 
-    if db.returning_on_insert() {
+    if db.support_returning() {
         insert.returning(returning.clone());
         let insert_res = db
             .query_one(builder.build(&insert))
@@ -46,11 +46,7 @@ async fn main() -> Result<(), DbErr> {
         let _id: i32 = insert_res.try_get("", "id")?;
         let _name: String = insert_res.try_get("", "name")?;
         let _profit_margin: f64 = insert_res.try_get("", "profit_margin")?;
-    } else {
-        let insert_res = db.execute(builder.build(&insert)).await?;
-        assert!(insert_res.rows_affected() > 0);
-    }
-    if db.returning_on_update() {
+
         update.returning(returning.clone());
         let update_res = db
             .query_one(builder.build(&update))
@@ -60,6 +56,9 @@ async fn main() -> Result<(), DbErr> {
         let _name: String = update_res.try_get("", "name")?;
         let _profit_margin: f64 = update_res.try_get("", "profit_margin")?;
     } else {
+        let insert_res = db.execute(builder.build(&insert)).await?;
+        assert!(insert_res.rows_affected() > 0);
+
         let update_res = db.execute(builder.build(&update)).await?;
         assert!(update_res.rows_affected() > 0);
     }

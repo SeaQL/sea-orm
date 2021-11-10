@@ -288,6 +288,7 @@ jobs:
     name: Examples
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest]
         path: [basic, actix_example, actix4_example, axum_example, rocket_example]
@@ -312,6 +313,7 @@ jobs:
     if: ${{ (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-issues == 'true') }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest]
         path: [86, 249, 262]

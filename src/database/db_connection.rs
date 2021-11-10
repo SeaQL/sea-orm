@@ -214,61 +214,6 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
         }
     }
 
-    fn returning_on_insert(&self) -> bool {
-        match self {
-            #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(conn) => {
-                // Supported if it's MariaDB on or after version 10.5.0
-                // Not supported in all MySQL versions
-                conn.support_returning
-            }
-            #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(_) => {
-                // Supported by all Postgres versions
-                true
-            }
-            #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(conn) => {
-                // Supported by SQLite on or after version 3.35.0 (2021-03-12)
-                conn.support_returning
-            }
-            #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn) => match conn.get_database_backend() {
-                DbBackend::MySql => false,
-                DbBackend::Postgres => true,
-                DbBackend::Sqlite => false,
-            },
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
-        }
-    }
-
-    fn returning_on_update(&self) -> bool {
-        match self {
-            #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(_) => {
-                // Not supported in all MySQL & MariaDB versions
-                false
-            }
-            #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(_) => {
-                // Supported by all Postgres versions
-                true
-            }
-            #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(conn) => {
-                // Supported by SQLite on or after version 3.35.0 (2021-03-12)
-                conn.support_returning
-            }
-            #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn) => match conn.get_database_backend() {
-                DbBackend::MySql => false,
-                DbBackend::Postgres => true,
-                DbBackend::Sqlite => false,
-            },
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
-        }
-    }
-
     #[cfg(feature = "mock")]
     fn is_mock_connection(&self) -> bool {
         matches!(self, DatabaseConnection::MockDatabaseConnection(_))
@@ -321,6 +266,11 @@ impl DbBackend {
             Self::Postgres => Box::new(PostgresQueryBuilder),
             Self::Sqlite => Box::new(SqliteQueryBuilder),
         }
+    }
+
+    /// Check if the database supports `RETURNING` syntax on insert and update
+    pub fn support_returning(&self) -> bool {
+        matches!(self, Self::Postgres)
     }
 }
 
