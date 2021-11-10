@@ -155,22 +155,31 @@ where
     }
 }
 
+#[async_trait::async_trait]
 /// Used to enforce constraints on any type that wants to paginate results
 pub trait PaginatorTrait<'db, C>
 where
     C: ConnectionTrait<'db>,
 {
     /// Select operation
-    type Selector: SelectorTrait + 'db;
+    type Selector: SelectorTrait + Send + Sync + 'db;
 
     /// Paginate the result of a select operation.
     fn paginate(self, db: &'db C, page_size: usize) -> Paginator<'db, C, Self::Selector>;
+
+    /// Perform a count on the paginated results
+    async fn count(self, db: &'db C) -> Result<usize, DbErr>
+    where
+        Self: Send + Sized
+    {
+        self.paginate(db, 1).num_items().await
+    }
 }
 
 impl<'db, C, S> PaginatorTrait<'db, C> for Selector<S>
 where
     C: ConnectionTrait<'db>,
-    S: SelectorTrait + 'db,
+    S: SelectorTrait + Send + Sync + 'db,
 {
     type Selector = S;
 
@@ -189,7 +198,7 @@ impl<'db, C, M, E> PaginatorTrait<'db, C> for Select<E>
 where
     C: ConnectionTrait<'db>,
     E: EntityTrait<Model = M>,
-    M: FromQueryResult + Sized + 'db,
+    M: FromQueryResult + Sized + Send + Sync + 'db,
 {
     type Selector = SelectModel<M>;
 
@@ -203,8 +212,8 @@ where
     C: ConnectionTrait<'db>,
     E: EntityTrait<Model = M>,
     F: EntityTrait<Model = N>,
-    M: FromQueryResult + Sized + 'db,
-    N: FromQueryResult + Sized + 'db,
+    M: FromQueryResult + Sized + Send + Sync + 'db,
+    N: FromQueryResult + Sized + Send + Sync + 'db,
 {
     type Selector = SelectTwoModel<M, N>;
 
@@ -213,27 +222,6 @@ where
     }
 }
 
-/// Used to enforce constraints on any type that wants to count results using pagination.
-#[async_trait::async_trait]
-pub trait CountTrait<'db, C>: PaginatorTrait<'db, C>
-where
-    C: ConnectionTrait<'db>,
-{
-    /// Perform a count on the paginated results
-    async fn count(self, db: &'db C) -> Result<usize, DbErr>;
-}
-
-#[async_trait::async_trait]
-impl<'db, C, P, S> CountTrait<'db, C> for P
-where
-    C: ConnectionTrait<'db>,
-    P: PaginatorTrait<'db, C, Selector = S> + Send,
-    S: SelectorTrait + Send + Sync + 'db
-{
-    async fn count(self, db:&'db C) -> Result<usize, DbErr> {
-        self.paginate(db, 1).num_items().await
-    }
-}
 #[cfg(test)]
 #[cfg(feature = "mock")]
 mod tests {
