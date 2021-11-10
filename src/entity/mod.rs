@@ -117,3 +117,6 @@ pub use model::*;
 // pub use prelude::*;
 pub use primary_key::*;
 pub use relation::*;
+
+// Imports paginator utility by default making it backward compatible.
+pub use crate::PaginatorTrait;
