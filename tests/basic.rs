@@ -1,6 +1,8 @@
 pub mod common;
 
-pub use sea_orm::{entity::*, error::*, query::*, sea_query, tests_cfg::*, Database, DbConn, PaginatorTrait};
+pub use sea_orm::{
+    entity::*, error::*, query::*, sea_query, tests_cfg::*, Database, DbConn, PaginatorTrait,
+};
 
 // cargo test --features sqlx-sqlite,runtime-async-std-native-tls --test basic
 #[sea_orm_macros::test]

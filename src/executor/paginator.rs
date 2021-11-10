@@ -1,4 +1,7 @@
-use crate::{ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel, SelectTwo, SelectTwoModel, Selector, SelectorTrait, error::*};
+use crate::{
+    error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel,
+    SelectTwo, SelectTwoModel, Selector, SelectorTrait,
+};
 use async_stream::stream;
 use futures::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
@@ -170,7 +173,7 @@ where
     /// Perform a count on the paginated results
     async fn count(self, db: &'db C) -> Result<usize, DbErr>
     where
-        Self: Send + Sized
+        Self: Send + Sized,
     {
         self.paginate(db, 1).num_items().await
     }
@@ -225,10 +228,10 @@ where
 #[cfg(test)]
 #[cfg(feature = "mock")]
 mod tests {
+    use super::*;
     use crate::entity::prelude::*;
     use crate::{tests_cfg::*, ConnectionTrait};
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
-    use super::*;
     use futures::TryStreamExt;
     use sea_query::{Alias, Expr, SelectStatement, Value};
 
