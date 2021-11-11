@@ -22,7 +22,6 @@ pub use traits::*;
 pub use update::*;
 pub use util::*;
 
-pub use crate::{ConnectionTrait, InsertResult, Statement, UpdateResult, Value, Values};
-
-// Imports paginator utility by default making it backward compatible.
-pub use crate::PaginatorTrait;
+pub use crate::{
+    ConnectionTrait, InsertResult, PaginatorTrait, Statement, UpdateResult, Value, Values,
+};
