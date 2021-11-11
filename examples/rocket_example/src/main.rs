@@ -9,7 +9,7 @@ use rocket::response::{Flash, Redirect};
 use rocket::{Build, Request, Rocket};
 use rocket_dyn_templates::{context, Template};
 
-use sea_orm::{entity::*, query::*, PaginatorTrait};
+use sea_orm::{entity::*, query::*};
 use sea_orm_rocket::{Connection, Database};
 
 mod pool;

@@ -4,7 +4,7 @@ use actix_web::{
 };
 use listenfd::ListenFd;
 use sea_orm::DatabaseConnection;
-use sea_orm::{entity::*, query::*, PaginatorTrait};
+use sea_orm::{entity::*, query::*};
 use serde::{Deserialize, Serialize};
 use std::env;
 use tera::Tera;

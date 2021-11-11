@@ -98,7 +98,7 @@ where
     ///
     /// ```rust
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, MockDatabase, DbBackend, PaginatorTrait};
+    /// # use sea_orm::{error::*, MockDatabase, DbBackend};
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres).into_connection();
     /// # let db = &owned_db;
     /// # let _: Result<(), DbErr> = smol::block_on(async {
@@ -126,7 +126,7 @@ where
     ///
     /// ```rust
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, MockDatabase, DbBackend, PaginatorTrait};
+    /// # use sea_orm::{error::*, MockDatabase, DbBackend};
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres).into_connection();
     /// # let db = &owned_db;
     /// # let _: Result<(), DbErr> = smol::block_on(async {
