@@ -45,12 +45,11 @@ impl SqlxSqliteConnector {
         if options.get_max_connections().is_none() {
             options.max_connections(1);
         }
-        if let Ok(pool) = options.pool_options().connect_with(opt).await {
-            Ok(DatabaseConnection::SqlxSqlitePoolConnection(
+        match options.pool_options().connect_with(opt).await {
+            Ok(pool) => Ok(DatabaseConnection::SqlxSqlitePoolConnection(
                 SqlxSqlitePoolConnection { pool },
-            ))
-        } else {
-            Err(DbErr::Conn("Failed to connect.".to_owned()))
+            )),
+            Err(e) => Err(sqlx_error_to_conn_err(e)),
         }
     }
 }
