@@ -350,6 +350,7 @@ jobs:
     env:
       DATABASE_URL: "sqlite::memory:"
     strategy:
+      fail-fast: false
       matrix:
         runtime: [async-std, actix, tokio]
         tls: [native-tls, rustls]
@@ -392,10 +393,11 @@ jobs:
     env:
       DATABASE_URL: "mysql://root:@localhost"
     strategy:
+      fail-fast: false
       matrix:
         version: [8.0, 5.7]
         runtime: [async-std, actix, tokio]
-        tls: [native-tls]
+        tls: [native-tls, rustls]
     services:
       mysql:
         image: mysql:${{ matrix.version }}
@@ -452,10 +454,11 @@ jobs:
     env:
       DATABASE_URL: "mysql://root:@localhost"
     strategy:
+      fail-fast: false
       matrix:
         version: [10.6]
         runtime: [async-std, actix, tokio]
-        tls: [native-tls]
+        tls: [native-tls, rustls]
     services:
       mysql:
         image: mariadb:${{ matrix.version }}
@@ -512,10 +515,11 @@ jobs:
     env:
       DATABASE_URL: "postgres://root:root@localhost"
     strategy:
+      fail-fast: false
       matrix:
         version: [13.3, 12.7, 11.12, 10.17, 9.6.22]
         runtime: [tokio]
-        tls: [native-tls]
+        tls: [native-tls, rustls]
     services:
       postgres:
         image: postgres:${{ matrix.version }}
