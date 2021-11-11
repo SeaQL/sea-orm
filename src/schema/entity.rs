@@ -9,27 +9,27 @@ use sea_query::{
 
 impl Schema {
     /// Creates Postgres enums from an Entity. See [TypeCreateStatement] for more details
-    pub fn create_enum_from_entity<E>(entity: E, db_backend: DbBackend) -> Vec<TypeCreateStatement>
+    pub fn create_enum_from_entity<E>(&self, entity: E) -> Vec<TypeCreateStatement>
     where
         E: EntityTrait,
     {
-        create_enum_from_entity(entity, db_backend)
+        create_enum_from_entity(entity, self.backend)
     }
 
     /// Creates a table from an Entity. See [TableCreateStatement] for more details
-    pub fn create_table_from_entity<E>(entity: E, db_backend: DbBackend) -> TableCreateStatement
+    pub fn create_table_from_entity<E>(&self, entity: E) -> TableCreateStatement
     where
         E: EntityTrait,
     {
-        create_table_from_entity(entity, db_backend)
+        create_table_from_entity(entity, self.backend)
     }
 }
 
-pub(crate) fn create_enum_from_entity<E>(_: E, db_backend: DbBackend) -> Vec<TypeCreateStatement>
+pub(crate) fn create_enum_from_entity<E>(_: E, backend: DbBackend) -> Vec<TypeCreateStatement>
 where
     E: EntityTrait,
 {
-    if matches!(db_backend, DbBackend::MySql | DbBackend::Sqlite) {
+    if matches!(backend, DbBackend::MySql | DbBackend::Sqlite) {
         return Vec::new();
     }
     let mut vec = Vec::new();
@@ -52,7 +52,7 @@ where
     vec
 }
 
-pub(crate) fn create_table_from_entity<E>(entity: E, db_backend: DbBackend) -> TableCreateStatement
+pub(crate) fn create_table_from_entity<E>(entity: E, backend: DbBackend) -> TableCreateStatement
 where
     E: EntityTrait,
 {
@@ -61,7 +61,7 @@ where
     for column in E::Column::iter() {
         let orm_column_def = column.def();
         let types = match orm_column_def.col_type {
-            ColumnType::Enum(s, variants) => match db_backend {
+            ColumnType::Enum(s, variants) => match backend {
                 DbBackend::MySql => {
                     ColumnType::Custom(format!("ENUM('{}')", variants.join("', '")))
                 }
@@ -175,8 +175,10 @@ mod tests {
 
     #[test]
     fn test_create_table_from_entity() {
+        let schema = Schema::new(DbBackend::MySql);
         assert_eq!(
-            Schema::create_table_from_entity(CakeFillingPrice, DbBackend::MySql)
+            schema
+                .create_table_from_entity(CakeFillingPrice)
                 .to_string(MysqlQueryBuilder),
             Table::create()
                 .table(CakeFillingPrice)
