@@ -31,7 +31,7 @@ where
     selector: S,
 }
 
-/// Used to enforce constraints on any type that wants to perform SELECT queries
+/// A Trait for any type that can perform SELECT queries
 pub trait SelectorTrait {
     #[allow(missing_docs)]
     type Item: Sized;

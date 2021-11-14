@@ -4,7 +4,7 @@ use sea_query::{FromValueTuple, IntoValueTuple};
 use std::fmt::Debug;
 
 //LINT: composite primary key cannot auto increment
-/// A set of constraints to be used to define a Primary Key.
+/// A Trait for to be used to define a Primary Key.
 ///
 /// A primary key can be derived manually
 ///

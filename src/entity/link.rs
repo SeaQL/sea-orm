@@ -6,7 +6,7 @@ use sea_query::{Alias, IntoIden, JoinType, SeaRc};
 /// Same as [RelationDef]
 pub type LinkDef = RelationDef;
 
-/// A set of constraints for links between Entities
+/// A Trait for links between Entities
 pub trait Linked {
     #[allow(missing_docs)]
     type FromEntity: EntityTrait;

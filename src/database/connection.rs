@@ -4,7 +4,7 @@ use crate::{
 use futures::Stream;
 use std::{future::Future, pin::Pin};
 
-/// Creates constraints for any structure that wants to create a database connection
+/// Creates constraints for any structure that can create a database connection
 /// and execute SQL statements
 #[async_trait::async_trait]
 pub trait ConnectionTrait<'a>: Sync {

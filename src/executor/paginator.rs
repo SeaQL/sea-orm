@@ -159,7 +159,7 @@ where
 }
 
 #[async_trait::async_trait]
-/// Used to enforce constraints on any type that wants to paginate results
+/// A Trait for any type that can paginate results
 pub trait PaginatorTrait<'db, C>
 where
     C: ConnectionTrait<'db>,
