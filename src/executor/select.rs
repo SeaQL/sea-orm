@@ -250,7 +250,7 @@ where
         Selector::<SelectGetableValue<T, C>>::with_columns(self.query)
     }
 
-    /// Get one Model from a SELECT operation
+    /// Get one Model from the SELECT query
     pub async fn one<'a, C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -258,7 +258,7 @@ where
         self.into_model().one(db).await
     }
 
-    /// Get all the Models from a SELECT operation
+    /// Get all Models from the SELECT query
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -304,7 +304,7 @@ where
         }
     }
 
-    /// Get one Model from a Select operation
+    /// Get one Model from the Select query
     pub async fn one<'a, C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -312,7 +312,7 @@ where
         self.into_model().one(db).await
     }
 
-    /// Get all Models from a Select operation
+    /// Get all Models from the Select query
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -377,7 +377,7 @@ where
         self.into_model().stream(db).await
     }
 
-    /// Get all the Models from the select operation
+    /// Get all Models from the select operation
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -428,7 +428,7 @@ where
         }
     }
 
-    /// Get a Model from a Select operation
+    /// Get an item from the Select query
     pub async fn one<'a, C>(mut self, db: &C) -> Result<Option<S::Item>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -437,7 +437,7 @@ where
         self.into_selector_raw(db).one(db).await
     }
 
-    /// Get all results from a Select operation
+    /// Get all items from the Select query
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -625,7 +625,7 @@ where
         }
     }
 
-    /// Get a Model from a Select operation
+    /// Get an item from the Select query
     /// ```
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
@@ -668,7 +668,7 @@ where
         }
     }
 
-    /// Get all results from a Select operation
+    /// Get all items from the Select query
     /// ```
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
