@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use std::{ops::DerefMut, pin::Pin, task::Poll};
 
 use futures::Stream;
