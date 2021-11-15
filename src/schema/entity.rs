@@ -165,7 +165,7 @@ where
         );
     }
 
-    stmt.table(entity).take()
+    stmt.table(entity.table_ref()).take()
 }
 
 #[cfg(test)]
