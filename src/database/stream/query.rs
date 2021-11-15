@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use std::{pin::Pin, task::Poll};
 
 #[cfg(feature = "mock")]
