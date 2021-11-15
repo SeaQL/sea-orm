@@ -1,0 +1,33 @@
+[package]
+name = "sea-orm-axum-example"
+version = "0.1.0"
+authors = ["Yoshiera Huang <huangjasper@126.com>"]
+edition = "2021"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+
+[dependencies]
+tokio = { version = "1.5", features = ["full"] }
+axum = { version = "0.3.0" }
+tower = "0.4.10"
+tower-http = { version = "0.1", features = ["fs"] }
+tower-cookies = { git = "https://github.com/imbolc/tower-cookies" }
+anyhow = "1"
+dotenv = "0.15"
+env_logger = "0.9"
+serde = "1"
+serde_json = "1"
+tera = "1"
+
+[dependencies.sea-orm]
+path = "../../" # remove this line in your own project
+version = "^0.3.0"
+features = ["macros", "runtime-tokio-native-tls"]
+default-features = false
+
+[features]
+default = ["sqlx-postgres"]
+sqlx-mysql = ["sea-orm/sqlx-mysql"]
+sqlx-postgres = ["sea-orm/sqlx-postgres"]

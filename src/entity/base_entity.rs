@@ -13,7 +13,7 @@ pub trait IdenStatic: Iden + Copy + Debug + 'static {
     fn as_str(&self) -> &str;
 }
 
-/// Enforces the naming of an entity to a set of constraints
+/// A Trait for mapping an Entity to a database table
 pub trait EntityName: IdenStatic + Default {
     /// Method to get the name for the schema, defaults to [Option::None] if not set
     fn schema_name(&self) -> Option<&str> {

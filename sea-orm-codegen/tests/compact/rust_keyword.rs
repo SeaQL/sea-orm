@@ -21,9 +21,7 @@ pub enum Relation {}
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
-        match self {
-            _ => panic!("No RelationDef"),
-        }
+        panic!("No RelationDef")
     }
 }
 

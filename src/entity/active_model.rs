@@ -76,12 +76,12 @@ where
     ActiveValue::unchanged(value)
 }
 
-/// Enforces a set of constraints on any type performing an Create, Update or Delete operation.
+/// A Trait for ActiveModel to perform Create, Update or Delete operation.
 /// The type must also implement the [EntityTrait].
 /// See module level docs [crate::entity] for a full example
 #[async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
-    /// Enforce the type to the constraints of the [EntityTrait]
+    /// The Entity this ActiveModel belongs to
     type Entity: EntityTrait;
 
     /// Get a mutable [ActiveValue] from an ActiveModel
@@ -208,9 +208,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 }
 
-/// Enforce a set of constraints to a override the ActiveModel behavior
-/// Behaviors for users to override.
-/// The type must also implement the [ActiveModelTrait]
+/// A Trait for overriding the ActiveModel behavior
 ///
 /// ### Example
 /// ```ignore
@@ -265,7 +263,7 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
     }
 }
 
-/// Enforce constraints for conversion to  an ActiveModel
+/// A Trait for any type that can be converted into an ActiveModel
 pub trait IntoActiveModel<A>
 where
     A: ActiveModelTrait,

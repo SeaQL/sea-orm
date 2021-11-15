@@ -1,5 +1,5 @@
 use crate::{EntityName, IdenStatic, Iterable};
-use sea_query::{DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
+use sea_query::{Alias, BinOper, DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
 use std::str::FromStr;
 
 /// Defines a Column for an Entity
@@ -62,6 +62,8 @@ pub enum ColumnType {
     Custom(String),
     /// A Universally Unique IDentifier that is specified in  RFC 4122
     Uuid,
+    /// `ENUM` data type with name and variants
+    Enum(String, Vec<String>),
 }
 
 macro_rules! bind_oper {
@@ -72,6 +74,25 @@ macro_rules! bind_oper {
             V: Into<Value>,
         {
             Expr::tbl(self.entity_name(), *self).$op(v)
+        }
+    };
+}
+
+macro_rules! bind_oper_with_enum_casting {
+    ( $op: ident, $bin_op: ident ) => {
+        #[allow(missing_docs)]
+        fn $op<V>(&self, v: V) -> SimpleExpr
+        where
+            V: Into<Value>,
+        {
+            let val = Expr::val(v);
+            let col_def = self.def();
+            let col_type = col_def.get_column_type();
+            let expr = match col_type.get_enum_name() {
+                Some(enum_name) => val.as_enum(Alias::new(enum_name)),
+                None => val.into(),
+            };
+            Expr::tbl(self.entity_name(), *self).binary(BinOper::$bin_op, expr)
         }
     };
 }
@@ -128,8 +149,8 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         (self.entity_name(), SeaRc::new(*self) as DynIden)
     }
 
-    bind_oper!(eq);
-    bind_oper!(ne);
+    bind_oper_with_enum_casting!(eq, Equal);
+    bind_oper_with_enum_casting!(ne, NotEqual);
     bind_oper!(gt);
     bind_oper!(gte);
     bind_oper!(lt);
@@ -281,6 +302,13 @@ impl ColumnType {
             indexed: false,
         }
     }
+
+    pub(crate) fn get_enum_name(&self) -> Option<&String> {
+        match self {
+            ColumnType::Enum(s, _) => Some(s),
+            _ => None,
+        }
+    }
 }
 
 impl ColumnDef {
@@ -305,6 +333,11 @@ impl ColumnDef {
     pub fn indexed(mut self) -> Self {
         self.indexed = true;
         self
+    }
+
+    /// Get [ColumnType] as reference
+    pub fn get_column_type(&self) -> &ColumnType {
+        &self.col_type
     }
 }
 
@@ -331,7 +364,7 @@ impl From<ColumnType> for sea_query::ColumnType {
             ColumnType::Money(s) => sea_query::ColumnType::Money(s),
             ColumnType::Json => sea_query::ColumnType::Json,
             ColumnType::JsonBinary => sea_query::ColumnType::JsonBinary,
-            ColumnType::Custom(s) => {
+            ColumnType::Custom(s) | ColumnType::Enum(s, _) => {
                 sea_query::ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(&s)))
             }
             ColumnType::Uuid => sea_query::ColumnType::Uuid,

@@ -1,9 +1,12 @@
+use pretty_assertions::assert_eq;
 use sea_orm::{
-    ConnectionTrait, Database, DatabaseBackend, DatabaseConnection, DbBackend, DbConn, DbErr,
-    EntityTrait, ExecResult, Schema, Statement,
+    ColumnTrait, ColumnType, ConnectionTrait, Database, DatabaseBackend, DatabaseConnection,
+    DbBackend, DbConn, DbErr, EntityTrait, ExecResult, Iterable, Schema, Statement,
 };
-
-use sea_query::{Alias, Table, TableCreateStatement};
+use sea_query::{
+    extension::postgres::{Type, TypeCreateStatement},
+    Alias, Table, TableCreateStatement,
+};
 
 pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
     let db = if cfg!(feature = "sqlx-mysql") {
@@ -74,6 +77,53 @@ pub async fn tear_down(base_url: &str, db_name: &str) {
     };
 }
 
+pub async fn create_enum<E>(
+    db: &DbConn,
+    creates: &[TypeCreateStatement],
+    entity: E,
+) -> Result<(), DbErr>
+where
+    E: EntityTrait,
+{
+    let builder = db.get_database_backend();
+    if builder == DbBackend::Postgres {
+        for col in E::Column::iter() {
+            let col_def = col.def();
+            let col_type = col_def.get_column_type();
+            if !matches!(col_type, ColumnType::Enum(_, _)) {
+                continue;
+            }
+            let name = match col_type {
+                ColumnType::Enum(s, _) => s.as_str(),
+                _ => unreachable!(),
+            };
+            let drop_type_stmt = Type::drop()
+                .name(Alias::new(name))
+                .if_exists()
+                .cascade()
+                .to_owned();
+            let stmt = builder.build(&drop_type_stmt);
+            db.execute(stmt).await?;
+        }
+    }
+
+    let expect_stmts: Vec<Statement> = creates.iter().map(|stmt| builder.build(stmt)).collect();
+    let schema = Schema::new(builder);
+    let create_from_entity_stmts: Vec<Statement> = schema
+        .create_enum_from_entity(entity)
+        .iter()
+        .map(|stmt| builder.build(stmt))
+        .collect();
+
+    assert_eq!(expect_stmts, create_from_entity_stmts);
+
+    for stmt in expect_stmts {
+        db.execute(stmt).await.map(|_| ())?;
+    }
+
+    Ok(())
+}
+
 pub async fn create_table<E>(
     db: &DbConn,
     create: &TableCreateStatement,
@@ -82,6 +132,20 @@ pub async fn create_table<E>(
 where
     E: EntityTrait,
 {
+    let builder = db.get_database_backend();
+    let schema = Schema::new(builder);
+    assert_eq!(
+        builder.build(&schema.create_table_from_entity(entity)),
+        builder.build(create)
+    );
+
+    create_table_without_asserts(db, create).await
+}
+
+pub async fn create_table_without_asserts(
+    db: &DbConn,
+    create: &TableCreateStatement,
+) -> Result<ExecResult, DbErr> {
     let builder = db.get_database_backend();
     if builder != DbBackend::Sqlite {
         let stmt = builder.build(
@@ -92,11 +156,5 @@ where
         );
         db.execute(stmt).await?;
     }
-
-    let stmt = builder.build(create);
-    assert_eq!(
-        builder.build(&Schema::create_table_from_entity(entity)),
-        stmt
-    );
-    db.execute(stmt).await
+    db.execute(builder.build(create)).await
 }

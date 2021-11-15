@@ -8,9 +8,10 @@ use std::fmt;
 pub struct Statement {
     /// The SQL query
     pub sql: String,
-    /// The values for the SQL statement
+    /// The values for the SQL statement's parameters
     pub values: Option<Values>,
-    /// The database backend to use
+    /// The database backend this statement is constructed for.
+    /// The SQL dialect and values should be valid for the DbBackend.
     pub db_backend: DbBackend,
 }
 
@@ -31,7 +32,7 @@ impl Statement {
     }
 
     /// Create a SQL statement from a [crate::DatabaseBackend], a
-    /// raw SQL statement and defined values
+    /// raw SQL statement and param values
     pub fn from_sql_and_values<I>(db_backend: DbBackend, sql: &str, values: I) -> Self
     where
         I: IntoIterator<Item = Value>,
@@ -82,6 +83,15 @@ macro_rules! build_any_stmt {
     };
 }
 
+macro_rules! build_postgres_stmt {
+    ($stmt: expr, $db_backend: expr) => {
+        match $db_backend {
+            DbBackend::Postgres => $stmt.to_string(PostgresQueryBuilder),
+            DbBackend::MySql | DbBackend::Sqlite => unimplemented!(),
+        }
+    };
+}
+
 macro_rules! build_query_stmt {
     ($stmt: ty) => {
         impl StatementBuilder for $stmt {
@@ -114,3 +124,18 @@ build_schema_stmt!(sea_query::TableDropStatement);
 build_schema_stmt!(sea_query::TableAlterStatement);
 build_schema_stmt!(sea_query::TableRenameStatement);
 build_schema_stmt!(sea_query::TableTruncateStatement);
+
+macro_rules! build_type_stmt {
+    ($stmt: ty) => {
+        impl StatementBuilder for $stmt {
+            fn build(&self, db_backend: &DbBackend) -> Statement {
+                let stmt = build_postgres_stmt!(self, db_backend);
+                Statement::from_string(*db_backend, stmt)
+            }
+        }
+    };
+}
+
+build_type_stmt!(sea_query::extension::postgres::TypeAlterStatement);
+build_type_stmt!(sea_query::extension::postgres::TypeCreateStatement);
+build_type_stmt!(sea_query::extension::postgres::TypeDropStatement);
