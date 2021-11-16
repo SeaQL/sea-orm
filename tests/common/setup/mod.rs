@@ -150,7 +150,7 @@ pub async fn create_table_without_asserts(
     if builder != DbBackend::Sqlite {
         let stmt = builder.build(
             Table::drop()
-                .table(Alias::new(create.get_table_name().unwrap().as_ref()))
+                .table(create.get_table_name().unwrap().clone())
                 .if_exists()
                 .cascade(),
         );
