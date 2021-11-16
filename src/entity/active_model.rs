@@ -140,6 +140,106 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     /// Perform an `INSERT` operation on the ActiveModel
+    ///
+    /// # Example (Postgres)
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 15,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    ///
+    /// let apple = cake::ActiveModel {
+    ///     name: Set("Apple Pie".to_owned()),
+    ///     ..Default::default()
+    /// };
+    ///
+    /// assert_eq!(
+    ///     apple
+    ///         .insert(&db)
+    ///         .await?,
+    ///     cake::ActiveModel {
+    ///         id: Set(150),
+    ///         name: Set("Apple Pie".to_owned()),
+    ///     }
+    /// );
+    /// assert!(false);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"INSERT INTO "cake" ("name") VALUES ($1) RETURNING "id", "name""#,
+    ///         vec!["Apple Pie".into()]
+    ///     )]);
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Example (MySQL)
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::MySql)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 15,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    ///
+    /// let apple = cake::ActiveModel {
+    ///     name: Set("Apple Pie".to_owned()),
+    ///     ..Default::default()
+    /// };
+    ///
+    /// assert_eq!(
+    ///     apple
+    ///         .insert(&db)
+    ///         .await?,
+    ///     cake::ActiveModel {
+    ///         id: Set(150),
+    ///         name: Set("Apple Pie".to_owned()),
+    ///     }
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![
+    ///         Transaction::from_sql_and_values(
+    ///             DbBackend::MySql,
+    ///             r#"INSERT INTO `cake` (`name`) VALUES (?)"#,
+    ///             vec!["Apple Pie".into()]
+    ///         ),
+    ///         Transaction::from_sql_and_values(
+    ///             DbBackend::MySql,
+    ///             r#"SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = ? LIMIT ?"#,
+    ///             vec![15.into(), 1u64.into()])]);
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     async fn insert<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
@@ -154,6 +254,117 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     /// Perform the `UPDATE` operation on an ActiveModel
+    ///
+    /// # Example (Postgres)
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// let orange = fruit::ActiveModel {
+    ///     id: Set(1),
+    ///     name: Set("Orange".to_owned()),
+    ///     ..Default::default()
+    /// };
+    ///
+    /// assert_eq!(
+    ///     orange
+    ///         .update(&db)
+    ///         .await?,
+    ///     fruit::ActiveModel {
+    ///         id: Set(1),
+    ///         name: Set("Orange".to_owned()),
+    ///         cake_id: Set(None),
+    ///     }
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"UPDATE "fruit" SET "name" = $1 WHERE "fruit"."id" = $2 RETURNING "id", "name", "cake_id""#,
+    ///         vec!["Orange".into(), 1i32.into()]
+    ///     )]);
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Example (MySQL)
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::MySql)
+    /// #     .append_query_results(vec![
+    /// #         vec![fruit::Model {
+    /// #             id: 1,
+    /// #             name: "Orange".to_owned(),
+    /// #             cake_id: None,
+    /// #         }],
+    /// #     ])
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// let orange = fruit::ActiveModel {
+    ///     id: Set(1),
+    ///     name: Set("Orange".to_owned()),
+    ///     ..Default::default()
+    /// };
+    ///
+    /// assert_eq!(
+    ///     orange
+    ///         .update(&db)
+    ///         .await?,
+    ///     fruit::ActiveModel {
+    ///         id: Set(1),
+    ///         name: Set("Orange".to_owned()),
+    ///         cake_id: Set(None),
+    ///     }
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![
+    ///         Transaction::from_sql_and_values(
+    ///             DbBackend::MySql,
+    ///             r#"UPDATE `fruit` SET `name` = ? WHERE `fruit`.`id` = ?"#,
+    ///             vec!["Orange".into(), 1i32.into()]
+    ///         ),
+    ///         Transaction::from_sql_and_values(
+    ///             DbBackend::MySql,
+    ///             r#"SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`id` = ? LIMIT ?"#,
+    ///             vec![1i32.into(), 1u64.into()]
+    ///         )]);
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     async fn update<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
@@ -191,6 +402,48 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     /// Delete an active model by its primary key
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// let orange = fruit::ActiveModel {
+    ///     id: Set(3),
+    ///     ..Default::default()
+    /// };
+    ///
+    /// let delete_result = orange.delete(&db).await?;
+    ///
+    /// assert_eq!(delete_result.rows_affected, 1);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"DELETE FROM "fruit" WHERE "fruit"."id" = $1"#,
+    ///         vec![3i32.into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     async fn delete<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
         Self: ActiveModelBehavior + 'a,

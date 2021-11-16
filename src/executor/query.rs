@@ -320,8 +320,11 @@ pub trait TryGetableMany: Sized {
     fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError>;
 
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(all(feature = "mock", feature = "macros"))]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
@@ -344,8 +347,6 @@ pub trait TryGetableMany: Sized {
     ///     NumOfCakes,
     /// }
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let res: Vec<(String, i32)> =
     ///     <(String, i32)>::find_by_statement::<ResultCol>(Statement::from_sql_and_values(
     ///         DbBackend::Postgres,
@@ -362,9 +363,6 @@ pub trait TryGetableMany: Sized {
     ///         ("New York Cheese".to_owned(), 1),
     ///     ]
     /// );
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -374,6 +372,9 @@ pub trait TryGetableMany: Sized {
     ///         vec![]
     ///     ),]
     /// );
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     fn find_by_statement<C>(stmt: Statement) -> SelectorRaw<SelectGetableValue<Self, C>>
     where

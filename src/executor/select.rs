@@ -143,8 +143,11 @@ where
     }
 
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(all(feature = "mock", feature = "macros"))]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
@@ -164,8 +167,6 @@ where
     ///     CakeName,
     /// }
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let res: Vec<String> = cake::Entity::find()
     ///     .select_only()
     ///     .column_as(cake::Column::Name, QueryAs::CakeName)
@@ -177,9 +178,6 @@ where
     ///     res,
     ///     vec!["Chocolate Forest".to_owned(), "New York Cheese".to_owned()]
     /// );
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -189,11 +187,17 @@ where
     ///         vec![]
     ///     )]
     /// );
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     ///
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(all(feature = "mock", feature = "macros"))]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
@@ -212,8 +216,6 @@ where
     ///     NumOfCakes,
     /// }
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let res: Vec<(String, i64)> = cake::Entity::find()
     ///     .select_only()
     ///     .column_as(cake::Column::Name, QueryAs::CakeName)
@@ -224,9 +226,6 @@ where
     ///     .await?;
     ///
     /// assert_eq!(res, vec![("Chocolate Forest".to_owned(), 2i64)]);
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -241,6 +240,9 @@ where
     ///         vec![]
     ///     )]
     /// );
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn into_values<T, C>(self) -> Selector<SelectGetableValue<T, C>>
     where
@@ -490,8 +492,11 @@ where
     }
 
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
@@ -514,8 +519,6 @@ where
     ///     num_of_cakes: i32,
     /// }
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let res: Vec<SelectResult> = cake::Entity::find()
     ///     .from_raw_sql(Statement::from_sql_and_values(
     ///         DbBackend::Postgres,
@@ -539,9 +542,6 @@ where
     ///         },
     ///     ]
     /// );
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -551,6 +551,9 @@ where
     ///         vec![]
     ///     ),]
     /// );
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn into_model<M>(self) -> SelectorRaw<SelectModel<M>>
     where
@@ -563,8 +566,11 @@ where
     }
 
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
@@ -581,8 +587,6 @@ where
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let res: Vec<serde_json::Value> = cake::Entity::find().from_raw_sql(
     ///     Statement::from_sql_and_values(
     ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
@@ -605,9 +609,6 @@ where
     ///         }),
     ///     ]
     /// );
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -616,6 +617,9 @@ where
     ///             DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
     ///     ),
     /// ]);
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     #[cfg(feature = "with-json")]
     pub fn into_json(self) -> SelectorRaw<SelectModel<JsonValue>> {
@@ -627,15 +631,16 @@ where
 
     /// Get an item from the Select query
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let _: Option<cake::Model> = cake::Entity::find()
     ///     .from_raw_sql(Statement::from_sql_and_values(
     ///         DbBackend::Postgres,
@@ -644,9 +649,6 @@ where
     ///     ))
     ///     .one(&db)
     ///     .await?;
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -656,6 +658,9 @@ where
     ///         vec![1.into()]
     ///     ),]
     /// );
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     pub async fn one<'a, C>(self, db: &C) -> Result<Option<S::Item>, DbErr>
     where
@@ -670,15 +675,16 @@ where
 
     /// Get all items from the Select query
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let _: Vec<cake::Model> = cake::Entity::find()
     ///     .from_raw_sql(Statement::from_sql_and_values(
     ///         DbBackend::Postgres,
@@ -687,9 +693,6 @@ where
     ///     ))
     ///     .all(&db)
     ///     .await?;
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -699,6 +702,9 @@ where
     ///         vec![]
     ///     ),]
     /// );
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
     where

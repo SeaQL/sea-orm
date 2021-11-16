@@ -47,8 +47,11 @@ pub trait FromQueryResult: Sized {
     }
 
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![vec![
@@ -67,8 +70,6 @@ pub trait FromQueryResult: Sized {
     ///     num_of_cakes: i32,
     /// }
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let res: Vec<SelectResult> = SelectResult::find_by_statement(Statement::from_sql_and_values(
     ///     DbBackend::Postgres,
     ///     r#"SELECT "name", COUNT(*) AS "num_of_cakes" FROM "cake" GROUP BY("name")"#,
@@ -85,8 +86,6 @@ pub trait FromQueryResult: Sized {
     ///     },]
     /// );
     /// #
-    /// # Ok(())
-    /// # });
     /// # assert_eq!(
     /// #     db.into_transaction_log(),
     /// #     vec![Transaction::from_sql_and_values(
@@ -95,6 +94,9 @@ pub trait FromQueryResult: Sized {
     /// #         vec![]
     /// #     ),]
     /// # );
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     fn find_by_statement(stmt: Statement) -> SelectorRaw<SelectModel<Self>> {
         SelectorRaw::<SelectModel<Self>>::from_statement(stmt)

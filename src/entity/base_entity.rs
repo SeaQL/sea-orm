@@ -95,8 +95,11 @@ pub trait EntityTrait: EntityName {
     /// # Example
     ///
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![
@@ -121,8 +124,6 @@ pub trait EntityTrait: EntityName {
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// assert_eq!(
     ///     cake::Entity::find().one(&db).await?,
     ///     Some(cake::Model {
@@ -144,9 +145,6 @@ pub trait EntityTrait: EntityName {
     ///         },
     ///     ]
     /// );
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -163,6 +161,9 @@ pub trait EntityTrait: EntityName {
     ///         ),
     ///     ]
     /// );
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     fn find() -> Select<Self> {
         Select::new()
@@ -173,8 +174,11 @@ pub trait EntityTrait: EntityName {
     /// # Example
     ///
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![
@@ -189,8 +193,6 @@ pub trait EntityTrait: EntityName {
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// assert_eq!(
     ///     cake::Entity::find_by_id(11).all(&db).await?,
     ///     vec![cake::Model {
@@ -198,9 +200,6 @@ pub trait EntityTrait: EntityName {
     ///         name: "Sponge Cake".to_owned(),
     ///     }]
     /// );
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -210,11 +209,17 @@ pub trait EntityTrait: EntityName {
     ///         vec![11i32.into()]
     ///     )]
     /// );
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     /// Find by composite key
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_query_results(vec![
@@ -229,8 +234,6 @@ pub trait EntityTrait: EntityName {
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake_filling};
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// assert_eq!(
     ///     cake_filling::Entity::find_by_id((2, 3)).all(&db).await?,
     ///     vec![cake_filling::Model {
@@ -238,9 +241,6 @@ pub trait EntityTrait: EntityName {
     ///         filling_id: 3,
     ///     }]
     /// );
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -252,6 +252,9 @@ pub trait EntityTrait: EntityName {
     ///         ].join(" ").as_str(),
     ///         vec![2i32.into(), 3i32.into()]
     ///     )]);
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     fn find_by_id(values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType) -> Select<Self> {
         let mut select = Self::find();
@@ -317,8 +320,11 @@ pub trait EntityTrait: EntityName {
     /// # Example (MySQL)
     ///
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
     /// #     .append_exec_results(vec![
@@ -336,14 +342,9 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let insert_result = cake::Entity::insert(apple).exec(&db).await?;
     ///
     /// assert_eq!(insert_result.last_insert_id, 15);
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -352,6 +353,9 @@ pub trait EntityTrait: EntityName {
     ///         r#"INSERT INTO `cake` (`name`) VALUES (?)"#,
     ///         vec!["Apple Pie".into()]
     ///     )]);
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     fn insert<A>(model: A) -> Insert<A>
     where
@@ -365,8 +369,11 @@ pub trait EntityTrait: EntityName {
     /// # Example (Postgres)
     ///
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results(vec![
@@ -388,14 +395,9 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let insert_result = cake::Entity::insert_many(vec![apple, orange]).exec(&db).await?;
     ///
     /// assert_eq!(insert_result.last_insert_id, 28);
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -404,13 +406,19 @@ pub trait EntityTrait: EntityName {
     ///         r#"INSERT INTO "cake" ("name") VALUES ($1), ($2) RETURNING "id""#,
     ///         vec!["Apple Pie".into(), "Orange Scone".into()]
     ///     )]);
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     ///
     /// # Example (MySQL)
     ///
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
     /// #     .append_exec_results(vec![
@@ -432,14 +440,9 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let insert_result = cake::Entity::insert_many(vec![apple, orange]).exec(&db).await?;
     ///
     /// assert_eq!(insert_result.last_insert_id, 28);
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -448,6 +451,9 @@ pub trait EntityTrait: EntityName {
     ///         r#"INSERT INTO `cake` (`name`) VALUES (?), (?)"#,
     ///         vec!["Apple Pie".into(), "Orange Scone".into()]
     ///     )]);
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     fn insert_many<A, I>(models: I) -> Insert<A>
     where
@@ -464,8 +470,11 @@ pub trait EntityTrait: EntityName {
     /// # Example (Postgres)
     ///
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results(vec![
@@ -484,8 +493,6 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// assert_eq!(
     ///     fruit::Entity::update(orange.clone())
     ///         .filter(fruit::Column::Name.contains("orange"))
@@ -493,9 +500,6 @@ pub trait EntityTrait: EntityName {
     ///         .await?,
     ///     orange
     /// );
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -504,13 +508,19 @@ pub trait EntityTrait: EntityName {
     ///         r#"UPDATE "fruit" SET "name" = $1 WHERE "fruit"."id" = $2 AND "fruit"."name" LIKE $3 RETURNING "id", "name", "cake_id""#,
     ///         vec!["Orange".into(), 1i32.into(), "%orange%".into()]
     ///     )]);
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     ///
     /// # Example (MySQL)
     ///
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
     /// #     .append_query_results(vec![
@@ -536,8 +546,6 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// assert_eq!(
     ///     fruit::Entity::update(orange.clone())
     ///         .filter(fruit::Column::Name.contains("orange"))
@@ -545,9 +553,6 @@ pub trait EntityTrait: EntityName {
     ///         .await?,
     ///     orange
     /// );
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -562,6 +567,9 @@ pub trait EntityTrait: EntityName {
     ///             r#"SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`id` = ? LIMIT ?"#,
     ///             vec![1i32.into(), 1u64.into()]
     ///         )]);
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     fn update<A>(model: A) -> UpdateOne<A>
     where
@@ -577,8 +585,11 @@ pub trait EntityTrait: EntityName {
     /// # Example
     ///
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results(vec![
@@ -591,8 +602,6 @@ pub trait EntityTrait: EntityName {
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::{Expr, Value}};
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let update_result = fruit::Entity::update_many()
     ///     .col_expr(fruit::Column::CakeId, Expr::value(Value::Int(None)))
     ///     .filter(fruit::Column::Name.contains("Apple"))
@@ -600,9 +609,6 @@ pub trait EntityTrait: EntityName {
     ///     .await?;
     ///
     /// assert_eq!(update_result.rows_affected, 5);
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -611,6 +617,9 @@ pub trait EntityTrait: EntityName {
     ///         r#"UPDATE "fruit" SET "cake_id" = $1 WHERE "fruit"."name" LIKE $2"#,
     ///         vec![Value::Int(None), "%Apple%".into()]
     ///     )]);
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     fn update_many() -> UpdateMany<Self> {
         Update::many(Self::default())
@@ -623,8 +632,11 @@ pub trait EntityTrait: EntityName {
     /// # Example
     ///
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results(vec![
@@ -642,14 +654,9 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let delete_result = fruit::Entity::delete(orange).exec(&db).await?;
     ///
     /// assert_eq!(delete_result.rows_affected, 1);
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -657,6 +664,9 @@ pub trait EntityTrait: EntityName {
     ///         DbBackend::Postgres, r#"DELETE FROM "fruit" WHERE "fruit"."id" = $1"#,
     ///         vec![3i32.into()]
     ///     )]);
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     fn delete<A>(model: A) -> DeleteOne<A>
     where
@@ -672,8 +682,11 @@ pub trait EntityTrait: EntityName {
     /// # Example
     ///
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{entity::*, error::*, query::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results(vec![
@@ -686,17 +699,12 @@ pub trait EntityTrait: EntityName {
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let delete_result = fruit::Entity::delete_many()
     ///     .filter(fruit::Column::Name.contains("Apple"))
     ///     .exec(&db)
     ///     .await?;
     ///
     /// assert_eq!(delete_result.rows_affected, 5);
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -705,6 +713,9 @@ pub trait EntityTrait: EntityName {
     ///         r#"DELETE FROM "fruit" WHERE "fruit"."name" LIKE $1"#,
     ///         vec!["%Apple%".into()]
     ///     )]);
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     fn delete_many() -> DeleteMany<Self> {
         Delete::many(Self::default())
