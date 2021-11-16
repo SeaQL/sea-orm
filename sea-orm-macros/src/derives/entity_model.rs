@@ -237,7 +237,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 let field_span = field.span();
                                 let ty = format_ident!("{}", temp);
                                 let def = quote_spanned! { field_span => {
-                                    <#ty as ActiveEnum>::db_type()
+                                    std::convert::Into::<sea_orm::ColumnType>::into(
+                                        <#ty as sea_orm::sea_query::ValueType>::column_type()
+                                    )
+                                    .def()
                                 }};
                                 quote! { #def }
                             } else {
