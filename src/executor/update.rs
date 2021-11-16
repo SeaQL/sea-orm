@@ -177,22 +177,6 @@ mod tests {
             .append_exec_results(vec![
                 MockExecResult {
                     last_insert_id: 0,
-                    rows_affected: 1,
-                },
-                MockExecResult {
-                    last_insert_id: 0,
-                    rows_affected: 0,
-                },
-                MockExecResult {
-                    last_insert_id: 0,
-                    rows_affected: 0,
-                },
-                MockExecResult {
-                    last_insert_id: 0,
-                    rows_affected: 0,
-                },
-                MockExecResult {
-                    last_insert_id: 0,
                     rows_affected: 0,
                 },
             ])
