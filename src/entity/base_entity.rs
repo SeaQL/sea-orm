@@ -285,12 +285,9 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_exec_results(vec![
-    /// #         MockExecResult {
-    /// #             last_insert_id: 15,
-    /// #             rows_affected: 1,
-    /// #         },
-    /// #     ])
+    /// #     .append_query_results(vec![vec![maplit::btreemap! {
+    /// #         "id" => Into::<Value>::into(15),
+    /// #     }]])
     /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
@@ -302,8 +299,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// let insert_result = cake::Entity::insert(apple).exec(&db).await?;
     ///
-    /// assert_eq!(dbg!(insert_result.last_insert_id), 150);
-    /// assert!(false);
+    /// assert_eq!(dbg!(insert_result.last_insert_id), 15);
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -311,7 +307,8 @@ pub trait EntityTrait: EntityName {
     ///         DbBackend::Postgres,
     ///         r#"INSERT INTO "cake" ("name") VALUES ($1) RETURNING "id""#,
     ///         vec!["Apple Pie".into()]
-    ///     )]);
+    ///     )]
+    /// );
     /// #
     /// # Ok(())
     /// # }
@@ -352,7 +349,8 @@ pub trait EntityTrait: EntityName {
     ///         DbBackend::MySql,
     ///         r#"INSERT INTO `cake` (`name`) VALUES (?)"#,
     ///         vec!["Apple Pie".into()]
-    ///     )]);
+    ///     )]
+    /// );
     /// #
     /// # Ok(())
     /// # }
@@ -376,12 +374,9 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_exec_results(vec![
-    /// #         MockExecResult {
-    /// #             last_insert_id: 28,
-    /// #             rows_affected: 2,
-    /// #         },
-    /// #     ])
+    /// #     .append_query_results(vec![vec![maplit::btreemap! {
+    /// #         "id" => Into::<Value>::into(28),
+    /// #     }]])
     /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
@@ -395,7 +390,9 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// let insert_result = cake::Entity::insert_many(vec![apple, orange]).exec(&db).await?;
+    /// let insert_result = cake::Entity::insert_many(vec![apple, orange])
+    ///     .exec(&db)
+    ///     .await?;
     ///
     /// assert_eq!(insert_result.last_insert_id, 28);
     ///
@@ -405,7 +402,8 @@ pub trait EntityTrait: EntityName {
     ///         DbBackend::Postgres,
     ///         r#"INSERT INTO "cake" ("name") VALUES ($1), ($2) RETURNING "id""#,
     ///         vec!["Apple Pie".into(), "Orange Scone".into()]
-    ///     )]);
+    ///     )]
+    /// );
     /// #
     /// # Ok(())
     /// # }
@@ -440,7 +438,9 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// let insert_result = cake::Entity::insert_many(vec![apple, orange]).exec(&db).await?;
+    /// let insert_result = cake::Entity::insert_many(vec![apple, orange])
+    ///     .exec(&db)
+    ///     .await?;
     ///
     /// assert_eq!(insert_result.last_insert_id, 28);
     ///
@@ -450,7 +450,8 @@ pub trait EntityTrait: EntityName {
     ///         DbBackend::MySql,
     ///         r#"INSERT INTO `cake` (`name`) VALUES (?), (?)"#,
     ///         vec!["Apple Pie".into(), "Orange Scone".into()]
-    ///     )]);
+    ///     )]
+    /// );
     /// #
     /// # Ok(())
     /// # }
@@ -477,11 +478,12 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_exec_results(vec![
-    /// #         MockExecResult {
-    /// #             last_insert_id: 0,
-    /// #             rows_affected: 1,
-    /// #         },
+    /// #     .append_query_results(vec![
+    /// #         vec![fruit::Model {
+    /// #             id: 1,
+    /// #             name: "Orange".to_owned(),
+    /// #             cake_id: None,
+    /// #         }],
     /// #     ])
     /// #     .into_connection();
     /// #
@@ -498,7 +500,12 @@ pub trait EntityTrait: EntityName {
     ///         .filter(fruit::Column::Name.contains("orange"))
     ///         .exec(&db)
     ///         .await?,
-    ///     orange
+    ///     fruit::Model {
+    ///         id: 1,
+    ///         name: "Orange".to_owned(),
+    ///         cake_id: None,
+    ///     }
+    ///     .into_active_model(),
     /// );
     ///
     /// assert_eq!(
@@ -523,18 +530,18 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
     /// #     .append_query_results(vec![
     /// #         vec![fruit::Model {
     /// #             id: 1,
     /// #             name: "Orange".to_owned(),
     /// #             cake_id: None,
     /// #         }],
-    /// #     ])
-    /// #     .append_exec_results(vec![
-    /// #         MockExecResult {
-    /// #             last_insert_id: 0,
-    /// #             rows_affected: 1,
-    /// #         },
     /// #     ])
     /// #     .into_connection();
     /// #
@@ -551,7 +558,12 @@ pub trait EntityTrait: EntityName {
     ///         .filter(fruit::Column::Name.contains("orange"))
     ///         .exec(&db)
     ///         .await?,
-    ///     orange
+    ///     fruit::Model {
+    ///         id: 1,
+    ///         name: "Orange".to_owned(),
+    ///         cake_id: None,
+    ///     }
+    ///     .into_active_model(),
     /// );
     ///
     /// assert_eq!(
@@ -600,7 +612,12 @@ pub trait EntityTrait: EntityName {
     /// #     ])
     /// #     .into_connection();
     /// #
-    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, sea_query::{Expr, Value}};
+    /// use sea_orm::{
+    ///     entity::*,
+    ///     query::*,
+    ///     sea_query::{Expr, Value},
+    ///     tests_cfg::fruit,
+    /// };
     ///
     /// let update_result = fruit::Entity::update_many()
     ///     .col_expr(fruit::Column::CakeId, Expr::value(Value::Int(None)))
@@ -616,7 +633,8 @@ pub trait EntityTrait: EntityName {
     ///         DbBackend::Postgres,
     ///         r#"UPDATE "fruit" SET "cake_id" = $1 WHERE "fruit"."name" LIKE $2"#,
     ///         vec![Value::Int(None), "%Apple%".into()]
-    ///     )]);
+    ///     )]
+    /// );
     /// #
     /// # Ok(())
     /// # }
@@ -661,9 +679,11 @@ pub trait EntityTrait: EntityName {
     /// assert_eq!(
     ///     db.into_transaction_log(),
     ///     vec![Transaction::from_sql_and_values(
-    ///         DbBackend::Postgres, r#"DELETE FROM "fruit" WHERE "fruit"."id" = $1"#,
+    ///         DbBackend::Postgres,
+    ///         r#"DELETE FROM "fruit" WHERE "fruit"."id" = $1"#,
     ///         vec![3i32.into()]
-    ///     )]);
+    ///     )]
+    /// );
     /// #
     /// # Ok(())
     /// # }
@@ -695,6 +715,12 @@ pub trait EntityTrait: EntityName {
     /// #             rows_affected: 5,
     /// #         },
     /// #     ])
+    /// #     .append_query_results(vec![
+    /// #         vec![cake::Model {
+    /// #             id: 15,
+    /// #             name: "Apple Pie".to_owned(),
+    /// #         }],
+    /// #     ])
     /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
@@ -712,7 +738,8 @@ pub trait EntityTrait: EntityName {
     ///         DbBackend::Postgres,
     ///         r#"DELETE FROM "fruit" WHERE "fruit"."name" LIKE $1"#,
     ///         vec!["%Apple%".into()]
-    ///     )]);
+    ///     )]
+    /// );
     /// #
     /// # Ok(())
     /// # }

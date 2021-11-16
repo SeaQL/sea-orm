@@ -151,11 +151,11 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_exec_results(vec![
-    /// #         MockExecResult {
-    /// #             last_insert_id: 15,
-    /// #             rows_affected: 1,
-    /// #         },
+    /// #     .append_query_results(vec![
+    /// #         vec![cake::Model {
+    /// #             id: 15,
+    /// #             name: "Apple Pie".to_owned(),
+    /// #         }],
     /// #     ])
     /// #     .into_connection();
     /// #
@@ -167,15 +167,13 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// };
     ///
     /// assert_eq!(
-    ///     apple
-    ///         .insert(&db)
-    ///         .await?,
-    ///     cake::ActiveModel {
-    ///         id: Set(150),
-    ///         name: Set("Apple Pie".to_owned()),
+    ///     apple.insert(&db).await?,
+    ///     cake::Model {
+    ///         id: 15,
+    ///         name: "Apple Pie".to_owned(),
     ///     }
+    ///     .into_active_model()
     /// );
-    /// assert!(false);
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -183,7 +181,8 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///         DbBackend::Postgres,
     ///         r#"INSERT INTO "cake" ("name") VALUES ($1) RETURNING "id", "name""#,
     ///         vec!["Apple Pie".into()]
-    ///     )]);
+    ///     )]
+    /// );
     /// #
     /// # Ok(())
     /// # }
@@ -199,6 +198,12 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
+    /// #     .append_query_results(vec![
+    /// #         vec![cake::Model {
+    /// #             id: 15,
+    /// #             name: "Apple Pie".to_owned(),
+    /// #         }],
+    /// #     ])
     /// #     .append_exec_results(vec![
     /// #         MockExecResult {
     /// #             last_insert_id: 15,
@@ -215,13 +220,12 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// };
     ///
     /// assert_eq!(
-    ///     apple
-    ///         .insert(&db)
-    ///         .await?,
-    ///     cake::ActiveModel {
-    ///         id: Set(150),
-    ///         name: Set("Apple Pie".to_owned()),
+    ///     apple.insert(&db).await?,
+    ///     cake::Model {
+    ///         id: 15,
+    ///         name: "Apple Pie".to_owned(),
     ///     }
+    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(
@@ -235,7 +239,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///         Transaction::from_sql_and_values(
     ///             DbBackend::MySql,
     ///             r#"SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = ? LIMIT ?"#,
-    ///             vec![15.into(), 1u64.into()])]);
+    ///             vec![15.into(), 1u64.into()]
+    ///         )
+    ///     ]
+    /// );
     /// #
     /// # Ok(())
     /// # }
@@ -265,11 +272,12 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_exec_results(vec![
-    /// #         MockExecResult {
-    /// #             last_insert_id: 0,
-    /// #             rows_affected: 1,
-    /// #         },
+    /// #     .append_query_results(vec![
+    /// #         vec![fruit::Model {
+    /// #             id: 1,
+    /// #             name: "Orange".to_owned(),
+    /// #             cake_id: None,
+    /// #         }],
     /// #     ])
     /// #     .into_connection();
     /// #
@@ -282,14 +290,13 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// };
     ///
     /// assert_eq!(
-    ///     orange
-    ///         .update(&db)
-    ///         .await?,
-    ///     fruit::ActiveModel {
-    ///         id: Set(1),
-    ///         name: Set("Orange".to_owned()),
-    ///         cake_id: Set(None),
+    ///     orange.update(&db).await?,
+    ///     fruit::Model {
+    ///         id: 1,
+    ///         name: "Orange".to_owned(),
+    ///         cake_id: None,
     ///     }
+    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(
@@ -338,14 +345,13 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// };
     ///
     /// assert_eq!(
-    ///     orange
-    ///         .update(&db)
-    ///         .await?,
-    ///     fruit::ActiveModel {
-    ///         id: Set(1),
-    ///         name: Set("Orange".to_owned()),
-    ///         cake_id: Set(None),
+    ///     orange.update(&db).await?,
+    ///     fruit::Model {
+    ///         id: 1,
+    ///         name: "Orange".to_owned(),
+    ///         cake_id: None,
     ///     }
+    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(

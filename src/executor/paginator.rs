@@ -96,14 +96,22 @@ where
 
     /// Fetch one page and increment the page counter
     ///
-    /// ```rust
+    /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
-    /// # let owned_db = MockDatabase::new(DbBackend::Postgres).into_connection();
+    /// # let owned_db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![
+    /// #         vec![cake::Model {
+    /// #             id: 1,
+    /// #             name: "Cake".to_owned(),
+    /// #         }],
+    /// #         vec![],
+    /// #     ])
+    /// #     .into_connection();
     /// # let db = &owned_db;
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
@@ -127,14 +135,22 @@ where
 
     /// Convert self into an async stream
     ///
-    /// ```rust
+    /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
     /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
-    /// # let owned_db = MockDatabase::new(DbBackend::Postgres).into_connection();
+    /// # let owned_db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![
+    /// #         vec![cake::Model {
+    /// #             id: 1,
+    /// #             name: "Cake".to_owned(),
+    /// #         }],
+    /// #         vec![],
+    /// #     ])
+    /// #     .into_connection();
     /// # let db = &owned_db;
     /// #
     /// use futures::TryStreamExt;

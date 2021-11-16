@@ -637,7 +637,14 @@ where
     /// # #[cfg(feature = "mock")]
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
-    /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![
+    /// #         vec![cake::Model {
+    /// #             id: 1,
+    /// #             name: "Cake".to_owned(),
+    /// #         }],
+    /// #     ])
+    /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
@@ -681,7 +688,14 @@ where
     /// # #[cfg(feature = "mock")]
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
-    /// # let db = MockDatabase::new(DbBackend::Postgres).into_connection();
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![
+    /// #         vec![cake::Model {
+    /// #             id: 1,
+    /// #             name: "Cake".to_owned(),
+    /// #         }],
+    /// #     ])
+    /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
