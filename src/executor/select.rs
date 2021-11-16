@@ -1,7 +1,7 @@
 use crate::{
     error::*, ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, ModelTrait,
-    Paginator, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
-    Statement, TryGetableMany,
+    PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement,
+    TryGetableMany,
 };
 use futures::{Stream, TryStreamExt};
 use sea_query::SelectStatement;
@@ -11,13 +11,13 @@ use std::pin::Pin;
 #[cfg(feature = "with-json")]
 use crate::JsonValue;
 
-/// Defines a type to do `SELECT` operations though a [SelectStatement] on a Model
+/// Defines a type to do `SELECT` operations through a [SelectStatement] on a Model
 #[derive(Clone, Debug)]
 pub struct Selector<S>
 where
     S: SelectorTrait,
 {
-    query: SelectStatement,
+    pub(crate) query: SelectStatement,
     selector: S,
 }
 
@@ -31,7 +31,7 @@ where
     selector: S,
 }
 
-/// Used to enforce constraints on any type that wants to perform SELECT queries
+/// A Trait for any type that can perform SELECT queries
 pub trait SelectorTrait {
     #[allow(missing_docs)]
     type Item: Sized;
@@ -250,7 +250,7 @@ where
         Selector::<SelectGetableValue<T, C>>::with_columns(self.query)
     }
 
-    /// Get one Model from a SELECT operation
+    /// Get one Model from the SELECT query
     pub async fn one<'a, C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -258,7 +258,7 @@ where
         self.into_model().one(db).await
     }
 
-    /// Get all the Models from a SELECT operation
+    /// Get all Models from the SELECT query
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -275,26 +275,6 @@ where
         C: ConnectionTrait<'a>,
     {
         self.into_model().stream(db).await
-    }
-
-    /// Paginate the results of a SELECT operation on a Model
-    pub fn paginate<'a, C>(
-        self,
-        db: &'a C,
-        page_size: usize,
-    ) -> Paginator<'a, C, SelectModel<E::Model>>
-    where
-        C: ConnectionTrait<'a>,
-    {
-        self.into_model().paginate(db, page_size)
-    }
-
-    /// Perform a `COUNT` operation on a items on a Model using pagination
-    pub async fn count<'a, C>(self, db: &'a C) -> Result<usize, DbErr>
-    where
-        C: ConnectionTrait<'a>,
-    {
-        self.paginate(db, 1).num_items().await
     }
 }
 
@@ -324,7 +304,7 @@ where
         }
     }
 
-    /// Get one Model from a Select operation
+    /// Get one Model from the Select query
     pub async fn one<'a, C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -332,7 +312,7 @@ where
         self.into_model().one(db).await
     }
 
-    /// Get all Models from a Select operation
+    /// Get all Models from the Select query
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -349,26 +329,6 @@ where
         C: ConnectionTrait<'a>,
     {
         self.into_model().stream(db).await
-    }
-
-    /// Paginate the results of a select operation on two models
-    pub fn paginate<'a, C>(
-        self,
-        db: &'a C,
-        page_size: usize,
-    ) -> Paginator<'a, C, SelectTwoModel<E::Model, F::Model>>
-    where
-        C: ConnectionTrait<'a>,
-    {
-        self.into_model().paginate(db, page_size)
-    }
-
-    /// Perform a count on the paginated results
-    pub async fn count<'a, C>(self, db: &'a C) -> Result<usize, DbErr>
-    where
-        C: ConnectionTrait<'a>,
-    {
-        self.paginate(db, 1).num_items().await
     }
 }
 
@@ -417,7 +377,7 @@ where
         self.into_model().stream(db).await
     }
 
-    /// Get all the Models from the select operation
+    /// Get all Models from the select operation
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>
     where
         C: ConnectionTrait<'a>,
@@ -456,35 +416,36 @@ where
         }
     }
 
-    /// Get a Model from a Select operation
+    fn into_selector_raw<'a, C>(self, db: &C) -> SelectorRaw<S>
+    where
+        C: ConnectionTrait<'a>,
+    {
+        let builder = db.get_database_backend();
+        let stmt = builder.build(&self.query);
+        SelectorRaw {
+            stmt,
+            selector: self.selector,
+        }
+    }
+
+    /// Get an item from the Select query
     pub async fn one<'a, C>(mut self, db: &C) -> Result<Option<S::Item>, DbErr>
     where
         C: ConnectionTrait<'a>,
     {
-        let builder = db.get_database_backend();
         self.query.limit(1);
-        let row = db.query_one(builder.build(&self.query)).await?;
-        match row {
-            Some(row) => Ok(Some(S::from_raw_query_result(row)?)),
-            None => Ok(None),
-        }
+        self.into_selector_raw(db).one(db).await
     }
 
-    /// Get all results from a Select operation
+    /// Get all items from the Select query
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
     where
         C: ConnectionTrait<'a>,
     {
-        let builder = db.get_database_backend();
-        let rows = db.query_all(builder.build(&self.query)).await?;
-        let mut models = Vec::new();
-        for row in rows.into_iter() {
-            models.push(S::from_raw_query_result(row)?);
-        }
-        Ok(models)
+        self.into_selector_raw(db).all(db).await
     }
 
-    /// Stream the results of the operation
+    /// Stream the results of the Select operation
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
@@ -493,25 +454,7 @@ where
         C: ConnectionTrait<'a>,
         S: 'b,
     {
-        let builder = db.get_database_backend();
-        let stream = db.stream(builder.build(&self.query)).await?;
-        Ok(Box::pin(stream.and_then(|row| {
-            futures::future::ready(S::from_raw_query_result(row))
-        })))
-    }
-
-    /// Paginate the result of a select operation on a Model
-    pub fn paginate<'a, C>(self, db: &'a C, page_size: usize) -> Paginator<'a, C, S>
-    where
-        C: ConnectionTrait<'a>,
-    {
-        Paginator {
-            query: self.query,
-            page: 0,
-            page_size,
-            db,
-            selector: PhantomData,
-        }
+        self.into_selector_raw(db).stream(db).await
     }
 }
 
@@ -519,8 +462,7 @@ impl<S> SelectorRaw<S>
 where
     S: SelectorTrait,
 {
-    /// Create `SelectorRaw` from Statment. Executing this `SelectorRaw` will
-    /// return a type `M` which implement `FromQueryResult`.
+    /// Select a custom Model from a raw SQL [Statement].
     pub fn from_statement<M>(stmt: Statement) -> SelectorRaw<SelectModel<M>>
     where
         M: FromQueryResult,
@@ -683,6 +625,7 @@ where
         }
     }
 
+    /// Get an item from the Select query
     /// ```
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
@@ -725,6 +668,7 @@ where
         }
     }
 
+    /// Get all items from the Select query
     /// ```
     /// # #[cfg(feature = "mock")]
     /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, Transaction, DbBackend};
@@ -766,6 +710,21 @@ where
             models.push(S::from_raw_query_result(row)?);
         }
         Ok(models)
+    }
+
+    /// Stream the results of the Select operation
+    pub async fn stream<'a: 'b, 'b, C>(
+        self,
+        db: &'a C,
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<S::Item, DbErr>> + 'b>>, DbErr>
+    where
+        C: ConnectionTrait<'a>,
+        S: 'b,
+    {
+        let stream = db.stream(self.stmt).await?;
+        Ok(Box::pin(stream.and_then(|row| {
+            futures::future::ready(S::from_raw_query_result(row))
+        })))
     }
 }
 

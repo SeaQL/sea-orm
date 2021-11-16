@@ -23,7 +23,7 @@ pub struct MockDatabaseConnection {
     mocker: Mutex<Box<dyn MockDatabaseTrait>>,
 }
 
-/// A set of constraints for any type wanting to perform operations on the [MockDatabase]
+/// A Trait for any type wanting to perform operations on the [MockDatabase]
 pub trait MockDatabaseTrait: Send + Debug {
     /// Execute a statement in the [MockDatabase]
     fn execute(&mut self, counter: usize, stmt: Statement) -> Result<ExecResult, DbErr>;

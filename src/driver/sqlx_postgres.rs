@@ -41,12 +41,11 @@ impl SqlxPostgresConnector {
             use sqlx::ConnectOptions;
             opt.disable_statement_logging();
         }
-        if let Ok(pool) = options.pool_options().connect_with(opt).await {
-            Ok(DatabaseConnection::SqlxPostgresPoolConnection(
+        match options.pool_options().connect_with(opt).await {
+            Ok(pool) => Ok(DatabaseConnection::SqlxPostgresPoolConnection(
                 SqlxPostgresPoolConnection { pool },
-            ))
-        } else {
-            Err(DbErr::Conn("Failed to connect.".to_owned()))
+            )),
+            Err(e) => Err(sqlx_error_to_conn_err(e)),
         }
     }
 }

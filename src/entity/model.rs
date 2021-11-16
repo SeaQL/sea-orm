@@ -5,7 +5,7 @@ use crate::{
 pub use sea_query::Value;
 use std::fmt::Debug;
 
-/// A set of constraints for a Model
+/// A Trait for a Model
 pub trait ModelTrait: Clone + Send + Debug {
     #[allow(missing_docs)]
     type Entity: EntityTrait;
@@ -35,7 +35,7 @@ pub trait ModelTrait: Clone + Send + Debug {
     }
 }
 
-/// A set of constraints for implementing a [QueryResult]
+/// A Trait for implementing a [QueryResult]
 pub trait FromQueryResult: Sized {
     /// Instantiate a Model from a [QueryResult]
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr>;

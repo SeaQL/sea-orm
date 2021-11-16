@@ -9,3 +9,8 @@ pub fn sqlx_error_to_exec_err(err: sqlx::Error) -> DbErr {
 pub fn sqlx_error_to_query_err(err: sqlx::Error) -> DbErr {
     DbErr::Query(err.to_string())
 }
+
+/// Converts an [sqlx::error] connection error to a [DbErr]
+pub fn sqlx_error_to_conn_err(err: sqlx::Error) -> DbErr {
+    DbErr::Conn(err.to_string())
+}
