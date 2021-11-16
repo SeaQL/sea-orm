@@ -19,7 +19,8 @@ pub struct MockDatabaseConnector;
 /// Defines a connection for the [MockDatabase]
 #[derive(Debug)]
 pub struct MockDatabaseConnection {
-    counter: AtomicUsize,
+    execute_counter: AtomicUsize,
+    query_counter: AtomicUsize,
     mocker: Mutex<Box<dyn MockDatabaseTrait>>,
 }
 
@@ -100,7 +101,8 @@ impl MockDatabaseConnection {
         M: MockDatabaseTrait,
     {
         Self {
-            counter: AtomicUsize::new(0),
+            execute_counter: AtomicUsize::new(0),
+            query_counter: AtomicUsize::new(0),
             mocker: Mutex::new(Box::new(m)),
         }
     }
@@ -117,14 +119,14 @@ impl MockDatabaseConnection {
     /// Execute the SQL statement in the [MockDatabase]
     pub fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", statement);
-        let counter = self.counter.fetch_add(1, Ordering::SeqCst);
+        let counter = self.execute_counter.fetch_add(1, Ordering::SeqCst);
         self.mocker.lock().unwrap().execute(counter, statement)
     }
 
     /// Return one [QueryResult] if the query was successful
     pub fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", statement);
-        let counter = self.counter.fetch_add(1, Ordering::SeqCst);
+        let counter = self.query_counter.fetch_add(1, Ordering::SeqCst);
         let result = self.mocker.lock().unwrap().query(counter, statement)?;
         Ok(result.into_iter().next())
     }
@@ -132,7 +134,7 @@ impl MockDatabaseConnection {
     /// Return all [QueryResult]s if the query was successful
     pub fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", statement);
-        let counter = self.counter.fetch_add(1, Ordering::SeqCst);
+        let counter = self.query_counter.fetch_add(1, Ordering::SeqCst);
         self.mocker.lock().unwrap().query(counter, statement)
     }
 
