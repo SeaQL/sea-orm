@@ -275,8 +275,11 @@ pub trait EntityTrait: EntityName {
     /// # Example (Postgres)
     ///
     /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
     /// # #[cfg(feature = "mock")]
-    /// # use sea_orm::{error::*, tests_cfg::*, MockDatabase, MockExecResult, Transaction, DbBackend};
+    /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
     /// #     .append_exec_results(vec![
@@ -294,15 +297,10 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// # let _: Result<(), DbErr> = smol::block_on(async {
-    /// #
     /// let insert_result = cake::Entity::insert(apple).exec(&db).await?;
     ///
     /// assert_eq!(dbg!(insert_result.last_insert_id), 150);
     /// assert!(false);
-    /// #
-    /// # Ok(())
-    /// # });
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -311,6 +309,9 @@ pub trait EntityTrait: EntityName {
     ///         r#"INSERT INTO "cake" ("name") VALUES ($1) RETURNING "id""#,
     ///         vec!["Apple Pie".into()]
     ///     )]);
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
     ///
     /// # Example (MySQL)
