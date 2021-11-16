@@ -3,7 +3,8 @@ pub use super::super::bakery_chain::*;
 use super::*;
 use crate::common::setup::{create_enum, create_table, create_table_without_asserts};
 use sea_orm::{
-    error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, ExecResult,
+    error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName,
+    ExecResult,
 };
 use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement};
 
@@ -146,7 +147,7 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
         DbBackend::Postgres => tea_col.custom(tea_enum),
     };
     let create_table_stmt = sea_query::Table::create()
-        .table(active_enum::Entity)
+        .table(active_enum::Entity.table_ref())
         .col(
             ColumnDef::new(active_enum::Column::Id)
                 .integer()
