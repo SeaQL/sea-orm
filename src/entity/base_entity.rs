@@ -298,7 +298,8 @@ pub trait EntityTrait: EntityName {
     /// #
     /// let insert_result = cake::Entity::insert(apple).exec(&db).await?;
     ///
-    /// assert_eq!(insert_result.last_insert_id, 15);
+    /// assert_eq!(dbg!(insert_result.last_insert_id), 150);
+    /// assert!(false);
     /// #
     /// # Ok(())
     /// # });
