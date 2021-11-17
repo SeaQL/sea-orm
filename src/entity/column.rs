@@ -368,9 +368,7 @@ impl From<ColumnType> for sea_query::ColumnType {
                 sea_query::ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(&s)))
             }
             ColumnType::Uuid => sea_query::ColumnType::Uuid,
-            ColumnType::Enum(name, variants) => {
-                sea_query::ColumnType::Enum(name, variants)
-            }
+            ColumnType::Enum(name, variants) => sea_query::ColumnType::Enum(name, variants),
         }
     }
 }
