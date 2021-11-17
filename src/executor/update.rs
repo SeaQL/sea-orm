@@ -1,7 +1,8 @@
 use crate::{
-    error::*, ActiveModelTrait, ConnectionTrait, EntityTrait, Statement, UpdateMany, UpdateOne,
+    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
+    Iterable, SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
 };
-use sea_query::UpdateStatement;
+use sea_query::{Alias, Expr, FromValueTuple, Query, UpdateStatement};
 use std::future::Future;
 
 /// Defines an update operation
@@ -25,10 +26,11 @@ where
     /// Execute an update operation on an ActiveModel
     pub async fn exec<'b, C>(self, db: &'b C) -> Result<A, DbErr>
     where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait<'b>,
     {
         // so that self is dropped before entering await
-        exec_update_and_return_original(self.query, self.model, db).await
+        exec_update_and_return_updated(self.query, self.model, db).await
     }
 }
 
@@ -78,17 +80,61 @@ where
     Updater::new(query).exec(db).await
 }
 
-async fn exec_update_and_return_original<'a, A, C>(
-    query: UpdateStatement,
+async fn exec_update_and_return_updated<'a, A, C>(
+    mut query: UpdateStatement,
     model: A,
     db: &'a C,
 ) -> Result<A, DbErr>
 where
+    <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
     A: ActiveModelTrait,
     C: ConnectionTrait<'a>,
 {
-    Updater::new(query).check_record_exists().exec(db).await?;
-    Ok(model)
+    match db.support_returning() {
+        true => {
+            let mut returning = Query::select();
+            returning.exprs(<A::Entity as EntityTrait>::Column::iter().map(|c| {
+                let col = Expr::col(c);
+                let col_def = c.def();
+                let col_type = col_def.get_column_type();
+                match col_type.get_enum_name() {
+                    Some(_) => col.as_enum(Alias::new("text")),
+                    None => col.into(),
+                }
+            }));
+            query.returning(returning);
+            let db_backend = db.get_database_backend();
+            let found: Option<<A::Entity as EntityTrait>::Model> =
+                SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
+                    db_backend.build(&query),
+                )
+                .one(db)
+                .await?;
+            // If we got `None` then we are updating a row that does not exist.
+            match found {
+                Some(model) => Ok(model.into_active_model()),
+                None => Err(DbErr::RecordNotFound(
+                    "None of the database rows are affected".to_owned(),
+                )),
+            }
+        }
+        false => {
+            // If we updating a row that does not exist then an error will be thrown here.
+            Updater::new(query).check_record_exists().exec(db).await?;
+            let primary_key_value = match model.get_primary_key_value() {
+                Some(val) => FromValueTuple::from_value_tuple(val),
+                None => return Err(DbErr::Exec("Fail to get primary key from model".to_owned())),
+            };
+            let found = <A::Entity as EntityTrait>::find_by_id(primary_key_value)
+                .one(db)
+                .await?;
+            // If we cannot select the updated row from db by the cached primary key
+            match found {
+                Some(model) => Ok(model.into_active_model()),
+                None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
+            }
+        }
+    }
 }
 
 async fn exec_update<'a, C>(
@@ -119,23 +165,16 @@ mod tests {
     #[smol_potat::test]
     async fn update_record_not_found_1() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(vec![
+                vec![cake::Model {
+                    id: 1,
+                    name: "Cheese Cake".to_owned(),
+                }],
+                vec![],
+                vec![],
+                vec![],
+            ])
             .append_exec_results(vec![
-                MockExecResult {
-                    last_insert_id: 0,
-                    rows_affected: 1,
-                },
-                MockExecResult {
-                    last_insert_id: 0,
-                    rows_affected: 0,
-                },
-                MockExecResult {
-                    last_insert_id: 0,
-                    rows_affected: 0,
-                },
-                MockExecResult {
-                    last_insert_id: 0,
-                    rows_affected: 0,
-                },
                 MockExecResult {
                     last_insert_id: 0,
                     rows_affected: 0,
@@ -217,22 +256,22 @@ mod tests {
             vec![
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
-                    r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2"#,
+                    r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
                     vec!["Cheese Cake".into(), 1i32.into()]
                 ),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
-                    r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2"#,
+                    r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
                     vec!["Cheese Cake".into(), 2i32.into()]
                 ),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
-                    r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2"#,
+                    r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
                     vec!["Cheese Cake".into(), 2i32.into()]
                 ),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
-                    r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2"#,
+                    r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
                     vec!["Cheese Cake".into(), 2i32.into()]
                 ),
                 Transaction::from_sql_and_values(

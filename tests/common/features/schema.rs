@@ -3,7 +3,8 @@ pub use super::super::bakery_chain::*;
 use super::*;
 use crate::common::setup::{create_enum, create_table, create_table_without_asserts};
 use sea_orm::{
-    error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, ExecResult,
+    error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName,
+    ExecResult,
 };
 use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement};
 
@@ -127,26 +128,19 @@ pub async fn create_byte_primary_key_table(db: &DbConn) -> Result<ExecResult, Db
 
 pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let db_backend = db.get_database_backend();
-    let tea_enum = Alias::new("tea");
 
     let create_enum_stmts = match db_backend {
         DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
         DbBackend::Postgres => vec![Type::create()
-            .as_enum(tea_enum.clone())
+            .as_enum(Alias::new("tea"))
             .values(vec![Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
             .to_owned()],
     };
 
     create_enum(db, &create_enum_stmts, ActiveEnum).await?;
 
-    let mut tea_col = ColumnDef::new(active_enum::Column::Tea);
-    match db_backend {
-        DbBackend::MySql => tea_col.custom(Alias::new("ENUM('EverydayTea', 'BreakfastTea')")),
-        DbBackend::Sqlite => tea_col.text(),
-        DbBackend::Postgres => tea_col.custom(tea_enum),
-    };
     let create_table_stmt = sea_query::Table::create()
-        .table(active_enum::Entity)
+        .table(active_enum::Entity.table_ref())
         .col(
             ColumnDef::new(active_enum::Column::Id)
                 .integer()
@@ -156,7 +150,10 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
         )
         .col(ColumnDef::new(active_enum::Column::Category).string_len(1))
         .col(ColumnDef::new(active_enum::Column::Color).integer())
-        .col(&mut tea_col)
+        .col(
+            ColumnDef::new(active_enum::Column::Tea)
+                .enumeration("tea", vec!["EverydayTea", "BreakfastTea"]),
+        )
         .to_owned();
 
     create_table(db, &create_table_stmt, ActiveEnum).await

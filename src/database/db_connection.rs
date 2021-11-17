@@ -267,6 +267,11 @@ impl DbBackend {
             Self::Sqlite => Box::new(SqliteQueryBuilder),
         }
     }
+
+    /// Check if the database supports `RETURNING` syntax on insert and update
+    pub fn support_returning(&self) -> bool {
+        matches!(self, Self::Postgres)
+    }
 }
 
 #[cfg(test)]
