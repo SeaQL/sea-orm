@@ -314,7 +314,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        path: [86, 249, 262, 319]
+        path: [86, 249, 262, 319, 324]
     steps:
       - uses: actions/checkout@v2
 

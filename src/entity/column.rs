@@ -364,10 +364,11 @@ impl From<ColumnType> for sea_query::ColumnType {
             ColumnType::Money(s) => sea_query::ColumnType::Money(s),
             ColumnType::Json => sea_query::ColumnType::Json,
             ColumnType::JsonBinary => sea_query::ColumnType::JsonBinary,
-            ColumnType::Custom(s) | ColumnType::Enum(s, _) => {
+            ColumnType::Custom(s) => {
                 sea_query::ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(&s)))
             }
             ColumnType::Uuid => sea_query::ColumnType::Uuid,
+            ColumnType::Enum(name, variants) => sea_query::ColumnType::Enum(name, variants),
         }
     }
 }
@@ -398,6 +399,7 @@ impl From<sea_query::ColumnType> for ColumnType {
             sea_query::ColumnType::JsonBinary => Self::JsonBinary,
             sea_query::ColumnType::Custom(s) => Self::Custom(s.to_string()),
             sea_query::ColumnType::Uuid => Self::Uuid,
+            sea_query::ColumnType::Enum(name, variants) => Self::Enum(name, variants),
             _ => unimplemented!(),
         }
     }
