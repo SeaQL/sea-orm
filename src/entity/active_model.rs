@@ -719,11 +719,11 @@ where
 }
 
 #[cfg(test)]
+#[cfg(feature = "macros")]
 mod tests {
     use crate::tests_cfg::*;
 
     #[test]
-    #[cfg(feature = "macros")]
     fn test_derive_into_active_model_1() {
         use crate::entity::*;
 
@@ -756,7 +756,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "macros")]
     fn test_derive_into_active_model_2() {
         use crate::entity::*;
 
@@ -801,6 +800,60 @@ mod tests {
                 id: Unset(None),
                 name: Unset(None),
                 cake_id: Unset(None),
+            }
+        );
+    }
+
+    #[test]
+    fn test_derive_into_active_model_3() {
+        use crate::entity::*;
+
+        mod my_fruit {
+            pub use super::fruit::*;
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(DeriveIntoActiveModel)]
+            pub struct NewFruit {
+                pub name: Option<String>,
+                pub cake_id: Option<Option<i32>>,
+            }
+        }
+
+        assert_eq!(
+            my_fruit::NewFruit {
+                name: None,
+                cake_id: None,
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Unset(None),
+                name: Unset(None),
+                cake_id: Unset(None),
+            }
+        );
+        assert_eq!(
+            my_fruit::NewFruit {
+                name: Some("Apple".to_owned()),
+                cake_id: Some(None),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Unset(None),
+                name: Set("Apple".to_owned()),
+                cake_id: Set(None),
+            }
+        );
+        assert_eq!(
+            my_fruit::NewFruit {
+                name: None,
+                cake_id: Some(Some(1)),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Unset(None),
+                name: Unset(None),
+                cake_id: Set(Some(1)),
             }
         );
     }
