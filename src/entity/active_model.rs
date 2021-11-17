@@ -557,7 +557,7 @@ macro_rules! impl_into_active_value {
             fn into_active_value(self) -> ActiveValue<Option<$ty>> {
                 match self {
                     Some(value) => Set(Some(value)),
-                    None => Unset(None),
+                    None => Set(None),
                 }
             }
         }
