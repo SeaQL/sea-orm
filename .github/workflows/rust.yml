@@ -288,6 +288,7 @@ jobs:
     name: Examples
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest]
         path: [basic, actix_example, actix4_example, axum_example, rocket_example]
@@ -312,6 +313,7 @@ jobs:
     if: ${{ (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-issues == 'true') }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest]
         path: [86, 249, 262, 319, 324]
@@ -350,6 +352,7 @@ jobs:
     env:
       DATABASE_URL: "sqlite::memory:"
     strategy:
+      fail-fast: false
       matrix:
         runtime: [async-std, actix, tokio]
         tls: [native-tls, rustls]
@@ -392,6 +395,7 @@ jobs:
     env:
       DATABASE_URL: "mysql://root:@localhost"
     strategy:
+      fail-fast: false
       matrix:
         version: [8.0, 5.7]
         runtime: [async-std, actix, tokio]
@@ -452,8 +456,9 @@ jobs:
     env:
       DATABASE_URL: "mysql://root:@localhost"
     strategy:
+      fail-fast: false
       matrix:
-        version: [10.6]
+        version: [10.6, 10.5, 10.4]
         runtime: [async-std, actix, tokio]
         tls: [native-tls]
     services:
@@ -512,8 +517,9 @@ jobs:
     env:
       DATABASE_URL: "postgres://root:root@localhost"
     strategy:
+      fail-fast: false
       matrix:
-        version: [13.3, 12.7, 11.12, 10.17, 9.6.22]
+        version: [13, 12, 11, 10, 9]
         runtime: [tokio]
         tls: [native-tls]
     services:

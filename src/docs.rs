@@ -3,7 +3,12 @@
 //!     Relying on [SQLx](https://github.com/launchbadge/sqlx), SeaORM is a new library with async support from day 1.
 //!
 //! ```
-//! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*, DatabaseConnection, DbBackend, MockDatabase, Transaction, IntoMockRow};
+//! # use sea_orm::{error::*, tests_cfg::*, *};
+//! #
+//! # #[smol_potat::main]
+//! # #[cfg(feature = "mock")]
+//! # pub async fn main() -> Result<(), DbErr> {
+//! #
 //! # let db = MockDatabase::new(DbBackend::Postgres)
 //! #     .append_query_results(vec![
 //! #         vec![cake::Model {
@@ -19,7 +24,7 @@
 //! #         .into_mock_row()],
 //! #     ])
 //! #     .into_connection();
-//! # let _: Result<(), DbErr> = smol::block_on(async {
+//! #
 //! // execute multiple queries in parallel
 //! let cakes_and_fruits: (Vec<cake::Model>, Vec<fruit::Model>) =
 //!     futures::try_join!(Cake::find().all(&db), Fruit::find().all(&db))?;
@@ -53,7 +58,7 @@
 //! #     ]
 //! # );
 //! # Ok(())
-//! # });
+//! # }
 //! ```
 //!
 //! 2. Dynamic
