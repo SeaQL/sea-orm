@@ -857,4 +857,44 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn test_derive_into_active_model_4() {
+        use crate::entity::*;
+
+        mod my_fruit {
+            pub use super::fruit::*;
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(DeriveIntoActiveModel)]
+            pub struct NewFruit {
+                pub cake_id: Option<i32>,
+            }
+        }
+
+        assert_eq!(
+            my_fruit::NewFruit {
+                cake_id: Some(1),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Unset(None),
+                name: Unset(None),
+                cake_id: Set(Some(1)),
+            }
+        );
+        assert_eq!(
+            // FIXME: The result returned by `into_active_model` is unexpected!
+            my_fruit::NewFruit {
+                cake_id: None,
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Unset(None),
+                name: Unset(None),
+                cake_id: Set(None),
+            }
+        );
+    }
 }
