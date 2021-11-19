@@ -58,7 +58,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     let schema: Schema = Schema::new(DbBackend::MySql);
     let _: TableCreateStatement = schema.create_table_from_entity(cake::Entity);
     ```
-* When performing insert or update operation on `ActiveModel` against PostgreSQL, RETURNING clause will be used to avoid excessive querying of inserted or updated model from the database.
+* When performing insert or update operation on `ActiveModel` against PostgreSQL, `RETURNING` clause will be used to perform select in a single SQL statement.
     ```rust
     // For PostgreSQL
     cake::ActiveModel {
