@@ -23,7 +23,7 @@ tera = "1"
 
 [dependencies.sea-orm]
 path = "../../" # remove this line in your own project
-version = "^0.3.0"
+version = "^0.4.0"
 features = ["macros", "runtime-tokio-native-tls"]
 default-features = false
 

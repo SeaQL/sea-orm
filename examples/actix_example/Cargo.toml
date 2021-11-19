@@ -22,7 +22,7 @@ env_logger = "0.8"
 
 [dependencies.sea-orm]
 path = "../../" # remove this line in your own project
-version = "^0.3.0"
+version = "^0.4.0"
 features = ["macros", "runtime-async-std-native-tls"]
 default-features = false
 
