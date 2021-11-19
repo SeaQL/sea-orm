@@ -51,10 +51,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     use sea_orm::{tests_cfg::*, DbBackend, Schema};
     use sea_orm::sea_query::TableCreateStatement;
 
-    // Before `0.4.x`
+    // 0.3.x
     let _: TableCreateStatement = Schema::create_table_from_entity(cake::Entity);
 
-    // Now
+    // 0.4.x
     let schema: Schema = Schema::new(DbBackend::MySql);
     let _: TableCreateStatement = schema.create_table_from_entity(cake::Entity);
     ```
@@ -103,6 +103,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 **Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.3.2...0.4.0
 
 ## 0.3.2 - 2021-11-03
+
 ### Fixed Issues
 * Support for BYTEA Postgres primary keys https://github.com/SeaQL/sea-orm/issues/286
 
