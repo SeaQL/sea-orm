@@ -174,12 +174,10 @@ mod tests {
                 vec![],
                 vec![],
             ])
-            .append_exec_results(vec![
-                MockExecResult {
-                    last_insert_id: 0,
-                    rows_affected: 0,
-                },
-            ])
+            .append_exec_results(vec![MockExecResult {
+                last_insert_id: 0,
+                rows_affected: 0,
+            }])
             .into_connection();
 
         let model = cake::Model {

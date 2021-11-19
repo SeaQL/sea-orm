@@ -174,137 +174,61 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn test_mysql_create_table_from_entity() {
-        let schema = Schema::new(DbBackend::MySql);
-        assert_eq!(
-            schema
-                .create_table_from_entity(CakeFillingPrice)
-                .to_string(MysqlQueryBuilder),
-            Table::create()
-                .table(CakeFillingPrice)
-                .col(
-                    ColumnDef::new(cake_filling_price::Column::CakeId)
-                        .integer()
-                        .not_null()
-                )
-                .col(
-                    ColumnDef::new(cake_filling_price::Column::FillingId)
-                        .integer()
-                        .not_null()
-                )
-                .col(
-                    ColumnDef::new(cake_filling_price::Column::Price)
-                        .decimal()
-                        .not_null()
-                )
-                .primary_key(
-                    Index::create()
-                        .name("pk-cake_filling_price")
-                        .col(cake_filling_price::Column::CakeId)
-                        .col(cake_filling_price::Column::FillingId)
-                        .primary()
-                )
-                .foreign_key(
-                    ForeignKeyCreateStatement::new()
-                        .name("fk-cake_filling_price-cake_filling")
-                        .from_tbl(CakeFillingPrice)
-                        .from_col(cake_filling_price::Column::CakeId)
-                        .from_col(cake_filling_price::Column::FillingId)
-                        .to_tbl(CakeFilling)
-                        .to_col(cake_filling::Column::CakeId)
-                        .to_col(cake_filling::Column::FillingId)
-                )
-                .to_string(MysqlQueryBuilder)
-        );
+    fn test_create_table_from_entity_table_ref() {
+        for builder in [DbBackend::MySql, DbBackend::Postgres, DbBackend::Sqlite] {
+            let schema = Schema::new(builder);
+            assert_eq!(
+                builder.build(&schema.create_table_from_entity(CakeFillingPrice)),
+                builder.build(&get_stmt().table(CakeFillingPrice.table_ref()).to_owned())
+            );
+        }
     }
 
     #[test]
-    fn test_postgres_create_table_from_entity() {
-        let schema = Schema::new(DbBackend::Postgres);
-        assert_eq!(
-            schema
-                .create_table_from_entity(CakeFillingPrice)
-                .to_string(PostgresQueryBuilder),
-            Table::create()
-                .table(CakeFillingPrice.table_ref())
-                .col(
-                    ColumnDef::new(cake_filling_price::Column::CakeId)
-                        .integer()
-                        .not_null()
-                )
-                .col(
-                    ColumnDef::new(cake_filling_price::Column::FillingId)
-                        .integer()
-                        .not_null()
-                )
-                .col(
-                    ColumnDef::new(cake_filling_price::Column::Price)
-                        .decimal()
-                        .not_null()
-                )
-                .primary_key(
-                    Index::create()
-                        .name("pk-cake_filling_price")
-                        .col(cake_filling_price::Column::CakeId)
-                        .col(cake_filling_price::Column::FillingId)
-                        .primary()
-                )
-                .foreign_key(
-                    ForeignKeyCreateStatement::new()
-                        .name("fk-cake_filling_price-cake_filling")
-                        .from_tbl(CakeFillingPrice)
-                        .from_col(cake_filling_price::Column::CakeId)
-                        .from_col(cake_filling_price::Column::FillingId)
-                        .to_tbl(CakeFilling)
-                        .to_col(cake_filling::Column::CakeId)
-                        .to_col(cake_filling::Column::FillingId)
-                )
-                .to_string(PostgresQueryBuilder)
-        );
+    fn test_create_table_from_entity() {
+        for builder in [DbBackend::MySql, DbBackend::Sqlite] {
+            let schema = Schema::new(builder);
+            assert_eq!(
+                builder.build(&schema.create_table_from_entity(CakeFillingPrice)),
+                builder.build(&get_stmt().table(CakeFillingPrice).to_owned())
+            );
+        }
     }
 
-    #[test]
-    fn test_sqlite_create_table_from_entity() {
-        let schema = Schema::new(DbBackend::Sqlite);
-        assert_eq!(
-            schema
-                .create_table_from_entity(CakeFillingPrice)
-                .to_string(SqliteQueryBuilder),
-            Table::create()
-                .table(CakeFillingPrice)
-                .col(
-                    ColumnDef::new(cake_filling_price::Column::CakeId)
-                        .integer()
-                        .not_null()
-                )
-                .col(
-                    ColumnDef::new(cake_filling_price::Column::FillingId)
-                        .integer()
-                        .not_null()
-                )
-                .col(
-                    ColumnDef::new(cake_filling_price::Column::Price)
-                        .decimal()
-                        .not_null()
-                )
-                .primary_key(
-                    Index::create()
-                        .name("pk-cake_filling_price")
-                        .col(cake_filling_price::Column::CakeId)
-                        .col(cake_filling_price::Column::FillingId)
-                        .primary()
-                )
-                .foreign_key(
-                    ForeignKeyCreateStatement::new()
-                        .name("fk-cake_filling_price-cake_filling")
-                        .from_tbl(CakeFillingPrice)
-                        .from_col(cake_filling_price::Column::CakeId)
-                        .from_col(cake_filling_price::Column::FillingId)
-                        .to_tbl(CakeFilling)
-                        .to_col(cake_filling::Column::CakeId)
-                        .to_col(cake_filling::Column::FillingId)
-                )
-                .to_string(SqliteQueryBuilder)
-        );
+    fn get_stmt() -> TableCreateStatement {
+        Table::create()
+            .col(
+                ColumnDef::new(cake_filling_price::Column::CakeId)
+                    .integer()
+                    .not_null(),
+            )
+            .col(
+                ColumnDef::new(cake_filling_price::Column::FillingId)
+                    .integer()
+                    .not_null(),
+            )
+            .col(
+                ColumnDef::new(cake_filling_price::Column::Price)
+                    .decimal()
+                    .not_null(),
+            )
+            .primary_key(
+                Index::create()
+                    .name("pk-cake_filling_price")
+                    .col(cake_filling_price::Column::CakeId)
+                    .col(cake_filling_price::Column::FillingId)
+                    .primary(),
+            )
+            .foreign_key(
+                ForeignKeyCreateStatement::new()
+                    .name("fk-cake_filling_price-cake_filling")
+                    .from_tbl(CakeFillingPrice)
+                    .from_col(cake_filling_price::Column::CakeId)
+                    .from_col(cake_filling_price::Column::FillingId)
+                    .to_tbl(CakeFilling)
+                    .to_col(cake_filling::Column::CakeId)
+                    .to_col(cake_filling::Column::FillingId),
+            )
+            .to_owned()
     }
 }
