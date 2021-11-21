@@ -10,20 +10,22 @@
   [![docs](https://docs.rs/sea-orm/badge.svg)](https://docs.rs/sea-orm)
   [![build status](https://github.com/SeaQL/sea-orm/actions/workflows/rust.yml/badge.svg)](https://github.com/SeaQL/sea-orm/actions/workflows/rust.yml)
 
-  <sub>Built with 🔥 by 🌊🦀🐚</sub>
-
 </div>
 
 # SeaORM
 
 #### SeaORM is a relational ORM to help you build web services in Rust with the familiarity of dynamic languages.
 
-[![Getting Started](https://img.shields.io/badge/Getting%20Started-brightgreen)](https://www.sea-ql.org/SeaORM/docs/index)
-[![Usage Example](https://img.shields.io/badge/Usage%20Example-green)](https://github.com/SeaQL/sea-orm/tree/master/examples/basic)
-[![Rocket Example](https://img.shields.io/badge/Rocket%20Example-red)](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
-[![Actix Example](https://img.shields.io/badge/Actix%20Example-blue)](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
-[![Axum Example](https://img.shields.io/badge/Axum%20Example-yellow)](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
+## Getting Started
+
 [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
+Join our Discord server to interactive with others in the SeaQL community!
+
++ [Getting Started](https://www.sea-ql.org/SeaORM/docs/index)
++ [Usage Example](https://github.com/SeaQL/sea-orm/tree/master/examples/basic)
++ [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
++ [Actix Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
++ [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
 
 ## Features
 
