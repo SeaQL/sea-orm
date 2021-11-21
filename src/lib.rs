@@ -24,7 +24,7 @@
 //!
 //! # SeaORM
 //!
-//! #### SeaORM is a relational ORM to help you build light weight and concurrent web services in Rust.
+//! #### SeaORM is a relational ORM to help you build web services in Rust with the familiarity of dynamic languages.
 //!
 //! [![Getting Started](https://img.shields.io/badge/Getting%20Started-brightgreen)](https://www.sea-ql.org/SeaORM/docs/index)
 //! [![Usage Example](https://img.shields.io/badge/Usage%20Example-green)](https://github.com/SeaQL/sea-orm/tree/master/examples/basic)
