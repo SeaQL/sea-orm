@@ -544,3 +544,6 @@ try_from_u64_err!(Vec<u8>);
 
 #[cfg(feature = "with-uuid")]
 try_from_u64_err!(uuid::Uuid);
+
+#[cfg(feature = "with-chrono")]
+try_from_u64_err!(chrono::DateTime<chrono::FixedOffset>);
