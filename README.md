@@ -19,7 +19,7 @@
 ## Getting Started
 
 [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
-Join our Discord server to interactive with others in the SeaQL community!
+Join our Discord server to chat with others in the SeaQL community!
 
 + [Getting Started](https://www.sea-ql.org/SeaORM/docs/index)
 + [Usage Example](https://github.com/SeaQL/sea-orm/tree/master/examples/basic)
