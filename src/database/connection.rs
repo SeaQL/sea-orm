@@ -7,7 +7,7 @@ use std::{future::Future, pin::Pin};
 /// Creates constraints for any structure that can create a database connection
 /// and execute SQL statements
 #[async_trait::async_trait]
-pub trait ConnectionTrait<'a>: Sync {
+pub trait ConnectionTrait: Sync {
     /// Fetch the database backend as specified in [DbBackend].
     /// This depends on feature flags enabled.
     fn get_database_backend(&self) -> DbBackend;

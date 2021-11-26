@@ -1,7 +1,7 @@
 use crate::{
     error::*, ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, ModelTrait,
     PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement,
-    TryGetableMany, StreamTrait,
+    StreamTrait, TryGetableMany,
 };
 use futures::{Stream, TryStreamExt};
 use sea_query::SelectStatement;
@@ -256,7 +256,7 @@ where
     /// Get one Model from the SELECT query
     pub async fn one<'a, C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         self.into_model().one(db).await
     }
@@ -264,7 +264,7 @@ where
     /// Get all Models from the SELECT query
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         self.into_model().all(db).await
     }
@@ -275,7 +275,7 @@ where
         db: &'a C,
     ) -> Result<impl Stream<Item = Result<E::Model, DbErr>> + 'b, DbErr>
     where
-        C: ConnectionTrait<'a> + StreamTrait<'a>,
+        C: ConnectionTrait + StreamTrait<'a>,
     {
         self.into_model().stream(db).await
     }
@@ -310,7 +310,7 @@ where
     /// Get one Model from the Select query
     pub async fn one<'a, C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         self.into_model().one(db).await
     }
@@ -318,7 +318,7 @@ where
     /// Get all Models from the Select query
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         self.into_model().all(db).await
     }
@@ -329,7 +329,7 @@ where
         db: &'a C,
     ) -> Result<impl Stream<Item = Result<(E::Model, Option<F::Model>), DbErr>> + 'b, DbErr>
     where
-        C: ConnectionTrait<'a> + StreamTrait<'a>,
+        C: ConnectionTrait + StreamTrait<'a>,
     {
         self.into_model().stream(db).await
     }
@@ -364,7 +364,7 @@ where
     /// Select one Model
     pub async fn one<'a, C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         self.into_model().one(db).await
     }
@@ -375,7 +375,7 @@ where
         db: &'a C,
     ) -> Result<impl Stream<Item = Result<(E::Model, Option<F::Model>), DbErr>> + 'b, DbErr>
     where
-        C: ConnectionTrait<'a> + StreamTrait<'a>,
+        C: ConnectionTrait + StreamTrait<'a>,
     {
         self.into_model().stream(db).await
     }
@@ -383,7 +383,7 @@ where
     /// Get all Models from the select operation
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let rows = self.into_model().all(db).await?;
         Ok(consolidate_query_result::<E, F>(rows))
@@ -421,7 +421,7 @@ where
 
     fn into_selector_raw<'a, C>(self, db: &C) -> SelectorRaw<S>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let builder = db.get_database_backend();
         let stmt = builder.build(&self.query);
@@ -434,7 +434,7 @@ where
     /// Get an item from the Select query
     pub async fn one<'a, C>(mut self, db: &C) -> Result<Option<S::Item>, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         self.query.limit(1);
         self.into_selector_raw(db).one(db).await
@@ -443,7 +443,7 @@ where
     /// Get all items from the Select query
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         self.into_selector_raw(db).all(db).await
     }
@@ -454,7 +454,7 @@ where
         db: &'a C,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<S::Item, DbErr>> + 'b>>, DbErr>
     where
-        C: ConnectionTrait<'a> + StreamTrait<'a>,
+        C: ConnectionTrait + StreamTrait<'a>,
         S: 'b,
     {
         self.into_selector_raw(db).stream(db).await
@@ -672,7 +672,7 @@ where
     /// ```
     pub async fn one<'a, C>(self, db: &C) -> Result<Option<S::Item>, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let row = db.query_one(self.stmt).await?;
         match row {
@@ -723,7 +723,7 @@ where
     /// ```
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let rows = db.query_all(self.stmt).await?;
         let mut models = Vec::new();
@@ -739,7 +739,7 @@ where
         db: &'a C,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<S::Item, DbErr>> + 'b>>, DbErr>
     where
-        C: ConnectionTrait<'a> + StreamTrait<'a>,
+        C: ConnectionTrait + StreamTrait<'a>,
         S: 'b,
     {
         let stream = db.stream(self.stmt).await?;

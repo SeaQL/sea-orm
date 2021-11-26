@@ -1,6 +1,6 @@
 use crate::{
     debug_print, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, QueryResult,
-    Statement, TransactionStream, TransactionTrait, StreamTrait,
+    Statement, StreamTrait, TransactionStream, TransactionTrait,
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
@@ -242,7 +242,7 @@ impl Drop for DatabaseTransaction {
 }
 
 #[async_trait::async_trait]
-impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
+impl ConnectionTrait for DatabaseTransaction {
     fn get_database_backend(&self) -> DbBackend {
         // this way we don't need to lock
         self.backend

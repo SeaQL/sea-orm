@@ -276,7 +276,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_save(self, true)?;
         let model = <Self::Entity as EntityTrait>::insert(am)
@@ -398,7 +398,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_save(self, false)?;
         let model: <Self::Entity as EntityTrait>::Model = Self::Entity::update(am).exec(db).await?;
@@ -411,7 +411,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let mut is_update = true;
         for key in <Self::Entity as EntityTrait>::PrimaryKey::iter() {
@@ -475,7 +475,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn delete<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
         Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_delete(self)?;
         let am_clone = am.clone();
