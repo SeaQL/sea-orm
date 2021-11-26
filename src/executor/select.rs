@@ -1,7 +1,7 @@
 use crate::{
     error::*, ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, ModelTrait,
     PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement,
-    TryGetableMany,
+    TryGetableMany, StreamTrait,
 };
 use futures::{Stream, TryStreamExt};
 use sea_query::SelectStatement;
@@ -275,7 +275,7 @@ where
         db: &'a C,
     ) -> Result<impl Stream<Item = Result<E::Model, DbErr>> + 'b, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait<'a> + StreamTrait<'a>,
     {
         self.into_model().stream(db).await
     }
@@ -329,7 +329,7 @@ where
         db: &'a C,
     ) -> Result<impl Stream<Item = Result<(E::Model, Option<F::Model>), DbErr>> + 'b, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait<'a> + StreamTrait<'a>,
     {
         self.into_model().stream(db).await
     }
@@ -375,7 +375,7 @@ where
         db: &'a C,
     ) -> Result<impl Stream<Item = Result<(E::Model, Option<F::Model>), DbErr>> + 'b, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait<'a> + StreamTrait<'a>,
     {
         self.into_model().stream(db).await
     }
@@ -454,7 +454,7 @@ where
         db: &'a C,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<S::Item, DbErr>> + 'b>>, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait<'a> + StreamTrait<'a>,
         S: 'b,
     {
         self.into_selector_raw(db).stream(db).await
@@ -739,7 +739,7 @@ where
         db: &'a C,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<S::Item, DbErr>> + 'b>>, DbErr>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait<'a> + StreamTrait<'a>,
         S: 'b,
     {
         let stream = db.stream(self.stmt).await?;

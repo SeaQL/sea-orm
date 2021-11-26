@@ -311,8 +311,8 @@ impl OpenTransaction {
 #[cfg(feature = "mock")]
 mod tests {
     use crate::{
-        entity::*, tests_cfg::*, ConnectionTrait, DbBackend, DbErr, MockDatabase, Statement,
-        Transaction, TransactionError,
+        entity::*, tests_cfg::*, DbBackend, DbErr, MockDatabase, Statement, Transaction,
+        TransactionError, TransactionTrait,
     };
     use pretty_assertions::assert_eq;
 

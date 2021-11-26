@@ -1,6 +1,6 @@
 use crate::{
     debug_print, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, QueryResult,
-    Statement, TransactionStream,
+    Statement, TransactionStream, TransactionTrait, StreamTrait,
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
@@ -243,8 +243,6 @@ impl Drop for DatabaseTransaction {
 
 #[async_trait::async_trait]
 impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
-    type Stream = TransactionStream<'a>;
-
     fn get_database_backend(&self) -> DbBackend {
         // this way we don't need to lock
         self.backend
@@ -349,6 +347,11 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
         #[cfg(feature = "sqlx-dep")]
         _res.map_err(sqlx_error_to_query_err)
     }
+}
+
+#[async_trait::async_trait]
+impl<'a> StreamTrait<'a> for DatabaseTransaction {
+    type Stream = TransactionStream<'a>;
 
     #[instrument(level = "trace")]
     fn stream(
@@ -364,7 +367,10 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
             .await)
         })
     }
+}
 
+#[async_trait::async_trait]
+impl TransactionTrait for DatabaseTransaction {
     #[instrument(level = "trace")]
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         DatabaseTransaction::begin(
