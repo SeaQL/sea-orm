@@ -33,7 +33,7 @@ pub async fn insert_and_update(db: &DbConn) -> Result<(), DbErr> {
     let mut pear: fruit::ActiveModel = pear.unwrap().into();
     pear.name = Set("Sweet pear".to_owned());
 
-    let pear: fruit::ActiveModel = pear.update(db).await?;
+    let pear: fruit::Model = pear.update(db).await?;
 
     println!();
     println!("Updated: {:?}\n", pear);
@@ -46,14 +46,14 @@ pub async fn save_active_model(db: &DbConn) -> Result<(), DbErr> {
         name: Set("Banana".to_owned()),
         ..Default::default()
     };
-    let mut banana = banana.save(db).await?;
+    let mut banana: fruit::ActiveModel = banana.save(db).await?.into_active_model();
 
     println!();
     println!("Inserted: {:?}\n", banana);
 
     banana.name = Set("Banana Mongo".to_owned());
 
-    let banana = banana.save(db).await?;
+    let banana: fruit::ActiveModel = banana.save(db).await?.into_active_model();
 
     println!();
     println!("Updated: {:?}\n", banana);
