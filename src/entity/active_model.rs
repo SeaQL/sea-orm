@@ -10,7 +10,7 @@ use std::fmt::Debug;
 /// the value that operations like `UPDATE` are being performed on and
 /// the `state` field is either `ActiveValueState::Set` or `ActiveValueState::Unchanged`.
 /// [Option::None] in the `value` field indicates no value being performed by an operation
-/// and that the `state` field of the [ActiveValue] is set to `ActiveValueState::Unset` .
+/// and that the `state` field of the [ActiveValue] is set to `ActiveValueState::NotSet` .
 /// #### Example snippet
 /// ```no_run
 /// // The code snipped below does an UPDATE operation on a [ActiveValue]
@@ -27,13 +27,17 @@ use std::fmt::Debug;
 /// .build(DbBackend::Postgres)
 /// .to_string();
 /// ```
-#[derive(Clone, Debug, Default)]
-pub struct ActiveValue<V>
+#[derive(Clone, Debug)]
+pub enum ActiveValue<V>
 where
     V: Into<Value>,
 {
-    value: Option<V>,
-    state: ActiveValueState,
+    /// Represent a [Value] was set
+    Set(V),
+    /// Represent the [Value] remain unchanged
+    Unchanged(V),
+    /// Represent a NULL value similar to [Option::None]
+    NotSet,
 }
 
 /// Defines a set operation on an [ActiveValue]
@@ -47,25 +51,11 @@ where
 
 /// Defines an unset operation on an [ActiveValue]
 #[allow(non_snake_case)]
-pub fn Unset<V>(_: Option<bool>) -> ActiveValue<V>
+pub fn NotSet<V>() -> ActiveValue<V>
 where
     V: Into<Value>,
 {
     ActiveValue::unset()
-}
-
-// Defines the state of an [ActiveValue]
-#[derive(Clone, Debug)]
-enum ActiveValueState {
-    Set,
-    Unchanged,
-    Unset,
-}
-
-impl Default for ActiveValueState {
-    fn default() -> Self {
-        Self::Unset
-    }
 }
 
 #[doc(hidden)]
@@ -557,7 +547,7 @@ macro_rules! impl_into_active_value {
             fn into_active_value(self) -> ActiveValue<Option<$ty>> {
                 match self {
                     Some(value) => Set(Some(value)),
-                    None => Unset(None),
+                    None => NotSet(),
                 }
             }
         }
@@ -566,7 +556,7 @@ macro_rules! impl_into_active_value {
             fn into_active_value(self) -> ActiveValue<Option<$ty>> {
                 match self {
                     Some(value) => Set(value),
-                    None => Unset(None),
+                    None => NotSet(),
                 }
             }
         }
@@ -615,74 +605,83 @@ impl_into_active_value!(crate::prelude::Decimal, Set);
 #[cfg_attr(docsrs, doc(cfg(feature = "with-uuid")))]
 impl_into_active_value!(crate::prelude::Uuid, Set);
 
+impl<V> Default for ActiveValue<V>
+where
+    V: Into<Value>,
+{
+    fn default() -> Self {
+        Self::NotSet
+    }
+}
+
 impl<V> ActiveValue<V>
 where
     V: Into<Value>,
 {
     /// Set the value of an [ActiveValue] and also set its state to `ActiveValueState::Set`
     pub fn set(value: V) -> Self {
-        Self {
-            value: Some(value),
-            state: ActiveValueState::Set,
-        }
+        Self::Set(value)
     }
 
     /// Check if the state of an [ActiveValue] is `ActiveValueState::Set` which returns true
     pub fn is_set(&self) -> bool {
-        matches!(self.state, ActiveValueState::Set)
+        matches!(self, Self::Set(_))
     }
 
     pub(crate) fn unchanged(value: V) -> Self {
-        Self {
-            value: Some(value),
-            state: ActiveValueState::Unchanged,
-        }
+        Self::Unchanged(value)
     }
 
     /// Check if the status of the [ActiveValue] is `ActiveValueState::Unchanged`
     /// which returns `true` if it is
     pub fn is_unchanged(&self) -> bool {
-        matches!(self.state, ActiveValueState::Unchanged)
+        matches!(self, Self::Unchanged(_))
     }
 
     /// Set the `value` field of the ActiveModel to [Option::None] and the
-    /// `state` field to `ActiveValueState::Unset`
+    /// `state` field to `ActiveValueState::NotSet`
     pub fn unset() -> Self {
-        Self {
-            value: None,
-            state: ActiveValueState::Unset,
-        }
+        Self::default()
     }
 
-    /// Check if the state of an [ActiveValue] is `ActiveValueState::Unset`
+    /// Check if the state of an [ActiveValue] is `ActiveValueState::NotSet`
     /// which returns true if it is
     pub fn is_unset(&self) -> bool {
-        matches!(self.state, ActiveValueState::Unset)
+        matches!(self, Self::NotSet)
     }
 
     /// Get the mutable value of the `value` field of an [ActiveValue]
-    /// also setting it's state to `ActiveValueState::Unset`
+    /// also setting it's state to `ActiveValueState::NotSet`
     pub fn take(&mut self) -> Option<V> {
-        self.state = ActiveValueState::Unset;
-        self.value.take()
+        match std::mem::take(self) {
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value),
+            ActiveValue::NotSet => None,
+        }
     }
 
     /// Get an owned value of the `value` field of the [ActiveValue]
     pub fn unwrap(self) -> V {
-        self.value.unwrap()
+        match self {
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
+            ActiveValue::NotSet => {
+                panic!("Cannot unwrap ActiveValue::NotSet")
+            }
+        }
     }
 
     /// Check is a [Value] exists or not
     pub fn into_value(self) -> Option<Value> {
-        self.value.map(Into::into)
+        match self {
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value.into()),
+            ActiveValue::NotSet => None,
+        }
     }
 
     /// Wrap the [Value] into a `ActiveValue<Value>`
     pub fn into_wrapped_value(self) -> ActiveValue<Value> {
-        match self.state {
-            ActiveValueState::Set => ActiveValue::set(self.into_value().unwrap()),
-            ActiveValueState::Unchanged => ActiveValue::unchanged(self.into_value().unwrap()),
-            ActiveValueState::Unset => ActiveValue::unset(),
+        match self {
+            Self::Set(value) | Self::Unchanged(value) => Set(value.into()),
+            Self::NotSet => ActiveValue::NotSet,
         }
     }
 }
@@ -692,7 +691,11 @@ where
     V: Into<Value>,
 {
     fn as_ref(&self) -> &V {
-        self.value.as_ref().unwrap()
+        match self {
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
+            /// FIXME: This is very bad :((
+            ActiveValue::NotSet => panic!("Cannot borrow ActiveValue::NotSet"),
+        }
     }
 }
 
@@ -701,7 +704,7 @@ where
     V: Into<Value> + std::cmp::PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.value.as_ref() == other.value.as_ref()
+        self.as_ref() == other.as_ref()
     }
 }
 
@@ -710,10 +713,10 @@ where
     V: Into<Value> + Nullable,
 {
     fn from(value: ActiveValue<V>) -> Self {
-        match value.state {
-            ActiveValueState::Set => Set(value.value),
-            ActiveValueState::Unset => Unset(None),
-            ActiveValueState::Unchanged => ActiveValue::unchanged(value.value),
+        match value {
+            ActiveValue::Set(value) => Set(Some(value)),
+            ActiveValue::Unchanged(value) => ActiveValue::unchanged(Some(value)),
+            ActiveValue::NotSet => NotSet(),
         }
     }
 }
@@ -748,7 +751,7 @@ mod tests {
             }
             .into_active_model(),
             fruit::ActiveModel {
-                id: Unset(None),
+                id: NotSet(),
                 name: Set("Apple".to_owned()),
                 cake_id: Set(Some(1)),
             }
@@ -777,8 +780,8 @@ mod tests {
             }
             .into_active_model(),
             fruit::ActiveModel {
-                id: Unset(None),
-                name: Unset(None),
+                id: NotSet(),
+                name: NotSet(),
                 cake_id: Set(Some(1)),
             }
         );
@@ -789,8 +792,8 @@ mod tests {
             }
             .into_active_model(),
             fruit::ActiveModel {
-                id: Unset(None),
-                name: Unset(None),
+                id: NotSet(),
+                name: NotSet(),
                 cake_id: Set(None),
             }
         );
@@ -798,9 +801,9 @@ mod tests {
         assert_eq!(
             my_fruit::UpdateFruit { cake_id: None }.into_active_model(),
             fruit::ActiveModel {
-                id: Unset(None),
-                name: Unset(None),
-                cake_id: Unset(None),
+                id: NotSet(),
+                name: NotSet(),
+                cake_id: NotSet(),
             }
         );
     }
