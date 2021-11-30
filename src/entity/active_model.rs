@@ -172,7 +172,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///         id: 15,
     ///         name: "Apple Pie".to_owned(),
     ///     }
-    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(
@@ -225,7 +224,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///         id: 15,
     ///         name: "Apple Pie".to_owned(),
     ///     }
-    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(
@@ -296,7 +294,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///         name: "Orange".to_owned(),
     ///         cake_id: None,
     ///     }
-    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(
@@ -351,7 +348,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///         name: "Orange".to_owned(),
     ///         cake_id: None,
     ///     }
-    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(

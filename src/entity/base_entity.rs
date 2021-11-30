@@ -505,7 +505,6 @@ pub trait EntityTrait: EntityName {
     ///         name: "Orange".to_owned(),
     ///         cake_id: None,
     ///     }
-    ///     .into_active_model(),
     /// );
     ///
     /// assert_eq!(
@@ -563,7 +562,6 @@ pub trait EntityTrait: EntityName {
     ///         name: "Orange".to_owned(),
     ///         cake_id: None,
     ///     }
-    ///     .into_active_model(),
     /// );
     ///
     /// assert_eq!(

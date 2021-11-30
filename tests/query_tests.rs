@@ -43,7 +43,7 @@ pub async fn find_one_with_result() {
 
     let result = Bakery::find().one(&ctx.db).await.unwrap().unwrap();
 
-    assert_eq!(result.id, bakery.id.unwrap());
+    assert_eq!(result.id, bakery.id);
 
     ctx.delete().await;
 }
@@ -83,13 +83,13 @@ pub async fn find_by_id_with_result() {
     .await
     .expect("could not insert bakery");
 
-    let result = Bakery::find_by_id(bakery.id.clone().unwrap())
+    let result = Bakery::find_by_id(bakery.id.clone())
         .one(&ctx.db)
         .await
         .unwrap()
         .unwrap();
 
-    assert_eq!(result.id, bakery.id.unwrap());
+    assert_eq!(result.id, bakery.id);
 
     ctx.delete().await;
 }

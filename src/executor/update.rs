@@ -194,7 +194,6 @@ mod tests {
                 id: 1,
                 name: "Cheese Cake".to_owned(),
             }
-            .into_active_model()
         );
 
         let model = cake::Model {

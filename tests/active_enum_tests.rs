@@ -21,25 +21,25 @@ async fn main() -> Result<(), DbErr> {
 pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     use active_enum::*;
 
-    let am = ActiveModel {
-        category: Set(None),
-        color: Set(None),
-        tea: Set(None),
-        ..Default::default()
-    }
-    .insert(db)
-    .await?;
+    let model = Model {
+        id: 1,
+        category: None,
+        color: None,
+        tea: None,
+    };
 
-    let model = Entity::find().one(db).await?.unwrap();
     assert_eq!(
         model,
-        Model {
-            id: 1,
-            category: None,
-            color: None,
-            tea: None,
+        ActiveModel {
+            category: Set(None),
+            color: Set(None),
+            tea: Set(None),
+            ..Default::default()
         }
+        .insert(db)
+        .await?
     );
+    assert_eq!(model, Entity::find().one(db).await?.unwrap());
     assert_eq!(
         model,
         Entity::find()
@@ -52,11 +52,11 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             .unwrap()
     );
 
-    let am = ActiveModel {
+    let _ = ActiveModel {
         category: Set(Some(Category::Big)),
         color: Set(Some(Color::Black)),
         tea: Set(Some(Tea::EverydayTea)),
-        ..am
+        ..model.into_active_model()
     }
     .save(db)
     .await?;
@@ -83,7 +83,7 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             .unwrap()
     );
 
-    let res = am.delete(db).await?;
+    let res = model.into_active_model().delete(db).await?;
 
     assert_eq!(res.rows_affected, 1);
     assert_eq!(Entity::find().one(db).await?, None);
