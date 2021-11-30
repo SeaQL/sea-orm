@@ -108,13 +108,13 @@ pub async fn test_update_deleted_customer(db: &DbConn) {
         init_n_customers + 1
     );
 
-    let customer_id = customer.id.clone();
+    let customer_id = customer.id;
 
     let _ = customer.into_active_model().delete(db).await;
     assert_eq!(Customer::find().count(db).await.unwrap(), init_n_customers);
 
     let customer = customer::ActiveModel {
-        id: Set(customer_id.clone()),
+        id: Set(customer_id),
         name: Set("John 2".to_owned()),
         ..Default::default()
     };
@@ -130,7 +130,7 @@ pub async fn test_update_deleted_customer(db: &DbConn) {
 
     assert_eq!(Customer::find().count(db).await.unwrap(), init_n_customers);
 
-    let customer: Option<customer::Model> = Customer::find_by_id(customer_id.clone())
+    let customer: Option<customer::Model> = Customer::find_by_id(customer_id)
         .one(db)
         .await
         .expect("could not find customer");
