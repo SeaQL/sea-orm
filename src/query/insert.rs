@@ -63,7 +63,7 @@ where
     ///
     /// assert_eq!(
     ///     Insert::one(cake::ActiveModel {
-    ///         id: Unset(None),
+    ///         id: NotSet(),
     ///         name: Set("Apple Pie".to_owned()),
     ///     })
     ///     .build(DbBackend::Postgres)

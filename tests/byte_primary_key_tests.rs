@@ -57,7 +57,13 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
         .exec(db)
         .await?;
 
-    assert_eq!(update_res, updated_active_model);
+    assert_eq!(
+        update_res,
+        ActiveModel {
+            value: Unchanged("First Row (Updated)".to_owned()),
+            ..model.clone().into_active_model()
+        }
+    );
 
     assert_eq!(
         Entity::find()

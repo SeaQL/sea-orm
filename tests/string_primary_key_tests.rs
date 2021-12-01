@@ -74,7 +74,13 @@ pub async fn create_and_update_repository(db: &DatabaseConnection) -> Result<(),
         .exec(db)
         .await?;
 
-    assert_eq!(update_res, updated_active_model);
+    assert_eq!(
+        update_res,
+        repository::ActiveModel {
+            description: Unchanged(Some("description...".to_owned())),
+            ..repository.clone().into_active_model()
+        }
+    );
 
     let updated_active_model = repository::ActiveModel {
         description: Set(None),
@@ -86,7 +92,13 @@ pub async fn create_and_update_repository(db: &DatabaseConnection) -> Result<(),
         .exec(db)
         .await?;
 
-    assert_eq!(update_res, updated_active_model);
+    assert_eq!(
+        update_res,
+        repository::ActiveModel {
+            description: Unchanged(None),
+            ..repository.clone().into_active_model()
+        }
+    );
 
     Ok(())
 }

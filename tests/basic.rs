@@ -52,8 +52,8 @@ async fn crud_cake(db: &DbConn) -> Result<(), DbErr> {
 
     assert_eq!(
         cake::ActiveModel {
-            id: Set(1),
-            name: Set("Apple Pie".to_owned()),
+            id: Unchanged(1),
+            name: Unchanged("Apple Pie".to_owned()),
         },
         apple
     );

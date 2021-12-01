@@ -201,7 +201,7 @@
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
 //! let banana = fruit::ActiveModel {
-//!     id: Unset(None),
+//!     id: NotSet(),
 //!     name: Set("Banana".to_owned()),
 //!     ..Default::default()
 //! };

@@ -58,8 +58,9 @@ where
     ActiveValue::unset()
 }
 
-#[doc(hidden)]
-pub fn unchanged_active_value_not_intended_for_public_use<V>(value: V) -> ActiveValue<V>
+/// Defines an unchanged operation on an [ActiveValue]
+#[allow(non_snake_case)]
+pub fn Unchanged<V>(value: V) -> ActiveValue<V>
 where
     V: Into<Value>,
 {
@@ -628,7 +629,8 @@ where
         matches!(self, Self::Set(_))
     }
 
-    pub(crate) fn unchanged(value: V) -> Self {
+    /// Set the value of an [ActiveValue] and also set its state to `ActiveValueState::Unchanged`
+    pub fn unchanged(value: V) -> Self {
         Self::Unchanged(value)
     }
 
@@ -663,9 +665,7 @@ where
     pub fn unwrap(self) -> V {
         match self {
             ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
-            ActiveValue::NotSet => {
-                panic!("Cannot unwrap ActiveValue::NotSet")
-            }
+            ActiveValue::NotSet => panic!("Cannot unwrap ActiveValue::NotSet"),
         }
     }
 
@@ -680,8 +680,9 @@ where
     /// Wrap the [Value] into a `ActiveValue<Value>`
     pub fn into_wrapped_value(self) -> ActiveValue<Value> {
         match self {
-            Self::Set(value) | Self::Unchanged(value) => Set(value.into()),
-            Self::NotSet => ActiveValue::NotSet,
+            Self::Set(value) => ActiveValue::set(value.into()),
+            Self::Unchanged(value) => ActiveValue::unchanged(value.into()),
+            Self::NotSet => ActiveValue::unset(),
         }
     }
 }
@@ -693,7 +694,6 @@ where
     fn as_ref(&self) -> &V {
         match self {
             ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
-            /// FIXME: This is very bad :((
             ActiveValue::NotSet => panic!("Cannot borrow ActiveValue::NotSet"),
         }
     }
@@ -704,7 +704,12 @@ where
     V: Into<Value> + std::cmp::PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.as_ref() == other.as_ref()
+        match (self, other) {
+            (ActiveValue::Set(l), ActiveValue::Set(r)) => l == r,
+            (ActiveValue::Unchanged(l), ActiveValue::Unchanged(r)) => l == r,
+            (ActiveValue::NotSet, ActiveValue::NotSet) => true,
+            _ => false,
+        }
     }
 }
 

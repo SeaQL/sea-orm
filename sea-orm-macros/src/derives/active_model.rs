@@ -80,7 +80,7 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
         impl std::convert::From<<Entity as EntityTrait>::Model> for ActiveModel {
             fn from(m: <Entity as EntityTrait>::Model) -> Self {
                 Self {
-                    #(#field: sea_orm::unchanged_active_value_not_intended_for_public_use(m.#field)),*
+                    #(#field: sea_orm::ActiveValue::unchanged(m.#field)),*
                 }
             }
         }
