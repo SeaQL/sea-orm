@@ -1,0 +1,11 @@
+[workspace]
+# A separate workspace
+
+[package]
+name = "sea-orm-issues-342"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+sea-orm = { path = "../../", features = [ "sqlx-mysql", "runtime-async-std-native-tls" ]}
