@@ -206,7 +206,7 @@
 //!     ..Default::default()
 //! };
 //!
-//! // create, because primary key `id` is `Unset`
+//! // create, because primary key `id` is `NotSet`
 //! let mut banana = banana.save(db).await?;
 //!
 //! banana.name = Set("Banana Mongo".to_owned());

@@ -5,38 +5,44 @@ use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
 use std::fmt::Debug;
 
-/// Defines a value from an ActiveModel and its state.
-/// The field `value` takes in an [Option] type where `Option::Some(V)` , with `V` holding
-/// the value that operations like `UPDATE` are being performed on and
-/// the `state` field is either `ActiveValueState::Set` or `ActiveValueState::Unchanged`.
-/// [Option::None] in the `value` field indicates no value being performed by an operation
-/// and that the `state` field of the [ActiveValue] is set to `ActiveValueState::NotSet` .
-/// #### Example snippet
-/// ```no_run
-/// // The code snipped below does an UPDATE operation on a [ActiveValue]
-/// // yielding the the SQL statement ` r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"# `
+/// Defines a stateful value used in ActiveModel.
 ///
+/// There are three possible state represented by three enum variants.
+/// - [ActiveValue::Set]: A [Value] was set
+/// - [ActiveValue::Unchanged]: A [Value] remain unchanged
+/// - [ActiveValue::NotSet]: A NULL value similar to [Option::None]
+///
+/// The stateful value is useful when constructing UPDATE SQL statement,
+/// see an example below.
+///
+/// # Examples
+///
+/// ```
 /// use sea_orm::tests_cfg::{cake, fruit};
 /// use sea_orm::{entity::*, query::*, DbBackend};
 ///
-/// Update::one(fruit::ActiveModel {
-///     id: ActiveValue::set(1),
-///     name: ActiveValue::set("Orange".to_owned()),
-///     cake_id: ActiveValue::unset(),
-/// })
-/// .build(DbBackend::Postgres)
-/// .to_string();
+/// // The code snipped below does an UPDATE operation on a `ActiveValue`
+/// assert_eq!(
+///     Update::one(fruit::ActiveModel {
+///         id: ActiveValue::set(1),
+///         name: ActiveValue::set("Orange".to_owned()),
+///         cake_id: ActiveValue::not_set(),
+///     })
+///     .build(DbBackend::Postgres)
+///     .to_string(),
+///     r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"#
+/// );
 /// ```
 #[derive(Clone, Debug)]
 pub enum ActiveValue<V>
 where
     V: Into<Value>,
 {
-    /// Represent a [Value] was set
+    /// A [Value] was set
     Set(V),
-    /// Represent the [Value] remain unchanged
+    /// A [Value] remain unchanged
     Unchanged(V),
-    /// Represent a NULL value similar to [Option::None]
+    /// A NULL value similar to [Option::None]
     NotSet,
 }
 
@@ -49,13 +55,13 @@ where
     ActiveValue::set(v)
 }
 
-/// Defines an unset operation on an [ActiveValue]
+/// Defines an not set operation on an [ActiveValue]
 #[allow(non_snake_case)]
 pub fn NotSet<V>() -> ActiveValue<V>
 where
     V: Into<Value>,
 {
-    ActiveValue::unset()
+    ActiveValue::not_set()
 }
 
 /// Defines an unchanged operation on an [ActiveValue]
@@ -84,11 +90,11 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Set the Value into an ActiveModel
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
 
-    /// Set the state of an [ActiveValue] to the Unset state
-    fn unset(&mut self, c: <Self::Entity as EntityTrait>::Column);
+    /// Set the state of an [ActiveValue] to the not set state
+    fn not_set(&mut self, c: <Self::Entity as EntityTrait>::Column);
 
     /// Check the state of a [ActiveValue]
-    fn is_unset(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
+    fn is_not_set(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
 
     /// The default implementation of the ActiveModel
     fn default() -> Self;
@@ -373,7 +379,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         ActiveModelBehavior::after_save(am, false)
     }
 
-    /// Insert the model if primary key is unset, update otherwise.
+    /// Insert the model if primary key is not_set, update otherwise.
     /// Only works if the entity has auto increment primary key.
     async fn save<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
@@ -385,7 +391,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         let mut is_update = true;
         for key in <Self::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
-            if am.is_unset(col) {
+            if am.is_not_set(col) {
                 is_update = false;
                 break;
             }
@@ -619,41 +625,38 @@ impl<V> ActiveValue<V>
 where
     V: Into<Value>,
 {
-    /// Set the value of an [ActiveValue] and also set its state to `ActiveValueState::Set`
+    /// Create an [ActiveValue::Set]
     pub fn set(value: V) -> Self {
         Self::Set(value)
     }
 
-    /// Check if the state of an [ActiveValue] is `ActiveValueState::Set` which returns true
+    /// Check if the [ActiveValue] is [ActiveValue::Set]
     pub fn is_set(&self) -> bool {
         matches!(self, Self::Set(_))
     }
 
-    /// Set the value of an [ActiveValue] and also set its state to `ActiveValueState::Unchanged`
+    /// Create an [ActiveValue::Unchanged]
     pub fn unchanged(value: V) -> Self {
         Self::Unchanged(value)
     }
 
-    /// Check if the status of the [ActiveValue] is `ActiveValueState::Unchanged`
-    /// which returns `true` if it is
+    /// Check if the [ActiveValue] is [ActiveValue::Unchanged]
     pub fn is_unchanged(&self) -> bool {
         matches!(self, Self::Unchanged(_))
     }
 
-    /// Set the `value` field of the ActiveModel to [Option::None] and the
-    /// `state` field to `ActiveValueState::NotSet`
-    pub fn unset() -> Self {
+    /// Create an [ActiveValue::NotSet]
+    pub fn not_set() -> Self {
         Self::default()
     }
 
-    /// Check if the state of an [ActiveValue] is `ActiveValueState::NotSet`
-    /// which returns true if it is
-    pub fn is_unset(&self) -> bool {
+    /// Check if the [ActiveValue] is [ActiveValue::NotSet]
+    pub fn is_not_set(&self) -> bool {
         matches!(self, Self::NotSet)
     }
 
-    /// Get the mutable value of the `value` field of an [ActiveValue]
-    /// also setting it's state to `ActiveValueState::NotSet`
+    /// Get the mutable value an [ActiveValue]
+    /// also setting itself to [ActiveValue::NotSet]
     pub fn take(&mut self) -> Option<V> {
         match std::mem::take(self) {
             ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value),
@@ -661,7 +664,7 @@ where
         }
     }
 
-    /// Get an owned value of the `value` field of the [ActiveValue]
+    /// Get an owned value of the [ActiveValue]
     pub fn unwrap(self) -> V {
         match self {
             ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
@@ -682,7 +685,7 @@ where
         match self {
             Self::Set(value) => ActiveValue::set(value.into()),
             Self::Unchanged(value) => ActiveValue::unchanged(value.into()),
-            Self::NotSet => ActiveValue::unset(),
+            Self::NotSet => ActiveValue::not_set(),
         }
     }
 }
@@ -719,9 +722,9 @@ where
 {
     fn from(value: ActiveValue<V>) -> Self {
         match value {
-            ActiveValue::Set(value) => Set(Some(value)),
+            ActiveValue::Set(value) => ActiveValue::set(Some(value)),
             ActiveValue::Unchanged(value) => ActiveValue::unchanged(Some(value)),
-            ActiveValue::NotSet => NotSet(),
+            ActiveValue::NotSet => ActiveValue::not_set(),
         }
     }
 }
