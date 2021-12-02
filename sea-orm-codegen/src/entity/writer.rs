@@ -1,13 +1,14 @@
-use std::str::FromStr;
-
-use crate::Entity;
+use crate::{ActiveEnum, Entity};
+use heck::CamelCase;
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
+use std::{collections::HashMap, str::FromStr};
 use syn::{punctuated::Punctuated, token::Comma};
 
 #[derive(Clone, Debug)]
 pub struct EntityWriter {
     pub(crate) entities: Vec<Entity>,
+    pub(crate) enums: HashMap<String, ActiveEnum>,
 }
 
 pub struct WriterOutput {
@@ -83,6 +84,9 @@ impl EntityWriter {
         files.extend(self.write_entities(expanded_format, with_serde));
         files.push(self.write_mod());
         files.push(self.write_prelude());
+        if !self.enums.is_empty() {
+            files.push(self.write_sea_orm_active_enums());
+        }
         WriterOutput { files }
     }
 
@@ -122,6 +126,14 @@ impl EntityWriter {
         );
         lines.push("".to_owned());
         Self::write(&mut lines, code_blocks);
+        if !self.enums.is_empty() {
+            Self::write(
+                &mut lines,
+                vec![quote! {
+                    pub mod sea_orm_active_enums;
+                }],
+            );
+        }
         OutputFile {
             name: "mod.rs".to_owned(),
             content: lines.join("\n"),
@@ -139,6 +151,28 @@ impl EntityWriter {
         Self::write(&mut lines, code_blocks);
         OutputFile {
             name: "prelude.rs".to_owned(),
+            content: lines.join("\n"),
+        }
+    }
+
+    pub fn write_sea_orm_active_enums(&self) -> OutputFile {
+        let mut lines = Vec::new();
+        Self::write_doc_comment(&mut lines);
+        Self::write(
+            &mut lines,
+            vec![quote! {
+                use sea_orm::entity::prelude::*;
+            }],
+        );
+        lines.push("".to_owned());
+        let code_blocks = self
+            .enums
+            .iter()
+            .map(|(_, active_enum)| active_enum.impl_active_enum())
+            .collect();
+        Self::write(&mut lines, code_blocks);
+        OutputFile {
+            name: "sea_orm_active_enums.rs".to_owned(),
             content: lines.join("\n"),
         }
     }
@@ -163,8 +197,10 @@ impl EntityWriter {
     }
 
     pub fn gen_expanded_code_blocks(entity: &Entity, with_serde: &WithSerde) -> Vec<TokenStream> {
+        let mut imports = Self::gen_import(with_serde);
+        imports.extend(Self::gen_import_active_enum(entity));
         let mut code_blocks = vec![
-            Self::gen_import(with_serde),
+            imports,
             Self::gen_entity_struct(),
             Self::gen_impl_entity_name(entity),
             Self::gen_model_struct(entity, with_serde),
@@ -182,10 +218,9 @@ impl EntityWriter {
     }
 
     pub fn gen_compact_code_blocks(entity: &Entity, with_serde: &WithSerde) -> Vec<TokenStream> {
-        let mut code_blocks = vec![
-            Self::gen_import(with_serde),
-            Self::gen_compact_model_struct(entity, with_serde),
-        ];
+        let mut imports = Self::gen_import(with_serde);
+        imports.extend(Self::gen_import_active_enum(entity));
+        let mut code_blocks = vec![imports, Self::gen_compact_model_struct(entity, with_serde)];
         let relation_defs = if entity.get_relation_ref_tables_camel_case().is_empty() {
             vec![
                 Self::gen_relation_enum(entity),
@@ -247,6 +282,21 @@ impl EntityWriter {
                 }
             }
         }
+    }
+
+    pub fn gen_import_active_enum(entity: &Entity) -> TokenStream {
+        entity
+            .columns
+            .iter()
+            .fold(TokenStream::new(), |mut ts, col| {
+                if let sea_query::ColumnType::Enum(enum_name, _) = &col.col_type {
+                    let enum_name = format_ident!("{}", enum_name.to_camel_case());
+                    ts.extend(vec![quote! {
+                        use super::sea_orm_active_enums::#enum_name;
+                    }]);
+                }
+                ts
+            })
     }
 
     pub fn gen_model_struct(entity: &Entity, with_serde: &WithSerde) -> TokenStream {

@@ -24,26 +24,27 @@ impl Column {
 
     pub fn get_rs_type(&self) -> TokenStream {
         #[allow(unreachable_patterns)]
-        let ident: TokenStream = match self.col_type {
+        let ident: TokenStream = match &self.col_type {
             ColumnType::Char(_)
             | ColumnType::String(_)
             | ColumnType::Text
-            | ColumnType::Custom(_) => "String",
-            ColumnType::TinyInteger(_) => "i8",
-            ColumnType::SmallInteger(_) => "i16",
-            ColumnType::Integer(_) => "i32",
-            ColumnType::BigInteger(_) => "i64",
-            ColumnType::Float(_) => "f32",
-            ColumnType::Double(_) => "f64",
-            ColumnType::Json | ColumnType::JsonBinary => "Json",
-            ColumnType::Date => "Date",
-            ColumnType::Time(_) => "Time",
-            ColumnType::DateTime(_) | ColumnType::Timestamp(_) => "DateTime",
-            ColumnType::TimestampWithTimeZone(_) => "DateTimeWithTimeZone",
-            ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal",
-            ColumnType::Uuid => "Uuid",
-            ColumnType::Binary(_) => "Vec<u8>",
-            ColumnType::Boolean => "bool",
+            | ColumnType::Custom(_) => "String".to_owned(),
+            ColumnType::TinyInteger(_) => "i8".to_owned(),
+            ColumnType::SmallInteger(_) => "i16".to_owned(),
+            ColumnType::Integer(_) => "i32".to_owned(),
+            ColumnType::BigInteger(_) => "i64".to_owned(),
+            ColumnType::Float(_) => "f32".to_owned(),
+            ColumnType::Double(_) => "f64".to_owned(),
+            ColumnType::Json | ColumnType::JsonBinary => "Json".to_owned(),
+            ColumnType::Date => "Date".to_owned(),
+            ColumnType::Time(_) => "Time".to_owned(),
+            ColumnType::DateTime(_) | ColumnType::Timestamp(_) => "DateTime".to_owned(),
+            ColumnType::TimestampWithTimeZone(_) => "DateTimeWithTimeZone".to_owned(),
+            ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal".to_owned(),
+            ColumnType::Uuid => "Uuid".to_owned(),
+            ColumnType::Binary(_) => "Vec<u8>".to_owned(),
+            ColumnType::Boolean => "bool".to_owned(),
+            ColumnType::Enum(name, _) => format!("{}", name.to_camel_case()),
             _ => unimplemented!(),
         }
         .parse()
