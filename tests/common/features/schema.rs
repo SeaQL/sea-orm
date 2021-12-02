@@ -4,7 +4,7 @@ use super::*;
 use crate::common::setup::{create_enum, create_table, create_table_without_asserts};
 use sea_orm::{
     error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName,
-    ExecResult,
+    ExecResult, Schema,
 };
 use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement};
 
@@ -128,6 +128,7 @@ pub async fn create_byte_primary_key_table(db: &DbConn) -> Result<ExecResult, Db
 
 pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let db_backend = db.get_database_backend();
+    let schema = Schema::new(db_backend);
 
     let create_enum_stmts = match db_backend {
         DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
@@ -136,6 +137,13 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
             .values(vec![Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
             .to_owned()],
     };
+
+    if create_enum_stmts.len() > 0 {
+        assert_eq!(
+            db_backend.build(&create_enum_stmts[0]),
+            db_backend.build(&schema.create_enum_from_active_enum::<active_enum::Tea>())
+        );
+    }
 
     create_enum(db, &create_enum_stmts, ActiveEnum).await?;
 
