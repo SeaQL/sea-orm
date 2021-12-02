@@ -138,7 +138,7 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
             .to_owned()],
     };
 
-    if create_enum_stmts.len() > 0 {
+    if !create_enum_stmts.is_empty() {
         assert_eq!(
             db_backend.build(&create_enum_stmts[0]),
             db_backend.build(&schema.create_enum_from_active_enum::<active_enum::Tea>())

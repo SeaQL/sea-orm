@@ -56,6 +56,7 @@ pub(crate) fn create_enum_from_column_type(col_type: &ColumnType) -> TypeCreateS
         .to_owned()
 }
 
+#[allow(clippy::needless_borrow)]
 pub(crate) fn create_enum_from_entity<E>(_: E, backend: DbBackend) -> Vec<TypeCreateStatement>
 where
     E: EntityTrait,
