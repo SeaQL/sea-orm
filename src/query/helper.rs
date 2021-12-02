@@ -237,6 +237,40 @@ pub trait QueryOrder: Sized {
             .order_by_expr(col.into_simple_expr(), Order::Desc);
         self
     }
+
+    /// Add an offset expression
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .offset(10)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` OFFSET 10"
+    /// );
+    /// ```
+    fn offset(mut self, offset: u64) -> Self {
+        self.query().offset(offset);
+        self
+    }
+
+    /// Add a limit expression
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .limit(10)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 10"
+    /// );
+    /// ```
+    fn limit(mut self, limit: u64) -> Self {
+        self.query().limit(limit);
+        self
+    }
 }
 
 // LINT: when the column does not appear in tables selected from
