@@ -22,7 +22,15 @@ impl EntityTransformer {
                 }
             };
             let table_name = match table_create.get_table_name() {
-                Some(s) => s,
+                Some(table_ref) => match table_ref {
+                    sea_query::TableRef::Table(t)
+                    | sea_query::TableRef::SchemaTable(_, t)
+                    | sea_query::TableRef::DatabaseTable(_, t)
+                    | sea_query::TableRef::TableAlias(t, _)
+                    | sea_query::TableRef::SchemaTableAlias(_, t, _)
+                    | sea_query::TableRef::DatabaseTableAlias(_, t, _) => t.to_string(),
+                    _ => unimplemented!(),
+                },
                 None => {
                     return Err(Error::TransformError(
                         "Table name should not be empty".into(),
