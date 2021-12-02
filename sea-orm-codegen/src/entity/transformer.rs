@@ -45,11 +45,38 @@ impl EntityTransformer {
                     col
                 })
                 .collect();
-            let relations = table_create
+            let mut ref_table_counts: HashMap<String, usize> = HashMap::new();
+            let relations: Vec<Relation> = table_create
                 .get_foreign_key_create_stmts()
                 .iter()
                 .map(|fk_create_stmt| fk_create_stmt.get_foreign_key())
-                .map(|tbl_fk| tbl_fk.into());
+                .map(|tbl_fk| {
+                    let ref_tbl = tbl_fk.get_ref_table().unwrap();
+                    if let Some(count) = ref_table_counts.get_mut(&ref_tbl) {
+                        if *count == 0 {
+                            *count = 1;
+                        }
+                        *count += 1;
+                    } else {
+                        ref_table_counts.insert(ref_tbl, 0);
+                    };
+                    tbl_fk.into()
+                })
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .map(|mut rel: Relation| {
+                    rel.self_referencing = rel.ref_table == table_name;
+                    if let Some(count) = ref_table_counts.get_mut(&rel.ref_table) {
+                        rel.num_suffix = *count;
+                        if *count > 0 {
+                            *count -= 1;
+                        }
+                    }
+                    rel
+                })
+                .rev()
+                .collect();
             let primary_keys = table_create
                 .get_indexes()
                 .iter()
@@ -67,12 +94,21 @@ impl EntityTransformer {
             let entity = Entity {
                 table_name: table_name.clone(),
                 columns,
-                relations: relations.clone().collect(),
+                relations: relations.clone(),
                 conjunct_relations: vec![],
                 primary_keys,
             };
             entities.insert(table_name.clone(), entity.clone());
             for (i, mut rel) in relations.into_iter().enumerate() {
+                // This will produce a duplicated relation
+                if rel.self_referencing {
+                    continue;
+                }
+                // This will cause compile error on the many side,
+                // got relation variant but without Related<T> implemented
+                if rel.num_suffix > 0 {
+                    continue;
+                }
                 let is_conjunct_relation = entity.primary_keys.len() == entity.columns.len()
                     && rel.columns.len() == 2
                     && rel.ref_columns.len() == 2
