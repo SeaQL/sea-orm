@@ -13,7 +13,7 @@ tokio = { version = "1.5", features = ["full"] }
 axum = { version = "0.3.0" }
 tower = "0.4.10"
 tower-http = { version = "0.1", features = ["fs"] }
-tower-cookies = { git = "https://github.com/imbolc/tower-cookies" }
+tower-cookies = { version = "0.3" }
 anyhow = "1"
 dotenv = "0.15"
 env_logger = "0.9"
