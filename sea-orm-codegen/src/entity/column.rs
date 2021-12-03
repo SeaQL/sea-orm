@@ -44,7 +44,7 @@ impl Column {
             ColumnType::Uuid => "Uuid".to_owned(),
             ColumnType::Binary(_) => "Vec<u8>".to_owned(),
             ColumnType::Boolean => "bool".to_owned(),
-            ColumnType::Enum(name, _) => format!("{}", name.to_camel_case()),
+            ColumnType::Enum(name, _) => name.to_camel_case(),
             _ => unimplemented!(),
         }
         .parse()
