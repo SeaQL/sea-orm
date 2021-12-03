@@ -60,7 +60,7 @@ where
 /// Defines an not set operation on an [ActiveValue]
 #[deprecated(
     since = "0.5.0",
-    note = "Please use the [`ActiveValue::NotSet`] or [`NotSet`]"
+    note = "Please use [`ActiveValue::NotSet`] or [`NotSet`]"
 )]
 #[allow(non_snake_case)]
 pub fn Unset<V>(_: Option<bool>) -> ActiveValue<V>
