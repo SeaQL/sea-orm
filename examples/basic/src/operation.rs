@@ -81,7 +81,7 @@ mod form {
 
 async fn save_custom_active_model(db: &DbConn) -> Result<(), DbErr> {
     let pineapple = form::ActiveModel {
-        id: NotSet(),
+        id: NotSet,
         name: Set("Pineapple".to_owned()),
     };
 

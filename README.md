@@ -136,7 +136,7 @@ Fruit::update_many()
 ### Save
 ```rust
 let banana = fruit::ActiveModel {
-    id: NotSet(),
+    id: NotSet,
     name: Set("Banana".to_owned()),
     ..Default::default()
 };

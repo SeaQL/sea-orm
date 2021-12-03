@@ -5,6 +5,8 @@ use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
 use std::fmt::Debug;
 
+pub use ActiveValue::NotSet;
+
 /// Defines a stateful value used in ActiveModel.
 ///
 /// There are three possible state represented by three enum variants.
@@ -56,8 +58,12 @@ where
 }
 
 /// Defines an not set operation on an [ActiveValue]
+#[deprecated(
+    since = "0.5.0",
+    note = "Please use the [`ActiveValue::NotSet`] or [`NotSet`]"
+)]
 #[allow(non_snake_case)]
-pub fn NotSet<V>() -> ActiveValue<V>
+pub fn Unset<V>(_: Option<bool>) -> ActiveValue<V>
 where
     V: Into<Value>,
 {
@@ -554,7 +560,7 @@ macro_rules! impl_into_active_value {
             fn into_active_value(self) -> ActiveValue<Option<$ty>> {
                 match self {
                     Some(value) => Set(Some(value)),
-                    None => NotSet(),
+                    None => NotSet,
                 }
             }
         }
@@ -563,7 +569,7 @@ macro_rules! impl_into_active_value {
             fn into_active_value(self) -> ActiveValue<Option<$ty>> {
                 match self {
                     Some(value) => Set(value),
-                    None => NotSet(),
+                    None => NotSet,
                 }
             }
         }
@@ -759,7 +765,7 @@ mod tests {
             }
             .into_active_model(),
             fruit::ActiveModel {
-                id: NotSet(),
+                id: NotSet,
                 name: Set("Apple".to_owned()),
                 cake_id: Set(Some(1)),
             }
@@ -788,8 +794,8 @@ mod tests {
             }
             .into_active_model(),
             fruit::ActiveModel {
-                id: NotSet(),
-                name: NotSet(),
+                id: NotSet,
+                name: NotSet,
                 cake_id: Set(Some(1)),
             }
         );
@@ -800,8 +806,8 @@ mod tests {
             }
             .into_active_model(),
             fruit::ActiveModel {
-                id: NotSet(),
-                name: NotSet(),
+                id: NotSet,
+                name: NotSet,
                 cake_id: Set(None),
             }
         );
@@ -809,9 +815,9 @@ mod tests {
         assert_eq!(
             my_fruit::UpdateFruit { cake_id: None }.into_active_model(),
             fruit::ActiveModel {
-                id: NotSet(),
-                name: NotSet(),
-                cake_id: NotSet(),
+                id: NotSet,
+                name: NotSet,
+                cake_id: NotSet,
             }
         );
     }
