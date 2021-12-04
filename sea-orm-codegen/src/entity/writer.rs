@@ -186,7 +186,7 @@ impl EntityWriter {
             Self::gen_import(with_serde),
             Self::gen_compact_model_struct(entity, with_serde),
         ];
-        let relation_defs = if entity.get_relation_ref_tables_camel_case().is_empty() {
+        let relation_defs = if entity.get_relation_enum_name().is_empty() {
             vec![
                 Self::gen_relation_enum(entity),
                 Self::gen_impl_relation_trait(entity),
@@ -298,11 +298,11 @@ impl EntityWriter {
     }
 
     pub fn gen_relation_enum(entity: &Entity) -> TokenStream {
-        let relation_ref_tables_camel_case = entity.get_relation_ref_tables_camel_case();
+        let relation_enum_name = entity.get_relation_enum_name();
         quote! {
             #[derive(Copy, Clone, Debug, EnumIter)]
             pub enum Relation {
-                #(#relation_ref_tables_camel_case,)*
+                #(#relation_enum_name,)*
             }
         }
     }
@@ -324,16 +324,16 @@ impl EntityWriter {
     }
 
     pub fn gen_impl_relation_trait(entity: &Entity) -> TokenStream {
-        let relation_ref_tables_camel_case = entity.get_relation_ref_tables_camel_case();
+        let relation_enum_name = entity.get_relation_enum_name();
         let relation_defs = entity.get_relation_defs();
-        let quoted = if relation_ref_tables_camel_case.is_empty() {
+        let quoted = if relation_enum_name.is_empty() {
             quote! {
                 panic!("No RelationDef")
             }
         } else {
             quote! {
                 match self {
-                    #(Self::#relation_ref_tables_camel_case => #relation_defs,)*
+                    #(Self::#relation_enum_name => #relation_defs,)*
                 }
             }
         };
@@ -347,17 +347,25 @@ impl EntityWriter {
     }
 
     pub fn gen_impl_related(entity: &Entity) -> Vec<TokenStream> {
-        let camel = entity.get_relation_ref_tables_camel_case();
-        let snake = entity.get_relation_ref_tables_snake_case();
-        camel
-            .into_iter()
-            .zip(snake)
-            .map(|(c, s)| {
-                quote! {
-                    impl Related<super::#s::Entity> for Entity {
-                        fn to() -> RelationDef {
-                            Relation::#c.def()
-                        }
+        entity
+            .relations
+            .iter()
+            .filter(|rel| !rel.self_referencing && rel.num_suffix == 0)
+            .map(|rel| {
+                let enum_name = rel.get_enum_name();
+                let module_name = rel.get_module_name();
+                let inner = quote! {
+                    fn to() -> RelationDef {
+                        Relation::#enum_name.def()
+                    }
+                };
+                if module_name.is_some() {
+                    quote! {
+                        impl Related<super::#module_name::Entity> for Entity { #inner }
+                    }
+                } else {
+                    quote! {
+                        impl Related<Entity> for Entity { #inner }
                     }
                 }
             })
@@ -471,14 +479,14 @@ impl EntityWriter {
     }
 
     pub fn gen_compact_relation_enum(entity: &Entity) -> TokenStream {
-        let relation_ref_tables_camel_case = entity.get_relation_ref_tables_camel_case();
+        let relation_enum_name = entity.get_relation_enum_name();
         let attrs = entity.get_relation_attrs();
         quote! {
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
             pub enum Relation {
                 #(
                     #attrs
-                    #relation_ref_tables_camel_case,
+                    #relation_enum_name,
                 )*
             }
         }
@@ -523,6 +531,8 @@ mod tests {
                     rel_type: RelationType::HasMany,
                     on_delete: None,
                     on_update: None,
+                    self_referencing: false,
+                    num_suffix: 0,
                 }],
                 conjunct_relations: vec![ConjunctRelation {
                     via: "cake_filling".to_owned(),
@@ -558,6 +568,8 @@ mod tests {
                         rel_type: RelationType::BelongsTo,
                         on_delete: Some(ForeignKeyAction::Cascade),
                         on_update: Some(ForeignKeyAction::Cascade),
+                        self_referencing: false,
+                        num_suffix: 0,
                     },
                     Relation {
                         ref_table: "filling".to_owned(),
@@ -566,6 +578,8 @@ mod tests {
                         rel_type: RelationType::BelongsTo,
                         on_delete: Some(ForeignKeyAction::Cascade),
                         on_update: Some(ForeignKeyAction::Cascade),
+                        self_referencing: false,
+                        num_suffix: 0,
                     },
                 ],
                 conjunct_relations: vec![],
@@ -638,6 +652,8 @@ mod tests {
                         rel_type: RelationType::BelongsTo,
                         on_delete: None,
                         on_update: None,
+                        self_referencing: false,
+                        num_suffix: 0,
                     },
                     Relation {
                         ref_table: "vendor".to_owned(),
@@ -646,6 +662,8 @@ mod tests {
                         rel_type: RelationType::HasMany,
                         on_delete: None,
                         on_update: None,
+                        self_referencing: false,
+                        num_suffix: 0,
                     },
                 ],
                 conjunct_relations: vec![],
@@ -685,6 +703,8 @@ mod tests {
                     rel_type: RelationType::BelongsTo,
                     on_delete: None,
                     on_update: None,
+                    self_referencing: false,
+                    num_suffix: 0,
                 }],
                 conjunct_relations: vec![],
                 primary_keys: vec![PrimaryKey {
@@ -750,8 +770,94 @@ mod tests {
                         not_null: true,
                         unique: false,
                     },
+                    Column {
+                        name: "self_id1".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "self_id2".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "fruit_id1".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "fruit_id2".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "cake_id".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
                 ],
-                relations: vec![],
+                relations: vec![
+                    Relation {
+                        ref_table: "rust_keyword".to_owned(),
+                        columns: vec!["self_id1".to_owned()],
+                        ref_columns: vec!["id".to_owned()],
+                        rel_type: RelationType::BelongsTo,
+                        on_delete: None,
+                        on_update: None,
+                        self_referencing: true,
+                        num_suffix: 1,
+                    },
+                    Relation {
+                        ref_table: "rust_keyword".to_owned(),
+                        columns: vec!["self_id2".to_owned()],
+                        ref_columns: vec!["id".to_owned()],
+                        rel_type: RelationType::BelongsTo,
+                        on_delete: None,
+                        on_update: None,
+                        self_referencing: true,
+                        num_suffix: 2,
+                    },
+                    Relation {
+                        ref_table: "fruit".to_owned(),
+                        columns: vec!["fruit_id1".to_owned()],
+                        ref_columns: vec!["id".to_owned()],
+                        rel_type: RelationType::BelongsTo,
+                        on_delete: None,
+                        on_update: None,
+                        self_referencing: false,
+                        num_suffix: 1,
+                    },
+                    Relation {
+                        ref_table: "fruit".to_owned(),
+                        columns: vec!["fruit_id2".to_owned()],
+                        ref_columns: vec!["id".to_owned()],
+                        rel_type: RelationType::BelongsTo,
+                        on_delete: None,
+                        on_update: None,
+                        self_referencing: false,
+                        num_suffix: 2,
+                    },
+                    Relation {
+                        ref_table: "cake".to_owned(),
+                        columns: vec!["cake_id".to_owned()],
+                        ref_columns: vec!["id".to_owned()],
+                        rel_type: RelationType::BelongsTo,
+                        on_delete: None,
+                        on_update: None,
+                        self_referencing: false,
+                        num_suffix: 0,
+                    },
+                ],
                 conjunct_relations: vec![],
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),

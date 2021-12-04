@@ -18,33 +18,58 @@ pub struct Relation {
     pub(crate) rel_type: RelationType,
     pub(crate) on_update: Option<ForeignKeyAction>,
     pub(crate) on_delete: Option<ForeignKeyAction>,
+    pub(crate) self_referencing: bool,
+    pub(crate) num_suffix: usize,
 }
 
 impl Relation {
-    pub fn get_ref_table_snake_case(&self) -> Ident {
-        format_ident!("{}", self.ref_table.to_snake_case())
+    pub fn get_enum_name(&self) -> Ident {
+        let name = if self.self_referencing {
+            format_ident!("SelfRef")
+        } else {
+            format_ident!("{}", self.ref_table.to_camel_case())
+        };
+        if self.num_suffix > 0 {
+            format_ident!("{}{}", name, self.num_suffix)
+        } else {
+            name
+        }
     }
 
-    pub fn get_ref_table_camel_case(&self) -> Ident {
-        format_ident!("{}", self.ref_table.to_camel_case())
+    pub fn get_module_name(&self) -> Option<Ident> {
+        if self.self_referencing {
+            None
+        } else {
+            Some(format_ident!("{}", self.ref_table.to_snake_case()))
+        }
     }
 
     pub fn get_def(&self) -> TokenStream {
         let rel_type = self.get_rel_type();
-        let ref_table_snake_case = self.get_ref_table_snake_case();
+        let module_name = self.get_module_name();
+        let ref_entity = if module_name.is_some() {
+            quote! { super::#module_name::Entity }
+        } else {
+            quote! { Entity }
+        };
         match self.rel_type {
             RelationType::HasOne | RelationType::HasMany => {
                 quote! {
-                    Entity::#rel_type(super::#ref_table_snake_case::Entity).into()
+                    Entity::#rel_type(#ref_entity).into()
                 }
             }
             RelationType::BelongsTo => {
                 let column_camel_case = self.get_column_camel_case();
                 let ref_column_camel_case = self.get_ref_column_camel_case();
+                let to_col = if module_name.is_some() {
+                    quote! { super::#module_name::Column::#ref_column_camel_case }
+                } else {
+                    quote! { Column::#ref_column_camel_case }
+                };
                 quote! {
-                    Entity::#rel_type(super::#ref_table_snake_case::Entity)
+                    Entity::#rel_type(#ref_entity)
                         .from(Column::#column_camel_case)
-                        .to(super::#ref_table_snake_case::Column::#ref_column_camel_case)
+                        .to(#to_col)
                         .into()
                 }
             }
@@ -53,8 +78,12 @@ impl Relation {
 
     pub fn get_attrs(&self) -> TokenStream {
         let rel_type = self.get_rel_type();
-        let ref_table_snake_case = self.get_ref_table_snake_case();
-        let ref_entity = format!("super::{}::Entity", ref_table_snake_case);
+        let module_name = if let Some(module_name) = self.get_module_name() {
+            format!("super::{}::", module_name)
+        } else {
+            format!("")
+        };
+        let ref_entity = format!("{}Entity", module_name);
         match self.rel_type {
             RelationType::HasOne | RelationType::HasMany => {
                 quote! {
@@ -65,17 +94,14 @@ impl Relation {
                 let column_camel_case = self.get_column_camel_case();
                 let ref_column_camel_case = self.get_ref_column_camel_case();
                 let from = format!("Column::{}", column_camel_case);
-                let to = format!(
-                    "super::{}::Column::{}",
-                    ref_table_snake_case, ref_column_camel_case
-                );
+                let to = format!("{}Column::{}", module_name, ref_column_camel_case);
                 let on_update = if let Some(action) = &self.on_update {
                     let action = Self::get_foreign_key_action(action);
                     quote! {
                         on_update = #action,
                     }
                 } else {
-                    TokenStream::new()
+                    quote! {}
                 };
                 let on_delete = if let Some(action) = &self.on_delete {
                     let action = Self::get_foreign_key_action(action);
@@ -83,7 +109,7 @@ impl Relation {
                         on_delete = #action,
                     }
                 } else {
-                    TokenStream::new()
+                    quote! {}
                 };
                 quote! {
                     #[sea_orm(
@@ -144,6 +170,8 @@ impl From<&TableForeignKey> for Relation {
             rel_type,
             on_delete,
             on_update,
+            self_referencing: false,
+            num_suffix: 0,
         }
     }
 }
@@ -163,6 +191,8 @@ mod tests {
                 rel_type: RelationType::HasOne,
                 on_delete: None,
                 on_update: None,
+                self_referencing: false,
+                num_suffix: 0,
             },
             Relation {
                 ref_table: "filling".to_owned(),
@@ -171,6 +201,8 @@ mod tests {
                 rel_type: RelationType::BelongsTo,
                 on_delete: Some(ForeignKeyAction::Cascade),
                 on_update: Some(ForeignKeyAction::Cascade),
+                self_referencing: false,
+                num_suffix: 0,
             },
             Relation {
                 ref_table: "filling".to_owned(),
@@ -179,25 +211,27 @@ mod tests {
                 rel_type: RelationType::HasMany,
                 on_delete: Some(ForeignKeyAction::Cascade),
                 on_update: None,
+                self_referencing: false,
+                num_suffix: 0,
             },
         ]
     }
 
     #[test]
-    fn test_get_ref_table_snake_case() {
+    fn test_get_module_name() {
         let relations = setup();
         let snake_cases = vec!["fruit", "filling", "filling"];
         for (rel, snake_case) in relations.into_iter().zip(snake_cases) {
-            assert_eq!(rel.get_ref_table_snake_case().to_string(), snake_case);
+            assert_eq!(rel.get_module_name().unwrap().to_string(), snake_case);
         }
     }
 
     #[test]
-    fn test_get_ref_table_camel_case() {
+    fn test_get_enum_name() {
         let relations = setup();
         let camel_cases = vec!["Fruit", "Filling", "Filling"];
         for (rel, camel_case) in relations.into_iter().zip(camel_cases) {
-            assert_eq!(rel.get_ref_table_camel_case().to_string(), camel_case);
+            assert_eq!(rel.get_enum_name().to_string(), camel_case);
         }
     }
 
