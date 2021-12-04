@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.4.1 - 2021-12-05
+
+### Fixed Issues
+* Is it possible to have 4 values Composite Key? https://github.com/SeaQL/sea-orm/issues/352
+* [sea-orm-cli] Better handling of relation generations https://github.com/SeaQL/sea-orm/issues/239
+
+### Merged PRs
+* Add TryFromU64 trait for `DateTime<FixedOffset>`. by @kev0960 in https://github.com/SeaQL/sea-orm/pull/331
+* add offset and limit by @lz1998 in https://github.com/SeaQL/sea-orm/pull/351
+* For some reason the `axum_example` fail to compile by @billy1624 in https://github.com/SeaQL/sea-orm/pull/355
+* Support Up to 6 Values Composite Primary Key by @billy1624 in https://github.com/SeaQL/sea-orm/pull/353
+* Codegen Handle Self Referencing & Multiple Relations to the Same Related Entity by @billy1624 in https://github.com/SeaQL/sea-orm/pull/347
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.4.0...0.4.1
+
 ## 0.4.0 - 2021-11-19
 
 ### Fixed Issues
