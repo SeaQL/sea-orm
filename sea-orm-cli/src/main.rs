@@ -7,6 +7,9 @@ use url::Url;
 
 mod cli;
 
+// Make sure the generated code compiles!
+mod out;
+
 #[async_std::main]
 async fn main() {
     dotenv().ok();

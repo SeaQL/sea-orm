@@ -33,6 +33,7 @@ sqlx = { version = "^0.5", default-features = false, features = [ "mysql", "post
 env_logger = { version = "^0.9" }
 log = { version = "^0.4" }
 url = "^2.2"
+sea-orm = { path = "../" }
 
 [dev-dependencies]
 smol = "1.2.5"
