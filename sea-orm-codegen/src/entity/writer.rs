@@ -221,7 +221,7 @@ impl EntityWriter {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
         let mut code_blocks = vec![
-            Self::gen_import(with_serde),
+            imports,
             Self::gen_compact_model_struct(entity, with_serde),
         ];
         let relation_defs = if entity.get_relation_enum_name().is_empty() {
