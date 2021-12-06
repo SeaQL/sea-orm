@@ -73,17 +73,17 @@ impl Entity {
             .collect()
     }
 
-    pub fn get_relation_ref_tables_snake_case(&self) -> Vec<Ident> {
+    pub fn get_relation_module_name(&self) -> Vec<Option<Ident>> {
         self.relations
             .iter()
-            .map(|rel| rel.get_ref_table_snake_case())
+            .map(|rel| rel.get_module_name())
             .collect()
     }
 
-    pub fn get_relation_ref_tables_camel_case(&self) -> Vec<Ident> {
+    pub fn get_relation_enum_name(&self) -> Vec<Ident> {
         self.relations
             .iter()
-            .map(|rel| rel.get_ref_table_camel_case())
+            .map(|rel| rel.get_enum_name())
             .collect()
     }
 
@@ -93,27 +93,6 @@ impl Entity {
 
     pub fn get_relation_attrs(&self) -> Vec<TokenStream> {
         self.relations.iter().map(|rel| rel.get_attrs()).collect()
-    }
-
-    pub fn get_relation_rel_types(&self) -> Vec<Ident> {
-        self.relations
-            .iter()
-            .map(|rel| rel.get_rel_type())
-            .collect()
-    }
-
-    pub fn get_relation_columns_camel_case(&self) -> Vec<Ident> {
-        self.relations
-            .iter()
-            .map(|rel| rel.get_column_camel_case())
-            .collect()
-    }
-
-    pub fn get_relation_ref_columns_camel_case(&self) -> Vec<Ident> {
-        self.relations
-            .iter()
-            .map(|rel| rel.get_ref_column_camel_case())
-            .collect()
     }
 
     pub fn get_primary_key_auto_increment(&self) -> Ident {
@@ -201,6 +180,8 @@ mod tests {
                     rel_type: RelationType::HasOne,
                     on_delete: Some(ForeignKeyAction::Cascade),
                     on_update: Some(ForeignKeyAction::Cascade),
+                    self_referencing: false,
+                    num_suffix: 0,
                 },
                 Relation {
                     ref_table: "filling".to_owned(),
@@ -209,6 +190,8 @@ mod tests {
                     rel_type: RelationType::HasOne,
                     on_delete: Some(ForeignKeyAction::Cascade),
                     on_update: Some(ForeignKeyAction::Cascade),
+                    self_referencing: false,
+                    num_suffix: 0,
                 },
             ],
             conjunct_relations: vec![],
@@ -321,28 +304,20 @@ mod tests {
     }
 
     #[test]
-    fn test_get_relation_ref_tables_snake_case() {
+    fn test_get_relation_module_name() {
         let entity = setup();
 
-        for (i, elem) in entity
-            .get_relation_ref_tables_snake_case()
-            .into_iter()
-            .enumerate()
-        {
-            assert_eq!(elem, entity.relations[i].get_ref_table_snake_case());
+        for (i, elem) in entity.get_relation_module_name().into_iter().enumerate() {
+            assert_eq!(elem, entity.relations[i].get_module_name());
         }
     }
 
     #[test]
-    fn test_get_relation_ref_tables_camel_case() {
+    fn test_get_relation_enum_name() {
         let entity = setup();
 
-        for (i, elem) in entity
-            .get_relation_ref_tables_camel_case()
-            .into_iter()
-            .enumerate()
-        {
-            assert_eq!(elem, entity.relations[i].get_ref_table_camel_case());
+        for (i, elem) in entity.get_relation_enum_name().into_iter().enumerate() {
+            assert_eq!(elem, entity.relations[i].get_enum_name());
         }
     }
 
@@ -364,41 +339,6 @@ mod tests {
                 elem.to_string(),
                 entity.relations[i].get_attrs().to_string()
             );
-        }
-    }
-
-    #[test]
-    fn test_get_relation_rel_types() {
-        let entity = setup();
-
-        for (i, elem) in entity.get_relation_rel_types().into_iter().enumerate() {
-            assert_eq!(elem, entity.relations[i].get_rel_type());
-        }
-    }
-
-    #[test]
-    fn test_get_relation_columns_camel_case() {
-        let entity = setup();
-
-        for (i, elem) in entity
-            .get_relation_columns_camel_case()
-            .into_iter()
-            .enumerate()
-        {
-            assert_eq!(elem, entity.relations[i].get_column_camel_case());
-        }
-    }
-
-    #[test]
-    fn test_get_relation_ref_columns_camel_case() {
-        let entity = setup();
-
-        for (i, elem) in entity
-            .get_relation_ref_columns_camel_case()
-            .into_iter()
-            .enumerate()
-        {
-            assert_eq!(elem, entity.relations[i].get_ref_column_camel_case());
         }
     }
 
