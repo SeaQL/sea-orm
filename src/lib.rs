@@ -305,5 +305,5 @@ pub use sea_query::Iden;
 #[cfg(feature = "macros")]
 pub use sea_query::Iden as DeriveIden;
 
-pub use sea_strum;
-pub use sea_strum::EnumIter;
+pub use strum;
+pub use strum::EnumIter;

@@ -4,7 +4,7 @@ use crate::{
     RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
 };
 use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
-pub use sea_strum::IntoEnumIterator as Iterable;
+pub use strum::IntoEnumIterator as Iterable;
 use std::fmt::Debug;
 
 /// Ensure the identifier for an Entity can be converted to a static str

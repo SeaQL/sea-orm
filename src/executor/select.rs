@@ -45,7 +45,7 @@ pub trait SelectorTrait {
 pub struct SelectGetableValue<T, C>
 where
     T: TryGetableMany,
-    C: sea_strum::IntoEnumIterator + sea_query::Iden,
+    C: strum::IntoEnumIterator + sea_query::Iden,
 {
     columns: PhantomData<C>,
     model: PhantomData<T>,
@@ -73,7 +73,7 @@ where
 impl<T, C> SelectorTrait for SelectGetableValue<T, C>
 where
     T: TryGetableMany,
-    C: sea_strum::IntoEnumIterator + sea_query::Iden,
+    C: strum::IntoEnumIterator + sea_query::Iden,
 {
     type Item = T;
 
@@ -247,7 +247,7 @@ where
     pub fn into_values<T, C>(self) -> Selector<SelectGetableValue<T, C>>
     where
         T: TryGetableMany,
-        C: sea_strum::IntoEnumIterator + sea_query::Iden,
+        C: strum::IntoEnumIterator + sea_query::Iden,
     {
         Selector::<SelectGetableValue<T, C>>::with_columns(self.query)
     }
@@ -407,7 +407,7 @@ where
     pub fn with_columns<T, C>(query: SelectStatement) -> Selector<SelectGetableValue<T, C>>
     where
         T: TryGetableMany,
-        C: sea_strum::IntoEnumIterator + sea_query::Iden,
+        C: strum::IntoEnumIterator + sea_query::Iden,
     {
         Selector {
             query,
@@ -480,7 +480,7 @@ where
     pub fn with_columns<T, C>(stmt: Statement) -> SelectorRaw<SelectGetableValue<T, C>>
     where
         T: TryGetableMany,
-        C: sea_strum::IntoEnumIterator + sea_query::Iden,
+        C: strum::IntoEnumIterator + sea_query::Iden,
     {
         SelectorRaw {
             stmt,
