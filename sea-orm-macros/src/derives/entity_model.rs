@@ -33,7 +33,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         }
     });
     let entity_def = table_name
-        .clone()
+        .as_ref()
         .map(|table_name| {
             quote! {
                 #[derive(Copy, Clone, Default, Debug, sea_orm::prelude::DeriveEntity)]
