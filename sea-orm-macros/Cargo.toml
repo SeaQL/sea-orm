@@ -25,6 +25,3 @@ proc-macro2 = "^1"
 [dev-dependencies]
 sea-orm = { path = "../", features = ["macros"] }
 serde = { version = "^1.0", features = ["derive"] }
-
-[features]
-with-table-iden = []

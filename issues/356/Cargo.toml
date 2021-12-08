@@ -8,4 +8,4 @@ edition = "2021"
 publish = false
 
 [dependencies]
-sea-orm = { path = "../../", features = [ "sqlx-mysql", "runtime-async-std-native-tls", "with-table-iden" ]}
+sea-orm = { path = "../../", features = [ "sqlx-mysql", "runtime-async-std-native-tls" ]}
