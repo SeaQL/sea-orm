@@ -21,7 +21,8 @@ use crate::{DbErr, InnerConnection, QueryResult, Statement};
 pub struct TransactionStream<'a> {
     stmt: Statement,
     conn: MutexGuard<'a, InnerConnection>,
-    #[borrows(mut conn, stmt)]
+    metric_callback: Option<crate::metric::Callback>,
+    #[borrows(mut conn, stmt, metric_callback)]
     #[not_covariant]
     stream: Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + 'this>>,
 }
@@ -33,15 +34,17 @@ impl<'a> std::fmt::Debug for TransactionStream<'a> {
 }
 
 impl<'a> TransactionStream<'a> {
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(metric_callback))]
     pub(crate) async fn build(
         conn: MutexGuard<'a, InnerConnection>,
         stmt: Statement,
+        metric_callback: Option<crate::metric::Callback>,
     ) -> TransactionStream<'a> {
         TransactionStreamAsyncBuilder {
             stmt,
             conn,
-            stream_builder: |conn, stmt| {
+            metric_callback,
+            stream_builder: |conn, stmt, metric_callback| {
                 Box::pin(async move {
                     match conn.deref_mut() {
                         #[cfg(feature = "sqlx-mysql")]
@@ -53,7 +56,7 @@ impl<'a> TransactionStream<'a> {
                                     .map_ok(Into::into)
                                     .map_err(crate::sqlx_error_to_query_err),
                             ) as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>;
-                            if let Some(callback) = crate::metric::get_callback() {
+                            if let Some(callback) = metric_callback.as_deref() {
                                 let info = crate::metric::Info {
                                     elapsed: _start.elapsed().unwrap_or_default(),
                                     statement: stmt,
@@ -71,7 +74,7 @@ impl<'a> TransactionStream<'a> {
                                     .map_ok(Into::into)
                                     .map_err(crate::sqlx_error_to_query_err),
                             ) as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>;
-                            if let Some(callback) = crate::metric::get_callback() {
+                            if let Some(callback) = metric_callback.as_deref() {
                                 let info = crate::metric::Info {
                                     elapsed: _start.elapsed().unwrap_or_default(),
                                     statement: stmt,
@@ -89,7 +92,7 @@ impl<'a> TransactionStream<'a> {
                                     .map_ok(Into::into)
                                     .map_err(crate::sqlx_error_to_query_err),
                             ) as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>;
-                            if let Some(callback) = crate::metric::get_callback() {
+                            if let Some(callback) = metric_callback.as_deref() {
                                 let info = crate::metric::Info {
                                     elapsed: _start.elapsed().unwrap_or_default(),
                                     statement: stmt,

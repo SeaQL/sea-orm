@@ -1,10 +1,6 @@
-use std::time::Duration;
+use std::{time::Duration, sync::Arc};
 
-use once_cell::sync::OnceCell;
-
-type Callback = Box<dyn Fn(&Info<'_>) + Send + Sync>;
-
-static METRIC: OnceCell<Callback> = OnceCell::new();
+pub(crate) type Callback = Arc<dyn Fn(&Info<'_>) + Send + Sync>;
 
 #[derive(Debug)]
 /// Query execution infos
@@ -13,16 +9,4 @@ pub struct Info<'a> {
     pub elapsed: Duration,
     /// Query data
     pub statement: &'a crate::Statement,
-}
-
-/// Sets a new metric callback, returning it if already set
-pub fn set_callback<F>(callback: F) -> Result<(), Callback>
-where
-    F: Fn(&Info<'_>) + Send + Sync + 'static,
-{
-    METRIC.set(Box::new(callback))
-}
-
-pub(crate) fn get_callback() -> Option<&'static Callback> {
-    METRIC.get()
 }

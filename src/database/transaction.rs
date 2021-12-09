@@ -17,6 +17,7 @@ pub struct DatabaseTransaction {
     conn: Arc<Mutex<InnerConnection>>,
     backend: DbBackend,
     open: bool,
+    metric_callback: Option<crate::metric::Callback>,
 }
 
 impl std::fmt::Debug for DatabaseTransaction {
@@ -29,10 +30,12 @@ impl DatabaseTransaction {
     #[cfg(feature = "sqlx-mysql")]
     pub(crate) async fn new_mysql(
         inner: PoolConnection<sqlx::MySql>,
+        metric_callback: Option<crate::metric::Callback>,
     ) -> Result<DatabaseTransaction, DbErr> {
         Self::begin(
             Arc::new(Mutex::new(InnerConnection::MySql(inner))),
             DbBackend::MySql,
+            metric_callback,
         )
         .await
     }
@@ -40,10 +43,12 @@ impl DatabaseTransaction {
     #[cfg(feature = "sqlx-postgres")]
     pub(crate) async fn new_postgres(
         inner: PoolConnection<sqlx::Postgres>,
+        metric_callback: Option<crate::metric::Callback>,
     ) -> Result<DatabaseTransaction, DbErr> {
         Self::begin(
             Arc::new(Mutex::new(InnerConnection::Postgres(inner))),
             DbBackend::Postgres,
+            metric_callback,
         )
         .await
     }
@@ -51,10 +56,12 @@ impl DatabaseTransaction {
     #[cfg(feature = "sqlx-sqlite")]
     pub(crate) async fn new_sqlite(
         inner: PoolConnection<sqlx::Sqlite>,
+        metric_callback: Option<crate::metric::Callback>,
     ) -> Result<DatabaseTransaction, DbErr> {
         Self::begin(
             Arc::new(Mutex::new(InnerConnection::Sqlite(inner))),
             DbBackend::Sqlite,
+            metric_callback,
         )
         .await
     }
@@ -62,20 +69,27 @@ impl DatabaseTransaction {
     #[cfg(feature = "mock")]
     pub(crate) async fn new_mock(
         inner: Arc<crate::MockDatabaseConnection>,
+        metric_callback: Option<crate::metric::Callback>,
     ) -> Result<DatabaseTransaction, DbErr> {
         let backend = inner.get_database_backend();
-        Self::begin(Arc::new(Mutex::new(InnerConnection::Mock(inner))), backend).await
+        Self::begin(
+            Arc::new(Mutex::new(InnerConnection::Mock(inner))),
+            backend,
+            metric_callback,
+        ).await
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", skip(metric_callback))]
     async fn begin(
         conn: Arc<Mutex<InnerConnection>>,
         backend: DbBackend,
+        metric_callback: Option<crate::metric::Callback>,
     ) -> Result<DatabaseTransaction, DbErr> {
         let res = DatabaseTransaction {
             conn,
             backend,
             open: true,
+            metric_callback,
         };
         match *res.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
@@ -245,7 +259,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
                 let _start = std::time::SystemTime::now();
                 let res = query.execute(conn).await.map(Into::into);
-                if let Some(callback) = crate::metric::get_callback() {
+                if let Some(callback) = self.metric_callback.as_deref() {
                     let info = crate::metric::Info {
                         elapsed: _start.elapsed().unwrap_or_default(),
                         statement: &stmt,
@@ -259,7 +273,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
                 let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
                 let _start = std::time::SystemTime::now();
                 let res = query.execute(conn).await.map(Into::into);
-                if let Some(callback) = crate::metric::get_callback() {
+                if let Some(callback) = self.metric_callback.as_deref() {
                     let info = crate::metric::Info {
                         elapsed: _start.elapsed().unwrap_or_default(),
                         statement: &stmt,
@@ -273,7 +287,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
                 let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
                 let _start = std::time::SystemTime::now();
                 let res = query.execute(conn).await.map(Into::into);
-                if let Some(callback) = crate::metric::get_callback() {
+                if let Some(callback) = self.metric_callback.as_deref() {
                     let info = crate::metric::Info {
                         elapsed: _start.elapsed().unwrap_or_default(),
                         statement: &stmt,
@@ -362,13 +376,17 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
         stmt: Statement,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Stream, DbErr>> + 'a>> {
         Box::pin(
-            async move { Ok(crate::TransactionStream::build(self.conn.lock().await, stmt).await) },
+            async move { Ok(crate::TransactionStream::build(self.conn.lock().await, stmt, self.metric_callback.clone()).await) },
         )
     }
 
     #[instrument(level = "trace")]
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
-        DatabaseTransaction::begin(Arc::clone(&self.conn), self.backend).await
+        DatabaseTransaction::begin(
+            Arc::clone(&self.conn),
+            self.backend,
+            self.metric_callback.clone()
+        ).await
     }
 
     /// Execute the function inside a transaction.

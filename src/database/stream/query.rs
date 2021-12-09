@@ -21,36 +21,37 @@ use crate::{DbErr, InnerConnection, QueryResult, Statement};
 pub struct QueryStream {
     stmt: Statement,
     conn: InnerConnection,
-    #[borrows(mut conn, stmt)]
+    metric_callback: Option<crate::metric::Callback>,
+    #[borrows(mut conn, stmt, metric_callback)]
     #[not_covariant]
     stream: Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + 'this>>,
 }
 
 #[cfg(feature = "sqlx-mysql")]
-impl From<(PoolConnection<sqlx::MySql>, Statement)> for QueryStream {
-    fn from((conn, stmt): (PoolConnection<sqlx::MySql>, Statement)) -> Self {
-        QueryStream::build(stmt, InnerConnection::MySql(conn))
+impl From<(PoolConnection<sqlx::MySql>, Statement, Option<crate::metric::Callback>)> for QueryStream {
+    fn from((conn, stmt, metric_callback): (PoolConnection<sqlx::MySql>, Statement, Option<crate::metric::Callback>)) -> Self {
+        QueryStream::build(stmt, InnerConnection::MySql(conn), metric_callback)
     }
 }
 
 #[cfg(feature = "sqlx-postgres")]
-impl From<(PoolConnection<sqlx::Postgres>, Statement)> for QueryStream {
-    fn from((conn, stmt): (PoolConnection<sqlx::Postgres>, Statement)) -> Self {
-        QueryStream::build(stmt, InnerConnection::Postgres(conn))
+impl From<(PoolConnection<sqlx::Postgres>, Statement, Option<crate::metric::Callback>)> for QueryStream {
+    fn from((conn, stmt, metric_callback): (PoolConnection<sqlx::Postgres>, Statement, Option<crate::metric::Callback>)) -> Self {
+        QueryStream::build(stmt, InnerConnection::Postgres(conn), metric_callback)
     }
 }
 
 #[cfg(feature = "sqlx-sqlite")]
-impl From<(PoolConnection<sqlx::Sqlite>, Statement)> for QueryStream {
-    fn from((conn, stmt): (PoolConnection<sqlx::Sqlite>, Statement)) -> Self {
-        QueryStream::build(stmt, InnerConnection::Sqlite(conn))
+impl From<(PoolConnection<sqlx::Sqlite>, Statement, Option<crate::metric::Callback>)> for QueryStream {
+    fn from((conn, stmt, metric_callback): (PoolConnection<sqlx::Sqlite>, Statement, Option<crate::metric::Callback>)) -> Self {
+        QueryStream::build(stmt, InnerConnection::Sqlite(conn), metric_callback)
     }
 }
 
 #[cfg(feature = "mock")]
-impl From<(Arc<crate::MockDatabaseConnection>, Statement)> for QueryStream {
-    fn from((conn, stmt): (Arc<crate::MockDatabaseConnection>, Statement)) -> Self {
-        QueryStream::build(stmt, InnerConnection::Mock(conn))
+impl From<(Arc<crate::MockDatabaseConnection>, Statement, Option<crate::metric::Callback>)> for QueryStream {
+    fn from((conn, stmt, metric_callback): (Arc<crate::MockDatabaseConnection>, Statement, Option<crate::metric::Callback>)) -> Self {
+        QueryStream::build(stmt, InnerConnection::Mock(conn), metric_callback)
     }
 }
 
@@ -61,12 +62,13 @@ impl std::fmt::Debug for QueryStream {
 }
 
 impl QueryStream {
-    #[instrument(level = "trace")]
-    fn build(stmt: Statement, conn: InnerConnection) -> QueryStream {
+    #[instrument(level = "trace", skip(metric_callback))]
+    fn build(stmt: Statement, conn: InnerConnection, metric_callback: Option<crate::metric::Callback>) -> QueryStream {
         QueryStreamBuilder {
             stmt,
             conn,
-            stream_builder: |conn, stmt| {
+            metric_callback,
+            stream_builder: |conn, stmt, metric_callback| {
                 match conn {
                     #[cfg(feature = "sqlx-mysql")]
                     InnerConnection::MySql(c) => {
@@ -77,7 +79,7 @@ impl QueryStream {
                                 .map_ok(Into::into)
                                 .map_err(crate::sqlx_error_to_query_err),
                         );
-                        if let Some(callback) = crate::metric::get_callback() {
+                        if let Some(callback) = metric_callback.as_deref() {
                             let info = crate::metric::Info {
                                 elapsed: _start.elapsed().unwrap_or_default(),
                                 statement: stmt,
@@ -95,7 +97,7 @@ impl QueryStream {
                                 .map_ok(Into::into)
                                 .map_err(crate::sqlx_error_to_query_err),
                         );
-                        if let Some(callback) = crate::metric::get_callback() {
+                        if let Some(callback) = metric_callback.as_deref() {
                             let info = crate::metric::Info {
                                 elapsed: _start.elapsed().unwrap_or_default(),
                                 statement: stmt,
@@ -113,7 +115,7 @@ impl QueryStream {
                                 .map_ok(Into::into)
                                 .map_err(crate::sqlx_error_to_query_err),
                         );
-                        if let Some(callback) = crate::metric::get_callback() {
+                        if let Some(callback) = metric_callback.as_deref() {
                             let info = crate::metric::Info {
                                 elapsed: _start.elapsed().unwrap_or_default(),
                                 statement: stmt,

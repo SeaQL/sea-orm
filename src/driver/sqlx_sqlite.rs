@@ -21,9 +21,16 @@ use super::sqlx_common::*;
 pub struct SqlxSqliteConnector;
 
 /// Defines a sqlx SQLite pool
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SqlxSqlitePoolConnection {
     pool: SqlitePool,
+    metric_callback: Option<crate::metric::Callback>,
+}
+
+impl std::fmt::Debug for SqlxSqlitePoolConnection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SqlxSqlitePoolConnection {{ pool: {:?} }}", self.pool)
+    }
 }
 
 impl SqlxSqliteConnector {
@@ -49,7 +56,7 @@ impl SqlxSqliteConnector {
         }
         match options.pool_options().connect_with(opt).await {
             Ok(pool) => Ok(DatabaseConnection::SqlxSqlitePoolConnection(
-                SqlxSqlitePoolConnection { pool },
+                SqlxSqlitePoolConnection { pool, metric_callback: None },
             )),
             Err(e) => Err(sqlx_error_to_conn_err(e)),
         }
@@ -59,7 +66,7 @@ impl SqlxSqliteConnector {
 impl SqlxSqliteConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_sqlite_pool(pool: SqlitePool) -> DatabaseConnection {
-        DatabaseConnection::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection { pool })
+        DatabaseConnection::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection { pool, metric_callback: None })
     }
 }
 
@@ -76,7 +83,7 @@ impl SqlxSqlitePoolConnection {
                 Ok(res) => Ok(res.into()),
                 Err(err) => Err(sqlx_error_to_exec_err(err)),
             };
-            if let Some(callback) = crate::metric::get_callback() {
+            if let Some(callback) = self.metric_callback.as_deref() {
                 let info = crate::metric::Info {
                     elapsed: _start.elapsed().unwrap_or_default(),
                     statement: &stmt,
@@ -106,7 +113,7 @@ impl SqlxSqlitePoolConnection {
                     _ => Err(DbErr::Query(err.to_string())),
                 },
             };
-            if let Some(callback) = crate::metric::get_callback() {
+            if let Some(callback) = self.metric_callback.as_deref() {
                 let info = crate::metric::Info {
                     elapsed: _start.elapsed().unwrap_or_default(),
                     statement: &stmt,
@@ -133,7 +140,7 @@ impl SqlxSqlitePoolConnection {
                 Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
                 Err(err) => Err(sqlx_error_to_query_err(err)),
             };
-            if let Some(callback) = crate::metric::get_callback() {
+            if let Some(callback) = self.metric_callback.as_deref() {
                 let info = crate::metric::Info {
                     elapsed: _start.elapsed().unwrap_or_default(),
                     statement: &stmt,
@@ -154,7 +161,7 @@ impl SqlxSqlitePoolConnection {
         debug_print!("{}", stmt);
 
         if let Ok(conn) = self.pool.acquire().await {
-            Ok(QueryStream::from((conn, stmt)))
+            Ok(QueryStream::from((conn, stmt, self.metric_callback.clone())))
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),
@@ -166,7 +173,7 @@ impl SqlxSqlitePoolConnection {
     #[instrument(level = "trace")]
     pub async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         if let Ok(conn) = self.pool.acquire().await {
-            DatabaseTransaction::new_sqlite(conn).await
+            DatabaseTransaction::new_sqlite(conn, self.metric_callback.clone()).await
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),
@@ -186,7 +193,7 @@ impl SqlxSqlitePoolConnection {
         E: std::error::Error + Send,
     {
         if let Ok(conn) = self.pool.acquire().await {
-            let transaction = DatabaseTransaction::new_sqlite(conn)
+            let transaction = DatabaseTransaction::new_sqlite(conn, self.metric_callback.clone())
                 .await
                 .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
@@ -195,6 +202,13 @@ impl SqlxSqlitePoolConnection {
                 "Failed to acquire connection from pool.".to_owned(),
             )))
         }
+    }
+
+    pub(crate) fn set_metric_callback<F>(&mut self, callback: F)
+    where
+        F: Into<crate::metric::Callback>,
+    {
+        self.metric_callback = Some(callback.into());
     }
 }
 

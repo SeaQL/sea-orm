@@ -21,9 +21,16 @@ use super::sqlx_common::*;
 pub struct SqlxMySqlConnector;
 
 /// Defines a sqlx MySQL pool
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SqlxMySqlPoolConnection {
     pool: MySqlPool,
+    metric_callback: Option<crate::metric::Callback>,
+}
+
+impl std::fmt::Debug for SqlxMySqlPoolConnection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SqlxMySqlPoolConnection {{ pool: {:?} }}", self.pool)
+    }
 }
 
 impl SqlxMySqlConnector {
@@ -45,7 +52,7 @@ impl SqlxMySqlConnector {
         }
         match options.pool_options().connect_with(opt).await {
             Ok(pool) => Ok(DatabaseConnection::SqlxMySqlPoolConnection(
-                SqlxMySqlPoolConnection { pool },
+                SqlxMySqlPoolConnection { pool, metric_callback: None },
             )),
             Err(e) => Err(sqlx_error_to_conn_err(e)),
         }
@@ -55,7 +62,7 @@ impl SqlxMySqlConnector {
 impl SqlxMySqlConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_mysql_pool(pool: MySqlPool) -> DatabaseConnection {
-        DatabaseConnection::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection { pool })
+        DatabaseConnection::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection { pool, metric_callback: None })
     }
 }
 
@@ -72,7 +79,7 @@ impl SqlxMySqlPoolConnection {
                 Ok(res) => Ok(res.into()),
                 Err(err) => Err(sqlx_error_to_exec_err(err)),
             };
-            if let Some(callback) = crate::metric::get_callback() {
+            if let Some(callback) = self.metric_callback.as_deref() {
                 let info = crate::metric::Info {
                     elapsed: _start.elapsed().unwrap_or_default(),
                     statement: &stmt,
@@ -102,7 +109,7 @@ impl SqlxMySqlPoolConnection {
                     _ => Err(DbErr::Query(err.to_string())),
                 },
             };
-            if let Some(callback) = crate::metric::get_callback() {
+            if let Some(callback) = self.metric_callback.as_deref() {
                 let info = crate::metric::Info {
                     elapsed: _start.elapsed().unwrap_or_default(),
                     statement: &stmt,
@@ -129,7 +136,7 @@ impl SqlxMySqlPoolConnection {
                 Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
                 Err(err) => Err(sqlx_error_to_query_err(err)),
             };
-            if let Some(callback) = crate::metric::get_callback() {
+            if let Some(callback) = self.metric_callback.as_deref() {
                 let info = crate::metric::Info {
                     elapsed: _start.elapsed().unwrap_or_default(),
                     statement: &stmt,
@@ -150,7 +157,7 @@ impl SqlxMySqlPoolConnection {
         debug_print!("{}", stmt);
 
         if let Ok(conn) = self.pool.acquire().await {
-            Ok(QueryStream::from((conn, stmt)))
+            Ok(QueryStream::from((conn, stmt, self.metric_callback.clone())))
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),
@@ -162,7 +169,7 @@ impl SqlxMySqlPoolConnection {
     #[instrument(level = "trace")]
     pub async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         if let Ok(conn) = self.pool.acquire().await {
-            DatabaseTransaction::new_mysql(conn).await
+            DatabaseTransaction::new_mysql(conn, self.metric_callback.clone()).await
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),
@@ -182,7 +189,7 @@ impl SqlxMySqlPoolConnection {
         E: std::error::Error + Send,
     {
         if let Ok(conn) = self.pool.acquire().await {
-            let transaction = DatabaseTransaction::new_mysql(conn)
+            let transaction = DatabaseTransaction::new_mysql(conn, self.metric_callback.clone())
                 .await
                 .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
@@ -191,6 +198,13 @@ impl SqlxMySqlPoolConnection {
                 "Failed to acquire connection from pool.".to_owned(),
             )))
         }
+    }
+
+    pub(crate) fn set_metric_callback<F>(&mut self, callback: F)
+    where
+        F: Into<crate::metric::Callback>,
+    {
+        self.metric_callback = Some(callback.into());
     }
 }
 

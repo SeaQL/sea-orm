@@ -166,7 +166,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
                 DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.stream(stmt).await?,
                 #[cfg(feature = "mock")]
                 DatabaseConnection::MockDatabaseConnection(conn) => {
-                    crate::QueryStream::from((Arc::clone(conn), stmt))
+                    crate::QueryStream::from((Arc::clone(conn), stmt, None))
                 }
                 DatabaseConnection::Disconnected => panic!("Disconnected"),
             })
@@ -184,7 +184,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.begin().await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => {
-                DatabaseTransaction::new_mock(Arc::clone(conn)).await
+                DatabaseTransaction::new_mock(Arc::clone(conn), None).await
             }
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
@@ -213,7 +213,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.transaction(_callback).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => {
-                let transaction = DatabaseTransaction::new_mock(Arc::clone(conn))
+                let transaction = DatabaseTransaction::new_mock(Arc::clone(conn), None)
                     .await
                     .map_err(TransactionError::Connection)?;
                 transaction.run(_callback).await
@@ -242,6 +242,24 @@ impl DatabaseConnection {
     pub fn into_transaction_log(self) -> Vec<crate::Transaction> {
         let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
         mocker.drain_transaction_log()
+    }
+}
+
+impl DatabaseConnection {
+    /// Sets a callback to metric this connection
+    pub fn set_metric_callback<F>(&mut self, callback: F)
+    where
+        F: Into<crate::metric::Callback>,
+    {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.set_metric_callback(callback),
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.set_metric_callback(callback),
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.set_metric_callback(callback),
+            _ => {},
+        }
     }
 }
 
