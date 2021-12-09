@@ -184,17 +184,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_create_table_from_entity() {
-        for builder in [DbBackend::MySql, DbBackend::Sqlite] {
-            let schema = Schema::new(builder);
-            assert_eq!(
-                builder.build(&schema.create_table_from_entity(CakeFillingPrice)),
-                builder.build(&get_stmt().table(CakeFillingPrice).to_owned())
-            );
-        }
-    }
-
     fn get_stmt() -> TableCreateStatement {
         Table::create()
             .col(
