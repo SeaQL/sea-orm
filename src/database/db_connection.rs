@@ -3,6 +3,7 @@ use crate::{
     StatementBuilder, TransactionError,
 };
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
+use tracing::instrument;
 use std::{future::Future, pin::Pin};
 use url::Url;
 
@@ -49,6 +50,7 @@ pub enum DatabaseBackend {
 
 /// The same as [DatabaseBackend] just shorter :)
 pub type DbBackend = DatabaseBackend;
+#[derive(Debug)]
 pub(crate) enum InnerConnection {
     #[cfg(feature = "sqlx-mysql")]
     MySql(PoolConnection<sqlx::MySql>),
@@ -104,6 +106,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
         }
     }
 
+    #[instrument(level = "trace")]
     async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -118,6 +121,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
         }
     }
 
+    #[instrument(level = "trace")]
     async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -132,6 +136,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
         }
     }
 
+    #[instrument(level = "trace")]
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -146,6 +151,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
         }
     }
 
+    #[instrument(level = "trace")]
     fn stream(
         &'a self,
         stmt: Statement,
@@ -167,6 +173,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
         })
     }
 
+    #[instrument(level = "trace")]
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -185,6 +192,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
 
     /// Execute the function inside a transaction.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
+    #[instrument(level = "trace", skip(_callback))]
     async fn transaction<F, T, E>(&self, _callback: F) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(

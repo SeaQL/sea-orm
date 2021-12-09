@@ -11,6 +11,8 @@ use sqlx::Executor;
 
 use futures::lock::MutexGuard;
 
+use tracing::instrument;
+
 use crate::{DbErr, InnerConnection, QueryResult, Statement};
 
 /// `TransactionStream` cannot be used in a `transaction` closure as it does not impl `Send`.
@@ -31,6 +33,7 @@ impl<'a> std::fmt::Debug for TransactionStream<'a> {
 }
 
 impl<'a> TransactionStream<'a> {
+    #[instrument(level = "trace")]
     pub(crate) async fn build(
         conn: MutexGuard<'a, InnerConnection>,
         stmt: Statement,
@@ -44,32 +47,56 @@ impl<'a> TransactionStream<'a> {
                         #[cfg(feature = "sqlx-mysql")]
                         InnerConnection::MySql(c) => {
                             let query = crate::driver::sqlx_mysql::sqlx_query(stmt);
-                            Box::pin(
+                            let _start = std::time::SystemTime::now();
+                            let res = Box::pin(
                                 c.fetch(query)
                                     .map_ok(Into::into)
                                     .map_err(crate::sqlx_error_to_query_err),
-                            )
-                                as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>
+                            ) as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>;
+                            if let Some(callback) = crate::metric::get_callback() {
+                                let info = crate::metric::Info {
+                                    elapsed: _start.elapsed().unwrap_or_default(),
+                                    statement: stmt,
+                                };
+                                callback(&info);
+                            }
+                            res
                         }
                         #[cfg(feature = "sqlx-postgres")]
                         InnerConnection::Postgres(c) => {
                             let query = crate::driver::sqlx_postgres::sqlx_query(stmt);
-                            Box::pin(
+                            let _start = std::time::SystemTime::now();
+                            let res = Box::pin(
                                 c.fetch(query)
                                     .map_ok(Into::into)
                                     .map_err(crate::sqlx_error_to_query_err),
-                            )
-                                as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>
+                            ) as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>;
+                            if let Some(callback) = crate::metric::get_callback() {
+                                let info = crate::metric::Info {
+                                    elapsed: _start.elapsed().unwrap_or_default(),
+                                    statement: stmt,
+                                };
+                                callback(&info);
+                            }
+                            res
                         }
                         #[cfg(feature = "sqlx-sqlite")]
                         InnerConnection::Sqlite(c) => {
                             let query = crate::driver::sqlx_sqlite::sqlx_query(stmt);
-                            Box::pin(
+                            let _start = std::time::SystemTime::now();
+                            let res = Box::pin(
                                 c.fetch(query)
                                     .map_ok(Into::into)
                                     .map_err(crate::sqlx_error_to_query_err),
-                            )
-                                as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>
+                            ) as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>;
+                            if let Some(callback) = crate::metric::get_callback() {
+                                let info = crate::metric::Info {
+                                    elapsed: _start.elapsed().unwrap_or_default(),
+                                    statement: stmt,
+                                };
+                                callback(&info);
+                            }
+                            res
                         }
                         #[cfg(feature = "mock")]
                         InnerConnection::Mock(c) => c.fetch(stmt),

@@ -7,6 +7,7 @@ use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 use futures::lock::Mutex;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::{pool::PoolConnection, TransactionManager};
+use tracing::instrument;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 // a Transaction is just a sugar for a connection where START TRANSACTION has been executed
@@ -66,6 +67,7 @@ impl DatabaseTransaction {
         Self::begin(Arc::new(Mutex::new(InnerConnection::Mock(inner))), backend).await
     }
 
+    #[instrument(level = "trace")]
     async fn begin(
         conn: Arc<Mutex<InnerConnection>>,
         backend: DbBackend,
@@ -104,6 +106,7 @@ impl DatabaseTransaction {
 
     /// Runs a transaction to completion returning an rolling back the transaction on
     /// encountering an error if it fails
+    #[instrument(level = "trace", skip(callback))]
     pub(crate) async fn run<F, T, E>(self, callback: F) -> Result<T, TransactionError<E>>
     where
         F: for<'b> FnOnce(
@@ -125,6 +128,7 @@ impl DatabaseTransaction {
     }
 
     /// Commit a transaction atomically
+    #[instrument(level = "trace")]
     pub async fn commit(mut self) -> Result<(), DbErr> {
         self.open = false;
         match *self.conn.lock().await {
@@ -155,6 +159,7 @@ impl DatabaseTransaction {
     }
 
     /// rolls back a transaction in case error are encountered during the operation
+    #[instrument(level = "trace")]
     pub async fn rollback(mut self) -> Result<(), DbErr> {
         self.open = false;
         match *self.conn.lock().await {
@@ -185,6 +190,7 @@ impl DatabaseTransaction {
     }
 
     // the rollback is queued and will be performed on next async operation, like returning the connection to the pool
+    #[instrument(level = "trace")]
     fn start_rollback(&mut self) {
         if self.open {
             if let Some(mut conn) = self.conn.try_lock() {
@@ -229,6 +235,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
         self.backend
     }
 
+    #[instrument(level = "trace")]
     async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
@@ -236,17 +243,44 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
             #[cfg(feature = "sqlx-mysql")]
             InnerConnection::MySql(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
-                query.execute(conn).await.map(Into::into)
+                let _start = std::time::SystemTime::now();
+                let res = query.execute(conn).await.map(Into::into);
+                if let Some(callback) = crate::metric::get_callback() {
+                    let info = crate::metric::Info {
+                        elapsed: _start.elapsed().unwrap_or_default(),
+                        statement: &stmt,
+                    };
+                    callback(&info);
+                }
+                res
             }
             #[cfg(feature = "sqlx-postgres")]
             InnerConnection::Postgres(conn) => {
                 let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
-                query.execute(conn).await.map(Into::into)
+                let _start = std::time::SystemTime::now();
+                let res = query.execute(conn).await.map(Into::into);
+                if let Some(callback) = crate::metric::get_callback() {
+                    let info = crate::metric::Info {
+                        elapsed: _start.elapsed().unwrap_or_default(),
+                        statement: &stmt,
+                    };
+                    callback(&info);
+                }
+                res
             }
             #[cfg(feature = "sqlx-sqlite")]
             InnerConnection::Sqlite(conn) => {
                 let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
-                query.execute(conn).await.map(Into::into)
+                let _start = std::time::SystemTime::now();
+                let res = query.execute(conn).await.map(Into::into);
+                if let Some(callback) = crate::metric::get_callback() {
+                    let info = crate::metric::Info {
+                        elapsed: _start.elapsed().unwrap_or_default(),
+                        statement: &stmt,
+                    };
+                    callback(&info);
+                }
+                res
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.execute(stmt),
@@ -255,6 +289,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
         _res.map_err(sqlx_error_to_exec_err)
     }
 
+    #[instrument(level = "trace")]
     async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -285,6 +320,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
         }
     }
 
+    #[instrument(level = "trace")]
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -320,6 +356,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
         _res.map_err(sqlx_error_to_query_err)
     }
 
+    #[instrument(level = "trace")]
     fn stream(
         &'a self,
         stmt: Statement,
@@ -329,12 +366,14 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
         )
     }
 
+    #[instrument(level = "trace")]
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         DatabaseTransaction::begin(Arc::clone(&self.conn), self.backend).await
     }
 
     /// Execute the function inside a transaction.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
+    #[instrument(level = "trace", skip(_callback))]
     async fn transaction<F, T, E>(&self, _callback: F) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(

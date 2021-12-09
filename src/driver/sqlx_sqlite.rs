@@ -7,6 +7,7 @@ use sqlx::{
 
 sea_query::sea_query_driver_sqlite!();
 use sea_query_driver_sqlite::bind_query;
+use tracing::instrument;
 
 use crate::{
     debug_print, error::*, executor::*, ConnectOptions, DatabaseConnection, DatabaseTransaction,
@@ -32,6 +33,7 @@ impl SqlxSqliteConnector {
     }
 
     /// Add configuration options for the SQLite database
+    #[instrument(level = "trace")]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
         let mut options = options;
         let mut opt = options
@@ -63,15 +65,25 @@ impl SqlxSqliteConnector {
 
 impl SqlxSqlitePoolConnection {
     /// Execute a [Statement] on a SQLite backend
+    #[instrument(level = "trace")]
     pub async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
         if let Ok(conn) = &mut self.pool.acquire().await {
-            match query.execute(conn).await {
+            let _start = std::time::SystemTime::now();
+            let res = match query.execute(conn).await {
                 Ok(res) => Ok(res.into()),
                 Err(err) => Err(sqlx_error_to_exec_err(err)),
+            };
+            if let Some(callback) = crate::metric::get_callback() {
+                let info = crate::metric::Info {
+                    elapsed: _start.elapsed().unwrap_or_default(),
+                    statement: &stmt,
+                };
+                callback(&info);
             }
+            res
         } else {
             Err(DbErr::Exec(
                 "Failed to acquire connection from pool.".to_owned(),
@@ -80,18 +92,28 @@ impl SqlxSqlitePoolConnection {
     }
 
     /// Get one result from a SQL query. Returns [Option::None] if no match was found
+    #[instrument(level = "trace")]
     pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
         if let Ok(conn) = &mut self.pool.acquire().await {
-            match query.fetch_one(conn).await {
+            let _start = std::time::SystemTime::now();
+            let res = match query.fetch_one(conn).await {
                 Ok(row) => Ok(Some(row.into())),
                 Err(err) => match err {
                     sqlx::Error::RowNotFound => Ok(None),
                     _ => Err(DbErr::Query(err.to_string())),
                 },
+            };
+            if let Some(callback) = crate::metric::get_callback() {
+                let info = crate::metric::Info {
+                    elapsed: _start.elapsed().unwrap_or_default(),
+                    statement: &stmt,
+                };
+                callback(&info);
             }
+            res
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),
@@ -100,15 +122,25 @@ impl SqlxSqlitePoolConnection {
     }
 
     /// Get the results of a query returning them as a Vec<[QueryResult]>
+    #[instrument(level = "trace")]
     pub async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
         if let Ok(conn) = &mut self.pool.acquire().await {
-            match query.fetch_all(conn).await {
+            let _start = std::time::SystemTime::now();
+            let res = match query.fetch_all(conn).await {
                 Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
                 Err(err) => Err(sqlx_error_to_query_err(err)),
+            };
+            if let Some(callback) = crate::metric::get_callback() {
+                let info = crate::metric::Info {
+                    elapsed: _start.elapsed().unwrap_or_default(),
+                    statement: &stmt,
+                };
+                callback(&info);
             }
+            res
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),
@@ -117,6 +149,7 @@ impl SqlxSqlitePoolConnection {
     }
 
     /// Stream the results of executing a SQL query
+    #[instrument(level = "trace")]
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
 
@@ -130,6 +163,7 @@ impl SqlxSqlitePoolConnection {
     }
 
     /// Bundle a set of SQL statements that execute together.
+    #[instrument(level = "trace")]
     pub async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_sqlite(conn).await
@@ -141,6 +175,7 @@ impl SqlxSqlitePoolConnection {
     }
 
     /// Create a MySQL transaction
+    #[instrument(level = "trace", skip(callback))]
     pub async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
     where
         F: for<'b> FnOnce(
