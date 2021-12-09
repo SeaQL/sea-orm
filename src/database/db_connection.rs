@@ -249,7 +249,7 @@ impl DatabaseConnection {
     /// Sets a callback to metric this connection
     pub fn set_metric_callback<F>(&mut self, callback: F)
     where
-        F: Into<crate::metric::Callback>,
+        F: Fn(&crate::metric::Info<'_>) + Send + Sync + 'static,
     {
         match self {
             #[cfg(feature = "sqlx-mysql")]

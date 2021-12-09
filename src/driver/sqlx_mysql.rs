@@ -1,4 +1,4 @@
-use std::{future::Future, pin::Pin};
+use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
     mysql::{MySqlArguments, MySqlConnectOptions, MySqlQueryResult, MySqlRow},
@@ -202,9 +202,9 @@ impl SqlxMySqlPoolConnection {
 
     pub(crate) fn set_metric_callback<F>(&mut self, callback: F)
     where
-        F: Into<crate::metric::Callback>,
+        F: Fn(&crate::metric::Info<'_>) + Send + Sync + 'static,
     {
-        self.metric_callback = Some(callback.into());
+        self.metric_callback = Some(Arc::new(callback));
     }
 }
 
