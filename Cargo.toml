@@ -61,8 +61,6 @@ default = [
     "with-chrono",
     "with-rust_decimal",
     "with-uuid",
-    "runtime-tokio-rustls",#debug
-    "sqlx-all",#debug
 ]
 macros = ["sea-orm-macros"]
 mock = []
