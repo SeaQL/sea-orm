@@ -9,12 +9,25 @@ use sea_orm::{
 use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
+    let db_backend = db.get_database_backend();
+
     create_log_table(db).await?;
     create_metadata_table(db).await?;
     create_repository_table(db).await?;
     create_self_join_table(db).await?;
     create_byte_primary_key_table(db).await?;
+
+    let create_enum_stmts = match db_backend {
+        DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
+        DbBackend::Postgres => vec![Type::create()
+            .as_enum(Alias::new("tea"))
+            .values(vec![Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
+            .to_owned()],
+    };
+    create_enum(db, &create_enum_stmts, ActiveEnum).await?;
+
     create_active_enum_table(db).await?;
+    create_active_enum_child_table(db).await?;
 
     Ok(())
 }
@@ -127,18 +140,6 @@ pub async fn create_byte_primary_key_table(db: &DbConn) -> Result<ExecResult, Db
 }
 
 pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> {
-    let db_backend = db.get_database_backend();
-
-    let create_enum_stmts = match db_backend {
-        DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
-        DbBackend::Postgres => vec![Type::create()
-            .as_enum(Alias::new("tea"))
-            .values(vec![Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
-            .to_owned()],
-    };
-
-    create_enum(db, &create_enum_stmts, ActiveEnum).await?;
-
     let create_table_stmt = sea_query::Table::create()
         .table(active_enum::Entity.table_ref())
         .col(
@@ -157,4 +158,38 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
         .to_owned();
 
     create_table(db, &create_table_stmt, ActiveEnum).await
+}
+
+pub async fn create_active_enum_child_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(active_enum_child::Entity.table_ref())
+        .col(
+            ColumnDef::new(active_enum_child::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(active_enum_child::Column::ParentId)
+                .integer()
+                .not_null(),
+        )
+        .col(ColumnDef::new(active_enum_child::Column::Category).string_len(1))
+        .col(ColumnDef::new(active_enum_child::Column::Color).integer())
+        .col(
+            ColumnDef::new(active_enum_child::Column::Tea)
+                .enumeration("tea", vec!["EverydayTea", "BreakfastTea"]),
+        )
+        .foreign_key(
+            ForeignKeyCreateStatement::new()
+                .name("fk-active_enum_child-active_enum")
+                .from_tbl(ActiveEnumChild)
+                .from_col(active_enum_child::Column::ParentId)
+                .to_tbl(ActiveEnum)
+                .to_col(active_enum::Column::Id),
+        )
+        .to_owned();
+
+    create_table(db, &create_table_stmt, ActiveEnumChild).await
 }
