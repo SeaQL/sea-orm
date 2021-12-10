@@ -74,19 +74,12 @@ impl SqlxMySqlPoolConnection {
 
         let query = sqlx_query(&stmt);
         if let Ok(conn) = &mut self.pool.acquire().await {
-            let _start = std::time::SystemTime::now();
-            let res = match query.execute(conn).await {
-                Ok(res) => Ok(res.into()),
-                Err(err) => Err(sqlx_error_to_exec_err(err)),
-            };
-            if let Some(callback) = self.metric_callback.as_deref() {
-                let info = crate::metric::Info {
-                    elapsed: _start.elapsed().unwrap_or_default(),
-                    statement: &stmt,
-                };
-                callback(&info);
-            }
-            res
+            crate::metric::metric!(self.metric_callback, &stmt, {
+                match query.execute(conn).await {
+                    Ok(res) => Ok(res.into()),
+                    Err(err) => Err(sqlx_error_to_exec_err(err)),
+                }
+            })
         } else {
             Err(DbErr::Exec(
                 "Failed to acquire connection from pool.".to_owned(),
@@ -101,22 +94,15 @@ impl SqlxMySqlPoolConnection {
 
         let query = sqlx_query(&stmt);
         if let Ok(conn) = &mut self.pool.acquire().await {
-            let _start = std::time::SystemTime::now();
-            let res = match query.fetch_one(conn).await {
-                Ok(row) => Ok(Some(row.into())),
-                Err(err) => match err {
-                    sqlx::Error::RowNotFound => Ok(None),
-                    _ => Err(DbErr::Query(err.to_string())),
-                },
-            };
-            if let Some(callback) = self.metric_callback.as_deref() {
-                let info = crate::metric::Info {
-                    elapsed: _start.elapsed().unwrap_or_default(),
-                    statement: &stmt,
-                };
-                callback(&info);
-            }
-            res
+            crate::metric::metric!(self.metric_callback, &stmt, {
+                match query.fetch_one(conn).await {
+                    Ok(row) => Ok(Some(row.into())),
+                    Err(err) => match err {
+                        sqlx::Error::RowNotFound => Ok(None),
+                        _ => Err(DbErr::Query(err.to_string())),
+                    },
+                }
+            })
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),
@@ -131,19 +117,12 @@ impl SqlxMySqlPoolConnection {
 
         let query = sqlx_query(&stmt);
         if let Ok(conn) = &mut self.pool.acquire().await {
-            let _start = std::time::SystemTime::now();
-            let res = match query.fetch_all(conn).await {
-                Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
-                Err(err) => Err(sqlx_error_to_query_err(err)),
-            };
-            if let Some(callback) = self.metric_callback.as_deref() {
-                let info = crate::metric::Info {
-                    elapsed: _start.elapsed().unwrap_or_default(),
-                    statement: &stmt,
-                };
-                callback(&info);
-            }
-            res
+            crate::metric::metric!(self.metric_callback, &stmt, {
+                match query.fetch_all(conn).await {
+                    Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
+                    Err(err) => Err(sqlx_error_to_query_err(err)),
+                }
+            })
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),

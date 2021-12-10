@@ -257,44 +257,23 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
             #[cfg(feature = "sqlx-mysql")]
             InnerConnection::MySql(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
-                let _start = std::time::SystemTime::now();
-                let res = query.execute(conn).await.map(Into::into);
-                if let Some(callback) = self.metric_callback.as_deref() {
-                    let info = crate::metric::Info {
-                        elapsed: _start.elapsed().unwrap_or_default(),
-                        statement: &stmt,
-                    };
-                    callback(&info);
-                }
-                res
+                crate::metric::metric!(self.metric_callback, &stmt, {
+                    query.execute(conn).await.map(Into::into)
+                })
             }
             #[cfg(feature = "sqlx-postgres")]
             InnerConnection::Postgres(conn) => {
                 let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
-                let _start = std::time::SystemTime::now();
-                let res = query.execute(conn).await.map(Into::into);
-                if let Some(callback) = self.metric_callback.as_deref() {
-                    let info = crate::metric::Info {
-                        elapsed: _start.elapsed().unwrap_or_default(),
-                        statement: &stmt,
-                    };
-                    callback(&info);
-                }
-                res
+                crate::metric::metric!(self.metric_callback, &stmt, {
+                    query.execute(conn).await.map(Into::into)
+                })
             }
             #[cfg(feature = "sqlx-sqlite")]
             InnerConnection::Sqlite(conn) => {
                 let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
-                let _start = std::time::SystemTime::now();
-                let res = query.execute(conn).await.map(Into::into);
-                if let Some(callback) = self.metric_callback.as_deref() {
-                    let info = crate::metric::Info {
-                        elapsed: _start.elapsed().unwrap_or_default(),
-                        statement: &stmt,
-                    };
-                    callback(&info);
-                }
-                res
+                crate::metric::metric!(self.metric_callback, &stmt, {
+                    query.execute(conn).await.map(Into::into)
+                })
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.execute(stmt),
