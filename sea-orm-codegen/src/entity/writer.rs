@@ -116,7 +116,7 @@ impl EntityWriter {
         let code_blocks: Vec<TokenStream> = self
             .entities
             .iter()
-            .map(|entity| Self::gen_mod(entity))
+            .map(Self::gen_mod)
             .collect();
         Self::write(
             &mut lines,
@@ -146,7 +146,7 @@ impl EntityWriter {
         let code_blocks = self
             .entities
             .iter()
-            .map(|entity| Self::gen_prelude_use(entity))
+            .map(Self::gen_prelude_use)
             .collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
