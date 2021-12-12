@@ -220,10 +220,7 @@ impl EntityWriter {
     pub fn gen_compact_code_blocks(entity: &Entity, with_serde: &WithSerde) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
-        let mut code_blocks = vec![
-            imports,
-            Self::gen_compact_model_struct(entity, with_serde),
-        ];
+        let mut code_blocks = vec![imports, Self::gen_compact_model_struct(entity, with_serde)];
         let relation_defs = if entity.get_relation_enum_name().is_empty() {
             vec![
                 Self::gen_relation_enum(entity),
