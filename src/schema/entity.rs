@@ -1,6 +1,6 @@
 use crate::{
-    unpack_table_ref, ColumnTrait, ColumnType, DbBackend, EntityTrait, Identity, Iterable,
-    PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
+    unpack_table_ref, ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, Identity,
+    Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
@@ -8,6 +8,14 @@ use sea_query::{
 };
 
 impl Schema {
+    /// Creates Postgres enums from an ActiveEnum. See [TypeCreateStatement] for more details
+    pub fn create_enum_from_active_enum<A>(&self) -> TypeCreateStatement
+    where
+        A: ActiveEnum,
+    {
+        create_enum_from_active_enum::<A>(self.backend)
+    }
+
     /// Creates Postgres enums from an Entity. See [TypeCreateStatement] for more details
     pub fn create_enum_from_entity<E>(&self, entity: E) -> Vec<TypeCreateStatement>
     where
@@ -25,6 +33,30 @@ impl Schema {
     }
 }
 
+pub(crate) fn create_enum_from_active_enum<A>(backend: DbBackend) -> TypeCreateStatement
+where
+    A: ActiveEnum,
+{
+    if matches!(backend, DbBackend::MySql | DbBackend::Sqlite) {
+        panic!("TypeCreateStatement is not supported in MySQL & SQLite");
+    }
+    let col_def = A::db_type();
+    let col_type = col_def.get_column_type();
+    create_enum_from_column_type(col_type)
+}
+
+pub(crate) fn create_enum_from_column_type(col_type: &ColumnType) -> TypeCreateStatement {
+    let (name, values) = match col_type {
+        ColumnType::Enum(s, v) => (s.as_str(), v),
+        _ => panic!("Should be ColumnType::Enum"),
+    };
+    Type::create()
+        .as_enum(Alias::new(name))
+        .values(values.iter().map(|val| Alias::new(val.as_str())))
+        .to_owned()
+}
+
+#[allow(clippy::needless_borrow)]
 pub(crate) fn create_enum_from_entity<E>(_: E, backend: DbBackend) -> Vec<TypeCreateStatement>
 where
     E: EntityTrait,
@@ -39,14 +71,7 @@ where
         if !matches!(col_type, ColumnType::Enum(_, _)) {
             continue;
         }
-        let (name, values) = match col_type {
-            ColumnType::Enum(s, v) => (s.as_str(), v),
-            _ => unreachable!(),
-        };
-        let stmt = Type::create()
-            .as_enum(Alias::new(name))
-            .values(values.iter().map(|val| Alias::new(val.as_str())))
-            .to_owned();
+        let stmt = create_enum_from_column_type(&col_type);
         vec.push(stmt);
     }
     vec

@@ -4,7 +4,7 @@ use super::*;
 use crate::common::setup::{create_enum, create_table, create_table_without_asserts};
 use sea_orm::{
     error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName,
-    ExecResult,
+    ExecResult, Schema,
 };
 use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement};
 
