@@ -12,6 +12,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
     // if #[sea_orm(table_name = "foo", schema_name = "bar")] specified, create Entity struct
     let mut table_name = None;
     let mut schema_name = quote! { None };
+    let mut table_iden = false;
     attrs.iter().for_each(|attr| {
         if attr.path.get_ident().map(|i| i == "sea_orm") != Some(true) {
             return;
@@ -28,11 +29,18 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             schema_name = quote! { Some(#name) };
                         }
                     }
+                } else if let Meta::Path(path) = meta {
+                    if let Some(ident) = path.get_ident() {
+                        if ident == "table_iden" {
+                            table_iden = true;
+                        }
+                    }
                 }
             }
         }
     });
     let entity_def = table_name
+        .as_ref()
         .map(|table_name| {
             quote! {
                 #[derive(Copy, Clone, Default, Debug, sea_orm::prelude::DeriveEntity)]
@@ -58,6 +66,19 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
     let mut primary_keys: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_key_types: Punctuated<_, Comma> = Punctuated::new();
     let mut auto_increment = true;
+    if table_iden {
+        if let Some(table_name) = table_name {
+            let table_field_name = Ident::new("Table", Span::call_site());
+            columns_enum.push(quote! {
+                #[sea_orm(table_name=#table_name)]
+                #[strum(disabled)]
+                #table_field_name
+            });
+            columns_trait.push(
+                quote! { Self::#table_field_name => panic!("Table cannot be used as a column") },
+            );
+        }
+    }
     if let Data::Struct(item_struct) = data {
         if let Fields::Named(fields) = item_struct.fields {
             for field in fields.named {
