@@ -390,8 +390,8 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pretty_assertions::assert_eq;
-    use sea_orm::{DbBackend, QueryTrait};
+    pub use pretty_assertions::assert_eq;
+    pub use sea_orm::{DbBackend, QueryTrait};
 
     #[test]
     fn active_enum_find_related() {

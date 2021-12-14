@@ -1,5 +1,6 @@
 use crate::{
-    Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation, RelationType,
+    ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation,
+    RelationType,
 };
 use sea_query::TableStatement;
 use std::collections::HashMap;
@@ -9,6 +10,7 @@ pub struct EntityTransformer;
 
 impl EntityTransformer {
     pub fn transform(table_stmts: Vec<TableStatement>) -> Result<EntityWriter, Error> {
+        let mut enums: HashMap<String, ActiveEnum> = HashMap::new();
         let mut inverse_relations: HashMap<String, Vec<Relation>> = HashMap::new();
         let mut conjunct_relations: HashMap<String, Vec<ConjunctRelation>> = HashMap::new();
         let mut entities = HashMap::new();
@@ -22,7 +24,15 @@ impl EntityTransformer {
                 }
             };
             let table_name = match table_create.get_table_name() {
-                Some(s) => s,
+                Some(table_ref) => match table_ref {
+                    sea_query::TableRef::Table(t)
+                    | sea_query::TableRef::SchemaTable(_, t)
+                    | sea_query::TableRef::DatabaseSchemaTable(_, _, t)
+                    | sea_query::TableRef::TableAlias(t, _)
+                    | sea_query::TableRef::SchemaTableAlias(_, t, _)
+                    | sea_query::TableRef::DatabaseSchemaTableAlias(_, _, t, _) => t.to_string(),
+                    _ => unimplemented!(),
+                },
                 None => {
                     return Err(Error::TransformError(
                         "Table name should not be empty".into(),
@@ -42,6 +52,18 @@ impl EntityTransformer {
                         .filter(|col_names| col_names.len() == 1 && col_names[0] == col.name)
                         .count()
                         > 0;
+                    col
+                })
+                .map(|col| {
+                    if let sea_query::ColumnType::Enum(enum_name, values) = &col.col_type {
+                        enums.insert(
+                            enum_name.clone(),
+                            ActiveEnum {
+                                enum_name: enum_name.clone(),
+                                values: values.clone(),
+                            },
+                        );
+                    }
                     col
                 })
                 .collect();
@@ -170,6 +192,7 @@ impl EntityTransformer {
         }
         Ok(EntityWriter {
             entities: entities.into_iter().map(|(_, v)| v).collect(),
+            enums,
         })
     }
 }
