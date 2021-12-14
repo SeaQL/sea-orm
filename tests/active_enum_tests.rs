@@ -402,20 +402,24 @@ mod tests {
             tea: None,
         };
         let select = active_enum_model.find_related(ActiveEnumChild);
-        assert_eq!(
-            select.build(DbBackend::MySql).to_string(),
-            select.build(DbBackend::Sqlite).to_string(),
-        );
-        assert_eq!(
-            select.build(DbBackend::MySql).to_string(),
-            [
-                "SELECT `active_enum_child`.`id`, `active_enum_child`.`parent_id`, `active_enum_child`.`category`, `active_enum_child`.`color`, `active_enum_child`.`tea`",
-                "FROM `active_enum_child`",
-                "INNER JOIN `active_enum` ON `active_enum`.`id` = `active_enum_child`.`parent_id`",
-                "WHERE `active_enum`.`id` = 1",
-            ]
-            .join(" ")
-        );
+        #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
+        {
+            assert_eq!(
+                select.build(DbBackend::MySql).to_string(),
+                select.build(DbBackend::Sqlite).to_string(),
+            );
+            assert_eq!(
+                select.build(DbBackend::MySql).to_string(),
+                [
+                    "SELECT `active_enum_child`.`id`, `active_enum_child`.`parent_id`, `active_enum_child`.`category`, `active_enum_child`.`color`, `active_enum_child`.`tea`",
+                    "FROM `active_enum_child`",
+                    "INNER JOIN `active_enum` ON `active_enum`.`id` = `active_enum_child`.`parent_id`",
+                    "WHERE `active_enum`.`id` = 1",
+                ]
+                .join(" ")
+            );
+        }
+        #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
             select.build(DbBackend::Postgres).to_string(),
             [
@@ -428,22 +432,26 @@ mod tests {
         );
 
         let select = ActiveEnum::find().find_also_related(ActiveEnumChild);
-        assert_eq!(
-            select.build(DbBackend::MySql).to_string(),
-            select.build(DbBackend::Sqlite).to_string(),
-        );
-        assert_eq!(
-            select
-                .build(DbBackend::MySql)
-                .to_string(),
-            [
-                "SELECT `active_enum`.`id` AS `A_id`, `active_enum`.`category` AS `A_category`, `active_enum`.`color` AS `A_color`, `active_enum`.`tea` AS `A_tea`,",
-                "`active_enum_child`.`id` AS `B_id`, `active_enum_child`.`parent_id` AS `B_parent_id`, `active_enum_child`.`category` AS `B_category`, `active_enum_child`.`color` AS `B_color`, `active_enum_child`.`tea` AS `B_tea`",
-                "FROM `active_enum`",
-                "LEFT JOIN `active_enum_child` ON `active_enum`.`id` = `active_enum_child`.`parent_id`",
-            ]
-            .join(" ")
-        );
+        #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
+        {
+            assert_eq!(
+                select.build(DbBackend::MySql).to_string(),
+                select.build(DbBackend::Sqlite).to_string(),
+            );
+            assert_eq!(
+                select
+                    .build(DbBackend::MySql)
+                    .to_string(),
+                [
+                    "SELECT `active_enum`.`id` AS `A_id`, `active_enum`.`category` AS `A_category`, `active_enum`.`color` AS `A_color`, `active_enum`.`tea` AS `A_tea`,",
+                    "`active_enum_child`.`id` AS `B_id`, `active_enum_child`.`parent_id` AS `B_parent_id`, `active_enum_child`.`category` AS `B_category`, `active_enum_child`.`color` AS `B_color`, `active_enum_child`.`tea` AS `B_tea`",
+                    "FROM `active_enum`",
+                    "LEFT JOIN `active_enum_child` ON `active_enum`.`id` = `active_enum_child`.`parent_id`",
+                ]
+                .join(" ")
+            );
+        }
+        #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
             select
                 .build(DbBackend::Postgres)
@@ -467,20 +475,24 @@ mod tests {
             tea: None,
         };
         let select = active_enum_model.find_linked(active_enum::ActiveEnumChildLink);
-        assert_eq!(
-            select.build(DbBackend::MySql).to_string(),
-            select.build(DbBackend::Sqlite).to_string(),
-        );
-        assert_eq!(
-            select.build(DbBackend::MySql).to_string(),
-            [
-                "SELECT `active_enum_child`.`id`, `active_enum_child`.`parent_id`, `active_enum_child`.`category`, `active_enum_child`.`color`, `active_enum_child`.`tea`",
-                "FROM `active_enum_child`",
-                "INNER JOIN `active_enum` AS `r0` ON `r0`.`id` = `active_enum_child`.`parent_id`",
-                "WHERE `r0`.`id` = 1",
-            ]
-            .join(" ")
-        );
+        #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
+        {
+            assert_eq!(
+                select.build(DbBackend::MySql).to_string(),
+                select.build(DbBackend::Sqlite).to_string(),
+            );
+            assert_eq!(
+                select.build(DbBackend::MySql).to_string(),
+                [
+                    "SELECT `active_enum_child`.`id`, `active_enum_child`.`parent_id`, `active_enum_child`.`category`, `active_enum_child`.`color`, `active_enum_child`.`tea`",
+                    "FROM `active_enum_child`",
+                    "INNER JOIN `active_enum` AS `r0` ON `r0`.`id` = `active_enum_child`.`parent_id`",
+                    "WHERE `r0`.`id` = 1",
+                ]
+                .join(" ")
+            );
+        }
+        #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
             select.build(DbBackend::Postgres).to_string(),
             [
@@ -493,22 +505,26 @@ mod tests {
         );
 
         let select = ActiveEnum::find().find_also_linked(active_enum::ActiveEnumChildLink);
-        assert_eq!(
-            select.build(DbBackend::MySql).to_string(),
-            select.build(DbBackend::Sqlite).to_string(),
-        );
-        assert_eq!(
-            select
-                .build(DbBackend::MySql)
-                .to_string(),
-            [
-                "SELECT `active_enum`.`id` AS `A_id`, `active_enum`.`category` AS `A_category`, `active_enum`.`color` AS `A_color`, `active_enum`.`tea` AS `A_tea`,",
-                "`r0`.`id` AS `B_id`, `r0`.`parent_id` AS `B_parent_id`, `r0`.`category` AS `B_category`, `r0`.`color` AS `B_color`, `r0`.`tea` AS `B_tea`",
-                "FROM `active_enum`",
-                "LEFT JOIN `active_enum_child` AS `r0` ON `active_enum`.`id` = `r0`.`parent_id`",
-            ]
-            .join(" ")
-        );
+        #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
+        {
+            assert_eq!(
+                select.build(DbBackend::MySql).to_string(),
+                select.build(DbBackend::Sqlite).to_string(),
+            );
+            assert_eq!(
+                select
+                    .build(DbBackend::MySql)
+                    .to_string(),
+                [
+                    "SELECT `active_enum`.`id` AS `A_id`, `active_enum`.`category` AS `A_category`, `active_enum`.`color` AS `A_color`, `active_enum`.`tea` AS `A_tea`,",
+                    "`r0`.`id` AS `B_id`, `r0`.`parent_id` AS `B_parent_id`, `r0`.`category` AS `B_category`, `r0`.`color` AS `B_color`, `r0`.`tea` AS `B_tea`",
+                    "FROM `active_enum`",
+                    "LEFT JOIN `active_enum_child` AS `r0` ON `active_enum`.`id` = `r0`.`parent_id`",
+                ]
+                .join(" ")
+            );
+        }
+        #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
             select
                 .build(DbBackend::Postgres)
@@ -533,20 +549,24 @@ mod tests {
             tea: None,
         };
         let select = active_enum_child_model.find_related(ActiveEnum);
-        assert_eq!(
-            select.build(DbBackend::MySql).to_string(),
-            select.build(DbBackend::Sqlite).to_string(),
-        );
-        assert_eq!(
-            select.build(DbBackend::MySql).to_string(),
-            [
-                "SELECT `active_enum`.`id`, `active_enum`.`category`, `active_enum`.`color`, `active_enum`.`tea`",
-                "FROM `active_enum`",
-                "INNER JOIN `active_enum_child` ON `active_enum_child`.`parent_id` = `active_enum`.`id`",
-                "WHERE `active_enum_child`.`id` = 1",
-            ]
-            .join(" ")
-        );
+        #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
+        {
+            assert_eq!(
+                select.build(DbBackend::MySql).to_string(),
+                select.build(DbBackend::Sqlite).to_string(),
+            );
+            assert_eq!(
+                select.build(DbBackend::MySql).to_string(),
+                [
+                    "SELECT `active_enum`.`id`, `active_enum`.`category`, `active_enum`.`color`, `active_enum`.`tea`",
+                    "FROM `active_enum`",
+                    "INNER JOIN `active_enum_child` ON `active_enum_child`.`parent_id` = `active_enum`.`id`",
+                    "WHERE `active_enum_child`.`id` = 1",
+                ]
+                .join(" ")
+            );
+        }
+        #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
             select.build(DbBackend::Postgres).to_string(),
             [
@@ -559,22 +579,26 @@ mod tests {
         );
 
         let select = ActiveEnumChild::find().find_also_related(ActiveEnum);
-        assert_eq!(
-            select.build(DbBackend::MySql).to_string(),
-            select.build(DbBackend::Sqlite).to_string(),
-        );
-        assert_eq!(
-            select
-                .build(DbBackend::MySql)
-                .to_string(),
-            [
-                "SELECT `active_enum_child`.`id` AS `A_id`, `active_enum_child`.`parent_id` AS `A_parent_id`, `active_enum_child`.`category` AS `A_category`, `active_enum_child`.`color` AS `A_color`, `active_enum_child`.`tea` AS `A_tea`,",
-                "`active_enum`.`id` AS `B_id`, `active_enum`.`category` AS `B_category`, `active_enum`.`color` AS `B_color`, `active_enum`.`tea` AS `B_tea`",
-                "FROM `active_enum_child`",
-                "LEFT JOIN `active_enum` ON `active_enum_child`.`parent_id` = `active_enum`.`id`",
-            ]
-            .join(" ")
-        );
+        #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
+        {
+            assert_eq!(
+                select.build(DbBackend::MySql).to_string(),
+                select.build(DbBackend::Sqlite).to_string(),
+            );
+            assert_eq!(
+                select
+                    .build(DbBackend::MySql)
+                    .to_string(),
+                [
+                    "SELECT `active_enum_child`.`id` AS `A_id`, `active_enum_child`.`parent_id` AS `A_parent_id`, `active_enum_child`.`category` AS `A_category`, `active_enum_child`.`color` AS `A_color`, `active_enum_child`.`tea` AS `A_tea`,",
+                    "`active_enum`.`id` AS `B_id`, `active_enum`.`category` AS `B_category`, `active_enum`.`color` AS `B_color`, `active_enum`.`tea` AS `B_tea`",
+                    "FROM `active_enum_child`",
+                    "LEFT JOIN `active_enum` ON `active_enum_child`.`parent_id` = `active_enum`.`id`",
+                ]
+                .join(" ")
+            );
+        }
+        #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
             select
                 .build(DbBackend::Postgres)
@@ -599,20 +623,24 @@ mod tests {
             tea: None,
         };
         let select = active_enum_child_model.find_linked(active_enum_child::ActiveEnumLink);
-        assert_eq!(
-            select.build(DbBackend::MySql).to_string(),
-            select.build(DbBackend::Sqlite).to_string(),
-        );
-        assert_eq!(
-            select.build(DbBackend::MySql).to_string(),
-            [
-                "SELECT `active_enum`.`id`, `active_enum`.`category`, `active_enum`.`color`, `active_enum`.`tea`",
-                "FROM `active_enum`",
-                "INNER JOIN `active_enum_child` AS `r0` ON `r0`.`parent_id` = `active_enum`.`id`",
-                "WHERE `r0`.`id` = 1",
-            ]
-            .join(" ")
-        );
+        #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
+        {
+            assert_eq!(
+                select.build(DbBackend::MySql).to_string(),
+                select.build(DbBackend::Sqlite).to_string(),
+            );
+            assert_eq!(
+                select.build(DbBackend::MySql).to_string(),
+                [
+                    "SELECT `active_enum`.`id`, `active_enum`.`category`, `active_enum`.`color`, `active_enum`.`tea`",
+                    "FROM `active_enum`",
+                    "INNER JOIN `active_enum_child` AS `r0` ON `r0`.`parent_id` = `active_enum`.`id`",
+                    "WHERE `r0`.`id` = 1",
+                ]
+                .join(" ")
+            );
+        }
+        #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
             select.build(DbBackend::Postgres).to_string(),
             [
@@ -625,22 +653,26 @@ mod tests {
         );
 
         let select = ActiveEnumChild::find().find_also_linked(active_enum_child::ActiveEnumLink);
-        assert_eq!(
-            select.build(DbBackend::MySql).to_string(),
-            select.build(DbBackend::Sqlite).to_string(),
-        );
-        assert_eq!(
-            select
-                .build(DbBackend::MySql)
-                .to_string(),
-            [
-                "SELECT `active_enum_child`.`id` AS `A_id`, `active_enum_child`.`parent_id` AS `A_parent_id`, `active_enum_child`.`category` AS `A_category`, `active_enum_child`.`color` AS `A_color`, `active_enum_child`.`tea` AS `A_tea`,",
-                "`r0`.`id` AS `B_id`, `r0`.`category` AS `B_category`, `r0`.`color` AS `B_color`, `r0`.`tea` AS `B_tea`",
-                "FROM `active_enum_child`",
-                "LEFT JOIN `active_enum` AS `r0` ON `active_enum_child`.`parent_id` = `r0`.`id`",
-            ]
-            .join(" ")
-        );
+        #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
+        {
+            assert_eq!(
+                select.build(DbBackend::MySql).to_string(),
+                select.build(DbBackend::Sqlite).to_string(),
+            );
+            assert_eq!(
+                select
+                    .build(DbBackend::MySql)
+                    .to_string(),
+                [
+                    "SELECT `active_enum_child`.`id` AS `A_id`, `active_enum_child`.`parent_id` AS `A_parent_id`, `active_enum_child`.`category` AS `A_category`, `active_enum_child`.`color` AS `A_color`, `active_enum_child`.`tea` AS `A_tea`,",
+                    "`r0`.`id` AS `B_id`, `r0`.`category` AS `B_category`, `r0`.`color` AS `B_color`, `r0`.`tea` AS `B_tea`",
+                    "FROM `active_enum_child`",
+                    "LEFT JOIN `active_enum` AS `r0` ON `active_enum_child`.`parent_id` = `r0`.`id`",
+                ]
+                .join(" ")
+            );
+        }
+        #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
             select
                 .build(DbBackend::Postgres)
