@@ -45,6 +45,11 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
                                         column_name = litstr.value();
                                     }
                                 }
+                                if name == "table_name" {
+                                    if let Lit::Str(litstr) = &nv.lit {
+                                        column_name = litstr.value();
+                                    }
+                                }
                             }
                         }
                     }

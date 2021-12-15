@@ -71,6 +71,40 @@ pub trait QuerySelect: Sized {
         self
     }
 
+    /// Add an offset expression
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .offset(10)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` OFFSET 10"
+    /// );
+    /// ```
+    fn offset(mut self, offset: u64) -> Self {
+        self.query().offset(offset);
+        self
+    }
+
+    /// Add a limit expression
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .limit(10)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 10"
+    /// );
+    /// ```
+    fn limit(mut self, limit: u64) -> Self {
+        self.query().limit(limit);
+        self
+    }
+
     /// Add a group by column
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
@@ -431,10 +465,12 @@ pub(crate) fn join_tbl_on_condition(
 
 pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> DynIden {
     match table_ref {
-        TableRef::Table(tbl) => SeaRc::clone(tbl),
-        TableRef::SchemaTable(_, tbl) => SeaRc::clone(tbl),
-        TableRef::TableAlias(tbl, _) => SeaRc::clone(tbl),
-        TableRef::SchemaTableAlias(_, tbl, _) => SeaRc::clone(tbl),
-        TableRef::SubQuery(_, tbl) => SeaRc::clone(tbl),
+        TableRef::Table(tbl)
+        | TableRef::SchemaTable(_, tbl)
+        | TableRef::DatabaseSchemaTable(_, _, tbl)
+        | TableRef::TableAlias(tbl, _)
+        | TableRef::SchemaTableAlias(_, tbl, _)
+        | TableRef::DatabaseSchemaTableAlias(_, _, tbl, _)
+        | TableRef::SubQuery(_, tbl) => SeaRc::clone(tbl),
     }
 }

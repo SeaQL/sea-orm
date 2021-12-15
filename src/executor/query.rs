@@ -199,15 +199,20 @@ macro_rules! try_getable_mysql {
     };
 }
 
-macro_rules! try_getable_postgres {
+macro_rules! try_getable_date_time {
     ( $type: ty ) => {
         impl TryGetable for $type {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
                 let _column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
-                    QueryResultRow::SqlxMySql(_) => {
-                        panic!("{} unsupported by sqlx-mysql", stringify!($type))
+                    QueryResultRow::SqlxMySql(row) => {
+                        use chrono::{DateTime, Utc};
+                        use sqlx::Row;
+                        row.try_get::<Option<DateTime<Utc>>, _>(_column.as_str())
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null))
+                            .map(|v| v.into())
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => {
@@ -217,8 +222,13 @@ macro_rules! try_getable_postgres {
                             .and_then(|opt| opt.ok_or(TryGetError::Null))
                     }
                     #[cfg(feature = "sqlx-sqlite")]
-                    QueryResultRow::SqlxSqlite(_) => {
-                        panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+                    QueryResultRow::SqlxSqlite(row) => {
+                        use chrono::{DateTime, Utc};
+                        use sqlx::Row;
+                        row.try_get::<Option<DateTime<Utc>>, _>(_column.as_str())
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null))
+                            .map(|v| v.into())
                     }
                     #[cfg(feature = "mock")]
                     #[allow(unused_variables)]
@@ -259,7 +269,7 @@ try_getable_all!(chrono::NaiveTime);
 try_getable_all!(chrono::NaiveDateTime);
 
 #[cfg(feature = "with-chrono")]
-try_getable_postgres!(chrono::DateTime<chrono::FixedOffset>);
+try_getable_date_time!(chrono::DateTime<chrono::FixedOffset>);
 
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;
@@ -451,6 +461,48 @@ where
     }
 }
 
+impl<A, B, C, D, E> TryGetableMany for (A, B, C, D, E)
+where
+    A: TryGetable,
+    B: TryGetable,
+    C: TryGetable,
+    D: TryGetable,
+    E: TryGetable,
+{
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
+        try_get_many_with_slice_len_of(5, cols)?;
+        Ok((
+            A::try_get(res, pre, &cols[0])?,
+            B::try_get(res, pre, &cols[1])?,
+            C::try_get(res, pre, &cols[2])?,
+            D::try_get(res, pre, &cols[3])?,
+            E::try_get(res, pre, &cols[4])?,
+        ))
+    }
+}
+
+impl<A, B, C, D, E, F> TryGetableMany for (A, B, C, D, E, F)
+where
+    A: TryGetable,
+    B: TryGetable,
+    C: TryGetable,
+    D: TryGetable,
+    E: TryGetable,
+    F: TryGetable,
+{
+    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
+        try_get_many_with_slice_len_of(6, cols)?;
+        Ok((
+            A::try_get(res, pre, &cols[0])?,
+            B::try_get(res, pre, &cols[1])?,
+            C::try_get(res, pre, &cols[2])?,
+            D::try_get(res, pre, &cols[3])?,
+            E::try_get(res, pre, &cols[4])?,
+            F::try_get(res, pre, &cols[5])?,
+        ))
+    }
+}
+
 fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), TryGetError> {
     if cols.len() < len {
         Err(TryGetError::DbErr(DbErr::Query(format!(
@@ -501,6 +553,8 @@ macro_rules! try_from_u64_err {
 try_from_u64_err!(A, B);
 try_from_u64_err!(A, B, C);
 try_from_u64_err!(A, B, C, D);
+try_from_u64_err!(A, B, C, D, E);
+try_from_u64_err!(A, B, C, D, E, F);
 
 macro_rules! try_from_u64_numeric {
     ( $type: ty ) => {
@@ -540,10 +594,28 @@ macro_rules! try_from_u64_string {
 
 try_from_u64_string!(String);
 
+try_from_u64_err!(bool);
+try_from_u64_err!(f32);
+try_from_u64_err!(f64);
 try_from_u64_err!(Vec<u8>);
 
-#[cfg(feature = "with-uuid")]
-try_from_u64_err!(uuid::Uuid);
+#[cfg(feature = "with-json")]
+try_from_u64_err!(serde_json::Value);
+
+#[cfg(feature = "with-chrono")]
+try_from_u64_err!(chrono::NaiveDate);
+
+#[cfg(feature = "with-chrono")]
+try_from_u64_err!(chrono::NaiveTime);
+
+#[cfg(feature = "with-chrono")]
+try_from_u64_err!(chrono::NaiveDateTime);
 
 #[cfg(feature = "with-chrono")]
 try_from_u64_err!(chrono::DateTime<chrono::FixedOffset>);
+
+#[cfg(feature = "with-rust_decimal")]
+try_from_u64_err!(rust_decimal::Decimal);
+
+#[cfg(feature = "with-uuid")]
+try_from_u64_err!(uuid::Uuid);
