@@ -284,6 +284,8 @@ pub mod schema;
 #[cfg(feature = "macros")]
 pub mod tests_cfg;
 mod util;
+/// Holds types and methods to perform metric collection
+pub mod metric;
 
 pub use database::*;
 pub use driver::*;

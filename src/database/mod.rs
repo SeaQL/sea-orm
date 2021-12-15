@@ -14,6 +14,7 @@ pub use db_connection::*;
 pub use mock::*;
 pub use statement::*;
 pub use stream::*;
+use tracing::instrument;
 pub use transaction::*;
 
 use crate::DbErr;
@@ -42,6 +43,7 @@ pub struct ConnectOptions {
 
 impl Database {
     /// Method to create a [DatabaseConnection] on a database
+    #[instrument(level = "trace", skip(opt))]
     pub async fn connect<C>(opt: C) -> Result<DatabaseConnection, DbErr>
     where
         C: Into<ConnectOptions>,

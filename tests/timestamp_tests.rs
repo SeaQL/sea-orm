@@ -4,7 +4,11 @@ pub use common::{features::*, setup::*, TestContext};
 use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
 
 #[sea_orm_macros::test]
-#[cfg(feature = "sqlx-postgres")]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("bakery_chain_schema_timestamp_tests").await;
     create_tables(&ctx.db).await?;

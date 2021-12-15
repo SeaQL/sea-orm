@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.4.2 - 2021-12-12
+
+### Fixed Issues
+* Delete::many() doesn't work when schema_name is defined https://github.com/SeaQL/sea-orm/issues/362
+* find_with_related panic https://github.com/SeaQL/sea-orm/issues/374
+* How to define rust type of TIMESTAMP? https://github.com/SeaQL/sea-orm/issues/344
+* Add Table on the generated Column enum https://github.com/SeaQL/sea-orm/issues/356
+
+### Merged PRs
+* `Delete::many()` with `TableRef` by @billy1624 in https://github.com/SeaQL/sea-orm/pull/363
+* Fix related & linked with enum columns by @billy1624 in https://github.com/SeaQL/sea-orm/pull/376
+* Temporary Fix: Handling MySQL & SQLite timestamp columns by @billy1624 in https://github.com/SeaQL/sea-orm/pull/379
+* Add feature to generate table Iden by @Sytten in https://github.com/SeaQL/sea-orm/pull/360
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.4.1...0.4.2
+
+## 0.4.1 - 2021-12-05
+
+### Fixed Issues
+* Is it possible to have 4 values Composite Key? https://github.com/SeaQL/sea-orm/issues/352
+* [sea-orm-cli] Better handling of relation generations https://github.com/SeaQL/sea-orm/issues/239
+
+### Merged PRs
+* Add TryFromU64 trait for `DateTime<FixedOffset>`. by @kev0960 in https://github.com/SeaQL/sea-orm/pull/331
+* add offset and limit by @lz1998 in https://github.com/SeaQL/sea-orm/pull/351
+* For some reason the `axum_example` fail to compile by @billy1624 in https://github.com/SeaQL/sea-orm/pull/355
+* Support Up to 6 Values Composite Primary Key by @billy1624 in https://github.com/SeaQL/sea-orm/pull/353
+* Codegen Handle Self Referencing & Multiple Relations to the Same Related Entity by @billy1624 in https://github.com/SeaQL/sea-orm/pull/347
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.4.0...0.4.1
+
 ## 0.4.0 - 2021-11-19
 
 ### Fixed Issues

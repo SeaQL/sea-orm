@@ -21,6 +21,11 @@ pub struct Model {
     pub r#typeof: i32,
     pub crate_: i32,
     pub self_: i32,
+    pub self_id1: i32,
+    pub self_id2: i32,
+    pub fruit_id1: i32,
+    pub fruit_id2: i32,
+    pub cake_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -33,6 +38,11 @@ pub enum Column {
     Typeof,
     Crate,
     Self_,
+    SelfId1,
+    SelfId2,
+    FruitId1,
+    FruitId2,
+    CakeId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -49,7 +59,13 @@ impl PrimaryKeyTrait for PrimaryKey {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
-pub enum Relation {}
+pub enum Relation {
+    SelfRef1,
+    SelfRef2,
+    Fruit1,
+    Fruit2,
+    Cake,
+}
 
 impl ColumnTrait for Column {
     type EntityName = Entity;
@@ -64,13 +80,45 @@ impl ColumnTrait for Column {
             Self::Typeof => ColumnType::Integer.def(),
             Self::Crate => ColumnType::Integer.def(),
             Self::Self_ => ColumnType::Integer.def(),
+            Self::SelfId1 => ColumnType::Integer.def(),
+            Self::SelfId2 => ColumnType::Integer.def(),
+            Self::FruitId1 => ColumnType::Integer.def(),
+            Self::FruitId2 => ColumnType::Integer.def(),
+            Self::CakeId => ColumnType::Integer.def(),
         }
     }
 }
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
-        panic!("No RelationDef")
+        match self {
+            Self::SelfRef1 => Entity::belongs_to(Entity)
+                .from(Column::SelfId1)
+                .to(Column::Id)
+                .into(),
+            Self::SelfRef2 => Entity::belongs_to(Entity)
+                .from(Column::SelfId2)
+                .to(Column::Id)
+                .into(),
+            Self::Fruit1 => Entity::belongs_to(super::fruit::Entity)
+                .from(Column::FruitId1)
+                .to(super::fruit::Column::Id)
+                .into(),
+            Self::Fruit2 => Entity::belongs_to(super::fruit::Entity)
+                .from(Column::FruitId2)
+                .to(super::fruit::Column::Id)
+                .into(),
+            Self::Cake => Entity::belongs_to(super::cake::Entity)
+                .from(Column::CakeId)
+                .to(super::cake::Column::Id)
+                .into(),
+        }
+    }
+}
+
+impl Related<super::cake::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Cake.def()
     }
 }
 
