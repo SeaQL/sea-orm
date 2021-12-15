@@ -146,7 +146,7 @@ pub async fn insert_active_enum_child(db: &DatabaseConnection) -> Result<(), DbE
         category: Set(Some(Category::Big)),
         color: Set(Some(Color::Black)),
         tea: Set(Some(Tea::EverydayTea)),
-        ..am
+        ..am.into_active_model()
     }
     .save(db)
     .await?;
