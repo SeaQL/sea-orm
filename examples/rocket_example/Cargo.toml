@@ -12,10 +12,10 @@ async-stream = { version = "^0.3" }
 async-trait = { version = "0.1" }
 futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
-rocket = { git = "https://github.com/SergioBenitez/Rocket.git", features = [
+rocket = { version = "0.5.0-rc.1", features = [
   "json",
 ] }
-rocket_dyn_templates = { git = "https://github.com/SergioBenitez/Rocket.git", features = [
+rocket_dyn_templates = { version = "0.1.0-rc.1", features = [
   "tera",
 ] }
 serde_json = { version = "^1" }

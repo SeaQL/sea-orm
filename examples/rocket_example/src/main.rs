@@ -7,7 +7,8 @@ use rocket::fs::{relative, FileServer};
 use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};
 use rocket::{Build, Request, Rocket};
-use rocket_dyn_templates::{context, Template};
+use rocket_dyn_templates::Template;
+use serde_json::json;
 
 use sea_orm::{entity::*, query::*};
 use sea_orm_rocket::{Connection, Database};
@@ -107,13 +108,13 @@ async fn list(
 
     Template::render(
         "index",
-        context! {
-            page: page,
-            posts_per_page: posts_per_page,
-            num_pages: num_pages,
-            posts: posts,
-            flash: flash.map(FlashMessage::into_inner),
-        },
+        json! ({
+            "page": page,
+            "posts_per_page": posts_per_page,
+            "num_pages": num_pages,
+            "posts": posts,
+            "flash": flash.map(FlashMessage::into_inner),
+        })
     )
 }
 
@@ -128,9 +129,9 @@ async fn edit(conn: Connection<'_, Db>, id: i32) -> Template {
 
     Template::render(
         "edit",
-        context! {
-            post: post,
-        },
+        json! ({
+            "post": post,
+        })
     )
 }
 
@@ -157,9 +158,9 @@ async fn destroy(conn: Connection<'_, Db>) -> Result<(), rocket::response::Debug
 pub fn not_found(req: &Request<'_>) -> Template {
     Template::render(
         "error/404",
-        context! {
-            uri: req.uri()
-        },
+        json! ({
+            "uri": req.uri()
+        })
     )
 }
 

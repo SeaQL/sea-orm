@@ -13,7 +13,6 @@ edition = "2021"
 all-features = true
 
 [dependencies.rocket]
-git = "https://github.com/SergioBenitez/Rocket.git"
 version = "0.5.0-rc.1"
 default-features = false
 
@@ -22,6 +21,6 @@ path = "../codegen"
 version = "0.1.0-rc"
 
 [dev-dependencies.rocket]
-git = "https://github.com/SergioBenitez/Rocket.git"
+version = "0.5.0-rc.1"
 default-features = false
 features = ["json"]
