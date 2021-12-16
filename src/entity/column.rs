@@ -9,6 +9,7 @@ pub struct ColumnDef {
     pub(crate) null: bool,
     pub(crate) unique: bool,
     pub(crate) indexed: bool,
+    pub(crate) unsigned: bool,
 }
 
 /// The type of column as defined in the SQL format
@@ -300,6 +301,7 @@ impl ColumnType {
             null: false,
             unique: false,
             indexed: false,
+            unsigned: false,
         }
     }
 
@@ -332,6 +334,12 @@ impl ColumnDef {
     /// Set the `indexed` field  to `true`
     pub fn indexed(mut self) -> Self {
         self.indexed = true;
+        self
+    }
+
+    /// Set the `unsigned` field  to `true`
+    pub fn unsigned(mut self) -> Self {
+        self.unsigned = true;
         self
     }
 

@@ -565,6 +565,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "name".to_owned(),
@@ -572,6 +573,7 @@ mod tests {
                         auto_increment: false,
                         not_null: false,
                         unique: false,
+                        unsigned: false,
                     },
                 ],
                 relations: vec![Relation {
@@ -601,6 +603,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "filling_id".to_owned(),
@@ -608,6 +611,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                 ],
                 relations: vec![
@@ -651,6 +655,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "name".to_owned(),
@@ -658,6 +663,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                 ],
                 relations: vec![],
@@ -678,6 +684,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "name".to_owned(),
@@ -685,6 +692,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "cake_id".to_owned(),
@@ -692,6 +700,7 @@ mod tests {
                         auto_increment: false,
                         not_null: false,
                         unique: false,
+                        unsigned: false,
                     },
                 ],
                 relations: vec![
@@ -730,6 +739,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "name".to_owned(),
@@ -737,6 +747,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "fruit_id".to_owned(),
@@ -744,6 +755,7 @@ mod tests {
                         auto_increment: false,
                         not_null: false,
                         unique: false,
+                        unsigned: false,
                     },
                 ],
                 relations: vec![Relation {
@@ -770,6 +782,7 @@ mod tests {
                         auto_increment: true,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "testing".to_owned(),
@@ -777,6 +790,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "rust".to_owned(),
@@ -784,6 +798,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "keywords".to_owned(),
@@ -791,6 +806,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "type".to_owned(),
@@ -798,6 +814,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "typeof".to_owned(),
@@ -805,6 +822,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "crate".to_owned(),
@@ -812,6 +830,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "self".to_owned(),
@@ -819,6 +838,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "self_id1".to_owned(),
@@ -826,6 +846,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "self_id2".to_owned(),
@@ -833,6 +854,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "fruit_id1".to_owned(),
@@ -840,6 +862,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "fruit_id2".to_owned(),
@@ -847,6 +870,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                     Column {
                         name: "cake_id".to_owned(),
@@ -854,6 +878,7 @@ mod tests {
                         auto_increment: false,
                         not_null: true,
                         unique: false,
+                        unsigned: false,
                     },
                 ],
                 relations: vec![

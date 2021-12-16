@@ -11,6 +11,7 @@ pub struct Column {
     pub(crate) auto_increment: bool,
     pub(crate) not_null: bool,
     pub(crate) unique: bool,
+    pub(crate) unsigned: bool,
 }
 
 impl Column {
@@ -29,10 +30,10 @@ impl Column {
             | ColumnType::String(_)
             | ColumnType::Text
             | ColumnType::Custom(_) => "String".to_owned(),
-            ColumnType::TinyInteger(_) => "i8".to_owned(),
-            ColumnType::SmallInteger(_) => "i16".to_owned(),
-            ColumnType::Integer(_) => "i32".to_owned(),
-            ColumnType::BigInteger(_) => "i64".to_owned(),
+            ColumnType::TinyInteger(_) => if self.unsigned { "u8" } else { "i8" }.to_owned(),
+            ColumnType::SmallInteger(_) => if self.unsigned { "u16" } else { "i16" }.to_owned(),
+            ColumnType::Integer(_) => if self.unsigned { "u32" } else { "i32" }.to_owned(),
+            ColumnType::BigInteger(_) => if self.unsigned { "u64" } else { "i64" }.to_owned(),
             ColumnType::Float(_) => "f32".to_owned(),
             ColumnType::Double(_) => "f64".to_owned(),
             ColumnType::Json | ColumnType::JsonBinary => "Json".to_owned(),
@@ -124,6 +125,11 @@ impl Column {
                 .unique()
             });
         }
+        if self.unsigned {
+            col_def.extend(quote! {
+                .unsigned()
+            });
+        }
         col_def
     }
 }
@@ -153,12 +159,17 @@ impl From<&ColumnDef> for Column {
             .get_column_spec()
             .iter()
             .any(|spec| matches!(spec, ColumnSpec::UniqueKey));
+        let unsigned = col_def
+            .get_column_spec()
+            .iter()
+            .any(|spec| matches!(spec, ColumnSpec::Unsigned));
         Self {
             name,
             col_type,
             auto_increment,
             not_null,
             unique,
+            unsigned,
         }
     }
 }
@@ -179,6 +190,7 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    unsigned: false,
                 }
             };
         }
