@@ -23,7 +23,9 @@ pub async fn create_applog(db: &DatabaseConnection) -> Result<(), DbErr> {
         id: 1,
         action: "Testing".to_owned(),
         json: Json::String("HI".to_owned()),
-        created_at: "2021-09-17T17:50:20+08:00".parse().unwrap(),
+        date_time_naive: "2021-09-17T17:50:20".parse().unwrap(),
+        timestamp_naive: "2021-09-17T17:50:20".parse().unwrap(),
+        timestamp_tz_timezone: "2021-09-17T17:50:20+10:00".parse().unwrap(),
     };
 
     let res = Applog::insert(log.clone().into_active_model())

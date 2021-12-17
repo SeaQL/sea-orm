@@ -45,13 +45,26 @@ pub async fn create_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(applog::Column::Action).string().not_null())
         .col(ColumnDef::new(applog::Column::Json).json().not_null())
         .col(
-            ColumnDef::new(applog::Column::CreatedAt)
+            ColumnDef::new(applog::Column::DateTimeNaive)
+                .date_time()
+                .not_null()
+                .default("1990-01-01 00:00:00"),
+        )
+        .col(
+            ColumnDef::new(applog::Column::TimestampNaive)
+                .timestamp()
+                .not_null()
+                .default("1990-01-01 00:00:00"),
+        )
+        .col(
+            ColumnDef::new(applog::Column::TimestampTzTimezone)
                 .timestamp_with_time_zone()
-                .not_null(),
+                .not_null()
+                .default("1990-01-01 00:00:00"),
         )
         .to_owned();
 
-    create_table(db, &stmt, Applog).await
+    create_table_without_asserts(db, &stmt).await
 }
 
 pub async fn create_metadata_table(db: &DbConn) -> Result<ExecResult, DbErr> {

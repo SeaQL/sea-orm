@@ -7,7 +7,9 @@ pub struct Model {
     pub id: i32,
     pub action: String,
     pub json: Json,
-    pub created_at: DateTimeWithTimeZone,
+    pub date_time_naive: DateTime,
+    pub timestamp_naive: DateTime,
+    pub timestamp_tz_timezone: DateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
