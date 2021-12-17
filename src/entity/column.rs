@@ -510,13 +510,21 @@ mod tests {
                 pub id: i32,
                 pub one: i32,
                 #[sea_orm(unique)]
-                pub two: i32,
+                pub two: i8,
                 #[sea_orm(indexed)]
-                pub three: i32,
+                pub three: i16,
                 #[sea_orm(nullable)]
                 pub four: i32,
                 #[sea_orm(unique, indexed, nullable)]
-                pub five: i32,
+                pub five: i64,
+                #[sea_orm(unique)]
+                pub six: u8,
+                #[sea_orm(indexed)]
+                pub seven: u16,
+                #[sea_orm(nullable)]
+                pub eight: u32,
+                #[sea_orm(unique, indexed, nullable)]
+                pub nine: u64,
             }
 
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -526,10 +534,13 @@ mod tests {
         }
 
         assert_eq!(hello::Column::One.def(), ColumnType::Integer.def());
-        assert_eq!(hello::Column::Two.def(), ColumnType::Integer.def().unique());
+        assert_eq!(
+            hello::Column::Two.def(),
+            ColumnType::TinyInteger.def().unique()
+        );
         assert_eq!(
             hello::Column::Three.def(),
-            ColumnType::Integer.def().indexed()
+            ColumnType::SmallInteger.def().indexed()
         );
         assert_eq!(
             hello::Column::Four.def(),
@@ -537,7 +548,28 @@ mod tests {
         );
         assert_eq!(
             hello::Column::Five.def(),
-            ColumnType::Integer.def().unique().indexed().nullable()
+            ColumnType::BigInteger.def().unique().indexed().nullable()
+        );
+        assert_eq!(
+            hello::Column::Six.def(),
+            ColumnType::TinyInteger.def().unique().unsigned()
+        );
+        assert_eq!(
+            hello::Column::Seven.def(),
+            ColumnType::SmallInteger.def().indexed().unsigned()
+        );
+        assert_eq!(
+            hello::Column::Eight.def(),
+            ColumnType::Integer.def().nullable().unsigned()
+        );
+        assert_eq!(
+            hello::Column::Nine.def(),
+            ColumnType::BigInteger
+                .def()
+                .unique()
+                .indexed()
+                .nullable()
+                .unsigned()
         );
     }
 

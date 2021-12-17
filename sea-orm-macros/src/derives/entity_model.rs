@@ -94,6 +94,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut indexed = false;
                     let mut ignore = false;
                     let mut unique = false;
+                    let mut unsigned = false;
                     let mut sql_type = None;
                     let mut column_name = None;
                     let mut enum_name = None;
@@ -230,10 +231,26 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             let col_type = match temp {
                                 "char" => quote! { Char(None) },
                                 "String" | "&str" => quote! { String(None) },
-                                "u8" | "i8" => quote! { TinyInteger },
-                                "u16" | "i16" => quote! { SmallInteger },
-                                "u32" | "i32" => quote! { Integer },
-                                "u64" | "i64" => quote! { BigInteger },
+                                "i8" => quote! { TinyInteger },
+                                "u8" => {
+                                    unsigned = true;
+                                    quote! { TinyInteger }
+                                }
+                                "i16" => quote! { SmallInteger },
+                                "u16" => {
+                                    unsigned = true;
+                                    quote! { SmallInteger }
+                                }
+                                "i32" => quote! { Integer },
+                                "u32" => {
+                                    unsigned = true;
+                                    quote! { Integer }
+                                }
+                                "i64" => quote! { BigInteger },
+                                "u64" => {
+                                    unsigned = true;
+                                    quote! { BigInteger }
+                                }
                                 "f32" => quote! { Float },
                                 "f64" => quote! { Double },
                                 "bool" => quote! { Boolean },
@@ -279,6 +296,9 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     }
                     if unique {
                         match_row = quote! { #match_row.unique() };
+                    }
+                    if unsigned {
+                        match_row = quote! { #match_row.unsigned() };
                     }
                     if let Some(default_value) = default_value {
                         match_row = quote! { #match_row.default_value(#default_value) };
