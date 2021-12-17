@@ -185,7 +185,6 @@ impl EntityTransformer {
                 }
             }
         }
-        println!("inverse_relations: {:#?}", inverse_relations);
         for (tbl_name, relations) in inverse_relations.into_iter() {
             if let Some(entity) = entities.get_mut(&tbl_name) {
                 for relation in relations.into_iter() {
