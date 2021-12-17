@@ -54,8 +54,10 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
             let url_password = url.password();
             let url_host = url.host_str();
 
+            let is_sqlite = url.scheme() == "sqlite";
+
             // Skip checking if it's SQLite
-            if url.scheme() != "sqlite" {
+            if !is_sqlite {
                 // Panic on any that are missing
                 if url_username.is_empty() {
                     panic!("No username was found in the database url");
@@ -84,34 +86,40 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                 }
             };
 
+            let database_name = if !is_sqlite {
+                // The database name should be the first element of the path string
+                //
+                // Throwing an error if there is no database name since it might be
+                // accepted by the database without it, while we're looking to dump
+                // information from a particular database
+                let database_name = url
+                    .path_segments()
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "There is no database name as part of the url path: {}",
+                            url.as_str()
+                        )
+                    })
+                    .next()
+                    .unwrap();
+
+                // An empty string as the database name is also an error
+                if database_name.is_empty() {
+                    panic!(
+                        "There is no database name as part of the url path: {}",
+                        url.as_str()
+                    );
+                }
+
+                database_name
+            } else {
+                Default::default()
+            };
+
             let table_stmts = match url.scheme() {
                 "mysql" => {
                     use sea_schema::mysql::discovery::SchemaDiscovery;
                     use sqlx::MySqlPool;
-
-                    // The database name should be the first element of the path string
-                    //
-                    // Throwing an error if there is no database name since it might be
-                    // accepted by the database without it, while we're looking to dump
-                    // information from a particular database
-                    let database_name = url
-                        .path_segments()
-                        .unwrap_or_else(|| {
-                            panic!(
-                                "There is no database name as part of the url path: {}",
-                                url.as_str()
-                            )
-                        })
-                        .next()
-                        .unwrap();
-
-                    // An empty string as the database name is also an error
-                    if database_name.is_empty() {
-                        panic!(
-                            "There is no database name as part of the url path: {}",
-                            url.as_str()
-                        );
-                    }
 
                     let connection = MySqlPool::connect(url.as_str()).await?;
                     let schema_discovery = SchemaDiscovery::new(connection, database_name);
