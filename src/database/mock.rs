@@ -4,8 +4,8 @@ use crate::{
     Statement,
 };
 use sea_query::{Value, ValueType, Values};
-use tracing::instrument;
 use std::{collections::BTreeMap, sync::Arc};
+use tracing::instrument;
 
 /// Defines a Mock database suitable for testing
 #[derive(Debug)]

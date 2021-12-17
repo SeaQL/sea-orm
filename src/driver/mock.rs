@@ -3,7 +3,6 @@ use crate::{
     Statement, Transaction,
 };
 use futures::Stream;
-use tracing::instrument;
 use std::{
     fmt::Debug,
     pin::Pin,
@@ -12,6 +11,7 @@ use std::{
         Arc, Mutex,
     },
 };
+use tracing::instrument;
 
 /// Defines a database driver for the [MockDatabase]
 #[derive(Debug)]

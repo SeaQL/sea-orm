@@ -52,7 +52,10 @@ impl SqlxPostgresConnector {
         }
         match options.pool_options().connect_with(opt).await {
             Ok(pool) => Ok(DatabaseConnection::SqlxPostgresPoolConnection(
-                SqlxPostgresPoolConnection { pool, metric_callback: None },
+                SqlxPostgresPoolConnection {
+                    pool,
+                    metric_callback: None,
+                },
             )),
             Err(e) => Err(sqlx_error_to_conn_err(e)),
         }
@@ -62,7 +65,10 @@ impl SqlxPostgresConnector {
 impl SqlxPostgresConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_postgres_pool(pool: PgPool) -> DatabaseConnection {
-        DatabaseConnection::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection { pool, metric_callback: None })
+        DatabaseConnection::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
+            pool,
+            metric_callback: None,
+        })
     }
 }
 
@@ -136,7 +142,11 @@ impl SqlxPostgresPoolConnection {
         debug_print!("{}", stmt);
 
         if let Ok(conn) = self.pool.acquire().await {
-            Ok(QueryStream::from((conn, stmt, self.metric_callback.clone())))
+            Ok(QueryStream::from((
+                conn,
+                stmt,
+                self.metric_callback.clone(),
+            )))
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),

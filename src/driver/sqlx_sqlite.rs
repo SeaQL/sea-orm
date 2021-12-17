@@ -56,7 +56,10 @@ impl SqlxSqliteConnector {
         }
         match options.pool_options().connect_with(opt).await {
             Ok(pool) => Ok(DatabaseConnection::SqlxSqlitePoolConnection(
-                SqlxSqlitePoolConnection { pool, metric_callback: None },
+                SqlxSqlitePoolConnection {
+                    pool,
+                    metric_callback: None,
+                },
             )),
             Err(e) => Err(sqlx_error_to_conn_err(e)),
         }
@@ -66,7 +69,10 @@ impl SqlxSqliteConnector {
 impl SqlxSqliteConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_sqlite_pool(pool: SqlitePool) -> DatabaseConnection {
-        DatabaseConnection::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection { pool, metric_callback: None })
+        DatabaseConnection::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection {
+            pool,
+            metric_callback: None,
+        })
     }
 }
 
@@ -140,7 +146,11 @@ impl SqlxSqlitePoolConnection {
         debug_print!("{}", stmt);
 
         if let Ok(conn) = self.pool.acquire().await {
-            Ok(QueryStream::from((conn, stmt, self.metric_callback.clone())))
+            Ok(QueryStream::from((
+                conn,
+                stmt,
+                self.metric_callback.clone(),
+            )))
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),
