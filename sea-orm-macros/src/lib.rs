@@ -598,6 +598,7 @@ pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
         fn #name() #ret {
             let _ = ::tracing_subscriber::fmt()
                 .with_max_level(::tracing::Level::DEBUG)
+                .with_test_writer()
                 .try_init();
             crate::block_on!(async { #body })
         }
