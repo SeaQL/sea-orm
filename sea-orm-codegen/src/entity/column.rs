@@ -183,36 +183,45 @@ mod tests {
 
     fn setup() -> Vec<Column> {
         macro_rules! make_col {
-            ($name:expr, $col_type:expr) => {
+            ($name:expr, $col_type:expr, $unsigned:expr) => {
                 Column {
                     name: $name.to_owned(),
                     col_type: $col_type,
                     auto_increment: false,
                     not_null: false,
                     unique: false,
-                    unsigned: false,
+                    unsigned: $unsigned,
                 }
             };
         }
         vec![
-            make_col!("id", ColumnType::String(Some(255))),
+            make_col!("id", ColumnType::String(Some(255)), false),
             make_col!(
                 "cake_id",
-                ColumnType::Custom(SeaRc::new(Alias::new("cus_col")))
+                ColumnType::Custom(SeaRc::new(Alias::new("cus_col"))),
+                false
             ),
-            make_col!("CakeId", ColumnType::TinyInteger(None)),
-            make_col!("CakeId", ColumnType::SmallInteger(None)),
-            make_col!("CakeId", ColumnType::Integer(Some(11))),
-            make_col!("CakeFillingId", ColumnType::BigInteger(None)),
-            make_col!("cake-filling-id", ColumnType::Float(None)),
-            make_col!("CAKE_FILLING_ID", ColumnType::Double(None)),
-            make_col!("CAKE-FILLING-ID", ColumnType::Binary(None)),
-            make_col!("CAKE", ColumnType::Boolean),
-            make_col!("date", ColumnType::Date),
-            make_col!("time", ColumnType::Time(None)),
-            make_col!("date_time", ColumnType::DateTime(None)),
-            make_col!("timestamp", ColumnType::Timestamp(None)),
-            make_col!("timestamp_tz", ColumnType::TimestampWithTimeZone(None)),
+            make_col!("CakeId", ColumnType::TinyInteger(None), false),
+            make_col!("CakeId", ColumnType::TinyInteger(Some(9)), true),
+            make_col!("CakeId", ColumnType::SmallInteger(None), false),
+            make_col!("CakeId", ColumnType::SmallInteger(Some(10)), true),
+            make_col!("CakeId", ColumnType::Integer(None), false),
+            make_col!("CakeId", ColumnType::Integer(Some(11)), true),
+            make_col!("CakeFillingId", ColumnType::BigInteger(None), false),
+            make_col!("CakeFillingId", ColumnType::BigInteger(Some(12)), true),
+            make_col!("cake-filling-id", ColumnType::Float(None), false),
+            make_col!("CAKE_FILLING_ID", ColumnType::Double(None), false),
+            make_col!("CAKE-FILLING-ID", ColumnType::Binary(None), false),
+            make_col!("CAKE", ColumnType::Boolean, false),
+            make_col!("date", ColumnType::Date, false),
+            make_col!("time", ColumnType::Time(None), false),
+            make_col!("date_time", ColumnType::DateTime(None), false),
+            make_col!("timestamp", ColumnType::Timestamp(None), false),
+            make_col!(
+                "timestamp_tz",
+                ColumnType::TimestampWithTimeZone(None),
+                false
+            ),
         ]
     }
 
@@ -225,6 +234,10 @@ mod tests {
             "cake_id",
             "cake_id",
             "cake_id",
+            "cake_id",
+            "cake_id",
+            "cake_id",
+            "cake_filling_id",
             "cake_filling_id",
             "cake_filling_id",
             "cake_filling_id",
@@ -250,6 +263,10 @@ mod tests {
             "CakeId",
             "CakeId",
             "CakeId",
+            "CakeId",
+            "CakeId",
+            "CakeId",
+            "CakeFillingId",
             "CakeFillingId",
             "CakeFillingId",
             "CakeFillingId",
@@ -273,9 +290,13 @@ mod tests {
             "String",
             "String",
             "i8",
+            "u8",
             "i16",
+            "u16",
             "i32",
+            "u32",
             "i64",
+            "u64",
             "f32",
             "f64",
             "Vec<u8>",
@@ -307,8 +328,12 @@ mod tests {
             "ColumnType::String(Some(255u32)).def()",
             "ColumnType::Custom(\"cus_col\".to_owned()).def()",
             "ColumnType::TinyInteger.def()",
+            "ColumnType::TinyInteger.def()",
+            "ColumnType::SmallInteger.def()",
             "ColumnType::SmallInteger.def()",
             "ColumnType::Integer.def()",
+            "ColumnType::Integer.def()",
+            "ColumnType::BigInteger.def()",
             "ColumnType::BigInteger.def()",
             "ColumnType::Float.def()",
             "ColumnType::Double.def()",
@@ -323,6 +348,7 @@ mod tests {
         for (mut col, col_def) in columns.into_iter().zip(col_defs) {
             let mut col_def: TokenStream = col_def.parse().unwrap();
 
+            col.unsigned = false;
             col.not_null = true;
             assert_eq!(col.get_def().to_string(), col_def.to_string());
 
@@ -332,6 +358,10 @@ mod tests {
 
             col.unique = true;
             col_def.extend(quote!(.unique()));
+            assert_eq!(col.get_def().to_string(), col_def.to_string());
+
+            col.unsigned = true;
+            col_def.extend(quote!(.unsigned()));
             assert_eq!(col.get_def().to_string(), col_def.to_string());
         }
     }
