@@ -71,6 +71,7 @@ pub async fn left_join() {
         .await
         .unwrap()
         .unwrap();
+    assert_eq!(result.name.as_str(), "Baker 1");
     assert_eq!(result.bakery_name, Some("SeaSide Bakery".to_string()));
 
     let select = baker::Entity::find()
@@ -340,6 +341,7 @@ pub async fn group_by() {
         .unwrap()
         .unwrap();
 
+    assert_eq!(result.name.as_str(), "Kate");
     assert_eq!(result.number_orders, Some(2));
     assert_eq!(
         result.total_spent,

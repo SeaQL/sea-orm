@@ -2,6 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 pub(crate) type Callback = Arc<dyn Fn(&Info<'_>) + Send + Sync>;
 
+#[allow(unused_imports)]
 pub(crate) use inner::{metric, metric_ok};
 
 #[derive(Debug)]
@@ -16,6 +17,7 @@ pub struct Info<'a> {
 }
 
 mod inner {
+    #[allow(unused_macros)]
     macro_rules! metric {
         ($metric_callback:expr, $stmt:expr, $code:block) => {{
             let _start = std::time::SystemTime::now();
@@ -32,6 +34,7 @@ mod inner {
         }};
     }
     pub(crate) use metric;
+    #[allow(unused_macros)]
     macro_rules! metric_ok {
         ($metric_callback:expr, $stmt:expr, $code:block) => {{
             let _start = std::time::SystemTime::now();
