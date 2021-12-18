@@ -236,7 +236,7 @@ mod tests {
             Update::one(fruit::ActiveModel {
                 id: ActiveValue::set(1),
                 name: ActiveValue::set("Orange".to_owned()),
-                cake_id: ActiveValue::unset(),
+                cake_id: ActiveValue::not_set(),
             })
             .build(DbBackend::Postgres)
             .to_string(),

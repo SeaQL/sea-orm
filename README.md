@@ -136,12 +136,12 @@ Fruit::update_many()
 ### Save
 ```rust
 let banana = fruit::ActiveModel {
-    id: Unset(None),
+    id: NotSet,
     name: Set("Banana".to_owned()),
     ..Default::default()
 };
 
-// create, because primary key `id` is `Unset`
+// create, because primary key `id` is `NotSet`
 let mut banana = banana.save(db).await?.into_active_model();
 
 banana.name = Set("Banana Mongo".to_owned());

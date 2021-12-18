@@ -80,7 +80,7 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
         impl std::convert::From<<Entity as EntityTrait>::Model> for ActiveModel {
             fn from(m: <Entity as EntityTrait>::Model) -> Self {
                 Self {
-                    #(#field: sea_orm::unchanged_active_value_not_intended_for_public_use(m.#field)),*
+                    #(#field: sea_orm::ActiveValue::unchanged(m.#field)),*
                 }
             }
         }
@@ -99,18 +99,18 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
             fn take(&mut self, c: <Self::Entity as EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 match c {
                     #(<Self::Entity as EntityTrait>::Column::#name => {
-                        let mut value = sea_orm::ActiveValue::unset();
+                        let mut value = sea_orm::ActiveValue::not_set();
                         std::mem::swap(&mut value, &mut self.#field);
                         value.into_wrapped_value()
                     },)*
-                    _ => sea_orm::ActiveValue::unset(),
+                    _ => sea_orm::ActiveValue::not_set(),
                 }
             }
 
             fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 match c {
                     #(<Self::Entity as EntityTrait>::Column::#name => self.#field.clone().into_wrapped_value(),)*
-                    _ => sea_orm::ActiveValue::unset(),
+                    _ => sea_orm::ActiveValue::not_set(),
                 }
             }
 
@@ -121,23 +121,23 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
                 }
             }
 
-            fn unset(&mut self, c: <Self::Entity as EntityTrait>::Column) {
+            fn not_set(&mut self, c: <Self::Entity as EntityTrait>::Column) {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::unset(),)*
+                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::not_set(),)*
                     _ => {},
                 }
             }
 
-            fn is_unset(&self, c: <Self::Entity as EntityTrait>::Column) -> bool {
+            fn is_not_set(&self, c: <Self::Entity as EntityTrait>::Column) -> bool {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.is_unset(),)*
+                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.is_not_set(),)*
                     _ => panic!("This ActiveModel does not have this field"),
                 }
             }
 
             fn default() -> Self {
                 Self {
-                    #(#field: sea_orm::ActiveValue::unset()),*
+                    #(#field: sea_orm::ActiveValue::not_set()),*
                 }
             }
         }
