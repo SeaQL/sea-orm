@@ -10,9 +10,9 @@ pub use ActiveValue::NotSet;
 /// Defines a stateful value used in ActiveModel.
 ///
 /// There are three possible state represented by three enum variants.
-/// - [ActiveValue::Set]: A [Value] was set
-/// - [ActiveValue::Unchanged]: A [Value] remain unchanged
-/// - [ActiveValue::NotSet]: A NULL value similar to [Option::None]
+/// - [ActiveValue::Set]: A defined [Value] actively being set
+/// - [ActiveValue::Unchanged]: A defined [Value] remain unchanged
+/// - [ActiveValue::NotSet]: An undefined [Value]
 ///
 /// The stateful value is useful when constructing UPDATE SQL statement,
 /// see an example below.
@@ -40,11 +40,11 @@ pub enum ActiveValue<V>
 where
     V: Into<Value>,
 {
-    /// A [Value] was set
+    /// A defined [Value] actively being set
     Set(V),
-    /// A [Value] remain unchanged
+    /// A defined [Value] remain unchanged
     Unchanged(V),
-    /// A NULL value similar to [Option::None]
+    /// An undefined [Value]
     NotSet,
 }
 
