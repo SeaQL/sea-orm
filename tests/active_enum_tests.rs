@@ -27,25 +27,25 @@ async fn main() -> Result<(), DbErr> {
 pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     use active_enum::*;
 
-    let am = ActiveModel {
-        category: Set(None),
-        color: Set(None),
-        tea: Set(None),
-        ..Default::default()
-    }
-    .insert(db)
-    .await?;
+    let model = Model {
+        id: 1,
+        category: None,
+        color: None,
+        tea: None,
+    };
 
-    let model = Entity::find().one(db).await?.unwrap();
     assert_eq!(
         model,
-        Model {
-            id: 1,
-            category: None,
-            color: None,
-            tea: None,
+        ActiveModel {
+            category: Set(None),
+            color: Set(None),
+            tea: Set(None),
+            ..Default::default()
         }
+        .insert(db)
+        .await?
     );
+    assert_eq!(model, Entity::find().one(db).await?.unwrap());
     assert_eq!(
         model,
         Entity::find()
@@ -58,11 +58,11 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             .unwrap()
     );
 
-    let am = ActiveModel {
+    let _ = ActiveModel {
         category: Set(Some(Category::Big)),
         color: Set(Some(Color::Black)),
         tea: Set(Some(Tea::EverydayTea)),
-        ..am
+        ..model.into_active_model()
     }
     .save(db)
     .await?;
@@ -89,7 +89,7 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             .unwrap()
     );
 
-    let res = am.delete(db).await?;
+    let res = model.into_active_model().delete(db).await?;
 
     assert_eq!(res.rows_affected, 1);
     assert_eq!(Entity::find().one(db).await?, None);
@@ -146,7 +146,7 @@ pub async fn insert_active_enum_child(db: &DatabaseConnection) -> Result<(), DbE
         category: Set(Some(Category::Big)),
         color: Set(Some(Color::Black)),
         tea: Set(Some(Tea::EverydayTea)),
-        ..am
+        ..am.into_active_model()
     }
     .save(db)
     .await?;
@@ -401,15 +401,15 @@ mod tests {
             color: None,
             tea: None,
         };
-        let select = active_enum_model.find_related(ActiveEnumChild);
+        let _select = active_enum_model.find_related(ActiveEnumChild);
         #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
         {
             assert_eq!(
-                select.build(DbBackend::MySql).to_string(),
-                select.build(DbBackend::Sqlite).to_string(),
+                _select.build(DbBackend::MySql).to_string(),
+                _select.build(DbBackend::Sqlite).to_string(),
             );
             assert_eq!(
-                select.build(DbBackend::MySql).to_string(),
+                _select.build(DbBackend::MySql).to_string(),
                 [
                     "SELECT `active_enum_child`.`id`, `active_enum_child`.`parent_id`, `active_enum_child`.`category`, `active_enum_child`.`color`, `active_enum_child`.`tea`",
                     "FROM `active_enum_child`",
@@ -421,7 +421,7 @@ mod tests {
         }
         #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
-            select.build(DbBackend::Postgres).to_string(),
+            _select.build(DbBackend::Postgres).to_string(),
             [
                 r#"SELECT "active_enum_child"."id", "active_enum_child"."parent_id", "active_enum_child"."category", "active_enum_child"."color", CAST("active_enum_child"."tea" AS text)"#,
                 r#"FROM "public"."active_enum_child""#,
@@ -431,15 +431,15 @@ mod tests {
             .join(" ")
         );
 
-        let select = ActiveEnum::find().find_also_related(ActiveEnumChild);
+        let _select = ActiveEnum::find().find_also_related(ActiveEnumChild);
         #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
         {
             assert_eq!(
-                select.build(DbBackend::MySql).to_string(),
-                select.build(DbBackend::Sqlite).to_string(),
+                _select.build(DbBackend::MySql).to_string(),
+                _select.build(DbBackend::Sqlite).to_string(),
             );
             assert_eq!(
-                select
+                _select
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
@@ -453,7 +453,7 @@ mod tests {
         }
         #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
-            select
+            _select
                 .build(DbBackend::Postgres)
                 .to_string(),
             [
@@ -474,15 +474,15 @@ mod tests {
             color: None,
             tea: None,
         };
-        let select = active_enum_model.find_linked(active_enum::ActiveEnumChildLink);
+        let _select = active_enum_model.find_linked(active_enum::ActiveEnumChildLink);
         #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
         {
             assert_eq!(
-                select.build(DbBackend::MySql).to_string(),
-                select.build(DbBackend::Sqlite).to_string(),
+                _select.build(DbBackend::MySql).to_string(),
+                _select.build(DbBackend::Sqlite).to_string(),
             );
             assert_eq!(
-                select.build(DbBackend::MySql).to_string(),
+                _select.build(DbBackend::MySql).to_string(),
                 [
                     "SELECT `active_enum_child`.`id`, `active_enum_child`.`parent_id`, `active_enum_child`.`category`, `active_enum_child`.`color`, `active_enum_child`.`tea`",
                     "FROM `active_enum_child`",
@@ -494,7 +494,7 @@ mod tests {
         }
         #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
-            select.build(DbBackend::Postgres).to_string(),
+            _select.build(DbBackend::Postgres).to_string(),
             [
                 r#"SELECT "active_enum_child"."id", "active_enum_child"."parent_id", "active_enum_child"."category", "active_enum_child"."color", CAST("active_enum_child"."tea" AS text)"#,
                 r#"FROM "public"."active_enum_child""#,
@@ -504,15 +504,15 @@ mod tests {
             .join(" ")
         );
 
-        let select = ActiveEnum::find().find_also_linked(active_enum::ActiveEnumChildLink);
+        let _select = ActiveEnum::find().find_also_linked(active_enum::ActiveEnumChildLink);
         #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
         {
             assert_eq!(
-                select.build(DbBackend::MySql).to_string(),
-                select.build(DbBackend::Sqlite).to_string(),
+                _select.build(DbBackend::MySql).to_string(),
+                _select.build(DbBackend::Sqlite).to_string(),
             );
             assert_eq!(
-                select
+                _select
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
@@ -526,7 +526,7 @@ mod tests {
         }
         #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
-            select
+            _select
                 .build(DbBackend::Postgres)
                 .to_string(),
             [
@@ -548,15 +548,15 @@ mod tests {
             color: None,
             tea: None,
         };
-        let select = active_enum_child_model.find_related(ActiveEnum);
+        let _select = active_enum_child_model.find_related(ActiveEnum);
         #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
         {
             assert_eq!(
-                select.build(DbBackend::MySql).to_string(),
-                select.build(DbBackend::Sqlite).to_string(),
+                _select.build(DbBackend::MySql).to_string(),
+                _select.build(DbBackend::Sqlite).to_string(),
             );
             assert_eq!(
-                select.build(DbBackend::MySql).to_string(),
+                _select.build(DbBackend::MySql).to_string(),
                 [
                     "SELECT `active_enum`.`id`, `active_enum`.`category`, `active_enum`.`color`, `active_enum`.`tea`",
                     "FROM `active_enum`",
@@ -568,7 +568,7 @@ mod tests {
         }
         #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
-            select.build(DbBackend::Postgres).to_string(),
+            _select.build(DbBackend::Postgres).to_string(),
             [
                 r#"SELECT "active_enum"."id", "active_enum"."category", "active_enum"."color", CAST("active_enum"."tea" AS text)"#,
                 r#"FROM "public"."active_enum""#,
@@ -578,15 +578,15 @@ mod tests {
             .join(" ")
         );
 
-        let select = ActiveEnumChild::find().find_also_related(ActiveEnum);
+        let _select = ActiveEnumChild::find().find_also_related(ActiveEnum);
         #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
         {
             assert_eq!(
-                select.build(DbBackend::MySql).to_string(),
-                select.build(DbBackend::Sqlite).to_string(),
+                _select.build(DbBackend::MySql).to_string(),
+                _select.build(DbBackend::Sqlite).to_string(),
             );
             assert_eq!(
-                select
+                _select
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
@@ -600,7 +600,7 @@ mod tests {
         }
         #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
-            select
+            _select
                 .build(DbBackend::Postgres)
                 .to_string(),
             [
@@ -622,15 +622,15 @@ mod tests {
             color: None,
             tea: None,
         };
-        let select = active_enum_child_model.find_linked(active_enum_child::ActiveEnumLink);
+        let _select = active_enum_child_model.find_linked(active_enum_child::ActiveEnumLink);
         #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
         {
             assert_eq!(
-                select.build(DbBackend::MySql).to_string(),
-                select.build(DbBackend::Sqlite).to_string(),
+                _select.build(DbBackend::MySql).to_string(),
+                _select.build(DbBackend::Sqlite).to_string(),
             );
             assert_eq!(
-                select.build(DbBackend::MySql).to_string(),
+                _select.build(DbBackend::MySql).to_string(),
                 [
                     "SELECT `active_enum`.`id`, `active_enum`.`category`, `active_enum`.`color`, `active_enum`.`tea`",
                     "FROM `active_enum`",
@@ -642,7 +642,7 @@ mod tests {
         }
         #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
-            select.build(DbBackend::Postgres).to_string(),
+            _select.build(DbBackend::Postgres).to_string(),
             [
                 r#"SELECT "active_enum"."id", "active_enum"."category", "active_enum"."color", CAST("active_enum"."tea" AS text)"#,
                 r#"FROM "public"."active_enum""#,
@@ -652,15 +652,15 @@ mod tests {
             .join(" ")
         );
 
-        let select = ActiveEnumChild::find().find_also_linked(active_enum_child::ActiveEnumLink);
+        let _select = ActiveEnumChild::find().find_also_linked(active_enum_child::ActiveEnumLink);
         #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
         {
             assert_eq!(
-                select.build(DbBackend::MySql).to_string(),
-                select.build(DbBackend::Sqlite).to_string(),
+                _select.build(DbBackend::MySql).to_string(),
+                _select.build(DbBackend::Sqlite).to_string(),
             );
             assert_eq!(
-                select
+                _select
                     .build(DbBackend::MySql)
                     .to_string(),
                 [
@@ -674,7 +674,7 @@ mod tests {
         }
         #[cfg(feature = "sqlx-postgres")]
         assert_eq!(
-            select
+            _select
                 .build(DbBackend::Postgres)
                 .to_string(),
             [

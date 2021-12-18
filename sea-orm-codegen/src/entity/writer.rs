@@ -113,11 +113,7 @@ impl EntityWriter {
     pub fn write_mod(&self) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        let code_blocks: Vec<TokenStream> = self
-            .entities
-            .iter()
-            .map(Self::gen_mod)
-            .collect();
+        let code_blocks: Vec<TokenStream> = self.entities.iter().map(Self::gen_mod).collect();
         Self::write(
             &mut lines,
             vec![quote! {
@@ -143,11 +139,7 @@ impl EntityWriter {
     pub fn write_prelude(&self) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        let code_blocks = self
-            .entities
-            .iter()
-            .map(Self::gen_prelude_use)
-            .collect();
+        let code_blocks = self.entities.iter().map(Self::gen_prelude_use).collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
             name: "prelude.rs".to_owned(),

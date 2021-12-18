@@ -43,8 +43,7 @@ pub async fn test_update_cake(db: &DbConn) {
     cake_am.name = Set("Extra chocolate mud cake".to_owned());
     cake_am.price = Set(dec!(20.00));
 
-    let _cake_update_res: cake::ActiveModel =
-        cake_am.update(db).await.expect("could not update cake");
+    let _cake_update_res: cake::Model = cake_am.update(db).await.expect("could not update cake");
 
     let cake: Option<cake::Model> = Cake::find_by_id(cake_insert_res.last_insert_id)
         .one(db)
@@ -80,7 +79,7 @@ pub async fn test_update_bakery(db: &DbConn) {
     bakery_am.name = Set("SeaBreeze Bakery".to_owned());
     bakery_am.profit_margin = Set(12.00);
 
-    let _bakery_update_res: bakery::ActiveModel =
+    let _bakery_update_res: bakery::Model =
         bakery_am.update(db).await.expect("could not update bakery");
 
     let bakery: Option<bakery::Model> = Bakery::find_by_id(bakery_insert_res.last_insert_id)
@@ -109,13 +108,13 @@ pub async fn test_update_deleted_customer(db: &DbConn) {
         init_n_customers + 1
     );
 
-    let customer_id = customer.id.clone();
+    let customer_id = customer.id;
 
-    let _ = customer.delete(db).await;
+    let _ = customer.into_active_model().delete(db).await;
     assert_eq!(Customer::find().count(db).await.unwrap(), init_n_customers);
 
     let customer = customer::ActiveModel {
-        id: customer_id.clone(),
+        id: Set(customer_id),
         name: Set("John 2".to_owned()),
         ..Default::default()
     };
@@ -131,7 +130,7 @@ pub async fn test_update_deleted_customer(db: &DbConn) {
 
     assert_eq!(Customer::find().count(db).await.unwrap(), init_n_customers);
 
-    let customer: Option<customer::Model> = Customer::find_by_id(customer_id.clone().unwrap())
+    let customer: Option<customer::Model> = Customer::find_by_id(customer_id)
         .one(db)
         .await
         .expect("could not find customer");

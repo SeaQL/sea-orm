@@ -70,15 +70,15 @@ impl ActiveModelBehavior for ActiveModel {
         }
     }
 
-    fn after_save(self, insert: bool) -> Result<Self, DbErr> {
+    fn after_save(model: Model, insert: bool) -> Result<Model, DbErr> {
         use rust_decimal_macros::dec;
-        if self.price.as_ref() < &dec!(0) {
+        if model.price < dec!(0) {
             Err(DbErr::Custom(format!(
                 "[after_save] Invalid Price, insert: {}",
                 insert
             )))
         } else {
-            Ok(self)
+            Ok(model)
         }
     }
 

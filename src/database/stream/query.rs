@@ -28,29 +28,77 @@ pub struct QueryStream {
 }
 
 #[cfg(feature = "sqlx-mysql")]
-impl From<(PoolConnection<sqlx::MySql>, Statement, Option<crate::metric::Callback>)> for QueryStream {
-    fn from((conn, stmt, metric_callback): (PoolConnection<sqlx::MySql>, Statement, Option<crate::metric::Callback>)) -> Self {
+impl
+    From<(
+        PoolConnection<sqlx::MySql>,
+        Statement,
+        Option<crate::metric::Callback>,
+    )> for QueryStream
+{
+    fn from(
+        (conn, stmt, metric_callback): (
+            PoolConnection<sqlx::MySql>,
+            Statement,
+            Option<crate::metric::Callback>,
+        ),
+    ) -> Self {
         QueryStream::build(stmt, InnerConnection::MySql(conn), metric_callback)
     }
 }
 
 #[cfg(feature = "sqlx-postgres")]
-impl From<(PoolConnection<sqlx::Postgres>, Statement, Option<crate::metric::Callback>)> for QueryStream {
-    fn from((conn, stmt, metric_callback): (PoolConnection<sqlx::Postgres>, Statement, Option<crate::metric::Callback>)) -> Self {
+impl
+    From<(
+        PoolConnection<sqlx::Postgres>,
+        Statement,
+        Option<crate::metric::Callback>,
+    )> for QueryStream
+{
+    fn from(
+        (conn, stmt, metric_callback): (
+            PoolConnection<sqlx::Postgres>,
+            Statement,
+            Option<crate::metric::Callback>,
+        ),
+    ) -> Self {
         QueryStream::build(stmt, InnerConnection::Postgres(conn), metric_callback)
     }
 }
 
 #[cfg(feature = "sqlx-sqlite")]
-impl From<(PoolConnection<sqlx::Sqlite>, Statement, Option<crate::metric::Callback>)> for QueryStream {
-    fn from((conn, stmt, metric_callback): (PoolConnection<sqlx::Sqlite>, Statement, Option<crate::metric::Callback>)) -> Self {
+impl
+    From<(
+        PoolConnection<sqlx::Sqlite>,
+        Statement,
+        Option<crate::metric::Callback>,
+    )> for QueryStream
+{
+    fn from(
+        (conn, stmt, metric_callback): (
+            PoolConnection<sqlx::Sqlite>,
+            Statement,
+            Option<crate::metric::Callback>,
+        ),
+    ) -> Self {
         QueryStream::build(stmt, InnerConnection::Sqlite(conn), metric_callback)
     }
 }
 
 #[cfg(feature = "mock")]
-impl From<(Arc<crate::MockDatabaseConnection>, Statement, Option<crate::metric::Callback>)> for QueryStream {
-    fn from((conn, stmt, metric_callback): (Arc<crate::MockDatabaseConnection>, Statement, Option<crate::metric::Callback>)) -> Self {
+impl
+    From<(
+        Arc<crate::MockDatabaseConnection>,
+        Statement,
+        Option<crate::metric::Callback>,
+    )> for QueryStream
+{
+    fn from(
+        (conn, stmt, metric_callback): (
+            Arc<crate::MockDatabaseConnection>,
+            Statement,
+            Option<crate::metric::Callback>,
+        ),
+    ) -> Self {
         QueryStream::build(stmt, InnerConnection::Mock(conn), metric_callback)
     }
 }
@@ -63,50 +111,52 @@ impl std::fmt::Debug for QueryStream {
 
 impl QueryStream {
     #[instrument(level = "trace", skip(metric_callback))]
-    fn build(stmt: Statement, conn: InnerConnection, metric_callback: Option<crate::metric::Callback>) -> QueryStream {
+    fn build(
+        stmt: Statement,
+        conn: InnerConnection,
+        metric_callback: Option<crate::metric::Callback>,
+    ) -> QueryStream {
         QueryStreamBuilder {
             stmt,
             conn,
             metric_callback,
-            stream_builder: |conn, stmt, metric_callback| {
-                match conn {
-                    #[cfg(feature = "sqlx-mysql")]
-                    InnerConnection::MySql(c) => {
-                        let query = crate::driver::sqlx_mysql::sqlx_query(stmt);
-                        crate::metric::metric_ok!(metric_callback, stmt, {
-                            Box::pin(
-                                c.fetch(query)
-                                    .map_ok(Into::into)
-                                    .map_err(crate::sqlx_error_to_query_err),
-                            )
-                        })
-                    }
-                    #[cfg(feature = "sqlx-postgres")]
-                    InnerConnection::Postgres(c) => {
-                        let query = crate::driver::sqlx_postgres::sqlx_query(stmt);
-                        crate::metric::metric_ok!(metric_callback, stmt, {
-                            Box::pin(
-                                c.fetch(query)
-                                    .map_ok(Into::into)
-                                    .map_err(crate::sqlx_error_to_query_err),
-                            )
-                        })
-                    }
-                    #[cfg(feature = "sqlx-sqlite")]
-                    InnerConnection::Sqlite(c) => {
-                        let query = crate::driver::sqlx_sqlite::sqlx_query(stmt);
-                        crate::metric::metric_ok!(metric_callback, stmt, {
-                            Box::pin(
-                                c.fetch(query)
-                                    .map_ok(Into::into)
-                                    .map_err(crate::sqlx_error_to_query_err),
-                            )
-                        })
-                    }
-                    #[cfg(feature = "mock")]
-                    InnerConnection::Mock(c) => c.fetch(stmt),
+            stream_builder: |conn, stmt, _metric_callback| match conn {
+                #[cfg(feature = "sqlx-mysql")]
+                InnerConnection::MySql(c) => {
+                    let query = crate::driver::sqlx_mysql::sqlx_query(stmt);
+                    crate::metric::metric_ok!(_metric_callback, stmt, {
+                        Box::pin(
+                            c.fetch(query)
+                                .map_ok(Into::into)
+                                .map_err(crate::sqlx_error_to_query_err),
+                        )
+                    })
                 }
-            }
+                #[cfg(feature = "sqlx-postgres")]
+                InnerConnection::Postgres(c) => {
+                    let query = crate::driver::sqlx_postgres::sqlx_query(stmt);
+                    crate::metric::metric_ok!(_metric_callback, stmt, {
+                        Box::pin(
+                            c.fetch(query)
+                                .map_ok(Into::into)
+                                .map_err(crate::sqlx_error_to_query_err),
+                        )
+                    })
+                }
+                #[cfg(feature = "sqlx-sqlite")]
+                InnerConnection::Sqlite(c) => {
+                    let query = crate::driver::sqlx_sqlite::sqlx_query(stmt);
+                    crate::metric::metric_ok!(_metric_callback, stmt, {
+                        Box::pin(
+                            c.fetch(query)
+                                .map_ok(Into::into)
+                                .map_err(crate::sqlx_error_to_query_err),
+                        )
+                    })
+                }
+                #[cfg(feature = "mock")]
+                InnerConnection::Mock(c) => c.fetch(stmt),
+            },
         }
         .build()
     }

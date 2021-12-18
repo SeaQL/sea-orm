@@ -175,7 +175,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///         id: 15,
     ///         name: "Apple Pie".to_owned(),
     ///     }
-    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(
@@ -228,7 +227,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///         id: 15,
     ///         name: "Apple Pie".to_owned(),
     ///     }
-    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(
@@ -250,17 +248,17 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # Ok(())
     /// # }
     /// ```
-    async fn insert<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
+    async fn insert<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
     {
         let am = ActiveModelBehavior::before_save(self, true)?;
-        let am = <Self::Entity as EntityTrait>::insert(am)
+        let model = <Self::Entity as EntityTrait>::insert(am)
             .exec_with_returning(db)
             .await?;
-        ActiveModelBehavior::after_save(am, true)
+        Self::after_save(model, true)
     }
 
     /// Perform the `UPDATE` operation on an ActiveModel
@@ -299,7 +297,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///         name: "Orange".to_owned(),
     ///         cake_id: None,
     ///     }
-    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(
@@ -354,7 +351,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///         name: "Orange".to_owned(),
     ///         cake_id: None,
     ///     }
-    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(
@@ -374,26 +370,26 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # Ok(())
     /// # }
     /// ```
-    async fn update<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
+    async fn update<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
     {
         let am = ActiveModelBehavior::before_save(self, false)?;
-        let am = Self::Entity::update(am).exec(db).await?;
-        ActiveModelBehavior::after_save(am, false)
+        let model: <Self::Entity as EntityTrait>::Model = Self::Entity::update(am).exec(db).await?;
+        Self::after_save(model, false)
     }
 
     /// Insert the model if primary key is not_set, update otherwise.
     /// Only works if the entity has auto increment primary key.
-    async fn save<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
+    async fn save<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
     {
-        let mut am = self;
+        let am = self;
         let mut is_update = true;
         for key in <Self::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
@@ -403,11 +399,10 @@ pub trait ActiveModelTrait: Clone + Debug {
             }
         }
         if !is_update {
-            am = am.insert(db).await?;
+            am.insert(db).await
         } else {
-            am = am.update(db).await?;
+            am.update(db).await
         }
-        Ok(am)
     }
 
     /// Delete an active model by its primary key
@@ -506,8 +501,11 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
     }
 
     /// Will be called after saving
-    fn after_save(self, insert: bool) -> Result<Self, DbErr> {
-        Ok(self)
+    fn after_save(
+        model: <Self::Entity as EntityTrait>::Model,
+        insert: bool,
+    ) -> Result<<Self::Entity as EntityTrait>::Model, DbErr> {
+        Ok(model)
     }
 
     /// Will be called before deleting

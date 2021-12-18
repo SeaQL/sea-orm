@@ -44,40 +44,43 @@ impl<'a> TransactionStream<'a> {
             stmt,
             conn,
             metric_callback,
-            stream_builder: |conn, stmt, metric_callback| {
+            stream_builder: |conn, stmt, _metric_callback| {
                 Box::pin(async move {
                     match conn.deref_mut() {
                         #[cfg(feature = "sqlx-mysql")]
                         InnerConnection::MySql(c) => {
                             let query = crate::driver::sqlx_mysql::sqlx_query(stmt);
-                            crate::metric::metric_ok!(metric_callback, stmt, {
+                            crate::metric::metric_ok!(_metric_callback, stmt, {
                                 Box::pin(
                                     c.fetch(query)
                                         .map_ok(Into::into)
                                         .map_err(crate::sqlx_error_to_query_err),
-                                ) as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>
+                                )
+                                    as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>
                             })
                         }
                         #[cfg(feature = "sqlx-postgres")]
                         InnerConnection::Postgres(c) => {
                             let query = crate::driver::sqlx_postgres::sqlx_query(stmt);
-                            crate::metric::metric_ok!(metric_callback, stmt, {
+                            crate::metric::metric_ok!(_metric_callback, stmt, {
                                 Box::pin(
                                     c.fetch(query)
                                         .map_ok(Into::into)
                                         .map_err(crate::sqlx_error_to_query_err),
-                                ) as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>
+                                )
+                                    as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>
                             })
                         }
                         #[cfg(feature = "sqlx-sqlite")]
                         InnerConnection::Sqlite(c) => {
                             let query = crate::driver::sqlx_sqlite::sqlx_query(stmt);
-                            crate::metric::metric_ok!(metric_callback, stmt, {
+                            crate::metric::metric_ok!(_metric_callback, stmt, {
                                 Box::pin(
                                     c.fetch(query)
                                         .map_ok(Into::into)
                                         .map_err(crate::sqlx_error_to_query_err),
-                                ) as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>
+                                )
+                                    as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>>
                             })
                         }
                         #[cfg(feature = "mock")]

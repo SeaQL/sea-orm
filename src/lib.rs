@@ -184,7 +184,7 @@
 //! pear.name = Set("Sweet pear".to_owned());
 //!
 //! // update one
-//! let pear: fruit::ActiveModel = pear.update(db).await?;
+//! let pear: fruit::Model = pear.update(db).await?;
 //!
 //! // update many: UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."name" LIKE '%Apple%'
 //! Fruit::update_many()
@@ -207,7 +207,7 @@
 //! };
 //!
 //! // create, because primary key `id` is `NotSet`
-//! let mut banana = banana.save(db).await?;
+//! let mut banana = banana.save(db).await?.into_active_model();
 //!
 //! banana.name = Set("Banana Mongo".to_owned());
 //!
@@ -276,6 +276,8 @@ pub mod entity;
 pub mod error;
 /// This module performs execution of queries on a Model or ActiveModel
 mod executor;
+/// Holds types and methods to perform metric collection
+pub mod metric;
 /// Holds types and methods to perform queries
 pub mod query;
 /// Holds types that defines the schemas of an Entity
@@ -284,8 +286,6 @@ pub mod schema;
 #[cfg(feature = "macros")]
 pub mod tests_cfg;
 mod util;
-/// Holds types and methods to perform metric collection
-pub mod metric;
 
 pub use database::*;
 pub use driver::*;

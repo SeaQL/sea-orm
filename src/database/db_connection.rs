@@ -3,8 +3,8 @@ use crate::{
     StatementBuilder, TransactionError,
 };
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
-use tracing::instrument;
 use std::{future::Future, pin::Pin};
+use tracing::instrument;
 use url::Url;
 
 #[cfg(feature = "sqlx-dep")]
@@ -247,18 +247,24 @@ impl DatabaseConnection {
 
 impl DatabaseConnection {
     /// Sets a callback to metric this connection
-    pub fn set_metric_callback<F>(&mut self, callback: F)
+    pub fn set_metric_callback<F>(&mut self, _callback: F)
     where
         F: Fn(&crate::metric::Info<'_>) + Send + Sync + 'static,
     {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.set_metric_callback(callback),
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => {
+                conn.set_metric_callback(_callback)
+            }
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.set_metric_callback(callback),
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
+                conn.set_metric_callback(_callback)
+            }
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.set_metric_callback(callback),
-            _ => {},
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => {
+                conn.set_metric_callback(_callback)
+            }
+            _ => {}
         }
     }
 }

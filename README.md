@@ -123,7 +123,7 @@ let mut pear: fruit::ActiveModel = pear.unwrap().into();
 pear.name = Set("Sweet pear".to_owned());
 
 // update one
-let pear: fruit::ActiveModel = pear.update(db).await?;
+let pear: fruit::Model = pear.update(db).await?;
 
 // update many: UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."name" LIKE '%Apple%'
 Fruit::update_many()
@@ -142,7 +142,7 @@ let banana = fruit::ActiveModel {
 };
 
 // create, because primary key `id` is `NotSet`
-let mut banana = banana.save(db).await?;
+let mut banana = banana.save(db).await?.into_active_model();
 
 banana.name = Set("Banana Mongo".to_owned());
 

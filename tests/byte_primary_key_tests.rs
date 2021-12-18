@@ -52,16 +52,16 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
         ))
     );
 
-    let update_res = Entity::update(updated_active_model.clone())
+    let update_res = Entity::update(updated_active_model)
         .filter(Column::Id.eq(vec![1, 2, 3]))
         .exec(db)
         .await?;
 
     assert_eq!(
         update_res,
-        ActiveModel {
-            value: Unchanged("First Row (Updated)".to_owned()),
-            ..model.clone().into_active_model()
+        Model {
+            id: vec![1, 2, 3],
+            value: "First Row (Updated)".to_owned(),
         }
     );
 

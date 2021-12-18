@@ -55,7 +55,7 @@ where
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<A, DbErr>> + '_
+    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + '_
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait<'a>,
@@ -92,13 +92,13 @@ where
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<A, DbErr>> + '_
+    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + '_
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait<'a>,
         A: 'a,
     {
-        exec_insert_with_returning(self.primary_key, self.query, db)
+        exec_insert_with_returning::<A, _>(self.primary_key, self.query, db)
     }
 }
 
@@ -140,7 +140,7 @@ async fn exec_insert_with_returning<'a, A, C>(
     primary_key: Option<ValueTuple>,
     mut insert_statement: InsertStatement,
     db: &'a C,
-) -> Result<A, DbErr>
+) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
 where
     <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
     C: ConnectionTrait<'a>,
@@ -175,7 +175,7 @@ where
         }
     };
     match found {
-        Some(model) => Ok(model.into_active_model()),
+        Some(model) => Ok(model),
         None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
     }
 }

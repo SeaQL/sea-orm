@@ -3,11 +3,10 @@ mod post;
 mod setup;
 
 use axum::{
-    error_handling::HandleErrorExt,
     extract::{Extension, Form, Path, Query},
     http::StatusCode,
     response::Html,
-    routing::{get, post, service_method_routing},
+    routing::{get, post, get_service},
     AddExtensionLayer, Router, Server,
 };
 use flash::{get_flash_cookie, post_response, PostResponse};
@@ -47,11 +46,11 @@ async fn main() -> anyhow::Result<()> {
         .route("/delete/:id", post(delete_post))
         .nest(
             "/static",
-            service_method_routing::get(ServeDir::new(concat!(
+            get_service(ServeDir::new(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/static"
             )))
-            .handle_error(|error: std::io::Error| {
+            .handle_error(|error: std::io::Error| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Unhandled internal error: {}", error),

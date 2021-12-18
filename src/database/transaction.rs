@@ -7,8 +7,8 @@ use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 use futures::lock::Mutex;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::{pool::PoolConnection, TransactionManager};
-use tracing::instrument;
 use std::{future::Future, pin::Pin, sync::Arc};
+use tracing::instrument;
 
 // a Transaction is just a sugar for a connection where START TRANSACTION has been executed
 /// Defines a database transaction, whether it is an open transaction and the type of
@@ -76,7 +76,8 @@ impl DatabaseTransaction {
             Arc::new(Mutex::new(InnerConnection::Mock(inner))),
             backend,
             metric_callback,
-        ).await
+        )
+        .await
     }
 
     #[instrument(level = "trace", skip(metric_callback))]
@@ -354,9 +355,14 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
         &'a self,
         stmt: Statement,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Stream, DbErr>> + 'a>> {
-        Box::pin(
-            async move { Ok(crate::TransactionStream::build(self.conn.lock().await, stmt, self.metric_callback.clone()).await) },
-        )
+        Box::pin(async move {
+            Ok(crate::TransactionStream::build(
+                self.conn.lock().await,
+                stmt,
+                self.metric_callback.clone(),
+            )
+            .await)
+        })
     }
 
     #[instrument(level = "trace")]
@@ -364,8 +370,9 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
         DatabaseTransaction::begin(
             Arc::clone(&self.conn),
             self.backend,
-            self.metric_callback.clone()
-        ).await
+            self.metric_callback.clone(),
+        )
+        .await
     }
 
     /// Execute the function inside a transaction.
