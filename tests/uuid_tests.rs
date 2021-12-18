@@ -28,12 +28,11 @@ pub async fn insert_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
         bytes: vec![1, 2, 3],
         date: Some(Date::from_ymd(2021, 9, 27)),
         time: Some(Time::from_hms(11, 32, 55)),
-    }
-    .into_active_model();
+    };
 
-    let result = metadata.clone().insert(db).await?;
+    let result = metadata.clone().into_active_model().insert(db).await?;
 
-    assert_eq!(metadata, result);
+    assert_eq!(result, metadata);
 
     Ok(())
 }

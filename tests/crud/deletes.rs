@@ -29,7 +29,11 @@ pub async fn test_delete_cake(db: &DbConn) {
     let cakes = Cake::find().all(db).await.unwrap();
     assert_eq!(cakes.len(), initial_cakes + 1);
 
-    let _result = cake.delete(db).await.expect("failed to delete cake");
+    let _result = cake
+        .into_active_model()
+        .delete(db)
+        .await
+        .expect("failed to delete cake");
 
     let cakes = Cake::find().all(db).await.unwrap();
     assert_eq!(cakes.len(), initial_cakes);
@@ -52,7 +56,11 @@ pub async fn test_delete_bakery(db: &DbConn) {
         initial_bakeries + 1
     );
 
-    let _result = bakery.delete(db).await.expect("failed to delete bakery");
+    let _result = bakery
+        .into_active_model()
+        .delete(db)
+        .await
+        .expect("failed to delete bakery");
 
     assert_eq!(
         Bakery::find().all(db).await.unwrap().len(),

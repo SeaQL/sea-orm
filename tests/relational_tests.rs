@@ -35,7 +35,7 @@ pub async fn left_join() {
             "home": "0395555555",
             "address": "12 Test St, Testville, Vic, Australia"
         })),
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        bakery_id: Set(Some(bakery.id.clone())),
         ..Default::default()
     }
     .save(&ctx.db)
@@ -124,8 +124,8 @@ pub async fn right_join() {
     .expect("could not insert customer");
 
     let _order = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone().unwrap()),
-        customer_id: Set(customer_kate.id.clone().unwrap()),
+        bakery_id: Set(bakery.id.clone()),
+        customer_id: Set(customer_kate.id.clone()),
         total: Set(dec!(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -210,8 +210,8 @@ pub async fn inner_join() {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone().unwrap()),
-        customer_id: Set(customer_kate.id.clone().unwrap()),
+        bakery_id: Set(bakery.id.clone()),
+        customer_id: Set(customer_kate.id.clone()),
         total: Set(dec!(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -222,8 +222,8 @@ pub async fn inner_join() {
     .expect("could not insert order");
 
     let kate_order_2 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone().unwrap()),
-        customer_id: Set(customer_kate.id.clone().unwrap()),
+        bakery_id: Set(bakery.id.clone()),
+        customer_id: Set(customer_kate.id.clone()),
         total: Set(dec!(100.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -254,12 +254,12 @@ pub async fn inner_join() {
     assert_eq!(results.len(), 2);
     assert!((&results)
         .into_iter()
-        .any(|result| result.name == customer_kate.name.clone().unwrap()
-            && result.order_total == Some(kate_order_1.total.clone().unwrap())));
+        .any(|result| result.name == customer_kate.name.clone()
+            && result.order_total == Some(kate_order_1.total.clone())));
     assert!((&results)
         .into_iter()
-        .any(|result| result.name == customer_kate.name.clone().unwrap()
-            && result.order_total == Some(kate_order_2.total.clone().unwrap())));
+        .any(|result| result.name == customer_kate.name.clone()
+            && result.order_total == Some(kate_order_2.total.clone())));
 
     ctx.delete().await;
 }
@@ -292,8 +292,8 @@ pub async fn group_by() {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone().unwrap()),
-        customer_id: Set(customer_kate.id.clone().unwrap()),
+        bakery_id: Set(bakery.id.clone()),
+        customer_id: Set(customer_kate.id.clone()),
         total: Set(dec!(99.95)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -304,8 +304,8 @@ pub async fn group_by() {
     .expect("could not insert order");
 
     let kate_order_2 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone().unwrap()),
-        customer_id: Set(customer_kate.id.clone().unwrap()),
+        bakery_id: Set(bakery.id.clone()),
+        customer_id: Set(customer_kate.id.clone()),
         total: Set(dec!(200.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -345,27 +345,15 @@ pub async fn group_by() {
     assert_eq!(result.number_orders, Some(2));
     assert_eq!(
         result.total_spent,
-        Some(kate_order_1.total.clone().unwrap() + kate_order_2.total.clone().unwrap())
+        Some(kate_order_1.total.clone() + kate_order_2.total.clone())
     );
     assert_eq!(
         result.min_spent,
-        Some(
-            kate_order_1
-                .total
-                .clone()
-                .unwrap()
-                .min(kate_order_2.total.clone().unwrap())
-        )
+        Some(kate_order_1.total.clone().min(kate_order_2.total.clone()))
     );
     assert_eq!(
         result.max_spent,
-        Some(
-            kate_order_1
-                .total
-                .clone()
-                .unwrap()
-                .max(kate_order_2.total.clone().unwrap())
-        )
+        Some(kate_order_1.total.clone().max(kate_order_2.total.clone()))
     );
     ctx.delete().await;
 }
@@ -399,8 +387,8 @@ pub async fn having() {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone().unwrap()),
-        customer_id: Set(customer_kate.id.clone().unwrap()),
+        bakery_id: Set(bakery.id.clone()),
+        customer_id: Set(customer_kate.id.clone()),
         total: Set(dec!(100.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -411,8 +399,8 @@ pub async fn having() {
     .expect("could not insert order");
 
     let _kate_order_2 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone().unwrap()),
-        customer_id: Set(customer_kate.id.clone().unwrap()),
+        bakery_id: Set(bakery.id.clone()),
+        customer_id: Set(customer_kate.id.clone()),
         total: Set(dec!(12.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -431,8 +419,8 @@ pub async fn having() {
     .expect("could not insert customer");
 
     let _bob_order_1 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone().unwrap()),
-        customer_id: Set(customer_bob.id.clone().unwrap()),
+        bakery_id: Set(bakery.id.clone()),
+        customer_id: Set(customer_bob.id.clone()),
         total: Set(dec!(50.0)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -443,8 +431,8 @@ pub async fn having() {
     .expect("could not insert order");
 
     let _bob_order_2 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone().unwrap()),
-        customer_id: Set(customer_bob.id.clone().unwrap()),
+        bakery_id: Set(bakery.id.clone()),
+        customer_id: Set(customer_bob.id.clone()),
         total: Set(dec!(50.0)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -474,11 +462,8 @@ pub async fn having() {
         .unwrap();
 
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].name, customer_kate.name.clone().unwrap());
-    assert_eq!(
-        results[0].order_total,
-        Some(kate_order_1.total.clone().unwrap())
-    );
+    assert_eq!(results[0].name, customer_kate.name.clone());
+    assert_eq!(results[0].order_total, Some(kate_order_1.total.clone()));
 
     ctx.delete().await;
 }

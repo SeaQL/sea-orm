@@ -408,7 +408,7 @@ pub async fn transaction_with_active_model_behaviour() -> Result<(), DbErr> {
         assert_eq!(cake::Entity::find().all(&txn).await?.len(), 2);
 
         assert_eq!(
-            readonly_cake_1.delete(&txn).await.err(),
+            readonly_cake_1.into_active_model().delete(&txn).await.err(),
             Some(DbErr::Custom(
                 "[before_delete] Cannot be deleted".to_owned()
             ))
@@ -428,7 +428,7 @@ pub async fn transaction_with_active_model_behaviour() -> Result<(), DbErr> {
         assert_eq!(cake::Entity::find().all(&txn).await?.len(), 3);
 
         assert_eq!(
-            readonly_cake_2.delete(&txn).await.err(),
+            readonly_cake_2.into_active_model().delete(&txn).await.err(),
             Some(DbErr::Custom("[after_delete] Cannot be deleted".to_owned()))
         );
 

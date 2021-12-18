@@ -42,7 +42,7 @@ async fn seed_data(db: &DatabaseConnection) {
     let baker_1 = baker::ActiveModel {
         name: Set("Baker 1".to_owned()),
         contact_details: Set(serde_json::json!({})),
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        bakery_id: Set(Some(bakery.id.clone())),
         ..Default::default()
     }
     .save(db)
@@ -52,7 +52,7 @@ async fn seed_data(db: &DatabaseConnection) {
     let _baker_2 = baker::ActiveModel {
         name: Set("Baker 2".to_owned()),
         contact_details: Set(serde_json::json!({})),
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        bakery_id: Set(Some(bakery.id.clone())),
         ..Default::default()
     }
     .save(db)
@@ -64,7 +64,7 @@ async fn seed_data(db: &DatabaseConnection) {
         price: Set(dec!(10.25)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
-        bakery_id: Set(Some(bakery.id.clone().unwrap())),
+        bakery_id: Set(Some(bakery.id.clone())),
         ..Default::default()
     };
 
@@ -75,7 +75,7 @@ async fn seed_data(db: &DatabaseConnection) {
 
     let cake_baker = cakes_bakers::ActiveModel {
         cake_id: Set(cake_insert_res.last_insert_id as i32),
-        baker_id: Set(baker_1.id.clone().unwrap()),
+        baker_id: Set(baker_1.id.clone()),
         ..Default::default()
     };
 
@@ -97,8 +97,8 @@ async fn seed_data(db: &DatabaseConnection) {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone().unwrap()),
-        customer_id: Set(customer_kate.id.clone().unwrap()),
+        bakery_id: Set(bakery.id.clone()),
+        customer_id: Set(customer_kate.id.clone()),
         total: Set(dec!(99.95)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -112,7 +112,7 @@ async fn seed_data(db: &DatabaseConnection) {
         cake_id: Set(cake_insert_res.last_insert_id as i32),
         price: Set(dec!(10.00)),
         quantity: Set(12),
-        order_id: Set(kate_order_1.id.clone().unwrap()),
+        order_id: Set(kate_order_1.id.clone()),
         ..Default::default()
     }
     .save(db)
@@ -123,7 +123,7 @@ async fn seed_data(db: &DatabaseConnection) {
         cake_id: Set(cake_insert_res.last_insert_id as i32),
         price: Set(dec!(50.00)),
         quantity: Set(2),
-        order_id: Set(kate_order_1.id.clone().unwrap()),
+        order_id: Set(kate_order_1.id.clone()),
         ..Default::default()
     }
     .save(db)
@@ -243,7 +243,7 @@ async fn create_order(db: &DatabaseConnection, cake: cake::Model) {
 
     let order = order::ActiveModel {
         bakery_id: Set(cake.bakery_id.unwrap()),
-        customer_id: Set(another_customer.id.clone().unwrap()),
+        customer_id: Set(another_customer.id.clone()),
         total: Set(dec!(200.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -257,7 +257,7 @@ async fn create_order(db: &DatabaseConnection, cake: cake::Model) {
         cake_id: Set(cake.id),
         price: Set(dec!(10.00)),
         quantity: Set(300),
-        order_id: Set(order.id.clone().unwrap()),
+        order_id: Set(order.id.clone()),
         ..Default::default()
     }
     .save(db)
@@ -276,7 +276,8 @@ pub async fn test_delete_bakery(db: &DatabaseConnection) {
     }
     .save(db)
     .await
-    .expect("could not insert bakery");
+    .expect("could not insert bakery")
+    .into_active_model();
 
     assert_eq!(
         Bakery::find().all(db).await.unwrap().len(),

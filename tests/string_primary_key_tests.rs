@@ -29,9 +29,17 @@ pub async fn insert_repository(db: &DatabaseConnection) -> Result<(), DbErr> {
     }
     .into_active_model();
 
-    let result = repository.clone().insert(db).await?;
+    let result = repository.insert(db).await?;
 
-    assert_eq!(repository, result);
+    assert_eq!(
+        result,
+        repository::Model {
+            id: "unique-id-001".to_owned(),
+            owner: "GC".to_owned(),
+            name: "G.C.".to_owned(),
+            description: None,
+        }
+    );
 
     Ok(())
 }
@@ -69,12 +77,20 @@ pub async fn create_and_update_repository(db: &DatabaseConnection) -> Result<(),
         ))
     );
 
-    let update_res = Repository::update(updated_active_model.clone())
+    let update_res = Repository::update(updated_active_model)
         .filter(repository::Column::Id.eq("unique-id-002".to_owned()))
         .exec(db)
         .await?;
 
-    assert_eq!(update_res, updated_active_model);
+    assert_eq!(
+        update_res,
+        repository::Model {
+            id: "unique-id-002".to_owned(),
+            owner: "GC".to_owned(),
+            name: "G.C.".to_owned(),
+            description: Some("description...".to_owned()),
+        }
+    );
 
     let updated_active_model = repository::ActiveModel {
         description: Set(None),
@@ -86,7 +102,15 @@ pub async fn create_and_update_repository(db: &DatabaseConnection) -> Result<(),
         .exec(db)
         .await?;
 
-    assert_eq!(update_res, updated_active_model);
+    assert_eq!(
+        update_res,
+        repository::Model {
+            id: "unique-id-002".to_owned(),
+            owner: "GC".to_owned(),
+            name: "G.C.".to_owned(),
+            description: None,
+        }
+    );
 
     Ok(())
 }
