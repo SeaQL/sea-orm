@@ -152,12 +152,16 @@ let banana = banana.save(db).await?;
 ```
 ### Delete
 ```rust
-let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
-let orange: fruit::ActiveModel = orange.unwrap().into();
-
 // delete one
-fruit::Entity::delete(orange).exec(db).await?;
+let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
+let orange: fruit::Model = orange.unwrap();
+fruit::Entity::delete(orange.into_active_model())
+    .exec(db)
+    .await?;
+
 // or simply
+let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
+let orange: fruit::Model = orange.unwrap();
 orange.delete(db).await?;
 
 // delete many: DELETE FROM "fruit" WHERE "fruit"."name" LIKE 'Orange'

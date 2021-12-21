@@ -110,7 +110,7 @@ pub async fn test_update_deleted_customer(db: &DbConn) {
 
     let customer_id = customer.id;
 
-    let _ = customer.into_active_model().delete(db).await;
+    let _ = customer.delete(db).await;
     assert_eq!(Customer::find().count(db).await.unwrap(), init_n_customers);
 
     let customer = customer::ActiveModel {

@@ -276,8 +276,7 @@ pub async fn test_delete_bakery(db: &DatabaseConnection) {
     }
     .save(db)
     .await
-    .expect("could not insert bakery")
-    .into_active_model();
+    .expect("could not insert bakery");
 
     assert_eq!(
         Bakery::find().all(db).await.unwrap().len(),
