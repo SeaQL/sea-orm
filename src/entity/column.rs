@@ -29,6 +29,14 @@ pub enum ColumnType {
     /// `BIGINT` is a 64-bit representation of an integer taking up 8 bytes of storage and
     /// ranging from -2^63 (-9,223,372,036,854,775,808) to 2^63 (9,223,372,036,854,775,807).
     BigInteger,
+    /// `TINYINT UNSIGNED` data type
+    TinyUnsigned,
+    /// `SMALLINT UNSIGNED` data type
+    SmallUnsigned,
+    /// `INTEGER UNSIGNED` data type
+    Unsigned,
+    /// `BIGINT UNSIGNED` data type
+    BigUnsigned,
     /// `FLOAT` an approximate-number data type, where values range cannot be represented exactly.
     Float,
     /// `DOUBLE` is a normal-size floating point number where the
@@ -351,6 +359,10 @@ impl From<ColumnType> for sea_query::ColumnType {
             ColumnType::SmallInteger => sea_query::ColumnType::SmallInteger(None),
             ColumnType::Integer => sea_query::ColumnType::Integer(None),
             ColumnType::BigInteger => sea_query::ColumnType::BigInteger(None),
+            ColumnType::TinyUnsigned => sea_query::ColumnType::TinyUnsigned(None),
+            ColumnType::SmallUnsigned => sea_query::ColumnType::SmallUnsigned(None),
+            ColumnType::Unsigned => sea_query::ColumnType::Unsigned(None),
+            ColumnType::BigUnsigned => sea_query::ColumnType::BigUnsigned(None),
             ColumnType::Float => sea_query::ColumnType::Float(None),
             ColumnType::Double => sea_query::ColumnType::Double(None),
             ColumnType::Decimal(s) => sea_query::ColumnType::Decimal(s),
@@ -384,6 +396,10 @@ impl From<sea_query::ColumnType> for ColumnType {
             sea_query::ColumnType::SmallInteger(_) => Self::SmallInteger,
             sea_query::ColumnType::Integer(_) => Self::Integer,
             sea_query::ColumnType::BigInteger(_) => Self::BigInteger,
+            sea_query::ColumnType::TinyUnsigned(_) => Self::TinyUnsigned,
+            sea_query::ColumnType::SmallUnsigned(_) => Self::SmallUnsigned,
+            sea_query::ColumnType::Unsigned(_) => Self::Unsigned,
+            sea_query::ColumnType::BigUnsigned(_) => Self::BigUnsigned,
             sea_query::ColumnType::Float(_) => Self::Float,
             sea_query::ColumnType::Double(_) => Self::Double,
             sea_query::ColumnType::Decimal(s) => Self::Decimal(s),
@@ -502,13 +518,21 @@ mod tests {
                 pub id: i32,
                 pub one: i32,
                 #[sea_orm(unique)]
-                pub two: i32,
+                pub two: i8,
                 #[sea_orm(indexed)]
-                pub three: i32,
+                pub three: i16,
                 #[sea_orm(nullable)]
                 pub four: i32,
                 #[sea_orm(unique, indexed, nullable)]
-                pub five: i32,
+                pub five: i64,
+                #[sea_orm(unique)]
+                pub six: u8,
+                #[sea_orm(indexed)]
+                pub seven: u16,
+                #[sea_orm(nullable)]
+                pub eight: u32,
+                #[sea_orm(unique, indexed, nullable)]
+                pub nine: u64,
             }
 
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -518,10 +542,13 @@ mod tests {
         }
 
         assert_eq!(hello::Column::One.def(), ColumnType::Integer.def());
-        assert_eq!(hello::Column::Two.def(), ColumnType::Integer.def().unique());
+        assert_eq!(
+            hello::Column::Two.def(),
+            ColumnType::TinyInteger.def().unique()
+        );
         assert_eq!(
             hello::Column::Three.def(),
-            ColumnType::Integer.def().indexed()
+            ColumnType::SmallInteger.def().indexed()
         );
         assert_eq!(
             hello::Column::Four.def(),
@@ -529,7 +556,23 @@ mod tests {
         );
         assert_eq!(
             hello::Column::Five.def(),
-            ColumnType::Integer.def().unique().indexed().nullable()
+            ColumnType::BigInteger.def().unique().indexed().nullable()
+        );
+        assert_eq!(
+            hello::Column::Six.def(),
+            ColumnType::TinyUnsigned.def().unique()
+        );
+        assert_eq!(
+            hello::Column::Seven.def(),
+            ColumnType::SmallUnsigned.def().indexed()
+        );
+        assert_eq!(
+            hello::Column::Eight.def(),
+            ColumnType::Unsigned.def().nullable()
+        );
+        assert_eq!(
+            hello::Column::Nine.def(),
+            ColumnType::BigUnsigned.def().unique().indexed().nullable()
         );
     }
 
