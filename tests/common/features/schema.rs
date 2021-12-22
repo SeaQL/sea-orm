@@ -4,7 +4,7 @@ use super::*;
 use crate::common::setup::{create_enum, create_table, create_table_without_asserts};
 use sea_orm::{
     error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName,
-    ExecResult,
+    ExecResult, Schema,
 };
 use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement};
 
@@ -19,10 +19,18 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     let create_enum_stmts = match db_backend {
         DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
-        DbBackend::Postgres => vec![Type::create()
-            .as_enum(Alias::new("tea"))
-            .values(vec![Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
-            .to_owned()],
+        DbBackend::Postgres => {
+            let schema = Schema::new(db_backend);
+            let enum_create_stmt = Type::create()
+                .as_enum(Alias::new("tea"))
+                .values(vec![Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
+                .to_owned();
+            assert_eq!(
+                db_backend.build(&enum_create_stmt),
+                db_backend.build(&schema.create_enum_from_active_enum::<Tea>())
+            );
+            vec![enum_create_stmt]
+        }
     };
     create_enum(db, &create_enum_stmts, ActiveEnum).await?;
 

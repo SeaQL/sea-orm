@@ -686,4 +686,32 @@ mod tests {
             .join(" ")
         );
     }
+
+    #[test]
+    fn create_enum_from() {
+        use sea_orm::{Schema, Statement};
+
+        let db_postgres = DbBackend::Postgres;
+        let schema = Schema::new(db_postgres);
+
+        assert_eq!(
+            schema
+                .create_enum_from_entity(active_enum::Entity)
+                .iter()
+                .map(|stmt| db_postgres.build(stmt))
+                .collect::<Vec<_>>(),
+            vec![Statement::from_string(
+                db_postgres,
+                r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea')"#.to_owned()
+            ),]
+        );
+
+        assert_eq!(
+            db_postgres.build(&schema.create_enum_from_active_enum::<Tea>()),
+            Statement::from_string(
+                db_postgres,
+                r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea')"#.to_owned()
+            )
+        );
+    }
 }
