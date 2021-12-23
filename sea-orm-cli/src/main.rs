@@ -1,6 +1,5 @@
 use clap::ArgMatches;
 use dotenv::dotenv;
-use log::LevelFilter;
 use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use url::Url;
@@ -33,9 +32,9 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
             let expanded_format = args.is_present("EXPANDED_FORMAT");
             let with_serde = args.value_of("WITH_SERDE").unwrap();
             if args.is_present("VERBOSE") {
-                let _ = ::env_logger::builder()
-                    .filter_level(LevelFilter::Debug)
-                    .is_test(true)
+                let _ = tracing_subscriber::fmt()
+                    .with_max_level(tracing::Level::DEBUG)
+                    .with_test_writer()
                     .try_init();
             }
 
