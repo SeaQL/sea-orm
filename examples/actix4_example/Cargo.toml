@@ -18,12 +18,12 @@ tera = "1.8.0"
 dotenv = "0.15"
 listenfd = "0.3.3"
 serde = "1"
-env_logger = "0.8"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dependencies.sea-orm]
 path = "../../" # remove this line in your own project
 version = "^0.4.0"
-features = ["macros", "runtime-actix-native-tls"]
+features = ["macros", "runtime-actix-native-tls", "debug-print"]
 default-features = false
 
 [features]
