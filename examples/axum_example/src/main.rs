@@ -23,7 +23,7 @@ use tower_http::services::ServeDir;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     env::set_var("RUST_LOG", "debug");
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     dotenv::dotenv().ok();
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");

@@ -16,15 +16,15 @@ tower-http = { version = "0.2", features = ["fs"] }
 tower-cookies = { version = "0.4" }
 anyhow = "1"
 dotenv = "0.15"
-env_logger = "0.9"
 serde = "1"
 serde_json = "1"
 tera = "1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dependencies.sea-orm]
 path = "../../" # remove this line in your own project
 version = "^0.4.2"
-features = ["macros", "runtime-tokio-native-tls"]
+features = ["macros", "runtime-tokio-native-tls", "debug-print"]
 default-features = false
 
 [features]
