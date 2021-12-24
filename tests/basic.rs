@@ -81,7 +81,7 @@ async fn crud_cake(db: &DbConn) -> Result<(), DbErr> {
         apple
     );
 
-    let apple: cake::ActiveModel = apple.unwrap().into();
+    let apple: cake::Model = apple.unwrap();
 
     let result = apple.delete(db).await?;
 
