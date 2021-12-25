@@ -142,7 +142,7 @@ let banana = fruit::ActiveModel {
 };
 
 // create, because primary key `id` is `NotSet`
-let mut banana = banana.save(db).await?.into_active_model();
+let mut banana = banana.save(db).await?;
 
 banana.name = Set("Banana Mongo".to_owned());
 
