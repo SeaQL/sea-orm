@@ -45,7 +45,7 @@ async fn crud_cake(db: &DbConn) -> Result<(), DbErr> {
         ..Default::default()
     };
 
-    let mut apple = apple.save(db).await?.into_active_model();
+    let mut apple = apple.save(db).await?;
 
     println!();
     println!("Inserted: {:?}", apple);

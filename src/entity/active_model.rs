@@ -381,28 +381,28 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self::after_save(model, false)
     }
 
-    /// Insert the model if primary key is not_set, update otherwise.
+    /// Insert the model if primary key is `NotSet`, update otherwise.
     /// Only works if the entity has auto increment primary key.
-    async fn save<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
+    async fn save<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
     {
-        let am = self;
         let mut is_update = true;
         for key in <Self::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
-            if am.is_not_set(col) {
+            if self.is_not_set(col) {
                 is_update = false;
                 break;
             }
         }
-        if !is_update {
-            am.insert(db).await
+        let res = if !is_update {
+            self.insert(db).await
         } else {
-            am.update(db).await
-        }
+            self.update(db).await
+        }?;
+        Ok(res.into_active_model())
     }
 
     /// Delete an active model by its primary key

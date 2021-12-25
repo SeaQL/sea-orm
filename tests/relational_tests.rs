@@ -24,7 +24,7 @@ pub async fn left_join() {
         profit_margin: Set(10.4),
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert bakery");
 
@@ -38,7 +38,7 @@ pub async fn left_join() {
         bakery_id: Set(Some(bakery.id.clone())),
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert baker");
 
@@ -48,7 +48,7 @@ pub async fn left_join() {
         bakery_id: Set(None),
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert baker");
 
@@ -103,7 +103,7 @@ pub async fn right_join() {
         profit_margin: Set(10.4),
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert bakery");
 
@@ -111,7 +111,7 @@ pub async fn right_join() {
         name: Set("Kate".to_owned()),
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert customer");
 
@@ -119,7 +119,7 @@ pub async fn right_join() {
         name: Set("Jim".to_owned()),
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert customer");
 
@@ -131,7 +131,7 @@ pub async fn right_join() {
 
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert order");
 
@@ -189,7 +189,7 @@ pub async fn inner_join() {
         profit_margin: Set(10.4),
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert bakery");
 
@@ -197,7 +197,7 @@ pub async fn inner_join() {
         name: Set("Kate".to_owned()),
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert customer");
 
@@ -205,7 +205,7 @@ pub async fn inner_join() {
         name: Set("Jim".to_owned()),
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert customer");
 
@@ -217,7 +217,7 @@ pub async fn inner_join() {
 
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert order");
 
@@ -229,7 +229,7 @@ pub async fn inner_join() {
 
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert order");
 
@@ -279,7 +279,7 @@ pub async fn group_by() {
         profit_margin: Set(10.4),
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert bakery");
 
@@ -287,7 +287,7 @@ pub async fn group_by() {
         name: Set("Kate".to_owned()),
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert customer");
 
@@ -299,7 +299,7 @@ pub async fn group_by() {
 
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert order");
 
@@ -311,7 +311,7 @@ pub async fn group_by() {
 
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert order");
 
@@ -374,7 +374,7 @@ pub async fn having() {
         profit_margin: Set(10.4),
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert bakery");
 
@@ -382,7 +382,7 @@ pub async fn having() {
         name: Set("Kate".to_owned()),
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert customer");
 
@@ -394,7 +394,7 @@ pub async fn having() {
 
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert order");
 
@@ -406,7 +406,7 @@ pub async fn having() {
 
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert order");
 
@@ -414,7 +414,7 @@ pub async fn having() {
         name: Set("Bob".to_owned()),
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert customer");
 
@@ -426,7 +426,7 @@ pub async fn having() {
 
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert order");
 
@@ -438,7 +438,7 @@ pub async fn having() {
 
         ..Default::default()
     }
-    .save(&ctx.db)
+    .insert(&ctx.db)
     .await
     .expect("could not insert order");
 

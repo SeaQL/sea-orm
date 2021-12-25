@@ -108,7 +108,7 @@ pub async fn test_update_deleted_customer(db: &DbConn) {
         init_n_customers + 1
     );
 
-    let customer_id = customer.id;
+    let customer_id = customer.id.clone().unwrap();
 
     let _ = customer.delete(db).await;
     assert_eq!(Customer::find().count(db).await.unwrap(), init_n_customers);

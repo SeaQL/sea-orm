@@ -24,14 +24,14 @@ pub async fn stream() -> Result<(), DbErr> {
     .save(&ctx.db)
     .await?;
 
-    let result = Bakery::find_by_id(bakery.id.clone())
+    let result = Bakery::find_by_id(bakery.id.clone().unwrap())
         .stream(&ctx.db)
         .await?
         .next()
         .await
         .unwrap()?;
 
-    assert_eq!(result.id, bakery.id);
+    assert_eq!(result.id, bakery.id.unwrap());
 
     ctx.delete().await;
 
