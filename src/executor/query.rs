@@ -388,7 +388,7 @@ pub trait TryGetableMany: Sized {
     /// ```
     fn find_by_statement<C>(stmt: Statement) -> SelectorRaw<SelectGetableValue<Self, C>>
     where
-        C: sea_strum::IntoEnumIterator + sea_query::Iden,
+        C: strum::IntoEnumIterator + sea_query::Iden,
     {
         SelectorRaw::<SelectGetableValue<Self, C>>::with_columns(stmt)
     }

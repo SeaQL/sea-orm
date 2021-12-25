@@ -31,7 +31,7 @@ tracing = { version = "0.1", features = ["log"] }
 rust_decimal = { version = "^1", optional = true }
 sea-orm-macros = { version = "^0.4.2", path = "sea-orm-macros", optional = true }
 sea-query = { version = "^0.20.0", features = ["thread-safe"] }
-sea-strum = { version = "^0.21", features = ["derive", "sea-orm"] }
+sea-strum = { version = "^0.23", features = ["derive", "sea-orm"] }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = { version = "^1", optional = true }
 sqlx = { version = "^0.5", optional = true }
