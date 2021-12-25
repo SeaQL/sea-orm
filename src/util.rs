@@ -15,7 +15,7 @@
 #[macro_export]
 #[cfg(feature = "debug-print")]
 macro_rules! debug_print {
-    ($( $args:expr ),*) => { log::debug!( $( $args ),* ); }
+    ($( $args:expr ),*) => { tracing::debug!( $( $args ),* ); }
 }
 
 #[macro_export]

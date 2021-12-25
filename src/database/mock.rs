@@ -5,6 +5,7 @@ use crate::{
 };
 use sea_query::{Value, ValueType, Values};
 use std::{collections::BTreeMap, sync::Arc};
+use tracing::instrument;
 
 /// Defines a Mock database suitable for testing
 #[derive(Debug)]
@@ -89,6 +90,7 @@ impl MockDatabase {
 }
 
 impl MockDatabaseTrait for MockDatabase {
+    #[instrument(level = "trace")]
     fn execute(&mut self, counter: usize, statement: Statement) -> Result<ExecResult, DbErr> {
         if let Some(transaction) = &mut self.transaction {
             transaction.push(statement);
@@ -104,6 +106,7 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
+    #[instrument(level = "trace")]
     fn query(&mut self, counter: usize, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         if let Some(transaction) = &mut self.transaction {
             transaction.push(statement);
@@ -122,6 +125,7 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
+    #[instrument(level = "trace")]
     fn begin(&mut self) {
         if self.transaction.is_some() {
             self.transaction
@@ -133,6 +137,7 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
+    #[instrument(level = "trace")]
     fn commit(&mut self) {
         if self.transaction.is_some() {
             if self.transaction.as_mut().unwrap().commit(self.db_backend) {
@@ -144,6 +149,7 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
+    #[instrument(level = "trace")]
     fn rollback(&mut self) {
         if self.transaction.is_some() {
             if self.transaction.as_mut().unwrap().rollback(self.db_backend) {

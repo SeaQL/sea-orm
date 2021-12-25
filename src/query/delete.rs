@@ -3,7 +3,7 @@ use crate::{
     QueryFilter, QueryTrait,
 };
 use core::marker::PhantomData;
-use sea_query::{DeleteStatement, IntoIden};
+use sea_query::DeleteStatement;
 
 /// Defines the structure for a delete operation
 #[derive(Clone, Debug)]
@@ -94,7 +94,7 @@ impl Delete {
     {
         DeleteMany {
             query: DeleteStatement::new()
-                .from_table(entity.into_iden())
+                .from_table(entity.table_ref())
                 .to_owned(),
             entity: PhantomData,
         }

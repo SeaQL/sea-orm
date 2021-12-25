@@ -3,9 +3,9 @@ use sea_orm::*;
 
 #[tokio::main]
 pub async fn main() {
-    env_logger::builder()
-        .filter_level(log::LevelFilter::Debug)
-        .is_test(true)
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .with_test_writer()
         .init();
 
     let db = Database::connect("mysql://sea:sea@localhost/bakery")

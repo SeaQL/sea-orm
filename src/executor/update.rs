@@ -1,6 +1,6 @@
 use crate::{
-    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
-    Iterable, SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
+    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Iterable, SelectModel,
+    SelectorRaw, Statement, UpdateMany, UpdateOne,
 };
 use sea_query::{Alias, Expr, FromValueTuple, Query, UpdateStatement};
 use std::future::Future;
@@ -24,9 +24,8 @@ where
     A: ActiveModelTrait,
 {
     /// Execute an update operation on an ActiveModel
-    pub async fn exec<'b, C>(self, db: &'b C) -> Result<A, DbErr>
+    pub async fn exec<'b, C>(self, db: &'b C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
-        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait<'b>,
     {
         // so that self is dropped before entering await
@@ -84,9 +83,8 @@ async fn exec_update_and_return_updated<'a, A, C>(
     mut query: UpdateStatement,
     model: A,
     db: &'a C,
-) -> Result<A, DbErr>
+) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
 where
-    <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
     A: ActiveModelTrait,
     C: ConnectionTrait<'a>,
 {
@@ -112,7 +110,7 @@ where
                 .await?;
             // If we got `None` then we are updating a row that does not exist.
             match found {
-                Some(model) => Ok(model.into_active_model()),
+                Some(model) => Ok(model),
                 None => Err(DbErr::RecordNotFound(
                     "None of the database rows are affected".to_owned(),
                 )),
@@ -130,7 +128,7 @@ where
                 .await?;
             // If we cannot select the updated row from db by the cached primary key
             match found {
-                Some(model) => Ok(model.into_active_model()),
+                Some(model) => Ok(model),
                 None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
             }
         }
@@ -196,7 +194,6 @@ mod tests {
                 id: 1,
                 name: "Cheese Cake".to_owned(),
             }
-            .into_active_model()
         );
 
         let model = cake::Model {

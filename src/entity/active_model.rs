@@ -5,35 +5,47 @@ use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
 use std::fmt::Debug;
 
-/// Defines a value from an ActiveModel and its state.
-/// The field `value` takes in an [Option] type where `Option::Some(V)` , with `V` holding
-/// the value that operations like `UPDATE` are being performed on and
-/// the `state` field is either `ActiveValueState::Set` or `ActiveValueState::Unchanged`.
-/// [Option::None] in the `value` field indicates no value being performed by an operation
-/// and that the `state` field of the [ActiveValue] is set to `ActiveValueState::Unset` .
-/// #### Example snippet
-/// ```no_run
-/// // The code snipped below does an UPDATE operation on a [ActiveValue]
-/// // yielding the the SQL statement ` r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"# `
+pub use ActiveValue::NotSet;
+
+/// Defines a stateful value used in ActiveModel.
 ///
+/// There are three possible state represented by three enum variants.
+/// - [ActiveValue::Set]: A defined [Value] actively being set
+/// - [ActiveValue::Unchanged]: A defined [Value] remain unchanged
+/// - [ActiveValue::NotSet]: An undefined [Value]
+///
+/// The stateful value is useful when constructing UPDATE SQL statement,
+/// see an example below.
+///
+/// # Examples
+///
+/// ```
 /// use sea_orm::tests_cfg::{cake, fruit};
 /// use sea_orm::{entity::*, query::*, DbBackend};
 ///
-/// Update::one(fruit::ActiveModel {
-///     id: ActiveValue::set(1),
-///     name: ActiveValue::set("Orange".to_owned()),
-///     cake_id: ActiveValue::unset(),
-/// })
-/// .build(DbBackend::Postgres)
-/// .to_string();
+/// // The code snipped below does an UPDATE operation on a `ActiveValue`
+/// assert_eq!(
+///     Update::one(fruit::ActiveModel {
+///         id: ActiveValue::set(1),
+///         name: ActiveValue::set("Orange".to_owned()),
+///         cake_id: ActiveValue::not_set(),
+///     })
+///     .build(DbBackend::Postgres)
+///     .to_string(),
+///     r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"#
+/// );
 /// ```
-#[derive(Clone, Debug, Default)]
-pub struct ActiveValue<V>
+#[derive(Clone, Debug)]
+pub enum ActiveValue<V>
 where
     V: Into<Value>,
 {
-    value: Option<V>,
-    state: ActiveValueState,
+    /// A defined [Value] actively being set
+    Set(V),
+    /// A defined [Value] remain unchanged
+    Unchanged(V),
+    /// An undefined [Value]
+    NotSet,
 }
 
 /// Defines a set operation on an [ActiveValue]
@@ -45,31 +57,22 @@ where
     ActiveValue::set(v)
 }
 
-/// Defines an unset operation on an [ActiveValue]
+/// Defines an not set operation on an [ActiveValue]
+#[deprecated(
+    since = "0.5.0",
+    note = "Please use [`ActiveValue::NotSet`] or [`NotSet`]"
+)]
 #[allow(non_snake_case)]
 pub fn Unset<V>(_: Option<bool>) -> ActiveValue<V>
 where
     V: Into<Value>,
 {
-    ActiveValue::unset()
+    ActiveValue::not_set()
 }
 
-// Defines the state of an [ActiveValue]
-#[derive(Clone, Debug)]
-enum ActiveValueState {
-    Set,
-    Unchanged,
-    Unset,
-}
-
-impl Default for ActiveValueState {
-    fn default() -> Self {
-        Self::Unset
-    }
-}
-
-#[doc(hidden)]
-pub fn unchanged_active_value_not_intended_for_public_use<V>(value: V) -> ActiveValue<V>
+/// Defines an unchanged operation on an [ActiveValue]
+#[allow(non_snake_case)]
+pub fn Unchanged<V>(value: V) -> ActiveValue<V>
 where
     V: Into<Value>,
 {
@@ -93,11 +96,11 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Set the Value into an ActiveModel
     fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: Value);
 
-    /// Set the state of an [ActiveValue] to the Unset state
-    fn unset(&mut self, c: <Self::Entity as EntityTrait>::Column);
+    /// Set the state of an [ActiveValue] to the not set state
+    fn not_set(&mut self, c: <Self::Entity as EntityTrait>::Column);
 
     /// Check the state of a [ActiveValue]
-    fn is_unset(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
+    fn is_not_set(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
 
     /// The default implementation of the ActiveModel
     fn default() -> Self;
@@ -172,7 +175,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///         id: 15,
     ///         name: "Apple Pie".to_owned(),
     ///     }
-    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(
@@ -225,7 +227,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///         id: 15,
     ///         name: "Apple Pie".to_owned(),
     ///     }
-    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(
@@ -247,17 +248,17 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # Ok(())
     /// # }
     /// ```
-    async fn insert<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
+    async fn insert<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
     {
         let am = ActiveModelBehavior::before_save(self, true)?;
-        let am = <Self::Entity as EntityTrait>::insert(am)
+        let model = <Self::Entity as EntityTrait>::insert(am)
             .exec_with_returning(db)
             .await?;
-        ActiveModelBehavior::after_save(am, true)
+        Self::after_save(model, true)
     }
 
     /// Perform the `UPDATE` operation on an ActiveModel
@@ -296,7 +297,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///         name: "Orange".to_owned(),
     ///         cake_id: None,
     ///     }
-    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(
@@ -351,7 +351,6 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///         name: "Orange".to_owned(),
     ///         cake_id: None,
     ///     }
-    ///     .into_active_model()
     /// );
     ///
     /// assert_eq!(
@@ -371,40 +370,39 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # Ok(())
     /// # }
     /// ```
-    async fn update<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
+    async fn update<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
     {
         let am = ActiveModelBehavior::before_save(self, false)?;
-        let am = Self::Entity::update(am).exec(db).await?;
-        ActiveModelBehavior::after_save(am, false)
+        let model: <Self::Entity as EntityTrait>::Model = Self::Entity::update(am).exec(db).await?;
+        Self::after_save(model, false)
     }
 
-    /// Insert the model if primary key is unset, update otherwise.
+    /// Insert the model if primary key is not_set, update otherwise.
     /// Only works if the entity has auto increment primary key.
-    async fn save<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
+    async fn save<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait<'a>,
     {
-        let mut am = self;
+        let am = self;
         let mut is_update = true;
         for key in <Self::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
-            if am.is_unset(col) {
+            if am.is_not_set(col) {
                 is_update = false;
                 break;
             }
         }
         if !is_update {
-            am = am.insert(db).await?;
+            am.insert(db).await
         } else {
-            am = am.update(db).await?;
+            am.update(db).await
         }
-        Ok(am)
     }
 
     /// Delete an active model by its primary key
@@ -503,8 +501,11 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
     }
 
     /// Will be called after saving
-    fn after_save(self, insert: bool) -> Result<Self, DbErr> {
-        Ok(self)
+    fn after_save(
+        model: <Self::Entity as EntityTrait>::Model,
+        insert: bool,
+    ) -> Result<<Self::Entity as EntityTrait>::Model, DbErr> {
+        Ok(model)
     }
 
     /// Will be called before deleting
@@ -557,7 +558,7 @@ macro_rules! impl_into_active_value {
             fn into_active_value(self) -> ActiveValue<Option<$ty>> {
                 match self {
                     Some(value) => Set(Some(value)),
-                    None => Unset(None),
+                    None => NotSet,
                 }
             }
         }
@@ -566,7 +567,7 @@ macro_rules! impl_into_active_value {
             fn into_active_value(self) -> ActiveValue<Option<$ty>> {
                 match self {
                     Some(value) => Set(value),
-                    None => Unset(None),
+                    None => NotSet,
                 }
             }
         }
@@ -615,74 +616,80 @@ impl_into_active_value!(crate::prelude::Decimal, Set);
 #[cfg_attr(docsrs, doc(cfg(feature = "with-uuid")))]
 impl_into_active_value!(crate::prelude::Uuid, Set);
 
+impl<V> Default for ActiveValue<V>
+where
+    V: Into<Value>,
+{
+    fn default() -> Self {
+        Self::NotSet
+    }
+}
+
 impl<V> ActiveValue<V>
 where
     V: Into<Value>,
 {
-    /// Set the value of an [ActiveValue] and also set its state to `ActiveValueState::Set`
+    /// Create an [ActiveValue::Set]
     pub fn set(value: V) -> Self {
-        Self {
-            value: Some(value),
-            state: ActiveValueState::Set,
-        }
+        Self::Set(value)
     }
 
-    /// Check if the state of an [ActiveValue] is `ActiveValueState::Set` which returns true
+    /// Check if the [ActiveValue] is [ActiveValue::Set]
     pub fn is_set(&self) -> bool {
-        matches!(self.state, ActiveValueState::Set)
+        matches!(self, Self::Set(_))
     }
 
-    pub(crate) fn unchanged(value: V) -> Self {
-        Self {
-            value: Some(value),
-            state: ActiveValueState::Unchanged,
-        }
+    /// Create an [ActiveValue::Unchanged]
+    pub fn unchanged(value: V) -> Self {
+        Self::Unchanged(value)
     }
 
-    /// Check if the status of the [ActiveValue] is `ActiveValueState::Unchanged`
-    /// which returns `true` if it is
+    /// Check if the [ActiveValue] is [ActiveValue::Unchanged]
     pub fn is_unchanged(&self) -> bool {
-        matches!(self.state, ActiveValueState::Unchanged)
+        matches!(self, Self::Unchanged(_))
     }
 
-    /// Set the `value` field of the ActiveModel to [Option::None] and the
-    /// `state` field to `ActiveValueState::Unset`
-    pub fn unset() -> Self {
-        Self {
-            value: None,
-            state: ActiveValueState::Unset,
+    /// Create an [ActiveValue::NotSet]
+    pub fn not_set() -> Self {
+        Self::default()
+    }
+
+    /// Check if the [ActiveValue] is [ActiveValue::NotSet]
+    pub fn is_not_set(&self) -> bool {
+        matches!(self, Self::NotSet)
+    }
+
+    /// Get the mutable value an [ActiveValue]
+    /// also setting itself to [ActiveValue::NotSet]
+    pub fn take(&mut self) -> Option<V> {
+        match std::mem::take(self) {
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value),
+            ActiveValue::NotSet => None,
         }
     }
 
-    /// Check if the state of an [ActiveValue] is `ActiveValueState::Unset`
-    /// which returns true if it is
-    pub fn is_unset(&self) -> bool {
-        matches!(self.state, ActiveValueState::Unset)
-    }
-
-    /// Get the mutable value of the `value` field of an [ActiveValue]
-    /// also setting it's state to `ActiveValueState::Unset`
-    pub fn take(&mut self) -> Option<V> {
-        self.state = ActiveValueState::Unset;
-        self.value.take()
-    }
-
-    /// Get an owned value of the `value` field of the [ActiveValue]
+    /// Get an owned value of the [ActiveValue]
     pub fn unwrap(self) -> V {
-        self.value.unwrap()
+        match self {
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
+            ActiveValue::NotSet => panic!("Cannot unwrap ActiveValue::NotSet"),
+        }
     }
 
     /// Check is a [Value] exists or not
     pub fn into_value(self) -> Option<Value> {
-        self.value.map(Into::into)
+        match self {
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value.into()),
+            ActiveValue::NotSet => None,
+        }
     }
 
     /// Wrap the [Value] into a `ActiveValue<Value>`
     pub fn into_wrapped_value(self) -> ActiveValue<Value> {
-        match self.state {
-            ActiveValueState::Set => ActiveValue::set(self.into_value().unwrap()),
-            ActiveValueState::Unchanged => ActiveValue::unchanged(self.into_value().unwrap()),
-            ActiveValueState::Unset => ActiveValue::unset(),
+        match self {
+            Self::Set(value) => ActiveValue::set(value.into()),
+            Self::Unchanged(value) => ActiveValue::unchanged(value.into()),
+            Self::NotSet => ActiveValue::not_set(),
         }
     }
 }
@@ -692,7 +699,10 @@ where
     V: Into<Value>,
 {
     fn as_ref(&self) -> &V {
-        self.value.as_ref().unwrap()
+        match self {
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
+            ActiveValue::NotSet => panic!("Cannot borrow ActiveValue::NotSet"),
+        }
     }
 }
 
@@ -701,7 +711,12 @@ where
     V: Into<Value> + std::cmp::PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.value.as_ref() == other.value.as_ref()
+        match (self, other) {
+            (ActiveValue::Set(l), ActiveValue::Set(r)) => l == r,
+            (ActiveValue::Unchanged(l), ActiveValue::Unchanged(r)) => l == r,
+            (ActiveValue::NotSet, ActiveValue::NotSet) => true,
+            _ => false,
+        }
     }
 }
 
@@ -710,10 +725,10 @@ where
     V: Into<Value> + Nullable,
 {
     fn from(value: ActiveValue<V>) -> Self {
-        match value.state {
-            ActiveValueState::Set => Set(value.value),
-            ActiveValueState::Unset => Unset(None),
-            ActiveValueState::Unchanged => ActiveValue::unchanged(value.value),
+        match value {
+            ActiveValue::Set(value) => ActiveValue::set(Some(value)),
+            ActiveValue::Unchanged(value) => ActiveValue::unchanged(Some(value)),
+            ActiveValue::NotSet => ActiveValue::not_set(),
         }
     }
 }
@@ -748,7 +763,7 @@ mod tests {
             }
             .into_active_model(),
             fruit::ActiveModel {
-                id: Unset(None),
+                id: NotSet,
                 name: Set("Apple".to_owned()),
                 cake_id: Set(Some(1)),
             }
@@ -777,8 +792,8 @@ mod tests {
             }
             .into_active_model(),
             fruit::ActiveModel {
-                id: Unset(None),
-                name: Unset(None),
+                id: NotSet,
+                name: NotSet,
                 cake_id: Set(Some(1)),
             }
         );
@@ -789,8 +804,8 @@ mod tests {
             }
             .into_active_model(),
             fruit::ActiveModel {
-                id: Unset(None),
-                name: Unset(None),
+                id: NotSet,
+                name: NotSet,
                 cake_id: Set(None),
             }
         );
@@ -798,9 +813,9 @@ mod tests {
         assert_eq!(
             my_fruit::UpdateFruit { cake_id: None }.into_active_model(),
             fruit::ActiveModel {
-                id: Unset(None),
-                name: Unset(None),
-                cake_id: Unset(None),
+                id: NotSet,
+                name: NotSet,
+                cake_id: NotSet,
             }
         );
     }

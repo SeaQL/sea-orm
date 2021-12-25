@@ -30,7 +30,7 @@ pub trait Linked {
 
             select.query().join_as(
                 JoinType::InnerJoin,
-                unpack_table_ref(&rel.from_tbl),
+                rel.from_tbl,
                 SeaRc::clone(&from_tbl),
                 join_tbl_on_condition(from_tbl, to_tbl, rel.from_col, rel.to_col),
             );

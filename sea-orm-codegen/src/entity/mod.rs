@@ -1,3 +1,4 @@
+mod active_enum;
 mod base_entity;
 mod column;
 mod conjunct_relation;
@@ -6,6 +7,7 @@ mod relation;
 mod transformer;
 mod writer;
 
+pub use active_enum::*;
 pub use base_entity::*;
 pub use column::*;
 pub use conjunct_relation::*;

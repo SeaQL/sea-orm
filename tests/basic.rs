@@ -45,17 +45,17 @@ async fn crud_cake(db: &DbConn) -> Result<(), DbErr> {
         ..Default::default()
     };
 
-    let mut apple = apple.save(db).await?;
+    let mut apple = apple.save(db).await?.into_active_model();
 
     println!();
     println!("Inserted: {:?}", apple);
 
     assert_eq!(
+        apple,
         cake::ActiveModel {
-            id: Set(1),
-            name: Set("Apple Pie".to_owned()),
-        },
-        apple
+            id: Unchanged(1),
+            name: Unchanged("Apple Pie".to_owned()),
+        }
     );
 
     apple.name = Set("Lemon Tart".to_owned());
@@ -81,7 +81,7 @@ async fn crud_cake(db: &DbConn) -> Result<(), DbErr> {
         apple
     );
 
-    let apple: cake::ActiveModel = apple.unwrap().into();
+    let apple: cake::Model = apple.unwrap();
 
     let result = apple.delete(db).await?;
 

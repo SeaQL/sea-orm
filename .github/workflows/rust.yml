@@ -108,10 +108,12 @@ jobs:
             --all
 
       # Run clippy
-      - uses: actions-rs/clippy-check@v1
+      - uses: actions-rs/cargo@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets --all
+          command: clippy
+          args: >
+            --all-targets
+            --all
 
   compile-sqlite:
     name: Compile SQLite
@@ -316,7 +318,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        path: [86, 249, 262, 319, 324, 352]
+        path: [86, 249, 262, 319, 324, 352, 356]
     steps:
       - uses: actions/checkout@v2
 

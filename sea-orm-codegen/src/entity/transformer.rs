@@ -1,38 +1,52 @@
 use crate::{
-    Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation, RelationType,
+    ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation,
+    RelationType,
 };
-use sea_query::TableStatement;
+use sea_query::{ColumnSpec, TableCreateStatement};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct EntityTransformer;
 
 impl EntityTransformer {
-    pub fn transform(table_stmts: Vec<TableStatement>) -> Result<EntityWriter, Error> {
+    pub fn transform(table_create_stmts: Vec<TableCreateStatement>) -> Result<EntityWriter, Error> {
+        let mut enums: HashMap<String, ActiveEnum> = HashMap::new();
         let mut inverse_relations: HashMap<String, Vec<Relation>> = HashMap::new();
         let mut conjunct_relations: HashMap<String, Vec<ConjunctRelation>> = HashMap::new();
         let mut entities = HashMap::new();
-        for table_stmt in table_stmts.into_iter() {
-            let table_create = match table_stmt {
-                TableStatement::Create(stmt) => stmt,
-                _ => {
-                    return Err(Error::TransformError(
-                        "TableStatement should be create".into(),
-                    ))
-                }
-            };
+        for table_create in table_create_stmts.into_iter() {
             let table_name = match table_create.get_table_name() {
-                Some(s) => s,
+                Some(table_ref) => match table_ref {
+                    sea_query::TableRef::Table(t)
+                    | sea_query::TableRef::SchemaTable(_, t)
+                    | sea_query::TableRef::DatabaseSchemaTable(_, _, t)
+                    | sea_query::TableRef::TableAlias(t, _)
+                    | sea_query::TableRef::SchemaTableAlias(_, t, _)
+                    | sea_query::TableRef::DatabaseSchemaTableAlias(_, _, t, _) => t.to_string(),
+                    _ => unimplemented!(),
+                },
                 None => {
                     return Err(Error::TransformError(
                         "Table name should not be empty".into(),
                     ))
                 }
             };
+            let mut primary_keys: Vec<PrimaryKey> = Vec::new();
             let columns: Vec<Column> = table_create
                 .get_columns()
                 .iter()
-                .map(|col_def| col_def.into())
+                .map(|col_def| {
+                    let primary_key = col_def
+                        .get_column_spec()
+                        .iter()
+                        .any(|spec| matches!(spec, ColumnSpec::PrimaryKey));
+                    if primary_key {
+                        primary_keys.push(PrimaryKey {
+                            name: col_def.get_column_name(),
+                        });
+                    }
+                    col_def.into()
+                })
                 .map(|mut col: Column| {
                     col.unique = table_create
                         .get_indexes()
@@ -42,6 +56,18 @@ impl EntityTransformer {
                         .filter(|col_names| col_names.len() == 1 && col_names[0] == col.name)
                         .count()
                         > 0;
+                    col
+                })
+                .map(|col| {
+                    if let sea_query::ColumnType::Enum(enum_name, values) = &col.col_type {
+                        enums.insert(
+                            enum_name.clone(),
+                            ActiveEnum {
+                                enum_name: enum_name.clone(),
+                                values: values.clone(),
+                            },
+                        );
+                    }
                     col
                 })
                 .collect();
@@ -77,20 +103,21 @@ impl EntityTransformer {
                 })
                 .rev()
                 .collect();
-            let primary_keys = table_create
-                .get_indexes()
-                .iter()
-                .filter(|index| index.is_primary_key())
-                .map(|index| {
-                    index
-                        .get_index_spec()
-                        .get_column_names()
-                        .into_iter()
-                        .map(|name| PrimaryKey { name })
-                        .collect::<Vec<_>>()
-                })
-                .flatten()
-                .collect();
+            primary_keys.extend(
+                table_create
+                    .get_indexes()
+                    .iter()
+                    .filter(|index| index.is_primary_key())
+                    .map(|index| {
+                        index
+                            .get_index_spec()
+                            .get_column_names()
+                            .into_iter()
+                            .map(|name| PrimaryKey { name })
+                            .collect::<Vec<_>>()
+                    })
+                    .flatten(),
+            );
             let entity = Entity {
                 table_name: table_name.clone(),
                 columns,
@@ -158,9 +185,17 @@ impl EntityTransformer {
                 }
             }
         }
-        for (tbl_name, mut relations) in inverse_relations.into_iter() {
+        for (tbl_name, relations) in inverse_relations.into_iter() {
             if let Some(entity) = entities.get_mut(&tbl_name) {
-                entity.relations.append(&mut relations);
+                for relation in relations.into_iter() {
+                    let duplicate_relation = entity
+                        .relations
+                        .iter()
+                        .any(|rel| rel.ref_table == relation.ref_table);
+                    if !duplicate_relation {
+                        entity.relations.push(relation);
+                    }
+                }
             }
         }
         for (tbl_name, mut conjunct_relations) in conjunct_relations.into_iter() {
@@ -170,6 +205,7 @@ impl EntityTransformer {
         }
         Ok(EntityWriter {
             entities: entities.into_iter().map(|(_, v)| v).collect(),
+            enums,
         })
     }
 }

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.4.2 - 2021-12-12
+
+### Fixed Issues
+* Delete::many() doesn't work when schema_name is defined https://github.com/SeaQL/sea-orm/issues/362
+* find_with_related panic https://github.com/SeaQL/sea-orm/issues/374
+* How to define rust type of TIMESTAMP? https://github.com/SeaQL/sea-orm/issues/344
+* Add Table on the generated Column enum https://github.com/SeaQL/sea-orm/issues/356
+
+### Merged PRs
+* `Delete::many()` with `TableRef` by @billy1624 in https://github.com/SeaQL/sea-orm/pull/363
+* Fix related & linked with enum columns by @billy1624 in https://github.com/SeaQL/sea-orm/pull/376
+* Temporary Fix: Handling MySQL & SQLite timestamp columns by @billy1624 in https://github.com/SeaQL/sea-orm/pull/379
+* Add feature to generate table Iden by @Sytten in https://github.com/SeaQL/sea-orm/pull/360
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.4.1...0.4.2
+
 ## 0.4.1 - 2021-12-05
 
 ### Fixed Issues

@@ -1,11 +1,14 @@
 use crate::{
-    DbErr, EntityTrait, Linked, QueryFilter, QueryResult, Related, Select, SelectModel,
-    SelectorRaw, Statement,
+    ActiveModelBehavior, ActiveModelTrait, ConnectionTrait, DbErr, DeleteResult, EntityTrait,
+    IntoActiveModel, Linked, QueryFilter, QueryResult, Related, Select, SelectModel, SelectorRaw,
+    Statement,
 };
+use async_trait::async_trait;
 pub use sea_query::Value;
 use std::fmt::Debug;
 
 /// A Trait for a Model
+#[async_trait]
 pub trait ModelTrait: Clone + Send + Debug {
     #[allow(missing_docs)]
     type Entity: EntityTrait;
@@ -32,6 +35,16 @@ pub trait ModelTrait: Clone + Send + Debug {
     {
         let tbl_alias = &format!("r{}", l.link().len() - 1);
         l.find_linked().belongs_to_tbl_alias(self, tbl_alias)
+    }
+
+    /// Delete an model
+    async fn delete<'a, A, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
+    where
+        Self: IntoActiveModel<A>,
+        C: ConnectionTrait<'a>,
+        A: ActiveModelTrait<Entity = Self::Entity> + ActiveModelBehavior + Send + 'a,
+    {
+        self.into_active_model().delete(db).await
     }
 }
 

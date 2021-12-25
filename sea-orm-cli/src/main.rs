@@ -1,6 +1,5 @@
 use clap::ArgMatches;
 use dotenv::dotenv;
-use log::LevelFilter;
 use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use url::Url;
@@ -33,9 +32,9 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
             let expanded_format = args.is_present("EXPANDED_FORMAT");
             let with_serde = args.value_of("WITH_SERDE").unwrap();
             if args.is_present("VERBOSE") {
-                let _ = ::env_logger::builder()
-                    .filter_level(LevelFilter::Debug)
-                    .is_test(true)
+                let _ = tracing_subscriber::fmt()
+                    .with_max_level(tracing::Level::DEBUG)
+                    .with_test_writer()
                     .try_init();
             }
 
@@ -54,39 +53,20 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
             let url_password = url.password();
             let url_host = url.host_str();
 
-            // Panic on any that are missing
-            if url_username.is_empty() {
-                panic!("No username was found in the database url");
-            }
-            if url_password.is_none() {
-                panic!("No password was found in the database url");
-            }
-            if url_host.is_none() {
-                panic!("No host was found in the database url");
-            }
+            let is_sqlite = url.scheme() == "sqlite";
 
-            // The database name should be the first element of the path string
-            //
-            // Throwing an error if there is no database name since it might be
-            // accepted by the database without it, while we're looking to dump
-            // information from a particular database
-            let database_name = url
-                .path_segments()
-                .unwrap_or_else(|| {
-                    panic!(
-                        "There is no database name as part of the url path: {}",
-                        url.as_str()
-                    )
-                })
-                .next()
-                .unwrap();
-
-            // An empty string as the database name is also an error
-            if database_name.is_empty() {
-                panic!(
-                    "There is no database name as part of the url path: {}",
-                    url.as_str()
-                );
+            // Skip checking if it's SQLite
+            if !is_sqlite {
+                // Panic on any that are missing
+                if url_username.is_empty() {
+                    panic!("No username was found in the database url");
+                }
+                if url_password.is_none() {
+                    panic!("No password was found in the database url");
+                }
+                if url_host.is_none() {
+                    panic!("No host was found in the database url");
+                }
             }
 
             // Closures for filtering tables
@@ -105,6 +85,36 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                 }
             };
 
+            let database_name = if !is_sqlite {
+                // The database name should be the first element of the path string
+                //
+                // Throwing an error if there is no database name since it might be
+                // accepted by the database without it, while we're looking to dump
+                // information from a particular database
+                let database_name = url
+                    .path_segments()
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "There is no database name as part of the url path: {}",
+                            url.as_str()
+                        )
+                    })
+                    .next()
+                    .unwrap();
+
+                // An empty string as the database name is also an error
+                if database_name.is_empty() {
+                    panic!(
+                        "There is no database name as part of the url path: {}",
+                        url.as_str()
+                    );
+                }
+
+                database_name
+            } else {
+                Default::default()
+            };
+
             let table_stmts = match url.scheme() {
                 "mysql" => {
                     use sea_schema::mysql::discovery::SchemaDiscovery;
@@ -118,6 +128,21 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.info.name))
                         .filter(|schema| filter_hidden_tables(&schema.info.name))
+                        .map(|schema| schema.write())
+                        .collect()
+                }
+                "sqlite" => {
+                    use sea_schema::sqlite::SchemaDiscovery;
+                    use sqlx::SqlitePool;
+
+                    let connection = SqlitePool::connect(url.as_str()).await?;
+                    let schema_discovery = SchemaDiscovery::new(connection);
+                    let schema = schema_discovery.discover().await?;
+                    schema
+                        .tables
+                        .into_iter()
+                        .filter(|schema| filter_tables(&schema.name))
+                        .filter(|schema| filter_hidden_tables(&schema.name))
                         .map(|schema| schema.write())
                         .collect()
                 }

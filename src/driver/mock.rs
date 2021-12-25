@@ -11,6 +11,7 @@ use std::{
         Arc, Mutex,
     },
 };
+use tracing::instrument;
 
 /// Defines a database driver for the [MockDatabase]
 #[derive(Debug)]
@@ -69,6 +70,7 @@ impl MockDatabaseConnector {
 
     /// Cpnnect to the [MockDatabase]
     #[allow(unused_variables)]
+    #[instrument(level = "trace")]
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
         macro_rules! connect_mock_db {
             ( $syntax: expr ) => {
@@ -117,6 +119,7 @@ impl MockDatabaseConnection {
     }
 
     /// Execute the SQL statement in the [MockDatabase]
+    #[instrument(level = "trace")]
     pub fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", statement);
         let counter = self.execute_counter.fetch_add(1, Ordering::SeqCst);
@@ -124,6 +127,7 @@ impl MockDatabaseConnection {
     }
 
     /// Return one [QueryResult] if the query was successful
+    #[instrument(level = "trace")]
     pub fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let counter = self.query_counter.fetch_add(1, Ordering::SeqCst);
@@ -132,6 +136,7 @@ impl MockDatabaseConnection {
     }
 
     /// Return all [QueryResult]s if the query was successful
+    #[instrument(level = "trace")]
     pub fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let counter = self.query_counter.fetch_add(1, Ordering::SeqCst);
@@ -139,6 +144,7 @@ impl MockDatabaseConnection {
     }
 
     /// Return [QueryResult]s  from a multi-query operation
+    #[instrument(level = "trace")]
     pub fn fetch(
         &self,
         statement: &Statement,
@@ -150,16 +156,19 @@ impl MockDatabaseConnection {
     }
 
     /// Create a statement block  of SQL statements that execute together.
+    #[instrument(level = "trace")]
     pub fn begin(&self) {
         self.mocker.lock().unwrap().begin()
     }
 
     /// Commit a transaction atomically to the database
+    #[instrument(level = "trace")]
     pub fn commit(&self) {
         self.mocker.lock().unwrap().commit()
     }
 
     /// Roll back a faulty transaction
+    #[instrument(level = "trace")]
     pub fn rollback(&self) {
         self.mocker.lock().unwrap().rollback()
     }

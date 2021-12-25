@@ -28,6 +28,7 @@ where
     S: SelectorTrait,
 {
     stmt: Statement,
+    #[allow(dead_code)]
     selector: S,
 }
 

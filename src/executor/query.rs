@@ -199,15 +199,20 @@ macro_rules! try_getable_mysql {
     };
 }
 
-macro_rules! try_getable_postgres {
+macro_rules! try_getable_date_time {
     ( $type: ty ) => {
         impl TryGetable for $type {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
                 let _column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
-                    QueryResultRow::SqlxMySql(_) => {
-                        panic!("{} unsupported by sqlx-mysql", stringify!($type))
+                    QueryResultRow::SqlxMySql(row) => {
+                        use chrono::{DateTime, Utc};
+                        use sqlx::Row;
+                        row.try_get::<Option<DateTime<Utc>>, _>(_column.as_str())
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null))
+                            .map(|v| v.into())
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => {
@@ -217,8 +222,13 @@ macro_rules! try_getable_postgres {
                             .and_then(|opt| opt.ok_or(TryGetError::Null))
                     }
                     #[cfg(feature = "sqlx-sqlite")]
-                    QueryResultRow::SqlxSqlite(_) => {
-                        panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+                    QueryResultRow::SqlxSqlite(row) => {
+                        use chrono::{DateTime, Utc};
+                        use sqlx::Row;
+                        row.try_get::<Option<DateTime<Utc>>, _>(_column.as_str())
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null))
+                            .map(|v| v.into())
                     }
                     #[cfg(feature = "mock")]
                     #[allow(unused_variables)]
@@ -259,7 +269,7 @@ try_getable_all!(chrono::NaiveTime);
 try_getable_all!(chrono::NaiveDateTime);
 
 #[cfg(feature = "with-chrono")]
-try_getable_postgres!(chrono::DateTime<chrono::FixedOffset>);
+try_getable_date_time!(chrono::DateTime<chrono::FixedOffset>);
 
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;

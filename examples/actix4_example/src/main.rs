@@ -155,7 +155,7 @@ async fn delete(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpRes
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "debug");
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     // get env vars
     dotenv::dotenv().ok();

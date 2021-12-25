@@ -4,6 +4,7 @@ use crate::{
 };
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 use std::{future::Future, pin::Pin};
+use tracing::instrument;
 use url::Url;
 
 #[cfg(feature = "sqlx-dep")]
@@ -49,6 +50,7 @@ pub enum DatabaseBackend {
 
 /// The same as [DatabaseBackend] just shorter :)
 pub type DbBackend = DatabaseBackend;
+#[derive(Debug)]
 pub(crate) enum InnerConnection {
     #[cfg(feature = "sqlx-mysql")]
     MySql(PoolConnection<sqlx::MySql>),
@@ -104,6 +106,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
         }
     }
 
+    #[instrument(level = "trace")]
     async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -118,6 +121,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
         }
     }
 
+    #[instrument(level = "trace")]
     async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -132,6 +136,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
         }
     }
 
+    #[instrument(level = "trace")]
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -146,6 +151,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
         }
     }
 
+    #[instrument(level = "trace")]
     fn stream(
         &'a self,
         stmt: Statement,
@@ -160,13 +166,14 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
                 DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.stream(stmt).await?,
                 #[cfg(feature = "mock")]
                 DatabaseConnection::MockDatabaseConnection(conn) => {
-                    crate::QueryStream::from((Arc::clone(conn), stmt))
+                    crate::QueryStream::from((Arc::clone(conn), stmt, None))
                 }
                 DatabaseConnection::Disconnected => panic!("Disconnected"),
             })
         })
     }
 
+    #[instrument(level = "trace")]
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -177,7 +184,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.begin().await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => {
-                DatabaseTransaction::new_mock(Arc::clone(conn)).await
+                DatabaseTransaction::new_mock(Arc::clone(conn), None).await
             }
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
@@ -185,6 +192,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
 
     /// Execute the function inside a transaction.
     /// If the function returns an error, the transaction will be rolled back. If it does not return an error, the transaction will be committed.
+    #[instrument(level = "trace", skip(_callback))]
     async fn transaction<F, T, E>(&self, _callback: F) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(
@@ -205,7 +213,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.transaction(_callback).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => {
-                let transaction = DatabaseTransaction::new_mock(Arc::clone(conn))
+                let transaction = DatabaseTransaction::new_mock(Arc::clone(conn), None)
                     .await
                     .map_err(TransactionError::Connection)?;
                 transaction.run(_callback).await
@@ -234,6 +242,30 @@ impl DatabaseConnection {
     pub fn into_transaction_log(self) -> Vec<crate::Transaction> {
         let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
         mocker.drain_transaction_log()
+    }
+}
+
+impl DatabaseConnection {
+    /// Sets a callback to metric this connection
+    pub fn set_metric_callback<F>(&mut self, _callback: F)
+    where
+        F: Fn(&crate::metric::Info<'_>) + Send + Sync + 'static,
+    {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => {
+                conn.set_metric_callback(_callback)
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
+                conn.set_metric_callback(_callback)
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => {
+                conn.set_metric_callback(_callback)
+            }
+            _ => {}
+        }
     }
 }
 

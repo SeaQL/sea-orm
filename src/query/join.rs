@@ -1,9 +1,9 @@
 use crate::{
-    join_tbl_on_condition, unpack_table_ref, EntityTrait, IdenStatic, Iterable, Linked,
-    QuerySelect, Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
+    join_tbl_on_condition, unpack_table_ref, ColumnTrait, EntityTrait, IdenStatic, Iterable,
+    Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
 };
 pub use sea_query::JoinType;
-use sea_query::{Alias, Expr, IntoIden, SeaRc, SelectExpr};
+use sea_query::{Alias, DynIden, Expr, IntoIden, SeaRc, SelectExpr};
 
 impl<E> Select<E>
 where
@@ -79,21 +79,28 @@ where
 
             slf.query().join_as(
                 JoinType::LeftJoin,
-                unpack_table_ref(&rel.to_tbl),
+                rel.to_tbl,
                 SeaRc::clone(&to_tbl),
                 join_tbl_on_condition(from_tbl, to_tbl, rel.from_col, rel.to_col),
             );
         }
         slf = slf.apply_alias(SelectA.as_str());
+        let text_type = SeaRc::new(Alias::new("text")) as DynIden;
         let mut select_two = SelectTwo::new_without_prepare(slf.query);
         for col in <T::Column as Iterable>::iter() {
+            let col_def = col.def();
+            let col_type = col_def.get_column_type();
             let alias = format!("{}{}", SelectB.as_str(), col.as_str());
+            let expr = Expr::tbl(
+                Alias::new(&format!("r{}", l.link().len() - 1)).into_iden(),
+                col.into_iden(),
+            );
+            let expr = match col_type.get_enum_name() {
+                Some(_) => expr.as_enum(text_type.clone()),
+                None => expr.into(),
+            };
             select_two.query().expr(SelectExpr {
-                expr: Expr::tbl(
-                    Alias::new(&format!("r{}", l.link().len() - 1)).into_iden(),
-                    col.into_iden(),
-                )
-                .into(),
+                expr,
                 alias: Some(SeaRc::new(Alias::new(&alias))),
             });
         }

@@ -123,7 +123,7 @@ let mut pear: fruit::ActiveModel = pear.unwrap().into();
 pear.name = Set("Sweet pear".to_owned());
 
 // update one
-let pear: fruit::ActiveModel = pear.update(db).await?;
+let pear: fruit::Model = pear.update(db).await?;
 
 // update many: UPDATE "fruit" SET "cake_id" = NULL WHERE "fruit"."name" LIKE '%Apple%'
 Fruit::update_many()
@@ -136,13 +136,13 @@ Fruit::update_many()
 ### Save
 ```rust
 let banana = fruit::ActiveModel {
-    id: Unset(None),
+    id: NotSet,
     name: Set("Banana".to_owned()),
     ..Default::default()
 };
 
-// create, because primary key `id` is `Unset`
-let mut banana = banana.save(db).await?;
+// create, because primary key `id` is `NotSet`
+let mut banana = banana.save(db).await?.into_active_model();
 
 banana.name = Set("Banana Mongo".to_owned());
 
@@ -152,12 +152,16 @@ let banana = banana.save(db).await?;
 ```
 ### Delete
 ```rust
-let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
-let orange: fruit::ActiveModel = orange.unwrap().into();
-
 // delete one
-fruit::Entity::delete(orange).exec(db).await?;
+let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
+let orange: fruit::Model = orange.unwrap();
+fruit::Entity::delete(orange.into_active_model())
+    .exec(db)
+    .await?;
+
 // or simply
+let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
+let orange: fruit::Model = orange.unwrap();
 orange.delete(db).await?;
 
 // delete many: DELETE FROM "fruit" WHERE "fruit"."name" LIKE 'Orange'

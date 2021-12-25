@@ -63,7 +63,7 @@ where
     ///
     /// assert_eq!(
     ///     Insert::one(cake::ActiveModel {
-    ///         id: Unset(None),
+    ///         id: NotSet,
     ///         name: Set("Apple Pie".to_owned()),
     ///     })
     ///     .build(DbBackend::Postgres)
@@ -190,7 +190,7 @@ mod tests {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
                 .add(cake::ActiveModel {
-                    id: ActiveValue::unset(),
+                    id: ActiveValue::not_set(),
                     name: ActiveValue::set("Apple Pie".to_owned()),
                 })
                 .build(DbBackend::Postgres)

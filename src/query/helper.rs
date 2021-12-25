@@ -465,10 +465,12 @@ pub(crate) fn join_tbl_on_condition(
 
 pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> DynIden {
     match table_ref {
-        TableRef::Table(tbl) => SeaRc::clone(tbl),
-        TableRef::SchemaTable(_, tbl) => SeaRc::clone(tbl),
-        TableRef::TableAlias(tbl, _) => SeaRc::clone(tbl),
-        TableRef::SchemaTableAlias(_, tbl, _) => SeaRc::clone(tbl),
-        TableRef::SubQuery(_, tbl) => SeaRc::clone(tbl),
+        TableRef::Table(tbl)
+        | TableRef::SchemaTable(_, tbl)
+        | TableRef::DatabaseSchemaTable(_, _, tbl)
+        | TableRef::TableAlias(tbl, _)
+        | TableRef::SchemaTableAlias(_, tbl, _)
+        | TableRef::DatabaseSchemaTableAlias(_, _, tbl, _)
+        | TableRef::SubQuery(_, tbl) => SeaRc::clone(tbl),
     }
 }
