@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.5.0-rc.1 - 2021-12-25
+
+### Fixed Issues
+(Please help fill in)
+
+### Merged PRs
+* First metric and tracing implementation by @nappa85 in https://github.com/SeaQL/sea-orm/pull/373
+* Update sea-orm to depends on SeaQL/sea-query#202 by @billy1624 in https://github.com/SeaQL/sea-orm/pull/370
+* Codegen ActiveEnum & Create Enum From ActiveEnum by @billy1624 in https://github.com/SeaQL/sea-orm/pull/348
+* Axum example: update to Axum v0.4.2 by @ttys3 in https://github.com/SeaQL/sea-orm/pull/383
+* Fix rocket version by @Gabriel-Paulucci in https://github.com/SeaQL/sea-orm/pull/384
+* Insert & Update Return `Model` by @billy1624 in https://github.com/SeaQL/sea-orm/pull/339
+* Rework `ActiveValue` by @billy1624 in https://github.com/SeaQL/sea-orm/pull/340
+* Add wrapper method `ModelTrait::delete` by @billy1624 in https://github.com/SeaQL/sea-orm/pull/396
+* Add docker create script for contributors to setup databases locally by @billy1624 in https://github.com/SeaQL/sea-orm/pull/378
+* Log with tracing-subscriber by @billy1624 in https://github.com/SeaQL/sea-orm/pull/399
+* Codegen SQLite by @billy1624 in https://github.com/SeaQL/sea-orm/pull/386
+* PR without clippy warmings in file changed tab by @billy1624 in https://github.com/SeaQL/sea-orm/pull/401
+* Rename `sea-strum` lib back to `strum` by @billy1624 in https://github.com/SeaQL/sea-orm/pull/361
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.4.2...0.5.0
+
 ## 0.4.2 - 2021-12-12
 
 ### Fixed Issues
