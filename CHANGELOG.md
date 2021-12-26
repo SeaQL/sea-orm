@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## 0.5.0-rc.1 - 2021-12-25
 
 ### Fixed Issues
-(Please help fill in)
+* Why insert, update, etc return a ActiveModel instead of Model? https://github.com/SeaQL/sea-orm/issues/289
+* Rework `ActiveValue` https://github.com/SeaQL/sea-orm/issues/321
+* Some missing ActiveEnum utilities https://github.com/SeaQL/sea-orm/issues/338
 
 ### Merged PRs
 * First metric and tracing implementation by @nappa85 in https://github.com/SeaQL/sea-orm/pull/373
