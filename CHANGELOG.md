@@ -27,6 +27,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * PR without clippy warmings in file changed tab by @billy1624 in https://github.com/SeaQL/sea-orm/pull/401
 * Rename `sea-strum` lib back to `strum` by @billy1624 in https://github.com/SeaQL/sea-orm/pull/361
 
+### Breaking Changes
+* Insert or update return `Model` instead of `ActiveModel`
+* Method `ActiveModelBehavior::after_save` takes `Model` as input instead of `ActiveModel`
+* Rename method `sea_orm::unchanged_active_value_not_intended_for_public_use` to `sea_orm::Unchanged`
+* Rename method `ActiveValue::unset` to `ActiveValue::not_set`
+* Rename method `ActiveValue::is_unset` to `ActiveValue::is_not_set`
+* `PartialEq` of `ActiveValue` will also check the equality of state instead of just checking the equality of value
+
 **Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.4.2...0.5.0
 
 ## 0.4.2 - 2021-12-12
