@@ -774,8 +774,7 @@ pub async fn save_linked() -> Result<(), DbErr> {
 
     seafront_bakery
         .insert_related(bakery::Relation::Baker, baker_bob, &ctx.db)
-        .await
-        .expect("Unable to find the parent id");
+        .await?;
 
     // bakery_id should have been automatically filled
     assert_eq!(seafront_bakery_id, baker_bob.bakery_id);
@@ -816,22 +815,26 @@ pub async fn save_linked() -> Result<(), DbErr> {
     };
 
     // Insert related bakery's cakes
-    let mud_cake =
-        seaside_bakery
-            .insert_related(bakery::Relation::Cake, mud_cake, &ctx.db)
-            .exec(&ctx.db)
-            .await?;
-    let mud_cake_id = mud_cake.id;
+    seaside_bakery
+        .insert_many_related(
+            bakery::Relation::Cake,
+            vec![mud_cake, cheese_cake],
+            &ctx.db
+        )
+        .exec(&ctx.db)
+        .await?;
 
-    let cheese_cake =
-        seaside_bakery
-            .insert_related(bakery::Relation::Cake, cheese_cake, &ctx.db)
-            .exec(&ctx.db)
-            .await?;
+    let mud_cake_id = mud_cake.id;
     let cheese_cake_id = cheese_cake.id;
 
     // Attach multiple many-to-many relations
-    baker_bob.attach_related(cakes_bakers::Relation::Cake, vec![mud_cake, cheese_cake], &ctx.db).await?;
+    baker_bob
+        .attach_related(
+            cakes_bakers::Relation::Cake,
+            vec![mud_cake, cheese_cake],
+            &ctx.db
+        )
+        .await?;
 
     let baker_bob_cakes = baker_bob
         .find_linked(baker::BakerToCake)
@@ -861,7 +864,13 @@ pub async fn save_linked() -> Result<(), DbErr> {
     );
 
     // Detach only one of the two cakes
-    baker_bob.detach_related(cakes_bakers::Relation::Cake, vec![mud_cake_id], &ctx.db).await?;
+    baker_bob
+        .detach_related(
+            cakes_bakers::Relation::Cake,
+            vec![mud_cake_id],
+            &ctx.db
+        )
+        .await?;
 
     let baker_bob_cakes = baker_bob
         .find_linked(baker::BakerToCake)
