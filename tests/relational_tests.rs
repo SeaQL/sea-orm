@@ -729,3 +729,173 @@ pub async fn linked() -> Result<(), DbErr> {
 
     Ok(())
 }
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
+pub async fn save_linked() -> Result<(), DbErr> {
+    use common::bakery_chain::Order;
+    use sea_orm::{SelectA, SelectB};
+    use sea_query::{Alias, Expr};
+
+    let ctx = TestContext::new("test_linked").await;
+    create_tables(&ctx.db).await?;
+
+    // Seafront Bakery
+    let seafront_bakery = bakery::ActiveModel {
+        name: Set("SeaFront Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    };
+
+    // Bob Baker
+    let baker_bob = baker::ActiveModel {
+        name: Set("Baker Bob".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+61424000000",
+            "home": "0395555555",
+            "address": "12 Test St, Testville, Vic, Australia"
+        })),
+        ..Default::default()
+    };
+
+    // Should fail: We can't insert related before the parent model is saved
+    seafront_bakery
+        .insert_related(bakery::Relation::Baker, baker_bob, &ctx.db)
+        .await
+        .expect("Unable to find the parent id");
+
+    // Insert the bakery
+    let seafront_bakery = seaside_bakery.insert(&ctx.db).await?;
+    let seafront_bakery_id = seaside_bakery.id;
+
+    seafront_bakery
+        .insert_related(bakery::Relation::Baker, baker_bob, &ctx.db)
+        .await
+        .expect("Unable to find the parent id");
+
+    // bakery_id should have been automatically filled
+    assert_eq!(seafront_bakery_id, baker_bob.bakery_id);
+
+    // SeaSide Bakery
+    let seaside_bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    };
+
+    let seaside_bakery = seaside_bakery.insert(&ctx.db).await?;
+    let seaside_bakery_id = seaside_bakery.id;
+
+    // Bob didn't like the SeaFront Bakery's boss
+    // he want to work for the SeaSide Bakery now
+    baker_bob
+        .set_related(baker::Relation::Bakery, seaside_bakery, &ctx.db)
+        .await?;
+
+    // bakery_id should have been automatically updated
+    assert_eq!(seaside_bakery_id, baker_bob.bakery_id);
+
+    let mud_cake = cake::ActiveModel {
+        name: Set("Mud Cake".to_owned()),
+        price: Set(dec!(10.25)),
+        gluten_free: Set(false),
+        serial: Set(Uuid::new_v4()),
+        ..Default::default()
+    };
+
+    let cheese_cake = cake::ActiveModel {
+        name: Set("Cheese Cake".to_owned()),
+        price: Set(dec!(12.25)),
+        gluten_free: Set(false),
+        serial: Set(Uuid::new_v4()),
+        ..Default::default()
+    };
+
+    // Insert related bakery's cakes
+    let mud_cake =
+        seaside_bakery
+            .insert_related(bakery::Relation::Cake, mud_cake, &ctx.db)
+            .exec(&ctx.db)
+            .await?;
+    let mud_cake_id = mud_cake.id;
+
+    let cheese_cake =
+        seaside_bakery
+            .insert_related(bakery::Relation::Cake, cheese_cake, &ctx.db)
+            .exec(&ctx.db)
+            .await?;
+    let cheese_cake_id = cheese_cake.id;
+
+    // Attach multiple many-to-many relations
+    baker_bob.attach_related(cakes_bakers::Relation::Cake, vec![mud_cake, cheese_cake], &ctx.db).await?;
+
+    let baker_bob_cakes = baker_bob
+        .find_linked(baker::BakerToCake)
+        .all(&ctx.db)
+        .await?;
+
+    assert_eq!(
+        baker_bob_cakes,
+        vec![
+            cake::Model {
+                id: mud_cake_id,
+                name: "Mud Cake".to_owned(),
+                price: dec!(10.25),
+                gluten_free: false,
+                bakery_id: seaside_bakery_id,
+                serial: mud_cake_id.serial
+            },
+            cake::Model {
+                id: cheese_cake_id,
+                name: "Cheese Cake".to_owned(),
+                price: dec!(12.25),
+                gluten_free: false,
+                bakery_id: seaside_bakery_id,
+                serial: cheese_cake.serial
+            }
+        ]
+    );
+
+    // Detach only one of the two cakes
+    baker_bob.detach_related(cakes_bakers::Relation::Cake, vec![mud_cake_id], &ctx.db).await?;
+
+    let baker_bob_cakes = baker_bob
+        .find_linked(baker::BakerToCake)
+        .all(&ctx.db)
+        .await?;
+
+    assert_eq!(
+        baker_bob_cakes,
+        vec![
+            cake::Model {
+                id: cheese_cake_id,
+                name: "Cheese Cake".to_owned(),
+                price: dec!(12.25),
+                gluten_free: false,
+                bakery_id: seaside_bakery_id,
+                serial: cheese_cake.serial
+            }
+        ]
+    );
+
+    // Detach all relationships
+    baker_bob.detach_all_related(cakes_bakers::Relation::Cake, &ctx.db).await?;
+
+    let baker_bob_cakes = baker_bob
+        .find_linked(baker::BakerToCake)
+        .all(&ctx.db)
+        .await?;
+
+    assert_eq!(
+        baker_bob_cakes,
+        vec![]
+    );
+
+    ctx.delete().await;
+
+    Ok(())
+}
