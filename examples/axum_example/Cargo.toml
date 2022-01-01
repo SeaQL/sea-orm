@@ -23,7 +23,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dependencies.sea-orm]
 path = "../../" # remove this line in your own project
-version = "^0.5.0-rc.1"
+version = "^0.5.0"
 features = ["macros", "runtime-tokio-native-tls", "debug-print"]
 default-features = false
 

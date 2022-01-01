@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.5.0-rc.1 - 2021-12-25
+## 0.5.0 - 2022-01-01
 
 ### Fixed Issues
 * Why insert, update, etc return a ActiveModel instead of Model? https://github.com/SeaQL/sea-orm/issues/289
@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Rename `sea-strum` lib back to `strum` by @billy1624 in https://github.com/SeaQL/sea-orm/pull/361
 
 ### Breaking Changes
-* Insert or update return `Model` instead of `ActiveModel`
+* `ActiveModel::insert` and `ActiveModel::update` return `Model` instead of `ActiveModel`
 * Method `ActiveModelBehavior::after_save` takes `Model` as input instead of `ActiveModel`
 * Rename method `sea_orm::unchanged_active_value_not_intended_for_public_use` to `sea_orm::Unchanged`
 * Rename method `ActiveValue::unset` to `ActiveValue::not_set`
