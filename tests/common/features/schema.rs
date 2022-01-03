@@ -116,7 +116,7 @@ pub async fn create_self_join_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(self_join::Column::Time).time())
         .foreign_key(
             ForeignKeyCreateStatement::new()
-                .name("fk-self_join-self_join")
+                .name("fk-self_join-uuid_ref")
                 .from_tbl(SelfJoin)
                 .from_col(self_join::Column::UuidRef)
                 .to_tbl(SelfJoin)
@@ -191,7 +191,7 @@ pub async fn create_active_enum_child_table(db: &DbConn) -> Result<ExecResult, D
         )
         .foreign_key(
             ForeignKeyCreateStatement::new()
-                .name("fk-active_enum_child-active_enum")
+                .name("fk-active_enum_child-parent_id")
                 .from_tbl(ActiveEnumChild)
                 .from_col(active_enum_child::Column::ParentId)
                 .to_tbl(ActiveEnum)
