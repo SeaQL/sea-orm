@@ -176,13 +176,14 @@ where
         if let Some(action) = relation.on_update {
             foreign_key_stmt.on_update(action);
         }
+        let name = if let Some(name) = relation.fk_name {
+            name
+        } else {
+            format!("fk-{}-{}", from_tbl.to_string(), from_cols.join("-"))
+        };
         stmt.foreign_key(
             foreign_key_stmt
-                .name(&format!(
-                    "fk-{}-{}",
-                    from_tbl.to_string(),
-                    from_cols.join("-")
-                ))
+                .name(&name)
                 .from_tbl(from_tbl)
                 .to_tbl(to_tbl),
         );

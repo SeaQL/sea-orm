@@ -191,7 +191,7 @@ pub async fn create_active_enum_child_table(db: &DbConn) -> Result<ExecResult, D
         )
         .foreign_key(
             ForeignKeyCreateStatement::new()
-                .name("fk-active_enum_child-parent_id")
+                .name("fk-active_enum_child-active_enum")
                 .from_tbl(ActiveEnumChild)
                 .from_col(active_enum_child::Column::ParentId)
                 .to_tbl(ActiveEnum)
