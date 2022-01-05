@@ -16,6 +16,7 @@ use std::sync::Arc;
 /// Handle a database connection depending on the backend
 /// enabled by the feature flags. This creates a database pool.
 #[cfg_attr(not(feature = "mock"), derive(Clone))]
+#[derive(Clone)]
 pub enum DatabaseConnection {
     /// Create a MYSQL database connection and pool
     #[cfg(feature = "sqlx-mysql")]
