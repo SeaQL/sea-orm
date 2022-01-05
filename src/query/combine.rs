@@ -46,10 +46,14 @@ where
                     let col = match &sel.expr {
                         SimpleExpr::Column(col_ref) => match &col_ref {
                             ColumnRef::Column(col) | ColumnRef::TableColumn(_, col) => col,
+                            _ => panic!("Unimplemented"),
                         },
                         SimpleExpr::AsEnum(_, simple_expr) => match simple_expr.as_ref() {
                             SimpleExpr::Column(col_ref) => match &col_ref {
                                 ColumnRef::Column(col) | ColumnRef::TableColumn(_, col) => col,
+                                _ => panic!(
+                                    "cannot apply alias for AsEnum with expr other than Column"
+                                ),
                             },
                             _ => {
                                 panic!("cannot apply alias for AsEnum with expr other than Column")
