@@ -36,6 +36,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     create_active_enum_table(db).await?;
     create_active_enum_child_table(db).await?;
+    create_insert_default_table(db).await?;
 
     Ok(())
 }
@@ -200,4 +201,19 @@ pub async fn create_active_enum_child_table(db: &DbConn) -> Result<ExecResult, D
         .to_owned();
 
     create_table(db, &create_table_stmt, ActiveEnumChild).await
+}
+
+pub async fn create_insert_default_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(insert_default::Entity.table_ref())
+        .col(
+            ColumnDef::new(insert_default::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .to_owned();
+
+    create_table(db, &create_table_stmt, InsertDefault).await
 }
