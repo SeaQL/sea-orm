@@ -16,6 +16,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_repository_table(db).await?;
     create_self_join_table(db).await?;
     create_byte_primary_key_table(db).await?;
+    create_satellites_table(db).await?;
 
     let create_enum_stmts = match db_backend {
         DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
