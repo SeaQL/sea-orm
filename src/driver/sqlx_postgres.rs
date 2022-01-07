@@ -12,7 +12,7 @@ use tracing::instrument;
 
 use crate::{
     debug_print, error::*, executor::*, AccessMode, ConnectOptions, DatabaseConnection,
-    DatabaseTransaction, DbBackend, IsolationLevel, QueryStream, Statement, TransactionError,
+    DatabaseTransaction, DbBackend, IsolationLevel, QueryStream, SqlxConnectOptions, Statement, TransactionError,
 };
 
 use super::sqlx_common::*;
@@ -43,10 +43,14 @@ impl SqlxPostgresConnector {
     /// Add configuration options for the PostgreSQL database
     #[instrument(level = "trace")]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
-        let mut opt = options
-            .url
-            .parse::<PgConnectOptions>()
-            .map_err(sqlx_error_to_conn_err)?;
+        let mut opt = match &options.connect_options {
+            SqlxConnectOptions::Postgres(opts) => opts.clone(),
+            _ => {
+                return Err(DbErr::Conn(RuntimeErr::Internal(
+                    "To connect to mysql you must have PgConnectOptions inside options!".into(),
+                )))
+            }
+        };
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
             opt.disable_statement_logging();

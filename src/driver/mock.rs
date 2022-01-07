@@ -1,8 +1,11 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
-    Statement, Transaction,
+    debug_print, error::*, ConnectOptions, DatabaseConnection, DbBackend, ExecResult, MockDatabase,
+    QueryResult, Statement, Transaction,
 };
+use futures::future::BoxFuture;
 use futures::Stream;
+use std::str::FromStr;
+use std::time::Duration;
 use std::{
     fmt::Debug,
     pin::Pin,
@@ -71,28 +74,23 @@ impl MockDatabaseConnector {
     /// Connect to the [MockDatabase]
     #[allow(unused_variables)]
     #[instrument(level = "trace")]
-    pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
-        macro_rules! connect_mock_db {
-            ( $syntax: expr ) => {
-                Ok(DatabaseConnection::MockDatabaseConnection(Arc::new(
-                    MockDatabaseConnection::new(MockDatabase::new($syntax)),
-                )))
-            };
+    pub async fn connect(opt: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
+        match opt.connect_options.get_db_backend_type() {
+            #[cfg(feature = "sqlx-mysql")]
+            DbBackend::MySql => Self::connect_mock_db(DbBackend::MySql),
+            #[cfg(feature = "sqlx-postgres")]
+            DbBackend::Postgres => Self::connect_mock_db(DbBackend::Postgres),
+            #[cfg(feature = "sqlx-sqlite")]
+            DbBackend::Sqlite => Self::connect_mock_db(DbBackend::Sqlite),
+            #[cfg(not(all(feature = "sqlx-mysql", feature = "sqlx-postgres", feature = "sqlx-sqlite")))]
+            _ => Self::connect_mock_db(DbBackend::Postgres),
         }
+    }
 
-        #[cfg(feature = "sqlx-mysql")]
-        if crate::SqlxMySqlConnector::accepts(string) {
-            return connect_mock_db!(DbBackend::MySql);
-        }
-        #[cfg(feature = "sqlx-postgres")]
-        if crate::SqlxPostgresConnector::accepts(string) {
-            return connect_mock_db!(DbBackend::Postgres);
-        }
-        #[cfg(feature = "sqlx-sqlite")]
-        if crate::SqlxSqliteConnector::accepts(string) {
-            return connect_mock_db!(DbBackend::Sqlite);
-        }
-        connect_mock_db!(DbBackend::Postgres)
+    fn connect_mock_db(db_backend: DbBackend) -> Result<DatabaseConnection, DbErr> {
+        Ok(DatabaseConnection::MockDatabaseConnection(Arc::new(
+            MockDatabaseConnection::new(MockDatabase::new(db_backend)),
+        )))
     }
 }
 

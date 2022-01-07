@@ -12,7 +12,7 @@ use tracing::{instrument, warn};
 
 use crate::{
     debug_print, error::*, executor::*, AccessMode, ConnectOptions, DatabaseConnection,
-    DatabaseTransaction, IsolationLevel, QueryStream, Statement, TransactionError,
+    DatabaseTransaction, IsolationLevel, QueryStream, SqlxConnectOptions, Statement, TransactionError,
 };
 
 use super::sqlx_common::*;
@@ -42,15 +42,15 @@ impl SqlxSqliteConnector {
 
     /// Add configuration options for the SQLite database
     #[instrument(level = "trace")]
-    pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
-        let mut options = options;
-        let mut opt = options
-            .url
-            .parse::<SqliteConnectOptions>()
-            .map_err(sqlx_error_to_conn_err)?;
-        if options.sqlcipher_key.is_some() {
-            opt = opt.pragma("key", options.sqlcipher_key.clone().unwrap());
-        }
+    pub async fn connect(mut options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
+        let mut opt = match &options.connect_options {
+            SqlxConnectOptions::Sqlite(opts) => opts.clone(),
+            _ => {
+                return Err(DbErr::Conn(RuntimeErr::Internal(
+                    "To connect to mysql you must have SqliteConnectOptions inside options!".into(),
+                )))
+            }
+        };
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
             opt.disable_statement_logging();

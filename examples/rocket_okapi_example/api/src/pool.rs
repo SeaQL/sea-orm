@@ -22,7 +22,7 @@ impl sea_orm_rocket::Pool for SeaOrmPool {
 
     async fn init(figment: &Figment) -> Result<Self, Self::Error> {
         let config = figment.extract::<Config>().unwrap();
-        let mut options: ConnectOptions = config.url.into();
+        let mut options: ConnectOptions = config.url.try_into()?;
         options
             .max_connections(config.max_connections as u32)
             .min_connections(config.min_connections.unwrap_or_default())
