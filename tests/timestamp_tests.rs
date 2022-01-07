@@ -48,8 +48,8 @@ pub async fn create_satellites_log(db: &DatabaseConnection) -> Result<(), DbErr>
     let archive = datetimeutc::Model {
         id: 1,
         satellite_name: "Sea-00001-2022".to_owned(),
-        launch_date: "2022-01-07T12:11:22.500202282Z".parse().unwrap(),
-        deployment_date: "2022-01-07T12:11:22.500202282Z".parse().unwrap(),
+        launch_date: "2022-01-07T12:11:232Z".parse().unwrap(),
+        deployment_date: "2022-01-07T12:11:23Z".parse().unwrap(),
     };
 
     let res = DateTimeUtcTest::insert(archive.clone().into_active_model())
