@@ -739,14 +739,14 @@ mod tests {
                         unique: false,
                     },
                     Column {
-                        name: "name".to_owned(),
+                        name: "_name_".to_owned(),
                         col_type: ColumnType::String(Some(255)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
-                        name: "fruit_id".to_owned(),
+                        name: "fruitId".to_owned(),
                         col_type: ColumnType::Integer(Some(11)),
                         auto_increment: false,
                         not_null: false,
@@ -755,7 +755,7 @@ mod tests {
                 ],
                 relations: vec![Relation {
                     ref_table: "fruit".to_owned(),
-                    columns: vec!["fruit_id".to_owned()],
+                    columns: vec!["fruitId".to_owned()],
                     ref_columns: vec!["id".to_owned()],
                     rel_type: RelationType::BelongsTo,
                     on_delete: None,
