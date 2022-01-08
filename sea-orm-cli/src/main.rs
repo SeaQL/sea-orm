@@ -50,7 +50,6 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
             // Missing scheme will have been caught by the Url::parse() call
             // above
             let url_username = url.username();
-            let url_password = url.password();
             let url_host = url.host_str();
 
             let is_sqlite = url.scheme() == "sqlite";
@@ -60,9 +59,6 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                 // Panic on any that are missing
                 if url_username.is_empty() {
                     panic!("No username was found in the database url");
-                }
-                if url_password.is_none() {
-                    panic!("No password was found in the database url");
                 }
                 if url_host.is_none() {
                     panic!("No host was found in the database url");
