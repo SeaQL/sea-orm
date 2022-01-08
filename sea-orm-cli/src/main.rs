@@ -276,7 +276,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_generate_entity_no_password() {
         let matches = cli::build_cli()
             .setting(AppSettings::NoBinaryName)
