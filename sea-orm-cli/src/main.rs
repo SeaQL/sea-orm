@@ -50,7 +50,6 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
             // Missing scheme will have been caught by the Url::parse() call
             // above
             let url_username = url.username();
-            let url_password = url.password();
             let url_host = url.host_str();
 
             let is_sqlite = url.scheme() == "sqlite";
@@ -60,9 +59,6 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                 // Panic on any that are missing
                 if url_username.is_empty() {
                     panic!("No username was found in the database url");
-                }
-                if url_password.is_none() {
-                    panic!("No password was found in the database url");
                 }
                 if url_host.is_none() {
                     panic!("No host was found in the database url");
@@ -202,12 +198,11 @@ where
 #[cfg(test)]
 mod tests {
     use clap::AppSettings;
-    use url::ParseError;
-
     use super::*;
 
-    #[async_std::test]
-    async fn test_generate_entity_no_protocol() {
+    #[test]
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: RelativeUrlWithoutBase")]
+    fn test_generate_entity_no_protocol() {
         let matches = cli::build_cli()
             .setting(AppSettings::NoBinaryName)
             .get_matches_from(vec![
@@ -217,22 +212,11 @@ mod tests {
                 "://root:root@localhost:3306/database",
             ]);
 
-        let result = std::panic::catch_unwind(|| {
-            smol::block_on(run_generate_command(matches.subcommand().1.unwrap()))
-        });
-
-        // Make sure result is a ParseError
-        match result {
-            Ok(Err(e)) => match e.downcast::<ParseError>() {
-                Ok(_) => (),
-                Err(e) => panic!("Expected ParseError but got: {:?}", e),
-            },
-            _ => panic!("Should have panicked"),
-        }
+        smol::block_on(run_generate_command(matches.subcommand().1.unwrap())).unwrap();
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "There is no database name as part of the url path: postgresql://root:root@localhost:3306")]
     fn test_generate_entity_no_database_section() {
         let matches = cli::build_cli()
             .setting(AppSettings::NoBinaryName)
@@ -243,12 +227,11 @@ mod tests {
                 "postgresql://root:root@localhost:3306",
             ]);
 
-        smol::block_on(run_generate_command(matches.subcommand().1.unwrap()))
-            .unwrap_or_else(handle_error);
+        smol::block_on(run_generate_command(matches.subcommand().1.unwrap())).unwrap();
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "There is no database name as part of the url path: mysql://root:root@localhost:3306/")]
     fn test_generate_entity_no_database_path() {
         let matches = cli::build_cli()
             .setting(AppSettings::NoBinaryName)
@@ -259,12 +242,11 @@ mod tests {
                 "mysql://root:root@localhost:3306/",
             ]);
 
-        smol::block_on(run_generate_command(matches.subcommand().1.unwrap()))
-            .unwrap_or_else(handle_error);
+        smol::block_on(run_generate_command(matches.subcommand().1.unwrap())).unwrap();
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "No username was found in the database url")]
     fn test_generate_entity_no_username() {
         let matches = cli::build_cli()
             .setting(AppSettings::NoBinaryName)
@@ -275,12 +257,11 @@ mod tests {
                 "mysql://:root@localhost:3306/database",
             ]);
 
-        smol::block_on(run_generate_command(matches.subcommand().1.unwrap()))
-            .unwrap_or_else(handle_error);
+        smol::block_on(run_generate_command(matches.subcommand().1.unwrap())).unwrap();
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: PoolTimedOut")]
     fn test_generate_entity_no_password() {
         let matches = cli::build_cli()
             .setting(AppSettings::NoBinaryName)
@@ -291,12 +272,12 @@ mod tests {
                 "mysql://root:@localhost:3306/database",
             ]);
 
-        smol::block_on(run_generate_command(matches.subcommand().1.unwrap()))
-            .unwrap_or_else(handle_error);
+        smol::block_on(run_generate_command(matches.subcommand().1.unwrap())).unwrap();
     }
 
-    #[async_std::test]
-    async fn test_generate_entity_no_host() {
+    #[test]
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: EmptyHost")]
+    fn test_generate_entity_no_host() {
         let matches = cli::build_cli()
             .setting(AppSettings::NoBinaryName)
             .get_matches_from(vec![
@@ -306,17 +287,6 @@ mod tests {
                 "postgres://root:root@/database",
             ]);
 
-        let result = std::panic::catch_unwind(|| {
-            smol::block_on(run_generate_command(matches.subcommand().1.unwrap()))
-        });
-
-        // Make sure result is a ParseError
-        match result {
-            Ok(Err(e)) => match e.downcast::<ParseError>() {
-                Ok(_) => (),
-                Err(e) => panic!("Expected ParseError but got: {:?}", e),
-            },
-            _ => panic!("Should have panicked"),
-        }
+        smol::block_on(run_generate_command(matches.subcommand().1.unwrap())).unwrap();
     }
 }
