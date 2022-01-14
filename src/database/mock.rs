@@ -1,7 +1,7 @@
 use crate::{
     error::*, DatabaseConnection, DbBackend, EntityTrait, ExecResult, ExecResultHolder, Iden,
-    Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult, QueryResultRow,
-    Statement,
+    IdenStatic, Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult,
+    QueryResultRow, Statement
 };
 use sea_query::{Value, ValueType, Values};
 use std::{collections::BTreeMap, sync::Arc};
@@ -201,6 +201,33 @@ where
             values.insert(col.to_string(), self.get(col));
         }
         MockRow { values }
+    }
+}
+
+impl<M, N> IntoMockRow for (M, N)
+where
+    M: ModelTrait,
+    N: ModelTrait,
+{
+    fn into_mock_row(self) -> MockRow {
+        let mut mapped_join = BTreeMap::new();
+
+        for column in <<M as ModelTrait>::Entity as EntityTrait>::Column::iter() {
+            mapped_join.insert(format!("A_{}", column.as_str()), self.0.get(column));
+        }
+        for column in <<N as ModelTrait>::Entity as EntityTrait>::Column::iter() {
+            mapped_join.insert(format!("B_{}", column.as_str()), self.1.get(column));
+        }
+
+        mapped_join.into_mock_row()
+    }
+}
+
+impl IntoMockRow for BTreeMap<String, Value> {
+    fn into_mock_row(self) -> MockRow {
+        MockRow {
+            values: self.into_iter().map(|(k, v)| (k, v)).collect(),
+        }
     }
 }
 
