@@ -81,25 +81,25 @@ impl FromStr for WithSerde {
 impl EntityWriter {
     pub fn generate(self, expanded_format: bool, with_serde: WithSerde) -> WriterOutput {
         let mut files = Vec::new();
-        files.extend(self.write_entities(expanded_format, with_serde));
+        files.extend(self.write_entities(expanded_format, &with_serde));
         files.push(self.write_mod());
         files.push(self.write_prelude());
         if !self.enums.is_empty() {
-            files.push(self.write_sea_orm_active_enums());
+            files.push(self.write_sea_orm_active_enums(&with_serde));
         }
         WriterOutput { files }
     }
 
-    pub fn write_entities(&self, expanded_format: bool, with_serde: WithSerde) -> Vec<OutputFile> {
+    pub fn write_entities(&self, expanded_format: bool, with_serde: &WithSerde) -> Vec<OutputFile> {
         self.entities
             .iter()
             .map(|entity| {
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);
                 let code_blocks = if expanded_format {
-                    Self::gen_expanded_code_blocks(entity, &with_serde)
+                    Self::gen_expanded_code_blocks(entity, with_serde)
                 } else {
-                    Self::gen_compact_code_blocks(entity, &with_serde)
+                    Self::gen_compact_code_blocks(entity, with_serde)
                 };
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
@@ -147,20 +147,18 @@ impl EntityWriter {
         }
     }
 
-    pub fn write_sea_orm_active_enums(&self) -> OutputFile {
+    pub fn write_sea_orm_active_enums(&self, with_serde: &WithSerde) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
         Self::write(
             &mut lines,
-            vec![quote! {
-                use sea_orm::entity::prelude::*;
-            }],
+            vec![Self::gen_import(with_serde)],
         );
         lines.push("".to_owned());
         let code_blocks = self
             .enums
             .iter()
-            .map(|(_, active_enum)| active_enum.impl_active_enum())
+            .map(|(_, active_enum)| active_enum.impl_active_enum(with_serde))
             .collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
