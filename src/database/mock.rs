@@ -1,7 +1,7 @@
 use crate::{
     error::*, DatabaseConnection, DbBackend, EntityTrait, ExecResult, ExecResultHolder, Iden,
     IdenStatic, Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult,
-    QueryResultRow, Statement
+    QueryResultRow, Statement, SelectA, SelectB
 };
 use sea_query::{Value, ValueType, Values};
 use std::{collections::BTreeMap, sync::Arc};
@@ -213,10 +213,10 @@ where
         let mut mapped_join = BTreeMap::new();
 
         for column in <<M as ModelTrait>::Entity as EntityTrait>::Column::iter() {
-            mapped_join.insert(format!("A_{}", column.as_str()), self.0.get(column));
+            mapped_join.insert(format!("{}{}", SelectA.as_str(), column.as_str()), self.0.get(column));
         }
         for column in <<N as ModelTrait>::Entity as EntityTrait>::Column::iter() {
-            mapped_join.insert(format!("B_{}", column.as_str()), self.1.get(column));
+            mapped_join.insert(format!("{}{}", SelectB.as_str(), column.as_str()), self.1.get(column));
         }
 
         mapped_join.into_mock_row()
