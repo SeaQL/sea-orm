@@ -24,7 +24,7 @@ pub struct QueryStream {
     metric_callback: Option<crate::metric::Callback>,
     #[borrows(mut conn, stmt, metric_callback)]
     #[not_covariant]
-    stream: Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + 'this>>,
+    stream: Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send + 'this>>,
 }
 
 #[cfg(feature = "sqlx-mysql")]

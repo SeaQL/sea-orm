@@ -155,7 +155,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
     fn stream(
         &'a self,
         stmt: Statement,
-    ) -> Pin<Box<dyn Future<Output = Result<Self::Stream, DbErr>> + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Self::Stream, DbErr>> + 'a + Send>> {
         Box::pin(async move {
             Ok(match self {
                 #[cfg(feature = "sqlx-mysql")]

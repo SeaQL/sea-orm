@@ -9,7 +9,7 @@ use std::{future::Future, pin::Pin};
 #[async_trait::async_trait]
 pub trait ConnectionTrait<'a>: Sync {
     /// Create a stream for the [QueryResult]
-    type Stream: Stream<Item = Result<QueryResult, DbErr>>;
+    type Stream: Stream<Item = Result<QueryResult, DbErr>> + Send;
 
     /// Fetch the database backend as specified in [DbBackend].
     /// This depends on feature flags enabled.
@@ -28,7 +28,7 @@ pub trait ConnectionTrait<'a>: Sync {
     fn stream(
         &'a self,
         stmt: Statement,
-    ) -> Pin<Box<dyn Future<Output = Result<Self::Stream, DbErr>> + 'a>>;
+    ) -> Pin<Box<dyn Future<Output = Result<Self::Stream, DbErr>> + 'a + Send>>;
 
     /// Execute SQL `BEGIN` transaction.
     /// Returns a Transaction that can be committed or rolled back

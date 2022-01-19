@@ -1,0 +1,1 @@
+Demonstrator for using streaming queries with `tokio::spawn` or in contexts that require `Send` futures.
