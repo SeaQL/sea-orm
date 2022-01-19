@@ -339,7 +339,7 @@ impl OpenTransaction {
 mod tests {
     use crate::{
         entity::*, tests_cfg::*, ConnectionTrait, DbBackend, DbErr, MockDatabase, Statement,
-        Transaction, TransactionError,
+        Transaction, TransactionError, IntoMockRow,
     };
     use pretty_assertions::assert_eq;
 
@@ -631,5 +631,27 @@ mod tests {
         txn.commit().await?;
 
         Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn test_mocked_join() {
+        let mocked_row = (
+            cake::Model {
+                id: 1,
+                name: "Apple Cake".to_owned(),
+            },
+            fruit::Model {
+                id: 2,
+                name: "Apple".to_owned(),
+                cake_id: Some(1),
+            }
+        ).into_mock_row();
+
+        let a_id = mocked_row.try_get::<i32>("A_id");
+        assert!(a_id.is_ok());
+        assert_eq!(1, a_id.unwrap());
+        let b_id = mocked_row.try_get::<i32>("B_id");
+        assert!(b_id.is_ok());
+        assert_eq!(2, b_id.unwrap());
     }
 }
