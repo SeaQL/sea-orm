@@ -361,8 +361,7 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
                 conn,
                 stmt,
                 self.metric_callback.clone(),
-            )
-            .await)
+            ))
         })
     }
 

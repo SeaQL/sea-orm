@@ -2,7 +2,7 @@
 
 use std::{ops::DerefMut, pin::Pin, task::Poll};
 
-use futures::{FutureExt, Stream};
+use futures::Stream;
 #[cfg(feature = "sqlx-dep")]
 use futures::TryStreamExt;
 
@@ -33,16 +33,18 @@ impl<'a> std::fmt::Debug for TransactionStream<'a> {
     }
 }
 
-type PinStream<'s> = Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send + 's>>;
-
 impl<'a> TransactionStream<'a> {
-    fn stream_builder<'s>(
-        conn: &'s mut MutexGuard<'a, InnerConnection>,
-        stmt: &'s Statement,
-        _metric_callback: &'s Option<crate::metric::Callback>,
-    ) -> Pin<Box<dyn std::future::Future<Output = PinStream<'s>> + 's + Send>> {
-        async move {
-            match conn.deref_mut() {
+    #[instrument(level = "trace", skip(metric_callback))]
+    pub(crate) fn build(
+        conn: MutexGuard<'a, InnerConnection>,
+        stmt: Statement,
+        metric_callback: Option<crate::metric::Callback>,
+    ) -> TransactionStream<'a> {
+        TransactionStreamBuilder {
+            stmt,
+            conn,
+            metric_callback,
+            stream_builder: |conn, stmt, _metric_callback| match conn.deref_mut() {
                 #[cfg(feature = "sqlx-mysql")]
                 InnerConnection::MySql(c) => {
                     let query = crate::driver::sqlx_mysql::sqlx_query(stmt);
@@ -81,27 +83,9 @@ impl<'a> TransactionStream<'a> {
                 }
                 #[cfg(feature = "mock")]
                 InnerConnection::Mock(c) => c.fetch(stmt),
-            }
-        }
-        .boxed()
-    }
-
-    #[instrument(level = "trace", skip(metric_callback))]
-    pub(crate) async fn build(
-        conn: MutexGuard<'a, InnerConnection>,
-        stmt: Statement,
-        metric_callback: Option<crate::metric::Callback>,
-    ) -> TransactionStream<'a> {
-        let stream_builder = Self::stream_builder;
-
-        TransactionStreamAsyncBuilder {
-            stmt,
-            conn,
-            metric_callback,
-            stream_builder,
+            },
         }
         .build()
-        .await
     }
 }
 
