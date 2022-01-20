@@ -10,16 +10,16 @@ use rocket::{Build, Request, Rocket};
 use rocket_dyn_templates::Template;
 use serde_json::json;
 
+use entity::sea_orm;
+use migration::MigratorTrait;
 use sea_orm::{entity::*, query::*};
 use sea_orm_rocket::{Connection, Database};
 
 mod pool;
 use pool::Db;
 
-mod setup;
-
-mod post;
-pub use post::Entity as Post;
+pub use entity::post;
+pub use entity::post::Entity as Post;
 
 const DEFAULT_POSTS_PER_PAGE: usize = 5;
 
@@ -114,7 +114,7 @@ async fn list(
             "num_pages": num_pages,
             "posts": posts,
             "flash": flash.map(FlashMessage::into_inner),
-        })
+        }),
     )
 }
 
@@ -131,7 +131,7 @@ async fn edit(conn: Connection<'_, Db>, id: i32) -> Template {
         "edit",
         json! ({
             "post": post,
-        })
+        }),
     )
 }
 
@@ -160,13 +160,13 @@ pub fn not_found(req: &Request<'_>) -> Template {
         "error/404",
         json! ({
             "uri": req.uri()
-        })
+        }),
     )
 }
 
 async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
     let conn = &Db::fetch(&rocket).unwrap().conn;
-    let _ = setup::create_post_table(conn).await;
+    let _ = migration::Migrator::up(conn, None).await;
     Ok(rocket)
 }
 
