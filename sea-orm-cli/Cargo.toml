@@ -20,7 +20,7 @@ path = "src/main.rs"
 [dependencies]
 clap = { version = "^2.33.3" }
 dotenv = { version = "^0.15" }
-async-std = { version = "^1.9", features = [ "attributes" ] }
+async-std = { version = "^1.9", features = [ "attributes", "tokio1" ] }
 sea-orm-codegen = { version = "^0.5.0", path = "../sea-orm-codegen" }
 sea-schema = { version = "0.4.0", default-features = false, features = [
     "debug-print",

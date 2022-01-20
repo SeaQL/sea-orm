@@ -10,7 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 async-trait = { version = "^0.1"}
-async-std = { version = "1.8", features = [ "attributes" ] }
+async-std = { version = "1.8", features = [ "attributes", "tokio1" ] }
 sea-schema = { git = "https://github.com/SeaQL/sea-schema.git", branch = "schema-manager", default-features = false, features = [ "migration", "debug-print" ] }
 env_logger = { version = "^0" }
 log = { version = "^0" }
