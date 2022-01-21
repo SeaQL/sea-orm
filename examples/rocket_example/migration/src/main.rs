@@ -1,5 +1,5 @@
 use migration::Migrator;
-use sea_schema::migration::cli;
+use sea_schema::migration::*;
 
 #[async_std::main]
 async fn main() {
