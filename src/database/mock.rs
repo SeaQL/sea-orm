@@ -654,4 +654,50 @@ mod tests {
         assert!(b_id.is_ok());
         assert_eq!(2, b_id.unwrap());
     }
+
+    #[smol_potat::test]
+    async fn test_find_also_related_1() -> Result<(), DbErr> {
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(vec![vec![(
+                cake::Model {
+                    id: 1,
+                    name: "Apple Cake".to_owned(),
+                },
+                fruit::Model {
+                    id: 2,
+                    name: "Apple".to_owned(),
+                    cake_id: Some(1),
+                },
+            )]])
+            .into_connection();
+
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_related(fruit::Entity)
+                .all(&db)
+                .await?,
+            vec![(
+                cake::Model {
+                    id: 1,
+                    name: "Apple Cake".to_owned(),
+                },
+                Some(fruit::Model {
+                    id: 2,
+                    name: "Apple".to_owned(),
+                    cake_id: Some(1),
+                })
+            )]
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![Transaction::from_sql_and_values(
+                DbBackend::Postgres,
+                r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name", "fruit"."id" AS "B_id", "fruit"."name" AS "B_name", "fruit"."cake_id" AS "B_cake_id" FROM "cake" LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
+                vec![]
+            ),]
+        );
+
+        Ok(())
+    }
 }
