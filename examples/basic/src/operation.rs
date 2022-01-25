@@ -46,14 +46,14 @@ pub async fn save_active_model(db: &DbConn) -> Result<(), DbErr> {
         name: Set("Banana".to_owned()),
         ..Default::default()
     };
-    let mut banana: fruit::ActiveModel = banana.save(db).await?.into_active_model();
+    let mut banana: fruit::ActiveModel = banana.save(db).await?;
 
     println!();
     println!("Inserted: {:?}\n", banana);
 
     banana.name = Set("Banana Mongo".to_owned());
 
-    let banana: fruit::ActiveModel = banana.save(db).await?.into_active_model();
+    let banana: fruit::ActiveModel = banana.save(db).await?;
 
     println!();
     println!("Updated: {:?}\n", banana);

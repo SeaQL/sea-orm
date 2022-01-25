@@ -34,6 +34,7 @@
 //! + [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
 //! + [Actix Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
 //! + [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
+//! + [Poem Example](https://github.com/SeaQL/sea-orm/tree/master/examples/poem_example)
 //!
 //! ## Features
 //!
@@ -207,7 +208,7 @@
 //! };
 //!
 //! // create, because primary key `id` is `NotSet`
-//! let mut banana = banana.save(db).await?.into_active_model();
+//! let mut banana = banana.save(db).await?;
 //!
 //! banana.name = Set("Banana Mongo".to_owned());
 //!
@@ -221,13 +222,16 @@
 //! ```
 //! # use sea_orm::{DbConn, error::*, entity::*, query::*, tests_cfg::*};
 //! # async fn function(db: &DbConn) -> Result<(), DbErr> {
-//! let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
-//! let orange: fruit::ActiveModel = orange.unwrap().into();
-//!
 //! // delete one
-//! fruit::Entity::delete(orange).exec(db).await?;
+//! let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
+//! let orange: fruit::Model = orange.unwrap();
+//! fruit::Entity::delete(orange.into_active_model())
+//!     .exec(db)
+//!     .await?;
+//!
 //! // or simply
-//! # let orange: fruit::ActiveModel = Fruit::find_by_id(1).one(db).await.unwrap().unwrap().into();
+//! let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
+//! let orange: fruit::Model = orange.unwrap();
 //! orange.delete(db).await?;
 //!
 //! // delete many: DELETE FROM "fruit" WHERE "fruit"."name" LIKE 'Orange'
@@ -307,5 +311,5 @@ pub use sea_query::Iden;
 #[cfg(feature = "macros")]
 pub use sea_query::Iden as DeriveIden;
 
-pub use sea_strum;
-pub use sea_strum::EnumIter;
+pub use strum;
+pub use strum::EnumIter;

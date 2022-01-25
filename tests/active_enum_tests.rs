@@ -89,7 +89,7 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             .unwrap()
     );
 
-    let res = model.into_active_model().delete(db).await?;
+    let res = model.delete(db).await?;
 
     assert_eq!(res.rows_affected, 1);
     assert_eq!(Entity::find().one(db).await?, None);

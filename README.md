@@ -26,6 +26,7 @@ Join our Discord server to chat with others in the SeaQL community!
 + [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
 + [Actix Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
 + [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
++ [Poem Example](https://github.com/SeaQL/sea-orm/tree/master/examples/poem_example)
 
 ## Features
 
@@ -142,7 +143,7 @@ let banana = fruit::ActiveModel {
 };
 
 // create, because primary key `id` is `NotSet`
-let mut banana = banana.save(db).await?.into_active_model();
+let mut banana = banana.save(db).await?;
 
 banana.name = Set("Banana Mongo".to_owned());
 
@@ -152,12 +153,16 @@ let banana = banana.save(db).await?;
 ```
 ### Delete
 ```rust
-let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
-let orange: fruit::ActiveModel = orange.unwrap().into();
-
 // delete one
-fruit::Entity::delete(orange).exec(db).await?;
+let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
+let orange: fruit::Model = orange.unwrap();
+fruit::Entity::delete(orange.into_active_model())
+    .exec(db)
+    .await?;
+
 // or simply
+let orange: Option<fruit::Model> = Fruit::find_by_id(1).one(db).await?;
+let orange: fruit::Model = orange.unwrap();
 orange.delete(db).await?;
 
 // delete many: DELETE FROM "fruit" WHERE "fruit"."name" LIKE 'Orange'
