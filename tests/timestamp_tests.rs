@@ -23,6 +23,7 @@ pub async fn create_applog(db: &DatabaseConnection) -> Result<(), DbErr> {
         id: 1,
         action: "Testing".to_owned(),
         json: Json::String("HI".to_owned()),
+        jsonb: Json::String("HI".to_owned()),
         created_at: "2021-09-17T17:50:20+08:00".parse().unwrap(),
     };
 

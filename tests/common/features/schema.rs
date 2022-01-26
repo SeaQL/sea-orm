@@ -52,6 +52,7 @@ pub async fn create_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(ColumnDef::new(applog::Column::Action).string().not_null())
         .col(ColumnDef::new(applog::Column::Json).json().not_null())
+        .col(ColumnDef::new(applog::Column::Jsonb).json_binary().not_null())
         .col(
             ColumnDef::new(applog::Column::CreatedAt)
                 .timestamp_with_time_zone()
