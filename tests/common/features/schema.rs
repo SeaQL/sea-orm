@@ -205,30 +205,32 @@ pub async fn create_active_enum_child_table(db: &DbConn) -> Result<ExecResult, D
 
 pub async fn create_satellites_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = sea_query::Table::create()
-        .table(datetimeutc::Entity)
+        .table(satellite::Entity)
         .col(
-            ColumnDef::new(datetimeutc::Column::Id)
+            ColumnDef::new(satellite::Column::Id)
                 .integer()
                 .not_null()
                 .auto_increment()
                 .primary_key(),
         )
         .col(
-            ColumnDef::new(datetimeutc::Column::SatelliteName)
+            ColumnDef::new(satellite::Column::SatelliteName)
                 .string()
                 .not_null(),
         )
         .col(
-            ColumnDef::new(datetimeutc::Column::LaunchDate)
+            ColumnDef::new(satellite::Column::LaunchDate)
                 .timestamp_with_time_zone()
-                .not_null(),
+                .not_null()
+                .default("2022-01-26 16:24:00"),
         )
         .col(
-            ColumnDef::new(datetimeutc::Column::DeploymentDate)
+            ColumnDef::new(satellite::Column::DeploymentDate)
                 .timestamp_with_time_zone()
-                .not_null(),
+                .not_null()
+                .default("2022-01-26 16:24:00"),
         )
         .to_owned();
 
-    create_table(db, &stmt, DateTimeUtcTest).await
+    create_table(db, &stmt, Satellite).await
 }

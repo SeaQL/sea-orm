@@ -9,6 +9,7 @@ pub struct ColumnDef {
     pub(crate) null: bool,
     pub(crate) unique: bool,
     pub(crate) indexed: bool,
+    pub(crate) default_value: Option<Value>,
 }
 
 /// The type of column as defined in the SQL format
@@ -300,6 +301,7 @@ impl ColumnType {
             null: false,
             unique: false,
             indexed: false,
+            default_value: None,
         }
     }
 
@@ -332,6 +334,15 @@ impl ColumnDef {
     /// Set the `indexed` field  to `true`
     pub fn indexed(mut self) -> Self {
         self.indexed = true;
+        self
+    }
+
+    /// Set the default value
+    pub fn default_value<T>(mut self, value: T) -> Self
+    where
+        T: Into<Value>,
+    {
+        self.default_value = Some(value.into());
         self
     }
 

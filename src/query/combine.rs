@@ -45,15 +45,21 @@ where
                 None => {
                     let col = match &sel.expr {
                         SimpleExpr::Column(col_ref) => match &col_ref {
-                            ColumnRef::Column(col) | ColumnRef::TableColumn(_, col) => col,
-                            _ => panic!("Unimplemented"),
+                            ColumnRef::Column(col)
+                            | ColumnRef::TableColumn(_, col)
+                            | ColumnRef::SchemaTableColumn(_, _, col) => col,
+                            ColumnRef::Asterisk | ColumnRef::TableAsterisk(_) => {
+                                panic!("cannot apply alias for Column with asterisk")
+                            }
                         },
                         SimpleExpr::AsEnum(_, simple_expr) => match simple_expr.as_ref() {
                             SimpleExpr::Column(col_ref) => match &col_ref {
-                                ColumnRef::Column(col) | ColumnRef::TableColumn(_, col) => col,
-                                _ => panic!(
-                                    "cannot apply alias for AsEnum with expr other than Column"
-                                ),
+                                ColumnRef::Column(col)
+                                | ColumnRef::TableColumn(_, col)
+                                | ColumnRef::SchemaTableColumn(_, _, col) => col,
+                                ColumnRef::Asterisk | ColumnRef::TableAsterisk(_) => {
+                                    panic!("cannot apply alias for AsEnum with asterisk")
+                                }
                             },
                             _ => {
                                 panic!("cannot apply alias for AsEnum with expr other than Column")

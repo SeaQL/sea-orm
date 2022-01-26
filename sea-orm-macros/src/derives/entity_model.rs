@@ -242,7 +242,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 "DateTime" | "NaiveDateTime" => {
                                     quote! { DateTime }
                                 }
-                                "DateTimeWithTimeZone" => {
+                                "DateTimeUtc" | "DateTimeLocal" | "DateTimeWithTimeZone" => {
                                     quote! { TimestampWithTimeZone }
                                 }
                                 "Uuid" => quote! { Uuid },
