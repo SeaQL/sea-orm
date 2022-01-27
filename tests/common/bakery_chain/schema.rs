@@ -55,7 +55,7 @@ pub async fn create_baker_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(baker::Column::BakeryId).integer())
         .foreign_key(
             ForeignKey::create()
-                .name("fk-baker-bakery")
+                .name("fk-baker-bakery_id")
                 .from(baker::Entity, baker::Column::BakeryId)
                 .to(bakery::Entity, bakery::Column::Id)
                 .on_delete(ForeignKeyAction::Cascade)
@@ -111,7 +111,7 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .foreign_key(
             ForeignKey::create()
-                .name("fk-order-bakery")
+                .name("fk-order-bakery_id")
                 .from(order::Entity, order::Column::BakeryId)
                 .to(bakery::Entity, bakery::Column::Id)
                 .on_delete(ForeignKeyAction::Cascade)
@@ -119,7 +119,7 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .foreign_key(
             ForeignKey::create()
-                .name("fk-order-customer")
+                .name("fk-order-customer_id")
                 .from(order::Entity, order::Column::CustomerId)
                 .to(customer::Entity, customer::Column::Id)
                 .on_delete(ForeignKeyAction::Cascade)
@@ -162,7 +162,7 @@ pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .foreign_key(
             ForeignKey::create()
-                .name("fk-lineitem-order")
+                .name("fk-lineitem-order_id")
                 .from(lineitem::Entity, lineitem::Column::OrderId)
                 .to(order::Entity, order::Column::Id)
                 .on_delete(ForeignKeyAction::Cascade)
@@ -170,7 +170,7 @@ pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .foreign_key(
             ForeignKey::create()
-                .name("fk-lineitem-cake")
+                .name("fk-lineitem-cake_id")
                 .from(lineitem::Entity, lineitem::Column::CakeId)
                 .to(cake::Entity, cake::Column::Id)
                 .on_delete(ForeignKeyAction::Cascade)
@@ -202,7 +202,7 @@ pub async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, DbErr>
         )
         .foreign_key(
             ForeignKey::create()
-                .name("fk-cakes_bakers-cake")
+                .name("fk-cakes_bakers-cake_id")
                 .from(cakes_bakers::Entity, cakes_bakers::Column::CakeId)
                 .to(cake::Entity, cake::Column::Id)
                 .on_delete(ForeignKeyAction::Cascade)
@@ -210,7 +210,7 @@ pub async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, DbErr>
         )
         .foreign_key(
             ForeignKey::create()
-                .name("fk-cakes_bakers-baker")
+                .name("fk-cakes_bakers-baker_id")
                 .from(cakes_bakers::Entity, cakes_bakers::Column::BakerId)
                 .to(baker::Entity, baker::Column::Id)
                 .on_delete(ForeignKeyAction::Cascade)
@@ -240,7 +240,7 @@ pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(cake::Column::BakeryId).integer())
         .foreign_key(
             ForeignKey::create()
-                .name("fk-cake-bakery")
+                .name("fk-cake-bakery_id")
                 .from(cake::Entity, cake::Column::BakeryId)
                 .to(bakery::Entity, bakery::Column::Id)
                 .on_delete(ForeignKeyAction::Cascade)

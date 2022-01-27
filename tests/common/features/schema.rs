@@ -116,7 +116,7 @@ pub async fn create_self_join_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(self_join::Column::Time).time())
         .foreign_key(
             ForeignKeyCreateStatement::new()
-                .name("fk-self_join-self_join")
+                .name("fk-self_join-uuid_ref")
                 .from_tbl(SelfJoin)
                 .from_col(self_join::Column::UuidRef)
                 .to_tbl(SelfJoin)
