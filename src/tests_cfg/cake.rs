@@ -1,7 +1,11 @@
 use crate as sea_orm;
 use crate::entity::prelude::*;
 
+#[cfg(feature = "with-json")]
+use serde::{Deserialize, Serialize};
+
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[cfg_attr(feature = "with-json", derive(Serialize, Deserialize))]
 #[sea_orm(table_name = "cake")]
 pub struct Model {
     #[sea_orm(primary_key)]
