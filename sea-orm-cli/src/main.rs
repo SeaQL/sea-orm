@@ -16,6 +16,42 @@ async fn main() {
         ("generate", Some(matches)) => run_generate_command(matches)
             .await
             .unwrap_or_else(handle_error),
+        ("migrate", Some(matches)) => {
+            let (subcommand, migration_dir, steps, verbose) = match matches.subcommand() {
+                (subcommand, Some(args)) => {
+                    let steps = args.value_of("NUM_MIGRATION");
+                    let verbose = args.is_present("VERBOSE");
+                    let migration_dir = args.value_of("MIGRATION_DIR").unwrap();
+                    (subcommand, migration_dir, steps, verbose)
+                }
+                _ => ("up", "./migration", None, false),
+            };
+            let manifest_path = if migration_dir.ends_with("/") {
+                format!("{}Cargo.toml", migration_dir)
+            } else {
+                format!("{}/Cargo.toml", migration_dir)
+            };
+            let mut args = vec![
+                "run",
+                "--manifest-path",
+                manifest_path.as_str(),
+                "--",
+                subcommand,
+            ];
+            if let Some(steps) = steps {
+                args.extend(["-n", steps]);
+            }
+            if verbose {
+                args.push("-v");
+            }
+            println!("Running `cargo {}`", args.join(" "));
+            Command::new("cargo")
+                .args(args)
+                .spawn()
+                .unwrap()
+                .wait()
+                .unwrap();
+        }
         _ => unreachable!("You should never see this message"),
     }
 }
