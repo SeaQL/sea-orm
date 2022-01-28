@@ -82,6 +82,11 @@ pub fn build_cli() -> App<'static, 'static> {
         .default_value("./migration");
     let mut migrate_subcommands = SubCommand::with_name("migrate")
         .about("Migration related commands")
+        .subcommand(
+            SubCommand::with_name("init")
+                .about("Initialize migration directory")
+                .arg(arg_migration_dir.clone()),
+        )
         .arg(arg_migration_dir.clone());
     for subcommand in sea_schema::migration::get_subcommands() {
         migrate_subcommands =
