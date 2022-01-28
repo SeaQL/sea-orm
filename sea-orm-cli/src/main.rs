@@ -52,7 +52,8 @@ async fn main() {
                 .wait()
                 .unwrap();
         }
-        _ => unreachable!("You should never see this message"),
+        _ => 
+        unreachable!("You should never see this message"),
     }
 }
 
