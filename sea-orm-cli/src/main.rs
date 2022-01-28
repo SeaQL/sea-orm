@@ -19,9 +19,9 @@ async fn main() {
         ("migrate", Some(matches)) => {
             let (subcommand, migration_dir, steps, verbose) = match matches.subcommand() {
                 (subcommand, Some(args)) => {
+                    let migration_dir = args.value_of("MIGRATION_DIR").unwrap();
                     let steps = args.value_of("NUM_MIGRATION");
                     let verbose = args.is_present("VERBOSE");
-                    let migration_dir = args.value_of("MIGRATION_DIR").unwrap();
                     (subcommand, migration_dir, steps, verbose)
                 }
                 _ => ("up", "./migration", None, false),
@@ -52,8 +52,7 @@ async fn main() {
                 .wait()
                 .unwrap();
         }
-        _ => 
-        unreachable!("You should never see this message"),
+        _ => unreachable!("You should never see this message"),
     }
 }
 
