@@ -226,6 +226,8 @@ impl DatabaseTransaction {
                     InnerConnection::Mock(c) => {
                         c.rollback();
                     }
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             } else {
                 //this should never happen
@@ -276,6 +278,8 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.execute(stmt),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         };
         #[cfg(feature = "sqlx-dep")]
         _res.map_err(sqlx_error_to_exec_err)
@@ -303,6 +307,8 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_one(stmt),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         };
         #[cfg(feature = "sqlx-dep")]
         if let Err(sqlx::Error::RowNotFound) = _res {
@@ -343,6 +349,8 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_all(stmt),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         };
         #[cfg(feature = "sqlx-dep")]
         _res.map_err(sqlx_error_to_query_err)
