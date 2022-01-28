@@ -74,19 +74,18 @@ pub fn build_cli() -> App<'static, 'static> {
         )
         .setting(AppSettings::SubcommandRequiredElseHelp);
 
-    let mut migrate_subcommands =
-        SubCommand::with_name("migrate").about("Migration related commands");
+    let arg_migration_dir = Arg::with_name("MIGRATION_DIR")
+        .long("migration-dir")
+        .short("d")
+        .help("Migration script directory")
+        .takes_value(true)
+        .default_value("./migration");
+    let mut migrate_subcommands = SubCommand::with_name("migrate")
+        .about("Migration related commands")
+        .arg(arg_migration_dir.clone());
     for subcommand in sea_schema::migration::get_subcommands() {
-        migrate_subcommands = migrate_subcommands.subcommand(
-            subcommand.arg(
-                Arg::with_name("MIGRATION_DIR")
-                    .long("migration-dir")
-                    .short("d")
-                    .help("Migration script directory")
-                    .takes_value(true)
-                    .default_value("./migration"),
-            ),
-        );
+        migrate_subcommands =
+            migrate_subcommands.subcommand(subcommand.arg(arg_migration_dir.clone()));
     }
 
     App::new("sea-orm-cli")

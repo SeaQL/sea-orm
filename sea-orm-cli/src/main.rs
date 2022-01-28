@@ -24,7 +24,11 @@ async fn main() {
                     let verbose = args.is_present("VERBOSE");
                     (subcommand, migration_dir, steps, verbose)
                 }
-                _ => ("up", "./migration", None, false),
+                _ => {
+                    let migration_dir = matches.value_of("MIGRATION_DIR").unwrap();
+                    let verbose = matches.is_present("VERBOSE");
+                    ("up", migration_dir, None, verbose)
+                }
             };
             let manifest_path = if migration_dir.ends_with("/") {
                 format!("{}Cargo.toml", migration_dir)
