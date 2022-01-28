@@ -89,7 +89,7 @@ pub fn build_cli() -> App<'static, 'static> {
         );
     }
 
-    App::new("sea-orm")
+    App::new("sea-orm-cli")
         .version(env!("CARGO_PKG_VERSION"))
         .setting(AppSettings::VersionlessSubcommands)
         .subcommand(entity_subcommand)
