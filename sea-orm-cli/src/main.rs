@@ -233,11 +233,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use clap::AppSettings;
     use super::*;
+    use clap::AppSettings;
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: RelativeUrlWithoutBase")]
+    #[should_panic(
+        expected = "called `Result::unwrap()` on an `Err` value: RelativeUrlWithoutBase"
+    )]
     fn test_generate_entity_no_protocol() {
         let matches = cli::build_cli()
             .setting(AppSettings::NoBinaryName)
@@ -252,7 +254,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "There is no database name as part of the url path: postgresql://root:root@localhost:3306")]
+    #[should_panic(
+        expected = "There is no database name as part of the url path: postgresql://root:root@localhost:3306"
+    )]
     fn test_generate_entity_no_database_section() {
         let matches = cli::build_cli()
             .setting(AppSettings::NoBinaryName)
@@ -267,7 +271,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "There is no database name as part of the url path: mysql://root:root@localhost:3306/")]
+    #[should_panic(
+        expected = "There is no database name as part of the url path: mysql://root:root@localhost:3306/"
+    )]
     fn test_generate_entity_no_database_path() {
         let matches = cli::build_cli()
             .setting(AppSettings::NoBinaryName)
