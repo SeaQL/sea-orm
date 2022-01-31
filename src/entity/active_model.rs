@@ -494,32 +494,17 @@ pub trait ActiveModelTrait: Clone + Debug {
         for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
             serde::de::Deserialize<'de>,
     {
-        use crate::{Iden, Iterable};
+        use crate::Iterable;
 
         // Backup primary key values
         let primary_key_values: Vec<(<Self::Entity as EntityTrait>::Column, ActiveValue<Value>)> =
             <<Self::Entity as EntityTrait>::PrimaryKey>::iter()
                 .map(|pk| (pk.into_column(), self.take(pk.into_column())))
                 .collect();
-        // Mark down which attribute exists in the JSON object
-        let json_keys: Vec<(<Self::Entity as EntityTrait>::Column, bool)> =
-            <<Self::Entity as EntityTrait>::Column>::iter()
-                .map(|col| (col, json.get(col.to_string()).is_some()))
-                .collect();
 
-        // Convert JSON object into ActiveModel via Model
-        let model: <Self::Entity as EntityTrait>::Model =
-            serde_json::from_value(json).map_err(|e| DbErr::Json(e.to_string()))?;
-        *self = model.into_active_model();
+        // Replace all values in ActiveModel
+        *self = Self::from_json(json)?;
 
-        // Transform attribute that exists in JSON object into ActiveValue::Set, otherwise ActiveValue::NotSet
-        for (col, json_key_exists) in json_keys {
-            if json_key_exists && !self.is_not_set(col) {
-                self.set(col, self.get(col).unwrap());
-            } else {
-                self.not_set(col);
-            }
-        }
         // Restore primary key values
         for (col, active_value) in primary_key_values {
             match active_value {
@@ -529,6 +514,39 @@ pub trait ActiveModelTrait: Clone + Debug {
         }
 
         Ok(())
+    }
+
+    /// Create ActiveModel from a JSON value
+    #[cfg(feature = "with-json")]
+    fn from_json(json: serde_json::Value) -> Result<Self, DbErr>
+    where
+        <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
+            serde::de::Deserialize<'de>,
+    {
+        use crate::{Iden, Iterable};
+
+        // Mark down which attribute exists in the JSON object
+        let json_keys: Vec<(<Self::Entity as EntityTrait>::Column, bool)> =
+            <<Self::Entity as EntityTrait>::Column>::iter()
+                .map(|col| (col, json.get(col.to_string()).is_some()))
+                .collect();
+
+        // Convert JSON object into ActiveModel via Model
+        let model: <Self::Entity as EntityTrait>::Model =
+            serde_json::from_value(json).map_err(|e| DbErr::Json(e.to_string()))?;
+        let mut am = model.into_active_model();
+
+        // Transform attribute that exists in JSON object into ActiveValue::Set, otherwise ActiveValue::NotSet
+        for (col, json_key_exists) in json_keys {
+            if json_key_exists && !am.is_not_set(col) {
+                am.set(col, am.get(col).unwrap());
+            } else {
+                am.not_set(col);
+            }
+        }
+
+        Ok(am)
     }
 }
 
