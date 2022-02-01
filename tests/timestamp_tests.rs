@@ -1,5 +1,4 @@
 pub mod common;
-
 pub use common::{features::*, setup::*, TestContext};
 use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
 
@@ -13,6 +12,8 @@ async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("bakery_chain_schema_timestamp_tests").await;
     create_tables(&ctx.db).await?;
     create_applog(&ctx.db).await?;
+    create_satellites_log(&ctx.db).await?;
+
     ctx.delete().await;
 
     Ok(())
@@ -30,8 +31,26 @@ pub async fn create_applog(db: &DatabaseConnection) -> Result<(), DbErr> {
         .exec(db)
         .await?;
 
-    assert_eq!(log.id.clone(), res.last_insert_id);
+    assert_eq!(log.id, res.last_insert_id);
     assert_eq!(Applog::find().one(db).await?, Some(log.clone()));
+
+    Ok(())
+}
+
+pub async fn create_satellites_log(db: &DatabaseConnection) -> Result<(), DbErr> {
+    let archive = satellite::Model {
+        id: 1,
+        satellite_name: "Sea-00001-2022".to_owned(),
+        launch_date: "2022-01-07T12:11:23Z".parse().unwrap(),
+        deployment_date: "2022-01-07T12:11:23Z".parse().unwrap(),
+    };
+
+    let res = Satellite::insert(archive.clone().into_active_model())
+        .exec(db)
+        .await?;
+
+    assert_eq!(archive.id, res.last_insert_id);
+    assert_eq!(Satellite::find().one(db).await?, Some(archive.clone()));
 
     Ok(())
 }

@@ -16,6 +16,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_repository_table(db).await?;
     create_self_join_table(db).await?;
     create_byte_primary_key_table(db).await?;
+    create_satellites_table(db).await?;
 
     let create_enum_stmts = match db_backend {
         DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
@@ -200,4 +201,36 @@ pub async fn create_active_enum_child_table(db: &DbConn) -> Result<ExecResult, D
         .to_owned();
 
     create_table(db, &create_table_stmt, ActiveEnumChild).await
+}
+
+pub async fn create_satellites_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(satellite::Entity)
+        .col(
+            ColumnDef::new(satellite::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(satellite::Column::SatelliteName)
+                .string()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(satellite::Column::LaunchDate)
+                .timestamp_with_time_zone()
+                .not_null()
+                .default("2022-01-26 16:24:00"),
+        )
+        .col(
+            ColumnDef::new(satellite::Column::DeploymentDate)
+                .timestamp_with_time_zone()
+                .not_null()
+                .default("2022-01-26 16:24:00"),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, Satellite).await
 }

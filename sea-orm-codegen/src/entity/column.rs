@@ -38,7 +38,8 @@ impl Column {
             ColumnType::Json | ColumnType::JsonBinary => "Json".to_owned(),
             ColumnType::Date => "Date".to_owned(),
             ColumnType::Time(_) => "Time".to_owned(),
-            ColumnType::DateTime(_) | ColumnType::Timestamp(_) => "DateTime".to_owned(),
+            ColumnType::DateTime(_) => "DateTime".to_owned(),
+            ColumnType::Timestamp(_) => "DateTimeUtc".to_owned(),
             ColumnType::TimestampWithTimeZone(_) => "DateTimeWithTimeZone".to_owned(),
             ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal".to_owned(),
             ColumnType::Uuid => "Uuid".to_owned(),
@@ -271,7 +272,7 @@ mod tests {
             "Date",
             "Time",
             "DateTime",
-            "DateTime",
+            "DateTimeUtc",
             "DateTimeWithTimeZone",
         ];
         for (mut col, rs_type) in columns.into_iter().zip(rs_types) {

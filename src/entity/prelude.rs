@@ -24,9 +24,17 @@ pub use chrono::NaiveTime as Time;
 #[cfg(feature = "with-chrono")]
 pub use chrono::NaiveDateTime as DateTime;
 
-/// Handles the time and dates
+/// Date time with fixed offset
 #[cfg(feature = "with-chrono")]
 pub type DateTimeWithTimeZone = chrono::DateTime<chrono::FixedOffset>;
+
+/// Date time represented in UTC
+#[cfg(feature = "with-chrono")]
+pub type DateTimeUtc = chrono::DateTime<chrono::Utc>;
+
+/// Date time represented in local time
+#[cfg(feature = "with-chrono")]
+pub type DateTimeLocal = chrono::DateTime<chrono::Local>;
 
 #[cfg(feature = "with-rust_decimal")]
 pub use rust_decimal::Decimal;

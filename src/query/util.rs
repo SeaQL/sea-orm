@@ -122,7 +122,7 @@ macro_rules! debug_query_stmt {
 /// let raw_sql = debug_query!(&c, DbBackend::Sqlite);
 /// assert_eq!(
 ///     raw_sql,
-///     r#"INSERT INTO `cake` (`id`, `name`) VALUES (1, 'Apple Pie')"#
+///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#
 /// );
 /// ```
 #[macro_export]

@@ -271,6 +271,12 @@ try_getable_all!(chrono::NaiveDateTime);
 #[cfg(feature = "with-chrono")]
 try_getable_date_time!(chrono::DateTime<chrono::FixedOffset>);
 
+#[cfg(feature = "with-chrono")]
+try_getable_all!(chrono::DateTime<chrono::Utc>);
+
+#[cfg(feature = "with-chrono")]
+try_getable_all!(chrono::DateTime<chrono::Local>);
+
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;
 
@@ -613,6 +619,12 @@ try_from_u64_err!(chrono::NaiveDateTime);
 
 #[cfg(feature = "with-chrono")]
 try_from_u64_err!(chrono::DateTime<chrono::FixedOffset>);
+
+#[cfg(feature = "with-chrono")]
+try_from_u64_err!(chrono::DateTime<chrono::Utc>);
+
+#[cfg(feature = "with-chrono")]
+try_from_u64_err!(chrono::DateTime<chrono::Local>);
 
 #[cfg(feature = "with-rust_decimal")]
 try_from_u64_err!(rust_decimal::Decimal);
