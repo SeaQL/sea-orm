@@ -940,6 +940,17 @@ mod tests {
             }
         );
 
+        assert_eq!(
+            fruit::ActiveModel::from_json(json!({
+                "name": "Apple",
+            }))?,
+            fruit::ActiveModel {
+                id: ActiveValue::NotSet,
+                name: ActiveValue::Set("Apple".to_owned()),
+                cake_id: ActiveValue::NotSet,
+            }
+        );
+
         fruit.set_from_json(json!({
             "name": "Apple",
             "cake_id": null,
@@ -976,6 +987,25 @@ mod tests {
             fruit,
             fruit::ActiveModel {
                 id: ActiveValue::NotSet,
+                name: ActiveValue::Set("Apple".to_owned()),
+                cake_id: ActiveValue::Set(Some(1)),
+            }
+        );
+
+        let mut fruit = fruit::ActiveModel {
+            id: ActiveValue::Set(1),
+            name: ActiveValue::NotSet,
+            cake_id: ActiveValue::NotSet,
+        };
+        fruit.set_from_json(json!({
+            "id": 8,
+            "name": "Apple",
+            "cake_id": 1,
+        }))?;
+        assert_eq!(
+            fruit,
+            fruit::ActiveModel {
+                id: ActiveValue::Set(1),
                 name: ActiveValue::Set("Apple".to_owned()),
                 cake_id: ActiveValue::Set(Some(1)),
             }
