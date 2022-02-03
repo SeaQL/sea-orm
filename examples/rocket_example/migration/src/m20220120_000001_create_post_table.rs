@@ -1,5 +1,8 @@
 use entity::post::*;
-use sea_schema::{migration::*, sea_query::*};
+use sea_schema::migration::{
+    sea_query::{self, *},
+    *,
+};
 
 pub struct Migration;
 
