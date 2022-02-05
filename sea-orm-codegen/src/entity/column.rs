@@ -22,6 +22,10 @@ impl Column {
         format_ident!("{}", escape_rust_keyword(self.name.to_camel_case()))
     }
 
+    pub fn is_snake_case_name(&self) -> bool {
+        self.name.to_snake_case() == self.name
+    }
+
     pub fn get_rs_type(&self) -> TokenStream {
         #[allow(unreachable_patterns)]
         let ident: TokenStream = match &self.col_type {
