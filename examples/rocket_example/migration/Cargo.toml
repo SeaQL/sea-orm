@@ -9,6 +9,6 @@ name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
-sea-schema = { git = "https://github.com/SeaQL/sea-schema.git", branch = "restructure-sea-query-dep", default-features = false, features = [ "migration", "debug-print" ] }
+sea-schema = { git = "https://github.com/SeaQL/sea-schema.git", default-features = false, features = [ "migration", "debug-print" ] }
 entity = { path = "../entity" }
 rocket = { version = "0.5.0-rc.1" }
