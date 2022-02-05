@@ -16,7 +16,6 @@ rocket = { version = "0.5.0-rc.1", features = [
 [dependencies.sea-orm]
 # path = "../../../" # remove this line in your own project
 git = "https://github.com/SeaQL/sea-orm"
-branch = "migration"
 version = "^0.5.0"
 features = [
   "macros",
