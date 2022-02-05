@@ -7,10 +7,7 @@ use std::{future::Future, pin::Pin};
 /// Creates constraints for any structure that can create a database connection
 /// and execute SQL statements
 #[async_trait::async_trait]
-pub trait ConnectionTrait<'a>: Sync {
-    /// Create a stream for the [QueryResult]
-    type Stream: Stream<Item = Result<QueryResult, DbErr>>;
-
+pub trait ConnectionTrait: Sync {
     /// Fetch the database backend as specified in [DbBackend].
     /// This depends on feature flags enabled.
     fn get_database_backend(&self) -> DbBackend;
@@ -24,12 +21,34 @@ pub trait ConnectionTrait<'a>: Sync {
     /// Execute a [Statement] and return a collection Vec<[QueryResult]> on success
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
 
+    /// Check if the connection supports `RETURNING` syntax on insert and update
+    fn support_returning(&self) -> bool {
+        let db_backend = self.get_database_backend();
+        db_backend.support_returning()
+    }
+
+    /// Check if the connection is a test connection for the Mock database
+    fn is_mock_connection(&self) -> bool {
+        false
+    }
+}
+
+/// Stream query results
+#[async_trait::async_trait]
+pub trait StreamTrait<'a>: Sync {
+    /// Create a stream for the [QueryResult]
+    type Stream: Stream<Item = Result<QueryResult, DbErr>>;
+
     /// Execute a [Statement] and return a stream of results
     fn stream(
         &'a self,
         stmt: Statement,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Stream, DbErr>> + 'a>>;
+}
 
+/// Spawn database transaction
+#[async_trait::async_trait]
+pub trait TransactionTrait {
     /// Execute SQL `BEGIN` transaction.
     /// Returns a Transaction that can be committed or rolled back
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr>;
@@ -44,15 +63,4 @@ pub trait ConnectionTrait<'a>: Sync {
             + Send,
         T: Send,
         E: std::error::Error + Send;
-
-    /// Check if the connection supports `RETURNING` syntax on insert and update
-    fn support_returning(&self) -> bool {
-        let db_backend = self.get_database_backend();
-        db_backend.support_returning()
-    }
-
-    /// Check if the connection is a test connection for the Mock database
-    fn is_mock_connection(&self) -> bool {
-        false
-    }
 }

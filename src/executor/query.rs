@@ -75,6 +75,8 @@ impl fmt::Debug for QueryResultRow {
             Self::SqlxSqlite(_) => write!(f, "QueryResultRow::SqlxSqlite cannot be inspected"),
             #[cfg(feature = "mock")]
             Self::Mock(row) => write!(f, "{:?}", row),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 }
@@ -124,6 +126,8 @@ macro_rules! try_getable_all {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null
                     }),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             }
         }
@@ -160,6 +164,8 @@ macro_rules! try_getable_unsigned {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null
                     }),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             }
         }
@@ -193,6 +199,8 @@ macro_rules! try_getable_mysql {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null
                     }),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             }
         }
@@ -236,6 +244,8 @@ macro_rules! try_getable_date_time {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null
                     }),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             }
         }
@@ -321,6 +331,8 @@ impl TryGetable for Decimal {
                 debug_print!("{:#?}", e.to_string());
                 TryGetError::Null
             }),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 }
