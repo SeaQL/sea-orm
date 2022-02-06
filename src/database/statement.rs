@@ -124,6 +124,10 @@ build_schema_stmt!(sea_query::TableDropStatement);
 build_schema_stmt!(sea_query::TableAlterStatement);
 build_schema_stmt!(sea_query::TableRenameStatement);
 build_schema_stmt!(sea_query::TableTruncateStatement);
+build_schema_stmt!(sea_query::IndexCreateStatement);
+build_schema_stmt!(sea_query::IndexDropStatement);
+build_schema_stmt!(sea_query::ForeignKeyCreateStatement);
+build_schema_stmt!(sea_query::ForeignKeyDropStatement);
 
 macro_rules! build_type_stmt {
     ($stmt: ty) => {
