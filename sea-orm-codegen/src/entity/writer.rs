@@ -306,11 +306,22 @@ impl EntityWriter {
     }
 
     pub fn gen_column_enum(entity: &Entity) -> TokenStream {
-        let column_names_camel_case = entity.get_column_names_camel_case();
+        let column_variants = entity.columns.iter().map(|col| {
+            let variant = col.get_name_camel_case();
+            let mut variant = quote! { #variant };
+            if !col.is_snake_case_name() {
+                let column_name = &col.name;
+                variant = quote! {
+                    #[sea_orm(column_name = #column_name)]
+                    #variant
+                };
+            }
+            variant
+        });
         quote! {
             #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
             pub enum Column {
-                #(#column_names_camel_case,)*
+                #(#column_variants,)*
             }
         }
     }
@@ -474,6 +485,10 @@ impl EntityWriter {
             .iter()
             .map(|col| {
                 let mut attrs: Punctuated<_, Comma> = Punctuated::new();
+                if !col.is_snake_case_name() {
+                    let column_name = &col.name;
+                    attrs.push(quote! { column_name = #column_name });
+                }
                 if primary_keys.contains(&col.name) {
                     attrs.push(quote! { primary_key });
                     if !col.auto_increment {
@@ -724,14 +739,14 @@ mod tests {
                         unique: false,
                     },
                     Column {
-                        name: "name".to_owned(),
+                        name: "_name_".to_owned(),
                         col_type: ColumnType::String(Some(255)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
-                        name: "fruit_id".to_owned(),
+                        name: "fruitId".to_owned(),
                         col_type: ColumnType::Integer(Some(11)),
                         auto_increment: false,
                         not_null: false,
@@ -740,7 +755,7 @@ mod tests {
                 ],
                 relations: vec![Relation {
                     ref_table: "fruit".to_owned(),
-                    columns: vec!["fruit_id".to_owned()],
+                    columns: vec!["fruitId".to_owned()],
                     ref_columns: vec!["id".to_owned()],
                     rel_type: RelationType::BelongsTo,
                     on_delete: None,

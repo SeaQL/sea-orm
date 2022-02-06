@@ -16,6 +16,7 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
+        fk_name = "fk-active_enum_child-active_enum",
         belongs_to = "super::active_enum::Entity",
         from = "Column::ParentId",
         to = "super::active_enum::Column::Id"

@@ -211,7 +211,7 @@ impl ActiveEnum {
                     .to_owned()
                 }
 
-                fn try_from_value(v: &Self::Value) -> Result<Self, sea_orm::DbErr> {
+                fn try_from_value(v: &Self::Value) -> std::result::Result<Self, sea_orm::DbErr> {
                     match #val {
                         #( #variant_values => Ok(Self::#variant_idents), )*
                         _ => Err(sea_orm::DbErr::Type(format!(
@@ -237,7 +237,7 @@ impl ActiveEnum {
 
             #[automatically_derived]
             impl sea_orm::TryGetable for #ident {
-                fn try_get(res: &sea_orm::QueryResult, pre: &str, col: &str) -> Result<Self, sea_orm::TryGetError> {
+                fn try_get(res: &sea_orm::QueryResult, pre: &str, col: &str) -> std::result::Result<Self, sea_orm::TryGetError> {
                     let value = <<Self as sea_orm::ActiveEnum>::Value as sea_orm::TryGetable>::try_get(res, pre, col)?;
                     <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(sea_orm::TryGetError::DbErr)
                 }
@@ -245,7 +245,7 @@ impl ActiveEnum {
 
             #[automatically_derived]
             impl sea_orm::sea_query::ValueType for #ident {
-                fn try_from(v: sea_orm::sea_query::Value) -> Result<Self, sea_orm::sea_query::ValueTypeErr> {
+                fn try_from(v: sea_orm::sea_query::Value) -> std::result::Result<Self, sea_orm::sea_query::ValueTypeErr> {
                     let value = <<Self as sea_orm::ActiveEnum>::Value as sea_orm::sea_query::ValueType>::try_from(v)?;
                     <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(|_| sea_orm::sea_query::ValueTypeErr)
                 }

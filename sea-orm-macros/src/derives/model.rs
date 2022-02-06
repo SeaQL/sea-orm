@@ -125,7 +125,7 @@ impl DeriveModel {
         quote!(
             #[automatically_derived]
             impl sea_orm::FromQueryResult for #ident {
-                fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::DbErr> {
+                fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
                     Ok(Self {
                         #(#field_idents: #field_values),*
                     })

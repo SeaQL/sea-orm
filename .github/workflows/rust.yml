@@ -256,11 +256,11 @@ jobs:
           args: >
             --manifest-path sea-orm-rocket/Cargo.toml
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: >
-            --manifest-path sea-orm-cli/Cargo.toml
+      # - uses: actions-rs/cargo@v1
+      #   with:
+      #     command: test
+      #     args: >
+      #       --manifest-path sea-orm-cli/Cargo.toml
 
   cli:
     name: CLI
@@ -293,7 +293,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        path: [basic, actix_example, actix4_example, axum_example, rocket_example]
+        path: [basic, actix_example, actix4_example, axum_example, rocket_example, poem_example]
     steps:
       - uses: actions/checkout@v2
 

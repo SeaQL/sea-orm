@@ -1,10 +1,10 @@
 use crate::util::{escape_rust_keyword, trim_starting_raw_identifier};
 use heck::CamelCase;
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{format_ident, quote, quote_spanned};
+use quote::{quote, quote_spanned};
 use syn::{
     parse::Error, punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, Fields,
-    Lit, Meta,
+    Lit, LitStr, Meta, Type,
 };
 
 /// Method to derive an Model
@@ -242,7 +242,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 "DateTime" | "NaiveDateTime" => {
                                     quote! { DateTime }
                                 }
-                                "DateTimeWithTimeZone" => {
+                                "DateTimeUtc" | "DateTimeLocal" | "DateTimeWithTimeZone" => {
                                     quote! { TimestampWithTimeZone }
                                 }
                                 "Uuid" => quote! { Uuid },
@@ -256,7 +256,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             };
                             if col_type.is_empty() {
                                 let field_span = field.span();
-                                let ty = format_ident!("{}", temp);
+                                let ty: Type = LitStr::new(temp, field_span).parse()?;
                                 let def = quote_spanned! { field_span => {
                                     std::convert::Into::<sea_orm::ColumnType>::into(
                                         <#ty as sea_orm::sea_query::ValueType>::column_type()

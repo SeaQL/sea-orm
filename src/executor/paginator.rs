@@ -14,7 +14,7 @@ pub type PinBoxStream<'db, Item> = Pin<Box<dyn Stream<Item = Item> + 'db>>;
 #[derive(Clone, Debug)]
 pub struct Paginator<'db, C, S>
 where
-    C: ConnectionTrait<'db>,
+    C: ConnectionTrait,
     S: SelectorTrait + 'db,
 {
     pub(crate) query: SelectStatement,
@@ -28,7 +28,7 @@ where
 
 impl<'db, C, S> Paginator<'db, C, S>
 where
-    C: ConnectionTrait<'db>,
+    C: ConnectionTrait,
     S: SelectorTrait + 'db,
 {
     /// Fetch a specific page; page index starts from zero
@@ -184,7 +184,7 @@ where
 /// A Trait for any type that can paginate results
 pub trait PaginatorTrait<'db, C>
 where
-    C: ConnectionTrait<'db>,
+    C: ConnectionTrait,
 {
     /// Select operation
     type Selector: SelectorTrait + Send + Sync + 'db;
@@ -203,7 +203,7 @@ where
 
 impl<'db, C, S> PaginatorTrait<'db, C> for Selector<S>
 where
-    C: ConnectionTrait<'db>,
+    C: ConnectionTrait,
     S: SelectorTrait + Send + Sync + 'db,
 {
     type Selector = S;
@@ -221,7 +221,7 @@ where
 
 impl<'db, C, M, E> PaginatorTrait<'db, C> for Select<E>
 where
-    C: ConnectionTrait<'db>,
+    C: ConnectionTrait,
     E: EntityTrait<Model = M>,
     M: FromQueryResult + Sized + Send + Sync + 'db,
 {
@@ -234,7 +234,7 @@ where
 
 impl<'db, C, M, N, E, F> PaginatorTrait<'db, C> for SelectTwo<E, F>
 where
-    C: ConnectionTrait<'db>,
+    C: ConnectionTrait,
     E: EntityTrait<Model = M>,
     F: EntityTrait<Model = N>,
     M: FromQueryResult + Sized + Send + Sync + 'db,
