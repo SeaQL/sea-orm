@@ -1,7 +1,7 @@
 use crate::{
     error::*, DatabaseConnection, DbBackend, EntityTrait, ExecResult, ExecResultHolder, Iden,
-    Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult, QueryResultRow,
-    Statement,
+    IdenStatic, Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult,
+    QueryResultRow, SelectA, SelectB, Statement,
 };
 use sea_query::{Value, ValueType, Values};
 use std::{collections::BTreeMap, sync::Arc};
@@ -204,6 +204,39 @@ where
     }
 }
 
+impl<M, N> IntoMockRow for (M, N)
+where
+    M: ModelTrait,
+    N: ModelTrait,
+{
+    fn into_mock_row(self) -> MockRow {
+        let mut mapped_join = BTreeMap::new();
+
+        for column in <<M as ModelTrait>::Entity as EntityTrait>::Column::iter() {
+            mapped_join.insert(
+                format!("{}{}", SelectA.as_str(), column.as_str()),
+                self.0.get(column),
+            );
+        }
+        for column in <<N as ModelTrait>::Entity as EntityTrait>::Column::iter() {
+            mapped_join.insert(
+                format!("{}{}", SelectB.as_str(), column.as_str()),
+                self.1.get(column),
+            );
+        }
+
+        mapped_join.into_mock_row()
+    }
+}
+
+impl IntoMockRow for BTreeMap<String, Value> {
+    fn into_mock_row(self) -> MockRow {
+        MockRow {
+            values: self.into_iter().map(|(k, v)| (k, v)).collect(),
+        }
+    }
+}
+
 impl IntoMockRow for BTreeMap<&str, Value> {
     fn into_mock_row(self) -> MockRow {
         MockRow {
@@ -311,8 +344,8 @@ impl OpenTransaction {
 #[cfg(feature = "mock")]
 mod tests {
     use crate::{
-        entity::*, tests_cfg::*, DbBackend, DbErr, MockDatabase, Statement, Transaction,
-        TransactionError, TransactionTrait,
+        entity::*, tests_cfg::*, DbBackend, DbErr, IntoMockRow, MockDatabase, Statement,
+        Transaction, TransactionError, TransactionTrait,
     };
     use pretty_assertions::assert_eq;
 
@@ -602,6 +635,75 @@ mod tests {
         }
 
         txn.commit().await?;
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn test_mocked_join() {
+        let row = (
+            cake::Model {
+                id: 1,
+                name: "Apple Cake".to_owned(),
+            },
+            fruit::Model {
+                id: 2,
+                name: "Apple".to_owned(),
+                cake_id: Some(1),
+            },
+        );
+        let mocked_row = row.into_mock_row();
+
+        let a_id = mocked_row.try_get::<i32>("A_id");
+        assert!(a_id.is_ok());
+        assert_eq!(1, a_id.unwrap());
+        let b_id = mocked_row.try_get::<i32>("B_id");
+        assert!(b_id.is_ok());
+        assert_eq!(2, b_id.unwrap());
+    }
+
+    #[smol_potat::test]
+    async fn test_find_also_related_1() -> Result<(), DbErr> {
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(vec![vec![(
+                cake::Model {
+                    id: 1,
+                    name: "Apple Cake".to_owned(),
+                },
+                fruit::Model {
+                    id: 2,
+                    name: "Apple".to_owned(),
+                    cake_id: Some(1),
+                },
+            )]])
+            .into_connection();
+
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_related(fruit::Entity)
+                .all(&db)
+                .await?,
+            vec![(
+                cake::Model {
+                    id: 1,
+                    name: "Apple Cake".to_owned(),
+                },
+                Some(fruit::Model {
+                    id: 2,
+                    name: "Apple".to_owned(),
+                    cake_id: Some(1),
+                })
+            )]
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![Transaction::from_sql_and_values(
+                DbBackend::Postgres,
+                r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name", "fruit"."id" AS "B_id", "fruit"."name" AS "B_name", "fruit"."cake_id" AS "B_cake_id" FROM "cake" LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
+                vec![]
+            ),]
+        );
 
         Ok(())
     }
