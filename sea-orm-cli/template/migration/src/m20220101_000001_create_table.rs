@@ -1,7 +1,4 @@
-use sea_schema::migration::{
-    sea_query::{self, *},
-    *,
-};
+use sea_schema::migration::prelude::*;
 
 pub struct Migration;
 

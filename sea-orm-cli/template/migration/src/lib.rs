@@ -1,4 +1,4 @@
-pub use sea_schema::migration::*;
+use sea_schema::migration::prelude::*;
 
 mod m20220101_000001_create_table;
 
