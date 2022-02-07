@@ -17,7 +17,7 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .create_table(
-                sea_query::Table::create()
+                Table::create()
                     .table(Entity)
                     .if_not_exists()
                     .col(
