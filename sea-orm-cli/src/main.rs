@@ -200,20 +200,23 @@ fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
         println!("Initializing migration directory...");
         macro_rules! write_file {
             ($filename: literal) => {
+                write_file!($filename, $filename);
+            };
+            ($filename: literal, $template: literal) => {
                 let filepath = [&migration_dir, $filename].join("");
                 println!("Creating file `{}`", filepath);
                 let path = Path::new(&filepath);
                 let prefix = path.parent().unwrap();
                 fs::create_dir_all(prefix).unwrap();
                 let mut file = fs::File::create(path)?;
-                let content = include_str!(concat!("../template/migration/", $filename));
+                let content = include_str!(concat!("../template/migration/", $template));
                 file.write_all(content.as_bytes())?;
             };
         }
         write_file!("src/lib.rs");
         write_file!("src/m20220101_000001_create_table.rs");
         write_file!("src/main.rs");
-        write_file!("Cargo.toml");
+        write_file!("Cargo.toml", "_Cargo.toml");
         write_file!("README.md");
         println!("Done!");
         // Early exit!
