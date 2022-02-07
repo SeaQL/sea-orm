@@ -37,10 +37,10 @@ pub type DateTimeUtc = chrono::DateTime<chrono::Utc>;
 pub type DateTimeLocal = chrono::DateTime<chrono::Local>;
 
 #[cfg(feature = "with-time")]
-pub use time::Date as Date;
+pub use time::Date;
 
 #[cfg(feature = "with-time")]
-pub use time::Time as Time;
+pub use time::Time;
 
 #[cfg(feature = "with-time")]
 pub use time::PrimitiveDateTime as DateTime;

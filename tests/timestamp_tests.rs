@@ -81,8 +81,16 @@ pub async fn create_satellites_log(db: &DatabaseConnection) -> Result<(), DbErr>
     let archive = satellite::Model {
         id: 1,
         satellite_name: "Sea-00001-2022".to_owned(),
-        launch_date: time::OffsetDateTime::parse("2022-01-07T12:11:23Z", time::macros::format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]Z")).unwrap(),
-        deployment_date: time::OffsetDateTime::parse("2022-01-07T12:11:23Z", time::macros::format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]Z")).unwrap(),
+        launch_date: time::OffsetDateTime::parse(
+            "2022-01-07T12:11:23Z",
+            time::macros::format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]Z"),
+        )
+        .unwrap(),
+        deployment_date: time::OffsetDateTime::parse(
+            "2022-01-07T12:11:23Z",
+            time::macros::format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]Z"),
+        )
+        .unwrap(),
     };
 
     let res = Satellite::insert(archive.clone().into_active_model())
