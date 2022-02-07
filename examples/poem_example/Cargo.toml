@@ -16,7 +16,7 @@ dotenv = "0.15"
 
 [dependencies.sea-orm]
 path = "../../" # remove this line in your own project
-version = "^0.5.0"
+version = "^0.6.0"
 features = ["macros", "runtime-tokio-native-tls", "debug-print"]
 default-features = false
 
