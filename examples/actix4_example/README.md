@@ -1,13 +1,14 @@
+![screenshot](Screenshot.png)
+
 # Actix 4 Beta with SeaORM example app
 
-Edit `Cargo.toml` to use `sqlx-mysql` or `sqlx-postgres`.
+1. Modify the `DATABASE_URL` var in `.env` to point to your chosen database
 
-```toml
-[features]
-default = ["sqlx-$DATABASE"]
-```
+1. Turn on the appropriate database feature for your chosen db in `entity/Cargo.toml` (the `"sqlx-mysql",` line)
 
-Edit `.env` to point to your database.
+1. Execute `cargo run` to start the server
+
+1. Visit [localhost:8000](http://localhost:8000) in browser
 
 Run server with auto-reloading:
 
