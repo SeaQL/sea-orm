@@ -640,6 +640,22 @@ impl_into_active_value!(crate::prelude::DateTimeUtc, Set);
 #[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
 impl_into_active_value!(crate::prelude::DateTimeLocal, Set);
 
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::Date, Set);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::Time, Set);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::DateTime, Set);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::DateTimeWithTimeZone, Set);
+
 #[cfg(feature = "with-rust_decimal")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-rust_decimal")))]
 impl_into_active_value!(crate::prelude::Decimal, Set);

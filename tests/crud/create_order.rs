@@ -1,7 +1,18 @@
 pub use super::*;
-use chrono::offset::Utc;
 use rust_decimal_macros::dec;
+use sea_orm::prelude::DateTime;
 use uuid::Uuid;
+
+#[cfg(feature = "with-chrono")]
+fn utc_now() -> DateTime {
+    chrono::offset::Utc::now().naive_utc()
+}
+
+#[cfg(feature = "with-time")]
+fn utc_now() -> DateTime {
+    let utc = time::OffsetDateTime::now_utc();
+    utc.date().with_time(utc.time())
+}
 
 pub async fn test_create_order(db: &DbConn) {
     // Bakery
@@ -76,7 +87,7 @@ pub async fn test_create_order(db: &DbConn) {
         bakery_id: Set(bakery_insert_res.last_insert_id as i32),
         customer_id: Set(customer_insert_res.last_insert_id as i32),
         total: Set(dec!(15.10)),
-        placed_at: Set(Utc::now().naive_utc()),
+        placed_at: Set(utc_now()),
         ..Default::default()
     };
     let order_insert_res = Order::insert(order_1)

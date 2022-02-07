@@ -287,6 +287,18 @@ try_getable_all!(chrono::DateTime<chrono::Utc>);
 #[cfg(feature = "with-chrono")]
 try_getable_all!(chrono::DateTime<chrono::Local>);
 
+#[cfg(feature = "with-time")]
+try_getable_all!(time::Date);
+
+#[cfg(feature = "with-time")]
+try_getable_all!(time::Time);
+
+#[cfg(feature = "with-time")]
+try_getable_all!(time::PrimitiveDateTime);
+
+#[cfg(feature = "with-time")]
+try_getable_date_time!(time::OffsetDateTime);
+
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;
 
@@ -637,6 +649,18 @@ try_from_u64_err!(chrono::DateTime<chrono::Utc>);
 
 #[cfg(feature = "with-chrono")]
 try_from_u64_err!(chrono::DateTime<chrono::Local>);
+
+#[cfg(feature = "with-time")]
+try_from_u64_err!(time::Date);
+
+#[cfg(feature = "with-time")]
+try_from_u64_err!(time::Time);
+
+#[cfg(feature = "with-time")]
+try_from_u64_err!(time::PrimitiveDateTime);
+
+#[cfg(feature = "with-time")]
+try_from_u64_err!(time::OffsetDateTime);
 
 #[cfg(feature = "with-rust_decimal")]
 try_from_u64_err!(rust_decimal::Decimal);

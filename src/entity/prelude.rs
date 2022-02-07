@@ -36,6 +36,19 @@ pub type DateTimeUtc = chrono::DateTime<chrono::Utc>;
 #[cfg(feature = "with-chrono")]
 pub type DateTimeLocal = chrono::DateTime<chrono::Local>;
 
+#[cfg(feature = "with-time")]
+pub use time::Date as Date;
+
+#[cfg(feature = "with-time")]
+pub use time::Time as Time;
+
+#[cfg(feature = "with-time")]
+pub use time::PrimitiveDateTime as DateTime;
+
+/// Handles the time and dates
+#[cfg(feature = "with-time")]
+pub type DateTimeWithTimeZone = time::OffsetDateTime;
+
 #[cfg(feature = "with-rust_decimal")]
 pub use rust_decimal::Decimal;
 
