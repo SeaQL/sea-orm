@@ -21,5 +21,6 @@ features = [
   "runtime-tokio-native-tls",
   "sqlx-postgres",
   # "sqlx-mysql",
+  # "sqlx-sqlite",
 ]
 default-features = false
