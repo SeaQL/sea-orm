@@ -9,15 +9,14 @@ name = "entity"
 path = "src/lib.rs"
 
 [dependencies]
-rocket = { version = "0.5.0-rc.1", features = [
-  "json",
-] }
+serde = { version = "1", features = ["derive"] }
 
 [dependencies.sea-orm]
 # path = "../../../" # remove this line in your own project
 version = "^0.6.0"
 features = [
   "macros",
+  "debug-print",
   "runtime-tokio-native-tls",
   "sqlx-postgres",
   # "sqlx-mysql",
