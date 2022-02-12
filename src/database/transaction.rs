@@ -1,6 +1,6 @@
 use crate::{
     debug_print, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, QueryResult,
-    Statement, TransactionStream,
+    Statement, StreamTrait, TransactionStream, TransactionTrait,
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
@@ -226,6 +226,8 @@ impl DatabaseTransaction {
                     InnerConnection::Mock(c) => {
                         c.rollback();
                     }
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             } else {
                 //this should never happen
@@ -242,9 +244,7 @@ impl Drop for DatabaseTransaction {
 }
 
 #[async_trait::async_trait]
-impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
-    type Stream = TransactionStream<'a>;
-
+impl ConnectionTrait for DatabaseTransaction {
     fn get_database_backend(&self) -> DbBackend {
         // this way we don't need to lock
         self.backend
@@ -278,6 +278,8 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.execute(stmt),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         };
         #[cfg(feature = "sqlx-dep")]
         _res.map_err(sqlx_error_to_exec_err)
@@ -305,6 +307,8 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_one(stmt),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         };
         #[cfg(feature = "sqlx-dep")]
         if let Err(sqlx::Error::RowNotFound) = _res {
@@ -345,10 +349,17 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_all(stmt),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         };
         #[cfg(feature = "sqlx-dep")]
         _res.map_err(sqlx_error_to_query_err)
     }
+}
+
+#[async_trait::async_trait]
+impl<'a> StreamTrait<'a> for DatabaseTransaction {
+    type Stream = TransactionStream<'a>;
 
     #[instrument(level = "trace")]
     fn stream(
@@ -364,7 +375,10 @@ impl<'a> ConnectionTrait<'a> for DatabaseTransaction {
             ))
         })
     }
+}
 
+#[async_trait::async_trait]
+impl TransactionTrait for DatabaseTransaction {
     #[instrument(level = "trace")]
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         DatabaseTransaction::begin(

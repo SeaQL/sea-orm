@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.6.0 - 2022-02-07
+
+### New Features
+* Migration Support by @billy1624 in https://github.com/SeaQL/sea-orm/pull/335
+* Support `DateTime<Utc>` & `DateTime<Local>` by @billy1624 in https://github.com/SeaQL/sea-orm/pull/489
+* Add `max_lifetime` connection option by @billy1624 in https://github.com/SeaQL/sea-orm/pull/493
+
+### Enhancements
+* Model with Generics by @billy1624 in https://github.com/SeaQL/sea-orm/pull/400
+* Add Poem example by @sunli829 in https://github.com/SeaQL/sea-orm/pull/446
+* Codegen `column_name` proc_macro attribute by @billy1624 in https://github.com/SeaQL/sea-orm/pull/433
+* Easy joins with MockDatabase #447 by @cemoktra in https://github.com/SeaQL/sea-orm/pull/455
+
+### Bug Fixes
+* CLI allow generate entity with url without password by @billy1624 in https://github.com/SeaQL/sea-orm/pull/436
+* Support up to 6-ary composite primary key by @billy1624 in https://github.com/SeaQL/sea-orm/pull/423
+* Fix FromQueryResult when Result is redefined by @tasn in https://github.com/SeaQL/sea-orm/pull/495
+* Remove `r#` prefix when deriving `FromQueryResult` by @smrtrfszm in https://github.com/SeaQL/sea-orm/pull/494
+
+### Breaking Changes
+* Name conflict of foreign key constraints when two entities have more than one foreign keys by @billy1624 in https://github.com/SeaQL/sea-orm/pull/417
+
+### Fixed Issues
+* Is it possible to have 4 values Composite Key? https://github.com/SeaQL/sea-orm/issues/352
+* Support `DateTime<Utc>` & `DateTime<Local>` https://github.com/SeaQL/sea-orm/issues/381
+* Codegen `column_name` proc_macro attribute if column name isn't in snake case https://github.com/SeaQL/sea-orm/issues/395
+* Model with Generics https://github.com/SeaQL/sea-orm/issues/402
+* Foreign key constraint collision when multiple keys exist between the same two tables https://github.com/SeaQL/sea-orm/issues/405
+* sea-orm-cli passwordless database user causes "No password was found in the database url" error https://github.com/SeaQL/sea-orm/issues/435
+* Testing joins with MockDatabase https://github.com/SeaQL/sea-orm/issues/447
+* Surface max_lifetime connection option https://github.com/SeaQL/sea-orm/issues/475
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.5.0...0.6.0
+
 ## 0.5.0 - 2022-01-01
 
 ### Fixed Issues

@@ -3,16 +3,16 @@ use actix_web::{
     error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result,
 };
 
+use entity::post;
+use entity::post::Entity as Post;
+use entity::sea_orm;
 use listenfd::ListenFd;
+use migration::{Migrator, MigratorTrait};
 use sea_orm::DatabaseConnection;
 use sea_orm::{entity::*, query::*};
 use serde::{Deserialize, Serialize};
 use std::env;
 use tera::Tera;
-
-mod post;
-pub use post::Entity as Post;
-mod setup;
 
 const DEFAULT_POSTS_PER_PAGE: usize = 5;
 
@@ -92,7 +92,9 @@ async fn create(
     .await
     .expect("could not insert post");
 
-    Ok(HttpResponse::Found().append_header(("location", "/")).finish())
+    Ok(HttpResponse::Found()
+        .append_header(("location", "/"))
+        .finish())
 }
 
 #[get("/{id}")]
@@ -133,7 +135,9 @@ async fn update(
     .await
     .expect("could not edit post");
 
-    Ok(HttpResponse::Found().append_header(("location", "/")).finish())
+    Ok(HttpResponse::Found()
+        .append_header(("location", "/"))
+        .finish())
 }
 
 #[post("/delete/{id}")]
@@ -149,7 +153,9 @@ async fn delete(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpRes
 
     post.delete(conn).await.unwrap();
 
-    Ok(HttpResponse::Found().append_header(("location", "/")).finish())
+    Ok(HttpResponse::Found()
+        .append_header(("location", "/"))
+        .finish())
 }
 
 #[actix_web::main]
@@ -166,7 +172,7 @@ async fn main() -> std::io::Result<()> {
 
     // create post table if not exists
     let conn = sea_orm::Database::connect(&db_url).await.unwrap();
-    let _ = setup::create_post_table(&conn).await;
+    Migrator::up(&conn, None).await.unwrap();
     let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).unwrap();
     let state = AppState { templates, conn };
 

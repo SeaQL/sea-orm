@@ -6,6 +6,7 @@ edition = "2021"
 publish = false
 
 [workspace]
+members = [".", "entity", "migration"]
 
 [dependencies]
 actix-http = "2"
@@ -19,14 +20,5 @@ dotenv = "0.15"
 listenfd = "0.3.3"
 serde = "1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-
-[dependencies.sea-orm]
-path = "../../" # remove this line in your own project
-version = "^0.5.0"
-features = ["macros", "runtime-async-std-native-tls", "debug-print"]
-default-features = false
-
-[features]
-default = ["sqlx-mysql"]
-sqlx-mysql = ["sea-orm/sqlx-mysql"]
-sqlx-postgres = ["sea-orm/sqlx-postgres"]
+entity = { path = "entity" }
+migration = { path = "migration" }

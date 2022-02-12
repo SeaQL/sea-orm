@@ -37,6 +37,8 @@ pub struct ConnectOptions {
     /// Maximum idle time for a particular connection to prevent
     /// network resource exhaustion
     pub(crate) idle_timeout: Option<Duration>,
+    /// Set the maximum lifetime of individual connections
+    pub(crate) max_lifetime: Option<Duration>,
     /// Enable SQLx statement logging
     pub(crate) sqlx_logging: bool,
 }
@@ -100,6 +102,7 @@ impl ConnectOptions {
             min_connections: None,
             connect_timeout: None,
             idle_timeout: None,
+            max_lifetime: None,
             sqlx_logging: true,
         }
     }
@@ -126,6 +129,9 @@ impl ConnectOptions {
         }
         if let Some(idle_timeout) = self.idle_timeout {
             opt = opt.idle_timeout(Some(idle_timeout));
+        }
+        if let Some(max_lifetime) = self.max_lifetime {
+            opt = opt.max_lifetime(Some(max_lifetime));
         }
         opt
     }
@@ -177,6 +183,17 @@ impl ConnectOptions {
     /// Get the idle duration before closing a connection, if set
     pub fn get_idle_timeout(&self) -> Option<Duration> {
         self.idle_timeout
+    }
+
+    /// Set the maximum lifetime of individual connections
+    pub fn max_lifetime(&mut self, lifetime: Duration) -> &mut Self {
+        self.max_lifetime = Some(lifetime);
+        self
+    }
+
+    /// Get the maximum lifetime of individual connections, if set
+    pub fn get_max_lifetime(&self) -> Option<Duration> {
+        self.max_lifetime
     }
 
     /// Enable SQLx statement logging (default true)

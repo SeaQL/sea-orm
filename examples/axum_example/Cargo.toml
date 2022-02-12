@@ -7,6 +7,7 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
+members = [".", "entity", "migration"]
 
 [dependencies]
 tokio = { version = "1.14", features = ["full"] }
@@ -20,14 +21,5 @@ serde = "1"
 serde_json = "1"
 tera = "1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-
-[dependencies.sea-orm]
-path = "../../" # remove this line in your own project
-version = "^0.5.0"
-features = ["macros", "runtime-tokio-native-tls", "debug-print"]
-default-features = false
-
-[features]
-default = ["sqlx-postgres"]
-sqlx-mysql = ["sea-orm/sqlx-mysql"]
-sqlx-postgres = ["sea-orm/sqlx-postgres"]
+entity = { path = "entity" }
+migration = { path = "migration" }

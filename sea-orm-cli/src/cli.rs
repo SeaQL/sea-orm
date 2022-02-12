@@ -74,10 +74,30 @@ pub fn build_cli() -> App<'static, 'static> {
         )
         .setting(AppSettings::SubcommandRequiredElseHelp);
 
-    App::new("sea-orm")
+    let arg_migration_dir = Arg::with_name("MIGRATION_DIR")
+        .long("migration-dir")
+        .short("d")
+        .help("Migration script directory")
+        .takes_value(true)
+        .default_value("./migration");
+    let mut migrate_subcommands = SubCommand::with_name("migrate")
+        .about("Migration related commands")
+        .subcommand(
+            SubCommand::with_name("init")
+                .about("Initialize migration directory")
+                .arg(arg_migration_dir.clone()),
+        )
+        .arg(arg_migration_dir.clone());
+    for subcommand in sea_schema::migration::get_subcommands() {
+        migrate_subcommands =
+            migrate_subcommands.subcommand(subcommand.arg(arg_migration_dir.clone()));
+    }
+
+    App::new("sea-orm-cli")
         .version(env!("CARGO_PKG_VERSION"))
         .setting(AppSettings::VersionlessSubcommands)
         .subcommand(entity_subcommand)
+        .subcommand(migrate_subcommands)
         .arg(
             Arg::with_name("VERBOSE")
                 .long("verbose")

@@ -83,6 +83,8 @@ impl<'a> TransactionStream<'a> {
                 }
                 #[cfg(feature = "mock")]
                 InnerConnection::Mock(c) => c.fetch(stmt),
+                #[allow(unreachable_patterns)]
+                _ => unreachable!(),
             },
         }
         .build()
