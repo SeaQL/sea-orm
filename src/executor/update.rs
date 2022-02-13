@@ -27,7 +27,7 @@ where
     pub async fn exec<'b, C>(self, db: &'b C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
-        C: ConnectionTrait,
+        C: ConnectionTrait + ?Sized,
     {
         // so that self is dropped before entering await
         exec_update_and_return_updated(self.query, self.model, db).await
@@ -41,7 +41,7 @@ where
     /// Execute an update operation on multiple ActiveModels
     pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_
     where
-        C: ConnectionTrait,
+        C: ConnectionTrait + ?Sized,
     {
         // so that self is dropped before entering await
         exec_update_only(self.query, db)
@@ -66,7 +66,7 @@ impl Updater {
     /// Execute an update operation
     pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_
     where
-        C: ConnectionTrait,
+        C: ConnectionTrait + ?Sized,
     {
         let builder = db.get_database_backend();
         exec_update(builder.build(&self.query), db, self.check_record_exists)
@@ -75,7 +75,7 @@ impl Updater {
 
 async fn exec_update_only<'a, C>(query: UpdateStatement, db: &'a C) -> Result<UpdateResult, DbErr>
 where
-    C: ConnectionTrait,
+    C: ConnectionTrait + ?Sized,
 {
     Updater::new(query).exec(db).await
 }
@@ -87,7 +87,7 @@ async fn exec_update_and_return_updated<'a, A, C>(
 ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
 where
     A: ActiveModelTrait,
-    C: ConnectionTrait,
+    C: ConnectionTrait + ?Sized,
 {
     match db.support_returning() {
         true => {
@@ -142,7 +142,7 @@ async fn exec_update<'a, C>(
     check_record_exists: bool,
 ) -> Result<UpdateResult, DbErr>
 where
-    C: ConnectionTrait,
+    C: ConnectionTrait + ?Sized,
 {
     let result = db.execute(statement).await?;
     if check_record_exists && result.rows_affected() == 0 {

@@ -41,7 +41,7 @@ pub trait ModelTrait: Clone + Send + Debug {
     async fn delete<'a, A, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
         Self: IntoActiveModel<A>,
-        C: ConnectionTrait,
+        C: ConnectionTrait + ?Sized,
         A: ActiveModelTrait<Entity = Self::Entity> + ActiveModelBehavior + Send + 'a,
     {
         self.into_active_model().delete(db).await

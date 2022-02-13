@@ -36,7 +36,7 @@ where
     #[allow(unused_mut)]
     pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + '_
     where
-        C: ConnectionTrait,
+        C: ConnectionTrait + ?Sized,
         A: 'a,
     {
         // so that self is dropped before entering await
@@ -58,7 +58,7 @@ where
     ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + '_
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
-        C: ConnectionTrait,
+        C: ConnectionTrait + ?Sized,
         A: 'a,
     {
         Inserter::<A>::new(self.primary_key, self.query).exec_with_returning(db)
@@ -81,7 +81,7 @@ where
     /// Execute an insert operation
     pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + '_
     where
-        C: ConnectionTrait,
+        C: ConnectionTrait + ?Sized,
         A: 'a,
     {
         let builder = db.get_database_backend();
@@ -95,7 +95,7 @@ where
     ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + '_
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
-        C: ConnectionTrait,
+        C: ConnectionTrait + ?Sized,
         A: 'a,
     {
         exec_insert_with_returning::<A, _>(self.primary_key, self.query, db)
@@ -108,7 +108,7 @@ async fn exec_insert<'a, A, C>(
     db: &'a C,
 ) -> Result<InsertResult<A>, DbErr>
 where
-    C: ConnectionTrait,
+    C: ConnectionTrait + ?Sized,
     A: ActiveModelTrait,
 {
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
@@ -143,7 +143,7 @@ async fn exec_insert_with_returning<'a, A, C>(
 ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
 where
     <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
-    C: ConnectionTrait,
+    C: ConnectionTrait + ?Sized,
     A: ActiveModelTrait,
 {
     let db_backend = db.get_database_backend();
