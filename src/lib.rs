@@ -25,6 +25,9 @@
 //! #### SeaORM is a relational ORM to help you build web services in Rust with the familiarity of dynamic languages.
 //!
 //! ## Getting Started
+//! 
+//! [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/SeaQL/sea-orm/stargazers/)
+//! If you like what we do, consider starring, commenting, sharing and contributing!
 //!
 //! [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
 //! Join our Discord server to chat with others in the SeaQL community!
