@@ -13,7 +13,7 @@ use entity::sea_orm::TransactionTrait;
 use flash::{get_flash_cookie, post_response, PostResponse};
 use migration::{Migrator, MigratorTrait};
 use post::Entity as Post;
-use sea_orm::{prelude::*, Database, ConnectOptions, QueryOrder, Set};
+use sea_orm::{prelude::*, Database, QueryOrder, Set};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::{env, net::SocketAddr};
