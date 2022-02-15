@@ -1,6 +1,6 @@
 use crate::{
     error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert, IntoActiveModel,
-    Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
+    Iterable, PrimaryKeyTrait, QuerySelect, SelectModel, SelectorRaw, Statement, TryFromU64,
 };
 use sea_query::{
     Alias, Expr, FromValueTuple, Iden, InsertStatement, IntoColumnRef, Query, ValueTuple,
@@ -118,7 +118,8 @@ where
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
                 .collect::<Vec<_>>();
-            let res = db.query_one(statement).await?.unwrap();
+            let vec = db.query_all(statement).await?;
+            let res = vec.get(0).unwrap();
             res.try_get_many("", cols.as_ref()).ok()
         }
         false => {
@@ -163,19 +164,20 @@ where
             SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
                 db_backend.build(&insert_statement),
             )
-            .one(db)
+            .all(db)
             .await?
         }
         false => {
             let insert_res =
                 exec_insert::<A, _>(primary_key, db_backend.build(&insert_statement), db).await?;
             <A::Entity as EntityTrait>::find_by_id(insert_res.last_insert_id)
-                .one(db)
+                .limit(1)
+                .all(db)
                 .await?
         }
     };
-    match found {
-        Some(model) => Ok(model),
+    match found.get(0) {
+        Some(model) => Ok(model.clone()),
         None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
     }
 }
