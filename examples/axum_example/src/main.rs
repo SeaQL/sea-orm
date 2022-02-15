@@ -160,9 +160,9 @@ async fn create_post(
 async fn edit_post(
     Extension(ref templates): Extension<Tera>,
     Extension(ref conn): Extension<DatabaseConnection>,
-    Path(id): Path<i32>,
+    Path(id): Path<i64>,
 ) -> Result<Html<String>, (StatusCode, &'static str)> {
-    let post: post::Model = Post::find_by_id(id.into())
+    let post: post::Model = Post::find_by_id(id)
         .one(conn)
         .await
         .expect("could not find post")
@@ -180,14 +180,14 @@ async fn edit_post(
 
 async fn update_post(
     Extension(ref conn): Extension<DatabaseConnection>,
-    Path(id): Path<i32>,
+    Path(id): Path<i64>,
     form: Form<post::Model>,
     mut cookies: Cookies,
 ) -> Result<PostResponse, (StatusCode, String)> {
     let model = form.0;
 
     post::ActiveModel {
-        id: Set(id.into()),
+        id: Set(id),
         title: Set(model.title.to_owned()),
         text: Set(model.text.to_owned()),
     }
@@ -205,10 +205,10 @@ async fn update_post(
 
 async fn delete_post(
     Extension(ref conn): Extension<DatabaseConnection>,
-    Path(id): Path<i32>,
+    Path(id): Path<i64>,
     mut cookies: Cookies,
 ) -> Result<PostResponse, (StatusCode, &'static str)> {
-    let post: post::ActiveModel = Post::find_by_id(id.into())
+    let post: post::ActiveModel = Post::find_by_id(id)
         .one(conn)
         .await
         .unwrap()
