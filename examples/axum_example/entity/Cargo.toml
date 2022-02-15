@@ -13,6 +13,8 @@ serde = { version = "1", features = ["derive"] }
 
 [dependencies.sea-orm]
 # path = "../../../" # remove this line in your own project
+git = "https://github.com/SeaQL/sea-orm.git"
+branch = "try-cockroach-db"
 version = "^0.6.0"
 features = [
   "macros",
