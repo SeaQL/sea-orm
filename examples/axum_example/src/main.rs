@@ -157,7 +157,7 @@ async fn edit_post(
     Extension(ref conn): Extension<DatabaseConnection>,
     Path(id): Path<i32>,
 ) -> Result<Html<String>, (StatusCode, &'static str)> {
-    let post: post::Model = Post::find_by_id(id)
+    let post: post::Model = Post::find_by_id(id.into())
         .one(conn)
         .await
         .expect("could not find post")
@@ -182,7 +182,7 @@ async fn update_post(
     let model = form.0;
 
     post::ActiveModel {
-        id: Set(id),
+        id: Set(id.into()),
         title: Set(model.title.to_owned()),
         text: Set(model.text.to_owned()),
     }
@@ -203,7 +203,7 @@ async fn delete_post(
     Path(id): Path<i32>,
     mut cookies: Cookies,
 ) -> Result<PostResponse, (StatusCode, &'static str)> {
-    let post: post::ActiveModel = Post::find_by_id(id)
+    let post: post::ActiveModel = Post::find_by_id(id.into())
         .one(conn)
         .await
         .unwrap()

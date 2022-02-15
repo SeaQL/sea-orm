@@ -91,3 +91,12 @@ services:
         environment:
             POSTGRES_USER: root
             POSTGRES_PASSWORD: root
+
+    # 
+    # CockroachDB
+    # 
+
+    cockroachdb_21_2_5:
+        image: cockroachdb/cockroach:v21.2.5
+        command: [ start-single-node, --insecure ]
+        ports: [ 8080:8080, 26257:26257 ]
