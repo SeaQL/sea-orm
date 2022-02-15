@@ -33,10 +33,7 @@ async fn main() -> anyhow::Result<()> {
     let port = env::var("PORT").expect("PORT is not set in .env file");
     let server_url = format!("{}:{}", host, port);
 
-    let mut conn_opt = ConnectOptions::new(db_url);
-    conn_opt.max_connections(1);
-
-    let conn = Database::connect(conn_opt)
+    let conn = Database::connect(db_url)
         .await
         .expect("Database connection failed");
     Migrator::up(&conn, None).await.unwrap();
