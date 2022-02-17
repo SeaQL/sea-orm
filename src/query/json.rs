@@ -28,6 +28,17 @@ impl FromQueryResult for JsonValue {
                             }
                         };
                     }
+                    macro_rules! compatible_mysql_type {
+                        ( $type: ty ) => {
+                            if <$type as Type<MySql>>::compatible(col_type) {
+                                map.insert(
+                                    col.to_owned(),
+                                    json!(res.try_get::<Option<$type>>(pre, &col)?),
+                                );
+                                continue;
+                            }
+                        };
+                    }
                     match_mysql_type!(bool);
                     match_mysql_type!(i8);
                     match_mysql_type!(i16);
@@ -40,6 +51,18 @@ impl FromQueryResult for JsonValue {
                     match_mysql_type!(f32);
                     match_mysql_type!(f64);
                     match_mysql_type!(String);
+                    #[cfg(feature = "with-chrono")]
+                    match_mysql_type!(chrono::NaiveDate);
+                    #[cfg(feature = "with-chrono")]
+                    match_mysql_type!(chrono::NaiveTime);
+                    #[cfg(feature = "with-chrono")]
+                    match_mysql_type!(chrono::NaiveDateTime);
+                    #[cfg(feature = "with-chrono")]
+                    match_mysql_type!(chrono::DateTime<chrono::Utc>);
+                    #[cfg(feature = "with-rust_decimal")]
+                    match_mysql_type!(rust_decimal::Decimal);
+                    #[cfg(feature = "with-json")]
+                    compatible_mysql_type!(serde_json::Value);
                 }
                 Ok(JsonValue::Object(map))
             }
@@ -66,6 +89,17 @@ impl FromQueryResult for JsonValue {
                             }
                         };
                     }
+                    macro_rules! compatible_postgres_type {
+                        ( $type: ty ) => {
+                            if <$type as Type<Postgres>>::compatible(col_type) {
+                                map.insert(
+                                    col.to_owned(),
+                                    json!(res.try_get::<Option<$type>>(pre, &col)?),
+                                );
+                                continue;
+                            }
+                        };
+                    }
                     match_postgres_type!(bool);
                     match_postgres_type!(i8);
                     match_postgres_type!(i16);
@@ -77,7 +111,19 @@ impl FromQueryResult for JsonValue {
                     // match_postgres_type!(u64); // unsupported by SQLx Postgres
                     match_postgres_type!(f32);
                     match_postgres_type!(f64);
-                    match_postgres_type!(String);
+                    #[cfg(feature = "with-chrono")]
+                    match_postgres_type!(chrono::NaiveDate);
+                    #[cfg(feature = "with-chrono")]
+                    match_postgres_type!(chrono::NaiveTime);
+                    #[cfg(feature = "with-chrono")]
+                    match_postgres_type!(chrono::NaiveDateTime);
+                    #[cfg(feature = "with-chrono")]
+                    match_postgres_type!(chrono::DateTime<chrono::FixedOffset>);
+                    #[cfg(feature = "with-rust_decimal")]
+                    match_postgres_type!(rust_decimal::Decimal);
+                    #[cfg(feature = "with-json")]
+                    compatible_postgres_type!(serde_json::Value);
+                    compatible_postgres_type!(String);
                 }
                 Ok(JsonValue::Object(map))
             }
@@ -116,6 +162,12 @@ impl FromQueryResult for JsonValue {
                     match_sqlite_type!(f32);
                     match_sqlite_type!(f64);
                     match_sqlite_type!(String);
+                    #[cfg(feature = "with-chrono")]
+                    match_sqlite_type!(chrono::NaiveDate);
+                    #[cfg(feature = "with-chrono")]
+                    match_sqlite_type!(chrono::NaiveTime);
+                    #[cfg(feature = "with-chrono")]
+                    match_sqlite_type!(chrono::NaiveDateTime);
                 }
                 Ok(JsonValue::Object(map))
             }
