@@ -30,7 +30,8 @@ futures-util = { version = "^0.3" }
 tracing = { version = "0.1", features = ["log"] }
 rust_decimal = { version = "^1", optional = true }
 sea-orm-macros = { version = "^0.6.0", path = "sea-orm-macros", optional = true }
-sea-query = { path = "../sea-query", features = ["thread-safe"] }
+# needs to be changed after sea-query release
+sea-query = { git = "https://github.com/cemoktra/sea-query.git", features = ["thread-safe"] }
 sea-strum = { version = "^0.23", features = ["derive", "sea-orm"] }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = { version = "^1", optional = true }
