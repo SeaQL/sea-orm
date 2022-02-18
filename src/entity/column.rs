@@ -65,6 +65,10 @@ pub enum ColumnType {
     Uuid,
     /// `ENUM` data type with name and variants
     Enum(String, Vec<String>),
+
+    #[cfg(feature = "with-ltree")]
+    /// `LTREE` data
+    LTree
 }
 
 macro_rules! bind_oper {
@@ -271,6 +275,44 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         Expr::tbl(self.entity_name(), *self).like(&pattern)
     }
 
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Name.ancestor(PgLTree::from_str("a.b.c").unwrap())
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` @> 'a.b.c'"
+    /// );
+    /// ```
+    #[cfg(feature = "with-ltree")]
+    fn ancestor<V>(&self, v: V) -> SimpleExpr
+    where
+        V: Into<Value>,
+    {
+        Expr::tbl(self.entity_name(), *self).contains(Expr::val(v.into()))
+    }
+
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Name.descendant(PgLTree::from_str("a.b.c").unwrap())
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` <@ 'a.b.c'"
+    /// );
+    /// ```
+    #[cfg(feature = "with-ltree")]
+    fn descendant<V>(&self, v: V) -> SimpleExpr
+    where
+        V: Into<Value>,
+    {
+        Expr::tbl(self.entity_name(), *self).contained(Expr::val(v.into()))
+    }
+
     bind_func_no_params!(max);
     bind_func_no_params!(min);
     bind_func_no_params!(sum);
@@ -380,6 +422,7 @@ impl From<ColumnType> for sea_query::ColumnType {
             }
             ColumnType::Uuid => sea_query::ColumnType::Uuid,
             ColumnType::Enum(name, variants) => sea_query::ColumnType::Enum(name, variants),
+            ColumnType::LTree => sea_query::ColumnType::LTree,
         }
     }
 }
@@ -411,6 +454,7 @@ impl From<sea_query::ColumnType> for ColumnType {
             sea_query::ColumnType::Custom(s) => Self::Custom(s.to_string()),
             sea_query::ColumnType::Uuid => Self::Uuid,
             sea_query::ColumnType::Enum(name, variants) => Self::Enum(name, variants),
+            sea_query::ColumnType::LTree => Self::LTree,
             _ => unimplemented!(),
         }
     }

@@ -340,6 +340,9 @@ impl TryGetable for Decimal {
 #[cfg(feature = "with-uuid")]
 try_getable_all!(uuid::Uuid);
 
+#[cfg(feature = "with-ltree")]
+try_getable_all!(sqlx::postgres::types::PgLTree);
+
 // TryGetableMany //
 
 /// Perform a query on multiple columns

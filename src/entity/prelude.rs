@@ -41,3 +41,6 @@ pub use rust_decimal::Decimal;
 
 #[cfg(feature = "with-uuid")]
 pub use uuid::Uuid;
+
+#[cfg(feature = "with-ltree")]
+pub use sqlx::postgres::types::PgLTree;

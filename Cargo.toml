@@ -30,11 +30,11 @@ futures-util = { version = "^0.3" }
 tracing = { version = "0.1", features = ["log"] }
 rust_decimal = { version = "^1", optional = true }
 sea-orm-macros = { version = "^0.6.0", path = "sea-orm-macros", optional = true }
-sea-query = { version = "^0.21.0", features = ["thread-safe"] }
+sea-query = { path = "../sea-query", features = ["thread-safe"] }
 sea-strum = { version = "^0.23", features = ["derive", "sea-orm"] }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = { version = "^1", optional = true }
-sqlx = { version = "^0.5", optional = true }
+sqlx = { git = "https://github.com/launchbadge/sqlx.git", optional = true }
 uuid = { version = "0.8", features = ["serde", "v4"], optional = true }
 ouroboros = "0.14"
 url = "^2.2"
@@ -68,6 +68,7 @@ with-json = ["serde_json", "sea-query/with-json", "chrono/serde"]
 with-chrono = ["chrono", "sea-query/with-chrono"]
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal"]
 with-uuid = ["uuid", "sea-query/with-uuid"]
+with-ltree = ["sqlx-postgres", "sea-query/with-ltree"]
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-dep = ["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid"]
 sqlx-json = ["sqlx/json", "with-json"]
@@ -80,15 +81,17 @@ sqlx-sqlite = ["sqlx-dep", "sea-query/sqlx-sqlite", "sqlx/sqlite"]
 runtime-async-std = []
 runtime-async-std-native-tls = [
     "sqlx/runtime-async-std-native-tls",
+    "sea-query/runtime-async-std-native-tls",
     "runtime-async-std",
 ]
 runtime-async-std-rustls = [
     "sqlx/runtime-async-std-rustls",
+    "sea-query/runtime-async-std-rustls",
     "runtime-async-std",
 ]
 runtime-actix = []
-runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls", "runtime-actix"]
-runtime-actix-rustls = ["sqlx/runtime-actix-rustls", "runtime-actix"]
+runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls", "sea-query/runtime-actix-native-tls", "runtime-actix"]
+runtime-actix-rustls = ["sqlx/runtime-actix-rustls", "sea-query/runtime-actix-rustls", "runtime-actix"]
 runtime-tokio = []
-runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls", "runtime-tokio"]
-runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls", "runtime-tokio"]
+runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls", "sea-query/runtime-tokio-native-tls", "runtime-tokio"]
+runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls", "sea-query/runtime-tokio-rustls", "runtime-tokio"]
