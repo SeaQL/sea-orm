@@ -68,7 +68,7 @@ pub enum ColumnType {
 
     #[cfg(feature = "with-ltree")]
     /// `LTREE` data
-    LTree
+    LTree,
 }
 
 macro_rules! bind_oper {
