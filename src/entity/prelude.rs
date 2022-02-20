@@ -42,5 +42,20 @@ pub use rust_decimal::Decimal;
 #[cfg(feature = "with-uuid")]
 pub use uuid::Uuid;
 
-#[cfg(feature = "with-ltree")]
+#[cfg(feature = "sqlx-postgres")]
 pub use sqlx::postgres::types::PgLTree;
+
+#[cfg(feature = "sqlx-postgres")]
+pub use sqlx::postgres::types::PgLTreeLabel;
+
+#[cfg(feature = "sqlx-postgres")]
+pub use sqlx::postgres::types::PgLQuery;
+
+#[cfg(feature = "sqlx-postgres")]
+pub use sqlx::postgres::types::PgLQueryLevel;
+
+#[cfg(feature = "sqlx-postgres")]
+pub use sqlx::postgres::types::PgLQueryVariant;
+
+#[cfg(feature = "sqlx-postgres")]
+pub use sqlx::postgres::types::PgLQueryVariantFlag;

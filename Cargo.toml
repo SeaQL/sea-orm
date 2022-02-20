@@ -31,11 +31,11 @@ tracing = { version = "0.1", features = ["log"] }
 rust_decimal = { version = "^1", optional = true }
 sea-orm-macros = { version = "^0.6.0", path = "sea-orm-macros", optional = true }
 # needs to be changed after sea-query release
-sea-query = { git = "https://github.com/cemoktra/sea-query.git", features = ["thread-safe"] }
+sea-query = { git = "https://github.com/cemoktra/sea-query.git", branch = "with-ltree", features = ["thread-safe"] }
 sea-strum = { version = "^0.23", features = ["derive", "sea-orm"] }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = { version = "^1", optional = true }
-sqlx = { git = "https://github.com/launchbadge/sqlx.git", optional = true }
+sqlx = { version = "^0.5", optional = true }
 uuid = { version = "0.8", features = ["serde", "v4"], optional = true }
 ouroboros = "0.14"
 url = "^2.2"
@@ -69,7 +69,6 @@ with-json = ["serde_json", "sea-query/with-json", "chrono/serde"]
 with-chrono = ["chrono", "sea-query/with-chrono"]
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal"]
 with-uuid = ["uuid", "sea-query/with-uuid"]
-with-ltree = ["sqlx-postgres", "sea-query/with-ltree"]
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-dep = ["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid"]
 sqlx-json = ["sqlx/json", "with-json"]

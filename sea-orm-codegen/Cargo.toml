@@ -15,7 +15,8 @@ name = "sea_orm_codegen"
 path = "src/lib.rs"
 
 [dependencies]
-sea-query = { version = "0.21.0" }
+sea-query = { git = "https://github.com/cemoktra/sea-query.git", branch = "with-ltree" }
+#sea-query = { version = "0.21.0" }
 syn = { version = "^1", default-features = false, features = [
     "derive",
     "parsing",

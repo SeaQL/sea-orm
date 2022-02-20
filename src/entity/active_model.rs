@@ -648,8 +648,8 @@ impl_into_active_value!(crate::prelude::Decimal, Set);
 #[cfg_attr(docsrs, doc(cfg(feature = "with-uuid")))]
 impl_into_active_value!(crate::prelude::Uuid, Set);
 
-#[cfg(feature = "with-ltree")]
-#[cfg_attr(docsrs, doc(cfg(feature = "with-ltree")))]
+#[cfg(feature = "sqlx-postgres")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sqlx-postgres")))]
 impl_into_active_value!(crate::prelude::PgLTree, Set);
 
 impl<V> Default for ActiveValue<V>
