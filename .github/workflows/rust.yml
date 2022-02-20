@@ -1,15 +1,15 @@
 # GitHub Actions with Conditional Job Running Based on Commit Message
-# 
+#
 # --------------------------------------------------------------------------------
-# 
+#
 # Following jobs will always run
-# 
+#
 #   - `clippy`
 #   - `test`
 #   - `examples`
-# 
+#
 # Following jobs will be run when no keywords were found in commit message)
-# 
+#
 #   - `compile-sqlite`
 #   - `sqlite`
 #   - `compile-mysql`
@@ -17,32 +17,32 @@
 #   - `mariadb`
 #   - `compile-postgres`
 #   - `postgres`
-# 
+#
 # Following jobs will be run if keywords `[issues]` were found in commit message
-# 
+#
 #   - Jobs that will always run
 #   - `issues`
-# 
+#
 # Following jobs will be run if keywords `[cli]` were found in commit message
-# 
+#
 #   - Jobs that will always run
 #   - `cli`
-# 
+#
 # Following jobs will be run if keywords `[sqlite]` were found in commit message
-# 
+#
 #   - Jobs that will always run
 #   - `compile-sqlite`
 #   - `sqlite`
-# 
+#
 # Following jobs will be run if keywords `[mysql]` were found in commit message
-# 
+#
 #   - Jobs that will always run
 #   - `compile-mysql`
 #   - `mysql`
 #   - `mariadb`
-# 
+#
 # Following jobs will be run if keywords `[postgres]` were found in commit message
-# 
+#
 #   - Jobs that will always run
 #   - `compile-postgres`
 #   - `postgres`
@@ -113,6 +113,7 @@ jobs:
           command: clippy
           args: >
             --all-targets
+            --features runtime-tokio-rustls
             --all
 
   compile-sqlite:
@@ -249,6 +250,7 @@ jobs:
           command: test
           args: >
             --workspace
+            --features runtime-tokio-rustls
 
       - uses: actions-rs/cargo@v1
         with:

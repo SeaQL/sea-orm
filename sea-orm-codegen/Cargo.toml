@@ -15,9 +15,8 @@ name = "sea_orm_codegen"
 path = "src/lib.rs"
 
 [dependencies]
-# we can set a fixed runtime here without any problems
-sea-query = { git = "https://github.com/cemoktra/sea-query.git", branch = "with-ltree", features = ["runtime-tokio-rustls"] }
-#sea-query = { version = "0.21.0", features = ["runtime-tokio-rustls"] }
+sea-query = { git = "https://github.com/cemoktra/sea-query.git", branch = "with-ltree" }
+#sea-query = { version = "0.21.0" }
 syn = { version = "^1", default-features = false, features = [
     "derive",
     "parsing",
@@ -30,3 +29,24 @@ proc-macro2 = "^1"
 
 [dev-dependencies]
 pretty_assertions = { version = "^0.7" }
+
+[features]
+default = [ "runtime-async-std-native-tls" ]
+runtime-actix-native-tls = [
+    "sea-query/runtime-actix-native-tls",
+]
+runtime-async-std-native-tls = [
+    "sea-query/runtime-async-std-native-tls",
+]
+runtime-tokio-native-tls = [
+    "sea-query/runtime-tokio-native-tls",
+]
+runtime-actix-rustls = [
+    "sea-query/runtime-actix-rustls",
+]
+runtime-async-std-rustls = [
+    "sea-query/runtime-async-std-rustls",
+]
+runtime-tokio-rustls = [
+    "sea-query/runtime-tokio-rustls",
+]
