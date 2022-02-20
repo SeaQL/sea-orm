@@ -281,7 +281,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Name.ancestor(PgLTree::from_str("a.b.c").unwrap()))
-    ///         .build(DbBackend::MySql)
+    ///         .build(DbBackend::Postgres)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` @> 'a.b.c'"
     /// );
@@ -300,7 +300,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Name.descendant(PgLTree::from_str("a.b.c").unwrap()))
-    ///         .build(DbBackend::MySql)
+    ///         .build(DbBackend::Postgres)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` <@ 'a.b.c'"
     /// );
@@ -321,7 +321,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .filter(cake::Column::Name.lquery(PgLQuery::from_str("*.b.c").unwrap()))
-    ///         .build(DbBackend::MySql)
+    ///         .build(DbBackend::Postgres)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` ~ *.b.c"
     /// );

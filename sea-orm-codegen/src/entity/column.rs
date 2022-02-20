@@ -112,6 +112,7 @@ impl Column {
             ColumnType::Json => quote! { ColumnType::Json.def() },
             ColumnType::JsonBinary => quote! { ColumnType::JsonBinary.def() },
             ColumnType::Uuid => quote! { ColumnType::Uuid.def() },
+            ColumnType::LTree => quote! { ColumnType::PgLQuery.def() },
             ColumnType::Custom(s) => {
                 let s = s.to_string();
                 quote! { ColumnType::Custom(#s.to_owned()).def() }
