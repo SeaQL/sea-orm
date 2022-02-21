@@ -249,8 +249,8 @@ jobs:
         with:
           command: test
           args: >
+            --features runtime-async-std-native-tls
             --workspace
-            --features runtime-tokio-rustls
 
       - uses: actions-rs/cargo@v1
         with:
