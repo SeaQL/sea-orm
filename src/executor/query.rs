@@ -376,6 +376,7 @@ impl TryGetable for Decimal {
 #[cfg(feature = "with-uuid")]
 try_getable_all!(uuid::Uuid);
 
+#[cfg(feature = "sqlx-postgres")]
 try_getable_postgres!(sqlx::postgres::types::PgLTree);
 
 // TryGetableMany //
