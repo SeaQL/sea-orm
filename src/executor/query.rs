@@ -207,6 +207,42 @@ macro_rules! try_getable_mysql {
     };
 }
 
+
+macro_rules! try_getable_postgres {
+    ( $type: ty ) => {
+        impl TryGetable for $type {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
+                let _column = format!("{}{}", pre, col);
+                match &res.row {
+                    #[cfg(feature = "sqlx-mysql")]
+                    QueryResultRow::SqlxMySql(_) => {
+                        panic!("{} unsupported by sqlx-mysql", stringify!($type))
+                    }
+                    #[cfg(feature = "sqlx-postgres")]
+                    QueryResultRow::SqlxPostgres(row) => {
+                        use sqlx::Row;
+                        row.try_get::<Option<$type>, _>(_column.as_str())
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null))
+                    }
+                    #[cfg(feature = "sqlx-sqlite")]
+                    QueryResultRow::SqlxSqlite(_) => {
+                        panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+                    }
+                    #[cfg(feature = "mock")]
+                    #[allow(unused_variables)]
+                    QueryResultRow::Mock(row) => row.try_get(_column.as_str()).map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        TryGetError::Null
+                    }),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
+                }
+            }
+        }
+    };
+}
+
 macro_rules! try_getable_date_time {
     ( $type: ty ) => {
         impl TryGetable for $type {
@@ -340,8 +376,7 @@ impl TryGetable for Decimal {
 #[cfg(feature = "with-uuid")]
 try_getable_all!(uuid::Uuid);
 
-#[cfg(feature = "sqlx-postgres")]
-try_getable_all!(sqlx::postgres::types::PgLTree);
+try_getable_postgres!(sqlx::postgres::types::PgLTree);
 
 // TryGetableMany //
 

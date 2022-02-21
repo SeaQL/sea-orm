@@ -113,7 +113,7 @@ jobs:
           command: clippy
           args: >
             --all-targets
-            --features runtime-tokio-rustls
+            --features runtime-async-std-native-tls
             --all
 
   compile-sqlite:

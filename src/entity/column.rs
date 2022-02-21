@@ -65,9 +65,8 @@ pub enum ColumnType {
     Uuid,
     /// `ENUM` data type with name and variants
     Enum(String, Vec<String>),
-
-    #[cfg(feature = "sqlx-postgres")]
     /// `LTREE` data
+    #[cfg(feature = "sqlx-postgres")]
     LTree,
 }
 
