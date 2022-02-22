@@ -49,25 +49,25 @@ runtime-actix-native-tls = [
 runtime-async-std-native-tls = [
     "sqlx/runtime-async-std-native-tls",
     "sea-schema/runtime-async-std-native-tls",
-    "sea-orm-codegen/runtime-actix-native-tls",
+    "sea-orm-codegen/runtime-async-std-native-tls",
 ]
 runtime-tokio-native-tls = [
     "sqlx/runtime-tokio-native-tls",
     "sea-schema/runtime-tokio-native-tls",
-    "sea-orm-codegen/runtime-actix-native-tls",
+    "sea-orm-codegen/runtime-tokio-native-tls",
 ]
 runtime-actix-rustls = [
     "sqlx/runtime-actix-rustls",
     "sea-schema/runtime-actix-rustls",
-    "sea-orm-codegen/runtime-actix-native-tls",
+    "sea-orm-codegen/runtime-actix-rustls",
 ]
 runtime-async-std-rustls = [
     "sqlx/runtime-async-std-rustls",
     "sea-schema/runtime-async-std-rustls",
-    "sea-orm-codegen/runtime-actix-native-tls",
+    "sea-orm-codegen/runtime-async-std-rustls",
 ]
 runtime-tokio-rustls = [
     "sqlx/runtime-tokio-rustls",
     "sea-schema/runtime-tokio-rustls",
-    "sea-orm-codegen/runtime-actix-native-tls",
+    "sea-orm-codegen/runtime-tokio-rustls",
 ]
