@@ -208,7 +208,7 @@ macro_rules! try_getable_mysql {
 }
 
 
-macro_rules! try_getable_postgres {
+macro_rules! try_getable_ltree {
     ( $type: ty ) => {
         impl TryGetable for $type {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
@@ -377,7 +377,7 @@ impl TryGetable for Decimal {
 try_getable_all!(uuid::Uuid);
 
 #[cfg(feature = "sqlx-postgres")]
-try_getable_postgres!(sqlx::postgres::types::PgLTree);
+try_getable_ltree!(sqlx::postgres::types::PgLTree);
 
 // TryGetableMany //
 
