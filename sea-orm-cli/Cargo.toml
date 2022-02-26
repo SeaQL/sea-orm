@@ -14,7 +14,7 @@ categories = [ "database" ]
 keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 
 [[bin]]
-name = "sea-orm-cli"
+name = "sea"
 path = "src/main.rs"
 
 [dependencies]
