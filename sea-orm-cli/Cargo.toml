@@ -12,10 +12,20 @@ documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
 categories = [ "database" ]
 keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
+default-run = "sea-orm-cli"
+
+
+[lib]
+name = "sea_orm_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sea-orm-cli"
+path = "src/bin/main.rs"
 
 [[bin]]
 name = "sea"
-path = "src/main.rs"
+path = "src/bin/sea.rs"
 
 [dependencies]
 clap = { version = "^2.33.3" }

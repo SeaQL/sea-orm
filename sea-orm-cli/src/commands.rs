@@ -1,27 +1,10 @@
+
 use clap::ArgMatches;
-use dotenv::dotenv;
 use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use url::Url;
 
-mod cli;
-
-#[async_std::main]
-async fn main() {
-    dotenv().ok();
-
-    let matches = cli::build_cli().get_matches();
-
-    match matches.subcommand() {
-        ("generate", Some(matches)) => run_generate_command(matches)
-            .await
-            .unwrap_or_else(handle_error),
-        ("migrate", Some(matches)) => run_migrate_command(matches).unwrap_or_else(handle_error),
-        _ => unreachable!("You should never see this message"),
-    }
-}
-
-async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
+pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
     match matches.subcommand() {
         ("entity", Some(args)) => {
             let output_dir = args.value_of("OUTPUT_DIR").unwrap();
@@ -188,7 +171,7 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
     Ok(())
 }
 
-fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
+pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
     let migrate_subcommand = matches.subcommand();
     // If it's `migrate init`
     if let ("init", Some(args)) = migrate_subcommand {
@@ -263,7 +246,7 @@ fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn handle_error<E>(error: E)
+pub fn handle_error<E>(error: E)
 where
     E: Display,
 {
