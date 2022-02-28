@@ -258,6 +258,7 @@ where
 mod tests {
     use super::*;
     use clap::AppSettings;
+    use crate::cli;
 
     #[test]
     #[should_panic(
