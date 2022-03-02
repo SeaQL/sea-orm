@@ -652,6 +652,7 @@ impl<V> Default for ActiveValue<V>
 where
     V: Into<Value>,
 {
+    /// Create an [ActiveValue::NotSet]
     fn default() -> Self {
         Self::NotSet
     }
