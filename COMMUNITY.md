@@ -4,8 +4,13 @@
 
 If you have built an app using SeaORM and want to showcase it, feel free to open a PR and add it to the list below!
 
+### Startups
+
 - [Caido](https://caido.io/) | A lightweight web security auditing toolkit
 - [Svix](https://www.svix.com/) ([repository](https://github.com/svix/svix-webhooks)) | The enterprise ready webhooks service
+
+### Hobby Projects
+
 - [aeroFans](https://github.com/naryand/aerofans) | Full stack forum-like social media platform in Rust and WebAssembly
 - [mediarepo](https://mediarepo.trivernis.dev) ([repository](https://github.com/Trivernis/mediarepo)) | A tag-based media management application
 - [THUBurrow](https://thuburrow.com) ([repository](https://github.com/BobAnkh/THUBurrow)) | A campus forum built by Next.js and Rocket
