@@ -13,3 +13,4 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [thrpg](https://github.com/thrpg/thrpg) | Touhou Project's secondary creative games
 - [Stump](https://github.com/aaronleopold/stump) | A free and open source comics server with OPDS support
 - [Adta](https://github.com/aaronleopold/adta) | Adta is **A**nother **D**amn **T**odo **A**pp, fun little side project
+- [Axum-Book-Management](https://github.com/lz1998/axum-book-management): CRUD system of book-management with ORM and JWT for educational purposes.
