@@ -22,3 +22,4 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Stump](https://github.com/aaronleopold/stump) | A free and open source comics server with OPDS support
 - [awto](https://github.com/awto-rs/awto) | Awtomate your 🦀 microservices with awto
 - [tardis](https://github.com/ideal-world/tardis) | Elegant, Clean Rust development framework🛸
+- [mugen](https://github.com/koopa1338/mugen-dms) | DMS written in 🦀
