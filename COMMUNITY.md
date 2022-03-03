@@ -11,7 +11,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 ### Open Source Projects
 
-- [Wikijump](https://github.com/scpwiki/wikijump) ([repository](https://github.com/scpwiki/wikijump/tree/develop/deepwell)) | Fork of Wikidot by the SCP Wiki for Project Foundation
+- [Wikijump](https://github.com/scpwiki/wikijump) ([DEEPWELL](https://github.com/scpwiki/wikijump/tree/develop/deepwell)) | API service for Wikijump, a fork of Wikidot.
 - [aeroFans](https://github.com/naryand/aerofans) | Full stack forum-like social media platform in Rust and WebAssembly
 - [thrpg](https://github.com/thrpg/thrpg) | Touhou Project's secondary creative games
 - [Adta](https://github.com/aaronleopold/adta) | Adta is **A**nother **D**amn **T**odo **A**pp, fun little side project
