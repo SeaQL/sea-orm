@@ -20,3 +20,4 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [THUBurrow](https://thuburrow.com) ([repository](https://github.com/BobAnkh/THUBurrow)) | A campus forum built by Next.js and Rocket
 - [Backpack](https://github.com/JSH32/Backpack) | Open source self hosted file sharing platform on crack
 - [Stump](https://github.com/aaronleopold/stump) | A free and open source comics server with OPDS support
+- [awto](https://github.com/awto-rs/awto) | Awtomate your 🦀 microservices with awto
