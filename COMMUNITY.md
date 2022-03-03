@@ -21,3 +21,4 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Backpack](https://github.com/JSH32/Backpack) | Open source self hosted file sharing platform on crack
 - [Stump](https://github.com/aaronleopold/stump) | A free and open source comics server with OPDS support
 - [awto](https://github.com/awto-rs/awto) | Awtomate your 🦀 microservices with awto
+- [tardis](https://github.com/ideal-world/tardis) | Elegant, Clean Rust development framework🛸
