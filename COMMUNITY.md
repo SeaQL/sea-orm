@@ -24,3 +24,4 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [tardis](https://github.com/ideal-world/tardis) | Elegant, Clean Rust development framework🛸
 - [mugen](https://github.com/koopa1338/mugen-dms) | DMS written in 🦀
 - [JinShu](https://github.com/gengteng/jinshu) | A cross-platform **I**nstant **M**essaging system written in 🦀
+- [rust-juniper-playground](https://github.com/Yama-Tomo/rust-juniper-playground) | juniper with SeaORM example
