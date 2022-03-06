@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Codegen add serde derives to enums, if specified https://github.com/SeaQL/sea-orm/pull/463
 
+### Breaking changes
+
+* Exclude `mock` from default features https://github.com/SeaQL/sea-orm/pull/562
+
 ## 0.6.0 - 2022-02-07
 
 ### New Features
