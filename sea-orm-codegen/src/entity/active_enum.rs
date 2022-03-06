@@ -1,3 +1,4 @@
+use crate::WithSerde;
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -9,7 +10,7 @@ pub struct ActiveEnum {
 }
 
 impl ActiveEnum {
-    pub fn impl_active_enum(&self) -> TokenStream {
+    pub fn impl_active_enum(&self, with_serde: &WithSerde) -> TokenStream {
         let enum_name = &self.enum_name;
         let enum_iden = format_ident!("{}", enum_name.to_camel_case());
         let values = &self.values;
@@ -17,8 +18,11 @@ impl ActiveEnum {
             .values
             .iter()
             .map(|v| format_ident!("{}", v.to_camel_case()));
+
+        let extra_derive = with_serde.extra_derive();
+
         quote! {
-            #[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum)]
+            #[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum #extra_derive)]
             #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = #enum_name)]
             pub enum #enum_iden {
                 #(
