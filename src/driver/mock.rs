@@ -148,7 +148,7 @@ impl MockDatabaseConnection {
     pub fn fetch(
         &self,
         statement: &Statement,
-    ) -> Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>>>> {
+    ) -> Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send>> {
         match self.query_all(statement.clone()) {
             Ok(v) => Box::pin(futures::stream::iter(v.into_iter().map(Ok))),
             Err(e) => Box::pin(futures::stream::iter(Some(Err(e)).into_iter())),
