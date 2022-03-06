@@ -1,6 +1,6 @@
 use crate::{
-    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Iterable, SelectModel,
-    SelectorRaw, Statement, UpdateMany, UpdateOne,
+    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
+    Iterable, SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
 };
 use sea_query::{Alias, Expr, FromValueTuple, Query, UpdateStatement};
 use std::future::Future;
@@ -26,7 +26,8 @@ where
     /// Execute an update operation on an ActiveModel
     pub async fn exec<'b, C>(self, db: &'b C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
-        C: ConnectionTrait<'b>,
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
     {
         // so that self is dropped before entering await
         exec_update_and_return_updated(self.query, self.model, db).await
@@ -40,7 +41,7 @@ where
     /// Execute an update operation on multiple ActiveModels
     pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         // so that self is dropped before entering await
         exec_update_only(self.query, db)
@@ -65,7 +66,7 @@ impl Updater {
     /// Execute an update operation
     pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let builder = db.get_database_backend();
         exec_update(builder.build(&self.query), db, self.check_record_exists)
@@ -74,7 +75,7 @@ impl Updater {
 
 async fn exec_update_only<'a, C>(query: UpdateStatement, db: &'a C) -> Result<UpdateResult, DbErr>
 where
-    C: ConnectionTrait<'a>,
+    C: ConnectionTrait,
 {
     Updater::new(query).exec(db).await
 }
@@ -86,7 +87,7 @@ async fn exec_update_and_return_updated<'a, A, C>(
 ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
 where
     A: ActiveModelTrait,
-    C: ConnectionTrait<'a>,
+    C: ConnectionTrait,
 {
     match db.support_returning() {
         true => {
@@ -141,7 +142,7 @@ async fn exec_update<'a, C>(
     check_record_exists: bool,
 ) -> Result<UpdateResult, DbErr>
 where
-    C: ConnectionTrait<'a>,
+    C: ConnectionTrait,
 {
     let result = db.execute(statement).await?;
     if check_record_exists && result.rows_affected() == 0 {

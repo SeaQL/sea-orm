@@ -22,6 +22,10 @@ impl Column {
         format_ident!("{}", escape_rust_keyword(self.name.to_camel_case()))
     }
 
+    pub fn is_snake_case_name(&self) -> bool {
+        self.name.to_snake_case() == self.name
+    }
+
     pub fn get_rs_type(&self) -> TokenStream {
         #[allow(unreachable_patterns)]
         let ident: TokenStream = match &self.col_type {
@@ -42,7 +46,8 @@ impl Column {
             ColumnType::Json | ColumnType::JsonBinary => "Json".to_owned(),
             ColumnType::Date => "Date".to_owned(),
             ColumnType::Time(_) => "Time".to_owned(),
-            ColumnType::DateTime(_) | ColumnType::Timestamp(_) => "DateTime".to_owned(),
+            ColumnType::DateTime(_) => "DateTime".to_owned(),
+            ColumnType::Timestamp(_) => "DateTimeUtc".to_owned(),
             ColumnType::TimestampWithTimeZone(_) => "DateTimeWithTimeZone".to_owned(),
             ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal".to_owned(),
             ColumnType::Uuid => "Uuid".to_owned(),
@@ -295,7 +300,7 @@ mod tests {
             "Date",
             "Time",
             "DateTime",
-            "DateTime",
+            "DateTimeUtc",
             "DateTimeWithTimeZone",
         ];
         for (mut col, rs_type) in columns.into_iter().zip(rs_types) {

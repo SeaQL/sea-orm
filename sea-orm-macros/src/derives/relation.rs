@@ -136,6 +136,22 @@ impl DeriveRelation {
                     result = quote! { #result.on_delete(sea_orm::prelude::ForeignKeyAction::#on_delete) };
                 }
 
+                if attr.fk_name.is_some() {
+                    let fk_name = attr
+                        .fk_name
+                        .as_ref()
+                        .map(|lit| {
+                            match lit {
+                                syn::Lit::Str(lit_str) => Ok(lit_str.value()),
+                                _ => Err(syn::Error::new_spanned(lit, "attribute must be a string")),
+                            }
+                        })
+                        .ok_or_else(|| {
+                            syn::Error::new_spanned(variant, "Missing value for 'fk_name'")
+                        })??;
+                    result = quote! { #result.fk_name(#fk_name) };
+                }
+
                 result = quote! { #result.into() };
 
                 Result::<_, syn::Error>::Ok(result)

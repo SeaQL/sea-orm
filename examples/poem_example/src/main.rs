@@ -1,5 +1,8 @@
 use std::env;
 
+use entity::post;
+use entity::sea_orm;
+use migration::{Migrator, MigratorTrait};
 use poem::endpoint::StaticFilesEndpoint;
 use poem::error::{BadRequest, InternalServerError};
 use poem::http::StatusCode;
@@ -9,9 +12,6 @@ use poem::{get, handler, post, EndpointExt, Error, IntoResponse, Result, Route, 
 use sea_orm::{entity::*, query::*, DatabaseConnection};
 use serde::Deserialize;
 use tera::Tera;
-
-mod post;
-mod setup;
 
 const DEFAULT_POSTS_PER_PAGE: usize = 5;
 
@@ -142,7 +142,7 @@ async fn main() -> std::io::Result<()> {
 
     // create post table if not exists
     let conn = sea_orm::Database::connect(&db_url).await.unwrap();
-    let _ = setup::create_post_table(&conn).await;
+    Migrator::up(&conn, None).await.unwrap();
     let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).unwrap();
     let state = AppState { templates, conn };
 

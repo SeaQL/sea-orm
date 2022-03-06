@@ -1,6 +1,6 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
-use syn::{Data, DataStruct, Field, Fields};
+use syn::{ext::IdentExt, Data, DataStruct, Field, Fields};
 
 /// Method to derive a [QueryResult](sea_orm::QueryResult)
 pub fn expand_derive_from_query_result(ident: Ident, data: Data) -> syn::Result<TokenStream> {
@@ -24,7 +24,7 @@ pub fn expand_derive_from_query_result(ident: Ident, data: Data) -> syn::Result<
     let name: Vec<TokenStream> = field
         .iter()
         .map(|f| {
-            let s = f.to_string();
+            let s = f.unraw().to_string();
             quote! { #s }
         })
         .collect();
@@ -32,7 +32,7 @@ pub fn expand_derive_from_query_result(ident: Ident, data: Data) -> syn::Result<
     Ok(quote!(
         #[automatically_derived]
         impl sea_orm::FromQueryResult for #ident {
-            fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::DbErr> {
+            fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
                 Ok(Self {
                     #(#field: row.try_get(pre, #name)?),*
                 })

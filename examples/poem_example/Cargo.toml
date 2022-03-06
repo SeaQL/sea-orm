@@ -5,6 +5,7 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
+members = [".", "entity", "migration"]
 
 [dependencies]
 tokio = { version = "1.15.0", features = ["macros", "rt-multi-thread"] }
@@ -13,15 +14,5 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = { version = "1", features = ["derive"] }
 tera = "1.8.0"
 dotenv = "0.15"
-
-[dependencies.sea-orm]
-path = "../../" # remove this line in your own project
-version = "^0.5.0"
-features = ["macros", "runtime-tokio-native-tls", "debug-print"]
-default-features = false
-
-[features]
-default = ["sqlx-sqlite"]
-sqlx-mysql = ["sea-orm/sqlx-mysql"]
-sqlx-postgres = ["sea-orm/sqlx-postgres"]
-sqlx-sqlite = ["sea-orm/sqlx-sqlite"]
+entity = { path = "entity" }
+migration = { path = "migration" }

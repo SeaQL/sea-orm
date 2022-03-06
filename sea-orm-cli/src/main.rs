@@ -16,6 +16,7 @@ async fn main() {
         ("generate", Some(matches)) => run_generate_command(matches)
             .await
             .unwrap_or_else(handle_error),
+        ("migrate", Some(matches)) => run_migrate_command(matches).unwrap_or_else(handle_error),
         _ => unreachable!("You should never see this message"),
     }
 }
@@ -187,6 +188,81 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
     Ok(())
 }
 
+fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
+    let migrate_subcommand = matches.subcommand();
+    // If it's `migrate init`
+    if let ("init", Some(args)) = migrate_subcommand {
+        let migration_dir = args.value_of("MIGRATION_DIR").unwrap();
+        let migration_dir = match migration_dir.ends_with('/') {
+            true => migration_dir.to_string(),
+            false => format!("{}/", migration_dir),
+        };
+        println!("Initializing migration directory...");
+        macro_rules! write_file {
+            ($filename: literal) => {
+                write_file!($filename, $filename);
+            };
+            ($filename: literal, $template: literal) => {
+                let filepath = [&migration_dir, $filename].join("");
+                println!("Creating file `{}`", filepath);
+                let path = Path::new(&filepath);
+                let prefix = path.parent().unwrap();
+                fs::create_dir_all(prefix).unwrap();
+                let mut file = fs::File::create(path)?;
+                let content = include_str!(concat!("../template/migration/", $template));
+                file.write_all(content.as_bytes())?;
+            };
+        }
+        write_file!("src/lib.rs");
+        write_file!("src/m20220101_000001_create_table.rs");
+        write_file!("src/main.rs");
+        write_file!("Cargo.toml", "_Cargo.toml");
+        write_file!("README.md");
+        println!("Done!");
+        // Early exit!
+        return Ok(());
+    }
+    let (subcommand, migration_dir, steps, verbose) = match migrate_subcommand {
+        // Catch all command with pattern `migrate xxx`
+        (subcommand, Some(args)) => {
+            let migration_dir = args.value_of("MIGRATION_DIR").unwrap();
+            let steps = args.value_of("NUM_MIGRATION");
+            let verbose = args.is_present("VERBOSE");
+            (subcommand, migration_dir, steps, verbose)
+        }
+        // Catch command `migrate`, this will be treated as `migrate up`
+        _ => {
+            let migration_dir = matches.value_of("MIGRATION_DIR").unwrap();
+            let verbose = matches.is_present("VERBOSE");
+            ("up", migration_dir, None, verbose)
+        }
+    };
+    // Construct the `--manifest-path`
+    let manifest_path = if migration_dir.ends_with('/') {
+        format!("{}Cargo.toml", migration_dir)
+    } else {
+        format!("{}/Cargo.toml", migration_dir)
+    };
+    // Construct the arguments that will be supplied to `cargo` command
+    let mut args = vec![
+        "run",
+        "--manifest-path",
+        manifest_path.as_str(),
+        "--",
+        subcommand,
+    ];
+    if let Some(steps) = steps {
+        args.extend(["-n", steps]);
+    }
+    if verbose {
+        args.push("-v");
+    }
+    // Run migrator CLI on user's behalf
+    println!("Running `cargo {}`", args.join(" "));
+    Command::new("cargo").args(args).spawn()?.wait()?;
+    Ok(())
+}
+
 fn handle_error<E>(error: E)
 where
     E: Display,
@@ -197,11 +273,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use clap::AppSettings;
     use super::*;
+    use clap::AppSettings;
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: RelativeUrlWithoutBase")]
+    #[should_panic(
+        expected = "called `Result::unwrap()` on an `Err` value: RelativeUrlWithoutBase"
+    )]
     fn test_generate_entity_no_protocol() {
         let matches = cli::build_cli()
             .setting(AppSettings::NoBinaryName)
@@ -216,7 +294,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "There is no database name as part of the url path: postgresql://root:root@localhost:3306")]
+    #[should_panic(
+        expected = "There is no database name as part of the url path: postgresql://root:root@localhost:3306"
+    )]
     fn test_generate_entity_no_database_section() {
         let matches = cli::build_cli()
             .setting(AppSettings::NoBinaryName)
@@ -231,7 +311,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "There is no database name as part of the url path: mysql://root:root@localhost:3306/")]
+    #[should_panic(
+        expected = "There is no database name as part of the url path: mysql://root:root@localhost:3306/"
+    )]
     fn test_generate_entity_no_database_path() {
         let matches = cli::build_cli()
             .setting(AppSettings::NoBinaryName)

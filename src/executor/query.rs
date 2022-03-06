@@ -75,6 +75,8 @@ impl fmt::Debug for QueryResultRow {
             Self::SqlxSqlite(_) => write!(f, "QueryResultRow::SqlxSqlite cannot be inspected"),
             #[cfg(feature = "mock")]
             Self::Mock(row) => write!(f, "{:?}", row),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 }
@@ -124,6 +126,8 @@ macro_rules! try_getable_all {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null
                     }),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             }
         }
@@ -160,6 +164,8 @@ macro_rules! try_getable_unsigned {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null
                     }),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             }
         }
@@ -193,6 +199,8 @@ macro_rules! try_getable_mysql {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null
                     }),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             }
         }
@@ -236,6 +244,8 @@ macro_rules! try_getable_date_time {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null
                     }),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             }
         }
@@ -270,6 +280,12 @@ try_getable_all!(chrono::NaiveDateTime);
 
 #[cfg(feature = "with-chrono")]
 try_getable_date_time!(chrono::DateTime<chrono::FixedOffset>);
+
+#[cfg(feature = "with-chrono")]
+try_getable_all!(chrono::DateTime<chrono::Utc>);
+
+#[cfg(feature = "with-chrono")]
+try_getable_all!(chrono::DateTime<chrono::Local>);
 
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;
@@ -315,6 +331,8 @@ impl TryGetable for Decimal {
                 debug_print!("{:#?}", e.to_string());
                 TryGetError::Null
             }),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 }
@@ -613,6 +631,12 @@ try_from_u64_err!(chrono::NaiveDateTime);
 
 #[cfg(feature = "with-chrono")]
 try_from_u64_err!(chrono::DateTime<chrono::FixedOffset>);
+
+#[cfg(feature = "with-chrono")]
+try_from_u64_err!(chrono::DateTime<chrono::Utc>);
+
+#[cfg(feature = "with-chrono")]
+try_from_u64_err!(chrono::DateTime<chrono::Local>);
 
 #[cfg(feature = "with-rust_decimal")]
 try_from_u64_err!(rust_decimal::Decimal);

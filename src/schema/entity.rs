@@ -103,6 +103,9 @@ where
         if orm_column_def.unique {
             column_def.unique_key();
         }
+        if let Some(value) = orm_column_def.default_value {
+            column_def.default(value);
+        }
         for primary_key in E::PrimaryKey::iter() {
             if column.to_string() == primary_key.into_column().to_string() {
                 if E::PrimaryKey::auto_increment() {
@@ -144,20 +147,18 @@ where
         let mut foreign_key_stmt = ForeignKeyCreateStatement::new();
         let from_tbl = unpack_table_ref(&relation.from_tbl);
         let to_tbl = unpack_table_ref(&relation.to_tbl);
-        match relation.from_col {
-            Identity::Unary(o1) => {
-                foreign_key_stmt.from_col(o1);
-            }
-            Identity::Binary(o1, o2) => {
-                foreign_key_stmt.from_col(o1);
-                foreign_key_stmt.from_col(o2);
-            }
-            Identity::Ternary(o1, o2, o3) => {
-                foreign_key_stmt.from_col(o1);
-                foreign_key_stmt.from_col(o2);
-                foreign_key_stmt.from_col(o3);
-            }
+        let from_cols: Vec<String> = match relation.from_col {
+            Identity::Unary(o1) => vec![o1],
+            Identity::Binary(o1, o2) => vec![o1, o2],
+            Identity::Ternary(o1, o2, o3) => vec![o1, o2, o3],
         }
+        .into_iter()
+        .map(|col| {
+            let col_name = col.to_string();
+            foreign_key_stmt.from_col(col);
+            col_name
+        })
+        .collect();
         match relation.to_col {
             Identity::Unary(o1) => {
                 foreign_key_stmt.to_col(o1);
@@ -166,7 +167,7 @@ where
                 foreign_key_stmt.to_col(o1);
                 foreign_key_stmt.to_col(o2);
             }
-            crate::Identity::Ternary(o1, o2, o3) => {
+            Identity::Ternary(o1, o2, o3) => {
                 foreign_key_stmt.to_col(o1);
                 foreign_key_stmt.to_col(o2);
                 foreign_key_stmt.to_col(o3);
@@ -178,13 +179,14 @@ where
         if let Some(action) = relation.on_update {
             foreign_key_stmt.on_update(action);
         }
+        let name = if let Some(name) = relation.fk_name {
+            name
+        } else {
+            format!("fk-{}-{}", from_tbl.to_string(), from_cols.join("-"))
+        };
         stmt.foreign_key(
             foreign_key_stmt
-                .name(&format!(
-                    "fk-{}-{}",
-                    from_tbl.to_string(),
-                    to_tbl.to_string()
-                ))
+                .name(&name)
                 .from_tbl(from_tbl)
                 .to_tbl(to_tbl),
         );
@@ -235,7 +237,7 @@ mod tests {
             )
             .foreign_key(
                 ForeignKeyCreateStatement::new()
-                    .name("fk-cake_filling_price-cake_filling")
+                    .name("fk-cake_filling_price-cake_id-filling_id")
                     .from_tbl(CakeFillingPrice)
                     .from_col(cake_filling_price::Column::CakeId)
                     .from_col(cake_filling_price::Column::FillingId)
