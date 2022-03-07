@@ -609,4 +609,4 @@ jobs:
           command: test
           args: >
             --test '*'
-            --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+            --features default,sqlx-postgres,cockroachdb,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
