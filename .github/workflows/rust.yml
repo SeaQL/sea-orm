@@ -46,6 +46,7 @@
 #   - Jobs that will always run
 #   - `compile-postgres`
 #   - `postgres`
+#   - `cockroachdb`
 
 
 name: tests
@@ -462,7 +463,7 @@ jobs:
       matrix:
         version: [10.6, 10.5, 10.4]
         runtime: [actix]
-        tls: [native-tls]
+        tls: [rustls]
     services:
       mysql:
         image: mariadb:${{ matrix.version }}
@@ -555,6 +556,53 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --test '*'
+            --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+
+  cockroachdb:
+    name: CockroachDB
+    needs:
+      - init
+      - compile-postgres
+    if: >-
+      ${{
+        needs.init.outputs.run-partial == 'false' ||
+        (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-postgres == 'true')
+      }}
+    runs-on: ubuntu-20.04
+    env:
+      DATABASE_URL: "postgres://root@localhost:26257"
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [latest_21_2]
+        runtime: [tokio]
+        tls: [rustls]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            Cargo.lock
+            target
+          key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
+
+      - name: Setup CockroachDB
+        run: docker-compose -f build-tools/docker-compose.yml up -d cockroachdb_${{ matrix.version }}
 
       - uses: actions-rs/cargo@v1
         with:

@@ -1,4 +1,4 @@
-version: "3"
+version: "3.2"
 
 services:
     # 
@@ -13,7 +13,7 @@ services:
             MYSQL_DB: mysql
             MYSQL_USER: sea
             MYSQL_PASSWORD: sea
-            MYSQL_ALLOW_EMPTY_PASSWORD: yes
+            MYSQL_ALLOW_EMPTY_PASSWORD: 'true'
             MYSQL_ROOT_PASSWORD: root
 
     mariadb_10_5:
@@ -24,7 +24,7 @@ services:
             MYSQL_DB: mysql
             MYSQL_USER: sea
             MYSQL_PASSWORD: sea
-            MYSQL_ALLOW_EMPTY_PASSWORD: yes
+            MYSQL_ALLOW_EMPTY_PASSWORD: 'true'
             MYSQL_ROOT_PASSWORD: root
 
     mariadb_10_4:
@@ -35,7 +35,7 @@ services:
             MYSQL_DB: mysql
             MYSQL_USER: sea
             MYSQL_PASSWORD: sea
-            MYSQL_ALLOW_EMPTY_PASSWORD: yes
+            MYSQL_ALLOW_EMPTY_PASSWORD: 'true'
             MYSQL_ROOT_PASSWORD: root
 
     # 
@@ -50,7 +50,7 @@ services:
             MYSQL_DB: mysql
             MYSQL_USER: sea
             MYSQL_PASSWORD: sea
-            MYSQL_ALLOW_EMPTY_PASSWORD: yes
+            MYSQL_ALLOW_EMPTY_PASSWORD: 'true'
             MYSQL_ROOT_PASSWORD: root
 
     mysql_5_7:
@@ -61,7 +61,7 @@ services:
             MYSQL_DB: mysql
             MYSQL_USER: sea
             MYSQL_PASSWORD: sea
-            MYSQL_ALLOW_EMPTY_PASSWORD: yes
+            MYSQL_ALLOW_EMPTY_PASSWORD: 'true'
             MYSQL_ROOT_PASSWORD: root
 
     # 
@@ -96,7 +96,7 @@ services:
     # CockroachDB
     # 
 
-    cockroachdb_21_2_5:
-        image: cockroachdb/cockroach:v21.2.5
+    cockroachdb_latest_21_2:
+        image: cockroachdb/cockroach:latest-v21.2
         command: [ start-single-node, --insecure ]
         ports: [ 8080:8080, 26257:26257 ]
