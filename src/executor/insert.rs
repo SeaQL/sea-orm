@@ -177,7 +177,7 @@ where
             let res = select.one(db).await?;
 
             #[cfg(feature = "cockroachdb")]
-            let res = select.all(db).await?.get(0);
+            let res = select.all(db).await?;
 
             res
         }
@@ -192,13 +192,25 @@ where
             #[cfg(feature = "cockroachdb")]
             use crate::QuerySelect;
             #[cfg(feature = "cockroachdb")]
-            let res = select.limit(1).all(db).await?.get(0);
+            let res = select.limit(1).all(db).await?;
 
             res
         }
     };
+
+    #[cfg(feature = "cockroachdb")]
+    let found = found.get(0);
+
     match found {
-        Some(model) => Ok(model),
+        Some(model) => {
+            #[cfg(not(feature = "cockroachdb"))]
+            let res = Ok(model);
+
+            #[cfg(feature = "cockroachdb")]
+            let res = Ok(model.clone());
+
+            res
+        }
         None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
     }
 }
