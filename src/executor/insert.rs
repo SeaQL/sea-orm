@@ -1,6 +1,6 @@
 use crate::{
     error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert, IntoActiveModel,
-    Iterable, PrimaryKeyTrait, QuerySelect, SelectModel, SelectorRaw, Statement, TryFromU64,
+    Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
 };
 use sea_query::{
     Alias, Expr, FromValueTuple, Iden, InsertStatement, IntoColumnRef, Query, ValueTuple,
@@ -118,8 +118,15 @@ where
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
                 .collect::<Vec<_>>();
+
+            #[cfg(not(feature = "cockroachdb"))]
+            let res = db.query_one(statement).await?.unwrap();
+
+            #[cfg(feature = "cockroachdb")]
             let vec = db.query_all(statement).await?;
+            #[cfg(feature = "cockroachdb")]
             let res = vec.get(0).unwrap();
+
             res.try_get_many("", cols.as_ref()).ok()
         }
         false => {
@@ -161,23 +168,37 @@ where
                 }
             }));
             insert_statement.returning(returning);
-            SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
-                db_backend.build(&insert_statement),
-            )
-            .all(db)
-            .await?
+            let select =
+                SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
+                    db_backend.build(&insert_statement),
+                );
+
+            #[cfg(not(feature = "cockroachdb"))]
+            let res = select.one(db).await?;
+
+            #[cfg(feature = "cockroachdb")]
+            let res = select.all(db).await?.get(0);
+
+            res
         }
         false => {
             let insert_res =
                 exec_insert::<A, _>(primary_key, db_backend.build(&insert_statement), db).await?;
-            <A::Entity as EntityTrait>::find_by_id(insert_res.last_insert_id)
-                .limit(1)
-                .all(db)
-                .await?
+            let select = <A::Entity as EntityTrait>::find_by_id(insert_res.last_insert_id);
+
+            #[cfg(not(feature = "cockroachdb"))]
+            let res = select.one(db).await?;
+
+            #[cfg(feature = "cockroachdb")]
+            use crate::QuerySelect;
+            #[cfg(feature = "cockroachdb")]
+            let res = select.limit(1).all(db).await?.get(0);
+
+            res
         }
     };
-    match found.get(0) {
-        Some(model) => Ok(model.clone()),
+    match found {
+        Some(model) => Ok(model),
         None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
     }
 }
