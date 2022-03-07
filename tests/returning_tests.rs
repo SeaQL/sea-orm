@@ -24,12 +24,10 @@ async fn main() -> Result<(), DbErr> {
         .values_panic(vec!["Bakery Shop".into(), 0.5.into()]);
 
     let mut update = Query::update();
-    update
-        .table(Entity)
-        .values(vec![
-            (Column::Name, "Bakery Shop".into()),
-            (Column::ProfitMargin, 0.5.into()),
-        ]);
+    update.table(Entity).values(vec![
+        (Column::Name, "Bakery Shop".into()),
+        (Column::ProfitMargin, 0.5.into()),
+    ]);
 
     let mut returning = Query::select();
     returning.columns(vec![Column::Id, Column::Name, Column::ProfitMargin]);

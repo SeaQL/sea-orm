@@ -133,15 +133,10 @@ async fn seed_data(db: &DatabaseConnection) {
 
 #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model> {
-    #[cfg(all(feature = "sqlx-postgres", not(feature = "cockroachdb")))]
-    type Type = i64;
-    #[cfg(any(not(feature = "sqlx-postgres"), feature = "cockroachdb"))]
-    type Type = Decimal;
-
     #[derive(Debug, FromQueryResult)]
     struct SelectResult {
         id: i64,
-        cakes_sold_opt: Option<Type>,
+        cakes_sold_opt: Option<Decimal>,
     }
 
     #[derive(Debug)]
