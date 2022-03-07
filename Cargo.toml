@@ -14,7 +14,7 @@ categories = ["database"]
 keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 
 [package.metadata.docs.rs]
-features = ["default", "sqlx-all", "runtime-async-std-native-tls"]
+features = ["default", "sqlx-all", "mock", "runtime-async-std-native-tls"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
@@ -49,14 +49,13 @@ actix-rt = { version = "2.2.0" }
 maplit = { version = "^1" }
 rust_decimal_macros = { version = "^1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-sea-orm = { path = ".", features = ["debug-print"] }
+sea-orm = { path = ".", features = ["mock", "debug-print"] }
 pretty_assertions = { version = "^0.7" }
 
 [features]
 debug-print = []
 default = [
     "macros",
-    "mock",
     "with-json",
     "with-chrono",
     "with-rust_decimal",
