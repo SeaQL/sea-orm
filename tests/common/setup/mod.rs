@@ -97,11 +97,18 @@ where
                 ColumnType::Enum(s, _) => s.as_str(),
                 _ => unreachable!(),
             };
-            let drop_type_stmt = Type::drop()
-                .name(Alias::new(name))
-                .if_exists()
-                .cascade()
-                .to_owned();
+            let drop_type_stmt = if cfg!(feature = "cockroachdb") {
+                Type::drop()
+                    .name(Alias::new(name))
+                    .if_exists()
+                    .to_owned()
+            } else {
+                Type::drop()
+                    .name(Alias::new(name))
+                    .if_exists()
+                    .cascade()
+                    .to_owned()
+            };
             let stmt = builder.build(&drop_type_stmt);
             db.execute(stmt).await?;
         }

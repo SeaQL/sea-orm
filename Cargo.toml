@@ -77,6 +77,7 @@ sqlx-uuid = ["sqlx/uuid", "with-uuid"]
 sqlx-mysql = ["sqlx-dep", "sea-query/sqlx-mysql", "sqlx/mysql"]
 sqlx-postgres = ["sqlx-dep", "sea-query/sqlx-postgres", "sqlx/postgres"]
 sqlx-sqlite = ["sqlx-dep", "sea-query/sqlx-sqlite", "sqlx/sqlite"]
+cockroachdb = []
 runtime-async-std = []
 runtime-async-std-native-tls = [
     "sqlx/runtime-async-std-native-tls",
