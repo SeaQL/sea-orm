@@ -7,7 +7,7 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn schema_name(&self) -> Option< &str > {
-        Some("public")
+        Some("schema_name")
     }
 
     fn table_name(&self) -> &str {

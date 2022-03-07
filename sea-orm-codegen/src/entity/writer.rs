@@ -282,14 +282,13 @@ impl EntityWriter {
     }
 
     pub fn gen_impl_entity_name(entity: &Entity, schema_name: &Option<String>) -> TokenStream {
-        let schema_name = if let Some(schema_name) = schema_name {
-            quote! {
+        let schema_name = match Self::gen_schema_name(schema_name) {
+            Some(schema_name) => quote! {
                 fn schema_name(&self) -> Option<&str> {
                     Some(#schema_name)
                 }
-            }
-        } else {
-            quote! {}
+            },
+            None => quote! {},
         };
         let table_name = entity.table_name.as_str();
         let table_name = quote! {
@@ -553,12 +552,11 @@ impl EntityWriter {
                 }
             })
             .collect();
-        let schema_name = if let Some(schema_name) = schema_name {
-            quote! {
+        let schema_name = match Self::gen_schema_name(schema_name) {
+            Some(schema_name) => quote! {
                 schema_name = #schema_name,
-            }
-        } else {
-            quote! {}
+            },
+            None => quote! {},
         };
         let extra_derive = with_serde.extra_derive();
 
@@ -588,6 +586,19 @@ impl EntityWriter {
                     #relation_enum_name,
                 )*
             }
+        }
+    }
+
+    pub fn gen_schema_name(schema_name: &Option<String>) -> Option<TokenStream> {
+        match schema_name {
+            Some(schema_name) => {
+                if schema_name != "public" {
+                    Some(quote! { #schema_name })
+                } else {
+                    None
+                }
+            }
+            None => None,
         }
     }
 }
@@ -1018,11 +1029,26 @@ mod tests {
                     .to_string()
             );
             assert_eq!(
-                parse_from_file(ENTITY_FILES_WITH_SCHEMA_NAME[i].as_bytes())?.to_string(),
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
                 EntityWriter::gen_expanded_code_blocks(
                     entity,
                     &crate::WithSerde::None,
                     &Some("public".to_owned())
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+            assert_eq!(
+                parse_from_file(ENTITY_FILES_WITH_SCHEMA_NAME[i].as_bytes())?.to_string(),
+                EntityWriter::gen_expanded_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &Some("schema_name".to_owned())
                 )
                 .into_iter()
                 .skip(1)
@@ -1072,11 +1098,26 @@ mod tests {
                     .to_string()
             );
             assert_eq!(
-                parse_from_file(ENTITY_FILES_WITH_SCHEMA_NAME[i].as_bytes())?.to_string(),
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
                 EntityWriter::gen_compact_code_blocks(
                     entity,
                     &crate::WithSerde::None,
                     &Some("public".to_owned())
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+            assert_eq!(
+                parse_from_file(ENTITY_FILES_WITH_SCHEMA_NAME[i].as_bytes())?.to_string(),
+                EntityWriter::gen_compact_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &Some("schema_name".to_owned())
                 )
                 .into_iter()
                 .skip(1)
