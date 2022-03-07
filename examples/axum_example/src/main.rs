@@ -9,7 +9,6 @@ use axum::{
 };
 use entity::post;
 use entity::sea_orm;
-use entity::sea_orm::TransactionTrait;
 use flash::{get_flash_cookie, post_response, PostResponse};
 use migration::{Migrator, MigratorTrait};
 use post::Entity as Post;
@@ -136,27 +135,14 @@ async fn create_post(
 ) -> Result<PostResponse, (StatusCode, &'static str)> {
     let model = form.0;
 
-    let txn = conn.begin().await.unwrap();
-
     post::ActiveModel {
         title: Set(model.title.to_owned()),
         text: Set(model.text.to_owned()),
         ..Default::default()
     }
-    .save(&txn)
+    .save(conn)
     .await
     .expect("could not insert post");
-
-    post::ActiveModel {
-        title: Set(model.title.to_owned()),
-        text: Set(model.text.to_owned()),
-        ..Default::default()
-    }
-    .save(&txn)
-    .await
-    .expect("could not insert post");
-
-    txn.commit().await.unwrap();
 
     let data = FlashData {
         kind: "success".to_owned(),
@@ -169,7 +155,7 @@ async fn create_post(
 async fn edit_post(
     Extension(ref templates): Extension<Tera>,
     Extension(ref conn): Extension<DatabaseConnection>,
-    Path(id): Path<i64>,
+    Path(id): Path<i32>,
 ) -> Result<Html<String>, (StatusCode, &'static str)> {
     let post: post::Model = Post::find_by_id(id)
         .one(conn)
@@ -189,7 +175,7 @@ async fn edit_post(
 
 async fn update_post(
     Extension(ref conn): Extension<DatabaseConnection>,
-    Path(id): Path<i64>,
+    Path(id): Path<i32>,
     form: Form<post::Model>,
     mut cookies: Cookies,
 ) -> Result<PostResponse, (StatusCode, String)> {
@@ -214,7 +200,7 @@ async fn update_post(
 
 async fn delete_post(
     Extension(ref conn): Extension<DatabaseConnection>,
-    Path(id): Path<i64>,
+    Path(id): Path<i32>,
     mut cookies: Cookies,
 ) -> Result<PostResponse, (StatusCode, &'static str)> {
     let post: post::ActiveModel = Post::find_by_id(id)
