@@ -98,10 +98,7 @@ where
                 _ => unreachable!(),
             };
             let drop_type_stmt = if cfg!(feature = "cockroachdb") {
-                Type::drop()
-                    .name(Alias::new(name))
-                    .if_exists()
-                    .to_owned()
+                Type::drop().name(Alias::new(name)).if_exists().to_owned()
             } else {
                 Type::drop()
                     .name(Alias::new(name))

@@ -308,21 +308,23 @@ pub async fn transaction_closure_rollback() -> Result<(), DbErr> {
         .transaction::<_, _, DbErr>(|txn| {
             Box::pin(async move {
                 bakery::ActiveModel {
+                    id: Set(1),
                     name: Set("SeaSide Bakery".to_owned()),
                     profit_margin: Set(10.4),
                     ..Default::default()
                 }
-                .save(txn)
+                .insert(txn)
                 .await?;
 
                 assert_eq!(bakery::Entity::find().all(txn).await?.len(), 1);
 
                 bakery::ActiveModel {
+                    id: Set(2),
                     name: Set("Top Bakery".to_owned()),
                     profit_margin: Set(15.0),
                     ..Default::default()
                 }
-                .save(txn)
+                .insert(txn)
                 .await?;
 
                 assert_eq!(bakery::Entity::find().all(txn).await?.len(), 2);

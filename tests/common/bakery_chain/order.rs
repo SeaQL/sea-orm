@@ -4,11 +4,11 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "order")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: i32,
+    pub id: i64,
     #[sea_orm(column_type = "Decimal(Some((19, 4)))")]
     pub total: Decimal,
-    pub bakery_id: i32,
-    pub customer_id: i32,
+    pub bakery_id: i64,
+    pub customer_id: i64,
     pub placed_at: DateTime,
 }
 

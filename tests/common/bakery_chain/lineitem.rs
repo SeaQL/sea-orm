@@ -4,12 +4,12 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "lineitem")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: i32,
+    pub id: i64,
     #[sea_orm(column_type = "Decimal(Some((19, 4)))")]
     pub price: Decimal,
-    pub quantity: i32,
-    pub order_id: i32,
-    pub cake_id: i32,
+    pub quantity: i64,
+    pub order_id: i64,
+    pub cake_id: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

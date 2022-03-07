@@ -74,7 +74,7 @@ async fn seed_data(db: &DatabaseConnection) {
         .expect("could not insert cake");
 
     let cake_baker = cakes_bakers::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id as i32),
+        cake_id: Set(cake_insert_res.last_insert_id.into()),
         baker_id: Set(baker_1.id.clone().unwrap()),
         ..Default::default()
     };
@@ -109,7 +109,7 @@ async fn seed_data(db: &DatabaseConnection) {
     .expect("could not insert order");
 
     let _lineitem = lineitem::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id as i32),
+        cake_id: Set(cake_insert_res.last_insert_id.into()),
         price: Set(dec!(10.00)),
         quantity: Set(12),
         order_id: Set(kate_order_1.id.clone().unwrap()),
@@ -120,7 +120,7 @@ async fn seed_data(db: &DatabaseConnection) {
     .expect("could not insert order");
 
     let _lineitem2 = lineitem::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id as i32),
+        cake_id: Set(cake_insert_res.last_insert_id.into()),
         price: Set(dec!(50.00)),
         quantity: Set(2),
         order_id: Set(kate_order_1.id.clone().unwrap()),
@@ -133,20 +133,20 @@ async fn seed_data(db: &DatabaseConnection) {
 
 #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model> {
-    #[cfg(feature = "sqlx-postgres")]
+    #[cfg(all(feature = "sqlx-postgres", not(feature = "cockroachdb")))]
     type Type = i64;
-    #[cfg(not(feature = "sqlx-postgres"))]
+    #[cfg(any(not(feature = "sqlx-postgres"), feature = "cockroachdb"))]
     type Type = Decimal;
 
     #[derive(Debug, FromQueryResult)]
     struct SelectResult {
-        id: i32,
+        id: i64,
         cakes_sold_opt: Option<Type>,
     }
 
     #[derive(Debug)]
     struct LeastSalesBakerResult {
-        id: i32,
+        id: i64,
         cakes_sold: Decimal,
     }
 
@@ -188,7 +188,7 @@ async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model>
 
     results.sort_by(|a, b| b.cakes_sold.cmp(&a.cakes_sold));
 
-    Baker::find_by_id(results.last().unwrap().id)
+    Baker::find_by_id(results.last().unwrap().id.into())
         .one(db)
         .await
         .unwrap()
@@ -211,7 +211,7 @@ async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cak
         .expect("could not insert cake");
 
     let cake_baker = cakes_bakers::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id as i32),
+        cake_id: Set(cake_insert_res.last_insert_id.into()),
         baker_id: Set(baker.id),
         ..Default::default()
     };

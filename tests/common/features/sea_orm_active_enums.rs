@@ -10,7 +10,7 @@ pub enum Category {
 }
 
 #[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "i32", db_type = "Integer")]
+#[sea_orm(rs_type = "i64", db_type = "BigInteger")]
 pub enum Color {
     #[sea_orm(num_value = 0)]
     Black,

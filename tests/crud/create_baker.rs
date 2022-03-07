@@ -27,7 +27,7 @@ pub async fn test_create_baker(db: &DbConn) {
     let baker_bob = baker::ActiveModel {
         name: Set("Baker Bob".to_owned()),
         contact_details: Set(serde_json::json!(baker_bob_contact)),
-        bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
+        bakery_id: Set(Some(bakery_insert_res.last_insert_id.into())),
         ..Default::default()
     };
     let res = Baker::insert(baker_bob)

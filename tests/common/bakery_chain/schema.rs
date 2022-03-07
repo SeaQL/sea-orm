@@ -20,7 +20,7 @@ pub async fn create_bakery_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .table(bakery::Entity)
         .col(
             ColumnDef::new(bakery::Column::Id)
-                .integer()
+                .big_integer()
                 .not_null()
                 .auto_increment()
                 .primary_key(),
@@ -41,7 +41,7 @@ pub async fn create_baker_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .table(baker::Entity)
         .col(
             ColumnDef::new(baker::Column::Id)
-                .integer()
+                .big_integer()
                 .not_null()
                 .auto_increment()
                 .primary_key(),
@@ -52,7 +52,7 @@ pub async fn create_baker_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .json()
                 .not_null(),
         )
-        .col(ColumnDef::new(baker::Column::BakeryId).integer())
+        .col(ColumnDef::new(baker::Column::BakeryId).big_integer())
         .foreign_key(
             ForeignKey::create()
                 .name("fk-baker-bakery_id")
@@ -71,7 +71,7 @@ pub async fn create_customer_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .table(customer::Entity)
         .col(
             ColumnDef::new(customer::Column::Id)
-                .integer()
+                .big_integer()
                 .not_null()
                 .auto_increment()
                 .primary_key(),
@@ -88,7 +88,7 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .table(order::Entity)
         .col(
             ColumnDef::new(order::Column::Id)
-                .integer()
+                .big_integer()
                 .not_null()
                 .auto_increment()
                 .primary_key(),
@@ -98,10 +98,14 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .decimal_len(19, 4)
                 .not_null(),
         )
-        .col(ColumnDef::new(order::Column::BakeryId).integer().not_null())
+        .col(
+            ColumnDef::new(order::Column::BakeryId)
+                .big_integer()
+                .not_null(),
+        )
         .col(
             ColumnDef::new(order::Column::CustomerId)
-                .integer()
+                .big_integer()
                 .not_null(),
         )
         .col(
@@ -135,7 +139,7 @@ pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .table(lineitem::Entity)
         .col(
             ColumnDef::new(lineitem::Column::Id)
-                .integer()
+                .big_integer()
                 .not_null()
                 .auto_increment()
                 .primary_key(),
@@ -147,17 +151,17 @@ pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(lineitem::Column::Quantity)
-                .integer()
+                .big_integer()
                 .not_null(),
         )
         .col(
             ColumnDef::new(lineitem::Column::OrderId)
-                .integer()
+                .big_integer()
                 .not_null(),
         )
         .col(
             ColumnDef::new(lineitem::Column::CakeId)
-                .integer()
+                .big_integer()
                 .not_null(),
         )
         .foreign_key(
@@ -186,12 +190,12 @@ pub async fn create_cakes_bakers_table(db: &DbConn) -> Result<ExecResult, DbErr>
         .table(cakes_bakers::Entity)
         .col(
             ColumnDef::new(cakes_bakers::Column::CakeId)
-                .integer()
+                .big_integer()
                 .not_null(),
         )
         .col(
             ColumnDef::new(cakes_bakers::Column::BakerId)
-                .integer()
+                .big_integer()
                 .not_null(),
         )
         .primary_key(
@@ -226,7 +230,7 @@ pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .table(cake::Entity)
         .col(
             ColumnDef::new(cake::Column::Id)
-                .integer()
+                .big_integer()
                 .not_null()
                 .auto_increment()
                 .primary_key(),
@@ -237,7 +241,7 @@ pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .decimal_len(19, 4)
                 .not_null(),
         )
-        .col(ColumnDef::new(cake::Column::BakeryId).integer())
+        .col(ColumnDef::new(cake::Column::BakeryId).big_integer())
         .foreign_key(
             ForeignKey::create()
                 .name("fk-cake-bakery_id")

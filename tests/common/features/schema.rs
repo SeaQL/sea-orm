@@ -46,7 +46,7 @@ pub async fn create_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .table(applog::Entity)
         .col(
             ColumnDef::new(applog::Column::Id)
-                .integer()
+                .big_integer()
                 .not_null()
                 .auto_increment()
                 .primary_key(),
@@ -153,13 +153,13 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
         .table(active_enum::Entity.table_ref())
         .col(
             ColumnDef::new(active_enum::Column::Id)
-                .integer()
+                .big_integer()
                 .not_null()
                 .auto_increment()
                 .primary_key(),
         )
         .col(ColumnDef::new(active_enum::Column::Category).string_len(1))
-        .col(ColumnDef::new(active_enum::Column::Color).integer())
+        .col(ColumnDef::new(active_enum::Column::Color).big_integer())
         .col(
             ColumnDef::new(active_enum::Column::Tea)
                 .enumeration("tea", vec!["EverydayTea", "BreakfastTea"]),
@@ -174,18 +174,18 @@ pub async fn create_active_enum_child_table(db: &DbConn) -> Result<ExecResult, D
         .table(active_enum_child::Entity.table_ref())
         .col(
             ColumnDef::new(active_enum_child::Column::Id)
-                .integer()
+                .big_integer()
                 .not_null()
                 .auto_increment()
                 .primary_key(),
         )
         .col(
             ColumnDef::new(active_enum_child::Column::ParentId)
-                .integer()
+                .big_integer()
                 .not_null(),
         )
         .col(ColumnDef::new(active_enum_child::Column::Category).string_len(1))
-        .col(ColumnDef::new(active_enum_child::Column::Color).integer())
+        .col(ColumnDef::new(active_enum_child::Column::Color).big_integer())
         .col(
             ColumnDef::new(active_enum_child::Column::Tea)
                 .enumeration("tea", vec!["EverydayTea", "BreakfastTea"]),
@@ -208,7 +208,7 @@ pub async fn create_satellites_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .table(satellite::Entity)
         .col(
             ColumnDef::new(satellite::Column::Id)
-                .integer()
+                .big_integer()
                 .not_null()
                 .auto_increment()
                 .primary_key(),

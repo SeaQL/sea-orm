@@ -20,7 +20,7 @@ pub async fn test_delete_cake(db: &DbConn) {
         price: Set(dec!(10.25)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
-        bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
+        bakery_id: Set(Some(bakery_insert_res.last_insert_id.into())),
         ..Default::default()
     };
 

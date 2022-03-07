@@ -37,6 +37,7 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(
         model,
         ActiveModel {
+            id: Set(1),
             category: Set(None),
             color: Set(None),
             tea: Set(None),
@@ -101,6 +102,7 @@ pub async fn insert_active_enum_child(db: &DatabaseConnection) -> Result<(), DbE
     use active_enum_child::*;
 
     active_enum::ActiveModel {
+        id: Set(2),
         category: Set(Some(Category::Small)),
         color: Set(Some(Color::White)),
         tea: Set(Some(Tea::BreakfastTea)),
@@ -110,6 +112,7 @@ pub async fn insert_active_enum_child(db: &DatabaseConnection) -> Result<(), DbE
     .await?;
 
     let am = ActiveModel {
+        id: Set(1),
         parent_id: Set(2),
         category: Set(None),
         color: Set(None),
