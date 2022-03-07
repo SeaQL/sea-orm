@@ -62,6 +62,8 @@ pub struct RelationDef {
     /// Defines an operation to be performed on a Foreign Key when a
     /// `UPDATE` Operation is performed
     pub on_update: Option<ForeignKeyAction>,
+    /// The name of foreign key constraint
+    pub fk_name: Option<String>,
 }
 
 /// Defines a helper to build a relation
@@ -80,6 +82,7 @@ where
     is_owner: bool,
     on_delete: Option<ForeignKeyAction>,
     on_update: Option<ForeignKeyAction>,
+    fk_name: Option<String>,
 }
 
 impl RelationDef {
@@ -94,6 +97,7 @@ impl RelationDef {
             is_owner: !self.is_owner,
             on_delete: self.on_delete,
             on_update: self.on_update,
+            fk_name: None,
         }
     }
 }
@@ -114,6 +118,7 @@ where
             is_owner,
             on_delete: None,
             on_update: None,
+            fk_name: None,
         }
     }
 
@@ -128,6 +133,7 @@ where
             is_owner,
             on_delete: None,
             on_update: None,
+            fk_name: None,
         }
     }
 
@@ -160,6 +166,12 @@ where
         self.on_update = Some(action);
         self
     }
+
+    /// Set the name of foreign key constraint
+    pub fn fk_name(mut self, fk_name: &str) -> Self {
+        self.fk_name = Some(fk_name.to_owned());
+        self
+    }
 }
 
 impl<E, R> From<RelationBuilder<E, R>> for RelationDef
@@ -177,6 +189,7 @@ where
             is_owner: b.is_owner,
             on_delete: b.on_delete,
             on_update: b.on_update,
+            fk_name: b.fk_name,
         }
     }
 }

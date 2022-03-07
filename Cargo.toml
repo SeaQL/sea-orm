@@ -3,7 +3,7 @@ members = [".", "sea-orm-macros", "sea-orm-codegen"]
 
 [package]
 name = "sea-orm"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Chris Tsang <tyt2y7@gmail.com>"]
 edition = "2021"
 description = "🐚 An async & dynamic ORM for Rust"
@@ -14,7 +14,7 @@ categories = ["database"]
 keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 
 [package.metadata.docs.rs]
-features = ["default", "sqlx-all", "runtime-async-std-native-tls"]
+features = ["default", "sqlx-all", "mock", "runtime-async-std-native-tls"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
@@ -29,8 +29,8 @@ futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 tracing = { version = "0.1", features = ["log"] }
 rust_decimal = { version = "^1", optional = true }
-sea-orm-macros = { version = "^0.5.0", path = "sea-orm-macros", optional = true }
-sea-query = { version = "^0.20.0", features = ["thread-safe"] }
+sea-orm-macros = { version = "^0.6.0", path = "sea-orm-macros", optional = true }
+sea-query = { version = "^0.21.0", features = ["thread-safe"] }
 sea-strum = { version = "^0.23", features = ["derive", "sea-orm"] }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = { version = "^1", optional = true }
@@ -43,20 +43,19 @@ once_cell = "1.8"
 [dev-dependencies]
 smol = { version = "^1.2" }
 smol-potat = { version = "^1.1" }
-async-std = { version = "^1.9", features = ["attributes"] }
+async-std = { version = "^1.9", features = ["attributes", "tokio1"] }
 tokio = { version = "^1.6", features = ["full"] }
 actix-rt = { version = "2.2.0" }
 maplit = { version = "^1" }
 rust_decimal_macros = { version = "^1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-sea-orm = { path = ".", features = ["debug-print"] }
+sea-orm = { path = ".", features = ["mock", "debug-print"] }
 pretty_assertions = { version = "^0.7" }
 
 [features]
 debug-print = []
 default = [
     "macros",
-    "mock",
     "with-json",
     "with-chrono",
     "with-rust_decimal",

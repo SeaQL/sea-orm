@@ -1,6 +1,6 @@
 use crate::{
     error::*, ConnectionTrait, DatabaseTransaction, ExecResult, QueryResult, Statement,
-    StatementBuilder, TransactionError,
+    StatementBuilder, StreamTrait, TransactionError, TransactionTrait,
 };
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 use std::{future::Future, pin::Pin};
@@ -89,9 +89,7 @@ impl std::fmt::Debug for DatabaseConnection {
 }
 
 #[async_trait::async_trait]
-impl<'a> ConnectionTrait<'a> for DatabaseConnection {
-    type Stream = crate::QueryStream;
-
+impl ConnectionTrait for DatabaseConnection {
     fn get_database_backend(&self) -> DbBackend {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -151,6 +149,16 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
         }
     }
 
+    #[cfg(feature = "mock")]
+    fn is_mock_connection(&self) -> bool {
+        matches!(self, DatabaseConnection::MockDatabaseConnection(_))
+    }
+}
+
+#[async_trait::async_trait]
+impl<'a> StreamTrait<'a> for DatabaseConnection {
+    type Stream = crate::QueryStream;
+
     #[instrument(level = "trace")]
     fn stream(
         &'a self,
@@ -172,7 +180,10 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
             })
         })
     }
+}
 
+#[async_trait::async_trait]
+impl TransactionTrait for DatabaseConnection {
     #[instrument(level = "trace")]
     async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
         match self {
@@ -220,11 +231,6 @@ impl<'a> ConnectionTrait<'a> for DatabaseConnection {
             }
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
-    }
-
-    #[cfg(feature = "mock")]
-    fn is_mock_connection(&self) -> bool {
-        matches!(self, DatabaseConnection::MockDatabaseConnection(_))
     }
 }
 

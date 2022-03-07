@@ -276,7 +276,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_save(self, true)?;
         let model = <Self::Entity as EntityTrait>::insert(am)
@@ -398,7 +398,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_save(self, false)?;
         let model: <Self::Entity as EntityTrait>::Model = Self::Entity::update(am).exec(db).await?;
@@ -411,7 +411,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     where
         <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
         Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let mut is_update = true;
         for key in <Self::Entity as EntityTrait>::PrimaryKey::iter() {
@@ -475,7 +475,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     async fn delete<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
         Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_delete(self)?;
         let am_clone = am.clone();
@@ -632,6 +632,14 @@ impl_into_active_value!(crate::prelude::DateTime, Set);
 #[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
 impl_into_active_value!(crate::prelude::DateTimeWithTimeZone, Set);
 
+#[cfg(feature = "with-chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
+impl_into_active_value!(crate::prelude::DateTimeUtc, Set);
+
+#[cfg(feature = "with-chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
+impl_into_active_value!(crate::prelude::DateTimeLocal, Set);
+
 #[cfg(feature = "with-rust_decimal")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-rust_decimal")))]
 impl_into_active_value!(crate::prelude::Decimal, Set);
@@ -644,6 +652,7 @@ impl<V> Default for ActiveValue<V>
 where
     V: Into<Value>,
 {
+    /// Create an [ActiveValue::NotSet]
     fn default() -> Self {
         Self::NotSet
     }

@@ -81,25 +81,25 @@ impl FromStr for WithSerde {
 impl EntityWriter {
     pub fn generate(self, expanded_format: bool, with_serde: WithSerde) -> WriterOutput {
         let mut files = Vec::new();
-        files.extend(self.write_entities(expanded_format, with_serde));
+        files.extend(self.write_entities(expanded_format, &with_serde));
         files.push(self.write_mod());
         files.push(self.write_prelude());
         if !self.enums.is_empty() {
-            files.push(self.write_sea_orm_active_enums());
+            files.push(self.write_sea_orm_active_enums(&with_serde));
         }
         WriterOutput { files }
     }
 
-    pub fn write_entities(&self, expanded_format: bool, with_serde: WithSerde) -> Vec<OutputFile> {
+    pub fn write_entities(&self, expanded_format: bool, with_serde: &WithSerde) -> Vec<OutputFile> {
         self.entities
             .iter()
             .map(|entity| {
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);
                 let code_blocks = if expanded_format {
-                    Self::gen_expanded_code_blocks(entity, &with_serde)
+                    Self::gen_expanded_code_blocks(entity, with_serde)
                 } else {
-                    Self::gen_compact_code_blocks(entity, &with_serde)
+                    Self::gen_compact_code_blocks(entity, with_serde)
                 };
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
@@ -147,20 +147,18 @@ impl EntityWriter {
         }
     }
 
-    pub fn write_sea_orm_active_enums(&self) -> OutputFile {
+    pub fn write_sea_orm_active_enums(&self, with_serde: &WithSerde) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
         Self::write(
             &mut lines,
-            vec![quote! {
-                use sea_orm::entity::prelude::*;
-            }],
+            vec![Self::gen_import(with_serde)],
         );
         lines.push("".to_owned());
         let code_blocks = self
             .enums
             .iter()
-            .map(|(_, active_enum)| active_enum.impl_active_enum())
+            .map(|(_, active_enum)| active_enum.impl_active_enum(with_serde))
             .collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
@@ -306,11 +304,22 @@ impl EntityWriter {
     }
 
     pub fn gen_column_enum(entity: &Entity) -> TokenStream {
-        let column_names_camel_case = entity.get_column_names_camel_case();
+        let column_variants = entity.columns.iter().map(|col| {
+            let variant = col.get_name_camel_case();
+            let mut variant = quote! { #variant };
+            if !col.is_snake_case_name() {
+                let column_name = &col.name;
+                variant = quote! {
+                    #[sea_orm(column_name = #column_name)]
+                    #variant
+                };
+            }
+            variant
+        });
         quote! {
             #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
             pub enum Column {
-                #(#column_names_camel_case,)*
+                #(#column_variants,)*
             }
         }
     }
@@ -474,6 +483,10 @@ impl EntityWriter {
             .iter()
             .map(|col| {
                 let mut attrs: Punctuated<_, Comma> = Punctuated::new();
+                if !col.is_snake_case_name() {
+                    let column_name = &col.name;
+                    attrs.push(quote! { column_name = #column_name });
+                }
                 if primary_keys.contains(&col.name) {
                     attrs.push(quote! { primary_key });
                     if !col.auto_increment {
@@ -724,14 +737,14 @@ mod tests {
                         unique: false,
                     },
                     Column {
-                        name: "name".to_owned(),
+                        name: "_name_".to_owned(),
                         col_type: ColumnType::String(Some(255)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
-                        name: "fruit_id".to_owned(),
+                        name: "fruitId".to_owned(),
                         col_type: ColumnType::Integer(Some(11)),
                         auto_increment: false,
                         not_null: false,
@@ -740,7 +753,7 @@ mod tests {
                 ],
                 relations: vec![Relation {
                     ref_table: "fruit".to_owned(),
-                    columns: vec!["fruit_id".to_owned()],
+                    columns: vec!["fruitId".to_owned()],
                     ref_columns: vec!["id".to_owned()],
                     rel_type: RelationType::BelongsTo,
                     on_delete: None,

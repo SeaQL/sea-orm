@@ -1,0 +1,52 @@
+{% extends "layout.html.tera" %} {% block content %}
+<div class="container">
+  <p><!--Nothing to see here --></p>
+  <h1>Posts</h1>
+  {% if flash %}
+  <small class="field-{{ flash.kind }}-flash">
+    {{ flash.message }}
+  </small>
+  {% endif %}
+  <table>
+    <tbody>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Title</th>
+          <th>Text</th>
+        </tr>
+      </thead>
+      {% for post in posts %}
+      <tr class="post" onclick="window.location='/{{ post.id }}';">
+        <td>{{ post.id }}</td>
+        <td>{{ post.title }}</td>
+        <td>{{ post.text }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td></td>
+        <td>
+          {% if page == 1 %} Previous {% else %}
+          <a href="/?page={{ page - 1 }}&posts_per_page={{ posts_per_page }}"
+            >Previous</a
+          >
+          {% endif %} | {% if page == num_pages %} Next {% else %}
+          <a href="/?page={{ page + 1 }}&posts_per_page={{ posts_per_page }}"
+            >Next</a
+          >
+          {% endif %}
+        </td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="twelve columns">
+    <a href="/new">
+      <input type="button" value="add post" />
+    </a>
+  </div>
+</div>
+{% endblock content %}
