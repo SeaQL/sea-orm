@@ -11,5 +11,4 @@ path = "src/lib.rs"
 [dependencies]
 sea-schema = { version = "0.5.0", default-features = false, features = [ "migration", "debug-print" ] }
 dotenv = "0.15.0"
-dirs = "4.0.0"
 entity = { path = "../entity" }
