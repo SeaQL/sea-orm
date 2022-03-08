@@ -256,7 +256,7 @@
 //! 
 //! ## Who's using SeaORM?
 //! 
-//! [Community](https://github.com/SeaQL/sea-orm/tree/master/COMMUNITY.md)
+//! [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm)
 //!
 //! ## License
 //!
