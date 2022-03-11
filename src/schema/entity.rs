@@ -5,6 +5,7 @@ use crate::{
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
     Alias, ColumnDef, ForeignKeyCreateStatement, Iden, Index, TableCreateStatement,
+    IndexCreateStatement,
 };
 
 impl Schema {
@@ -24,12 +25,23 @@ impl Schema {
         create_enum_from_entity(entity, self.backend)
     }
 
-    /// Creates a table from an Entity. See [TableCreateStatement] for more details
+    /// Creates a table from an Entity. See [TableCreateStatement] for more details.
+    /// Indexes defined for columns for the MySQL backend will be created as part of
+    /// this statement.  For other backends, indexes will need to be explicitly created
+    /// by calling [create_index_from_entity].
     pub fn create_table_from_entity<E>(&self, entity: E) -> TableCreateStatement
     where
         E: EntityTrait,
     {
         create_table_from_entity(entity, self.backend)
+    }
+
+    /// Creates an index from an Entity. See [IndexCreateStatement] for more details
+    pub fn create_index_from_entity<E>(&self, entity: E) -> Vec<IndexCreateStatement>
+        where
+            E: EntityTrait,
+    {
+        create_index_from_entity(entity, self.backend)
     }
 }
 
@@ -77,6 +89,31 @@ where
     vec
 }
 
+pub(crate) fn create_index_from_entity<E>(entity: E, backend: DbBackend) -> Vec<IndexCreateStatement>
+    where
+        E: EntityTrait,
+{
+    let mut vec = Vec::new();
+    for column in E::Column::iter() {
+        let column_def = column.def();
+        if !column_def.indexed {
+            continue;
+        }
+        let stmt = Index::create()
+            .name(&format!(
+                "idx-{}-{}",
+                entity.to_string(),
+                column.to_string()
+            ))
+            .table(entity)
+            .col(column)
+            .to_owned();
+        vec.push(stmt)
+    }
+    vec
+}
+
+
 pub(crate) fn create_table_from_entity<E>(entity: E, backend: DbBackend) -> TableCreateStatement
 where
     E: EntityTrait,
@@ -116,7 +153,10 @@ where
                 }
             }
         }
-        if orm_column_def.indexed {
+        // MySQL supports general index definition within the CREATE TABLE
+        // statement, whereas SQLite and PostgreSQL require standalone CREATE INDEX
+        // statements.
+        if orm_column_def.indexed && backend == DbBackend::MySql {
             stmt.index(
                 Index::create()
                     .name(&format!(
@@ -202,7 +242,7 @@ mod tests {
 
     #[test]
     fn test_create_table_from_entity_table_ref() {
-        for builder in [DbBackend::MySql, DbBackend::Postgres, DbBackend::Sqlite] {
+        for builder in [DbBackend::Postgres, DbBackend::Sqlite] {
             let schema = Schema::new(builder);
             assert_eq!(
                 builder.build(&schema.create_table_from_entity(CakeFillingPrice)),
@@ -228,6 +268,17 @@ mod tests {
                     .decimal()
                     .not_null(),
             )
+            .col(
+                ColumnDef::new(cake_filling_price::Column::IndexedAttr)
+                    .integer()
+                    .not_null(),
+            )
+            .col(
+                ColumnDef::new(cake_filling_price::Column::UniqueIndexedAttr)
+                    .integer()
+                    .not_null()
+                    .unique_key(),
+            )
             .primary_key(
                 Index::create()
                     .name("pk-cake_filling_price")
@@ -246,5 +297,90 @@ mod tests {
                     .to_col(cake_filling::Column::FillingId),
             )
             .to_owned()
+    }
+
+    #[test]
+    fn test_create_table_from_entity_table_ref_mysql() {
+        for builder in [DbBackend::MySql] {
+            let schema = Schema::new(builder);
+            assert_eq!(
+                builder.build(&schema.create_table_from_entity(CakeFillingPrice)),
+                builder.build(&get_mysql_stmt().table(CakeFillingPrice.table_ref()).to_owned())
+            );
+        }
+    }
+
+    fn get_mysql_stmt() -> TableCreateStatement {
+        Table::create()
+            .col(
+                ColumnDef::new(cake_filling_price::Column::CakeId)
+                    .integer()
+                    .not_null(),
+            )
+            .col(
+                ColumnDef::new(cake_filling_price::Column::FillingId)
+                    .integer()
+                    .not_null(),
+            )
+            .col(
+                ColumnDef::new(cake_filling_price::Column::Price)
+                    .decimal()
+                    .not_null(),
+            )
+            .col(
+                ColumnDef::new(cake_filling_price::Column::IndexedAttr)
+                    .integer()
+                    .not_null(),
+            )
+            .col(
+                ColumnDef::new(cake_filling_price::Column::UniqueIndexedAttr)
+                    .integer()
+                    .not_null()
+                    .unique_key(),
+            )
+            .index(
+                Index::create()
+                    .name("idx-cake_filling_price-indexed_attr")
+                    .table(cake_filling_price::Entity)
+                    .col(cake_filling_price::Column::IndexedAttr)
+            )
+            .primary_key(
+                Index::create()
+                    .name("pk-cake_filling_price")
+                    .col(cake_filling_price::Column::CakeId)
+                    .col(cake_filling_price::Column::FillingId)
+                    .primary(),
+            )
+            .foreign_key(
+                ForeignKeyCreateStatement::new()
+                    .name("fk-cake_filling_price-cake_id-filling_id")
+                    .from_tbl(CakeFillingPrice)
+                    .from_col(cake_filling_price::Column::CakeId)
+                    .from_col(cake_filling_price::Column::FillingId)
+                    .to_tbl(CakeFilling)
+                    .to_col(cake_filling::Column::CakeId)
+                    .to_col(cake_filling::Column::FillingId),
+            )
+            .to_owned()
+    }
+
+    #[test]
+    fn test_create_index_from_entity_table_ref() {
+        for builder in [DbBackend::MySql, DbBackend::Postgres, DbBackend::Sqlite] {
+            let schema = Schema::new(builder);
+
+            let stmts = schema.create_index_from_entity(CakeFillingPrice);
+            assert_eq!(stmts.len(), 1);
+
+            let idx1: IndexCreateStatement = Index::create()
+                .name("idx-cake_filling_price-indexed_attr")
+                .table(cake_filling_price::Entity)
+                .col(cake_filling_price::Column::IndexedAttr)
+                .to_owned();
+            assert_eq!(
+                builder.build(&stmts[0]),
+                builder.build(&idx1)
+            );
+        }
     }
 }

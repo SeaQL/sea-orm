@@ -22,6 +22,8 @@ pub struct Model {
     pub price: Decimal,
     #[sea_orm(ignore)]
     pub ignored_attr: i32,
+    pub indexed_attr: i32,
+    pub unique_indexed_attr: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -29,6 +31,8 @@ pub enum Column {
     CakeId,
     FillingId,
     Price,
+    IndexedAttr,
+    UniqueIndexedAttr,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -58,6 +62,8 @@ impl ColumnTrait for Column {
             Self::CakeId => ColumnType::Integer.def(),
             Self::FillingId => ColumnType::Integer.def(),
             Self::Price => ColumnType::Decimal(None).def(),
+            Self::IndexedAttr => ColumnType::Integer.def().indexed(),
+            Self::UniqueIndexedAttr => ColumnType::Integer.def().unique(),
         }
     }
 }
