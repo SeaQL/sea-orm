@@ -25,3 +25,4 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [mugen](https://github.com/koopa1338/mugen-dms) | DMS written in 🦀
 - [JinShu](https://github.com/gengteng/jinshu) | A cross-platform **I**nstant **M**essaging system written in 🦀
 - [rust-juniper-playground](https://github.com/Yama-Tomo/rust-juniper-playground) | juniper with SeaORM example
+- [Oura Postgres Sink](https://github.com/dcSpark/oura-postgres-sink) | Sync a postgres database with the cardano blockchain using [Oura](https://github.com/txpipe/oura)
