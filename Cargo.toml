@@ -30,7 +30,8 @@ futures-util = { version = "^0.3" }
 tracing = { version = "0.1", features = ["log"] }
 rust_decimal = { version = "^1", optional = true }
 sea-orm-macros = { version = "^0.6.0", path = "sea-orm-macros", optional = true }
-sea-query = { version = "^0.21.0", features = ["thread-safe"] }
+# needs to be changed after sea-query release
+sea-query = { git = "https://github.com/cemoktra/sea-query.git", branch = "with-ltree", features = ["thread-safe"] }
 sea-strum = { version = "^0.23", features = ["derive", "sea-orm"] }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = { version = "^1", optional = true }
@@ -79,15 +80,17 @@ sqlx-sqlite = ["sqlx-dep", "sea-query/sqlx-sqlite", "sqlx/sqlite"]
 runtime-async-std = []
 runtime-async-std-native-tls = [
     "sqlx/runtime-async-std-native-tls",
+    "sea-query/runtime-async-std-native-tls",
     "runtime-async-std",
 ]
 runtime-async-std-rustls = [
     "sqlx/runtime-async-std-rustls",
+    "sea-query/runtime-async-std-rustls",
     "runtime-async-std",
 ]
 runtime-actix = []
-runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls", "runtime-actix"]
-runtime-actix-rustls = ["sqlx/runtime-actix-rustls", "runtime-actix"]
+runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls", "sea-query/runtime-actix-native-tls", "runtime-actix"]
+runtime-actix-rustls = ["sqlx/runtime-actix-rustls", "sea-query/runtime-actix-rustls", "runtime-actix"]
 runtime-tokio = []
-runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls", "runtime-tokio"]
-runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls", "runtime-tokio"]
+runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls", "sea-query/runtime-tokio-native-tls", "runtime-tokio"]
+runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls", "sea-query/runtime-tokio-rustls", "runtime-tokio"]

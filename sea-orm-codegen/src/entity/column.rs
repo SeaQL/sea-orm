@@ -50,6 +50,8 @@ impl Column {
             ColumnType::Binary(_) => "Vec<u8>".to_owned(),
             ColumnType::Boolean => "bool".to_owned(),
             ColumnType::Enum(name, _) => name.to_camel_case(),
+            #[cfg(feature = "sqlx-postgres")]
+            ColumnType::LTree => "PgLTree".to_owned(),
             _ => unimplemented!(),
         }
         .parse()
@@ -112,6 +114,8 @@ impl Column {
             ColumnType::Json => quote! { ColumnType::Json.def() },
             ColumnType::JsonBinary => quote! { ColumnType::JsonBinary.def() },
             ColumnType::Uuid => quote! { ColumnType::Uuid.def() },
+            #[cfg(feature = "sqlx-postgres")]
+            ColumnType::LTree => quote! { ColumnType::PgLQuery.def() },
             ColumnType::Custom(s) => {
                 let s = s.to_string();
                 quote! { ColumnType::Custom(#s.to_owned()).def() }

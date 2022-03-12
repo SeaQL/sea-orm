@@ -22,7 +22,7 @@ clap = { version = "^2.33.3" }
 dotenv = { version = "^0.15" }
 async-std = { version = "^1.9", features = [ "attributes", "tokio1" ] }
 sea-orm-codegen = { version = "^0.6.0", path = "../sea-orm-codegen" }
-sea-schema = { version = "^0.5.0", default-features = false, features = [
+sea-schema = { git = "https://github.com/cemoktra/sea-schema.git", branch = "ltree-suppoprt", default-features = false, features = [
     "debug-print",
     "sqlx-mysql",
     "sqlx-sqlite",
@@ -44,24 +44,30 @@ default = [ "runtime-async-std-native-tls" ]
 runtime-actix-native-tls = [
     "sqlx/runtime-actix-native-tls",
     "sea-schema/runtime-actix-native-tls",
+    "sea-orm-codegen/runtime-actix-native-tls",
 ]
 runtime-async-std-native-tls = [
     "sqlx/runtime-async-std-native-tls",
     "sea-schema/runtime-async-std-native-tls",
+    "sea-orm-codegen/runtime-async-std-native-tls",
 ]
 runtime-tokio-native-tls = [
     "sqlx/runtime-tokio-native-tls",
     "sea-schema/runtime-tokio-native-tls",
+    "sea-orm-codegen/runtime-tokio-native-tls",
 ]
 runtime-actix-rustls = [
     "sqlx/runtime-actix-rustls",
     "sea-schema/runtime-actix-rustls",
+    "sea-orm-codegen/runtime-actix-rustls",
 ]
 runtime-async-std-rustls = [
     "sqlx/runtime-async-std-rustls",
     "sea-schema/runtime-async-std-rustls",
+    "sea-orm-codegen/runtime-async-std-rustls",
 ]
 runtime-tokio-rustls = [
     "sqlx/runtime-tokio-rustls",
     "sea-schema/runtime-tokio-rustls",
+    "sea-orm-codegen/runtime-tokio-rustls",
 ]

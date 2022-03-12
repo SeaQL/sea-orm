@@ -65,6 +65,9 @@ pub enum ColumnType {
     Uuid,
     /// `ENUM` data type with name and variants
     Enum(String, Vec<String>),
+    /// `LTREE` data
+    #[cfg(feature = "sqlx-postgres")]
+    LTree,
 }
 
 macro_rules! bind_oper {
@@ -271,6 +274,65 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         Expr::tbl(self.entity_name(), *self).like(&pattern)
     }
 
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Name.ancestor(PgLTree::from_str("a.b.c").unwrap()))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` @> 'a.b.c'"
+    /// );
+    /// ```
+    #[cfg(feature = "sqlx-postgres")]
+    fn ancestor<V>(&self, v: V) -> SimpleExpr
+    where
+        V: Into<Value>,
+    {
+        Expr::tbl(self.entity_name(), *self).contains(Expr::val(v.into()))
+    }
+
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Name.descendant(PgLTree::from_str("a.b.c").unwrap()))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` <@ 'a.b.c'"
+    /// );
+    /// ```
+    #[cfg(feature = "sqlx-postgres")]
+    fn descendant<V>(&self, v: V) -> SimpleExpr
+    where
+        V: Into<Value>,
+    {
+        Expr::tbl(self.entity_name(), *self).contained(Expr::val(v.into()))
+    }
+
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sqlx::postgres::types::PgLQuery;
+    /// use std::str::FromStr;
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Name.lquery(PgLQuery::from_str("*.b.c").unwrap()))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` ~ *.b.c"
+    /// );
+    /// ```
+    #[cfg(feature = "sqlx-postgres")]
+    fn lquery<V>(&self, v: V) -> SimpleExpr
+    where
+        V: Into<Value>,
+    {
+        Expr::tbl(self.entity_name(), *self).lquery(Expr::val(v.into()))
+    }
+
     bind_func_no_params!(max);
     bind_func_no_params!(min);
     bind_func_no_params!(sum);
@@ -380,6 +442,8 @@ impl From<ColumnType> for sea_query::ColumnType {
             }
             ColumnType::Uuid => sea_query::ColumnType::Uuid,
             ColumnType::Enum(name, variants) => sea_query::ColumnType::Enum(name, variants),
+            #[cfg(feature = "sqlx-postgres")]
+            ColumnType::LTree => sea_query::ColumnType::LTree,
         }
     }
 }
@@ -411,6 +475,8 @@ impl From<sea_query::ColumnType> for ColumnType {
             sea_query::ColumnType::Custom(s) => Self::Custom(s.to_string()),
             sea_query::ColumnType::Uuid => Self::Uuid,
             sea_query::ColumnType::Enum(name, variants) => Self::Enum(name, variants),
+            #[cfg(feature = "sqlx-postgres")]
+            sea_query::ColumnType::LTree => Self::LTree,
             _ => unimplemented!(),
         }
     }
