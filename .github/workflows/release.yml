@@ -25,18 +25,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
-  publish-crate:
-    name: Publish crate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - name: Publish crate
-        run: build-tools/release/publish-crate.sh
-        env:
-          CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}

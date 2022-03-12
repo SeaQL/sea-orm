@@ -28,17 +28,13 @@ case $1 in
         sudo /usr/sbin/purge
         cli_archive=$root/$cli_name.tar.gz
         # Running strip with Cargo.toml requires Rust 1.59.0, which is higher than the MSRV
-        strip ./sea-orm-cli
         tar --create --file $cli_archive ./sea-orm-cli
         ;;
     ubuntu*)
         cli_archive=$root/$cli_name.tar.gz
-        # Running strip with Cargo.toml requires Rust 1.59.0, which is higher than the MSRV
-        strip ./sea-orm-cli
         tar --create --file $cli_archive ./sea-orm-cli
         ;;
     windows*)
-        # TODO: Figure out how to strip windows binaries
         cli_archive=$root/$cli_name.zip
         7z a  $cli_archive ./sea-orm-cli.exe
         ;;
