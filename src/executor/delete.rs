@@ -11,7 +11,7 @@ pub struct Deleter {
 }
 
 /// The result of a DELETE operation
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DeleteResult {
     /// The number of rows affected by the DELETE operation
     pub rows_affected: u64,
