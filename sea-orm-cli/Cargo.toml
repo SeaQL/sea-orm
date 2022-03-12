@@ -53,3 +53,15 @@ runtime-tokio-native-tls = [ "sqlx/runtime-tokio-native-tls", "sea-schema/runtim
 runtime-actix-rustls = [ "sqlx/runtime-actix-rustls", "sea-schema/runtime-actix-rustls" ]
 runtime-async-std-rustls = [ "sqlx/runtime-async-std-rustls", "sea-schema/runtime-async-std-rustls" ]
 runtime-tokio-rustls = [ "sqlx/runtime-tokio-rustls", "sea-schema/runtime-tokio-rustls" ]
+
+
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/{ version }/{ name }-{ version }-{ target }.{ archive-format }"
+bin-dir = "{ name }-{ target }-v{ version }/{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"
+
+[profile.release]
+strip = true 
