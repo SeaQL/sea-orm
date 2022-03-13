@@ -30,7 +30,7 @@ futures-util = { version = "^0.3" }
 tracing = { version = "0.1", features = ["log"] }
 rust_decimal = { version = "^1", optional = true }
 sea-orm-macros = { version = "^0.6.0", path = "sea-orm-macros", optional = true }
-sea-query = { version = "^0.21.0", features = ["thread-safe"] }
+sea-query = { git = "https://github.com/billy1624/sea-query", branch = "pr/256", version = "^0.21.0", features = ["thread-safe"] }
 sea-strum = { version = "^0.23", features = ["derive", "sea-orm"] }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = { version = "^1", optional = true }
@@ -39,6 +39,7 @@ uuid = { version = "0.8", features = ["serde", "v4"], optional = true }
 ouroboros = "0.14"
 url = "^2.2"
 once_cell = "1.8"
+time = { version = "^0.2", optional = true }
 
 [dev-dependencies]
 smol = { version = "^1.2" }
@@ -60,6 +61,7 @@ default = [
     "with-chrono",
     "with-rust_decimal",
     "with-uuid",
+    "with-time",
 ]
 macros = ["sea-orm-macros"]
 mock = []
@@ -67,12 +69,14 @@ with-json = ["serde_json", "sea-query/with-json", "chrono/serde"]
 with-chrono = ["chrono", "sea-query/with-chrono"]
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal"]
 with-uuid = ["uuid", "sea-query/with-uuid"]
+with-time = ["time", "sea-query/with-time"]
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
-sqlx-dep = ["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid"]
+sqlx-dep = ["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid", "sqlx-time"]
 sqlx-json = ["sqlx/json", "with-json"]
 sqlx-chrono = ["sqlx/chrono", "with-chrono"]
 sqlx-decimal = ["sqlx/decimal", "with-rust_decimal"]
 sqlx-uuid = ["sqlx/uuid", "with-uuid"]
+sqlx-time = ["sqlx/time", "with-time"]
 sqlx-mysql = ["sqlx-dep", "sea-query/sqlx-mysql", "sqlx/mysql"]
 sqlx-postgres = ["sqlx-dep", "sea-query/sqlx-postgres", "sqlx/postgres"]
 sqlx-sqlite = ["sqlx-dep", "sea-query/sqlx-sqlite", "sqlx/sqlite"]
