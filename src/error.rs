@@ -13,6 +13,8 @@ pub enum DbErr {
     Custom(String),
     /// Error occurred while parsing value as target type
     Type(String),
+    /// Error occurred while parsing json value as target type
+    Json(String),
 }
 
 impl std::error::Error for DbErr {}
@@ -26,6 +28,7 @@ impl std::fmt::Display for DbErr {
             Self::RecordNotFound(s) => write!(f, "RecordNotFound Error: {}", s),
             Self::Custom(s) => write!(f, "Custom Error: {}", s),
             Self::Type(s) => write!(f, "Type Error: {}", s),
+            Self::Json(s) => write!(f, "Json Error: {}", s),
         }
     }
 }
