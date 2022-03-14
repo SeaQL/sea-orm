@@ -18,7 +18,7 @@
 
 ## Getting Started
 
-[![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://GitHub.com/SeaQL/sea-orm/stargazers/)
+[![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
 If you like what we do, consider starring, commenting, sharing and contributing!
 
 [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
