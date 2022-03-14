@@ -840,7 +840,7 @@ pub trait EntityTrait: EntityName {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_delete_by_id() {
+    fn test_delete_by_id_1() {
         use crate::tests_cfg::cake;
         use crate::{entity::*, query::*, DbBackend};
         assert_eq!(
@@ -850,7 +850,19 @@ mod tests {
             r#"DELETE FROM "cake" WHERE "cake"."id" = 1"#,
         );
     }
-    
+
+    #[test]
+    fn test_delete_by_id_2() {
+        use crate::tests_cfg::cake_filling_price;
+        use crate::{entity::*, query::*, DbBackend};
+        assert_eq!(
+            cake_filling_price::Entity::delete_by_id((1, 2))
+                .build(DbBackend::Sqlite)
+                .to_string(),
+            r#"DELETE FROM "public"."cake_filling_price" WHERE "cake_filling_price"."cake_id" = 1 AND "cake_filling_price"."filling_id" = 2"#,
+        );
+    }
+
     #[test]
     #[cfg(feature = "macros")]
     fn entity_model_1() {
