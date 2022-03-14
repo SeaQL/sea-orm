@@ -41,9 +41,6 @@ pub async fn create_and_delete_applog(db: &DatabaseConnection) -> Result<(), DbE
         .exec(db)
         .await?;
 
-    let find_res = Applog::find_by_id(2).all(db).await?;
-    assert_eq!(find_res, vec![log2]);
-
     let delete_res = Applog::delete_by_id(2).exec(db).await?;
     assert_eq!(delete_res.rows_affected, 1);
 
