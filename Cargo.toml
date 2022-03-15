@@ -25,12 +25,13 @@ path = "src/lib.rs"
 async-stream = { version = "^0.3" }
 async-trait = { version = "^0.1" }
 chrono = { version = "^0", optional = true }
+time = { version = "^0.2", optional = true }
 futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 tracing = { version = "0.1", features = ["log"] }
 rust_decimal = { version = "^1", optional = true }
 sea-orm-macros = { version = "^0.6.0", path = "sea-orm-macros", optional = true }
-sea-query = { git = "https://github.com/billy1624/sea-query", branch = "pr/256", version = "^0.21.0", features = ["thread-safe"] }
+sea-query = { version = "^0.23.0", features = ["thread-safe"] }
 sea-strum = { version = "^0.23", features = ["derive", "sea-orm"] }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = { version = "^1", optional = true }
@@ -39,7 +40,6 @@ uuid = { version = "0.8", features = ["serde", "v4"], optional = true }
 ouroboros = "0.14"
 url = "^2.2"
 once_cell = "1.8"
-time = { version = "^0.2", optional = true }
 
 [dev-dependencies]
 smol = { version = "^1.2" }
