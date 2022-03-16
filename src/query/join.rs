@@ -242,7 +242,7 @@ mod tests {
         assert_eq!(
             find_cake_filling_price.build(DbBackend::Postgres).to_string(),
             [
-                r#"SELECT "cake_filling_price"."cake_id", "cake_filling_price"."filling_id", "cake_filling_price"."price", "cake_filling_price"."indexed_attr", "cake_filling_price"."unique_indexed_attr""#,
+                r#"SELECT "cake_filling_price"."cake_id", "cake_filling_price"."filling_id", "cake_filling_price"."price""#,
                 r#"FROM "public"."cake_filling_price""#,
                 r#"INNER JOIN "cake_filling" ON"#,
                 r#"("cake_filling"."cake_id" = "cake_filling_price"."cake_id") AND"#,
