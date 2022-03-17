@@ -1,6 +1,6 @@
 use crate::{
     error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel,
-    SelectTwo, SelectTwoModel, Selector, SelectorTrait,
+    SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait,
 };
 use async_stream::stream;
 use futures::Stream;
@@ -211,6 +211,31 @@ where
     fn paginate(self, db: &'db C, page_size: usize) -> Paginator<'db, C, S> {
         Paginator {
             query: self.query,
+            page: 0,
+            page_size,
+            db,
+            selector: PhantomData,
+        }
+    }
+}
+
+impl<'db, C, S> PaginatorTrait<'db, C> for SelectorRaw<S>
+where
+    C: ConnectionTrait,
+    S: SelectorTrait + Send + Sync + 'db,
+{
+    type Selector = S;
+    fn paginate(self, db: &'db C, page_size: usize) -> Paginator<'db, C, S> {
+        let sql = &self.stmt.sql[6..];
+        let mut query = SelectStatement::new();
+        query.expr(if let Some(values) = self.stmt.values {
+            Expr::cust_with_values(sql, values.0)
+        } else {
+            Expr::cust(sql)
+        });
+
+        Paginator {
+            query,
             page: 0,
             page_size,
             db,

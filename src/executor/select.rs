@@ -27,7 +27,7 @@ pub struct SelectorRaw<S>
 where
     S: SelectorTrait,
 {
-    stmt: Statement,
+    pub(crate) stmt: Statement,
     #[allow(dead_code)]
     selector: S,
 }
