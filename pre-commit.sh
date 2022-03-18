@@ -14,3 +14,4 @@ cargo fmt --check || exit_error "Formatting failed!"
 cargo build || exit_error "Build failure , please reach contact"
 
 echo "Run cargo clean to clean your target, targets are bulky and are the compiled code of the project"
+git commit -mSs

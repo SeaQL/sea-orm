@@ -14,3 +14,4 @@ echo "\n Cargo will be building"
 cargo build 
 
 echo "Run cargo clean to clean your target, targets are bulky and are the compiled code of the project"
+git commit -mSs
