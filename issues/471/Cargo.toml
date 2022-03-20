@@ -1,0 +1,22 @@
+[workspace]
+# A separate workspace
+
+[package]
+name = "sea-orm-issues-400-471"
+version = "0.1.0"
+authors = ["Sebastian Pütz <seb.puetz@gmail.com>"]
+edition = "2021"
+publish = false
+
+[dependencies]
+tokio = { version = "1.14", features = ["full"] }
+anyhow = "1"
+dotenv = "0.15"
+futures-util = "0.3"
+serde = "1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dependencies.sea-orm]
+path = "../../" # remove this line in your own project
+features = ["macros", "mock", "sqlx-all", "runtime-tokio-rustls", "debug-print"]
+default-features = false
