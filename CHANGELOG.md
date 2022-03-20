@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Codegen add serde derives to enums, if specified https://github.com/SeaQL/sea-orm/pull/463
 * Codegen Unsigned Integer - 2 https://github.com/SeaQL/sea-orm/pull/397
+* Supports `time` crate https://github.com/SeaQL/sea-orm/pull/602
 
 ### Breaking changes
 
