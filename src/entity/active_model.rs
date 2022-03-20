@@ -483,6 +483,71 @@ pub trait ActiveModelTrait: Clone + Debug {
         ActiveModelBehavior::after_delete(am_clone)?;
         Ok(delete_res)
     }
+
+    /// Set the corresponding attributes in the ActiveModel from a JSON value
+    ///
+    /// Note that this method will not alter the primary key values in ActiveModel.
+    #[cfg(feature = "with-json")]
+    fn set_from_json(&mut self, json: serde_json::Value) -> Result<(), DbErr>
+    where
+        <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
+            serde::de::Deserialize<'de>,
+    {
+        use crate::Iterable;
+
+        // Backup primary key values
+        let primary_key_values: Vec<(<Self::Entity as EntityTrait>::Column, ActiveValue<Value>)> =
+            <<Self::Entity as EntityTrait>::PrimaryKey>::iter()
+                .map(|pk| (pk.into_column(), self.take(pk.into_column())))
+                .collect();
+
+        // Replace all values in ActiveModel
+        *self = Self::from_json(json)?;
+
+        // Restore primary key values
+        for (col, active_value) in primary_key_values {
+            match active_value {
+                ActiveValue::Unchanged(v) | ActiveValue::Set(v) => self.set(col, v),
+                NotSet => self.not_set(col),
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Create ActiveModel from a JSON value
+    #[cfg(feature = "with-json")]
+    fn from_json(json: serde_json::Value) -> Result<Self, DbErr>
+    where
+        <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
+            serde::de::Deserialize<'de>,
+    {
+        use crate::{Iden, Iterable};
+
+        // Mark down which attribute exists in the JSON object
+        let json_keys: Vec<(<Self::Entity as EntityTrait>::Column, bool)> =
+            <<Self::Entity as EntityTrait>::Column>::iter()
+                .map(|col| (col, json.get(col.to_string()).is_some()))
+                .collect();
+
+        // Convert JSON object into ActiveModel via Model
+        let model: <Self::Entity as EntityTrait>::Model =
+            serde_json::from_value(json).map_err(|e| DbErr::Json(e.to_string()))?;
+        let mut am = model.into_active_model();
+
+        // Transform attribute that exists in JSON object into ActiveValue::Set, otherwise ActiveValue::NotSet
+        for (col, json_key_exists) in json_keys {
+            if json_key_exists && !am.is_not_set(col) {
+                am.set(col, am.get(col).unwrap());
+            } else {
+                am.not_set(col);
+            }
+        }
+
+        Ok(am)
+    }
 }
 
 /// A Trait for overriding the ActiveModel behavior
@@ -768,13 +833,15 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_cfg::*;
+    use crate::{entity::*, tests_cfg::*, DbErr};
+    use pretty_assertions::assert_eq;
+
+    #[cfg(feature = "with-json")]
+    use serde_json::json;
 
     #[test]
     #[cfg(feature = "macros")]
     fn test_derive_into_active_model_1() {
-        use crate::entity::*;
-
         mod my_fruit {
             pub use super::fruit::*;
             use crate as sea_orm;
@@ -806,8 +873,6 @@ mod tests {
     #[test]
     #[cfg(feature = "macros")]
     fn test_derive_into_active_model_2() {
-        use crate::entity::*;
-
         mod my_fruit {
             pub use super::fruit::*;
             use crate as sea_orm;
@@ -851,5 +916,176 @@ mod tests {
                 cake_id: NotSet,
             }
         );
+    }
+
+    #[test]
+    #[cfg(feature = "with-json")]
+    #[should_panic(
+        expected = r#"called `Result::unwrap()` on an `Err` value: Json("missing field `id`")"#
+    )]
+    fn test_active_model_set_from_json_1() {
+        let mut cake: cake::ActiveModel = Default::default();
+
+        cake.set_from_json(json!({
+            "name": "Apple Pie",
+        }))
+        .unwrap();
+    }
+
+    #[test]
+    #[cfg(feature = "with-json")]
+    fn test_active_model_set_from_json_2() -> Result<(), DbErr> {
+        let mut fruit: fruit::ActiveModel = Default::default();
+
+        fruit.set_from_json(json!({
+            "name": "Apple",
+        }))?;
+        assert_eq!(
+            fruit,
+            fruit::ActiveModel {
+                id: ActiveValue::NotSet,
+                name: ActiveValue::Set("Apple".to_owned()),
+                cake_id: ActiveValue::NotSet,
+            }
+        );
+
+        assert_eq!(
+            fruit::ActiveModel::from_json(json!({
+                "name": "Apple",
+            }))?,
+            fruit::ActiveModel {
+                id: ActiveValue::NotSet,
+                name: ActiveValue::Set("Apple".to_owned()),
+                cake_id: ActiveValue::NotSet,
+            }
+        );
+
+        fruit.set_from_json(json!({
+            "name": "Apple",
+            "cake_id": null,
+        }))?;
+        assert_eq!(
+            fruit,
+            fruit::ActiveModel {
+                id: ActiveValue::NotSet,
+                name: ActiveValue::Set("Apple".to_owned()),
+                cake_id: ActiveValue::Set(None),
+            }
+        );
+
+        fruit.set_from_json(json!({
+            "id": null,
+            "name": "Apple",
+            "cake_id": 1,
+        }))?;
+        assert_eq!(
+            fruit,
+            fruit::ActiveModel {
+                id: ActiveValue::NotSet,
+                name: ActiveValue::Set("Apple".to_owned()),
+                cake_id: ActiveValue::Set(Some(1)),
+            }
+        );
+
+        fruit.set_from_json(json!({
+            "id": 2,
+            "name": "Apple",
+            "cake_id": 1,
+        }))?;
+        assert_eq!(
+            fruit,
+            fruit::ActiveModel {
+                id: ActiveValue::NotSet,
+                name: ActiveValue::Set("Apple".to_owned()),
+                cake_id: ActiveValue::Set(Some(1)),
+            }
+        );
+
+        let mut fruit = fruit::ActiveModel {
+            id: ActiveValue::Set(1),
+            name: ActiveValue::NotSet,
+            cake_id: ActiveValue::NotSet,
+        };
+        fruit.set_from_json(json!({
+            "id": 8,
+            "name": "Apple",
+            "cake_id": 1,
+        }))?;
+        assert_eq!(
+            fruit,
+            fruit::ActiveModel {
+                id: ActiveValue::Set(1),
+                name: ActiveValue::Set("Apple".to_owned()),
+                cake_id: ActiveValue::Set(Some(1)),
+            }
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    #[cfg(feature = "with-json")]
+    async fn test_active_model_set_from_json_3() -> Result<(), DbErr> {
+        use crate::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_exec_results(vec![
+                MockExecResult {
+                    last_insert_id: 1,
+                    rows_affected: 1,
+                },
+                MockExecResult {
+                    last_insert_id: 1,
+                    rows_affected: 1,
+                },
+            ])
+            .append_query_results(vec![
+                vec![fruit::Model {
+                    id: 1,
+                    name: "Apple".to_owned(),
+                    cake_id: None,
+                }],
+                vec![fruit::Model {
+                    id: 2,
+                    name: "Orange".to_owned(),
+                    cake_id: Some(1),
+                }],
+            ])
+            .into_connection();
+
+        let mut fruit: fruit::ActiveModel = Default::default();
+        fruit.set_from_json(json!({
+            "name": "Apple",
+        }))?;
+        fruit.save(&db).await?;
+
+        let mut fruit = fruit::ActiveModel {
+            id: Set(2),
+            ..Default::default()
+        };
+        fruit.set_from_json(json!({
+            "id": 9,
+            "name": "Orange",
+            "cake_id": 1,
+        }))?;
+        fruit.save(&db).await?;
+
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![
+                Transaction::from_sql_and_values(
+                    DbBackend::Postgres,
+                    r#"INSERT INTO "fruit" ("name") VALUES ($1) RETURNING "id", "name", "cake_id""#,
+                    vec!["Apple".into()]
+                ),
+                Transaction::from_sql_and_values(
+                    DbBackend::Postgres,
+                    r#"UPDATE "fruit" SET "name" = $1, "cake_id" = $2 WHERE "fruit"."id" = $3 RETURNING "id", "name", "cake_id""#,
+                    vec!["Orange".into(), 1i32.into(), 2i32.into()]
+                ),
+            ]
+        );
+
+        Ok(())
     }
 }

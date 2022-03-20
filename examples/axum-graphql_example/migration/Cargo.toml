@@ -1,0 +1,14 @@
+[package]
+name = "migration"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "migration"
+path = "src/lib.rs"
+
+[dependencies]
+sea-schema = { version = "0.5.0", default-features = false, features = [ "migration", "debug-print" ] }
+dotenv = "0.15.0"
+entity = { path = "../entity" }
