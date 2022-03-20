@@ -5,6 +5,7 @@ use crate::{
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
     Alias, ColumnDef, ForeignKeyCreateStatement, Iden, Index, TableCreateStatement,
+    IndexCreateStatement,
 };
 
 impl Schema {
@@ -24,12 +25,21 @@ impl Schema {
         create_enum_from_entity(entity, self.backend)
     }
 
-    /// Creates a table from an Entity. See [TableCreateStatement] for more details
+    /// Creates a table from an Entity. See [TableCreateStatement] for more details.
     pub fn create_table_from_entity<E>(&self, entity: E) -> TableCreateStatement
     where
         E: EntityTrait,
     {
         create_table_from_entity(entity, self.backend)
+    }
+
+    /// Creates the indexes from an Entity, returning an empty Vec if there are none
+    /// to create. See [IndexCreateStatement] for more details
+    pub fn create_index_from_entity<E>(&self, entity: E) -> Vec<IndexCreateStatement>
+        where
+            E: EntityTrait,
+    {
+        create_index_from_entity(entity, self.backend)
     }
 }
 
@@ -77,6 +87,31 @@ where
     vec
 }
 
+pub(crate) fn create_index_from_entity<E>(entity: E, _backend: DbBackend) -> Vec<IndexCreateStatement>
+    where
+        E: EntityTrait,
+{
+    let mut vec = Vec::new();
+    for column in E::Column::iter() {
+        let column_def = column.def();
+        if !column_def.indexed {
+            continue;
+        }
+        let stmt = Index::create()
+            .name(&format!(
+                "idx-{}-{}",
+                entity.to_string(),
+                column.to_string()
+            ))
+            .table(entity)
+            .col(column)
+            .to_owned();
+        vec.push(stmt)
+    }
+    vec
+}
+
+
 pub(crate) fn create_table_from_entity<E>(entity: E, backend: DbBackend) -> TableCreateStatement
 where
     E: EntityTrait,
@@ -115,18 +150,6 @@ where
                     column_def.primary_key();
                 }
             }
-        }
-        if orm_column_def.indexed {
-            stmt.index(
-                Index::create()
-                    .name(&format!(
-                        "idx-{}-{}",
-                        entity.to_string(),
-                        column.to_string()
-                    ))
-                    .table(entity)
-                    .col(column),
-            );
         }
         stmt.col(&mut column_def);
     }
@@ -206,12 +229,12 @@ mod tests {
             let schema = Schema::new(builder);
             assert_eq!(
                 builder.build(&schema.create_table_from_entity(CakeFillingPrice)),
-                builder.build(&get_stmt().table(CakeFillingPrice.table_ref()).to_owned())
+                builder.build(&get_cake_filling_price_stmt().table(CakeFillingPrice.table_ref()).to_owned())
             );
         }
     }
 
-    fn get_stmt() -> TableCreateStatement {
+    fn get_cake_filling_price_stmt() -> TableCreateStatement {
         Table::create()
             .col(
                 ColumnDef::new(cake_filling_price::Column::CakeId)
@@ -247,4 +270,73 @@ mod tests {
             )
             .to_owned()
     }
+
+
+    #[test]
+    fn test_create_index_from_entity_table_ref() {
+        for builder in [DbBackend::MySql, DbBackend::Postgres, DbBackend::Sqlite] {
+            let schema = Schema::new(builder);
+
+            assert_eq!(
+                builder.build(&schema.create_table_from_entity(indexes::Entity)),
+                builder.build(&get_indexes_stmt().table(indexes::Entity.table_ref()).to_owned())
+            );
+
+
+            let stmts = schema.create_index_from_entity(indexes::Entity);
+            assert_eq!(stmts.len(), 2);
+
+
+            let idx: IndexCreateStatement = Index::create()
+                .name("idx-indexes-index1_attr")
+                .table(indexes::Entity)
+                .col(indexes::Column::Index1Attr)
+                .to_owned();
+            assert_eq!(
+                builder.build(&stmts[0]),
+                builder.build(&idx)
+            );
+
+            let idx: IndexCreateStatement = Index::create()
+                .name("idx-indexes-index2_attr")
+                .table(indexes::Entity)
+                .col(indexes::Column::Index2Attr)
+                .to_owned();
+            assert_eq!(
+                builder.build(&stmts[1]),
+                builder.build(&idx)
+            );
+        }
+    }
+
+
+    fn get_indexes_stmt() -> TableCreateStatement {
+        Table::create()
+            .col(
+                ColumnDef::new(indexes::Column::IndexesId)
+                    .integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .col(
+                ColumnDef::new(indexes::Column::UniqueAttr)
+                    .integer()
+                    .not_null()
+                    .unique_key(),
+            )
+            .col(
+                ColumnDef::new(indexes::Column::Index1Attr)
+                    .integer()
+                    .not_null(),
+            )
+            .col(
+                ColumnDef::new(indexes::Column::Index2Attr)
+                    .integer()
+                    .not_null()
+                    .unique_key(),
+            )
+            .to_owned()
+    }
+
 }

@@ -9,6 +9,7 @@ pub mod filling;
 pub mod fruit;
 pub mod rust_keyword;
 pub mod vendor;
+pub mod indexes;
 
 pub use cake::Entity as Cake;
 pub use cake_expanded::Entity as CakeExpanded;
