@@ -12,10 +12,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Codegen add serde derives to enums, if specified https://github.com/SeaQL/sea-orm/pull/463
 * Codegen Unsigned Integer - 2 https://github.com/SeaQL/sea-orm/pull/397
 * Supports `time` crate https://github.com/SeaQL/sea-orm/pull/602
+* Allow for creation of indexes for PostgeSQL and SQLite https://github.com/SeaQL/sea-orm/pull/593
 
 ### Breaking changes
 
 * Exclude `mock` from default features https://github.com/SeaQL/sea-orm/pull/562
+* `create_table_from_entity` will no longer create index for MySQL, please use the new method `create_index_from_entity`
 
 ## 0.6.0 - 2022-02-07
 
