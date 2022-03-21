@@ -35,7 +35,7 @@ pub trait ConnectionTrait: Sync {
 
 /// Stream query results
 #[async_trait::async_trait]
-pub trait StreamTrait<'a>: Sync {
+pub trait StreamTrait<'a>: Send + Sync {
     /// Create a stream for the [QueryResult]
     type Stream: Stream<Item = Result<QueryResult, DbErr>> + Send;
 
