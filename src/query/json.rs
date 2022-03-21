@@ -132,6 +132,7 @@ impl FromQueryResult for JsonValue {
                 }
                 Ok(JsonValue::Object(map))
             }
+            _ => unreachable!(),
         }
     }
 }
