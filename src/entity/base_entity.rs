@@ -745,10 +745,124 @@ pub trait EntityTrait: EntityName {
     fn delete_many() -> DeleteMany<Self> {
         Delete::many(Self::default())
     }
+
+    /// Delete a model based on primary key
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// let delete_result = fruit::Entity::delete_by_id(1).exec(&db).await?;
+    ///
+    /// assert_eq!(delete_result.rows_affected, 1);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"DELETE FROM "fruit" WHERE "fruit"."id" = $1"#,
+    ///         vec![1i32.into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    /// Delete by composite key
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    ///
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake_filling};
+    ///
+    /// let delete_result = cake_filling::Entity::delete_by_id((2, 3)).exec(&db).await?;
+    ///
+    /// assert_eq!(delete_result.rows_affected, 1);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"DELETE FROM "cake_filling" WHERE "cake_filling"."cake_id" = $1 AND "cake_filling"."filling_id" = $2"#,
+    ///         vec![2i32.into(), 3i32.into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    fn delete_by_id(values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType) -> DeleteMany<Self> {
+        let mut delete = Self::delete_many();
+        let mut keys = Self::PrimaryKey::iter();
+        for v in values.into_value_tuple() {
+            if let Some(key) = keys.next() {
+                let col = key.into_column();
+                delete = delete.filter(col.eq(v));
+            } else {
+                panic!("primary key arity mismatch");
+            }
+        }
+        if keys.next().is_some() {
+            panic!("primary key arity mismatch");
+        }
+        delete
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_delete_by_id_1() {
+        use crate::tests_cfg::cake;
+        use crate::{entity::*, query::*, DbBackend};
+        assert_eq!(
+            cake::Entity::delete_by_id(1)
+                .build(DbBackend::Sqlite)
+                .to_string(),
+            r#"DELETE FROM "cake" WHERE "cake"."id" = 1"#,
+        );
+    }
+
+    #[test]
+    fn test_delete_by_id_2() {
+        use crate::tests_cfg::cake_filling_price;
+        use crate::{entity::*, query::*, DbBackend};
+        assert_eq!(
+            cake_filling_price::Entity::delete_by_id((1, 2))
+                .build(DbBackend::Sqlite)
+                .to_string(),
+            r#"DELETE FROM "public"."cake_filling_price" WHERE "cake_filling_price"."cake_id" = 1 AND "cake_filling_price"."filling_id" = 2"#,
+        );
+    }
+
     #[test]
     #[cfg(feature = "macros")]
     fn entity_model_1() {
