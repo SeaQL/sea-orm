@@ -4,12 +4,24 @@ pub use serde_json::Value as JsonValue;
 
 impl FromQueryResult for JsonValue {
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
+        let mut map = Map::new();
+        #[allow(unused_macros)]
+        macro_rules! try_get_type {
+            ( $type: ty, $col: ident ) => {
+                if let Ok(v) = res.try_get::<Option<$type>>(pre, &$col) {
+                    map.insert(
+                        $col.to_owned(),
+                        json!(v),
+                    );
+                    continue;
+                }
+            }
+        }
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(row) => {
                 use serde_json::json;
                 use sqlx::{Column, MySql, Row, Type};
-                let mut map = Map::new();
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
                         continue;
@@ -20,22 +32,7 @@ impl FromQueryResult for JsonValue {
                     macro_rules! match_mysql_type {
                         ( $type: ty ) => {
                             if <$type as Type<MySql>>::type_info().eq(col_type) {
-                                map.insert(
-                                    col.to_owned(),
-                                    json!(res.try_get::<Option<$type>>(pre, &col)?),
-                                );
-                                continue;
-                            }
-                        };
-                    }
-                    macro_rules! compatible_mysql_type {
-                        ( $type: ty ) => {
-                            if <$type as Type<MySql>>::compatible(col_type) {
-                                map.insert(
-                                    col.to_owned(),
-                                    json!(res.try_get::<Option<$type>>(pre, &col)?),
-                                );
-                                continue;
+                                try_get_type!($type, col)
                             }
                         };
                     }
@@ -61,8 +58,12 @@ impl FromQueryResult for JsonValue {
                     match_mysql_type!(chrono::DateTime<chrono::Utc>);
                     #[cfg(feature = "with-rust_decimal")]
                     match_mysql_type!(rust_decimal::Decimal);
+                    try_get_type!(String, col);
                     #[cfg(feature = "with-json")]
-                    compatible_mysql_type!(serde_json::Value);
+                    try_get_type!(serde_json::Value, col);
+                    #[cfg(feature = "with-uuid")]
+                    try_get_type!(uuid::Uuid, col);
+                    try_get_type!(Vec<u8>, col);
                 }
                 Ok(JsonValue::Object(map))
             }
@@ -70,7 +71,6 @@ impl FromQueryResult for JsonValue {
             QueryResultRow::SqlxPostgres(row) => {
                 use serde_json::json;
                 use sqlx::{Column, Postgres, Row, Type};
-                let mut map = Map::new();
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
                         continue;
@@ -81,22 +81,7 @@ impl FromQueryResult for JsonValue {
                     macro_rules! match_postgres_type {
                         ( $type: ty ) => {
                             if <$type as Type<Postgres>>::type_info().eq(col_type) {
-                                map.insert(
-                                    col.to_owned(),
-                                    json!(res.try_get::<Option<$type>>(pre, &col)?),
-                                );
-                                continue;
-                            }
-                        };
-                    }
-                    macro_rules! compatible_postgres_type {
-                        ( $type: ty ) => {
-                            if <$type as Type<Postgres>>::compatible(col_type) {
-                                map.insert(
-                                    col.to_owned(),
-                                    json!(res.try_get::<Option<$type>>(pre, &col)?),
-                                );
-                                continue;
+                                try_get_type!($type, col)
                             }
                         };
                     }
@@ -121,9 +106,12 @@ impl FromQueryResult for JsonValue {
                     match_postgres_type!(chrono::DateTime<chrono::FixedOffset>);
                     #[cfg(feature = "with-rust_decimal")]
                     match_postgres_type!(rust_decimal::Decimal);
+                    try_get_type!(String, col);
                     #[cfg(feature = "with-json")]
-                    compatible_postgres_type!(serde_json::Value);
-                    compatible_postgres_type!(String);
+                    try_get_type!(serde_json::Value, col);
+                    #[cfg(feature = "with-uuid")]
+                    try_get_type!(uuid::Uuid, col);
+                    try_get_type!(Vec<u8>, col);
                 }
                 Ok(JsonValue::Object(map))
             }
@@ -131,7 +119,6 @@ impl FromQueryResult for JsonValue {
             QueryResultRow::SqlxSqlite(row) => {
                 use serde_json::json;
                 use sqlx::{Column, Row, Sqlite, Type};
-                let mut map = Map::new();
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
                         continue;
@@ -142,11 +129,7 @@ impl FromQueryResult for JsonValue {
                     macro_rules! match_sqlite_type {
                         ( $type: ty ) => {
                             if <$type as Type<Sqlite>>::type_info().eq(col_type) {
-                                map.insert(
-                                    col.to_owned(),
-                                    json!(res.try_get::<Option<$type>>(pre, &col)?),
-                                );
-                                continue;
+                                try_get_type!($type, col)
                             }
                         };
                     }
@@ -161,19 +144,21 @@ impl FromQueryResult for JsonValue {
                     // match_sqlite_type!(u64); // unsupported by SQLx Sqlite
                     match_sqlite_type!(f32);
                     match_sqlite_type!(f64);
-                    match_sqlite_type!(String);
                     #[cfg(feature = "with-chrono")]
                     match_sqlite_type!(chrono::NaiveDate);
                     #[cfg(feature = "with-chrono")]
                     match_sqlite_type!(chrono::NaiveTime);
                     #[cfg(feature = "with-chrono")]
                     match_sqlite_type!(chrono::NaiveDateTime);
+                    try_get_type!(String, col);
+                    #[cfg(feature = "with-uuid")]
+                    try_get_type!(uuid::Uuid, col);
+                    try_get_type!(Vec<u8>, col);
                 }
                 Ok(JsonValue::Object(map))
             }
             #[cfg(feature = "mock")]
             QueryResultRow::Mock(row) => {
-                let mut map = Map::new();
                 for (column, value) in row.clone().into_column_value_tuples() {
                     let col = if !column.starts_with(pre) {
                         continue;
