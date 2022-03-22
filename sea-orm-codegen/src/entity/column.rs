@@ -124,6 +124,10 @@ impl Column {
                 let s = s.to_string();
                 quote! { ColumnType::Custom(#s.to_owned()).def() }
             }
+            ColumnType::Enum(enum_name, _) => {
+                let enum_ident = format_ident!("{}", enum_name.to_camel_case());
+                quote! { #enum_ident::db_type() }
+            }
             #[allow(unreachable_patterns)]
             _ => unimplemented!(),
         };
