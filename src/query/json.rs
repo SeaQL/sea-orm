@@ -9,13 +9,10 @@ impl FromQueryResult for JsonValue {
         macro_rules! try_get_type {
             ( $type: ty, $col: ident ) => {
                 if let Ok(v) = res.try_get::<Option<$type>>(pre, &$col) {
-                    map.insert(
-                        $col.to_owned(),
-                        json!(v),
-                    );
+                    map.insert($col.to_owned(), json!(v));
                     continue;
                 }
-            }
+            };
         }
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
@@ -58,9 +55,9 @@ impl FromQueryResult for JsonValue {
                     match_mysql_type!(chrono::DateTime<chrono::Utc>);
                     #[cfg(feature = "with-rust_decimal")]
                     match_mysql_type!(rust_decimal::Decimal);
-                    try_get_type!(String, col);
                     #[cfg(feature = "with-json")]
                     try_get_type!(serde_json::Value, col);
+                    try_get_type!(String, col);
                     #[cfg(feature = "with-uuid")]
                     try_get_type!(uuid::Uuid, col);
                     try_get_type!(Vec<u8>, col);
@@ -106,9 +103,9 @@ impl FromQueryResult for JsonValue {
                     match_postgres_type!(chrono::DateTime<chrono::FixedOffset>);
                     #[cfg(feature = "with-rust_decimal")]
                     match_postgres_type!(rust_decimal::Decimal);
-                    try_get_type!(String, col);
                     #[cfg(feature = "with-json")]
                     try_get_type!(serde_json::Value, col);
+                    try_get_type!(String, col);
                     #[cfg(feature = "with-uuid")]
                     try_get_type!(uuid::Uuid, col);
                     try_get_type!(Vec<u8>, col);
