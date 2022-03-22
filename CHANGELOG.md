@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Bug fixes
 
 * Fix codegen with Enum in expanded format https://github.com/SeaQL/sea-orm/pull/624
+* Fixing and testing into_json of various field types https://github.com/SeaQL/sea-orm/pull/539
 
 ### Breaking changes
 
