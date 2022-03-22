@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Allow for creation of indexes for PostgeSQL and SQLite https://github.com/SeaQL/sea-orm/pull/593
 * Add Send bound to `QueryStream` and `TransactionStream` https://github.com/SeaQL/sea-orm/pull/471
 * Added `delete_by_id` https://github.com/SeaQL/sea-orm/pull/590
+* Implement `PaginatorTrait` for `SelectorRaw` https://github.com/SeaQL/sea-orm/pull/617
 
 ### Breaking changes
 
