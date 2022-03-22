@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Implement `PaginatorTrait` for `SelectorRaw` https://github.com/SeaQL/sea-orm/pull/617
 * Add `Send` to `StreamTrait` https://github.com/SeaQL/sea-orm/pull/622
 
+### Bug fixes
+
+* Fix codegen with Enum in expanded format https://github.com/SeaQL/sea-orm/pull/624
+
 ### Breaking changes
 
 * Exclude `mock` from default features https://github.com/SeaQL/sea-orm/pull/562
