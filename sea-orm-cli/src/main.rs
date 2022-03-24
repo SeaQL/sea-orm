@@ -1,6 +1,6 @@
 use clap::ArgMatches;
 use dotenv::dotenv;
-use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
+use sea_orm_codegen::{DbBackend, EntityTransformer, OutputFile, WithSerde};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use url::Url;
 
@@ -112,7 +112,7 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                 Default::default()
             };
 
-            let table_stmts = match url.scheme() {
+            let (table_stmts, db_backend) = match url.scheme() {
                 "mysql" => {
                     use sea_schema::mysql::discovery::SchemaDiscovery;
                     use sqlx::MySqlPool;
@@ -120,13 +120,16 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                     let connection = MySqlPool::connect(url.as_str()).await?;
                     let schema_discovery = SchemaDiscovery::new(connection, database_name);
                     let schema = schema_discovery.discover().await;
-                    schema
-                        .tables
-                        .into_iter()
-                        .filter(|schema| filter_tables(&schema.info.name))
-                        .filter(|schema| filter_hidden_tables(&schema.info.name))
-                        .map(|schema| schema.write())
-                        .collect()
+                    (
+                        schema
+                            .tables
+                            .into_iter()
+                            .filter(|schema| filter_tables(&schema.info.name))
+                            .filter(|schema| filter_hidden_tables(&schema.info.name))
+                            .map(|schema| schema.write())
+                            .collect(),
+                        DbBackend::MySql,
+                    )
                 }
                 "sqlite" => {
                     use sea_schema::sqlite::SchemaDiscovery;
@@ -135,13 +138,16 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                     let connection = SqlitePool::connect(url.as_str()).await?;
                     let schema_discovery = SchemaDiscovery::new(connection);
                     let schema = schema_discovery.discover().await?;
-                    schema
-                        .tables
-                        .into_iter()
-                        .filter(|schema| filter_tables(&schema.name))
-                        .filter(|schema| filter_hidden_tables(&schema.name))
-                        .map(|schema| schema.write())
-                        .collect()
+                    (
+                        schema
+                            .tables
+                            .into_iter()
+                            .filter(|schema| filter_tables(&schema.name))
+                            .filter(|schema| filter_hidden_tables(&schema.name))
+                            .map(|schema| schema.write())
+                            .collect(),
+                        DbBackend::Sqlite,
+                    )
                 }
                 "postgres" | "postgresql" => {
                     use sea_schema::postgres::discovery::SchemaDiscovery;
@@ -151,19 +157,25 @@ async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Er
                     let connection = PgPool::connect(url.as_str()).await?;
                     let schema_discovery = SchemaDiscovery::new(connection, schema);
                     let schema = schema_discovery.discover().await;
-                    schema
-                        .tables
-                        .into_iter()
-                        .filter(|schema| filter_tables(&schema.info.name))
-                        .filter(|schema| filter_hidden_tables(&schema.info.name))
-                        .map(|schema| schema.write())
-                        .collect()
+                    (
+                        schema
+                            .tables
+                            .into_iter()
+                            .filter(|schema| filter_tables(&schema.info.name))
+                            .filter(|schema| filter_hidden_tables(&schema.info.name))
+                            .map(|schema| schema.write())
+                            .collect(),
+                        DbBackend::Postgres,
+                    )
                 }
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
 
-            let output = EntityTransformer::transform(table_stmts)?
-                .generate(expanded_format, WithSerde::from_str(with_serde).unwrap());
+            let output = EntityTransformer::transform(table_stmts)?.generate(
+                expanded_format,
+                WithSerde::from_str(with_serde).unwrap(),
+                db_backend,
+            );
 
             let dir = Path::new(output_dir);
             fs::create_dir_all(dir)?;

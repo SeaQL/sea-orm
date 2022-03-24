@@ -1,4 +1,4 @@
-use crate::{Column, ConjunctRelation, PrimaryKey, Relation};
+use crate::{Column, ConjunctRelation, DbBackend, PrimaryKey, Relation};
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::format_ident;
@@ -43,11 +43,11 @@ impl Entity {
             .collect()
     }
 
-    pub fn get_column_rs_types(&self) -> Vec<TokenStream> {
+    pub fn get_column_rs_types(&self, db_backend: &DbBackend) -> Vec<TokenStream> {
         self.columns
             .clone()
             .into_iter()
-            .map(|col| col.get_rs_type())
+            .map(|col| col.get_rs_type(db_backend))
             .collect()
     }
 
@@ -100,7 +100,7 @@ impl Entity {
         format_ident!("{}", auto_increment)
     }
 
-    pub fn get_primary_key_rs_type(&self) -> TokenStream {
+    pub fn get_primary_key_rs_type(&self, db_backend: &DbBackend) -> TokenStream {
         let types = self
             .primary_keys
             .iter()
@@ -109,7 +109,7 @@ impl Entity {
                     .iter()
                     .find(|col| col.name.eq(&primary_key.name))
                     .unwrap()
-                    .get_rs_type()
+                    .get_rs_type(db_backend)
                     .to_string()
             })
             .collect::<Vec<_>>();
@@ -149,9 +149,10 @@ impl Entity {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Column, Entity, PrimaryKey, Relation, RelationType};
+    use crate::{Column, DbBackend, Entity, PrimaryKey, Relation, RelationType};
     use quote::format_ident;
     use sea_query::{ColumnType, ForeignKeyAction};
+    use strum::IntoEnumIterator;
 
     fn setup() -> Entity {
         Entity {
@@ -260,11 +261,17 @@ mod tests {
     fn test_get_column_rs_types() {
         let entity = setup();
 
-        for (i, elem) in entity.get_column_rs_types().into_iter().enumerate() {
-            assert_eq!(
-                elem.to_string(),
-                entity.columns[i].get_rs_type().to_string()
-            );
+        for db_backend in DbBackend::iter() {
+            for (i, elem) in entity
+                .get_column_rs_types(&db_backend)
+                .into_iter()
+                .enumerate()
+            {
+                assert_eq!(
+                    elem.to_string(),
+                    entity.columns[i].get_rs_type(&db_backend).to_string()
+                );
+            }
         }
     }
 
@@ -362,10 +369,12 @@ mod tests {
     fn test_get_primary_key_rs_type() {
         let entity = setup();
 
-        assert_eq!(
-            entity.get_primary_key_rs_type().to_string(),
-            entity.columns[0].get_rs_type().to_string()
-        );
+        for db_backend in DbBackend::iter() {
+            assert_eq!(
+                entity.get_primary_key_rs_type(&db_backend).to_string(),
+                entity.columns[0].get_rs_type(&db_backend).to_string()
+            );
+        }
     }
 
     #[test]

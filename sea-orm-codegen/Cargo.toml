@@ -25,6 +25,7 @@ syn = { version = "^1", default-features = false, features = [
 quote = "^1"
 heck = "^0.3"
 proc-macro2 = "^1"
+strum = { version = "^0.24", features = ["derive"] }
 
 [dev-dependencies]
 pretty_assertions = { version = "^0.7" }

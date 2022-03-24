@@ -3,6 +3,7 @@ use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use std::{collections::HashMap, str::FromStr};
+use strum::EnumIter;
 use syn::{punctuated::Punctuated, token::Comma};
 
 #[derive(Clone, Debug)]
@@ -26,6 +27,13 @@ pub enum WithSerde {
     Serialize,
     Deserialize,
     Both,
+}
+
+#[derive(Clone, Copy, PartialEq, Debug, EnumIter)]
+pub enum DbBackend {
+    MySql,
+    Sqlite,
+    Postgres,
 }
 
 impl WithSerde {
@@ -79,9 +87,14 @@ impl FromStr for WithSerde {
 }
 
 impl EntityWriter {
-    pub fn generate(self, expanded_format: bool, with_serde: WithSerde) -> WriterOutput {
+    pub fn generate(
+        self,
+        expanded_format: bool,
+        with_serde: WithSerde,
+        db_backend: DbBackend,
+    ) -> WriterOutput {
         let mut files = Vec::new();
-        files.extend(self.write_entities(expanded_format, &with_serde));
+        files.extend(self.write_entities(expanded_format, &with_serde, &db_backend));
         files.push(self.write_mod());
         files.push(self.write_prelude());
         if !self.enums.is_empty() {
@@ -90,16 +103,21 @@ impl EntityWriter {
         WriterOutput { files }
     }
 
-    pub fn write_entities(&self, expanded_format: bool, with_serde: &WithSerde) -> Vec<OutputFile> {
+    pub fn write_entities(
+        &self,
+        expanded_format: bool,
+        with_serde: &WithSerde,
+        db_backend: &DbBackend,
+    ) -> Vec<OutputFile> {
         self.entities
             .iter()
             .map(|entity| {
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);
                 let code_blocks = if expanded_format {
-                    Self::gen_expanded_code_blocks(entity, with_serde)
+                    Self::gen_expanded_code_blocks(entity, with_serde, db_backend)
                 } else {
-                    Self::gen_compact_code_blocks(entity, with_serde)
+                    Self::gen_compact_code_blocks(entity, with_serde, db_backend)
                 };
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
@@ -150,10 +168,7 @@ impl EntityWriter {
     pub fn write_sea_orm_active_enums(&self, with_serde: &WithSerde) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        Self::write(
-            &mut lines,
-            vec![Self::gen_import(with_serde)],
-        );
+        Self::write(&mut lines, vec![Self::gen_import(with_serde)]);
         lines.push("".to_owned());
         let code_blocks = self
             .enums
@@ -186,17 +201,21 @@ impl EntityWriter {
         lines.push("".to_owned());
     }
 
-    pub fn gen_expanded_code_blocks(entity: &Entity, with_serde: &WithSerde) -> Vec<TokenStream> {
+    pub fn gen_expanded_code_blocks(
+        entity: &Entity,
+        with_serde: &WithSerde,
+        db_backend: &DbBackend,
+    ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
         let mut code_blocks = vec![
             imports,
             Self::gen_entity_struct(),
             Self::gen_impl_entity_name(entity),
-            Self::gen_model_struct(entity, with_serde),
+            Self::gen_model_struct(entity, with_serde, db_backend),
             Self::gen_column_enum(entity),
             Self::gen_primary_key_enum(entity),
-            Self::gen_impl_primary_key(entity),
+            Self::gen_impl_primary_key(entity, db_backend),
             Self::gen_relation_enum(entity),
             Self::gen_impl_column_trait(entity),
             Self::gen_impl_relation_trait(entity),
@@ -207,10 +226,17 @@ impl EntityWriter {
         code_blocks
     }
 
-    pub fn gen_compact_code_blocks(entity: &Entity, with_serde: &WithSerde) -> Vec<TokenStream> {
+    pub fn gen_compact_code_blocks(
+        entity: &Entity,
+        with_serde: &WithSerde,
+        db_backend: &DbBackend,
+    ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
-        let mut code_blocks = vec![imports, Self::gen_compact_model_struct(entity, with_serde)];
+        let mut code_blocks = vec![
+            imports,
+            Self::gen_compact_model_struct(entity, with_serde, db_backend),
+        ];
         let relation_defs = if entity.get_relation_enum_name().is_empty() {
             vec![
                 Self::gen_relation_enum(entity),
@@ -289,9 +315,13 @@ impl EntityWriter {
             })
     }
 
-    pub fn gen_model_struct(entity: &Entity, with_serde: &WithSerde) -> TokenStream {
+    pub fn gen_model_struct(
+        entity: &Entity,
+        with_serde: &WithSerde,
+        db_backend: &DbBackend,
+    ) -> TokenStream {
         let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types();
+        let column_rs_types = entity.get_column_rs_types(db_backend);
 
         let extra_derive = with_serde.extra_derive();
 
@@ -334,9 +364,9 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_impl_primary_key(entity: &Entity) -> TokenStream {
+    pub fn gen_impl_primary_key(entity: &Entity, db_backend: &DbBackend) -> TokenStream {
         let primary_key_auto_increment = entity.get_primary_key_auto_increment();
-        let value_type = entity.get_primary_key_rs_type();
+        let value_type = entity.get_primary_key_rs_type(db_backend);
         quote! {
             impl PrimaryKeyTrait for PrimaryKey {
                 type ValueType = #value_type;
@@ -469,10 +499,14 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_compact_model_struct(entity: &Entity, with_serde: &WithSerde) -> TokenStream {
+    pub fn gen_compact_model_struct(
+        entity: &Entity,
+        with_serde: &WithSerde,
+        db_backend: &DbBackend,
+    ) -> TokenStream {
         let table_name = entity.table_name.as_str();
         let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types();
+        let column_rs_types = entity.get_column_rs_types(db_backend);
         let primary_keys: Vec<String> = entity
             .primary_keys
             .iter()
@@ -551,13 +585,14 @@ impl EntityWriter {
 #[cfg(test)]
 mod tests {
     use crate::{
-        Column, ConjunctRelation, Entity, EntityWriter, PrimaryKey, Relation, RelationType,
-        WithSerde,
+        Column, ConjunctRelation, DbBackend, Entity, EntityWriter, PrimaryKey, Relation,
+        RelationType, WithSerde,
     };
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
     use sea_query::{ColumnType, ForeignKeyAction};
     use std::io::{self, BufRead, BufReader};
+    use strum::IntoEnumIterator;
 
     fn setup() -> Vec<Entity> {
         vec![
@@ -948,14 +983,20 @@ mod tests {
             }
             let content = lines.join("");
             let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_expanded_code_blocks(entity, &crate::WithSerde::None)
+            for db_backend in DbBackend::iter() {
+                let generated = EntityWriter::gen_expanded_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &db_backend,
+                )
                 .into_iter()
                 .skip(1)
                 .fold(TokenStream::new(), |mut acc, tok| {
                     acc.extend(tok);
                     acc
                 });
-            assert_eq!(expected.to_string(), generated.to_string());
+                assert_eq!(expected.to_string(), generated.to_string());
+            }
         }
 
         Ok(())
@@ -988,14 +1029,20 @@ mod tests {
             }
             let content = lines.join("");
             let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_compact_code_blocks(entity, &crate::WithSerde::None)
+            for db_backend in DbBackend::iter() {
+                let generated = EntityWriter::gen_compact_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &db_backend,
+                )
                 .into_iter()
                 .skip(1)
                 .fold(TokenStream::new(), |mut acc, tok| {
                     acc.extend(tok);
                     acc
                 });
-            assert_eq!(expected.to_string(), generated.to_string());
+                assert_eq!(expected.to_string(), generated.to_string());
+            }
         }
 
         Ok(())
@@ -1007,81 +1054,91 @@ mod tests {
 
         assert_eq!(cake_entity.get_table_name_snake_case(), "cake");
 
-        // Compact code blocks
-        assert_serde_variant_results(
-            &cake_entity,
-            &(
-                include_str!("../../tests/compact_with_serde/cake_none.rs").into(),
-                WithSerde::None,
-            ),
-            Box::new(EntityWriter::gen_compact_code_blocks),
-        )?;
-        assert_serde_variant_results(
-            &cake_entity,
-            &(
-                include_str!("../../tests/compact_with_serde/cake_serialize.rs").into(),
-                WithSerde::Serialize,
-            ),
-            Box::new(EntityWriter::gen_compact_code_blocks),
-        )?;
-        assert_serde_variant_results(
-            &cake_entity,
-            &(
-                include_str!("../../tests/compact_with_serde/cake_deserialize.rs").into(),
-                WithSerde::Deserialize,
-            ),
-            Box::new(EntityWriter::gen_compact_code_blocks),
-        )?;
-        assert_serde_variant_results(
-            &cake_entity,
-            &(
-                include_str!("../../tests/compact_with_serde/cake_both.rs").into(),
-                WithSerde::Both,
-            ),
-            Box::new(EntityWriter::gen_compact_code_blocks),
-        )?;
+        for db_backend in DbBackend::iter() {
+            // Compact code blocks
+            assert_serde_variant_results(
+                &cake_entity,
+                &(
+                    include_str!("../../tests/compact_with_serde/cake_none.rs").into(),
+                    WithSerde::None,
+                    db_backend,
+                ),
+                Box::new(EntityWriter::gen_compact_code_blocks),
+            )?;
+            assert_serde_variant_results(
+                &cake_entity,
+                &(
+                    include_str!("../../tests/compact_with_serde/cake_serialize.rs").into(),
+                    WithSerde::Serialize,
+                    db_backend,
+                ),
+                Box::new(EntityWriter::gen_compact_code_blocks),
+            )?;
+            assert_serde_variant_results(
+                &cake_entity,
+                &(
+                    include_str!("../../tests/compact_with_serde/cake_deserialize.rs").into(),
+                    WithSerde::Deserialize,
+                    db_backend,
+                ),
+                Box::new(EntityWriter::gen_compact_code_blocks),
+            )?;
+            assert_serde_variant_results(
+                &cake_entity,
+                &(
+                    include_str!("../../tests/compact_with_serde/cake_both.rs").into(),
+                    WithSerde::Both,
+                    db_backend,
+                ),
+                Box::new(EntityWriter::gen_compact_code_blocks),
+            )?;
 
-        // Expanded code blocks
-        assert_serde_variant_results(
-            &cake_entity,
-            &(
-                include_str!("../../tests/expanded_with_serde/cake_none.rs").into(),
-                WithSerde::None,
-            ),
-            Box::new(EntityWriter::gen_expanded_code_blocks),
-        )?;
-        assert_serde_variant_results(
-            &cake_entity,
-            &(
-                include_str!("../../tests/expanded_with_serde/cake_serialize.rs").into(),
-                WithSerde::Serialize,
-            ),
-            Box::new(EntityWriter::gen_expanded_code_blocks),
-        )?;
-        assert_serde_variant_results(
-            &cake_entity,
-            &(
-                include_str!("../../tests/expanded_with_serde/cake_deserialize.rs").into(),
-                WithSerde::Deserialize,
-            ),
-            Box::new(EntityWriter::gen_expanded_code_blocks),
-        )?;
-        assert_serde_variant_results(
-            &cake_entity,
-            &(
-                include_str!("../../tests/expanded_with_serde/cake_both.rs").into(),
-                WithSerde::Both,
-            ),
-            Box::new(EntityWriter::gen_expanded_code_blocks),
-        )?;
+            // Expanded code blocks
+            assert_serde_variant_results(
+                &cake_entity,
+                &(
+                    include_str!("../../tests/expanded_with_serde/cake_none.rs").into(),
+                    WithSerde::None,
+                    db_backend,
+                ),
+                Box::new(EntityWriter::gen_expanded_code_blocks),
+            )?;
+            assert_serde_variant_results(
+                &cake_entity,
+                &(
+                    include_str!("../../tests/expanded_with_serde/cake_serialize.rs").into(),
+                    WithSerde::Serialize,
+                    db_backend,
+                ),
+                Box::new(EntityWriter::gen_expanded_code_blocks),
+            )?;
+            assert_serde_variant_results(
+                &cake_entity,
+                &(
+                    include_str!("../../tests/expanded_with_serde/cake_deserialize.rs").into(),
+                    WithSerde::Deserialize,
+                    db_backend,
+                ),
+                Box::new(EntityWriter::gen_expanded_code_blocks),
+            )?;
+            assert_serde_variant_results(
+                &cake_entity,
+                &(
+                    include_str!("../../tests/expanded_with_serde/cake_both.rs").into(),
+                    WithSerde::Both,
+                    db_backend,
+                ),
+                Box::new(EntityWriter::gen_expanded_code_blocks),
+            )?;
+        }
 
         Ok(())
     }
 
     fn assert_serde_variant_results(
         cake_entity: &Entity,
-        entity_serde_variant: &(String, WithSerde),
-        generator: Box<dyn Fn(&Entity, &WithSerde) -> Vec<TokenStream>>,
+        entity_serde_variant: &(String, WithSerde, DbBackend),
+        generator: Box<dyn Fn(&Entity, &WithSerde, &DbBackend) -> Vec<TokenStream>>,
     ) -> io::Result<()> {
         let mut reader = BufReader::new(entity_serde_variant.0.as_bytes());
         let mut lines: Vec<String> = Vec::new();
@@ -1095,12 +1152,16 @@ mod tests {
         }
         let content = lines.join("");
         let expected: TokenStream = content.parse().unwrap();
-        let generated = generator(cake_entity, &entity_serde_variant.1)
-            .into_iter()
-            .fold(TokenStream::new(), |mut acc, tok| {
-                acc.extend(tok);
-                acc
-            });
+        let generated = generator(
+            cake_entity,
+            &entity_serde_variant.1,
+            &entity_serde_variant.2,
+        )
+        .into_iter()
+        .fold(TokenStream::new(), |mut acc, tok| {
+            acc.extend(tok);
+            acc
+        });
 
         assert_eq!(expected.to_string(), generated.to_string());
         Ok(())

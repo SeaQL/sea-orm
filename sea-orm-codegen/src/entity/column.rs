@@ -1,4 +1,4 @@
-use crate::util::escape_rust_keyword;
+use crate::{util::escape_rust_keyword, DbBackend};
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
@@ -26,7 +26,7 @@ impl Column {
         self.name.to_snake_case() == self.name
     }
 
-    pub fn get_rs_type(&self) -> TokenStream {
+    pub fn get_rs_type(&self, db_backend: &DbBackend) -> TokenStream {
         #[allow(unreachable_patterns)]
         let ident: TokenStream = match &self.col_type {
             ColumnType::Char(_)
@@ -47,7 +47,11 @@ impl Column {
             ColumnType::Date => "Date".to_owned(),
             ColumnType::Time(_) => "Time".to_owned(),
             ColumnType::DateTime(_) => "DateTime".to_owned(),
-            ColumnType::Timestamp(_) => "DateTimeUtc".to_owned(),
+            ColumnType::Timestamp(_) => match db_backend {
+                DbBackend::MySql | DbBackend::Sqlite => "DateTimeUtc",
+                DbBackend::Postgres => "DateTime",
+            }
+            .to_owned(),
             ColumnType::TimestampWithTimeZone(_) => "DateTimeWithTimeZone".to_owned(),
             ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal".to_owned(),
             ColumnType::Uuid => "Uuid".to_owned(),
@@ -182,10 +186,11 @@ impl From<&ColumnDef> for Column {
 
 #[cfg(test)]
 mod tests {
-    use crate::Column;
+    use crate::{Column, DbBackend};
     use proc_macro2::TokenStream;
     use quote::quote;
     use sea_query::{Alias, ColumnDef, ColumnType, SeaRc};
+    use strum::IntoEnumIterator;
 
     fn setup() -> Vec<Column> {
         macro_rules! make_col {
@@ -287,37 +292,45 @@ mod tests {
     fn test_get_rs_type() {
         let columns = setup();
         let rs_types = vec![
-            "String",
-            "String",
-            "i8",
-            "u8",
-            "i16",
-            "u16",
-            "i32",
-            "u32",
-            "i64",
-            "u64",
-            "f32",
-            "f64",
-            "Vec<u8>",
-            "bool",
-            "Date",
-            "Time",
-            "DateTime",
-            "DateTimeUtc",
-            "DateTimeWithTimeZone",
+            ["String"; 3],
+            ["String"; 3],
+            ["i8"; 3],
+            ["u8"; 3],
+            ["i16"; 3],
+            ["u16"; 3],
+            ["i32"; 3],
+            ["u32"; 3],
+            ["i64"; 3],
+            ["u64"; 3],
+            ["f32"; 3],
+            ["f64"; 3],
+            ["Vec<u8>"; 3],
+            ["bool"; 3],
+            ["Date"; 3],
+            ["Time"; 3],
+            ["DateTime"; 3],
+            ["DateTimeUtc", "DateTimeUtc", "DateTime"],
+            ["DateTimeWithTimeZone"; 3],
         ];
-        for (mut col, rs_type) in columns.into_iter().zip(rs_types) {
-            let rs_type: TokenStream = rs_type.parse().unwrap();
+        for (mut col, rs_types) in columns.into_iter().zip(rs_types) {
+            let rs_type_mysql: TokenStream = rs_types[0].parse().unwrap();
+            let rs_type_sqlite: TokenStream = rs_types[1].parse().unwrap();
+            let rs_type_postgres: TokenStream = rs_types[2].parse().unwrap();
+            let rs_type_array = [rs_type_mysql, rs_type_sqlite, rs_type_postgres];
 
-            col.not_null = true;
-            assert_eq!(col.get_rs_type().to_string(), quote!(#rs_type).to_string());
+            for (db_backend, rs_type) in DbBackend::iter().zip(rs_type_array) {
+                col.not_null = true;
+                assert_eq!(
+                    col.get_rs_type(&db_backend).to_string(),
+                    quote!(#rs_type).to_string()
+                );
 
-            col.not_null = false;
-            assert_eq!(
-                col.get_rs_type().to_string(),
-                quote!(Option<#rs_type>).to_string()
-            );
+                col.not_null = false;
+                assert_eq!(
+                    col.get_rs_type(&db_backend).to_string(),
+                    quote!(Option<#rs_type>).to_string()
+                );
+            }
         }
     }
 
