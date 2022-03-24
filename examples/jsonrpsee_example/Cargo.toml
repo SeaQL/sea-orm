@@ -1,0 +1,21 @@
+[package]
+name = "sea-orm-jsonrpsee-example"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = [".", "entity", "migration"]
+
+[dependencies]
+jsonrpsee = { version = "^0.8.0", features = ["full"] }
+jsonrpsee-core = "0.9.0"
+tokio = { version = "1.8.0", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+dotenv = "0.15"
+entity = { path = "entity" }
+migration = { path = "migration" }
+anyhow = "1.0.52"
+async-trait = "0.1.52"
+log = { version = "0.4", features = ["std"] }
+simplelog = "*"
