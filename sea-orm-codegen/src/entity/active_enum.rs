@@ -22,7 +22,7 @@ impl ActiveEnum {
         let extra_derive = with_serde.extra_derive();
 
         quote! {
-            #[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum #extra_derive)]
+            #[derive(Debug, Clone, Copy, PartialEq, EnumIter, DeriveActiveEnum #extra_derive)]
             #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = #enum_name)]
             pub enum #enum_iden {
                 #(
