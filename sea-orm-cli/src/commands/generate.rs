@@ -24,6 +24,7 @@ pub async fn run_generate_command(
             database_url,
             with_serde,
             singularize,
+            with_copy_enums,
             date_time_crate,
         } => {
             if verbose {
@@ -166,9 +167,8 @@ pub async fn run_generate_command(
 
             let writer_context = EntityWriterContext::new(
                 expanded_format,
-                WithSerde::from_str(with_serde).unwrap(),
-                NameResolver::new(singularize),
-                DateTimeCrate::from_str(date_time_crate).unwrap(),
+                WithSerde::from_str(&with_serde).unwrap(),
+                date_time_crate.into(),
                 schema_name,
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);

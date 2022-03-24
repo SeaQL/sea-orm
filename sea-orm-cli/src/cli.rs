@@ -163,9 +163,21 @@ pub enum GenerateSubcommands {
             value_parser,
             long,
             default_value = "none",
-            help = "Automatically derive serde Serialize / Deserialize traits for the entity (none, serialize, deserialize, both)"
+            help = "Automatically derive serde Serialize / Deserialize traits for the entity (none,\
+                serialize, deserialize, both)"
         )]
         with_serde: String,
+
+        #[clap(
+            action,
+            long,
+            default_value = "false",
+            long_help = "Automatically derive the Copy trait on generated enums.\n\
+            Enums generated from a database don't have associated data by default, and as such can\
+            derive Copy.
+            "
+        )]
+        with_copy_enums: bool,
 
         #[clap(
             arg_enum,
