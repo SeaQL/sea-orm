@@ -7,26 +7,66 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.7.0 - not yet
 
+### New Features
+* Update ActiveModel by JSON by @billy1624 in https://github.com/SeaQL/sea-orm/pull/492
+* Supports `time` crate by @billy1624 https://github.com/SeaQL/sea-orm/pull/602
+* Allow for creation of indexes for PostgeSQL and SQLite @nickb937 https://github.com/SeaQL/sea-orm/pull/593
+* Added `delete_by_id` @ShouvikGhosh2048 https://github.com/SeaQL/sea-orm/pull/590
+* Implement `PaginatorTrait` for `SelectorRaw` @shinbunbun https://github.com/SeaQL/sea-orm/pull/617
+
 ### Enhancements
+* Added axum graphql example by @aaronleopold in https://github.com/SeaQL/sea-orm/pull/587
+* Codegen add serde derives to enums, if specified by @BenJeau https://github.com/SeaQL/sea-orm/pull/463
+* Codegen Unsigned Integer - 2 by @billy1624 https://github.com/SeaQL/sea-orm/pull/397
+* Examples with migration by @billy1624 in https://github.com/SeaQL/sea-orm/pull/509
+* Add Send bound to `QueryStream` and `TransactionStream` by @sebpuetz https://github.com/SeaQL/sea-orm/pull/471
+* Add `Send` to `StreamTrait` by @nappa85 https://github.com/SeaQL/sea-orm/pull/622
 
-* Codegen add serde derives to enums, if specified https://github.com/SeaQL/sea-orm/pull/463
-* Codegen Unsigned Integer - 2 https://github.com/SeaQL/sea-orm/pull/397
-* Supports `time` crate https://github.com/SeaQL/sea-orm/pull/602
-* Allow for creation of indexes for PostgeSQL and SQLite https://github.com/SeaQL/sea-orm/pull/593
-* Add Send bound to `QueryStream` and `TransactionStream` https://github.com/SeaQL/sea-orm/pull/471
-* Added `delete_by_id` https://github.com/SeaQL/sea-orm/pull/590
-* Implement `PaginatorTrait` for `SelectorRaw` https://github.com/SeaQL/sea-orm/pull/617
-* Add `Send` to `StreamTrait` https://github.com/SeaQL/sea-orm/pull/622
-
-### Bug fixes
-
-* Fix codegen with Enum in expanded format https://github.com/SeaQL/sea-orm/pull/624
-* Fixing and testing into_json of various field types https://github.com/SeaQL/sea-orm/pull/539
+### Bug Fixes
+* Fix codegen with Enum in expanded format by @billy1624 https://github.com/SeaQL/sea-orm/pull/624
+* Fixing and testing into_json of various field types by @billy1624 https://github.com/SeaQL/sea-orm/pull/539
 
 ### Breaking changes
-
-* Exclude `mock` from default features https://github.com/SeaQL/sea-orm/pull/562
+* Exclude `mock` from default features by @billy1624 https://github.com/SeaQL/sea-orm/pull/562
 * `create_table_from_entity` will no longer create index for MySQL, please use the new method `create_index_from_entity`
+
+### Documentations
+* Describe default value of ActiveValue on document by @Ken-Miura in https://github.com/SeaQL/sea-orm/pull/556
+* community: add axum-book-management by @lz1998 in https://github.com/SeaQL/sea-orm/pull/564
+* Add Backpack to project showcase by @JSH32 in https://github.com/SeaQL/sea-orm/pull/567
+* Add mediarepo to showcase by @Trivernis in https://github.com/SeaQL/sea-orm/pull/569
+* COMMUNITY: add a link to Svix to showcase by @tasn in https://github.com/SeaQL/sea-orm/pull/537
+* Update COMMUNITY.md by @naryand in https://github.com/SeaQL/sea-orm/pull/570
+* Update COMMUNITY.md by @BobAnkh in https://github.com/SeaQL/sea-orm/pull/568
+* Update COMMUNITY.md by @KaniyaSimeji in https://github.com/SeaQL/sea-orm/pull/566
+* Update COMMUNITY.md by @aaronleopold in https://github.com/SeaQL/sea-orm/pull/565
+* Update COMMUNITY.md by @gudaoxuri in https://github.com/SeaQL/sea-orm/pull/572
+* Update Wikijump's entry in COMMUNITY.md by @ammongit in https://github.com/SeaQL/sea-orm/pull/573
+* Update COMMUNITY.md by @koopa1338 in https://github.com/SeaQL/sea-orm/pull/574
+* Update COMMUNITY.md by @gengteng in https://github.com/SeaQL/sea-orm/pull/580
+* Update COMMUNITY.md by @Yama-Tomo in https://github.com/SeaQL/sea-orm/pull/582
+* add oura-postgres-sink to COMMUNITY.md by @rvcas in https://github.com/SeaQL/sea-orm/pull/594
+* Add rust-example-caster-api to COMMUNITY.md by @bkonkle in https://github.com/SeaQL/sea-orm/pull/623
+
+### Fixed Issues
+* orm-cli generated incorrect type for #[sea_orm(primary_key)]. Should be u64. Was i64. https://github.com/SeaQL/sea-orm/issues/295
+* how to update dynamicly from json value https://github.com/SeaQL/sea-orm/issues/346
+* Make `DatabaseConnection` `Clone` with the default features enabled https://github.com/SeaQL/sea-orm/issues/438
+* Updating mutiple fields in a Model by passing a reference https://github.com/SeaQL/sea-orm/issues/460
+* SeaORM CLI not adding serde derives to Enums https://github.com/SeaQL/sea-orm/issues/461
+* sea-orm-cli generates wrong datatype for nullable blob https://github.com/SeaQL/sea-orm/issues/490
+* Support the time crate in addition (instead of?) chrono https://github.com/SeaQL/sea-orm/issues/499
+* PaginatorTrait for SelectorRaw https://github.com/SeaQL/sea-orm/issues/500
+* sea_orm::DatabaseConnection should implement `Clone` by default https://github.com/SeaQL/sea-orm/issues/517
+* How do you seed data in migrations using ActiveModels? https://github.com/SeaQL/sea-orm/issues/522
+* Datetime fields are not serialized by `.into_json()` on queries https://github.com/SeaQL/sea-orm/issues/530
+* Update / Delete by id https://github.com/SeaQL/sea-orm/issues/552
+* `#[sea_orm(indexed)]` only works for MySQL https://github.com/SeaQL/sea-orm/issues/554
+* `sea-orm-cli generate --with-serde` does not work on Postegresql custom type https://github.com/SeaQL/sea-orm/issues/581
+* `sea-orm-cli generate --expanded-format` panic when postgres table contains enum type https://github.com/SeaQL/sea-orm/issues/614
+* UUID fields are not serialized by `.into_json()` on queries https://github.com/SeaQL/sea-orm/issues/619
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.6.0...0.7.0
 
 ## 0.6.0 - 2022-02-07
 

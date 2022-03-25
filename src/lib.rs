@@ -254,9 +254,9 @@
 //! 1. [Architecture](https://github.com/SeaQL/sea-orm/tree/master/ARCHITECTURE.md)
 //! 1. [Release Model](https://www.sea-ql.org/SeaORM/blog/2021-08-30-release-model)
 //! 1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
-//! 
+//!
 //! ## Who's using SeaORM?
-//! 
+//!
 //! [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm)
 //!
 //! ## License

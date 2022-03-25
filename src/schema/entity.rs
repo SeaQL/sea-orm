@@ -4,8 +4,8 @@ use crate::{
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
-    Alias, ColumnDef, ForeignKeyCreateStatement, Iden, Index, TableCreateStatement,
-    IndexCreateStatement,
+    Alias, ColumnDef, ForeignKeyCreateStatement, Iden, Index, IndexCreateStatement,
+    TableCreateStatement,
 };
 
 impl Schema {
@@ -36,8 +36,8 @@ impl Schema {
     /// Creates the indexes from an Entity, returning an empty Vec if there are none
     /// to create. See [IndexCreateStatement] for more details
     pub fn create_index_from_entity<E>(&self, entity: E) -> Vec<IndexCreateStatement>
-        where
-            E: EntityTrait,
+    where
+        E: EntityTrait,
     {
         create_index_from_entity(entity, self.backend)
     }
@@ -87,9 +87,12 @@ where
     vec
 }
 
-pub(crate) fn create_index_from_entity<E>(entity: E, _backend: DbBackend) -> Vec<IndexCreateStatement>
-    where
-        E: EntityTrait,
+pub(crate) fn create_index_from_entity<E>(
+    entity: E,
+    _backend: DbBackend,
+) -> Vec<IndexCreateStatement>
+where
+    E: EntityTrait,
 {
     let mut vec = Vec::new();
     for column in E::Column::iter() {
@@ -110,7 +113,6 @@ pub(crate) fn create_index_from_entity<E>(entity: E, _backend: DbBackend) -> Vec
     }
     vec
 }
-
 
 pub(crate) fn create_table_from_entity<E>(entity: E, backend: DbBackend) -> TableCreateStatement
 where
@@ -229,7 +231,11 @@ mod tests {
             let schema = Schema::new(builder);
             assert_eq!(
                 builder.build(&schema.create_table_from_entity(CakeFillingPrice)),
-                builder.build(&get_cake_filling_price_stmt().table(CakeFillingPrice.table_ref()).to_owned())
+                builder.build(
+                    &get_cake_filling_price_stmt()
+                        .table(CakeFillingPrice.table_ref())
+                        .to_owned()
+                )
             );
         }
     }
@@ -271,7 +277,6 @@ mod tests {
             .to_owned()
     }
 
-
     #[test]
     fn test_create_index_from_entity_table_ref() {
         for builder in [DbBackend::MySql, DbBackend::Postgres, DbBackend::Sqlite] {
@@ -279,36 +284,31 @@ mod tests {
 
             assert_eq!(
                 builder.build(&schema.create_table_from_entity(indexes::Entity)),
-                builder.build(&get_indexes_stmt().table(indexes::Entity.table_ref()).to_owned())
+                builder.build(
+                    &get_indexes_stmt()
+                        .table(indexes::Entity.table_ref())
+                        .to_owned()
+                )
             );
-
 
             let stmts = schema.create_index_from_entity(indexes::Entity);
             assert_eq!(stmts.len(), 2);
-
 
             let idx: IndexCreateStatement = Index::create()
                 .name("idx-indexes-index1_attr")
                 .table(indexes::Entity)
                 .col(indexes::Column::Index1Attr)
                 .to_owned();
-            assert_eq!(
-                builder.build(&stmts[0]),
-                builder.build(&idx)
-            );
+            assert_eq!(builder.build(&stmts[0]), builder.build(&idx));
 
             let idx: IndexCreateStatement = Index::create()
                 .name("idx-indexes-index2_attr")
                 .table(indexes::Entity)
                 .col(indexes::Column::Index2Attr)
                 .to_owned();
-            assert_eq!(
-                builder.build(&stmts[1]),
-                builder.build(&idx)
-            );
+            assert_eq!(builder.build(&stmts[1]), builder.build(&idx));
         }
     }
-
 
     fn get_indexes_stmt() -> TableCreateStatement {
         Table::create()
@@ -338,5 +338,4 @@ mod tests {
             )
             .to_owned()
     }
-
 }

@@ -150,10 +150,7 @@ impl EntityWriter {
     pub fn write_sea_orm_active_enums(&self, with_serde: &WithSerde) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        Self::write(
-            &mut lines,
-            vec![Self::gen_import(with_serde)],
-        );
+        Self::write(&mut lines, vec![Self::gen_import(with_serde)]);
         lines.push("".to_owned());
         let code_blocks = self
             .enums
