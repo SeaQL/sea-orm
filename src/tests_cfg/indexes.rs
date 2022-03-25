@@ -45,7 +45,7 @@ impl PrimaryKeyTrait for PrimaryKey {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
-pub enum Relation { }
+pub enum Relation {}
 
 impl ColumnTrait for Column {
     type EntityName = Entity;
@@ -61,7 +61,9 @@ impl ColumnTrait for Column {
 }
 
 impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef { panic!() }
+    fn def(&self) -> RelationDef {
+        panic!()
+    }
 }
 
 impl ActiveModelBehavior for ActiveModel {}
