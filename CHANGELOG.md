@@ -30,6 +30,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Exclude `mock` from default features by @billy1624 https://github.com/SeaQL/sea-orm/pull/562
 * `create_table_from_entity` will no longer create index for MySQL, please use the new method `create_index_from_entity`
 
+### Documentations
+* Describe default value of ActiveValue on document by @Ken-Miura in https://github.com/SeaQL/sea-orm/pull/556
+* community: add axum-book-management by @lz1998 in https://github.com/SeaQL/sea-orm/pull/564
+* Add Backpack to project showcase by @JSH32 in https://github.com/SeaQL/sea-orm/pull/567
+* Add mediarepo to showcase by @Trivernis in https://github.com/SeaQL/sea-orm/pull/569
+* COMMUNITY: add a link to Svix to showcase by @tasn in https://github.com/SeaQL/sea-orm/pull/537
+* Update COMMUNITY.md by @naryand in https://github.com/SeaQL/sea-orm/pull/570
+* Update COMMUNITY.md by @BobAnkh in https://github.com/SeaQL/sea-orm/pull/568
+* Update COMMUNITY.md by @KaniyaSimeji in https://github.com/SeaQL/sea-orm/pull/566
+* Update COMMUNITY.md by @aaronleopold in https://github.com/SeaQL/sea-orm/pull/565
+* Update COMMUNITY.md by @gudaoxuri in https://github.com/SeaQL/sea-orm/pull/572
+* Update Wikijump's entry in COMMUNITY.md by @ammongit in https://github.com/SeaQL/sea-orm/pull/573
+* Update COMMUNITY.md by @koopa1338 in https://github.com/SeaQL/sea-orm/pull/574
+* Update COMMUNITY.md by @gengteng in https://github.com/SeaQL/sea-orm/pull/580
+* Update COMMUNITY.md by @Yama-Tomo in https://github.com/SeaQL/sea-orm/pull/582
+* add oura-postgres-sink to COMMUNITY.md by @rvcas in https://github.com/SeaQL/sea-orm/pull/594
+* Add rust-example-caster-api to COMMUNITY.md by @bkonkle in https://github.com/SeaQL/sea-orm/pull/623
+
 ### Fixed Issues
 * orm-cli generated incorrect type for #[sea_orm(primary_key)]. Should be u64. Was i64. https://github.com/SeaQL/sea-orm/issues/295
 * how to update dynamicly from json value https://github.com/SeaQL/sea-orm/issues/346
@@ -48,23 +66,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * `sea-orm-cli generate --expanded-format` panic when postgres table contains enum type https://github.com/SeaQL/sea-orm/issues/614
 * UUID fields are not serialized by `.into_json()` on queries https://github.com/SeaQL/sea-orm/issues/619
 
-### Documentations
-* Describe default value of ActiveValue on document by @Ken-Miura in https://github.com/SeaQL/sea-orm/pull/556
-* community: add axum-book-management by @lz1998 in https://github.com/SeaQL/sea-orm/pull/564
-* Add Backpack to project showcase by @JSH32 in https://github.com/SeaQL/sea-orm/pull/567
-* Add mediarepo to showcase by @Trivernis in https://github.com/SeaQL/sea-orm/pull/569
-* COMMUNITY: add a link to Svix to showcase by @tasn in https://github.com/SeaQL/sea-orm/pull/537
-* Update COMMUNITY.md by @naryand in https://github.com/SeaQL/sea-orm/pull/570
-* Update COMMUNITY.md by @BobAnkh in https://github.com/SeaQL/sea-orm/pull/568
-* Update COMMUNITY.md by @KaniyaSimeji in https://github.com/SeaQL/sea-orm/pull/566
-* Update COMMUNITY.md by @aaronleopold in https://github.com/SeaQL/sea-orm/pull/565
-* Update COMMUNITY.md by @gudaoxuri in https://github.com/SeaQL/sea-orm/pull/572
-* Update Wikijump's entry in COMMUNITY.md by @ammongit in https://github.com/SeaQL/sea-orm/pull/573
-* Update COMMUNITY.md by @koopa1338 in https://github.com/SeaQL/sea-orm/pull/574
-* Update COMMUNITY.md by @gengteng in https://github.com/SeaQL/sea-orm/pull/580
-* Update COMMUNITY.md by @Yama-Tomo in https://github.com/SeaQL/sea-orm/pull/582
-* add oura-postgres-sink to COMMUNITY.md by @rvcas in https://github.com/SeaQL/sea-orm/pull/594
-* Add rust-example-caster-api to COMMUNITY.md by @bkonkle in https://github.com/SeaQL/sea-orm/pull/623
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.6.0...0.7.0
 
 ## 0.6.0 - 2022-02-07
 
