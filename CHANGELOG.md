@@ -5,21 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.7.0 - not yet
+## 0.7.0 - 2022-03-26
 
 ### New Features
 * Update ActiveModel by JSON by @billy1624 in https://github.com/SeaQL/sea-orm/pull/492
 * Supports `time` crate by @billy1624 https://github.com/SeaQL/sea-orm/pull/602
-* Allow for creation of indexes for PostgeSQL and SQLite @nickb937 https://github.com/SeaQL/sea-orm/pull/593
+* Allow for creation of indexes for PostgreSQL and SQLite @nickb937 https://github.com/SeaQL/sea-orm/pull/593
 * Added `delete_by_id` @ShouvikGhosh2048 https://github.com/SeaQL/sea-orm/pull/590
 * Implement `PaginatorTrait` for `SelectorRaw` @shinbunbun https://github.com/SeaQL/sea-orm/pull/617
 
 ### Enhancements
 * Added axum graphql example by @aaronleopold in https://github.com/SeaQL/sea-orm/pull/587
+* Add example for integrate with jsonrpsee by @hunjixin https://github.com/SeaQL/sea-orm/pull/632
 * Codegen add serde derives to enums, if specified by @BenJeau https://github.com/SeaQL/sea-orm/pull/463
-* Codegen Unsigned Integer - 2 by @billy1624 https://github.com/SeaQL/sea-orm/pull/397
-* Examples with migration by @billy1624 in https://github.com/SeaQL/sea-orm/pull/509
-* Add Send bound to `QueryStream` and `TransactionStream` by @sebpuetz https://github.com/SeaQL/sea-orm/pull/471
+* Codegen Unsigned Integer by @billy1624 https://github.com/SeaQL/sea-orm/pull/397
+* Add `Send` bound to `QueryStream` and `TransactionStream` by @sebpuetz https://github.com/SeaQL/sea-orm/pull/471
 * Add `Send` to `StreamTrait` by @nappa85 https://github.com/SeaQL/sea-orm/pull/622
 
 ### Bug Fixes
