@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "fruit")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    #[serde(skip_deserializing)]
+    #[cfg_attr(feature = "with-json", serde(skip_deserializing))]
     pub id: i32,
     pub name: String,
     pub cake_id: Option<i32>,
