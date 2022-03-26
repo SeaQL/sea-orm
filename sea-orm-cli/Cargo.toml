@@ -3,7 +3,7 @@
 
 [package]
 name = "sea-orm-cli"
-version = "0.7.0"
+version = "0.7.1"
 authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
 edition = "2021"
 description = "Command line utility for SeaORM"
