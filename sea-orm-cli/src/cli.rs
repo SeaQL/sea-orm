@@ -108,3 +108,4 @@ pub fn build_cli() -> App<'static, 'static> {
         )
         .setting(AppSettings::SubcommandRequiredElseHelp)
 }
+
