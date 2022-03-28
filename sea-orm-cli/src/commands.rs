@@ -207,17 +207,19 @@ pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error
     } else if let ("generate", Some(args)) = migrate_subcommand {
         let migration_dir = args.value_of("MIGRATION_DIR").unwrap();
         let migration_name = args.value_of("MIGRATION_NAME").unwrap();
+        println!("Generating new migration...");
         let now = Local::now();
-        let migration_filename = format!(
-            "m{}_{}.rs",
+        let migration_name = format!(
+            "m{}_{}",
             now.format("%Y%m%d_%H%M%S").to_string(),
             migration_name
         );
-        let migration_filepath = Path::new(migration_dir).join(migration_filename);
-        println!(
-            "Generating new migration `{}`",
-            migration_filepath.display()
-        );
+        let migration_filepath = Path::new(migration_dir)
+            .join("src")
+            .join(format!("{}.rs", migration_name));
+        println!("Creating file `{}`", migration_filepath.display());
+        let template = include_str!("../template/migration/src/m20220101_000001_create_table.rs");
+        let content = template.replace("m20220101_000001_create_table", &migration_name);
         return Ok(());
     }
     let (subcommand, migration_dir, steps, verbose) = match migrate_subcommand {
