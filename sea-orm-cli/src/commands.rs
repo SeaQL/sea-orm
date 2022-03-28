@@ -204,6 +204,21 @@ pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error
         println!("Done!");
         // Early exit!
         return Ok(());
+    } else if let ("generate", Some(args)) = migrate_subcommand {
+        let migration_dir = args.value_of("MIGRATION_DIR").unwrap();
+        let migration_name = args.value_of("MIGRATION_NAME").unwrap();
+        let now = Local::now();
+        let migration_filename = format!(
+            "m{}_{}.rs",
+            now.format("%Y%m%d_%H%M%S").to_string(),
+            migration_name
+        );
+        let migration_filepath = Path::new(migration_dir).join(migration_filename);
+        println!(
+            "Generating new migration `{}`",
+            migration_filepath.display()
+        );
+        return Ok(());
     }
     let (subcommand, migration_dir, steps, verbose) = match migrate_subcommand {
         // Catch all command with pattern `migrate xxx`
