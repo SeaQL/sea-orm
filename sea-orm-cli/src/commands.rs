@@ -218,8 +218,12 @@ pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error
             .join("src")
             .join(format!("{}.rs", migration_name));
         println!("Creating file `{}`", migration_filepath.display());
-        let template = include_str!("../template/migration/src/m20220101_000001_create_table.rs");
-        let content = template.replace("m20220101_000001_create_table", &migration_name);
+        let migration_template =
+            include_str!("../template/migration/src/m20220101_000001_create_table.rs");
+        let migration_content =
+            migration_template.replace("m20220101_000001_create_table", &migration_name);
+        let mut migration_file = fs::File::create(migration_filepath)?;
+        migration_file.write_all(migration_content.as_bytes())?;
         return Ok(());
     }
     let (subcommand, migration_dir, steps, verbose) = match migrate_subcommand {
