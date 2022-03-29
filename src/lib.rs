@@ -281,15 +281,11 @@
 
 mod database;
 mod docs;
-mod driver;
 /// Module for the Entity type and operations
 pub mod entity;
 /// Error types for all database operations
-pub mod error;
 /// This module performs execution of queries on a Model or ActiveModel
 mod executor;
-/// Holds types and methods to perform metric collection
-pub mod metric;
 /// Holds types and methods to perform queries
 pub mod query;
 /// Holds types that defines the schemas of an Entity
@@ -297,16 +293,18 @@ pub mod schema;
 #[doc(hidden)]
 #[cfg(feature = "macros")]
 pub mod tests_cfg;
-mod util;
 
 pub use database::*;
-pub use driver::*;
 pub use entity::*;
 pub use error::*;
 pub use executor::*;
 pub use query::*;
 pub use schema::*;
 
+pub use sea_connection::{driver, error, metric, util};
+
+#[cfg(feature = "macros")]
+pub use sea_orm_macros;
 #[cfg(feature = "macros")]
 pub use sea_orm_macros::{
     DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn,

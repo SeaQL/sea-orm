@@ -17,6 +17,7 @@ impl FromQueryResult for JsonValue {
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(row) => {
+                use sea_connection::sqlx;
                 use serde_json::json;
                 use sqlx::{Column, MySql, Row, Type};
                 for column in row.columns() {
@@ -66,6 +67,7 @@ impl FromQueryResult for JsonValue {
             }
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => {
+                use sea_connection::sqlx;
                 use serde_json::json;
                 use sqlx::{Column, Postgres, Row, Type};
                 for column in row.columns() {
@@ -114,6 +116,7 @@ impl FromQueryResult for JsonValue {
             }
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => {
+                use sea_connection::sqlx;
                 use serde_json::json;
                 use sqlx::{Column, Row, Sqlite, Type};
                 for column in row.columns() {

@@ -600,7 +600,8 @@ pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
                 .with_max_level(::tracing::Level::DEBUG)
                 .with_test_writer()
                 .try_init();
-            crate::block_on!(async { #body })
+            // crate::block_on!(async { #body })
+            ::async_std::task::block_on(async { #body })
         }
     )
     .into()

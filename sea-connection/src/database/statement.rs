@@ -43,10 +43,7 @@ impl Statement {
         )
     }
 
-    pub(crate) fn from_string_values_tuple(
-        db_backend: DbBackend,
-        stmt: (String, Values),
-    ) -> Statement {
+    pub fn from_string_values_tuple(db_backend: DbBackend, stmt: (String, Values)) -> Statement {
         Statement {
             sql: stmt.0,
             values: Some(stmt.1),

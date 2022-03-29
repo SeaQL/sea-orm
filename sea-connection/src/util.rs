@@ -2,7 +2,7 @@
 /// This must be enabled using the feature flag `debug-print`.
 /// ### Usage
 /// ```
-/// use sea_orm::debug_print;
+/// use sea_connection::debug_print;
 ///
 /// #[derive(Debug)]
 /// enum FooError {

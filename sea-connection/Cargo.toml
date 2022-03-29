@@ -1,0 +1,84 @@
+[package]
+name = "sea-connection"
+version = "0.7.1"
+authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
+edition = "2021"
+description = "Database Connection Layer for SeaQL"
+license = "MIT OR Apache-2.0"
+documentation = "https://docs.rs/sea-orm"
+repository = "https://github.com/SeaQL/sea-orm"
+categories = [ "database" ]
+keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
+
+[package.metadata.docs.rs]
+features = [
+    "with-json",
+    "with-chrono",
+    "with-rust_decimal",
+    "with-uuid",
+    "with-time",
+    "sqlx-all",
+    "mock",
+    "runtime-async-std-native-tls",
+]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lib]
+name = "sea_connection"
+path = "src/lib.rs"
+
+[dependencies]
+async-stream = { version = "^0.3" }
+async-trait = { version = "^0.1" }
+chrono = { version = "^0", optional = true }
+time = { version = "^0.2", optional = true }
+futures = { version = "^0.3" }
+futures-util = { version = "^0.3" }
+tracing = { version = "0.1", features = ["log"] }
+rust_decimal = { version = "^1", optional = true }
+serde = { version = "^1.0", features = ["derive"] }
+serde_json = { version = "^1", optional = true }
+uuid = { version = "0.8", features = ["serde", "v4"], optional = true }
+ouroboros = "0.15"
+url = "^2.2"
+sqlx = { version = "^0.5", optional = true }
+sea-query = { version = "^0.23.0", features = ["thread-safe"] }
+
+[dev-dependencies]
+smol = { version = "^1.2" }
+smol-potat = { version = "^1.1" }
+pretty_assertions = { version = "^0.7" }
+
+[features]
+debug-print = []
+mock = []
+with-json = ["serde_json", "sea-query/with-json", "chrono/serde"]
+with-chrono = ["chrono", "sea-query/with-chrono"]
+with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal"]
+with-uuid = ["uuid", "sea-query/with-uuid"]
+with-time = ["time", "sea-query/with-time"]
+sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
+sqlx-dep = ["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid", "sqlx-time"]
+sqlx-json = ["sqlx/json", "with-json"]
+sqlx-chrono = ["sqlx/chrono", "with-chrono"]
+sqlx-decimal = ["sqlx/decimal", "with-rust_decimal"]
+sqlx-uuid = ["sqlx/uuid", "with-uuid"]
+sqlx-time = ["sqlx/time", "with-time"]
+sqlx-mysql = ["sqlx-dep", "sea-query/sqlx-mysql", "sqlx/mysql"]
+sqlx-postgres = ["sqlx-dep", "sea-query/sqlx-postgres", "sqlx/postgres"]
+sqlx-sqlite = ["sqlx-dep", "sea-query/sqlx-sqlite", "sqlx/sqlite"]
+runtime-async-std = []
+runtime-async-std-native-tls = [
+    "sqlx/runtime-async-std-native-tls",
+    "runtime-async-std",
+]
+runtime-async-std-rustls = [
+    "sqlx/runtime-async-std-rustls",
+    "runtime-async-std",
+]
+runtime-actix = []
+runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls", "runtime-actix"]
+runtime-actix-rustls = ["sqlx/runtime-actix-rustls", "runtime-actix"]
+runtime-tokio = []
+runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls", "runtime-tokio"]
+runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls", "runtime-tokio"]

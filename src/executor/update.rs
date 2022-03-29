@@ -155,129 +155,129 @@ where
     })
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{entity::prelude::*, tests_cfg::*, *};
-    use pretty_assertions::assert_eq;
-    use sea_query::Expr;
+// #[cfg(test)]
+// mod tests {
+//     use crate::{entity::prelude::*, tests_cfg::*, *};
+//     use pretty_assertions::assert_eq;
+//     use sea_query::Expr;
 
-    #[smol_potat::test]
-    async fn update_record_not_found_1() -> Result<(), DbErr> {
-        let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![
-                vec![cake::Model {
-                    id: 1,
-                    name: "Cheese Cake".to_owned(),
-                }],
-                vec![],
-                vec![],
-                vec![],
-            ])
-            .append_exec_results(vec![MockExecResult {
-                last_insert_id: 0,
-                rows_affected: 0,
-            }])
-            .into_connection();
+//     #[smol_potat::test]
+//     async fn update_record_not_found_1() -> Result<(), DbErr> {
+//         let db = MockDatabase::new(DbBackend::Postgres)
+//             .append_query_results(vec![
+//                 vec![cake::Model {
+//                     id: 1,
+//                     name: "Cheese Cake".to_owned(),
+//                 }],
+//                 vec![],
+//                 vec![],
+//                 vec![],
+//             ])
+//             .append_exec_results(vec![MockExecResult {
+//                 last_insert_id: 0,
+//                 rows_affected: 0,
+//             }])
+//             .into_connection();
 
-        let model = cake::Model {
-            id: 1,
-            name: "New York Cheese".to_owned(),
-        };
+//         let model = cake::Model {
+//             id: 1,
+//             name: "New York Cheese".to_owned(),
+//         };
 
-        assert_eq!(
-            cake::ActiveModel {
-                name: Set("Cheese Cake".to_owned()),
-                ..model.into_active_model()
-            }
-            .update(&db)
-            .await?,
-            cake::Model {
-                id: 1,
-                name: "Cheese Cake".to_owned(),
-            }
-        );
+//         assert_eq!(
+//             cake::ActiveModel {
+//                 name: Set("Cheese Cake".to_owned()),
+//                 ..model.into_active_model()
+//             }
+//             .update(&db)
+//             .await?,
+//             cake::Model {
+//                 id: 1,
+//                 name: "Cheese Cake".to_owned(),
+//             }
+//         );
 
-        let model = cake::Model {
-            id: 2,
-            name: "New York Cheese".to_owned(),
-        };
+//         let model = cake::Model {
+//             id: 2,
+//             name: "New York Cheese".to_owned(),
+//         };
 
-        assert_eq!(
-            cake::ActiveModel {
-                name: Set("Cheese Cake".to_owned()),
-                ..model.clone().into_active_model()
-            }
-            .update(&db)
-            .await,
-            Err(DbErr::RecordNotFound(
-                "None of the database rows are affected".to_owned()
-            ))
-        );
+//         assert_eq!(
+//             cake::ActiveModel {
+//                 name: Set("Cheese Cake".to_owned()),
+//                 ..model.clone().into_active_model()
+//             }
+//             .update(&db)
+//             .await,
+//             Err(DbErr::RecordNotFound(
+//                 "None of the database rows are affected".to_owned()
+//             ))
+//         );
 
-        assert_eq!(
-            cake::Entity::update(cake::ActiveModel {
-                name: Set("Cheese Cake".to_owned()),
-                ..model.clone().into_active_model()
-            })
-            .exec(&db)
-            .await,
-            Err(DbErr::RecordNotFound(
-                "None of the database rows are affected".to_owned()
-            ))
-        );
+//         assert_eq!(
+//             cake::Entity::update(cake::ActiveModel {
+//                 name: Set("Cheese Cake".to_owned()),
+//                 ..model.clone().into_active_model()
+//             })
+//             .exec(&db)
+//             .await,
+//             Err(DbErr::RecordNotFound(
+//                 "None of the database rows are affected".to_owned()
+//             ))
+//         );
 
-        assert_eq!(
-            Update::one(cake::ActiveModel {
-                name: Set("Cheese Cake".to_owned()),
-                ..model.into_active_model()
-            })
-            .exec(&db)
-            .await,
-            Err(DbErr::RecordNotFound(
-                "None of the database rows are affected".to_owned()
-            ))
-        );
+//         assert_eq!(
+//             Update::one(cake::ActiveModel {
+//                 name: Set("Cheese Cake".to_owned()),
+//                 ..model.into_active_model()
+//             })
+//             .exec(&db)
+//             .await,
+//             Err(DbErr::RecordNotFound(
+//                 "None of the database rows are affected".to_owned()
+//             ))
+//         );
 
-        assert_eq!(
-            Update::many(cake::Entity)
-                .col_expr(cake::Column::Name, Expr::value("Cheese Cake".to_owned()))
-                .filter(cake::Column::Id.eq(2))
-                .exec(&db)
-                .await,
-            Ok(UpdateResult { rows_affected: 0 })
-        );
+//         assert_eq!(
+//             Update::many(cake::Entity)
+//                 .col_expr(cake::Column::Name, Expr::value("Cheese Cake".to_owned()))
+//                 .filter(cake::Column::Id.eq(2))
+//                 .exec(&db)
+//                 .await,
+//             Ok(UpdateResult { rows_affected: 0 })
+//         );
 
-        assert_eq!(
-            db.into_transaction_log(),
-            vec![
-                Transaction::from_sql_and_values(
-                    DbBackend::Postgres,
-                    r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
-                    vec!["Cheese Cake".into(), 1i32.into()]
-                ),
-                Transaction::from_sql_and_values(
-                    DbBackend::Postgres,
-                    r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
-                    vec!["Cheese Cake".into(), 2i32.into()]
-                ),
-                Transaction::from_sql_and_values(
-                    DbBackend::Postgres,
-                    r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
-                    vec!["Cheese Cake".into(), 2i32.into()]
-                ),
-                Transaction::from_sql_and_values(
-                    DbBackend::Postgres,
-                    r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
-                    vec!["Cheese Cake".into(), 2i32.into()]
-                ),
-                Transaction::from_sql_and_values(
-                    DbBackend::Postgres,
-                    r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2"#,
-                    vec!["Cheese Cake".into(), 2i32.into()]
-                ),
-            ]
-        );
+//         assert_eq!(
+//             db.into_transaction_log(),
+//             vec![
+//                 Transaction::from_sql_and_values(
+//                     DbBackend::Postgres,
+//                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
+//                     vec!["Cheese Cake".into(), 1i32.into()]
+//                 ),
+//                 Transaction::from_sql_and_values(
+//                     DbBackend::Postgres,
+//                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
+//                     vec!["Cheese Cake".into(), 2i32.into()]
+//                 ),
+//                 Transaction::from_sql_and_values(
+//                     DbBackend::Postgres,
+//                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
+//                     vec!["Cheese Cake".into(), 2i32.into()]
+//                 ),
+//                 Transaction::from_sql_and_values(
+//                     DbBackend::Postgres,
+//                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
+//                     vec!["Cheese Cake".into(), 2i32.into()]
+//                 ),
+//                 Transaction::from_sql_and_values(
+//                     DbBackend::Postgres,
+//                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2"#,
+//                     vec!["Cheese Cake".into(), 2i32.into()]
+//                 ),
+//             ]
+//         );
 
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }

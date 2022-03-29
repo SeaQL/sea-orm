@@ -272,433 +272,433 @@ where
     }
 }
 
-#[cfg(test)]
-#[cfg(feature = "mock")]
-mod tests {
-    use super::*;
-    use crate::entity::prelude::*;
-    use crate::{tests_cfg::*, ConnectionTrait, Statement};
-    use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
-    use futures::TryStreamExt;
-    use once_cell::sync::Lazy;
-    use sea_query::{Alias, Expr, SelectStatement, Value};
-
-    static RAW_STMT: Lazy<Statement> = Lazy::new(|| {
-        Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
-            vec![],
-        )
-    });
-
-    fn setup() -> (DatabaseConnection, Vec<Vec<fruit::Model>>) {
-        let page1 = vec![
-            fruit::Model {
-                id: 1,
-                name: "Blueberry".into(),
-                cake_id: Some(1),
-            },
-            fruit::Model {
-                id: 2,
-                name: "Rasberry".into(),
-                cake_id: Some(1),
-            },
-        ];
-
-        let page2 = vec![fruit::Model {
-            id: 3,
-            name: "Strawberry".into(),
-            cake_id: Some(2),
-        }];
-
-        let page3 = Vec::<fruit::Model>::new();
-
-        let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![page1.clone(), page2.clone(), page3.clone()])
-            .into_connection();
-
-        (db, vec![page1, page2, page3])
-    }
-
-    fn setup_num_items() -> (DatabaseConnection, i64) {
-        let num_items = 3;
-        let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![maplit::btreemap! {
-                "num_items" => Into::<Value>::into(num_items),
-            }]])
-            .into_connection();
-
-        (db, num_items)
-    }
-
-    #[smol_potat::test]
-    async fn fetch_page() -> Result<(), DbErr> {
-        let (db, pages) = setup();
-
-        let paginator = fruit::Entity::find().paginate(&db, 2);
-
-        assert_eq!(paginator.fetch_page(0).await?, pages[0].clone());
-        assert_eq!(paginator.fetch_page(1).await?, pages[1].clone());
-        assert_eq!(paginator.fetch_page(2).await?, pages[2].clone());
-
-        let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
-            ])
-            .from(fruit::Entity)
-            .to_owned();
-
-        let query_builder = db.get_database_backend();
-        let stmts = vec![
-            query_builder.build(select.clone().offset(0).limit(2)),
-            query_builder.build(select.clone().offset(2).limit(2)),
-            query_builder.build(select.offset(4).limit(2)),
-        ];
-
-        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
-        Ok(())
-    }
-
-    #[smol_potat::test]
-    async fn fetch_page_raw() -> Result<(), DbErr> {
-        let (db, pages) = setup();
-
-        let paginator = fruit::Entity::find()
-            .from_raw_sql(RAW_STMT.clone())
-            .paginate(&db, 2);
-
-        assert_eq!(paginator.fetch_page(0).await?, pages[0].clone());
-        assert_eq!(paginator.fetch_page(1).await?, pages[1].clone());
-        assert_eq!(paginator.fetch_page(2).await?, pages[2].clone());
-
-        let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
-            ])
-            .from(fruit::Entity)
-            .to_owned();
-
-        let query_builder = db.get_database_backend();
-        let stmts = vec![
-            query_builder.build(select.clone().offset(0).limit(2)),
-            query_builder.build(select.clone().offset(2).limit(2)),
-            query_builder.build(select.offset(4).limit(2)),
-        ];
-
-        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
-        Ok(())
-    }
-
-    #[smol_potat::test]
-    async fn fetch() -> Result<(), DbErr> {
-        let (db, pages) = setup();
-
-        let mut paginator = fruit::Entity::find().paginate(&db, 2);
-
-        assert_eq!(paginator.fetch().await?, pages[0].clone());
-        paginator.next();
-
-        assert_eq!(paginator.fetch().await?, pages[1].clone());
-        paginator.next();
-
-        assert_eq!(paginator.fetch().await?, pages[2].clone());
-
-        let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
-            ])
-            .from(fruit::Entity)
-            .to_owned();
-
-        let query_builder = db.get_database_backend();
-        let stmts = vec![
-            query_builder.build(select.clone().offset(0).limit(2)),
-            query_builder.build(select.clone().offset(2).limit(2)),
-            query_builder.build(select.offset(4).limit(2)),
-        ];
-
-        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
-        Ok(())
-    }
-
-    #[smol_potat::test]
-    async fn fetch_raw() -> Result<(), DbErr> {
-        let (db, pages) = setup();
-
-        let mut paginator = fruit::Entity::find()
-            .from_raw_sql(RAW_STMT.clone())
-            .paginate(&db, 2);
-
-        assert_eq!(paginator.fetch().await?, pages[0].clone());
-        paginator.next();
-
-        assert_eq!(paginator.fetch().await?, pages[1].clone());
-        paginator.next();
-
-        assert_eq!(paginator.fetch().await?, pages[2].clone());
-
-        let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
-            ])
-            .from(fruit::Entity)
-            .to_owned();
-
-        let query_builder = db.get_database_backend();
-        let stmts = vec![
-            query_builder.build(select.clone().offset(0).limit(2)),
-            query_builder.build(select.clone().offset(2).limit(2)),
-            query_builder.build(select.offset(4).limit(2)),
-        ];
-
-        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
-        Ok(())
-    }
-
-    #[smol_potat::test]
-    async fn num_pages() -> Result<(), DbErr> {
-        let (db, num_items) = setup_num_items();
-
-        let num_items = num_items as usize;
-        let page_size = 2_usize;
-        let num_pages = (num_items / page_size) + (num_items % page_size > 0) as usize;
-        let paginator = fruit::Entity::find().paginate(&db, page_size);
-
-        assert_eq!(paginator.num_pages().await?, num_pages);
-
-        let sub_query = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
-            ])
-            .from(fruit::Entity)
-            .to_owned();
-
-        let select = SelectStatement::new()
-            .expr(Expr::cust("COUNT(*) AS num_items"))
-            .from_subquery(sub_query, Alias::new("sub_query"))
-            .to_owned();
-
-        let query_builder = db.get_database_backend();
-        let stmts = vec![query_builder.build(&select)];
-
-        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
-        Ok(())
-    }
-
-    #[smol_potat::test]
-    async fn num_pages_raw() -> Result<(), DbErr> {
-        let (db, num_items) = setup_num_items();
-
-        let num_items = num_items as usize;
-        let page_size = 2_usize;
-        let num_pages = (num_items / page_size) + (num_items % page_size > 0) as usize;
-        let paginator = fruit::Entity::find()
-            .from_raw_sql(RAW_STMT.clone())
-            .paginate(&db, page_size);
-
-        assert_eq!(paginator.num_pages().await?, num_pages);
-
-        let sub_query = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
-            ])
-            .from(fruit::Entity)
-            .to_owned();
-
-        let select = SelectStatement::new()
-            .expr(Expr::cust("COUNT(*) AS num_items"))
-            .from_subquery(sub_query, Alias::new("sub_query"))
-            .to_owned();
-
-        let query_builder = db.get_database_backend();
-        let stmts = vec![query_builder.build(&select)];
-
-        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
-        Ok(())
-    }
-
-    #[smol_potat::test]
-    async fn next_and_cur_page() -> Result<(), DbErr> {
-        let (db, _) = setup();
-
-        let mut paginator = fruit::Entity::find().paginate(&db, 2);
-
-        assert_eq!(paginator.cur_page(), 0);
-        paginator.next();
-
-        assert_eq!(paginator.cur_page(), 1);
-        paginator.next();
-
-        assert_eq!(paginator.cur_page(), 2);
-        Ok(())
-    }
-
-    #[smol_potat::test]
-    async fn next_and_cur_page_raw() -> Result<(), DbErr> {
-        let (db, _) = setup();
-
-        let mut paginator = fruit::Entity::find()
-            .from_raw_sql(RAW_STMT.clone())
-            .paginate(&db, 2);
-
-        assert_eq!(paginator.cur_page(), 0);
-        paginator.next();
-
-        assert_eq!(paginator.cur_page(), 1);
-        paginator.next();
-
-        assert_eq!(paginator.cur_page(), 2);
-        Ok(())
-    }
-
-    #[smol_potat::test]
-    async fn fetch_and_next() -> Result<(), DbErr> {
-        let (db, pages) = setup();
-
-        let mut paginator = fruit::Entity::find().paginate(&db, 2);
-
-        assert_eq!(paginator.cur_page(), 0);
-        assert_eq!(paginator.fetch_and_next().await?, Some(pages[0].clone()));
-
-        assert_eq!(paginator.cur_page(), 1);
-        assert_eq!(paginator.fetch_and_next().await?, Some(pages[1].clone()));
-
-        assert_eq!(paginator.cur_page(), 2);
-        assert_eq!(paginator.fetch_and_next().await?, None);
-
-        let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
-            ])
-            .from(fruit::Entity)
-            .to_owned();
-
-        let query_builder = db.get_database_backend();
-        let stmts = vec![
-            query_builder.build(select.clone().offset(0).limit(2)),
-            query_builder.build(select.clone().offset(2).limit(2)),
-            query_builder.build(select.offset(4).limit(2)),
-        ];
-
-        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
-        Ok(())
-    }
-
-    #[smol_potat::test]
-    async fn fetch_and_next_raw() -> Result<(), DbErr> {
-        let (db, pages) = setup();
-
-        let mut paginator = fruit::Entity::find()
-            .from_raw_sql(RAW_STMT.clone())
-            .paginate(&db, 2);
-
-        assert_eq!(paginator.cur_page(), 0);
-        assert_eq!(paginator.fetch_and_next().await?, Some(pages[0].clone()));
-
-        assert_eq!(paginator.cur_page(), 1);
-        assert_eq!(paginator.fetch_and_next().await?, Some(pages[1].clone()));
-
-        assert_eq!(paginator.cur_page(), 2);
-        assert_eq!(paginator.fetch_and_next().await?, None);
-
-        let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
-            ])
-            .from(fruit::Entity)
-            .to_owned();
-
-        let query_builder = db.get_database_backend();
-        let stmts = vec![
-            query_builder.build(select.clone().offset(0).limit(2)),
-            query_builder.build(select.clone().offset(2).limit(2)),
-            query_builder.build(select.offset(4).limit(2)),
-        ];
-
-        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
-        Ok(())
-    }
-
-    #[smol_potat::test]
-    async fn into_stream() -> Result<(), DbErr> {
-        let (db, pages) = setup();
-
-        let mut fruit_stream = fruit::Entity::find().paginate(&db, 2).into_stream();
-
-        assert_eq!(fruit_stream.try_next().await?, Some(pages[0].clone()));
-        assert_eq!(fruit_stream.try_next().await?, Some(pages[1].clone()));
-        assert_eq!(fruit_stream.try_next().await?, None);
-
-        drop(fruit_stream);
-
-        let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
-            ])
-            .from(fruit::Entity)
-            .to_owned();
-
-        let query_builder = db.get_database_backend();
-        let stmts = vec![
-            query_builder.build(select.clone().offset(0).limit(2)),
-            query_builder.build(select.clone().offset(2).limit(2)),
-            query_builder.build(select.offset(4).limit(2)),
-        ];
-
-        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
-        Ok(())
-    }
-
-    #[smol_potat::test]
-    async fn into_stream_raw() -> Result<(), DbErr> {
-        let (db, pages) = setup();
-
-        let mut fruit_stream = fruit::Entity::find()
-            .from_raw_sql(RAW_STMT.clone())
-            .paginate(&db, 2)
-            .into_stream();
-
-        assert_eq!(fruit_stream.try_next().await?, Some(pages[0].clone()));
-        assert_eq!(fruit_stream.try_next().await?, Some(pages[1].clone()));
-        assert_eq!(fruit_stream.try_next().await?, None);
-
-        drop(fruit_stream);
-
-        let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
-            ])
-            .from(fruit::Entity)
-            .to_owned();
-
-        let query_builder = db.get_database_backend();
-        let stmts = vec![
-            query_builder.build(select.clone().offset(0).limit(2)),
-            query_builder.build(select.clone().offset(2).limit(2)),
-            query_builder.build(select.offset(4).limit(2)),
-        ];
-
-        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
-        Ok(())
-    }
-}
+// #[cfg(test)]
+// #[cfg(feature = "mock")]
+// mod tests {
+//     use super::*;
+//     use crate::entity::prelude::*;
+//     use crate::{tests_cfg::*, ConnectionTrait, Statement};
+//     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
+//     use futures::TryStreamExt;
+//     use once_cell::sync::Lazy;
+//     use sea_query::{Alias, Expr, SelectStatement, Value};
+
+//     static RAW_STMT: Lazy<Statement> = Lazy::new(|| {
+//         Statement::from_sql_and_values(
+//             DbBackend::Postgres,
+//             r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
+//             vec![],
+//         )
+//     });
+
+//     fn setup() -> (DatabaseConnection, Vec<Vec<fruit::Model>>) {
+//         let page1 = vec![
+//             fruit::Model {
+//                 id: 1,
+//                 name: "Blueberry".into(),
+//                 cake_id: Some(1),
+//             },
+//             fruit::Model {
+//                 id: 2,
+//                 name: "Rasberry".into(),
+//                 cake_id: Some(1),
+//             },
+//         ];
+
+//         let page2 = vec![fruit::Model {
+//             id: 3,
+//             name: "Strawberry".into(),
+//             cake_id: Some(2),
+//         }];
+
+//         let page3 = Vec::<fruit::Model>::new();
+
+//         let db = MockDatabase::new(DbBackend::Postgres)
+//             .append_query_results(vec![page1.clone(), page2.clone(), page3.clone()])
+//             .into_connection();
+
+//         (db, vec![page1, page2, page3])
+//     }
+
+//     fn setup_num_items() -> (DatabaseConnection, i64) {
+//         let num_items = 3;
+//         let db = MockDatabase::new(DbBackend::Postgres)
+//             .append_query_results(vec![vec![maplit::btreemap! {
+//                 "num_items" => Into::<Value>::into(num_items),
+//             }]])
+//             .into_connection();
+
+//         (db, num_items)
+//     }
+
+//     #[smol_potat::test]
+//     async fn fetch_page() -> Result<(), DbErr> {
+//         let (db, pages) = setup();
+
+//         let paginator = fruit::Entity::find().paginate(&db, 2);
+
+//         assert_eq!(paginator.fetch_page(0).await?, pages[0].clone());
+//         assert_eq!(paginator.fetch_page(1).await?, pages[1].clone());
+//         assert_eq!(paginator.fetch_page(2).await?, pages[2].clone());
+
+//         let mut select = SelectStatement::new()
+//             .exprs(vec![
+//                 Expr::tbl(fruit::Entity, fruit::Column::Id),
+//                 Expr::tbl(fruit::Entity, fruit::Column::Name),
+//                 Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+//             ])
+//             .from(fruit::Entity)
+//             .to_owned();
+
+//         let query_builder = db.get_database_backend();
+//         let stmts = vec![
+//             query_builder.build(select.clone().offset(0).limit(2)),
+//             query_builder.build(select.clone().offset(2).limit(2)),
+//             query_builder.build(select.offset(4).limit(2)),
+//         ];
+
+//         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
+//         Ok(())
+//     }
+
+//     #[smol_potat::test]
+//     async fn fetch_page_raw() -> Result<(), DbErr> {
+//         let (db, pages) = setup();
+
+//         let paginator = fruit::Entity::find()
+//             .from_raw_sql(RAW_STMT.clone())
+//             .paginate(&db, 2);
+
+//         assert_eq!(paginator.fetch_page(0).await?, pages[0].clone());
+//         assert_eq!(paginator.fetch_page(1).await?, pages[1].clone());
+//         assert_eq!(paginator.fetch_page(2).await?, pages[2].clone());
+
+//         let mut select = SelectStatement::new()
+//             .exprs(vec![
+//                 Expr::tbl(fruit::Entity, fruit::Column::Id),
+//                 Expr::tbl(fruit::Entity, fruit::Column::Name),
+//                 Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+//             ])
+//             .from(fruit::Entity)
+//             .to_owned();
+
+//         let query_builder = db.get_database_backend();
+//         let stmts = vec![
+//             query_builder.build(select.clone().offset(0).limit(2)),
+//             query_builder.build(select.clone().offset(2).limit(2)),
+//             query_builder.build(select.offset(4).limit(2)),
+//         ];
+
+//         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
+//         Ok(())
+//     }
+
+//     #[smol_potat::test]
+//     async fn fetch() -> Result<(), DbErr> {
+//         let (db, pages) = setup();
+
+//         let mut paginator = fruit::Entity::find().paginate(&db, 2);
+
+//         assert_eq!(paginator.fetch().await?, pages[0].clone());
+//         paginator.next();
+
+//         assert_eq!(paginator.fetch().await?, pages[1].clone());
+//         paginator.next();
+
+//         assert_eq!(paginator.fetch().await?, pages[2].clone());
+
+//         let mut select = SelectStatement::new()
+//             .exprs(vec![
+//                 Expr::tbl(fruit::Entity, fruit::Column::Id),
+//                 Expr::tbl(fruit::Entity, fruit::Column::Name),
+//                 Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+//             ])
+//             .from(fruit::Entity)
+//             .to_owned();
+
+//         let query_builder = db.get_database_backend();
+//         let stmts = vec![
+//             query_builder.build(select.clone().offset(0).limit(2)),
+//             query_builder.build(select.clone().offset(2).limit(2)),
+//             query_builder.build(select.offset(4).limit(2)),
+//         ];
+
+//         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
+//         Ok(())
+//     }
+
+//     #[smol_potat::test]
+//     async fn fetch_raw() -> Result<(), DbErr> {
+//         let (db, pages) = setup();
+
+//         let mut paginator = fruit::Entity::find()
+//             .from_raw_sql(RAW_STMT.clone())
+//             .paginate(&db, 2);
+
+//         assert_eq!(paginator.fetch().await?, pages[0].clone());
+//         paginator.next();
+
+//         assert_eq!(paginator.fetch().await?, pages[1].clone());
+//         paginator.next();
+
+//         assert_eq!(paginator.fetch().await?, pages[2].clone());
+
+//         let mut select = SelectStatement::new()
+//             .exprs(vec![
+//                 Expr::tbl(fruit::Entity, fruit::Column::Id),
+//                 Expr::tbl(fruit::Entity, fruit::Column::Name),
+//                 Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+//             ])
+//             .from(fruit::Entity)
+//             .to_owned();
+
+//         let query_builder = db.get_database_backend();
+//         let stmts = vec![
+//             query_builder.build(select.clone().offset(0).limit(2)),
+//             query_builder.build(select.clone().offset(2).limit(2)),
+//             query_builder.build(select.offset(4).limit(2)),
+//         ];
+
+//         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
+//         Ok(())
+//     }
+
+//     #[smol_potat::test]
+//     async fn num_pages() -> Result<(), DbErr> {
+//         let (db, num_items) = setup_num_items();
+
+//         let num_items = num_items as usize;
+//         let page_size = 2_usize;
+//         let num_pages = (num_items / page_size) + (num_items % page_size > 0) as usize;
+//         let paginator = fruit::Entity::find().paginate(&db, page_size);
+
+//         assert_eq!(paginator.num_pages().await?, num_pages);
+
+//         let sub_query = SelectStatement::new()
+//             .exprs(vec![
+//                 Expr::tbl(fruit::Entity, fruit::Column::Id),
+//                 Expr::tbl(fruit::Entity, fruit::Column::Name),
+//                 Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+//             ])
+//             .from(fruit::Entity)
+//             .to_owned();
+
+//         let select = SelectStatement::new()
+//             .expr(Expr::cust("COUNT(*) AS num_items"))
+//             .from_subquery(sub_query, Alias::new("sub_query"))
+//             .to_owned();
+
+//         let query_builder = db.get_database_backend();
+//         let stmts = vec![query_builder.build(&select)];
+
+//         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
+//         Ok(())
+//     }
+
+//     #[smol_potat::test]
+//     async fn num_pages_raw() -> Result<(), DbErr> {
+//         let (db, num_items) = setup_num_items();
+
+//         let num_items = num_items as usize;
+//         let page_size = 2_usize;
+//         let num_pages = (num_items / page_size) + (num_items % page_size > 0) as usize;
+//         let paginator = fruit::Entity::find()
+//             .from_raw_sql(RAW_STMT.clone())
+//             .paginate(&db, page_size);
+
+//         assert_eq!(paginator.num_pages().await?, num_pages);
+
+//         let sub_query = SelectStatement::new()
+//             .exprs(vec![
+//                 Expr::tbl(fruit::Entity, fruit::Column::Id),
+//                 Expr::tbl(fruit::Entity, fruit::Column::Name),
+//                 Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+//             ])
+//             .from(fruit::Entity)
+//             .to_owned();
+
+//         let select = SelectStatement::new()
+//             .expr(Expr::cust("COUNT(*) AS num_items"))
+//             .from_subquery(sub_query, Alias::new("sub_query"))
+//             .to_owned();
+
+//         let query_builder = db.get_database_backend();
+//         let stmts = vec![query_builder.build(&select)];
+
+//         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
+//         Ok(())
+//     }
+
+//     #[smol_potat::test]
+//     async fn next_and_cur_page() -> Result<(), DbErr> {
+//         let (db, _) = setup();
+
+//         let mut paginator = fruit::Entity::find().paginate(&db, 2);
+
+//         assert_eq!(paginator.cur_page(), 0);
+//         paginator.next();
+
+//         assert_eq!(paginator.cur_page(), 1);
+//         paginator.next();
+
+//         assert_eq!(paginator.cur_page(), 2);
+//         Ok(())
+//     }
+
+//     #[smol_potat::test]
+//     async fn next_and_cur_page_raw() -> Result<(), DbErr> {
+//         let (db, _) = setup();
+
+//         let mut paginator = fruit::Entity::find()
+//             .from_raw_sql(RAW_STMT.clone())
+//             .paginate(&db, 2);
+
+//         assert_eq!(paginator.cur_page(), 0);
+//         paginator.next();
+
+//         assert_eq!(paginator.cur_page(), 1);
+//         paginator.next();
+
+//         assert_eq!(paginator.cur_page(), 2);
+//         Ok(())
+//     }
+
+//     #[smol_potat::test]
+//     async fn fetch_and_next() -> Result<(), DbErr> {
+//         let (db, pages) = setup();
+
+//         let mut paginator = fruit::Entity::find().paginate(&db, 2);
+
+//         assert_eq!(paginator.cur_page(), 0);
+//         assert_eq!(paginator.fetch_and_next().await?, Some(pages[0].clone()));
+
+//         assert_eq!(paginator.cur_page(), 1);
+//         assert_eq!(paginator.fetch_and_next().await?, Some(pages[1].clone()));
+
+//         assert_eq!(paginator.cur_page(), 2);
+//         assert_eq!(paginator.fetch_and_next().await?, None);
+
+//         let mut select = SelectStatement::new()
+//             .exprs(vec![
+//                 Expr::tbl(fruit::Entity, fruit::Column::Id),
+//                 Expr::tbl(fruit::Entity, fruit::Column::Name),
+//                 Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+//             ])
+//             .from(fruit::Entity)
+//             .to_owned();
+
+//         let query_builder = db.get_database_backend();
+//         let stmts = vec![
+//             query_builder.build(select.clone().offset(0).limit(2)),
+//             query_builder.build(select.clone().offset(2).limit(2)),
+//             query_builder.build(select.offset(4).limit(2)),
+//         ];
+
+//         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
+//         Ok(())
+//     }
+
+//     #[smol_potat::test]
+//     async fn fetch_and_next_raw() -> Result<(), DbErr> {
+//         let (db, pages) = setup();
+
+//         let mut paginator = fruit::Entity::find()
+//             .from_raw_sql(RAW_STMT.clone())
+//             .paginate(&db, 2);
+
+//         assert_eq!(paginator.cur_page(), 0);
+//         assert_eq!(paginator.fetch_and_next().await?, Some(pages[0].clone()));
+
+//         assert_eq!(paginator.cur_page(), 1);
+//         assert_eq!(paginator.fetch_and_next().await?, Some(pages[1].clone()));
+
+//         assert_eq!(paginator.cur_page(), 2);
+//         assert_eq!(paginator.fetch_and_next().await?, None);
+
+//         let mut select = SelectStatement::new()
+//             .exprs(vec![
+//                 Expr::tbl(fruit::Entity, fruit::Column::Id),
+//                 Expr::tbl(fruit::Entity, fruit::Column::Name),
+//                 Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+//             ])
+//             .from(fruit::Entity)
+//             .to_owned();
+
+//         let query_builder = db.get_database_backend();
+//         let stmts = vec![
+//             query_builder.build(select.clone().offset(0).limit(2)),
+//             query_builder.build(select.clone().offset(2).limit(2)),
+//             query_builder.build(select.offset(4).limit(2)),
+//         ];
+
+//         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
+//         Ok(())
+//     }
+
+//     #[smol_potat::test]
+//     async fn into_stream() -> Result<(), DbErr> {
+//         let (db, pages) = setup();
+
+//         let mut fruit_stream = fruit::Entity::find().paginate(&db, 2).into_stream();
+
+//         assert_eq!(fruit_stream.try_next().await?, Some(pages[0].clone()));
+//         assert_eq!(fruit_stream.try_next().await?, Some(pages[1].clone()));
+//         assert_eq!(fruit_stream.try_next().await?, None);
+
+//         drop(fruit_stream);
+
+//         let mut select = SelectStatement::new()
+//             .exprs(vec![
+//                 Expr::tbl(fruit::Entity, fruit::Column::Id),
+//                 Expr::tbl(fruit::Entity, fruit::Column::Name),
+//                 Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+//             ])
+//             .from(fruit::Entity)
+//             .to_owned();
+
+//         let query_builder = db.get_database_backend();
+//         let stmts = vec![
+//             query_builder.build(select.clone().offset(0).limit(2)),
+//             query_builder.build(select.clone().offset(2).limit(2)),
+//             query_builder.build(select.offset(4).limit(2)),
+//         ];
+
+//         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
+//         Ok(())
+//     }
+
+//     #[smol_potat::test]
+//     async fn into_stream_raw() -> Result<(), DbErr> {
+//         let (db, pages) = setup();
+
+//         let mut fruit_stream = fruit::Entity::find()
+//             .from_raw_sql(RAW_STMT.clone())
+//             .paginate(&db, 2)
+//             .into_stream();
+
+//         assert_eq!(fruit_stream.try_next().await?, Some(pages[0].clone()));
+//         assert_eq!(fruit_stream.try_next().await?, Some(pages[1].clone()));
+//         assert_eq!(fruit_stream.try_next().await?, None);
+
+//         drop(fruit_stream);
+
+//         let mut select = SelectStatement::new()
+//             .exprs(vec![
+//                 Expr::tbl(fruit::Entity, fruit::Column::Id),
+//                 Expr::tbl(fruit::Entity, fruit::Column::Name),
+//                 Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+//             ])
+//             .from(fruit::Entity)
+//             .to_owned();
+
+//         let query_builder = db.get_database_backend();
+//         let stmts = vec![
+//             query_builder.build(select.clone().offset(0).limit(2)),
+//             query_builder.build(select.clone().offset(2).limit(2)),
+//             query_builder.build(select.offset(4).limit(2)),
+//         ];
+
+//         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
+//         Ok(())
+//     }
+// }
