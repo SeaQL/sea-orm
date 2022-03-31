@@ -308,7 +308,7 @@ impl DbBackend {
 
     /// Check if the database supports `RETURNING` syntax on insert and update
     pub fn support_returning(&self) -> bool {
-        matches!(self, Self::Postgres)
+        matches!(self, Self::Postgres | Self::Sqlite)
     }
 }
 
