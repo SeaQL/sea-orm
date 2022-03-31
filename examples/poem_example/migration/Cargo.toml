@@ -9,5 +9,5 @@ name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
-sea-schema = { version = "^0.5.0", default-features = false, features = [ "migration", "debug-print" ] }
+sea-schema = { version = "^0.7.0", default-features = false, features = [ "migration", "debug-print" ] }
 entity = { path = "../entity" }

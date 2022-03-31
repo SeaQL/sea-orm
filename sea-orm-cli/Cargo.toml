@@ -3,7 +3,7 @@
 
 [package]
 name = "sea-orm-cli"
-version = "0.6.0"
+version = "0.7.2"
 authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
 edition = "2021"
 description = "Command line utility for SeaORM"
@@ -12,17 +12,27 @@ documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
 categories = [ "database" ]
 keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
+default-run = "sea-orm-cli"
+
+
+[lib]
+name = "sea_orm_cli"
+path = "src/lib.rs"
 
 [[bin]]
 name = "sea-orm-cli"
-path = "src/main.rs"
+path = "src/bin/main.rs"
+
+[[bin]]
+name = "sea"
+path = "src/bin/sea.rs"
 
 [dependencies]
 clap = { version = "^2.33.3" }
 dotenv = { version = "^0.15" }
 async-std = { version = "^1.9", features = [ "attributes", "tokio1" ] }
-sea-orm-codegen = { version = "^0.6.0", path = "../sea-orm-codegen" }
-sea-schema = { version = "^0.6.0", default-features = false, features = [
+sea-orm-codegen = { version = "^0.7.0", path = "../sea-orm-codegen" }
+sea-schema = { version = "^0.7.0", default-features = false, features = [
     "debug-print",
     "sqlx-mysql",
     "sqlx-sqlite",
