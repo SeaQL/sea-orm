@@ -236,6 +236,21 @@ pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error
         let mods_end = mods.last().unwrap().get(0).unwrap().end() + 1;
         updated_migrator_content
             .insert_str(mods_end, format!("mod {};\n", &migration_name).as_str());
+        let mut migrations: Vec<&str> = mods
+            .iter()
+            .map(|cap| cap.name("name").unwrap().as_str())
+            .collect();
+        migrations.push(&migration_name);
+        let mut boxed_migrations = migrations
+            .iter()
+            .map(|migration| format!("            Box::new({}::Migration)", migration))
+            .collect::<Vec<String>>()
+            .join(",\n");
+        boxed_migrations.push_str("\n");
+        let boxed_migrations = format!("vec![\n{}        ]\n", boxed_migrations);
+        let vec_regex = Regex::new(r"vec!\[[\s\S]+\]")?;
+        let updated_migrator_content =
+            vec_regex.replace(&updated_migrator_content, &boxed_migrations);
         return Ok(());
     }
     let (subcommand, migration_dir, steps, verbose) = match migrate_subcommand {
