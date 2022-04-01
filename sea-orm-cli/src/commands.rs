@@ -208,6 +208,8 @@ pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error
     } else if let ("generate", Some(args)) = migrate_subcommand {
         let migration_dir = args.value_of("MIGRATION_DIR").unwrap();
         let migration_name = args.value_of("MIGRATION_NAME").unwrap();
+
+        // generate new migration from template
         println!("Generating new migration...");
         let now = Local::now();
         let migration_name = format!(
