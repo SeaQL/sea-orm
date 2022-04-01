@@ -432,7 +432,7 @@ mod tests {
     #[test]
     fn test_create_new_migration() {
         let migration_name = "test_name";
-        let migration_dir = "/tmp/sea-orm-cli/test/";
+        let migration_dir = "/tmp/sea_orm_cli_test_new_migration/";
         fs::create_dir_all(format!("{}src", migration_dir)).unwrap();
         create_new_migration(migration_name, migration_dir).unwrap();
         let migration_filepath = Path::new(migration_dir)
@@ -446,7 +446,7 @@ mod tests {
             &migration_content,
             include_str!("../template/migration/src/m20220101_000001_create_table.rs")
         );
-        fs::remove_dir_all("/tmp/sea-orm-cli").unwrap();
+        fs::remove_dir_all("/tmp/sea_orm_cli_test_new_migration/").unwrap();
     }
 
     #[test]
