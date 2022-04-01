@@ -448,4 +448,39 @@ mod tests {
         );
         fs::remove_dir_all("/tmp/sea-orm-cli").unwrap();
     }
+
+    #[test]
+    fn test_update_migrator() {
+        let migration_name = "test_name";
+        let migration_dir = "/tmp/sea_orm_cli_test_update_migrator/";
+        fs::create_dir_all(format!("{}src", migration_dir)).unwrap();
+        let migrator_filepath = Path::new(migration_dir).join("src").join("lib.rs");
+        fs::copy("./template/migration/src/lib.rs", &migrator_filepath).unwrap();
+        update_migrator(migration_name, migration_dir).unwrap();
+        assert!(&migrator_filepath.exists());
+        let migrator_content = fs::read_to_string(&migrator_filepath).unwrap();
+        let mod_regex = Regex::new(r"mod (?P<name>\w+);").unwrap();
+        let migrations: Vec<&str> = mod_regex
+            .captures_iter(&migrator_content)
+            .map(|cap| cap.name("name").unwrap().as_str())
+            .collect();
+        assert_eq!(migrations.len(), 2);
+        assert_eq!(
+            *migrations.first().unwrap(),
+            "m20220101_000001_create_table"
+        );
+        assert_eq!(migrations.last().unwrap(), &migration_name);
+        let boxed_regex = Regex::new(r"Box::new\((?P<name>\S+)::Migration\)").unwrap();
+        let migrations: Vec<&str> = boxed_regex
+            .captures_iter(&migrator_content)
+            .map(|cap| cap.name("name").unwrap().as_str())
+            .collect();
+        assert_eq!(migrations.len(), 2);
+        assert_eq!(
+            *migrations.first().unwrap(),
+            "m20220101_000001_create_table"
+        );
+        assert_eq!(migrations.last().unwrap(), &migration_name);
+        fs::remove_dir_all("/tmp/sea_orm_cli_test_update_migrator/").unwrap();
+    }
 }
