@@ -331,8 +331,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::AppSettings;
     use crate::cli;
+    use clap::AppSettings;
 
     #[test]
     #[should_panic(
@@ -428,5 +428,24 @@ mod tests {
             ]);
 
         smol::block_on(run_generate_command(matches.subcommand().1.unwrap())).unwrap();
+    }
+    #[test]
+    fn test_create_new_migration() {
+        let migration_name = "test_name";
+        let migration_dir = "/tmp/sea-orm-cli/test/";
+        fs::create_dir_all(format!("{}src", migration_dir)).unwrap();
+        create_new_migration(migration_name, migration_dir).unwrap();
+        let migration_filepath = Path::new(migration_dir)
+            .join("src")
+            .join(format!("{}.rs", migration_name));
+        assert!(migration_filepath.exists());
+        let migration_content = fs::read_to_string(migration_filepath).unwrap();
+        let migration_content =
+            migration_content.replace(&migration_name, "m20220101_000001_create_table");
+        assert_eq!(
+            &migration_content,
+            include_str!("../template/migration/src/m20220101_000001_create_table.rs")
+        );
+        fs::remove_dir_all("/tmp/sea-orm-cli").unwrap();
     }
 }
