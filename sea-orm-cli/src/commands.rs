@@ -1,5 +1,6 @@
 use chrono::Local;
 use clap::ArgMatches;
+use regex::Regex;
 use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use url::Url;
@@ -218,12 +219,23 @@ pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error
             .join("src")
             .join(format!("{}.rs", migration_name));
         println!("Creating file `{}`", migration_filepath.display());
+        // TODO: make OS agnostic
         let migration_template =
             include_str!("../template/migration/src/m20220101_000001_create_table.rs");
         let migration_content =
             migration_template.replace("m20220101_000001_create_table", &migration_name);
         let mut migration_file = fs::File::create(migration_filepath)?;
         migration_file.write_all(migration_content.as_bytes())?;
+
+        // add new migration to existing to migrator
+        let migrator_filepath = Path::new(migration_dir).join("src").join("lib.rs");
+        let migrator_content = fs::read_to_string(migrator_filepath)?;
+        let mut updated_migrator_content = migrator_content.clone();
+        let mod_regex = Regex::new(r"mod (?P<name>m\d{8}_\d{6}_\w+);")?;
+        let mods: Vec<_> = mod_regex.captures_iter(&migrator_content).collect();
+        let mods_end = mods.last().unwrap().get(0).unwrap().end() + 1;
+        updated_migrator_content
+            .insert_str(mods_end, format!("mod {};\n", &migration_name).as_str());
         return Ok(());
     }
     let (subcommand, migration_dir, steps, verbose) = match migrate_subcommand {
