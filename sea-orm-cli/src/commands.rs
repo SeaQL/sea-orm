@@ -229,8 +229,12 @@ pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error
 
         // add new migration to existing to migrator
         let migrator_filepath = Path::new(migration_dir).join("src").join("lib.rs");
-        let migrator_content = fs::read_to_string(migrator_filepath)?;
+        let migrator_content = fs::read_to_string(&migrator_filepath)?;
         let mut updated_migrator_content = migrator_content.clone();
+        println!("Adding new migration to `{}`", migrator_filepath.display());
+        let migrator_backup_filepath = migrator_filepath.clone().with_file_name("lib.rs.bkp");
+        fs::copy(&migrator_filepath, &migrator_backup_filepath)?;
+        let mut migrator_file = fs::File::create(&migrator_filepath)?;
         let mod_regex = Regex::new(r"mod (?P<name>m\d{8}_\d{6}_\w+);")?;
         let mods: Vec<_> = mod_regex.captures_iter(&migrator_content).collect();
         let mods_end = mods.last().unwrap().get(0).unwrap().end() + 1;
@@ -248,9 +252,11 @@ pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error
             .join(",\n");
         boxed_migrations.push_str("\n");
         let boxed_migrations = format!("vec![\n{}        ]\n", boxed_migrations);
-        let vec_regex = Regex::new(r"vec!\[[\s\S]+\]")?;
+        let vec_regex = Regex::new(r"vec!\[[\s\S]+\]\n")?;
         let updated_migrator_content =
             vec_regex.replace(&updated_migrator_content, &boxed_migrations);
+        migrator_file.write_all(updated_migrator_content.as_bytes())?;
+        fs::remove_file(&migrator_backup_filepath)?;
         return Ok(());
     }
     let (subcommand, migration_dir, steps, verbose) = match migrate_subcommand {
