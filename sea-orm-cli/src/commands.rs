@@ -208,57 +208,18 @@ pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error
     } else if let ("generate", Some(args)) = migrate_subcommand {
         let migration_dir = args.value_of("MIGRATION_DIR").unwrap();
         let migration_name = args.value_of("MIGRATION_NAME").unwrap();
-
-        // generate new migration from template
         println!("Generating new migration...");
+
+        // build new migration filename
         let now = Local::now();
         let migration_name = format!(
             "m{}_{}",
             now.format("%Y%m%d_%H%M%S").to_string(),
             migration_name
         );
-        let migration_filepath = Path::new(migration_dir)
-            .join("src")
-            .join(format!("{}.rs", migration_name));
-        println!("Creating file `{}`", migration_filepath.display());
-        // TODO: make OS agnostic
-        let migration_template =
-            include_str!("../template/migration/src/m20220101_000001_create_table.rs");
-        let migration_content =
-            migration_template.replace("m20220101_000001_create_table", &migration_name);
-        let mut migration_file = fs::File::create(migration_filepath)?;
-        migration_file.write_all(migration_content.as_bytes())?;
 
-        // add new migration to existing to migrator
-        let migrator_filepath = Path::new(migration_dir).join("src").join("lib.rs");
-        let migrator_content = fs::read_to_string(&migrator_filepath)?;
-        let mut updated_migrator_content = migrator_content.clone();
-        println!("Adding new migration to `{}`", migrator_filepath.display());
-        let migrator_backup_filepath = migrator_filepath.clone().with_file_name("lib.rs.bkp");
-        fs::copy(&migrator_filepath, &migrator_backup_filepath)?;
-        let mut migrator_file = fs::File::create(&migrator_filepath)?;
-        let mod_regex = Regex::new(r"mod (?P<name>m\d{8}_\d{6}_\w+);")?;
-        let mods: Vec<_> = mod_regex.captures_iter(&migrator_content).collect();
-        let mods_end = mods.last().unwrap().get(0).unwrap().end() + 1;
-        updated_migrator_content
-            .insert_str(mods_end, format!("mod {};\n", &migration_name).as_str());
-        let mut migrations: Vec<&str> = mods
-            .iter()
-            .map(|cap| cap.name("name").unwrap().as_str())
-            .collect();
-        migrations.push(&migration_name);
-        let mut boxed_migrations = migrations
-            .iter()
-            .map(|migration| format!("            Box::new({}::Migration)", migration))
-            .collect::<Vec<String>>()
-            .join(",\n");
-        boxed_migrations.push_str("\n");
-        let boxed_migrations = format!("vec![\n{}        ]\n", boxed_migrations);
-        let vec_regex = Regex::new(r"vec!\[[\s\S]+\]\n")?;
-        let updated_migrator_content =
-            vec_regex.replace(&updated_migrator_content, &boxed_migrations);
-        migrator_file.write_all(updated_migrator_content.as_bytes())?;
-        fs::remove_file(&migrator_backup_filepath)?;
+        create_new_migration(&migration_name, migration_dir)?;
+        update_migrator(&migration_name, migration_dir)?;
         return Ok(());
     }
     let (subcommand, migration_dir, steps, verbose) = match migrate_subcommand {
@@ -299,6 +260,63 @@ pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error
     // Run migrator CLI on user's behalf
     println!("Running `cargo {}`", args.join(" "));
     Command::new("cargo").args(args).spawn()?.wait()?;
+    Ok(())
+}
+
+fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(), Box<dyn Error>> {
+    let migration_filepath = Path::new(migration_dir)
+        .join("src")
+        .join(format!("{}.rs", &migration_name));
+    println!("Creating migration file `{}`", migration_filepath.display());
+    // TODO: make OS agnostic
+    let migration_template =
+        include_str!("../template/migration/src/m20220101_000001_create_table.rs");
+    let migration_content =
+        migration_template.replace("m20220101_000001_create_table", &migration_name);
+    let mut migration_file = fs::File::create(migration_filepath)?;
+    migration_file.write_all(migration_content.as_bytes())?;
+    Ok(())
+}
+
+fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<dyn Error>> {
+    let migrator_filepath = Path::new(migration_dir).join("src").join("lib.rs");
+    println!(
+        "Adding migration `{}` to `{}`",
+        migration_name,
+        migrator_filepath.display()
+    );
+    let migrator_content = fs::read_to_string(&migrator_filepath)?;
+    let mut updated_migrator_content = migrator_content.clone();
+
+    // create a backup of the migrator file in case something goes wrong
+    let migrator_backup_filepath = migrator_filepath.clone().with_file_name("lib.rs.bkp");
+    fs::copy(&migrator_filepath, &migrator_backup_filepath)?;
+    let mut migrator_file = fs::File::create(&migrator_filepath)?;
+
+    // find existing mod declarations, add new line
+    let mod_regex = Regex::new(r"mod (?P<name>m\d{8}_\d{6}_\w+);")?;
+    let mods: Vec<_> = mod_regex.captures_iter(&migrator_content).collect();
+    let mods_end = mods.last().unwrap().get(0).unwrap().end() + 1;
+    updated_migrator_content.insert_str(mods_end, format!("mod {};\n", migration_name).as_str());
+
+    // build new vector from declared migration modules
+    let mut migrations: Vec<&str> = mods
+        .iter()
+        .map(|cap| cap.name("name").unwrap().as_str())
+        .collect();
+    migrations.push(migration_name);
+    let mut boxed_migrations = migrations
+        .iter()
+        .map(|migration| format!("            Box::new({}::Migration)", migration))
+        .collect::<Vec<String>>()
+        .join(",\n");
+    boxed_migrations.push_str("\n");
+    let boxed_migrations = format!("vec![\n{}        ]\n", boxed_migrations);
+    let vec_regex = Regex::new(r"vec!\[[\s\S]+\]\n")?;
+    let updated_migrator_content = vec_regex.replace(&updated_migrator_content, &boxed_migrations);
+
+    migrator_file.write_all(updated_migrator_content.as_bytes())?;
+    fs::remove_file(&migrator_backup_filepath)?;
     Ok(())
 }
 
