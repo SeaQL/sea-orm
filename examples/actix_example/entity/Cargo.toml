@@ -17,7 +17,7 @@ version = "^0.7.0"
 features = [
   "macros",
   "debug-print",
-  "runtime-async-std-native-tls",
+  "runtime-actix-native-tls",
   "sqlx-mysql",
   # "sqlx-postgres",
   # "sqlx-sqlite",
