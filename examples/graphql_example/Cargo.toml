@@ -1,5 +1,5 @@
 [package]
-name = "axum-graphql"
+name = "sea-orm-graphql-example"
 authors = ["Aaron Leopold <aaronleopold1221@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
