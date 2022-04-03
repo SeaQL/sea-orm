@@ -20,7 +20,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let request = Request::new(PostPerPage { per_page: 10 });
     let response = client.get_posts(request).await?;
 
-    println!("total posts = {}", response.into_inner().post.len());
+    for post in response.into_inner().post.iter() {
+        println!("{:?}", post);
+    }
 
     Ok(())
 }
