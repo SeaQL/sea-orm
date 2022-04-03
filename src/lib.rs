@@ -39,6 +39,7 @@
 //! + [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
 //! + [Poem Example](https://github.com/SeaQL/sea-orm/tree/master/examples/poem_example)
 //! + [GraphQL Example](https://github.com/SeaQL/sea-orm/tree/master/examples/graphql_example)
+//! + [jsonrpsee Example](https://github.com/SeaQL/sea-orm/tree/master/examples/jsonrpsee_example)
 //!
 //! ## Features
 //!
