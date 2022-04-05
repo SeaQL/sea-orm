@@ -29,8 +29,9 @@ Join our Discord server to chat with others in the SeaQL community!
 + [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
 + [Actix Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
 + [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
-+ [Axum-GraphQL Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum-graphql_example)
 + [Poem Example](https://github.com/SeaQL/sea-orm/tree/master/examples/poem_example)
++ [GraphQL Example](https://github.com/SeaQL/sea-orm/tree/master/examples/graphql_example)
++ [jsonrpsee Example](https://github.com/SeaQL/sea-orm/tree/master/examples/jsonrpsee_example)
 
 ## Features
 

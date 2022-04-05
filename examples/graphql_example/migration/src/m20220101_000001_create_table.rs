@@ -3,7 +3,7 @@ use entity::{
     sea_orm::{DbBackend, EntityTrait, Schema},
 };
 use sea_schema::migration::{
-    sea_query::{self, *},
+    sea_query::*,
     *,
 };
 
