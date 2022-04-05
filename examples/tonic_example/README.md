@@ -1,8 +1,6 @@
-# Tonic.rs + gRPC + SeaORM
+# Tonic + gRPC + SeaORM
 
 Simple implementation of gRPC using SeaORM.
-
-uses models actix_example
 
 run server using
 ```bash

@@ -34,6 +34,7 @@
 //!
 //! + [Getting Started](https://www.sea-ql.org/SeaORM/docs/index)
 //! + [Usage Example](https://github.com/SeaQL/sea-orm/tree/master/examples/basic)
+//!
 //! + [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
 //! + [Actix Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
 //! + [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
