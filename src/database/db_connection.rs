@@ -15,7 +15,14 @@ use std::sync::Arc;
 
 /// Handle a database connection depending on the backend
 /// enabled by the feature flags. This creates a database pool.
-#[cfg_attr(not(feature = "mock"), derive(Clone))]
+/// 
+/// All connections including mock connection can be cloned.
+/// However, cloning mock connection is in fact cloning
+/// the shared reference, [`std::sync::Arc`], of it. If your test cases
+/// involved concurrent operations on mock connection, query results
+/// and transaction logs could vary depending on the sequence
+/// in which concurrent operations are executed.
+#[derive(Clone)]
 pub enum DatabaseConnection {
     /// Create a MYSQL database connection and pool
     #[cfg(feature = "sqlx-mysql")]
