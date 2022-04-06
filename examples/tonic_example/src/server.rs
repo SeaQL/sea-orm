@@ -1,7 +1,7 @@
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
-use tonic_grpc_example::post::{
+use sea_orm_tonic_example::post::{
     blogpost_server::{Blogpost, BlogpostServer},
     Post, PostId, PostList, PostPerPage, ProcessStatus,
 };
