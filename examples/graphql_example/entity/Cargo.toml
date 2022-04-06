@@ -23,4 +23,3 @@ features = [
   # "sqlx-mysql",
   "sqlx-sqlite"
 ]
-default-features = false

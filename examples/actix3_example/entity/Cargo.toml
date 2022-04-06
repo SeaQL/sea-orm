@@ -22,4 +22,3 @@ features = [
   # "sqlx-postgres",
   # "sqlx-sqlite",
 ]
-default-features = false
