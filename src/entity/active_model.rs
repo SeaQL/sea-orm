@@ -636,10 +636,10 @@ where
 }
 
 macro_rules! impl_into_active_value {
-    ($ty: ty, $fn: ident) => {
+    ($ty: ty) => {
         impl IntoActiveValue<$ty> for $ty {
             fn into_active_value(self) -> ActiveValue<$ty> {
-                $fn(self)
+                Set(self)
             }
         }
 
@@ -663,55 +663,55 @@ macro_rules! impl_into_active_value {
     };
 }
 
-impl_into_active_value!(bool, Set);
-impl_into_active_value!(i8, Set);
-impl_into_active_value!(i16, Set);
-impl_into_active_value!(i32, Set);
-impl_into_active_value!(i64, Set);
-impl_into_active_value!(u8, Set);
-impl_into_active_value!(u16, Set);
-impl_into_active_value!(u32, Set);
-impl_into_active_value!(u64, Set);
-impl_into_active_value!(f32, Set);
-impl_into_active_value!(f64, Set);
-impl_into_active_value!(&'static str, Set);
-impl_into_active_value!(String, Set);
+impl_into_active_value!(bool);
+impl_into_active_value!(i8);
+impl_into_active_value!(i16);
+impl_into_active_value!(i32);
+impl_into_active_value!(i64);
+impl_into_active_value!(u8);
+impl_into_active_value!(u16);
+impl_into_active_value!(u32);
+impl_into_active_value!(u64);
+impl_into_active_value!(f32);
+impl_into_active_value!(f64);
+impl_into_active_value!(&'static str);
+impl_into_active_value!(String);
 
 #[cfg(feature = "with-json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-json")))]
-impl_into_active_value!(crate::prelude::Json, Set);
+impl_into_active_value!(crate::prelude::Json);
 
 #[cfg(feature = "with-chrono")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::Date, Set);
+impl_into_active_value!(crate::prelude::Date);
 
 #[cfg(feature = "with-chrono")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::Time, Set);
+impl_into_active_value!(crate::prelude::Time);
 
 #[cfg(feature = "with-chrono")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::DateTime, Set);
+impl_into_active_value!(crate::prelude::DateTime);
 
 #[cfg(feature = "with-chrono")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::DateTimeWithTimeZone, Set);
+impl_into_active_value!(crate::prelude::DateTimeWithTimeZone);
 
 #[cfg(feature = "with-chrono")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::DateTimeUtc, Set);
+impl_into_active_value!(crate::prelude::DateTimeUtc);
 
 #[cfg(feature = "with-chrono")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-chrono")))]
-impl_into_active_value!(crate::prelude::DateTimeLocal, Set);
+impl_into_active_value!(crate::prelude::DateTimeLocal);
 
 #[cfg(feature = "with-rust_decimal")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-rust_decimal")))]
-impl_into_active_value!(crate::prelude::Decimal, Set);
+impl_into_active_value!(crate::prelude::Decimal);
 
 #[cfg(feature = "with-uuid")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-uuid")))]
-impl_into_active_value!(crate::prelude::Uuid, Set);
+impl_into_active_value!(crate::prelude::Uuid);
 
 impl<V> Default for ActiveValue<V>
 where

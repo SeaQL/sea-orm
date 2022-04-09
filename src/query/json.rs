@@ -166,6 +166,7 @@ impl FromQueryResult for JsonValue {
                 }
                 Ok(JsonValue::Object(map))
             }
+            #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
     }

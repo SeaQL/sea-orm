@@ -331,14 +331,14 @@ pub async fn transaction_closure_rollback() -> Result<(), DbErr> {
                     id: Set(1),
                     name: Set("Duplicated primary key".to_owned()),
                     profit_margin: Set(20.0),
-                    ..Default::default()
                 }
                 .insert(txn)
                 .await?; // Throw error and rollback
 
                 // This line won't be reached
-                assert!(false);
+                unreachable!();
 
+                #[allow(unreachable_code)]
                 Ok(())
             })
         })
