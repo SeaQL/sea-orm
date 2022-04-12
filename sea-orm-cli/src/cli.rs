@@ -70,6 +70,13 @@ pub fn build_cli() -> App<'static, 'static> {
                         .help("Automatically derive serde Serialize / Deserialize traits for the entity (none, serialize, deserialize, both)")
                         .takes_value(true)
                         .default_value("none")
+                )
+                .arg(
+                    Arg::with_name("MAX_CONNECTIONS")
+                        .long("max-connections")
+                        .help("The maximum amount of connections to use when connecting to the database.")
+                        .takes_value(true)
+                        .default_value("1")
                 ),
         )
         .setting(AppSettings::SubcommandRequiredElseHelp);
@@ -108,4 +115,3 @@ pub fn build_cli() -> App<'static, 'static> {
         )
         .setting(AppSettings::SubcommandRequiredElseHelp)
 }
-
