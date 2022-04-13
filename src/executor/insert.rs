@@ -54,14 +54,15 @@ where
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
     pub fn exec_with_returning<'a, C>(
         self,
+        enforce_return: bool,
         db: &'a C,
-    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + '_
+    ) -> impl Future<Output = Result<Option<<A::Entity as EntityTrait>::Model>, DbErr>> + '_
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
-        Inserter::<A>::new(self.primary_key, self.query).exec_with_returning(db)
+        Inserter::<A>::new(self.primary_key, self.query).exec_with_returning(enforce_return, db)
     }
 }
 
@@ -91,14 +92,15 @@ where
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
     pub fn exec_with_returning<'a, C>(
         self,
+        enforce_return: bool,
         db: &'a C,
-    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + '_
+    ) -> impl Future<Output = Result<Option<<A::Entity as EntityTrait>::Model>, DbErr>> + '_
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
-        exec_insert_with_returning::<A, _>(self.primary_key, self.query, db)
+        exec_insert_with_returning::<A, _>(self.primary_key, self.query, enforce_return, db)
     }
 }
 
@@ -139,8 +141,9 @@ where
 async fn exec_insert_with_returning<A, C>(
     primary_key: Option<ValueTuple>,
     mut insert_statement: InsertStatement,
+    enforce_return: bool,
     db: &C,
-) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
+) -> Result<Option<<A::Entity as EntityTrait>::Model>, DbErr>
 where
     <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
     C: ConnectionTrait,
@@ -175,7 +178,10 @@ where
         }
     };
     match found {
-        Some(model) => Ok(model),
-        None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
+        Some(model) => Ok(Some(model)),
+        None => match enforce_return {
+            true => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
+            false => Ok(None)
+        }
     }
 }

@@ -1,8 +1,8 @@
 use crate::{
-    error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn, Value,
+    error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn, QueryTrait, Value
 };
 use async_trait::async_trait;
-use sea_query::{Nullable, ValueTuple};
+use sea_query::{Nullable, OnConflict, ValueTuple};
 use std::fmt::Debug;
 
 pub use ActiveValue::NotSet;
@@ -279,10 +279,35 @@ pub trait ActiveModelTrait: Clone + Debug {
         C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_save(self, true)?;
+
         let model = <Self::Entity as EntityTrait>::insert(am)
-            .exec_with_returning(db)
+            .exec_with_returning(true, db)
             .await?;
-        Self::after_save(model, true)
+        Self::after_save(model.unwrap(), true)
+    }
+
+    /// Perform an `INSERT` operation on the ActiveModel with conflict-handling
+    /// 
+    /// TODO
+    /// ```
+    async fn insert_or<'a, C>(self, db: &'a C, on_conflict: &OnConflict) -> Result<Option<<Self::Entity as EntityTrait>::Model>, DbErr>
+    where
+        <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        Self: ActiveModelBehavior + 'a,
+        C: ConnectionTrait,
+    {
+        let am = ActiveModelBehavior::before_save(self, true)?;
+
+        let mut insert = <Self::Entity as EntityTrait>::insert(am);
+        insert.query().on_conflict(on_conflict.clone());
+    
+        let model = insert
+            .exec_with_returning(false, db)
+            .await?;
+        match model {
+            Some(model) => Self::after_save(model, true).map(|model| Some(model)),
+            None => Ok(None),
+        }
     }
 
     /// Perform the `UPDATE` operation on an ActiveModel
@@ -422,6 +447,7 @@ pub trait ActiveModelTrait: Clone + Debug {
             }
         }
         let res = if !is_update {
+            // note: auto increment primary key -> should not be any conflicts on insert
             self.insert(db).await
         } else {
             self.update(db).await
