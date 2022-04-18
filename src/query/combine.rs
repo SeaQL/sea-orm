@@ -161,6 +161,7 @@ where
         selector.query().expr(SelectExpr {
             expr,
             alias: Some(SeaRc::new(Alias::new(&alias))),
+            window: None,
         });
     }
 }
