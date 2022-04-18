@@ -191,7 +191,7 @@ fruit::Entity::delete_many()
 
 ## Who's using SeaORM?
 
-SeaORM is the foundation of [StarfishQL](https://github.com/SeaQL/starfish-ql).
+SeaORM is the foundation of [StarfishQL](https://github.com/SeaQL/starfish-ql), an experimental graph database and query engine.
 
 For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm).
 
