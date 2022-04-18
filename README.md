@@ -191,7 +191,9 @@ fruit::Entity::delete_many()
 
 ## Who's using SeaORM?
 
-[Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm)
+SeaORM is the foundation of [StarfishQL](https://github.com/SeaQL/starfish-ql).
+
+For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm).
 
 ## License
 
