@@ -1,5 +1,4 @@
-use migration::Migrator;
-use sea_schema::migration::*;
+use sea_orm_migration::prelude::*;
 use std::path::PathBuf;
 
 #[cfg(debug_assertions)]
@@ -22,5 +21,5 @@ async fn main() {
         }
     };
 
-    cli::run_cli(Migrator).await;
+    cli::run_cli(migration::Migrator).await;
 }

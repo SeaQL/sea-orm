@@ -15,7 +15,7 @@ name = "sea_orm_codegen"
 path = "src/lib.rs"
 
 [dependencies]
-sea-query = { version = "0.22.0" }
+sea-query = { version = "0.24.0" }
 syn = { version = "^1", default-features = false, features = [
     "derive",
     "parsing",

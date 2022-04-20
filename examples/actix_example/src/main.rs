@@ -1,6 +1,6 @@
 use actix_files::Files as Fs;
 use actix_web::{
-    error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result
+    error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result,
 };
 
 use entity::post;

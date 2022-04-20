@@ -14,7 +14,7 @@ rocket = { version = "0.5.0-rc.1", features = [
 ] }
 
 [dependencies.sea-orm]
-# path = "../../../" # remove this line in your own project
+path = "../../../" # remove this line in your own project
 version = "^0.7.0"
 features = [
   "macros",

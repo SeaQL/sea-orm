@@ -1,0 +1,28 @@
+[workspace]
+# A separate workspace
+
+[package]
+name = "sea-orm-migration"
+version = "0.7.2"
+authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
+edition = "2021"
+description = "Migration utility for SeaORM"
+license = "MIT OR Apache-2.0"
+documentation = "https://docs.rs/sea-orm"
+repository = "https://github.com/SeaQL/sea-orm"
+categories = [ "database" ]
+keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
+
+[lib]
+name = "sea_orm_migration"
+path = "src/lib.rs"
+
+[dependencies]
+sea-orm = { path = "../", default-features = false, features = ["macros"] }
+sea-schema = { git = "https://github.com/SeaQL/sea-schema", branch = "dump-sea-orm-dep", features = ["migration"], default-features = false }
+async-std = { version = "^1", features = ["attributes", "tokio1"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing = { version = "0.1", features = ["log"] }
+async-trait = { version = "^0.1" }
+dotenv = { version = "^0.15" }
+clap = { version = "^2.33" }
