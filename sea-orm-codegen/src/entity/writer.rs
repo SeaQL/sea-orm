@@ -934,19 +934,59 @@ mod tests {
                 }],
                 singularize: false,
             },
+            Entity {
+                table_name: "cakes".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "id".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "name".to_owned(),
+                        col_type: ColumnType::Text,
+                        auto_increment: false,
+                        not_null: false,
+                        unique: false,
+                    },
+                ],
+                relations: vec![Relation {
+                    ref_table: "fruits".to_owned(),
+                    columns: vec![],
+                    ref_columns: vec![],
+                    rel_type: RelationType::HasMany,
+                    on_delete: None,
+                    on_update: None,
+                    self_referencing: false,
+                    singularize: true,
+                    num_suffix: 0,
+                }],
+                conjunct_relations: vec![ConjunctRelation {
+                    via: "cake_fillings".to_owned(),
+                    to: "fillings".to_owned(),
+                    singularize: true,
+                }],
+                primary_keys: vec![PrimaryKey {
+                    name: "id".to_owned(),
+                }],
+                singularize: true,
+            },
         ]
     }
 
     #[test]
     fn test_gen_expanded_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 6] = [
+        const ENTITY_FILES: [&str; 7] = [
             include_str!("../../tests/expanded/cake.rs"),
             include_str!("../../tests/expanded/cake_filling.rs"),
             include_str!("../../tests/expanded/filling.rs"),
             include_str!("../../tests/expanded/fruit.rs"),
             include_str!("../../tests/expanded/vendor.rs"),
             include_str!("../../tests/expanded/rust_keyword.rs"),
+            include_str!("../../tests/expanded/singular-cakes.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
@@ -980,13 +1020,14 @@ mod tests {
     #[test]
     fn test_gen_compact_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 6] = [
+        const ENTITY_FILES: [&str; 7] = [
             include_str!("../../tests/compact/cake.rs"),
             include_str!("../../tests/compact/cake_filling.rs"),
             include_str!("../../tests/compact/filling.rs"),
             include_str!("../../tests/compact/fruit.rs"),
             include_str!("../../tests/compact/vendor.rs"),
             include_str!("../../tests/compact/rust_keyword.rs"),
+            include_str!("../../tests/compact/singular-cakes.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
