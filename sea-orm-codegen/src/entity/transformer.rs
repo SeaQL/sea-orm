@@ -146,6 +146,7 @@ impl EntityTransformer {
                         let conjunct_relation = ConjunctRelation {
                             via: table_name.clone(),
                             to: another_rel.ref_table.clone(),
+                            singularize: true,
                         };
                         if let Some(vec) = conjunct_relations.get_mut(&rel.ref_table) {
                             vec.push(conjunct_relation);

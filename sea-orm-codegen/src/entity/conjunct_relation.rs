@@ -1,24 +1,38 @@
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::Ident;
 use quote::format_ident;
+use inflection::singular;
 
 #[derive(Clone, Debug)]
 pub struct ConjunctRelation {
     pub(crate) via: String,
     pub(crate) to: String,
+    pub(crate) singularize: bool
 }
 
 impl ConjunctRelation {
     pub fn get_via_snake_case(&self) -> Ident {
-        format_ident!("{}", self.via.to_snake_case())
+        let mut name = self.via.to_snake_case();
+        if self.singularize {
+            name = singular(name);
+        }
+        format_ident!("{}", name)
     }
 
     pub fn get_to_snake_case(&self) -> Ident {
-        format_ident!("{}", self.to.to_snake_case())
+        let mut name = self.to.to_snake_case();
+        if self.singularize {
+            name = singular(name);
+        }
+        format_ident!("{}", name)
     }
 
     pub fn get_to_camel_case(&self) -> Ident {
-        format_ident!("{}", self.to.to_camel_case())
+        let mut name = self.to.to_camel_case();
+        if self.singularize {
+            name = singular(name);
+        }
+        format_ident!("{}", name)
     }
 }
 
@@ -31,11 +45,18 @@ mod tests {
             ConjunctRelation {
                 via: "cake_filling".to_owned(),
                 to: "cake".to_owned(),
+                singularize: false,
             },
             ConjunctRelation {
                 via: "cake_filling".to_owned(),
                 to: "filling".to_owned(),
+                singularize: false,
             },
+            ConjunctRelation {
+                via: "cake_fillings".to_owned(),
+                to: "fillings".to_owned(),
+                singularize: true,
+            }
         ]
     }
 

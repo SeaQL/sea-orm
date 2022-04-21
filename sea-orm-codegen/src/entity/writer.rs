@@ -590,6 +590,7 @@ mod tests {
                 conjunct_relations: vec![ConjunctRelation {
                     via: "cake_filling".to_owned(),
                     to: "filling".to_owned(),
+                    singularize: false,
                 }],
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
@@ -671,6 +672,7 @@ mod tests {
                 conjunct_relations: vec![ConjunctRelation {
                     via: "cake_filling".to_owned(),
                     to: "cake".to_owned(),
+                    singularize: false,
                 }],
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
