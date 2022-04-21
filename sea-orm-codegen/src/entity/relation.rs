@@ -2,6 +2,7 @@ use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{ForeignKeyAction, TableForeignKey};
+use inflection::singular;
 
 #[derive(Clone, Debug)]
 pub enum RelationType {
@@ -19,6 +20,7 @@ pub struct Relation {
     pub(crate) on_update: Option<ForeignKeyAction>,
     pub(crate) on_delete: Option<ForeignKeyAction>,
     pub(crate) self_referencing: bool,
+    pub(crate) singularize: bool,
     pub(crate) num_suffix: usize,
 }
 
@@ -27,7 +29,11 @@ impl Relation {
         let name = if self.self_referencing {
             format_ident!("SelfRef")
         } else {
-            format_ident!("{}", self.ref_table.to_camel_case())
+            let mut enum_name = self.ref_table.to_camel_case();
+            if self.singularize {
+                enum_name = singular(enum_name);
+            }
+            format_ident!("{}", enum_name)
         };
         if self.num_suffix > 0 {
             format_ident!("{}{}", name, self.num_suffix)
@@ -40,7 +46,11 @@ impl Relation {
         if self.self_referencing {
             None
         } else {
-            Some(format_ident!("{}", self.ref_table.to_snake_case()))
+            let mut module_name = self.ref_table.to_snake_case();
+            if self.singularize {
+                module_name = singular(module_name);
+            }
+            Some(format_ident!("{}", module_name))
         }
     }
 
@@ -171,6 +181,7 @@ impl From<&TableForeignKey> for Relation {
             on_delete,
             on_update,
             self_referencing: false,
+            singularize: false,
             num_suffix: 0,
         }
     }
@@ -192,6 +203,7 @@ mod tests {
                 on_delete: None,
                 on_update: None,
                 self_referencing: false,
+                singularize: false,
                 num_suffix: 0,
             },
             Relation {
@@ -202,6 +214,7 @@ mod tests {
                 on_delete: Some(ForeignKeyAction::Cascade),
                 on_update: Some(ForeignKeyAction::Cascade),
                 self_referencing: false,
+                singularize: false,
                 num_suffix: 0,
             },
             Relation {
@@ -212,6 +225,7 @@ mod tests {
                 on_delete: Some(ForeignKeyAction::Cascade),
                 on_update: None,
                 self_referencing: false,
+                singularize: false,
                 num_suffix: 0,
             },
         ]

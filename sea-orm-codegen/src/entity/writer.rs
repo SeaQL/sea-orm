@@ -584,6 +584,7 @@ mod tests {
                     on_delete: None,
                     on_update: None,
                     self_referencing: false,
+                    singularize: false,
                     num_suffix: 0,
                 }],
                 conjunct_relations: vec![ConjunctRelation {
@@ -622,6 +623,7 @@ mod tests {
                         on_delete: Some(ForeignKeyAction::Cascade),
                         on_update: Some(ForeignKeyAction::Cascade),
                         self_referencing: false,
+                        singularize: false,
                         num_suffix: 0,
                     },
                     Relation {
@@ -632,6 +634,7 @@ mod tests {
                         on_delete: Some(ForeignKeyAction::Cascade),
                         on_update: Some(ForeignKeyAction::Cascade),
                         self_referencing: false,
+                        singularize: false,
                         num_suffix: 0,
                     },
                 ],
@@ -708,6 +711,7 @@ mod tests {
                         on_delete: None,
                         on_update: None,
                         self_referencing: false,
+                        singularize: false,
                         num_suffix: 0,
                     },
                     Relation {
@@ -718,6 +722,7 @@ mod tests {
                         on_delete: None,
                         on_update: None,
                         self_referencing: false,
+                        singularize: false,
                         num_suffix: 0,
                     },
                 ],
@@ -760,6 +765,7 @@ mod tests {
                     on_delete: None,
                     on_update: None,
                     self_referencing: false,
+                    singularize: false,
                     num_suffix: 0,
                 }],
                 conjunct_relations: vec![],
@@ -872,6 +878,7 @@ mod tests {
                         on_delete: None,
                         on_update: None,
                         self_referencing: true,
+                        singularize: false,
                         num_suffix: 1,
                     },
                     Relation {
@@ -882,6 +889,7 @@ mod tests {
                         on_delete: None,
                         on_update: None,
                         self_referencing: true,
+                        singularize: false,
                         num_suffix: 2,
                     },
                     Relation {
@@ -892,6 +900,7 @@ mod tests {
                         on_delete: None,
                         on_update: None,
                         self_referencing: false,
+                        singularize: false,
                         num_suffix: 1,
                     },
                     Relation {
@@ -902,6 +911,7 @@ mod tests {
                         on_delete: None,
                         on_update: None,
                         self_referencing: false,
+                        singularize: false,
                         num_suffix: 2,
                     },
                     Relation {
@@ -912,6 +922,7 @@ mod tests {
                         on_delete: None,
                         on_update: None,
                         self_referencing: false,
+                        singularize: false,
                         num_suffix: 0,
                     },
                 ],

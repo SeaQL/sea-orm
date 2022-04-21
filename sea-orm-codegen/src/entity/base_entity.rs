@@ -193,6 +193,7 @@ mod tests {
                     on_delete: Some(ForeignKeyAction::Cascade),
                     on_update: Some(ForeignKeyAction::Cascade),
                     self_referencing: false,
+                    singularize: false,
                     num_suffix: 0,
                 },
                 Relation {
@@ -203,6 +204,7 @@ mod tests {
                     on_delete: Some(ForeignKeyAction::Cascade),
                     on_update: Some(ForeignKeyAction::Cascade),
                     self_referencing: false,
+                    singularize: false,
                     num_suffix: 0,
                 },
             ],
