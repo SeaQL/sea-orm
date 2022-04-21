@@ -593,6 +593,7 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                singularize: false,
             },
             Entity {
                 table_name: "_cake_filling_".to_owned(),
@@ -643,6 +644,7 @@ mod tests {
                         name: "filling_id".to_owned(),
                     },
                 ],
+                singularize: false,
             },
             Entity {
                 table_name: "filling".to_owned(),
@@ -670,6 +672,7 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                singularize: false,
             },
             Entity {
                 table_name: "fruit".to_owned(),
@@ -722,6 +725,7 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                singularize: false,
             },
             Entity {
                 table_name: "vendor".to_owned(),
@@ -762,6 +766,7 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                singularize: false,
             },
             Entity {
                 table_name: "rust_keyword".to_owned(),
@@ -914,6 +919,7 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                singularize: false,
             },
         ]
     }

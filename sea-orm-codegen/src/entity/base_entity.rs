@@ -2,6 +2,7 @@ use crate::{Column, ConjunctRelation, PrimaryKey, Relation};
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::format_ident;
+use inflection::singular;
 
 #[derive(Clone, Debug)]
 pub struct Entity {
@@ -10,15 +11,26 @@ pub struct Entity {
     pub(crate) relations: Vec<Relation>,
     pub(crate) conjunct_relations: Vec<ConjunctRelation>,
     pub(crate) primary_keys: Vec<PrimaryKey>,
+    pub(crate) singularize: bool
 }
 
 impl Entity {
     pub fn get_table_name_snake_case(&self) -> String {
-        self.table_name.to_snake_case()
+        let name = self.table_name.to_snake_case();
+        if self.singularize {
+            singular(name)
+        } else {
+            name
+        }
     }
 
     pub fn get_table_name_camel_case(&self) -> String {
-        self.table_name.to_camel_case()
+        let name = self.table_name.to_camel_case();
+        if self.singularize {
+            singular(name)
+        } else {
+            name
+        }
     }
 
     pub fn get_table_name_snake_case_ident(&self) -> Ident {
@@ -198,6 +210,7 @@ mod tests {
             primary_keys: vec![PrimaryKey {
                 name: "id".to_owned(),
             }],
+            singularize: false,
         }
     }
 
