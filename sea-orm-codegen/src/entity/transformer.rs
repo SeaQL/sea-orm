@@ -9,7 +9,7 @@ use std::collections::HashMap;
 pub struct EntityTransformer;
 
 impl EntityTransformer {
-    pub fn transform(table_create_stmts: Vec<TableCreateStatement>) -> Result<EntityWriter, Error> {
+    pub fn transform(table_create_stmts: Vec<TableCreateStatement>, singularize: bool) -> Result<EntityWriter, Error> {
         let mut enums: HashMap<String, ActiveEnum> = HashMap::new();
         let mut inverse_relations: HashMap<String, Vec<Relation>> = HashMap::new();
         let mut conjunct_relations: HashMap<String, Vec<ConjunctRelation>> = HashMap::new();
@@ -92,6 +92,7 @@ impl EntityTransformer {
                 .into_iter()
                 .rev()
                 .map(|mut rel: Relation| {
+                    rel.singularize = singularize;
                     rel.self_referencing = rel.ref_table == table_name;
                     if let Some(count) = ref_table_counts.get_mut(&rel.ref_table) {
                         rel.num_suffix = *count;
@@ -123,7 +124,7 @@ impl EntityTransformer {
                 relations: relations.clone(),
                 conjunct_relations: vec![],
                 primary_keys,
-                singularize: false
+                singularize
             };
             entities.insert(table_name.clone(), entity.clone());
             for (i, mut rel) in relations.into_iter().enumerate() {
@@ -146,7 +147,7 @@ impl EntityTransformer {
                         let conjunct_relation = ConjunctRelation {
                             via: table_name.clone(),
                             to: another_rel.ref_table.clone(),
-                            singularize: true,
+                            singularize,
                         };
                         if let Some(vec) = conjunct_relations.get_mut(&rel.ref_table) {
                             vec.push(conjunct_relation);

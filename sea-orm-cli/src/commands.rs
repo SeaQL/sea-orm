@@ -146,7 +146,7 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
 
-            let output = EntityTransformer::transform(table_stmts)?
+            let output = EntityTransformer::transform(table_stmts, singularize)?
                 .generate(expanded_format, WithSerde::from_str(with_serde).unwrap());
 
             let dir = Path::new(output_dir);
