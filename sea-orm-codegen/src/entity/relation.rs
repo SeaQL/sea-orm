@@ -228,13 +228,24 @@ mod tests {
                 singularize: false,
                 num_suffix: 0,
             },
+            Relation {
+                ref_table: "fillings".to_owned(),
+                columns: vec!["filling_id".to_owned()],
+                ref_columns: vec!["id".to_owned()],
+                rel_type: RelationType::HasMany,
+                on_delete: Some(ForeignKeyAction::Cascade),
+                on_update: None,
+                self_referencing: false,
+                singularize: true,
+                num_suffix: 0,
+            }
         ]
     }
 
     #[test]
     fn test_get_module_name() {
         let relations = setup();
-        let snake_cases = vec!["fruit", "filling", "filling"];
+        let snake_cases = vec!["fruit", "filling", "filling", "filling"];
         for (rel, snake_case) in relations.into_iter().zip(snake_cases) {
             assert_eq!(rel.get_module_name().unwrap().to_string(), snake_case);
         }
@@ -243,7 +254,7 @@ mod tests {
     #[test]
     fn test_get_enum_name() {
         let relations = setup();
-        let camel_cases = vec!["Fruit", "Filling", "Filling"];
+        let camel_cases = vec!["Fruit", "Filling", "Filling", "Filling"];
         for (rel, camel_case) in relations.into_iter().zip(camel_cases) {
             assert_eq!(rel.get_enum_name().to_string(), camel_case);
         }
@@ -259,6 +270,7 @@ mod tests {
                 .to(super::filling::Column::Id) \
                 .into()",
             "Entity::has_many(super::filling::Entity).into()",
+            "Entity::has_many(super::filling::Entity).into()"
         ];
         for (rel, rel_def) in relations.into_iter().zip(rel_defs) {
             let rel_def: TokenStream = rel_def.parse().unwrap();
@@ -270,7 +282,7 @@ mod tests {
     #[test]
     fn test_get_rel_type() {
         let relations = setup();
-        let rel_types = vec!["has_one", "belongs_to", "has_many"];
+        let rel_types = vec!["has_one", "belongs_to", "has_many", "has_many"];
         for (rel, rel_type) in relations.into_iter().zip(rel_types) {
             assert_eq!(rel.get_rel_type(), rel_type);
         }
@@ -279,7 +291,7 @@ mod tests {
     #[test]
     fn test_get_column_camel_case() {
         let relations = setup();
-        let cols = vec!["Id", "FillingId", "FillingId"];
+        let cols = vec!["Id", "FillingId", "FillingId", "FillingId"];
         for (rel, col) in relations.into_iter().zip(cols) {
             assert_eq!(rel.get_column_camel_case(), col);
         }
@@ -288,7 +300,7 @@ mod tests {
     #[test]
     fn test_get_ref_column_camel_case() {
         let relations = setup();
-        let ref_cols = vec!["CakeId", "Id", "Id"];
+        let ref_cols = vec!["CakeId", "Id", "Id", "Id"];
         for (rel, ref_col) in relations.into_iter().zip(ref_cols) {
             assert_eq!(rel.get_ref_column_camel_case(), ref_col);
         }
