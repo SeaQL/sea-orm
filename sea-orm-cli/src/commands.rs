@@ -15,6 +15,7 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                 .collect::<Vec<_>>();
             let expanded_format = args.is_present("EXPANDED_FORMAT");
             let with_serde = args.value_of("WITH_SERDE").unwrap();
+            let singularize = args.is_present("SINGULARIZE");
             if args.is_present("VERBOSE") {
                 let _ = tracing_subscriber::fmt()
                     .with_max_level(tracing::Level::DEBUG)
