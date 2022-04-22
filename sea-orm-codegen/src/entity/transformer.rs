@@ -1,6 +1,6 @@
 use crate::{
     ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation,
-    RelationType,
+    RelationType, NameResolver,
 };
 use sea_query::{ColumnSpec, TableCreateStatement};
 use std::collections::HashMap;
@@ -9,7 +9,7 @@ use std::collections::HashMap;
 pub struct EntityTransformer;
 
 impl EntityTransformer {
-    pub fn transform(table_create_stmts: Vec<TableCreateStatement>) -> Result<EntityWriter, Error> {
+    pub fn transform(table_create_stmts: Vec<TableCreateStatement>, name_resolver: Box<dyn NameResolver>) -> Result<EntityWriter, Error> {
         let mut enums: HashMap<String, ActiveEnum> = HashMap::new();
         let mut inverse_relations: HashMap<String, Vec<Relation>> = HashMap::new();
         let mut conjunct_relations: HashMap<String, Vec<ConjunctRelation>> = HashMap::new();
@@ -205,6 +205,7 @@ impl EntityTransformer {
         Ok(EntityWriter {
             entities: entities.into_iter().map(|(_, v)| v).collect(),
             enums,
+            name_resolver
         })
     }
 }
