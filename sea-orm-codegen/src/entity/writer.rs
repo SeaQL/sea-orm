@@ -116,12 +116,16 @@ impl EntityWriterContext {
     pub fn new(
         expanded_format: bool,
         with_serde: WithSerde,
+        name_resolver: NameResolver,
+        with_copy_enums: bool,
         date_time_crate: DateTimeCrate,
         schema_name: Option<String>,
     ) -> Self {
         Self {
             expanded_format,
             with_serde,
+            name_resolver,
+            with_copy_enums,
             date_time_crate,
             schema_name,
         }
