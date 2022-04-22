@@ -1,7 +1,9 @@
-use heck::{CamelCase, SnakeCase};
+use heck::{CamelCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{ForeignKeyAction, TableForeignKey};
+
+use super::name_resolver::{NameResolver};
 
 #[derive(Clone, Debug)]
 pub enum RelationType {
@@ -23,6 +25,27 @@ pub struct Relation {
 }
 
 impl Relation {
+    pub fn resolve_enum_name(&self, name_resolver: &dyn NameResolver) -> Ident {
+        let name = if self.self_referencing {
+            format_ident!("SelfRef")
+        } else {
+            format_ident!("{}", name_resolver.resolve_relation_name(self.ref_table.as_str()))
+        };
+        if self.num_suffix > 0 {
+            format_ident!("{}{}", name, self.num_suffix)
+        } else {
+            name
+        }
+    }
+
+    pub fn resolve_module_name(&self, name_resolver: &dyn NameResolver) -> Option<Ident> {
+        if self.self_referencing {
+            None
+        } else {
+            Some(format_ident!("{}", name_resolver.resolve_module_name(self.ref_table.as_str())))
+        }
+    }
+    
     pub fn get_enum_name(&self) -> Ident {
         let name = if self.self_referencing {
             format_ident!("SelfRef")
@@ -41,6 +64,38 @@ impl Relation {
             None
         } else {
             Some(format_ident!("{}", self.ref_table.to_snake_case()))
+        }
+    }
+
+    pub fn resolve_def(&self, name_resolver: &dyn NameResolver) -> TokenStream {
+        let rel_type = self.get_rel_type();
+        let module_name = self.resolve_module_name(name_resolver);
+        let ref_entity = if module_name.is_some() {
+            quote! { super::#module_name::Entity }
+        } else {
+            quote! { Entity }
+        };
+        match self.rel_type {
+            RelationType::HasOne | RelationType::HasMany => {
+                quote! {
+                    Entity::#rel_type(#ref_entity).into()
+                }
+            }
+            RelationType::BelongsTo => {
+                let column_camel_case = self.get_column_camel_case();
+                let ref_column_camel_case = self.get_ref_column_camel_case();
+                let to_col = if module_name.is_some() {
+                    quote! { super::#module_name::Column::#ref_column_camel_case }
+                } else {
+                    quote! { Column::#ref_column_camel_case }
+                };
+                quote! {
+                    Entity::#rel_type(#ref_entity)
+                        .from(Column::#column_camel_case)
+                        .to(#to_col)
+                        .into()
+                }
+            }
         }
     }
 
@@ -71,6 +126,54 @@ impl Relation {
                         .from(Column::#column_camel_case)
                         .to(#to_col)
                         .into()
+                }
+            }
+        }
+    }
+
+    pub fn resolve_attrs(&self, name_resolver: &dyn NameResolver) -> TokenStream {
+        let rel_type = self.get_rel_type();
+        let module_name = if let Some(module_name) = self.resolve_module_name(name_resolver) {
+            format!("super::{}::", module_name)
+        } else {
+            String::new()
+        };
+        let ref_entity = format!("{}Entity", module_name);
+        match self.rel_type {
+            RelationType::HasOne | RelationType::HasMany => {
+                quote! {
+                    #[sea_orm(#rel_type = #ref_entity)]
+                }
+            }
+            RelationType::BelongsTo => {
+                let column_camel_case = self.get_column_camel_case();
+                let ref_column_camel_case = self.get_ref_column_camel_case();
+                let from = format!("Column::{}", column_camel_case);
+                let to = format!("{}Column::{}", module_name, ref_column_camel_case);
+                let on_update = if let Some(action) = &self.on_update {
+                    let action = Self::get_foreign_key_action(action);
+                    quote! {
+                        on_update = #action,
+                    }
+                } else {
+                    quote! {}
+                };
+                let on_delete = if let Some(action) = &self.on_delete {
+                    let action = Self::get_foreign_key_action(action);
+                    quote! {
+                        on_delete = #action,
+                    }
+                } else {
+                    quote! {}
+                };
+                quote! {
+                    #[sea_orm(
+                        #rel_type = #ref_entity,
+                        from = #from,
+                        to = #to,
+                        #on_update
+                        #on_delete
+                    )]
                 }
             }
         }
