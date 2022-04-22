@@ -2,6 +2,8 @@ use heck::{CamelCase, SnakeCase};
 use proc_macro2::Ident;
 use quote::format_ident;
 
+use crate::NameResolver;
+
 #[derive(Clone, Debug)]
 pub struct ConjunctRelation {
     pub(crate) via: String,
@@ -9,6 +11,18 @@ pub struct ConjunctRelation {
 }
 
 impl ConjunctRelation {
+    pub fn resolve_via_module_name(&self, name_resolver: &dyn NameResolver) -> Ident {
+        format_ident!("{}", name_resolver.resolve_module_name(&self.via))
+    }
+
+    pub fn resolve_to_module_name(&self, name_resolver: &dyn NameResolver) -> Ident {
+        format_ident!("{}", name_resolver.resolve_module_name(&self.to))
+    }
+
+    pub fn resolve_to_relation_name(&self, name_resolver: &dyn NameResolver) -> Ident {
+        format_ident!("{}", name_resolver.resolve_relation_name(&self.to))
+    }
+
     pub fn get_via_snake_case(&self) -> Ident {
         format_ident!("{}", self.via.to_snake_case())
     }
