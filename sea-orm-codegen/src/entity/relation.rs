@@ -1,4 +1,4 @@
-use heck::{CamelCase};
+use heck::{CamelCase,SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{ForeignKeyAction, TableForeignKey};
