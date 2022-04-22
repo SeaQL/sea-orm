@@ -4,6 +4,7 @@ mod column;
 mod conjunct_relation;
 mod primary_key;
 mod relation;
+mod name_resolver;
 mod transformer;
 mod writer;
 
@@ -13,5 +14,6 @@ pub use column::*;
 pub use conjunct_relation::*;
 pub use primary_key::*;
 pub use relation::*;
+pub use name_resolver::*;
 pub use transformer::*;
 pub use writer::*;
