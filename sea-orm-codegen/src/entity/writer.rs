@@ -1,4 +1,4 @@
-use crate::{ActiveEnum, Entity};
+use crate::{ActiveEnum, Entity, NameResolver};
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -9,6 +9,7 @@ use syn::{punctuated::Punctuated, token::Comma};
 pub struct EntityWriter {
     pub(crate) entities: Vec<Entity>,
     pub(crate) enums: HashMap<String, ActiveEnum>,
+    pub(crate) name_resolver: Box<dyn NameResolver>
 }
 
 pub struct WriterOutput {
@@ -97,13 +98,13 @@ impl EntityWriter {
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);
                 let code_blocks = if expanded_format {
-                    Self::gen_expanded_code_blocks(entity, with_serde)
+                    Self::gen_expanded_code_blocks(entity, with_serde, &*self.name_resolver)
                 } else {
-                    Self::gen_compact_code_blocks(entity, with_serde)
+                    Self::gen_compact_code_blocks(entity, with_serde, &*self.name_resolver)
                 };
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
-                    name: format!("{}.rs", entity.get_table_name_snake_case()),
+                    name: format!("{}.rs", entity.resolve_module_name(&*self.name_resolver)),
                     content: lines.join("\n\n"),
                 }
             })
@@ -113,7 +114,7 @@ impl EntityWriter {
     pub fn write_mod(&self) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        let code_blocks: Vec<TokenStream> = self.entities.iter().map(Self::gen_mod).collect();
+        let code_blocks: Vec<TokenStream> = self.entities.iter().map(|entity| Self::gen_mod(entity, &*self.name_resolver)).collect();
         Self::write(
             &mut lines,
             vec![quote! {
@@ -139,7 +140,7 @@ impl EntityWriter {
     pub fn write_prelude(&self) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        let code_blocks = self.entities.iter().map(Self::gen_prelude_use).collect();
+        let code_blocks = self.entities.iter().map(|entity| Self::gen_prelude_use(entity, &*self.name_resolver)).collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
             name: "prelude.rs".to_owned(),
@@ -183,7 +184,7 @@ impl EntityWriter {
         lines.push("".to_owned());
     }
 
-    pub fn gen_expanded_code_blocks(entity: &Entity, with_serde: &WithSerde) -> Vec<TokenStream> {
+    pub fn gen_expanded_code_blocks(entity: &Entity, with_serde: &WithSerde, name_resolver: &dyn NameResolver) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
         let mut code_blocks = vec![
@@ -194,31 +195,31 @@ impl EntityWriter {
             Self::gen_column_enum(entity),
             Self::gen_primary_key_enum(entity),
             Self::gen_impl_primary_key(entity),
-            Self::gen_relation_enum(entity),
+            Self::gen_relation_enum(entity, name_resolver),
             Self::gen_impl_column_trait(entity),
-            Self::gen_impl_relation_trait(entity),
+            Self::gen_impl_relation_trait(entity, name_resolver),
         ];
-        code_blocks.extend(Self::gen_impl_related(entity));
-        code_blocks.extend(Self::gen_impl_conjunct_related(entity));
+        code_blocks.extend(Self::gen_impl_related(entity, name_resolver));
+        code_blocks.extend(Self::gen_impl_conjunct_related(entity, name_resolver));
         code_blocks.extend(vec![Self::gen_impl_active_model_behavior()]);
         code_blocks
     }
 
-    pub fn gen_compact_code_blocks(entity: &Entity, with_serde: &WithSerde) -> Vec<TokenStream> {
+    pub fn gen_compact_code_blocks(entity: &Entity, with_serde: &WithSerde, name_resolver: &dyn NameResolver) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
         let mut code_blocks = vec![imports, Self::gen_compact_model_struct(entity, with_serde)];
-        let relation_defs = if entity.get_relation_enum_name().is_empty() {
+        let relation_defs = if entity.resolve_relation_enum_name(name_resolver).is_empty() {
             vec![
-                Self::gen_relation_enum(entity),
-                Self::gen_impl_relation_trait(entity),
+                Self::gen_relation_enum(entity, name_resolver),
+                Self::gen_impl_relation_trait(entity, name_resolver),
             ]
         } else {
-            vec![Self::gen_compact_relation_enum(entity)]
+            vec![Self::gen_compact_relation_enum(entity, name_resolver)]
         };
         code_blocks.extend(relation_defs);
-        code_blocks.extend(Self::gen_impl_related(entity));
-        code_blocks.extend(Self::gen_impl_conjunct_related(entity));
+        code_blocks.extend(Self::gen_impl_related(entity, name_resolver));
+        code_blocks.extend(Self::gen_impl_conjunct_related(entity, name_resolver));
         code_blocks.extend(vec![Self::gen_impl_active_model_behavior()]);
         code_blocks
     }
@@ -345,8 +346,8 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_relation_enum(entity: &Entity) -> TokenStream {
-        let relation_enum_name = entity.get_relation_enum_name();
+    pub fn gen_relation_enum(entity: &Entity, name_resolver: &dyn NameResolver) -> TokenStream {
+        let relation_enum_name = entity.resolve_relation_enum_name(name_resolver);
         quote! {
             #[derive(Copy, Clone, Debug, EnumIter)]
             pub enum Relation {
@@ -371,9 +372,9 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_impl_relation_trait(entity: &Entity) -> TokenStream {
-        let relation_enum_name = entity.get_relation_enum_name();
-        let relation_defs = entity.get_relation_defs();
+    pub fn gen_impl_relation_trait(entity: &Entity, name_resolver: &dyn NameResolver) -> TokenStream {
+        let relation_enum_name = entity.resolve_relation_enum_name(name_resolver);
+        let relation_defs = entity.resolve_relation_defs(name_resolver);
         let quoted = if relation_enum_name.is_empty() {
             quote! {
                 panic!("No RelationDef")
@@ -394,14 +395,14 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_impl_related(entity: &Entity) -> Vec<TokenStream> {
+    pub fn gen_impl_related(entity: &Entity, name_resolver: &dyn NameResolver) -> Vec<TokenStream> {
         entity
             .relations
             .iter()
             .filter(|rel| !rel.self_referencing && rel.num_suffix == 0)
             .map(|rel| {
-                let enum_name = rel.get_enum_name();
-                let module_name = rel.get_module_name();
+                let enum_name = rel.resolve_enum_name(name_resolver);
+                let module_name = rel.resolve_module_name(name_resolver);
                 let inner = quote! {
                     fn to() -> RelationDef {
                         Relation::#enum_name.def()
@@ -420,24 +421,26 @@ impl EntityWriter {
             .collect()
     }
 
-    pub fn gen_impl_conjunct_related(entity: &Entity) -> Vec<TokenStream> {
-        let table_name_camel_case = entity.get_table_name_camel_case_ident();
-        let via_snake_case = entity.get_conjunct_relations_via_snake_case();
-        let to_snake_case = entity.get_conjunct_relations_to_snake_case();
-        let to_camel_case = entity.get_conjunct_relations_to_camel_case();
-        via_snake_case
+    pub fn gen_impl_conjunct_related(entity: &Entity, name_resolver: &dyn NameResolver) -> Vec<TokenStream> {
+        let entity_name = entity.resolve_entity_name_ident(name_resolver);
+
+        let via_module_name = entity.resolve_conjunct_relations_via_module_name(name_resolver);
+        let to_module_name = entity.resolve_conjunct_relations_to_module_name(name_resolver);
+        let to_relation_name = entity.resolve_conjunct_relations_to_relation_name(name_resolver);
+
+        via_module_name
             .into_iter()
-            .zip(to_snake_case)
-            .zip(to_camel_case)
-            .map(|((via_snake_case, to_snake_case), to_camel_case)| {
+            .zip(to_module_name)
+            .zip(to_relation_name)
+            .map(|((via_module_name, to_module_name), to_relation_name)| {
                 quote! {
-                    impl Related<super::#to_snake_case::Entity> for Entity {
+                    impl Related<super::#to_module_name::Entity> for Entity {
                         fn to() -> RelationDef {
-                            super::#via_snake_case::Relation::#to_camel_case.def()
+                            super::#via_module_name::Relation::#to_relation_name.def()
                         }
 
                         fn via() -> Option<RelationDef> {
-                            Some(super::#via_snake_case::Relation::#table_name_camel_case.def().rev())
+                            Some(super::#via_module_name::Relation::#entity_name.def().rev())
                         }
                     }
                 }
@@ -451,18 +454,18 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_mod(entity: &Entity) -> TokenStream {
-        let table_name_snake_case_ident = entity.get_table_name_snake_case_ident();
+    pub fn gen_mod(entity: &Entity, name_resolver: &dyn NameResolver) -> TokenStream {
+        let module_name = entity.resolve_module_name(name_resolver);
         quote! {
-            pub mod #table_name_snake_case_ident;
+            pub mod #module_name;
         }
     }
 
-    pub fn gen_prelude_use(entity: &Entity) -> TokenStream {
-        let table_name_snake_case_ident = entity.get_table_name_snake_case_ident();
-        let table_name_camel_case_ident = entity.get_table_name_camel_case_ident();
+    pub fn gen_prelude_use(entity: &Entity, name_resolver: &dyn NameResolver) -> TokenStream {
+        let module_name = entity.resolve_module_name(name_resolver);
+        let entity_name = entity.resolve_entity_name(name_resolver);
         quote! {
-            pub use super::#table_name_snake_case_ident::Entity as #table_name_camel_case_ident;
+            pub use super::#module_name::Entity as #entity_name;
         }
     }
 
@@ -530,9 +533,9 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_compact_relation_enum(entity: &Entity) -> TokenStream {
-        let relation_enum_name = entity.get_relation_enum_name();
-        let attrs = entity.get_relation_attrs();
+    pub fn gen_compact_relation_enum(entity: &Entity, name_resolver: &dyn NameResolver) -> TokenStream {
+        let relation_enum_name = entity.resolve_relation_enum_name(name_resolver);
+        let attrs = entity.resolve_relation_attrs(name_resolver);
         quote! {
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
             pub enum Relation {
@@ -549,7 +552,7 @@ impl EntityWriter {
 mod tests {
     use crate::{
         Column, ConjunctRelation, Entity, EntityWriter, PrimaryKey, Relation, RelationType,
-        WithSerde,
+        WithSerde, NameResolver, DefaultNameResolver, SingularNameResolver,
     };
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
@@ -945,7 +948,7 @@ mod tests {
             }
             let content = lines.join("");
             let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_expanded_code_blocks(entity, &crate::WithSerde::None)
+            let generated = EntityWriter::gen_expanded_code_blocks(entity, &crate::WithSerde::None, &DefaultNameResolver)
                 .into_iter()
                 .skip(1)
                 .fold(TokenStream::new(), |mut acc, tok| {
@@ -985,7 +988,7 @@ mod tests {
             }
             let content = lines.join("");
             let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_compact_code_blocks(entity, &crate::WithSerde::None)
+            let generated = EntityWriter::gen_compact_code_blocks(entity, &crate::WithSerde::None, &DefaultNameResolver)
                 .into_iter()
                 .skip(1)
                 .fold(TokenStream::new(), |mut acc, tok| {
@@ -1010,6 +1013,7 @@ mod tests {
             &(
                 include_str!("../../tests/compact_with_serde/cake_none.rs").into(),
                 WithSerde::None,
+                &DefaultNameResolver,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1018,6 +1022,7 @@ mod tests {
             &(
                 include_str!("../../tests/compact_with_serde/cake_serialize.rs").into(),
                 WithSerde::Serialize,
+                &DefaultNameResolver,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1026,6 +1031,7 @@ mod tests {
             &(
                 include_str!("../../tests/compact_with_serde/cake_deserialize.rs").into(),
                 WithSerde::Deserialize,
+                &DefaultNameResolver,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1034,6 +1040,7 @@ mod tests {
             &(
                 include_str!("../../tests/compact_with_serde/cake_both.rs").into(),
                 WithSerde::Both,
+                &DefaultNameResolver,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1044,6 +1051,7 @@ mod tests {
             &(
                 include_str!("../../tests/expanded_with_serde/cake_none.rs").into(),
                 WithSerde::None,
+                &DefaultNameResolver,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1052,6 +1060,7 @@ mod tests {
             &(
                 include_str!("../../tests/expanded_with_serde/cake_serialize.rs").into(),
                 WithSerde::Serialize,
+                &DefaultNameResolver,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1060,6 +1069,7 @@ mod tests {
             &(
                 include_str!("../../tests/expanded_with_serde/cake_deserialize.rs").into(),
                 WithSerde::Deserialize,
+                &DefaultNameResolver,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1068,6 +1078,7 @@ mod tests {
             &(
                 include_str!("../../tests/expanded_with_serde/cake_both.rs").into(),
                 WithSerde::Both,
+                &DefaultNameResolver,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1075,10 +1086,66 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn test_gen_with_name_resolver() -> io::Result<()> {
+        let cake_entity = Entity {
+            table_name: "cakes".to_owned(),
+            columns: vec![
+                Column {
+                    name: "id".to_owned(),
+                    col_type: ColumnType::Integer(Some(11)),
+                    auto_increment: true,
+                    not_null: true,
+                    unique: false,
+                },
+                Column {
+                    name: "name".to_owned(),
+                    col_type: ColumnType::Text,
+                    auto_increment: false,
+                    not_null: false,
+                    unique: false,
+                },
+            ],
+            relations: vec![Relation {
+                ref_table: "fruits".to_owned(),
+                columns: vec![],
+                ref_columns: vec![],
+                rel_type: RelationType::HasMany,
+                on_delete: None,
+                on_update: None,
+                self_referencing: false,
+                num_suffix: 0,
+            }],
+            conjunct_relations: vec![ConjunctRelation {
+                via: "cake_fillings".to_owned(),
+                to: "fillings".to_owned(),
+            }],
+            primary_keys: vec![PrimaryKey {
+                name: "id".to_owned(),
+            }],
+        };
+
+        assert_eq!(cake_entity.get_table_name_snake_case(), "cakes");
+
+        let name_resolver = SingularNameResolver;
+
+        assert_serde_variant_results(
+            &cake_entity,
+            &(
+                include_str!("../../tests/compact/singular-cake.rs").into(),
+                WithSerde::None,
+                &name_resolver,
+            ),
+            Box::new(EntityWriter::gen_compact_code_blocks),
+        )?;
+
+        Ok(())
+    }
+
     fn assert_serde_variant_results(
         cake_entity: &Entity,
-        entity_serde_variant: &(String, WithSerde),
-        generator: Box<dyn Fn(&Entity, &WithSerde) -> Vec<TokenStream>>,
+        entity_serde_variant: &(String, WithSerde, &dyn NameResolver),
+        generator: Box<dyn Fn(&Entity, &WithSerde, &dyn NameResolver) -> Vec<TokenStream>>,
     ) -> io::Result<()> {
         let mut reader = BufReader::new(entity_serde_variant.0.as_bytes());
         let mut lines: Vec<String> = Vec::new();
@@ -1092,7 +1159,7 @@ mod tests {
         }
         let content = lines.join("");
         let expected: TokenStream = content.parse().unwrap();
-        let generated = generator(cake_entity, &entity_serde_variant.1)
+        let generated = generator(cake_entity, &entity_serde_variant.1, entity_serde_variant.2)
             .into_iter()
             .fold(TokenStream::new(), |mut acc, tok| {
                 acc.extend(tok);
