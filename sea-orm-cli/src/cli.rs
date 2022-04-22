@@ -70,6 +70,12 @@ pub fn build_cli() -> App<'static, 'static> {
                         .help("Automatically derive serde Serialize / Deserialize traits for the entity (none, serialize, deserialize, both)")
                         .takes_value(true)
                         .default_value("none")
+                )
+                .arg(
+                    Arg::with_name("SINGULARIZE")
+                        .long("singularize")
+                        .help("Generate module names in singular")
+                        .takes_value(false),
                 ),
         )
         .setting(AppSettings::SubcommandRequiredElseHelp);
@@ -108,4 +114,3 @@ pub fn build_cli() -> App<'static, 'static> {
         )
         .setting(AppSettings::SubcommandRequiredElseHelp)
 }
-

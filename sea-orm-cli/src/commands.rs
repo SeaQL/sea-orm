@@ -1,6 +1,6 @@
 
 use clap::ArgMatches;
-use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
+use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde, NameResolver, DefaultNameResolver, SingularNameResolver};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use url::Url;
 
@@ -15,6 +15,7 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                 .collect::<Vec<_>>();
             let expanded_format = args.is_present("EXPANDED_FORMAT");
             let with_serde = args.value_of("WITH_SERDE").unwrap();
+            let singularize = args.is_present("SINGULARIZE");
             if args.is_present("VERBOSE") {
                 let _ = tracing_subscriber::fmt()
                     .with_max_level(tracing::Level::DEBUG)
@@ -145,7 +146,13 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
 
-            let output = EntityTransformer::transform(table_stmts)?
+            let name_resolver: Box<dyn NameResolver> = if singularize {
+                Box::new(SingularNameResolver)
+            } else {
+                Box::new(DefaultNameResolver)
+            };
+
+            let output = EntityTransformer::transform(table_stmts, name_resolver)?
                 .generate(expanded_format, WithSerde::from_str(with_serde).unwrap());
 
             let dir = Path::new(output_dir);
