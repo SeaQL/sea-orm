@@ -1,4 +1,4 @@
-use crate::{Column, ConjunctRelation, PrimaryKey, Relation};
+use crate::{Column, ConjunctRelation, PrimaryKey, Relation, NameResolver};
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::format_ident;
@@ -13,6 +13,18 @@ pub struct Entity {
 }
 
 impl Entity {
+    pub fn resolve_module_name(&self, name_resolver: &dyn NameResolver) -> String {
+        name_resolver.resolve_module_name(self.table_name.as_str())
+    }
+
+    pub fn resolve_entity_name(&self, name_resolver: &dyn NameResolver) -> String {
+        name_resolver.resolve_entity_name(self.table_name.as_str())
+    }
+
+    pub fn resolve_entity_name_ident(&self, name_resolver: &dyn NameResolver) -> Ident {
+        format_ident!("{}", self.resolve_entity_name(name_resolver))
+    }
+
     pub fn get_table_name_snake_case(&self) -> String {
         self.table_name.to_snake_case()
     }
@@ -73,10 +85,24 @@ impl Entity {
             .collect()
     }
 
+    pub fn resolve_relation_module_name(&self, name_resolver: &dyn NameResolver) -> Vec<Option<Ident>>  {
+        self.relations
+            .iter()
+            .map(|rel| rel.resolve_module_name(name_resolver))
+            .collect()
+    }
+
     pub fn get_relation_module_name(&self) -> Vec<Option<Ident>> {
         self.relations
             .iter()
             .map(|rel| rel.get_module_name())
+            .collect()
+    }
+
+    pub fn resolve_relation_enum_name(&self, name_resolver: &dyn NameResolver) -> Vec<Ident> {
+        self.relations
+            .iter()
+            .map(|rel| rel.resolve_enum_name(name_resolver))
             .collect()
     }
 
@@ -87,8 +113,16 @@ impl Entity {
             .collect()
     }
 
+    pub fn resolve_relation_defs(&self, name_resolver: &dyn NameResolver) -> Vec<TokenStream> {
+        self.relations.iter().map(|rel| rel.resolve_def(name_resolver)).collect()
+    }
+
     pub fn get_relation_defs(&self) -> Vec<TokenStream> {
         self.relations.iter().map(|rel| rel.get_def()).collect()
+    }
+
+    pub fn resolve_relation_attrs(&self, name_resolver: &dyn NameResolver) -> Vec<TokenStream> {
+        self.relations.iter().map(|rel| rel.resolve_attrs(name_resolver)).collect()
     }
 
     pub fn get_relation_attrs(&self) -> Vec<TokenStream> {
@@ -123,6 +157,27 @@ impl Entity {
         } else {
             TokenStream::new()
         }
+    }
+
+    pub fn resolve_conjunct_relations_via_module_name(&self, name_resolver: &dyn NameResolver) -> Vec<Ident> {
+        self.conjunct_relations
+            .iter()
+            .map(|con_rel| con_rel.resolve_via_module_name(name_resolver))
+            .collect()
+    }
+
+    pub fn resolve_conjunct_relations_to_module_name(&self, name_resolver: &dyn NameResolver) -> Vec<Ident> {
+        self.conjunct_relations
+            .iter()
+            .map(|con_rel| con_rel.resolve_to_module_name(name_resolver))
+            .collect()
+    }
+
+    pub fn resolve_conjunct_relations_to_relation_name(&self, name_resolver: &dyn NameResolver) -> Vec<Ident> {
+        self.conjunct_relations
+            .iter()
+            .map(|con_rel| con_rel.resolve_to_relation_name(name_resolver))
+            .collect()
     }
 
     pub fn get_conjunct_relations_via_snake_case(&self) -> Vec<Ident> {
