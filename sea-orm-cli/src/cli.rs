@@ -180,6 +180,13 @@ pub enum GenerateSubcommands {
         with_copy_enums: bool,
 
         #[clap(
+            long,
+            default_value = "true",
+            help = "Generate module names in singular."
+        )]
+        singularize: bool,
+
+        #[clap(
             arg_enum,
             value_parser,
             long,
