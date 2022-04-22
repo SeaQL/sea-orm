@@ -455,15 +455,15 @@ impl EntityWriter {
     }
 
     pub fn gen_mod(entity: &Entity, name_resolver: &dyn NameResolver) -> TokenStream {
-        let module_name = entity.resolve_module_name(name_resolver);
+        let module_name = format_ident!("{}", entity.resolve_module_name(name_resolver));
         quote! {
             pub mod #module_name;
         }
     }
 
     pub fn gen_prelude_use(entity: &Entity, name_resolver: &dyn NameResolver) -> TokenStream {
-        let module_name = entity.resolve_module_name(name_resolver);
-        let entity_name = entity.resolve_entity_name(name_resolver);
+        let module_name = format_ident!("{}", entity.resolve_module_name(name_resolver));
+        let entity_name = format_ident!("{}", entity.resolve_entity_name(name_resolver));
         quote! {
             pub use super::#module_name::Entity as #entity_name;
         }
