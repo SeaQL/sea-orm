@@ -75,7 +75,14 @@ pub fn build_cli() -> App<'static, 'static> {
                     Arg::with_name("SINGULARIZE")
                         .long("singularize")
                         .help("Generate module names in singular")
-                        .takes_value(false),
+                        .takes_value(false)
+                )
+                .arg(
+                    Arg::with_name("MAX_CONNECTIONS")
+                        .long("max-connections")
+                        .help("The maximum amount of connections to use when connecting to the database.")
+                        .takes_value(true)
+                        .default_value("1")
                 ),
         )
         .setting(AppSettings::SubcommandRequiredElseHelp);
