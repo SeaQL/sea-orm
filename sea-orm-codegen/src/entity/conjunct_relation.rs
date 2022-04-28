@@ -11,15 +11,15 @@ pub struct ConjunctRelation {
 }
 
 impl ConjunctRelation {
-    pub fn resolve_via_module_name(&self, name_resolver: &dyn NameResolver) -> Ident {
+    pub fn resolve_via_module_name(&self, name_resolver: &NameResolver) -> Ident {
         format_ident!("{}", name_resolver.resolve_module_name(&self.via))
     }
 
-    pub fn resolve_to_module_name(&self, name_resolver: &dyn NameResolver) -> Ident {
+    pub fn resolve_to_module_name(&self, name_resolver: &NameResolver) -> Ident {
         format_ident!("{}", name_resolver.resolve_module_name(&self.to))
     }
 
-    pub fn resolve_to_relation_name(&self, name_resolver: &dyn NameResolver) -> Ident {
+    pub fn resolve_to_relation_name(&self, name_resolver: &NameResolver) -> Ident {
         format_ident!("{}", name_resolver.resolve_relation_name(&self.to))
     }
 

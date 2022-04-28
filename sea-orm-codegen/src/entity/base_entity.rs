@@ -13,15 +13,15 @@ pub struct Entity {
 }
 
 impl Entity {
-    pub fn resolve_module_name(&self, name_resolver: &dyn NameResolver) -> String {
+    pub fn resolve_module_name(&self, name_resolver: &NameResolver) -> String {
         name_resolver.resolve_module_name(self.table_name.as_str())
     }
 
-    pub fn resolve_entity_name(&self, name_resolver: &dyn NameResolver) -> String {
+    pub fn resolve_entity_name(&self, name_resolver: &NameResolver) -> String {
         name_resolver.resolve_entity_name(self.table_name.as_str())
     }
 
-    pub fn resolve_entity_name_ident(&self, name_resolver: &dyn NameResolver) -> Ident {
+    pub fn resolve_entity_name_ident(&self, name_resolver: &NameResolver) -> Ident {
         format_ident!("{}", self.resolve_entity_name(name_resolver))
     }
 
@@ -85,7 +85,7 @@ impl Entity {
             .collect()
     }
 
-    pub fn resolve_relation_module_name(&self, name_resolver: &dyn NameResolver) -> Vec<Option<Ident>>  {
+    pub fn resolve_relation_module_name(&self, name_resolver: &NameResolver) -> Vec<Option<Ident>>  {
         self.relations
             .iter()
             .map(|rel| rel.resolve_module_name(name_resolver))
@@ -99,7 +99,7 @@ impl Entity {
             .collect()
     }
 
-    pub fn resolve_relation_enum_name(&self, name_resolver: &dyn NameResolver) -> Vec<Ident> {
+    pub fn resolve_relation_enum_name(&self, name_resolver: &NameResolver) -> Vec<Ident> {
         self.relations
             .iter()
             .map(|rel| rel.resolve_enum_name(name_resolver))
@@ -113,7 +113,7 @@ impl Entity {
             .collect()
     }
 
-    pub fn resolve_relation_defs(&self, name_resolver: &dyn NameResolver) -> Vec<TokenStream> {
+    pub fn resolve_relation_defs(&self, name_resolver: &NameResolver) -> Vec<TokenStream> {
         self.relations.iter().map(|rel| rel.resolve_def(name_resolver)).collect()
     }
 
@@ -121,7 +121,7 @@ impl Entity {
         self.relations.iter().map(|rel| rel.get_def()).collect()
     }
 
-    pub fn resolve_relation_attrs(&self, name_resolver: &dyn NameResolver) -> Vec<TokenStream> {
+    pub fn resolve_relation_attrs(&self, name_resolver: &NameResolver) -> Vec<TokenStream> {
         self.relations.iter().map(|rel| rel.resolve_attrs(name_resolver)).collect()
     }
 
@@ -159,21 +159,21 @@ impl Entity {
         }
     }
 
-    pub fn resolve_conjunct_relations_via_module_name(&self, name_resolver: &dyn NameResolver) -> Vec<Ident> {
+    pub fn resolve_conjunct_relations_via_module_name(&self, name_resolver: &NameResolver) -> Vec<Ident> {
         self.conjunct_relations
             .iter()
             .map(|con_rel| con_rel.resolve_via_module_name(name_resolver))
             .collect()
     }
 
-    pub fn resolve_conjunct_relations_to_module_name(&self, name_resolver: &dyn NameResolver) -> Vec<Ident> {
+    pub fn resolve_conjunct_relations_to_module_name(&self, name_resolver: &NameResolver) -> Vec<Ident> {
         self.conjunct_relations
             .iter()
             .map(|con_rel| con_rel.resolve_to_module_name(name_resolver))
             .collect()
     }
 
-    pub fn resolve_conjunct_relations_to_relation_name(&self, name_resolver: &dyn NameResolver) -> Vec<Ident> {
+    pub fn resolve_conjunct_relations_to_relation_name(&self, name_resolver: &NameResolver) -> Vec<Ident> {
         self.conjunct_relations
             .iter()
             .map(|con_rel| con_rel.resolve_to_relation_name(name_resolver))

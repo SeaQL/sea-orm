@@ -1,6 +1,6 @@
 
 use clap::ArgMatches;
-use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde, NameResolver, DefaultNameResolver, SingularNameResolver};
+use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde, NameResolver};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use url::Url;
 
@@ -146,11 +146,7 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
 
-            let name_resolver: Box<dyn NameResolver> = if singularize {
-                Box::new(SingularNameResolver)
-            } else {
-                Box::new(DefaultNameResolver)
-            };
+            let name_resolver = NameResolver::new(singularize);
 
             let output = EntityTransformer::transform(table_stmts, name_resolver)?
                 .generate(expanded_format, WithSerde::from_str(with_serde).unwrap());

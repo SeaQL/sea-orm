@@ -9,7 +9,7 @@ use syn::{punctuated::Punctuated, token::Comma};
 pub struct EntityWriter {
     pub(crate) entities: Vec<Entity>,
     pub(crate) enums: HashMap<String, ActiveEnum>,
-    pub(crate) name_resolver: Box<dyn NameResolver>
+    pub(crate) name_resolver: NameResolver
 }
 
 pub struct WriterOutput {
@@ -98,13 +98,13 @@ impl EntityWriter {
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);
                 let code_blocks = if expanded_format {
-                    Self::gen_expanded_code_blocks(entity, with_serde, &*self.name_resolver)
+                    Self::gen_expanded_code_blocks(entity, with_serde, &self.name_resolver)
                 } else {
-                    Self::gen_compact_code_blocks(entity, with_serde, &*self.name_resolver)
+                    Self::gen_compact_code_blocks(entity, with_serde, &self.name_resolver)
                 };
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
-                    name: format!("{}.rs", entity.resolve_module_name(&*self.name_resolver)),
+                    name: format!("{}.rs", entity.resolve_module_name(&self.name_resolver)),
                     content: lines.join("\n\n"),
                 }
             })
@@ -114,7 +114,7 @@ impl EntityWriter {
     pub fn write_mod(&self) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        let code_blocks: Vec<TokenStream> = self.entities.iter().map(|entity| Self::gen_mod(entity, &*self.name_resolver)).collect();
+        let code_blocks: Vec<TokenStream> = self.entities.iter().map(|entity| Self::gen_mod(entity, &self.name_resolver)).collect();
         Self::write(
             &mut lines,
             vec![quote! {
@@ -140,7 +140,7 @@ impl EntityWriter {
     pub fn write_prelude(&self) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        let code_blocks = self.entities.iter().map(|entity| Self::gen_prelude_use(entity, &*self.name_resolver)).collect();
+        let code_blocks = self.entities.iter().map(|entity| Self::gen_prelude_use(entity, &self.name_resolver)).collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
             name: "prelude.rs".to_owned(),
@@ -184,7 +184,7 @@ impl EntityWriter {
         lines.push("".to_owned());
     }
 
-    pub fn gen_expanded_code_blocks(entity: &Entity, with_serde: &WithSerde, name_resolver: &dyn NameResolver) -> Vec<TokenStream> {
+    pub fn gen_expanded_code_blocks(entity: &Entity, with_serde: &WithSerde, name_resolver: &NameResolver) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
         let mut code_blocks = vec![
@@ -205,7 +205,7 @@ impl EntityWriter {
         code_blocks
     }
 
-    pub fn gen_compact_code_blocks(entity: &Entity, with_serde: &WithSerde, name_resolver: &dyn NameResolver) -> Vec<TokenStream> {
+    pub fn gen_compact_code_blocks(entity: &Entity, with_serde: &WithSerde, name_resolver: &NameResolver) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
         let mut code_blocks = vec![imports, Self::gen_compact_model_struct(entity, with_serde)];
@@ -346,7 +346,7 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_relation_enum(entity: &Entity, name_resolver: &dyn NameResolver) -> TokenStream {
+    pub fn gen_relation_enum(entity: &Entity, name_resolver: &NameResolver) -> TokenStream {
         let relation_enum_name = entity.resolve_relation_enum_name(name_resolver);
         quote! {
             #[derive(Copy, Clone, Debug, EnumIter)]
@@ -372,7 +372,7 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_impl_relation_trait(entity: &Entity, name_resolver: &dyn NameResolver) -> TokenStream {
+    pub fn gen_impl_relation_trait(entity: &Entity, name_resolver: &NameResolver) -> TokenStream {
         let relation_enum_name = entity.resolve_relation_enum_name(name_resolver);
         let relation_defs = entity.resolve_relation_defs(name_resolver);
         let quoted = if relation_enum_name.is_empty() {
@@ -395,7 +395,7 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_impl_related(entity: &Entity, name_resolver: &dyn NameResolver) -> Vec<TokenStream> {
+    pub fn gen_impl_related(entity: &Entity, name_resolver: &NameResolver) -> Vec<TokenStream> {
         entity
             .relations
             .iter()
@@ -421,7 +421,7 @@ impl EntityWriter {
             .collect()
     }
 
-    pub fn gen_impl_conjunct_related(entity: &Entity, name_resolver: &dyn NameResolver) -> Vec<TokenStream> {
+    pub fn gen_impl_conjunct_related(entity: &Entity, name_resolver: &NameResolver) -> Vec<TokenStream> {
         let entity_name = entity.resolve_entity_name_ident(name_resolver);
 
         let via_module_name = entity.resolve_conjunct_relations_via_module_name(name_resolver);
@@ -454,14 +454,14 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_mod(entity: &Entity, name_resolver: &dyn NameResolver) -> TokenStream {
+    pub fn gen_mod(entity: &Entity, name_resolver: &NameResolver) -> TokenStream {
         let module_name = format_ident!("{}", entity.resolve_module_name(name_resolver));
         quote! {
             pub mod #module_name;
         }
     }
 
-    pub fn gen_prelude_use(entity: &Entity, name_resolver: &dyn NameResolver) -> TokenStream {
+    pub fn gen_prelude_use(entity: &Entity, name_resolver: &NameResolver) -> TokenStream {
         let module_name = format_ident!("{}", entity.resolve_module_name(name_resolver));
         let entity_name = format_ident!("{}", entity.resolve_entity_name(name_resolver));
         quote! {
@@ -533,7 +533,7 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_compact_relation_enum(entity: &Entity, name_resolver: &dyn NameResolver) -> TokenStream {
+    pub fn gen_compact_relation_enum(entity: &Entity, name_resolver: &NameResolver) -> TokenStream {
         let relation_enum_name = entity.resolve_relation_enum_name(name_resolver);
         let attrs = entity.resolve_relation_attrs(name_resolver);
         quote! {
@@ -552,7 +552,7 @@ impl EntityWriter {
 mod tests {
     use crate::{
         Column, ConjunctRelation, Entity, EntityWriter, PrimaryKey, Relation, RelationType,
-        WithSerde, NameResolver, DefaultNameResolver, SingularNameResolver,
+        WithSerde, NameResolver
     };
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
@@ -948,7 +948,7 @@ mod tests {
             }
             let content = lines.join("");
             let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_expanded_code_blocks(entity, &crate::WithSerde::None, &DefaultNameResolver)
+            let generated = EntityWriter::gen_expanded_code_blocks(entity, &crate::WithSerde::None, &NameResolver::new(false))
                 .into_iter()
                 .skip(1)
                 .fold(TokenStream::new(), |mut acc, tok| {
@@ -988,7 +988,7 @@ mod tests {
             }
             let content = lines.join("");
             let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_compact_code_blocks(entity, &crate::WithSerde::None, &DefaultNameResolver)
+            let generated = EntityWriter::gen_compact_code_blocks(entity, &crate::WithSerde::None, &NameResolver::new(false))
                 .into_iter()
                 .skip(1)
                 .fold(TokenStream::new(), |mut acc, tok| {
@@ -1013,7 +1013,7 @@ mod tests {
             &(
                 include_str!("../../tests/compact_with_serde/cake_none.rs").into(),
                 WithSerde::None,
-                &DefaultNameResolver,
+                &NameResolver::new(false),
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1022,7 +1022,7 @@ mod tests {
             &(
                 include_str!("../../tests/compact_with_serde/cake_serialize.rs").into(),
                 WithSerde::Serialize,
-                &DefaultNameResolver,
+                &NameResolver::new(false),
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1031,7 +1031,7 @@ mod tests {
             &(
                 include_str!("../../tests/compact_with_serde/cake_deserialize.rs").into(),
                 WithSerde::Deserialize,
-                &DefaultNameResolver,
+                &NameResolver::new(false),
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1040,7 +1040,7 @@ mod tests {
             &(
                 include_str!("../../tests/compact_with_serde/cake_both.rs").into(),
                 WithSerde::Both,
-                &DefaultNameResolver,
+                &NameResolver::new(false),
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1051,7 +1051,7 @@ mod tests {
             &(
                 include_str!("../../tests/expanded_with_serde/cake_none.rs").into(),
                 WithSerde::None,
-                &DefaultNameResolver,
+                &NameResolver::new(false),
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1060,7 +1060,7 @@ mod tests {
             &(
                 include_str!("../../tests/expanded_with_serde/cake_serialize.rs").into(),
                 WithSerde::Serialize,
-                &DefaultNameResolver,
+                &NameResolver::new(false),
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1069,7 +1069,7 @@ mod tests {
             &(
                 include_str!("../../tests/expanded_with_serde/cake_deserialize.rs").into(),
                 WithSerde::Deserialize,
-                &DefaultNameResolver,
+                &NameResolver::new(false),
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1078,7 +1078,7 @@ mod tests {
             &(
                 include_str!("../../tests/expanded_with_serde/cake_both.rs").into(),
                 WithSerde::Both,
-                &DefaultNameResolver,
+                &NameResolver::new(false),
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1127,7 +1127,7 @@ mod tests {
 
         assert_eq!(cake_entity.get_table_name_snake_case(), "cakes");
 
-        let name_resolver = SingularNameResolver;
+        let name_resolver = NameResolver::new(true);
 
         assert_serde_variant_results(
             &cake_entity,
@@ -1144,8 +1144,8 @@ mod tests {
 
     fn assert_serde_variant_results(
         cake_entity: &Entity,
-        entity_serde_variant: &(String, WithSerde, &dyn NameResolver),
-        generator: Box<dyn Fn(&Entity, &WithSerde, &dyn NameResolver) -> Vec<TokenStream>>,
+        entity_serde_variant: &(String, WithSerde, &NameResolver),
+        generator: Box<dyn Fn(&Entity, &WithSerde, &NameResolver) -> Vec<TokenStream>>,
     ) -> io::Result<()> {
         let mut reader = BufReader::new(entity_serde_variant.0.as_bytes());
         let mut lines: Vec<String> = Vec::new();

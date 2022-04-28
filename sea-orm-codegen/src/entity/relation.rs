@@ -25,7 +25,7 @@ pub struct Relation {
 }
 
 impl Relation {
-    pub fn resolve_enum_name(&self, name_resolver: &dyn NameResolver) -> Ident {
+    pub fn resolve_enum_name(&self, name_resolver: &NameResolver) -> Ident {
         let name = if self.self_referencing {
             format_ident!("SelfRef")
         } else {
@@ -38,7 +38,7 @@ impl Relation {
         }
     }
 
-    pub fn resolve_module_name(&self, name_resolver: &dyn NameResolver) -> Option<Ident> {
+    pub fn resolve_module_name(&self, name_resolver: &NameResolver) -> Option<Ident> {
         if self.self_referencing {
             None
         } else {
@@ -67,7 +67,7 @@ impl Relation {
         }
     }
 
-    pub fn resolve_def(&self, name_resolver: &dyn NameResolver) -> TokenStream {
+    pub fn resolve_def(&self, name_resolver: &NameResolver) -> TokenStream {
         let rel_type = self.get_rel_type();
         let module_name = self.resolve_module_name(name_resolver);
         let ref_entity = if module_name.is_some() {
@@ -131,7 +131,7 @@ impl Relation {
         }
     }
 
-    pub fn resolve_attrs(&self, name_resolver: &dyn NameResolver) -> TokenStream {
+    pub fn resolve_attrs(&self, name_resolver: &NameResolver) -> TokenStream {
         let rel_type = self.get_rel_type();
         let module_name = if let Some(module_name) = self.resolve_module_name(name_resolver) {
             format!("super::{}::", module_name)
