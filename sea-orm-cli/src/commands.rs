@@ -307,9 +307,9 @@ fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<
     migrations.push(migration_name);
     let mut boxed_migrations = migrations
         .iter()
-        .map(|migration| format!("            Box::new({}::Migration)", migration))
+        .map(|migration| format!("            Box::new({}::Migration),", migration))
         .collect::<Vec<String>>()
-        .join(",\n");
+        .join("\n");
     boxed_migrations.push_str("\n");
     let boxed_migrations = format!("vec![\n{}        ]\n", boxed_migrations);
     let vec_regex = Regex::new(r"vec!\[[\s\S]+\]\n")?;
