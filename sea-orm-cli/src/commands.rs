@@ -294,7 +294,7 @@ fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<
     let mut migrator_file = fs::File::create(&migrator_filepath)?;
 
     // find existing mod declarations, add new line
-    let mod_regex = Regex::new(r"mod (?P<name>m\d{8}_\d{6}_\w+);")?;
+    let mod_regex = Regex::new(r"mod\s+(?P<name>m\d{8}_\d{6}_\w+);")?;
     let mods: Vec<_> = mod_regex.captures_iter(&migrator_content).collect();
     let mods_end = mods.last().unwrap().get(0).unwrap().end() + 1;
     updated_migrator_content.insert_str(mods_end, format!("mod {};\n", migration_name).as_str());
