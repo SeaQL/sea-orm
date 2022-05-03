@@ -195,7 +195,7 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
 /// #
 /// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
-#[proc_macro_derive(DerivePrimaryKey)]
+#[proc_macro_derive(DerivePrimaryKey, attributes(sea_orm))]
 pub fn derive_primary_key(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
 
