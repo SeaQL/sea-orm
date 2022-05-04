@@ -15,6 +15,9 @@ pub use crate::{
 #[cfg(feature = "with-json")]
 pub use serde_json::Value as Json;
 
+#[cfg(feature = "with-json")]
+pub use sea_query::JsonValue;
+
 #[cfg(feature = "with-chrono")]
 pub use chrono::NaiveDate as Date;
 

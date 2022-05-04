@@ -388,6 +388,52 @@ impl TryGetable for Decimal {
     }
 }
 
+#[cfg(feature = "with-json")]
+impl<T> TryGetable for sea_query::JsonValue<T>
+where
+    T: Sized + serde::Serialize,
+    for<'de> T: serde::Deserialize<'de>,
+{
+    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
+        let column = format!("{}{}", pre, col);
+        match &res.row {
+            #[cfg(feature = "sqlx-mysql")]
+            QueryResultRow::SqlxMySql(row) => {
+                use sqlx::Row;
+                row.try_get::<Option<serde_json::Value>, _>(column.as_str())
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null))
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => {
+                use sqlx::Row;
+                row.try_get::<Option<serde_json::Value>, _>(column.as_str())
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null))
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            QueryResultRow::SqlxSqlite(row) => {
+                use sqlx::Row;
+                row.try_get::<Option<serde_json::Value>, _>(column.as_str())
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null))
+            }
+            #[cfg(feature = "mock")]
+            #[allow(unused_variables)]
+            QueryResultRow::Mock(row) => {
+                row.try_get::<serde_json::Value>(column.as_str())
+                    .map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        TryGetError::Null
+                    })
+            }
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
+        }
+        .map(|json| sea_query::JsonValue(serde_json::from_value(json).unwrap()))
+    }
+}
+
 #[cfg(feature = "with-uuid")]
 try_getable_all!(uuid::Uuid);
 
