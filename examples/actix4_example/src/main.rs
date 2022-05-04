@@ -1,3 +1,7 @@
+#[path = "main_test.rs"]
+#[cfg(test)]
+mod main_test;
+
 use actix_files::Files as Fs;
 use actix_web::{
     error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result,
@@ -16,11 +20,11 @@ use tera::Tera;
 
 const DEFAULT_POSTS_PER_PAGE: usize = 5;
 
-#[derive(Debug, Clone)]
 struct AppState {
     templates: tera::Tera,
     conn: DatabaseConnection,
 }
+
 #[derive(Debug, Deserialize)]
 pub struct Params {
     page: Option<usize>,
@@ -174,13 +178,13 @@ async fn main() -> std::io::Result<()> {
     let conn = sea_orm::Database::connect(&db_url).await.unwrap();
     Migrator::up(&conn, None).await.unwrap();
     let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).unwrap();
-    let state = AppState { templates, conn };
+    let state = web::Data::new(AppState { templates, conn });
 
     let mut listenfd = ListenFd::from_env();
     let mut server = HttpServer::new(move || {
         App::new()
             .service(Fs::new("/static", "./static"))
-            .data(state.clone())
+            .app_data(state.clone())
             .wrap(middleware::Logger::default()) // enable logger
             .configure(init)
     });

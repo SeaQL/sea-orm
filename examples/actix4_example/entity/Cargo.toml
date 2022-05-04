@@ -19,6 +19,7 @@ features = [
   "debug-print",
   "runtime-actix-native-tls",
   "sqlx-mysql",
+  "mock",
   # "sqlx-postgres",
   # "sqlx-sqlite",
 ]
