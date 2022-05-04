@@ -97,7 +97,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut column_name = if original_field_name
                         != original_field_name.to_camel_case().to_snake_case()
                     {
-                        Some(original_field_name)
+                        // `to_snake_case` was used to trim prefix and tailing underscore
+                        Some(original_field_name.to_snake_case())
                     } else {
                         None
                     };
