@@ -1,5 +1,5 @@
 [package]
-name = "sea-orm-actix-4-beta-example"
+name = "sea-orm-actix-example"
 version = "0.1.0"
 authors = ["Sam Samai <sam@studio2pi.com.au>"]
 edition = "2021"
@@ -9,12 +9,12 @@ publish = false
 members = [".", "entity", "migration"]
 
 [dependencies]
-actix-files = "0.6.0-beta.4"
-actix-http = "=3.0.0-beta.5"
-actix-rt = "2.2.0"
-actix-service = "=2.0.0-beta.5"
-actix-web = "=4.0.0-beta.5"
-
+actix-http = "2"
+actix-web = "3"
+actix-flash = "0.2"
+actix-files = "0.5"
+futures = { version = "^0.3" }
+futures-util = { version = "^0.3" }
 tera = "1.8.0"
 dotenv = "0.15"
 listenfd = "0.3.3"

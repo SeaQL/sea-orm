@@ -419,7 +419,7 @@ where
         }
     }
 
-    fn into_selector_raw<'a, C>(self, db: &C) -> SelectorRaw<S>
+    fn into_selector_raw<C>(self, db: &C) -> SelectorRaw<S>
     where
         C: ConnectionTrait,
     {

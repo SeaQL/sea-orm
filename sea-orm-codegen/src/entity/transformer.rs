@@ -108,15 +108,14 @@ impl EntityTransformer {
                     .get_indexes()
                     .iter()
                     .filter(|index| index.is_primary_key())
-                    .map(|index| {
+                    .flat_map(|index| {
                         index
                             .get_index_spec()
                             .get_column_names()
                             .into_iter()
                             .map(|name| PrimaryKey { name })
                             .collect::<Vec<_>>()
-                    })
-                    .flatten(),
+                    }),
             );
             let entity = Entity {
                 table_name: table_name.clone(),

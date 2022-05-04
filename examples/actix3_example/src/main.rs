@@ -1,4 +1,4 @@
-use actix_files::Files as Fs;
+use actix_files as fs;
 use actix_web::{
     error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result,
 };
@@ -34,7 +34,11 @@ struct FlashData {
 }
 
 #[get("/")]
-async fn list(req: HttpRequest, data: web::Data<AppState>) -> Result<HttpResponse, Error> {
+async fn list(
+    req: HttpRequest,
+    data: web::Data<AppState>,
+    opt_flash: Option<actix_flash::Message<FlashData>>,
+) -> Result<HttpResponse, Error> {
     let template = &data.templates;
     let conn = &data.conn;
 
@@ -58,6 +62,11 @@ async fn list(req: HttpRequest, data: web::Data<AppState>) -> Result<HttpRespons
     ctx.insert("posts_per_page", &posts_per_page);
     ctx.insert("num_pages", &num_pages);
 
+    if let Some(flash) = opt_flash {
+        let flash_inner = flash.into_inner();
+        ctx.insert("flash", &flash_inner);
+    }
+
     let body = template
         .render("index.html.tera", &ctx)
         .map_err(|_| error::ErrorInternalServerError("Template error"))?;
@@ -78,7 +87,7 @@ async fn new(data: web::Data<AppState>) -> Result<HttpResponse, Error> {
 async fn create(
     data: web::Data<AppState>,
     post_form: web::Form<post::Model>,
-) -> Result<HttpResponse, Error> {
+) -> actix_flash::Response<HttpResponse, FlashData> {
     let conn = &data.conn;
 
     let form = post_form.into_inner();
@@ -92,9 +101,12 @@ async fn create(
     .await
     .expect("could not insert post");
 
-    Ok(HttpResponse::Found()
-        .append_header(("location", "/"))
-        .finish())
+    let flash = FlashData {
+        kind: "success".to_owned(),
+        message: "Post successfully added.".to_owned(),
+    };
+
+    actix_flash::Response::with_redirect(flash, "/")
 }
 
 #[get("/{id}")]
@@ -122,7 +134,7 @@ async fn update(
     data: web::Data<AppState>,
     id: web::Path<i32>,
     post_form: web::Form<post::Model>,
-) -> Result<HttpResponse, Error> {
+) -> actix_flash::Response<HttpResponse, FlashData> {
     let conn = &data.conn;
     let form = post_form.into_inner();
 
@@ -135,13 +147,19 @@ async fn update(
     .await
     .expect("could not edit post");
 
-    Ok(HttpResponse::Found()
-        .append_header(("location", "/"))
-        .finish())
+    let flash = FlashData {
+        kind: "success".to_owned(),
+        message: "Post successfully updated.".to_owned(),
+    };
+
+    actix_flash::Response::with_redirect(flash, "/")
 }
 
 #[post("/delete/{id}")]
-async fn delete(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
+async fn delete(
+    data: web::Data<AppState>,
+    id: web::Path<i32>,
+) -> actix_flash::Response<HttpResponse, FlashData> {
     let conn = &data.conn;
 
     let post: post::ActiveModel = Post::find_by_id(id.into_inner())
@@ -153,9 +171,12 @@ async fn delete(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpRes
 
     post.delete(conn).await.unwrap();
 
-    Ok(HttpResponse::Found()
-        .append_header(("location", "/"))
-        .finish())
+    let flash = FlashData {
+        kind: "success".to_owned(),
+        message: "Post successfully deleted.".to_owned(),
+    };
+
+    actix_flash::Response::with_redirect(flash, "/")
 }
 
 #[actix_web::main]
@@ -179,10 +200,11 @@ async fn main() -> std::io::Result<()> {
     let mut listenfd = ListenFd::from_env();
     let mut server = HttpServer::new(move || {
         App::new()
-            .service(Fs::new("/static", "./static"))
             .data(state.clone())
             .wrap(middleware::Logger::default()) // enable logger
+            .wrap(actix_flash::Flash::default())
             .configure(init)
+            .service(fs::Files::new("/static", "./static").show_files_listing())
     });
 
     server = match listenfd.take_tcp_listener(0)? {

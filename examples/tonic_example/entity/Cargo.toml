@@ -17,9 +17,8 @@ version = "^0.7.0"
 features = [
   "macros",
   "debug-print",
-  "runtime-actix-native-tls",
-  "sqlx-mysql",
-  # "sqlx-postgres",
+  "runtime-tokio-rustls",
+  # "sqlx-mysql",
+  "sqlx-postgres",
   # "sqlx-sqlite",
 ]
-default-features = false

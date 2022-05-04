@@ -23,6 +23,12 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                     .try_init();
             }
 
+            let max_connections = args
+                .value_of("MAX_CONNECTIONS")
+                .map(str::parse::<u32>)
+                .transpose()?
+                .unwrap();
+
             // The database should be a valid URL that can be parsed
             // protocol://username:password@host/database_name
             let url = Url::parse(
@@ -99,9 +105,9 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
             let table_stmts = match url.scheme() {
                 "mysql" => {
                     use sea_schema::mysql::discovery::SchemaDiscovery;
-                    use sqlx::MySqlPool;
+                    use sqlx::MySql;
 
-                    let connection = MySqlPool::connect(url.as_str()).await?;
+                    let connection = connect::<MySql>(max_connections, url.as_str()).await?;
                     let schema_discovery = SchemaDiscovery::new(connection, database_name);
                     let schema = schema_discovery.discover().await;
                     schema
@@ -114,9 +120,9 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                 }
                 "sqlite" => {
                     use sea_schema::sqlite::SchemaDiscovery;
-                    use sqlx::SqlitePool;
+                    use sqlx::Sqlite;
 
-                    let connection = SqlitePool::connect(url.as_str()).await?;
+                    let connection = connect::<Sqlite>(max_connections, url.as_str()).await?;
                     let schema_discovery = SchemaDiscovery::new(connection);
                     let schema = schema_discovery.discover().await?;
                     schema
@@ -129,10 +135,10 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                 }
                 "postgres" | "postgresql" => {
                     use sea_schema::postgres::discovery::SchemaDiscovery;
-                    use sqlx::PgPool;
+                    use sqlx::Postgres;
 
                     let schema = args.value_of("DATABASE_SCHEMA").unwrap_or("public");
-                    let connection = PgPool::connect(url.as_str()).await?;
+                    let connection = connect::<Postgres>(max_connections, url.as_str()).await?;
                     let schema_discovery = SchemaDiscovery::new(connection, schema);
                     let schema = schema_discovery.discover().await;
                     schema
@@ -170,6 +176,17 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
     };
 
     Ok(())
+}
+
+async fn connect<DB>(max_connections: u32, url: &str) -> Result<sqlx::Pool<DB>, Box<dyn Error>>
+where
+    DB: sqlx::Database,
+{
+    sqlx::pool::PoolOptions::<DB>::new()
+        .max_connections(max_connections)
+        .connect(url)
+        .await
+        .map_err(Into::into)
 }
 
 pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {

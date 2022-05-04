@@ -102,10 +102,10 @@ where
     }
 }
 
-async fn exec_insert<'a, A, C>(
+async fn exec_insert<A, C>(
     primary_key: Option<ValueTuple>,
     statement: Statement,
-    db: &'a C,
+    db: &C,
 ) -> Result<InsertResult<A>, DbErr>
 where
     C: ConnectionTrait,
@@ -136,10 +136,10 @@ where
     Ok(InsertResult { last_insert_id })
 }
 
-async fn exec_insert_with_returning<'a, A, C>(
+async fn exec_insert_with_returning<A, C>(
     primary_key: Option<ValueTuple>,
     mut insert_statement: InsertStatement,
-    db: &'a C,
+    db: &C,
 ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
 where
     <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,

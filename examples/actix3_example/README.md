@@ -1,6 +1,8 @@
 ![screenshot](Screenshot.png)
 
-# Actix 4 Beta with SeaORM example app
+# Actix 3 with SeaORM example app
+
+> Actix Web 3 has been superseeded by [Actix Web 4](https://github.com/actix/actix-web).
 
 1. Modify the `DATABASE_URL` var in `.env` to point to your chosen database
 

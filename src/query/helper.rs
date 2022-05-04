@@ -67,6 +67,7 @@ pub trait QuerySelect: Sized {
         self.query().expr(SelectExpr {
             expr: col.into_simple_expr(),
             alias: Some(SeaRc::new(alias.into_identity())),
+            window: None,
         });
         self
     }

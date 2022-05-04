@@ -11,16 +11,14 @@ path = "src/lib.rs"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 
-[dependencies.async-graphql]
-version = "3.0.12"
-
 [dependencies.sea-orm]
+# path = "../../../" # remove this line in your own project
 version = "^0.7.0"
 features = [
   "macros",
-  "runtime-tokio-native-tls",
+  "debug-print",
+  "runtime-async-std-native-tls",
+  "sqlx-mysql",
   # "sqlx-postgres",
-  # "sqlx-mysql",
-  "sqlx-sqlite"
+  # "sqlx-sqlite",
 ]
-default-features = false

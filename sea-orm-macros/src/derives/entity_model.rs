@@ -220,7 +220,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             let field_type = &field.ty;
                             let temp = quote! { #field_type }
                                 .to_string() //E.g.: "Option < String >"
-                                .replace(" ", "");
+                                .replace(' ', "");
                             let temp = if temp.starts_with("Option<") {
                                 nullable = true;
                                 &temp[7..(temp.len() - 1)]
