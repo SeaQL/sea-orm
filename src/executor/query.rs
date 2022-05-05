@@ -396,7 +396,7 @@ where
 {
     fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
         let column = format!("{}{}", pre, col);
-        match &res.row {
+        let res = match &res.row {
             #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(row) => {
                 use sqlx::Row;
@@ -429,8 +429,15 @@ where
             }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
+        };
+        match res {
+            Ok(json) => {
+                let json_value = serde_json::from_value(json)
+                    .map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))?;
+                Ok(sea_query::JsonValue(json_value))
+            }
+            Err(e) => Err(e),
         }
-        .map(|json| sea_query::JsonValue(serde_json::from_value(json).unwrap()))
     }
 }
 
