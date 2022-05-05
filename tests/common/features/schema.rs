@@ -292,6 +292,7 @@ pub async fn create_serde_json_value_table(db: &DbConn) -> Result<ExecResult, Db
                 .json()
                 .not_null(),
         )
+        .col(ColumnDef::new(serde_json_value::Column::JsonValueOpt).json())
         .to_owned();
 
     create_table(db, &stmt, SerdeJsonValue).await

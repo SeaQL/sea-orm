@@ -14,13 +14,14 @@ use serde_json::json;
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("serde_json_value_tests").await;
     create_tables(&ctx.db).await?;
-    insert_serde_json_value(&ctx.db).await?;
+    insert_serde_json_value_1(&ctx.db).await?;
+    insert_serde_json_value_2(&ctx.db).await?;
     ctx.delete().await;
 
     Ok(())
 }
 
-pub async fn insert_serde_json_value(db: &DatabaseConnection) -> Result<(), DbErr> {
+pub async fn insert_serde_json_value_1(db: &DatabaseConnection) -> Result<(), DbErr> {
     use serde_json_value::*;
 
     let model = Model {
@@ -38,6 +39,49 @@ pub async fn insert_serde_json_value(db: &DatabaseConnection) -> Result<(), DbEr
             notes: Some("hand picked, organic".into()),
         }
         .into(),
+        json_value_opt: Some(KeyValue {
+            id: 1,
+            name: "apple".into(),
+            price: 12.01,
+            notes: Some("hand picked, organic".into()),
+        })
+        .into(),
+    };
+
+    let result = model.clone().into_active_model().insert(db).await?;
+
+    assert_eq!(result, model);
+
+    assert_eq!(
+        Entity::find()
+            .filter(Column::Id.eq(model.id))
+            .one(db)
+            .await?,
+        Some(model)
+    );
+
+    Ok(())
+}
+
+pub async fn insert_serde_json_value_2(db: &DatabaseConnection) -> Result<(), DbErr> {
+    use serde_json_value::*;
+
+    let model = Model {
+        id: 2,
+        json: json!({
+            "id": 2,
+            "name": "orange",
+            "price": 10.93,
+            "notes": "sweet & juicy",
+        }),
+        json_value: KeyValue {
+            id: 1,
+            name: "orange".into(),
+            price: 10.93,
+            notes: None,
+        }
+        .into(),
+        json_value_opt: None.into(),
     };
 
     let result = model.clone().into_active_model().insert(db).await?;

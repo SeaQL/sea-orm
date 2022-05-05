@@ -224,6 +224,9 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             let temp = if temp.starts_with("Option<") {
                                 nullable = true;
                                 &temp[7..(temp.len() - 1)]
+                            } else if temp.starts_with("JsonValue<Option<") {
+                                nullable = true;
+                                temp.as_str()
                             } else {
                                 temp.as_str()
                             };

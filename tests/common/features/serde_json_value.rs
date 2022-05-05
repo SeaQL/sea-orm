@@ -8,6 +8,7 @@ pub struct Model {
     pub id: i32,
     pub json: Json,
     pub json_value: JsonValue<KeyValue>,
+    pub json_value_opt: JsonValue<Option<KeyValue>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
