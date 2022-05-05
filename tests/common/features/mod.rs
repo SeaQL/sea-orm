@@ -8,6 +8,7 @@ pub mod satellite;
 pub mod schema;
 pub mod sea_orm_active_enums;
 pub mod self_join;
+pub mod serde_json_value;
 pub mod transaction_log;
 
 pub use active_enum::Entity as ActiveEnum;
@@ -20,4 +21,5 @@ pub use satellite::Entity as Satellite;
 pub use schema::*;
 pub use sea_orm_active_enums::*;
 pub use self_join::Entity as SelfJoin;
+pub use serde_json_value::Entity as SerdeJsonValue;
 pub use transaction_log::Entity as TransactionLog;
