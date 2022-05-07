@@ -551,7 +551,8 @@ pub trait ActiveModelTrait: Clone + Debug {
 
     /// Returns `true` if any columns were changed.
     fn is_changed(&self) -> bool {
-        <Self::Entity as EntityTrait>::Column::iter().any(|col| !self.get(col).is_unchanged())
+        <Self::Entity as EntityTrait>::Column::iter()
+            .any(|col| self.get(col).is_set() && !self.get(col).is_unchanged())
     }
 }
 
@@ -1092,5 +1093,14 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn test_active_model_is_changed() {
+        let mut fruit: fruit::ActiveModel = Default::default();
+        assert!(!fruit.is_changed());
+
+        fruit.set(fruit::Column::Name, "apple".into());
+        assert!(fruit.is_changed());
     }
 }
