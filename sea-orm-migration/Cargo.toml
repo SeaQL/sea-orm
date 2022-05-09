@@ -24,6 +24,7 @@ clap = { version = "^2.33" }
 dotenv = { version = "^0.15" }
 sea-orm = { path = "../", default-features = false, features = ["macros"] }
 sea-orm-cli = { path = "../sea-orm-cli", default-features = false }
+sea-schema = { git = "https://github.com/SeaQL/sea-schema", branch = "master" }
 tracing = { version = "0.1", features = ["log"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 

@@ -33,14 +33,7 @@ clap = { version = "^2.33.3" }
 dotenv = { version = "^0.15" }
 async-std = { version = "^1.9", features = [ "attributes", "tokio1" ] }
 sea-orm-codegen = { version = "^0.7.0", path = "../sea-orm-codegen", optional = true }
-sea-schema = { git = "https://github.com/SeaQL/sea-schema", branch = "master", default-features = false, features = [
-    "debug-print",
-    "sqlx-mysql",
-    "sqlx-sqlite",
-    "sqlx-postgres",
-    "discovery",
-    "writer",
-], optional = true }
+sea-schema = { git = "https://github.com/SeaQL/sea-schema", branch = "master" }
 sqlx = { version = "^0.5", default-features = false, features = [ "mysql", "postgres" ], optional = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing = { version = "0.1" }
@@ -51,7 +44,7 @@ smol = "1.2.5"
 
 [features]
 default = [ "codegen", "runtime-async-std-native-tls" ]
-codegen = [ "sea-schema", "sea-orm-codegen" ]
+codegen = [ "sea-schema/sqlx-all", "sea-orm-codegen" ]
 runtime-actix-native-tls = [ "sqlx/runtime-actix-native-tls", "sea-schema/runtime-actix-native-tls" ]
 runtime-async-std-native-tls = [ "sqlx/runtime-async-std-native-tls", "sea-schema/runtime-async-std-native-tls" ]
 runtime-tokio-native-tls = [ "sqlx/runtime-tokio-native-tls", "sea-schema/runtime-tokio-native-tls" ]
