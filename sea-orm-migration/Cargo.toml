@@ -28,6 +28,12 @@ tracing = { version = "0.1", features = ["log"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [features]
-sqlx-mysql = ["sea-orm/sqlx-mysql", "sea-orm/runtime-async-std-native-tls"]
-sqlx-postgres = ["sea-orm/sqlx-postgres", "sea-orm/runtime-async-std-native-tls"]
-sqlx-sqlite = ["sea-orm/sqlx-sqlite", "sea-orm/runtime-async-std-native-tls"]
+sqlx-mysql = ["sea-orm/sqlx-mysql"]
+sqlx-postgres = ["sea-orm/sqlx-postgres"]
+sqlx-sqlite = ["sea-orm/sqlx-sqlite"]
+runtime-actix-native-tls = [ "sea-orm/runtime-actix-native-tls" ]
+runtime-async-std-native-tls = [ "sea-orm/runtime-async-std-native-tls" ]
+runtime-tokio-native-tls = [ "sea-orm/runtime-tokio-native-tls" ]
+runtime-actix-rustls = [ "sea-orm/runtime-actix-rustls" ]
+runtime-async-std-rustls = [ "sea-orm/runtime-async-std-rustls" ]
+runtime-tokio-rustls = [ "sea-orm/runtime-tokio-rustls" ]
