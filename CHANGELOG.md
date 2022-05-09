@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Pending
 
+### New Features
+* [sea-orm-cli] `sea migrate generate` to generate a new, empty migration file https://github.com/SeaQL/sea-orm/pull/656
+
 ### Enhancements
 * Add max_connections option to CLI https://github.com/SeaQL/sea-orm/pull/670
 * Derive `Eq`, `Clone` for `DbErr` https://github.com/SeaQL/sea-orm/pull/677
