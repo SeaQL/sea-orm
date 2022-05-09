@@ -10,10 +10,25 @@ async fn main() -> Result<(), DbErr> {
     let db_name = "sea_orm_migration";
     let db = Database::connect(&url).await?;
     let db = &match db.get_database_backend() {
-        DbBackend::MySql | DbBackend::Postgres => {
+        DbBackend::MySql => {
             db.execute(Statement::from_string(
                 db.get_database_backend(),
                 format!("CREATE DATABASE IF NOT EXISTS `{}`;", db_name),
+            ))
+            .await?;
+
+            let url = format!("{}/{}", url, db_name);
+            Database::connect(&url).await?
+        }
+        DbBackend::Postgres => {
+            db.execute(Statement::from_string(
+                db.get_database_backend(),
+                format!("DROP DATABASE IF EXISTS \"{}\";", db_name),
+            ))
+            .await?;
+            db.execute(Statement::from_string(
+                db.get_database_backend(),
+                format!("CREATE DATABASE \"{}\";", db_name),
             ))
             .await?;
 

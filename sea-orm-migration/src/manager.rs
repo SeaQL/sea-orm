@@ -105,7 +105,7 @@ impl<'c> SchemaManager<'c> {
             .conn
             .query_one(builder.build(&stmt))
             .await?
-            .ok_or_else(|| DbErr::Custom("Fail to check table exists".to_owned()))?;
+            .ok_or_else(|| DbErr::Custom("Failed to check table exists".to_owned()))?;
 
         Ok(res.try_get("", "has_table")?)
     }
@@ -126,7 +126,7 @@ impl<'c> SchemaManager<'c> {
             .conn
             .query_one(builder.build(&stmt))
             .await?
-            .ok_or_else(|| DbErr::Custom("Fail to check table exists".to_owned()))?;
+            .ok_or_else(|| DbErr::Custom("Failed to check column exists".to_owned()))?;
 
         Ok(res.try_get("", "has_column")?)
     }
