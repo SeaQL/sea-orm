@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Derive `Eq`, `Clone` for `DbErr` https://github.com/SeaQL/sea-orm/pull/677
 
 ### Breaking changes
-* Migration utilities are moved from sea-schema to sea-orm repo, under a new sub-crate `sea_orm_migration`. `sea_schema::migration::prelude` should be replaced by `sea_orm_migration::prelude` in all migration files
+* Migration utilities are moved from sea-schema to sea-orm repo, under a new sub-crate `sea-orm-migration`. `sea_schema::migration::prelude` should be replaced by `sea_orm_migration::prelude` in all migration files
 
 ### Upgrades
 * Upgrade `sea-query` to 0.24.x, `sea-schema` to 0.8.x
