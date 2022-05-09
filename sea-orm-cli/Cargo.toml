@@ -33,7 +33,7 @@ clap = { version = "^2.33.3" }
 dotenv = { version = "^0.15" }
 async-std = { version = "^1.9", features = [ "attributes", "tokio1" ] }
 sea-orm-codegen = { version = "^0.7.0", path = "../sea-orm-codegen", optional = true }
-sea-schema = { git = "https://github.com/SeaQL/sea-schema", branch = "remove-migration", default-features = false, features = [
+sea-schema = { git = "https://github.com/SeaQL/sea-schema", branch = "master", default-features = false, features = [
     "debug-print",
     "sqlx-mysql",
     "sqlx-sqlite",

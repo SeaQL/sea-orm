@@ -117,7 +117,7 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                         .collect()
                 }
                 "sqlite" => {
-                    use sea_schema::sqlite::SchemaDiscovery;
+                    use sea_schema::sqlite::discovery::SchemaDiscovery;
                     use sqlx::Sqlite;
 
                     let connection = connect::<Sqlite>(max_connections, url.as_str()).await?;
