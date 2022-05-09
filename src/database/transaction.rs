@@ -365,14 +365,14 @@ impl<'a> StreamTrait<'a> for DatabaseTransaction {
     fn stream(
         &'a self,
         stmt: Statement,
-    ) -> Pin<Box<dyn Future<Output = Result<Self::Stream, DbErr>> + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Self::Stream, DbErr>> + 'a + Send>> {
         Box::pin(async move {
+            let conn = self.conn.lock().await;
             Ok(crate::TransactionStream::build(
-                self.conn.lock().await,
+                conn,
                 stmt,
                 self.metric_callback.clone(),
-            )
-            .await)
+            ))
         })
     }
 }

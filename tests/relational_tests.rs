@@ -35,7 +35,7 @@ pub async fn left_join() {
             "home": "0395555555",
             "address": "12 Test St, Testville, Vic, Australia"
         })),
-        bakery_id: Set(Some(bakery.id.clone())),
+        bakery_id: Set(Some(bakery.id)),
         ..Default::default()
     }
     .insert(&ctx.db)
@@ -124,8 +124,8 @@ pub async fn right_join() {
     .expect("could not insert customer");
 
     let _order = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone()),
-        customer_id: Set(customer_kate.id.clone()),
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
         total: Set(dec!(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -135,7 +135,8 @@ pub async fn right_join() {
     .await
     .expect("could not insert order");
 
-    #[derive(Debug, FromQueryResult)]
+    #[derive(FromQueryResult)]
+    #[allow(dead_code)]
     struct SelectResult {
         name: String,
         order_total: Option<Decimal>,
@@ -210,8 +211,8 @@ pub async fn inner_join() {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone()),
-        customer_id: Set(customer_kate.id.clone()),
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
         total: Set(dec!(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -222,8 +223,8 @@ pub async fn inner_join() {
     .expect("could not insert order");
 
     let kate_order_2 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone()),
-        customer_id: Set(customer_kate.id.clone()),
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
         total: Set(dec!(100.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -253,13 +254,13 @@ pub async fn inner_join() {
 
     assert_eq!(results.len(), 2);
     assert!((&results)
-        .into_iter()
+        .iter()
         .any(|result| result.name == customer_kate.name.clone()
-            && result.order_total == Some(kate_order_1.total.clone())));
+            && result.order_total == Some(kate_order_1.total)));
     assert!((&results)
-        .into_iter()
+        .iter()
         .any(|result| result.name == customer_kate.name.clone()
-            && result.order_total == Some(kate_order_2.total.clone())));
+            && result.order_total == Some(kate_order_2.total)));
 
     ctx.delete().await;
 }
@@ -292,8 +293,8 @@ pub async fn group_by() {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone()),
-        customer_id: Set(customer_kate.id.clone()),
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
         total: Set(dec!(99.95)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -304,8 +305,8 @@ pub async fn group_by() {
     .expect("could not insert order");
 
     let kate_order_2 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone()),
-        customer_id: Set(customer_kate.id.clone()),
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
         total: Set(dec!(200.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -345,15 +346,15 @@ pub async fn group_by() {
     assert_eq!(result.number_orders, Some(2));
     assert_eq!(
         result.total_spent,
-        Some(kate_order_1.total.clone() + kate_order_2.total.clone())
+        Some(kate_order_1.total + kate_order_2.total)
     );
     assert_eq!(
         result.min_spent,
-        Some(kate_order_1.total.clone().min(kate_order_2.total.clone()))
+        Some(kate_order_1.total.min(kate_order_2.total))
     );
     assert_eq!(
         result.max_spent,
-        Some(kate_order_1.total.clone().max(kate_order_2.total.clone()))
+        Some(kate_order_1.total.max(kate_order_2.total))
     );
     ctx.delete().await;
 }
@@ -387,8 +388,8 @@ pub async fn having() {
     .expect("could not insert customer");
 
     let kate_order_1 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone()),
-        customer_id: Set(customer_kate.id.clone()),
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
         total: Set(dec!(100.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -399,8 +400,8 @@ pub async fn having() {
     .expect("could not insert order");
 
     let _kate_order_2 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone()),
-        customer_id: Set(customer_kate.id.clone()),
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
         total: Set(dec!(12.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -419,8 +420,8 @@ pub async fn having() {
     .expect("could not insert customer");
 
     let _bob_order_1 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone()),
-        customer_id: Set(customer_bob.id.clone()),
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_bob.id),
         total: Set(dec!(50.0)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -431,8 +432,8 @@ pub async fn having() {
     .expect("could not insert order");
 
     let _bob_order_2 = order::ActiveModel {
-        bakery_id: Set(bakery.id.clone()),
-        customer_id: Set(customer_bob.id.clone()),
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_bob.id),
         total: Set(dec!(50.0)),
         placed_at: Set(Utc::now().naive_utc()),
 
@@ -463,7 +464,7 @@ pub async fn having() {
 
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].name, customer_kate.name.clone());
-    assert_eq!(results[0].order_total, Some(kate_order_1.total.clone()));
+    assert_eq!(results[0].order_total, Some(kate_order_1.total));
 
     ctx.delete().await;
 }
@@ -514,7 +515,6 @@ pub async fn linked() -> Result<(), DbErr> {
     let bob_cakes_bakers = cakes_bakers::ActiveModel {
         cake_id: Set(mud_cake_res.last_insert_id as i32),
         baker_id: Set(baker_bob_res.last_insert_id as i32),
-        ..Default::default()
     };
     CakesBakers::insert(bob_cakes_bakers).exec(&ctx.db).await?;
 
@@ -540,7 +540,6 @@ pub async fn linked() -> Result<(), DbErr> {
     let bobby_cakes_bakers = cakes_bakers::ActiveModel {
         cake_id: Set(cheese_cake_res.last_insert_id as i32),
         baker_id: Set(baker_bobby_res.last_insert_id as i32),
-        ..Default::default()
     };
     CakesBakers::insert(bobby_cakes_bakers)
         .exec(&ctx.db)
@@ -557,7 +556,6 @@ pub async fn linked() -> Result<(), DbErr> {
     let bobby_cakes_bakers = cakes_bakers::ActiveModel {
         cake_id: Set(chocolate_cake_res.last_insert_id as i32),
         baker_id: Set(baker_bobby_res.last_insert_id as i32),
-        ..Default::default()
     };
     CakesBakers::insert(bobby_cakes_bakers)
         .exec(&ctx.db)

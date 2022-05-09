@@ -35,15 +35,15 @@ pub trait ConnectionTrait: Sync {
 
 /// Stream query results
 #[async_trait::async_trait]
-pub trait StreamTrait<'a>: Sync {
+pub trait StreamTrait<'a>: Send + Sync {
     /// Create a stream for the [QueryResult]
-    type Stream: Stream<Item = Result<QueryResult, DbErr>>;
+    type Stream: Stream<Item = Result<QueryResult, DbErr>> + Send;
 
     /// Execute a [Statement] and return a stream of results
     fn stream(
         &'a self,
         stmt: Statement,
-    ) -> Pin<Box<dyn Future<Output = Result<Self::Stream, DbErr>> + 'a>>;
+    ) -> Pin<Box<dyn Future<Output = Result<Self::Stream, DbErr>> + 'a + Send>>;
 }
 
 /// Spawn database transaction

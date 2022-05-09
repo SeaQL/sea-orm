@@ -27,7 +27,7 @@ pub struct SelectorRaw<S>
 where
     S: SelectorTrait,
 {
-    stmt: Statement,
+    pub(crate) stmt: Statement,
     #[allow(dead_code)]
     selector: S,
 }
@@ -273,9 +273,9 @@ where
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<impl Stream<Item = Result<E::Model, DbErr>> + 'b, DbErr>
+    ) -> Result<impl Stream<Item = Result<E::Model, DbErr>> + 'b + Send, DbErr>
     where
-        C: ConnectionTrait + StreamTrait<'a>,
+        C: ConnectionTrait + StreamTrait<'a> + Send,
     {
         self.into_model().stream(db).await
     }
@@ -329,7 +329,7 @@ where
         db: &'a C,
     ) -> Result<impl Stream<Item = Result<(E::Model, Option<F::Model>), DbErr>> + 'b, DbErr>
     where
-        C: ConnectionTrait + StreamTrait<'a>,
+        C: ConnectionTrait + StreamTrait<'a> + Send,
     {
         self.into_model().stream(db).await
     }
@@ -373,9 +373,9 @@ where
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<impl Stream<Item = Result<(E::Model, Option<F::Model>), DbErr>> + 'b, DbErr>
+    ) -> Result<impl Stream<Item = Result<(E::Model, Option<F::Model>), DbErr>> + 'b + Send, DbErr>
     where
-        C: ConnectionTrait + StreamTrait<'a>,
+        C: ConnectionTrait + StreamTrait<'a> + Send,
     {
         self.into_model().stream(db).await
     }
@@ -419,7 +419,7 @@ where
         }
     }
 
-    fn into_selector_raw<'a, C>(self, db: &C) -> SelectorRaw<S>
+    fn into_selector_raw<C>(self, db: &C) -> SelectorRaw<S>
     where
         C: ConnectionTrait,
     {
@@ -452,10 +452,11 @@ where
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<Pin<Box<dyn Stream<Item = Result<S::Item, DbErr>> + 'b>>, DbErr>
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<S::Item, DbErr>> + 'b + Send>>, DbErr>
     where
-        C: ConnectionTrait + StreamTrait<'a>,
+        C: ConnectionTrait + StreamTrait<'a> + Send,
         S: 'b,
+        S::Item: Send,
     {
         self.into_selector_raw(db).stream(db).await
     }
@@ -737,10 +738,11 @@ where
     pub async fn stream<'a: 'b, 'b, C>(
         self,
         db: &'a C,
-    ) -> Result<Pin<Box<dyn Stream<Item = Result<S::Item, DbErr>> + 'b>>, DbErr>
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<S::Item, DbErr>> + 'b + Send>>, DbErr>
     where
-        C: ConnectionTrait + StreamTrait<'a>,
+        C: ConnectionTrait + StreamTrait<'a> + Send,
         S: 'b,
+        S::Item: Send,
     {
         let stream = db.stream(self.stmt).await?;
         Ok(Box::pin(stream.and_then(|row| {

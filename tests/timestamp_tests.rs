@@ -1,6 +1,8 @@
 pub mod common;
 pub use common::{features::*, setup::*, TestContext};
+use pretty_assertions::assert_eq;
 use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
+use serde_json::json;
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -34,6 +36,37 @@ pub async fn create_applog(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(log.id, res.last_insert_id);
     assert_eq!(Applog::find().one(db).await?, Some(log.clone()));
 
+    #[cfg(feature = "sqlx-sqlite")]
+    assert_eq!(
+        Applog::find().into_json().one(db).await?,
+        Some(json!({
+            "id": 1,
+            "action": "Testing",
+            "json": r#""HI""#,
+            "created_at": "2021-09-17 09:50:20",
+        }))
+    );
+    #[cfg(feature = "sqlx-mysql")]
+    assert_eq!(
+        Applog::find().into_json().one(db).await?,
+        Some(json!({
+            "id": 1,
+            "action": "Testing",
+            "json": "HI",
+            "created_at": "2021-09-17T09:50:20Z",
+        }))
+    );
+    #[cfg(feature = "sqlx-postgres")]
+    assert_eq!(
+        Applog::find().into_json().one(db).await?,
+        Some(json!({
+            "id": 1,
+            "action": "Testing",
+            "json": "HI",
+            "created_at": "2021-09-17T09:50:20+00:00",
+        }))
+    );
+
     Ok(())
 }
 
@@ -51,6 +84,37 @@ pub async fn create_satellites_log(db: &DatabaseConnection) -> Result<(), DbErr>
 
     assert_eq!(archive.id, res.last_insert_id);
     assert_eq!(Satellite::find().one(db).await?, Some(archive.clone()));
+
+    #[cfg(feature = "sqlx-sqlite")]
+    assert_eq!(
+        Satellite::find().into_json().one(db).await?,
+        Some(json!({
+            "id": 1,
+            "satellite_name": "Sea-00001-2022",
+            "launch_date": "2022-01-07 12:11:23",
+            "deployment_date": "2022-01-07 12:11:23",
+        }))
+    );
+    #[cfg(feature = "sqlx-mysql")]
+    assert_eq!(
+        Satellite::find().into_json().one(db).await?,
+        Some(json!({
+            "id": 1,
+            "satellite_name": "Sea-00001-2022",
+            "launch_date": "2022-01-07T12:11:23Z",
+            "deployment_date": "2022-01-07T12:11:23Z",
+        }))
+    );
+    #[cfg(feature = "sqlx-postgres")]
+    assert_eq!(
+        Satellite::find().into_json().one(db).await?,
+        Some(json!({
+            "id": 1,
+            "satellite_name": "Sea-00001-2022",
+            "launch_date": "2022-01-07T12:11:23+00:00",
+            "deployment_date": "2022-01-07T12:11:23+00:00",
+        }))
+    );
 
     Ok(())
 }

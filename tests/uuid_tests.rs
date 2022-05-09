@@ -1,7 +1,9 @@
 pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
+use pretty_assertions::assert_eq;
 use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use serde_json::json;
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -33,6 +35,25 @@ pub async fn insert_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
     let result = metadata.clone().into_active_model().insert(db).await?;
 
     assert_eq!(result, metadata);
+
+    let json = metadata::Entity::find()
+        .filter(metadata::Column::Uuid.eq(metadata.uuid))
+        .into_json()
+        .one(db)
+        .await?;
+
+    assert_eq!(
+        json,
+        Some(json!({
+            "uuid": metadata.uuid,
+            "type": metadata.ty,
+            "key": metadata.key,
+            "value": metadata.value,
+            "bytes": metadata.bytes,
+            "date": metadata.date,
+            "time": metadata.time,
+        }))
+    );
 
     Ok(())
 }

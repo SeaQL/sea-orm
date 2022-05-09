@@ -12,8 +12,8 @@ path = "src/lib.rs"
 serde = { version = "1", features = ["derive"] }
 
 [dependencies.sea-orm]
-# path = "../../../" # remove this line in your own project
-version = "^0.6.0"
+path = "../../../" # remove this line in your own project
+version = "^0.7.0"
 features = [
   "macros",
   "debug-print",
@@ -22,4 +22,3 @@ features = [
   # "sqlx-mysql",
   # "sqlx-sqlite",
 ]
-default-features = false

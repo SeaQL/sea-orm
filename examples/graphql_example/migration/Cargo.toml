@@ -1,0 +1,17 @@
+[package]
+name = "migration"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "migration"
+path = "src/lib.rs"
+
+[dependencies]
+dotenv = "0.15.0"
+entity = { path = "../entity" }
+
+[dependencies.sea-orm-migration]
+path = "../../../sea-orm-migration" # remove this line in your own project
+version = "^0.7.0"
