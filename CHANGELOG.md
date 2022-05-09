@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Add `is_changed` to `ActiveModelTrait` https://github.com/SeaQL/sea-orm/pull/683
 
 ### Bug Fixes
-* `DerivePrimaryKey` with custom primary key column name https://github.com/SeaQL/sea-orm/pull/694
+* Fix `DerivePrimaryKey` with custom primary key column name https://github.com/SeaQL/sea-orm/pull/694
+* Fix `DeriveEntityModel` macros override column name https://github.com/SeaQL/sea-orm/pull/695
 
 ### Breaking changes
 * Migration utilities are moved from sea-schema to sea-orm repo, under a new sub-crate `sea-orm-migration`. `sea_schema::migration::prelude` should be replaced by `sea_orm_migration::prelude` in all migration files
