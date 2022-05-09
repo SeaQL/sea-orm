@@ -22,7 +22,7 @@ sleep 30
 sed -i 's/^version.*$/version = "'$1'"/' Cargo.toml
 sed -i 's/^sea-orm-macros [^,]*,/sea-orm-macros = { version = "\^'$1'",/' Cargo.toml
 git commit -am "$1"
-cargo publish
+cargo publish # publish sea-orm
 sleep 30
 cd sea-orm-migration
 sed -i 's/^version.*$/version = "'$1'"/' Cargo.toml
