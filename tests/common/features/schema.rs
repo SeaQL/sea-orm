@@ -277,6 +277,10 @@ pub async fn create_insert_default_table(db: &DbConn) -> Result<ExecResult, DbEr
         .table(insert_default::Entity.table_ref())
         .col(
             ColumnDef::new(insert_default::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
         )
         .to_owned();
 
