@@ -11,8 +11,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * [sea-orm-cli] `sea migrate generate` to generate a new, empty migration file https://github.com/SeaQL/sea-orm/pull/656
 
 ### Enhancements
-* Add max_connections option to CLI https://github.com/SeaQL/sea-orm/pull/670
+* Add `max_connections` option to CLI https://github.com/SeaQL/sea-orm/pull/670
 * Derive `Eq`, `Clone` for `DbErr` https://github.com/SeaQL/sea-orm/pull/677
+* Add `is_changed` to `ActiveModelTrait` https://github.com/SeaQL/sea-orm/pull/683
 
 ### Breaking changes
 * Migration utilities are moved from sea-schema to sea-orm repo, under a new sub-crate `sea-orm-migration`. `sea_schema::migration::prelude` should be replaced by `sea_orm_migration::prelude` in all migration files

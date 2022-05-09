@@ -22,7 +22,7 @@ pub use chrono::NaiveDate as Date;
 pub use chrono::NaiveTime as Time;
 
 #[cfg(feature = "with-chrono")]
-pub use chrono::NaiveDateTime as DateTime;
+pub type DateTime = chrono::DateTime<chrono::Utc>;
 
 /// Date time with fixed offset
 #[cfg(feature = "with-chrono")]
