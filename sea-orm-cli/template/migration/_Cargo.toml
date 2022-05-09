@@ -9,4 +9,8 @@ name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
-sea-schema = { version = "^0.7.0", default-features = false, features = [ "migration", "debug-print" ] }
+entity = { path = "../entity" }
+
+[dependencies.sea-orm-migration]
+path = "../../../sea-orm-migration" # remove this line in your own project
+version = "^0.7.0"

@@ -201,15 +201,16 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
                     field_name = Ident::new(&escape_rust_keyword(field_name), Span::call_site());
 
+                    let variant_attrs = match &column_name {
+                        Some(column_name) => quote! {
+                            #[sea_orm(column_name = #column_name)]
+                        },
+                        None => quote! {},
+                    };
+
                     if ignore {
                         continue;
                     } else {
-                        let variant_attrs = match &column_name {
-                            Some(column_name) => quote! {
-                                #[sea_orm(column_name = #column_name)]
-                            },
-                            None => quote! {},
-                        };
                         columns_enum.push(quote! {
                             #variant_attrs
                             #field_name
@@ -217,7 +218,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     }
 
                     if is_primary_key {
-                        primary_keys.push(quote! { #field_name });
+                        primary_keys.push(quote! {
+                            #variant_attrs
+                            #field_name
+                        });
                     }
 
                     let col_type = match sql_type {

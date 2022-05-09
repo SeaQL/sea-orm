@@ -7,8 +7,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Pending
 
+### New Features
+* [sea-orm-cli] `sea migrate generate` to generate a new, empty migration file https://github.com/SeaQL/sea-orm/pull/656
+
 ### Enhancements
 * Add max_connections option to CLI https://github.com/SeaQL/sea-orm/pull/670
+* Derive `Eq`, `Clone` for `DbErr` https://github.com/SeaQL/sea-orm/pull/677
+
+### Breaking changes
+* Migration utilities are moved from sea-schema to sea-orm repo, under a new sub-crate `sea-orm-migration`. `sea_schema::migration::prelude` should be replaced by `sea_orm_migration::prelude` in all migration files
+
+### Upgrades
+* Upgrade `sea-query` to 0.24.x, `sea-schema` to 0.8.x
+* Upgrade example to Actix Web 4, Actix Web 3 remains https://github.com/SeaQL/sea-orm/pull/638
+* Added Tonic gRPC example https://github.com/SeaQL/sea-orm/pull/659
+* Upgrade GraphQL example to use axum 0.5.x
+* Upgrade axum example to 0.5.x
 
 ## 0.7.1 - 2022-03-26
 

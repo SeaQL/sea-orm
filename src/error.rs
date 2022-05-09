@@ -1,5 +1,5 @@
 /// An error from unsuccessful database operations
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DbErr {
     /// There was a problem with the database connection
     Conn(String),
@@ -15,6 +15,8 @@ pub enum DbErr {
     Type(String),
     /// Error occurred while parsing json value as target type
     Json(String),
+    /// A migration error
+    Migration(String),
 }
 
 impl std::error::Error for DbErr {}
@@ -29,6 +31,7 @@ impl std::fmt::Display for DbErr {
             Self::Custom(s) => write!(f, "Custom Error: {}", s),
             Self::Type(s) => write!(f, "Type Error: {}", s),
             Self::Json(s) => write!(f, "Json Error: {}", s),
+            Self::Migration(s) => write!(f, "Migration Error: {}", s),
         }
     }
 }
