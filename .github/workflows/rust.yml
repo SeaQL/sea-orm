@@ -318,7 +318,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        path: [86, 249, 262, 319, 324, 352, 356, 471, 693]
+        path: [86, 249, 262, 319, 324, 352, 356, 471, 630, 693]
     steps:
       - uses: actions/checkout@v2
 
