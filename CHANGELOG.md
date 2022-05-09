@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Enhancements
 * Add max_connections option to CLI https://github.com/SeaQL/sea-orm/pull/670
 
+### Breaking changes
+* `sea_schema::migration::prelude` should be replaced by `sea_orm_migration::prelude`
+
 ## 0.7.1 - 2022-03-26
 
 * Fix sea-orm-cli error
