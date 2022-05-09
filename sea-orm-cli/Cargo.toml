@@ -14,7 +14,6 @@ categories = [ "database" ]
 keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 default-run = "sea-orm-cli"
 
-
 [lib]
 name = "sea_orm_cli"
 path = "src/lib.rs"
@@ -22,26 +21,27 @@ path = "src/lib.rs"
 [[bin]]
 name = "sea-orm-cli"
 path = "src/bin/main.rs"
+required-features = ["codegen"]
 
 [[bin]]
 name = "sea"
 path = "src/bin/sea.rs"
+required-features = ["codegen"]
 
 [dependencies]
 clap = { version = "^2.33.3" }
 dotenv = { version = "^0.15" }
 async-std = { version = "^1.9", features = [ "attributes", "tokio1" ] }
-sea-orm-codegen = { version = "^0.7.0", path = "../sea-orm-codegen" }
-sea-schema = { git = "https://github.com/SeaQL/sea-schema", branch = "dump-sea-orm-dep", default-features = false, features = [
+sea-orm-codegen = { version = "^0.7.0", path = "../sea-orm-codegen", optional = true }
+sea-schema = { git = "https://github.com/SeaQL/sea-schema", branch = "remove-migration", default-features = false, features = [
     "debug-print",
     "sqlx-mysql",
     "sqlx-sqlite",
     "sqlx-postgres",
     "discovery",
     "writer",
-    "migration",
-] }
-sqlx = { version = "^0.5", default-features = false, features = [ "mysql", "postgres" ] }
+], optional = true }
+sqlx = { version = "^0.5", default-features = false, features = [ "mysql", "postgres" ], optional = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing = { version = "0.1" }
 url = "^2.2"
@@ -50,7 +50,8 @@ url = "^2.2"
 smol = "1.2.5"
 
 [features]
-default = [ "runtime-async-std-native-tls" ]
+default = [ "codegen", "runtime-async-std-native-tls" ]
+codegen = [ "sea-schema", "sea-orm-codegen" ]
 runtime-actix-native-tls = [
     "sqlx/runtime-actix-native-tls",
     "sea-schema/runtime-actix-native-tls",

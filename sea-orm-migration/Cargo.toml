@@ -18,11 +18,16 @@ name = "sea_orm_migration"
 path = "src/lib.rs"
 
 [dependencies]
-sea-orm = { path = "../", default-features = false, features = ["macros"] }
-sea-schema = { git = "https://github.com/SeaQL/sea-schema", branch = "dump-sea-orm-dep", features = ["migration"], default-features = false }
 async-std = { version = "^1", features = ["attributes", "tokio1"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tracing = { version = "0.1", features = ["log"] }
 async-trait = { version = "^0.1" }
-dotenv = { version = "^0.15" }
 clap = { version = "^2.33" }
+dotenv = { version = "^0.15" }
+sea-orm = { path = "../", default-features = false, features = ["macros"] }
+sea-orm-cli = { path = "../sea-orm-cli", default-features = false }
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[features]
+sqlx-mysql = ["sea-orm/sqlx-mysql", "sea-orm/runtime-async-std-native-tls"]
+sqlx-postgres = ["sea-orm/sqlx-postgres", "sea-orm/runtime-async-std-native-tls"]
+sqlx-sqlite = ["sea-orm/sqlx-sqlite", "sea-orm/runtime-async-std-native-tls"]

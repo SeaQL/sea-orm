@@ -1,15 +1,13 @@
-//! Run migrator CLI
-
-use crate::MigratorTrait;
-use clap::{App, AppSettings, Arg};
+use clap::App;
 use dotenv::dotenv;
-use sea_orm::{Database, DbConn};
-use sea_schema::get_cli_subcommands;
 use std::{fmt::Display, process::exit};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
-#[allow(dead_code)]
-/// Migrator CLI application
+use sea_orm::{Database, DbConn};
+use sea_orm_cli::build_cli;
+
+use super::MigratorTrait;
+
 pub async fn run_cli<M>(migrator: M)
 where
     M: MigratorTrait,
@@ -21,20 +19,20 @@ where
     get_matches(migrator, db, app).await;
 }
 
-async fn get_matches<M>(_: M, db: &DbConn, app: App<'static, 'static>)
+pub async fn get_matches<M>(_: M, db: &DbConn, app: App<'static, 'static>)
 where
     M: MigratorTrait,
 {
     let matches = app.get_matches();
     let mut verbose = false;
     let filter = match matches.subcommand() {
-        (_, None) => "sea_orm::migration=info",
+        (_, None) => "sea_schema::migration=info",
         (_, Some(args)) => match args.is_present("VERBOSE") {
             true => {
                 verbose = true;
                 "debug"
             }
-            false => "sea_orm::migration=info",
+            false => "sea_schema::migration=info",
         },
     };
     let filter_layer = EnvFilter::try_new(filter).unwrap();
@@ -74,24 +72,6 @@ where
         _ => M::up(db, None).await,
     }
     .unwrap_or_else(handle_error);
-}
-
-fn build_cli() -> App<'static, 'static> {
-    let mut app = App::new("sea-schema-migration")
-        .version(env!("CARGO_PKG_VERSION"))
-        .setting(AppSettings::VersionlessSubcommands)
-        .arg(
-            Arg::with_name("VERBOSE")
-                .long("verbose")
-                .short("v")
-                .help("Show debug messages")
-                .takes_value(false)
-                .global(true),
-        );
-    for subcommand in get_cli_subcommands!() {
-        app = app.subcommand(subcommand);
-    }
-    app
 }
 
 fn handle_error<E>(error: E)

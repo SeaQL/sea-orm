@@ -1,5 +1,5 @@
+use crate::migration::get_subcommands;
 use clap::{App, AppSettings, Arg, SubCommand};
-use sea_schema::get_cli_subcommands;
 
 pub fn build_cli() -> App<'static, 'static> {
     let entity_subcommand = SubCommand::with_name("generate")
@@ -96,7 +96,7 @@ pub fn build_cli() -> App<'static, 'static> {
                 .arg(arg_migration_dir.clone()),
         )
         .arg(arg_migration_dir.clone());
-    for subcommand in get_cli_subcommands!() {
+    for subcommand in get_subcommands() {
         migrate_subcommands =
             migrate_subcommands.subcommand(subcommand.arg(arg_migration_dir.clone()));
     }

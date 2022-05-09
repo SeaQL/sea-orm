@@ -1,6 +1,4 @@
-//! Migration executor
-
-use crate::{seaql_migrations, MigrationTrait, SchemaManager};
+use super::{seaql_migrations, MigrationTrait, SchemaManager};
 use sea_orm::sea_query::{
     Alias, Expr, ForeignKey, IntoTableRef, Query, SelectStatement, SimpleExpr, Table,
 };
@@ -21,8 +19,6 @@ pub enum MigrationStatus {
     Applied,
 }
 
-/// Wrapper of [`MigrationTrait`] with migration status
-#[allow(missing_debug_implementations)]
 pub struct Migration {
     migration: Box<dyn MigrationTrait>,
     status: MigrationStatus,
