@@ -5,8 +5,7 @@ use sea_orm::sea_query::{
     TableRenameStatement, TableTruncateStatement,
 };
 use sea_orm::{Condition, ConnectionTrait, DbBackend, DbConn, DbErr, Statement, StatementBuilder};
-
-use super::query_tables;
+use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
 
 /// Helper struct for writing migration scripts in migration file
 pub struct SchemaManager<'c> {
@@ -95,11 +94,11 @@ impl<'c> SchemaManager<'c> {
     where
         T: AsRef<str>,
     {
-        let mut stmt = Query::select();
-        let mut subquery = query_tables(self.conn);
-        subquery.cond_where(Expr::col(Alias::new("table_name")).eq(table.as_ref()));
-        stmt.expr_as(Expr::cust("COUNT(*)"), Alias::new("rows"))
-            .from_subquery(subquery, Alias::new("subquery"));
+        let stmt = match self.conn.get_database_backend() {
+            DbBackend::MySql => MySql::has_table(table),
+            DbBackend::Postgres => Postgres::has_table(table),
+            DbBackend::Sqlite => Sqlite::has_table(table),
+        };
 
         let builder = self.conn.get_database_backend();
         let res = self
@@ -107,9 +106,8 @@ impl<'c> SchemaManager<'c> {
             .query_one(builder.build(&stmt))
             .await?
             .ok_or_else(|| DbErr::Custom("Fail to check table exists".to_owned()))?;
-        let rows: i64 = res.try_get("", "rows")?;
 
-        Ok(rows > 0)
+        Ok(res.try_get("", "has_table")?)
     }
 
     pub async fn has_column<T, C>(&self, table: T, column: C) -> Result<bool, DbErr>
@@ -117,51 +115,19 @@ impl<'c> SchemaManager<'c> {
         T: AsRef<str>,
         C: AsRef<str>,
     {
-        let db_backend = self.conn.get_database_backend();
-        let found = match db_backend {
-            DbBackend::MySql | DbBackend::Postgres => {
-                let schema_name = match db_backend {
-                    DbBackend::MySql => "DATABASE()",
-                    DbBackend::Postgres => "CURRENT_SCHEMA()",
-                    DbBackend::Sqlite => unreachable!(),
-                };
-                let mut stmt = Query::select();
-                stmt.expr_as(Expr::cust("COUNT(*)"), Alias::new("rows"))
-                    .from((Alias::new("information_schema"), Alias::new("columns")))
-                    .cond_where(
-                        Condition::all()
-                            .add(
-                                Expr::expr(Expr::cust(schema_name))
-                                    .equals(Alias::new("columns"), Alias::new("table_schema")),
-                            )
-                            .add(Expr::col(Alias::new("table_name")).eq(table.as_ref()))
-                            .add(Expr::col(Alias::new("column_name")).eq(column.as_ref())),
-                    );
-
-                let res = self
-                    .conn
-                    .query_one(db_backend.build(&stmt))
-                    .await?
-                    .ok_or_else(|| DbErr::Custom("Fail to check column exists".to_owned()))?;
-                let rows: i64 = res.try_get("", "rows")?;
-                rows > 0
-            }
-            DbBackend::Sqlite => {
-                let stmt = Statement::from_string(
-                    db_backend,
-                    format!("PRAGMA table_info({})", table.as_ref()),
-                );
-                let results = self.conn.query_all(stmt).await?;
-                let mut found = false;
-                for res in results {
-                    let name: String = res.try_get("", "name")?;
-                    if name.as_str() == column.as_ref() {
-                        found = true;
-                    }
-                }
-                found
-            }
+        let stmt = match self.conn.get_database_backend() {
+            DbBackend::MySql => MySql::has_column(table, column),
+            DbBackend::Postgres => Postgres::has_column(table, column),
+            DbBackend::Sqlite => Sqlite::has_column(table, column),
         };
-        Ok(found)
+
+        let builder = self.conn.get_database_backend();
+        let res = self
+            .conn
+            .query_one(builder.build(&stmt))
+            .await?
+            .ok_or_else(|| DbErr::Custom("Fail to check table exists".to_owned()))?;
+
+        Ok(res.try_get("", "has_column")?)
     }
 }

@@ -1,15 +1,27 @@
 mod migrator;
 use migrator::Migrator;
 
-use sea_orm::{Database, DbErr};
+use sea_orm::{ConnectionTrait, Database, DbBackend, DbErr, Statement};
 use sea_orm_migration::prelude::*;
 
 #[async_std::test]
 async fn main() -> Result<(), DbErr> {
     let url = std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
     let db_name = "sea_orm_migration";
-    let url = format!("{}/{}", url, db_name);
-    let db = &Database::connect(&url).await?;
+    let db = Database::connect(&url).await?;
+    let db = &match db.get_database_backend() {
+        DbBackend::MySql | DbBackend::Postgres => {
+            db.execute(Statement::from_string(
+                db.get_database_backend(),
+                format!("CREATE DATABASE IF NOT EXISTS `{}`;", db_name),
+            ))
+            .await?;
+
+            let url = format!("{}/{}", url, db_name);
+            Database::connect(&url).await?
+        }
+        DbBackend::Sqlite => db,
+    };
     let manager = SchemaManager::new(db);
 
     println!("\nMigrator::status");
@@ -58,6 +70,9 @@ async fn main() -> Result<(), DbErr> {
 
     assert!(manager.has_table("cake").await?);
     assert!(manager.has_table("fruit").await?);
+
+    assert!(manager.has_column("cake", "name").await?);
+    assert!(manager.has_column("fruit", "cake_id").await?);
 
     println!("\nMigrator::down");
     Migrator::down(db, None).await?;
