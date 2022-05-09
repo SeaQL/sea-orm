@@ -38,6 +38,8 @@ sqlx = { version = "^0.5", default-features = false, features = [ "mysql", "post
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing = { version = "0.1" }
 url = "^2.2"
+chrono = "0.4"
+regex = "1"
 
 [dev-dependencies]
 smol = "1.2.5"
