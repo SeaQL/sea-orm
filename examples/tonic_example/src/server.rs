@@ -8,7 +8,7 @@ use sea_orm_tonic_example::post::{
 
 use entity::{
     post::{self, Entity as PostEntity},
-    sea_orm::{entity::*, query::*, DatabaseConnection},
+    sea_orm::{self, entity::*, query::*, DatabaseConnection},
 };
 use migration::{Migrator, MigratorTrait};
 

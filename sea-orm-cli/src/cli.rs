@@ -1,3 +1,4 @@
+use crate::migration::get_subcommands;
 use clap::{App, AppSettings, Arg, SubCommand};
 
 pub fn build_cli() -> App<'static, 'static> {
@@ -95,7 +96,7 @@ pub fn build_cli() -> App<'static, 'static> {
                 .arg(arg_migration_dir.clone()),
         )
         .arg(arg_migration_dir.clone());
-    for subcommand in sea_schema::migration::get_subcommands() {
+    for subcommand in get_subcommands() {
         migrate_subcommands =
             migrate_subcommands.subcommand(subcommand.arg(arg_migration_dir.clone()));
     }

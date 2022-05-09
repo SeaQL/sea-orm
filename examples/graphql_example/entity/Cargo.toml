@@ -15,6 +15,7 @@ serde = { version = "1", features = ["derive"] }
 version = "^3.0.38"
 
 [dependencies.sea-orm]
+path = "../../../" # remove this line in your own project
 version = "^0.7.0"
 features = [
   "macros",
