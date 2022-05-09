@@ -7,6 +7,8 @@ use sea_orm_migration::prelude::*;
 #[async_std::test]
 async fn main() -> Result<(), DbErr> {
     let url = std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
+    let db_name = "sea_orm_migration";
+    let url = format!("{}/{}", url, db_name);
     let db = &Database::connect(&url).await?;
     let manager = SchemaManager::new(db);
 
