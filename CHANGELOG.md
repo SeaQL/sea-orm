@@ -30,6 +30,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Upgrade GraphQL example to use axum 0.5.x
 * Upgrade axum example to 0.5.x
 
+### Fixed Issues
+* Failed to insert row with only default values https://github.com/SeaQL/sea-orm/issues/420
+* Reduce database connections to 1 during codegen https://github.com/SeaQL/sea-orm/issues/511
+* Column names with single letters separated by underscores are concatenated https://github.com/SeaQL/sea-orm/issues/630
+* Update Actix Web examples https://github.com/SeaQL/sea-orm/issues/639
+* Lower function missing https://github.com/SeaQL/sea-orm/issues/672
+* is_changed on active_model https://github.com/SeaQL/sea-orm/issues/674
+* Failing find_with_related with column_name attribute https://github.com/SeaQL/sea-orm/issues/693
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.7.1...0.8.0
+
 ## 0.7.1 - 2022-03-26
 
 * Fix sea-orm-cli error
