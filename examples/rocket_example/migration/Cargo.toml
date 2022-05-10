@@ -10,8 +10,8 @@ path = "src/lib.rs"
 
 [dependencies]
 entity = { path = "../entity" }
+rocket = { version = "0.5.0-rc.1" }
 
 [dependencies.sea-orm-migration]
 path = "../../../sea-orm-migration" # remove this line in your own project
 version = "^0.8.0"
-rocket = { version = "0.5.0-rc.1" }
