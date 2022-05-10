@@ -1,10 +1,10 @@
-use clap::App;
+use clap::{App, Arg, AppSettings};
 use dotenv::dotenv;
 use std::{fmt::Display, process::exit};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
 use sea_orm::{Database, DbConn};
-use sea_orm_cli::build_cli;
+use sea_orm_cli::migration::get_subcommands;
 
 use super::MigratorTrait;
 
@@ -26,13 +26,13 @@ where
     let matches = app.get_matches();
     let mut verbose = false;
     let filter = match matches.subcommand() {
-        (_, None) => "sea_schema::migration=info",
+        (_, None) => "sea_orm_migration=info",
         (_, Some(args)) => match args.is_present("VERBOSE") {
             true => {
                 verbose = true;
                 "debug"
             }
-            false => "sea_schema::migration=info",
+            false => "sea_orm_migration=info",
         },
     };
     let filter_layer = EnvFilter::try_new(filter).unwrap();
@@ -72,6 +72,24 @@ where
         _ => M::up(db, None).await,
     }
     .unwrap_or_else(handle_error);
+}
+
+pub fn build_cli() -> App<'static, 'static> {
+    let mut app = App::new("sea-orm-migration")
+        .version(env!("CARGO_PKG_VERSION"))
+        .setting(AppSettings::VersionlessSubcommands)
+        .arg(
+            Arg::with_name("VERBOSE")
+                .long("verbose")
+                .short("v")
+                .help("Show debug messages")
+                .takes_value(false)
+                .global(true),
+        );
+    for subcommand in get_subcommands() {
+        app = app.subcommand(subcommand);
+    }
+    app
 }
 
 fn handle_error<E>(error: E)

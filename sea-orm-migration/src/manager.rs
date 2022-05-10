@@ -1,10 +1,10 @@
 use sea_orm::sea_query::{
     extension::postgres::{TypeAlterStatement, TypeCreateStatement, TypeDropStatement},
-    Alias, Expr, ForeignKeyCreateStatement, ForeignKeyDropStatement, IndexCreateStatement,
-    IndexDropStatement, Query, TableAlterStatement, TableCreateStatement, TableDropStatement,
+    ForeignKeyCreateStatement, ForeignKeyDropStatement, IndexCreateStatement,
+    IndexDropStatement, TableAlterStatement, TableCreateStatement, TableDropStatement,
     TableRenameStatement, TableTruncateStatement,
 };
-use sea_orm::{Condition, ConnectionTrait, DbBackend, DbConn, DbErr, Statement, StatementBuilder};
+use sea_orm::{ConnectionTrait, DbBackend, DbConn, DbErr, StatementBuilder};
 use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
 
 /// Helper struct for writing migration scripts in migration file
@@ -107,7 +107,7 @@ impl<'c> SchemaManager<'c> {
             .await?
             .ok_or_else(|| DbErr::Custom("Failed to check table exists".to_owned()))?;
 
-        Ok(res.try_get("", "has_table")?)
+        res.try_get("", "has_table")
     }
 
     pub async fn has_column<T, C>(&self, table: T, column: C) -> Result<bool, DbErr>
@@ -128,6 +128,6 @@ impl<'c> SchemaManager<'c> {
             .await?
             .ok_or_else(|| DbErr::Custom("Failed to check column exists".to_owned()))?;
 
-        Ok(res.try_get("", "has_column")?)
+        res.try_get("", "has_column")
     }
 }
