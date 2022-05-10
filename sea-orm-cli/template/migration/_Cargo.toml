@@ -12,5 +12,4 @@ path = "src/lib.rs"
 entity = { path = "../entity" }
 
 [dependencies.sea-orm-migration]
-path = "../../../sea-orm-migration" # remove this line in your own project
-version = "^0.7.0"
+version = "^0.8.0"
