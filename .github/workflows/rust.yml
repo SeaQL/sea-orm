@@ -309,6 +309,19 @@ jobs:
           args: >
             --manifest-path examples/${{ matrix.path }}/Cargo.toml
 
+      - name: Check existence of migration directory
+        id: migration_dir_exists
+        uses: andstor/file-existence-action@v1
+        with:
+          files: examples/${{ matrix.path }}/migration/Cargo.toml
+
+      - uses: actions-rs/cargo@v1
+        if: steps.migration_dir_exists.outputs.files_exists == 'true'
+        with:
+          command: build
+          args: >
+            --manifest-path examples/${{ matrix.path }}/migration/Cargo.toml
+
   issues:
     name: Issues
     needs: init
