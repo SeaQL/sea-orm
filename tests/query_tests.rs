@@ -222,3 +222,33 @@ pub async fn find_all_filter_with_results() {
 
     ctx.delete().await;
 }
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
+pub async fn query_with_pagination() {
+    use sea_orm::{sea_query::*, PaginatorTrait, QueryTrait};
+    let ctx = TestContext::new("find_all_filter_with_results").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    let builder = ctx.db.get_database_backend();
+    let berries = baker::Entity::find().filter(baker::Column::Name.contains("chef"));
+    let select_statement = SelectStatement::new()
+        .column((Alias::new("inner_baker"), Alias::new("name")))
+        .from_subquery(berries.into_query(), Alias::new("inner_baker"))
+        .to_owned();
+
+    let stmt = builder.build(&select_statement);
+
+    let paginator = baker::Entity::find()
+        .from_raw_sql(stmt)
+        .into_json()
+        .paginate(&ctx.db, 2);
+
+    assert!(paginator.fetch_page(0).await.is_ok());
+
+    ctx.delete().await;
+}
