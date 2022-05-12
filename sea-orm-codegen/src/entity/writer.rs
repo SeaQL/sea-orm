@@ -29,6 +29,19 @@ pub enum WithSerde {
     Both,
 }
 
+#[derive(Debug)]
+pub enum DateTimeCrate {
+    Chrono,
+    Time,
+}
+
+#[derive(Debug)]
+pub struct EntityWriterContext {
+    pub(crate) expanded_format: bool,
+    pub(crate) with_serde: WithSerde,
+    pub(crate) date_time_crate: DateTimeCrate,
+}
+
 impl WithSerde {
     pub fn extra_derive(&self) -> TokenStream {
         let mut extra_derive = match self {
@@ -76,6 +89,37 @@ impl FromStr for WithSerde {
                 )))
             }
         })
+    }
+}
+
+impl FromStr for DateTimeCrate {
+    type Err = crate::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "chrono" => Self::Chrono,
+            "time" => Self::Time,
+            v => {
+                return Err(crate::Error::TransformError(format!(
+                    "Unsupported enum variant '{}'",
+                    v
+                )))
+            }
+        })
+    }
+}
+
+impl EntityWriterContext {
+    pub fn new(
+        expanded_format: bool,
+        with_serde: WithSerde,
+        date_time_crate: DateTimeCrate,
+    ) -> Self {
+        Self {
+            expanded_format,
+            with_serde,
+            date_time_crate,
+        }
     }
 }
 
