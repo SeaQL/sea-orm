@@ -28,4 +28,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Oura Postgres Sink](https://github.com/dcSpark/oura-postgres-sink) | Sync a postgres database with the cardano blockchain using [Oura](https://github.com/txpipe/oura)
 - [Rust Async-GraphQL Example: Caster API](https://github.com/bkonkle/rust-example-caster-api) | A demo GraphQL API using Tokio, Warp, async-graphql, and SeaOrm
 - [pansy](https://github.com/niuhuan/pansy) | An illustrations app using SeaORM, SQLite, flutter. runs on the desktop and mobile terminals
+- [Orca](https://github.com/workfoxes/orca) | An No-code Test Automation platfrom using actix, SeaORM, react. runs on the desktop and cloud
+- [symbols](https://github.com/nappa85/symbols) | A proc-macro utility to populates enum variants with primary keys values
+- [Warpgate](https://github.com/warp-tech/warpgate) | Smart SSH bastion that works with any SSH client
 - [suzuya](https://github.com/SH11235/suzuya) | A merchandise management application using SeaORM, Actix-Web, Tera
