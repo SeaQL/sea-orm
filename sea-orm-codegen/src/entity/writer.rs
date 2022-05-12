@@ -381,6 +381,7 @@ impl EntityWriter {
                 }
             }
         }
+    }
 
     pub fn gen_import_active_enum(entity: &Entity) -> TokenStream {
         entity
@@ -1114,13 +1115,19 @@ mod tests {
             }
             let content = lines.join("");
             let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_expanded_code_blocks(entity, &crate::WithSerde::None)
-                .into_iter()
-                .skip(1)
-                .fold(TokenStream::new(), |mut acc, tok| {
-                    acc.extend(tok);
-                    acc
-                });
+            let generated = EntityWriter::gen_expanded_code_blocks(
+                entity,
+                &crate::WithSerde::None,
+                &NameResolver::new(false),
+                &crate::DateTimeCrate::Chrono,
+                &None,
+            )
+            .into_iter()
+            .skip(1)
+            .fold(TokenStream::new(), |mut acc, tok| {
+                acc.extend(tok);
+                acc
+            });
             assert_eq!(expected.to_string(), generated.to_string());
         }
 
