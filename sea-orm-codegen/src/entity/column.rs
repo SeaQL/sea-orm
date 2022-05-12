@@ -1,4 +1,4 @@
-use crate::util::escape_rust_keyword;
+use crate::{util::escape_rust_keyword, DateTimeCrate};
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
@@ -27,7 +27,7 @@ impl Column {
         self.name.to_snake_case() == self.name
     }
 
-    pub fn get_rs_type(&self) -> TokenStream {
+    pub fn get_rs_type(&self, date_time_crate: &DateTimeCrate) -> TokenStream {
         #[allow(unreachable_patterns)]
         let ident: TokenStream = match &self.col_type {
             ColumnType::Char(_)
@@ -45,11 +45,27 @@ impl Column {
             ColumnType::Float(_) => "f32".to_owned(),
             ColumnType::Double(_) => "f64".to_owned(),
             ColumnType::Json | ColumnType::JsonBinary => "Json".to_owned(),
-            ColumnType::Date => "Date".to_owned(),
-            ColumnType::Time(_) => "Time".to_owned(),
-            ColumnType::DateTime(_) => "DateTime".to_owned(),
-            ColumnType::Timestamp(_) => "DateTimeUtc".to_owned(),
-            ColumnType::TimestampWithTimeZone(_) => "DateTimeWithTimeZone".to_owned(),
+            ColumnType::Date => match date_time_crate {
+                DateTimeCrate::Chrono => "Date".to_owned(),
+                DateTimeCrate::Time => "TimeDate".to_owned(),
+            },
+            ColumnType::Time(_) => match date_time_crate {
+                DateTimeCrate::Chrono => "Time".to_owned(),
+                DateTimeCrate::Time => "TimeTime".to_owned(),
+            },
+            ColumnType::DateTime(_) => match date_time_crate {
+                DateTimeCrate::Chrono => "DateTime".to_owned(),
+                DateTimeCrate::Time => "TimeDateTime".to_owned(),
+            },
+            ColumnType::Timestamp(_) => match date_time_crate {
+                DateTimeCrate::Chrono => "DateTimeUtc".to_owned(),
+                // ColumnType::Timpestamp(_) => time::PrimitiveDateTime: https://docs.rs/sqlx/0.3.5/sqlx/postgres/types/index.html#time
+                DateTimeCrate::Time => "TimeDateTime".to_owned(),
+            },
+            ColumnType::TimestampWithTimeZone(_) => match date_time_crate {
+                DateTimeCrate::Chrono => "DateTimeWithTimeZone".to_owned(),
+                DateTimeCrate::Time => "TimeDateTimeWithTimeZone".to_owned(),
+            },
             ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal".to_owned(),
             ColumnType::Uuid => "Uuid".to_owned(),
             ColumnType::Binary(_) => "Vec<u8>".to_owned(),
@@ -210,7 +226,7 @@ impl From<&ColumnDef> for Column {
 
 #[cfg(test)]
 mod tests {
-    use crate::Column;
+    use crate::{Column, DateTimeCrate};
     use proc_macro2::TokenStream;
     use quote::quote;
     use sea_query::{Alias, ColumnDef, ColumnType, SeaRc};
@@ -339,11 +355,14 @@ mod tests {
             let rs_type: TokenStream = rs_type.parse().unwrap();
 
             col.not_null = true;
-            assert_eq!(col.get_rs_type().to_string(), quote!(#rs_type).to_string());
+            assert_eq!(
+                col.get_rs_type(&DateTimeCrate::Chrono).to_string(),
+                quote!(#rs_type).to_string()
+            );
 
             col.not_null = false;
             assert_eq!(
-                col.get_rs_type().to_string(),
+                col.get_rs_type(&DateTimeCrate::Chrono).to_string(),
                 quote!(Option<#rs_type>).to_string()
             );
         }
