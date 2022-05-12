@@ -32,3 +32,4 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [symbols](https://github.com/nappa85/symbols) | A proc-macro utility to populates enum variants with primary keys values
 - [Warpgate](https://github.com/warp-tech/warpgate) | Smart SSH bastion that works with any SSH client
 - [suzuya](https://github.com/SH11235/suzuya) | A merchandise management application using SeaORM, Actix-Web, Tera
+- [Quasar](https://github.com/Technik97/Quasar) | Rust REST API using Actix-Web, SeaOrm and Postgres with Svelte Typescript Frontend
