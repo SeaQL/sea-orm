@@ -33,3 +33,4 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Warpgate](https://github.com/warp-tech/warpgate) | Smart SSH bastion that works with any SSH client
 - [suzuya](https://github.com/SH11235/suzuya) | A merchandise management application using SeaORM, Actix-Web, Tera
 - [Quasar](https://github.com/Technik97/Quasar) | Rust REST API using Actix-Web, SeaOrm and Postgres with Svelte Typescript Frontend
+- [snmp-sim-rust](https://github.com/sonalake/snmp-sim-rust) | SNMP Simulator
