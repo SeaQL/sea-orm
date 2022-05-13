@@ -1,7 +1,9 @@
 use chrono::Local;
 use clap::ArgMatches;
 use regex::Regex;
-use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
+use sea_orm_codegen::{
+    DateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile, WithSerde,
+};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use url::Url;
 
@@ -16,6 +18,7 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                 .collect::<Vec<_>>();
             let expanded_format = args.is_present("EXPANDED_FORMAT");
             let with_serde = args.value_of("WITH_SERDE").unwrap();
+            let date_time_crate = args.value_of("DATE_TIME_CRATE").unwrap();
             if args.is_present("VERBOSE") {
                 let _ = tracing_subscriber::fmt()
                     .with_max_level(tracing::Level::DEBUG)
@@ -152,8 +155,12 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
 
-            let output = EntityTransformer::transform(table_stmts)?
-                .generate(expanded_format, WithSerde::from_str(with_serde).unwrap());
+            let writer_context = EntityWriterContext::new(
+                expanded_format,
+                WithSerde::from_str(with_serde).unwrap(),
+                DateTimeCrate::from_str(date_time_crate).unwrap(),
+            );
+            let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
             let dir = Path::new(output_dir);
             fs::create_dir_all(dir)?;
