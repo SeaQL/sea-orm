@@ -83,6 +83,7 @@ pub fn build_cli() -> App<'static, 'static> {
                         .long("date-time-crate")
                         .help("The datetime crate to use for generating entities.")
                         .takes_value(true)
+                        .possible_values(&["chrono", "time"])
                         .default_value("chrono")
                 ),
         )
