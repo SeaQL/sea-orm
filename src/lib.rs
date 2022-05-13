@@ -261,9 +261,9 @@
 //! 1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 //!
 //! ## Who's using SeaORM?
-//! 
+//!
 //! The following products are powered by SeaORM:
-//! 
+//!
 //! <table>
 //!   <tbody>
 //!     <tr>
@@ -273,9 +273,9 @@
 //!     </tr>
 //!   </tbody>
 //! </table>
-//! 
+//!
 //! SeaORM is the foundation of [StarfishQL](https://github.com/SeaQL/starfish-ql), an experimental graph database and query engine developed by SeaQL.
-//! 
+//!
 //! For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm).
 //!
 //! ## License
