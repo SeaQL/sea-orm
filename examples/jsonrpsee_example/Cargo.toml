@@ -20,3 +20,14 @@ anyhow = "1.0.52"
 async-trait = "0.1.52"
 log = { version = "0.4", features = ["std"] }
 simplelog = "*"
+
+[dependencies.sea-orm]
+path = "../../" # remove this line in your own project
+version = "^0.8.0"
+features = [
+  "debug-print",
+  "runtime-tokio-native-tls",
+  "sqlx-sqlite",
+  # "sqlx-postgres",
+  # "sqlx-mysql",
+]

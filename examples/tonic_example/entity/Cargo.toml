@@ -14,11 +14,3 @@ serde = { version = "1", features = ["derive"] }
 [dependencies.sea-orm]
 path = "../../../" # remove this line in your own project
 version = "^0.8.0"
-features = [
-  "macros",
-  "debug-print",
-  "runtime-tokio-rustls",
-  # "sqlx-mysql",
-  "sqlx-postgres",
-  # "sqlx-sqlite",
-]

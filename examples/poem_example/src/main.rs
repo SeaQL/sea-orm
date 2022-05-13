@@ -1,7 +1,6 @@
 use std::env;
 
 use entity::post;
-use entity::sea_orm;
 use migration::{Migrator, MigratorTrait};
 use poem::endpoint::StaticFilesEndpoint;
 use poem::error::{BadRequest, InternalServerError};

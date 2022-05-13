@@ -6,11 +6,9 @@ use sea_orm_tonic_example::post::{
     Post, PostId, PostList, PostPerPage, ProcessStatus,
 };
 
-use entity::{
-    post::{self, Entity as PostEntity},
-    sea_orm::{self, entity::*, query::*, DatabaseConnection},
-};
+use entity::post::{self, Entity as PostEntity};
 use migration::{Migrator, MigratorTrait};
+use sea_orm::{self, entity::*, query::*, DatabaseConnection};
 
 use std::env;
 
