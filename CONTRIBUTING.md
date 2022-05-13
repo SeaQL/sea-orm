@@ -56,15 +56,15 @@ Next, if you want to run integration tests on a live database. We recommand usin
 Running integration tests on a live database:
 - SQLite
     ```sh
-    DATABASE_URL="sqlite::memory:" cargo t --all --features default,sqlx-sqlite,runtime-async-std-native-tls
+    DATABASE_URL="sqlite::memory:" cargo test --all --features default,sqlx-sqlite,runtime-async-std-native-tls
     ```
 - MySQL / MariaDB
     ```sh
-    DATABASE_URL="mysql://root:root@localhost" cargo t --all --features default,sqlx-mysql,runtime-async-std-rustls
+    DATABASE_URL="mysql://root:root@localhost" cargo test --all --features default,sqlx-mysql,runtime-async-std-rustls
     ```
 - PostgreSQL
     ```sh
-    DATABASE_URL="postgres://root:root@localhost" cargo t --all --features default,sqlx-postgres,runtime-async-std-native-tls
+    DATABASE_URL="postgres://root:root@localhost" cargo test --all --features default,sqlx-postgres,runtime-async-std-native-tls
     ```
 
 ### Running `sea-orm-cli` from source code
