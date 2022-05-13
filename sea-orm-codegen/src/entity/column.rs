@@ -328,8 +328,9 @@ mod tests {
     }
 
     #[test]
-    fn test_get_rs_type() {
+    fn test_get_rs_type_with_chrono() {
         let columns = setup();
+        let chrono_crate = DateTimeCrate::Chrono;
         let rs_types = vec![
             "String",
             "String",
@@ -356,13 +357,55 @@ mod tests {
 
             col.not_null = true;
             assert_eq!(
-                col.get_rs_type(&DateTimeCrate::Chrono).to_string(),
+                col.get_rs_type(&chrono_crate).to_string(),
                 quote!(#rs_type).to_string()
             );
 
             col.not_null = false;
             assert_eq!(
-                col.get_rs_type(&DateTimeCrate::Chrono).to_string(),
+                col.get_rs_type(&chrono_crate).to_string(),
+                quote!(Option<#rs_type>).to_string()
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_rs_type_with_time() {
+        let columns = setup();
+        let time_crate = DateTimeCrate::Time;
+        let rs_types = vec![
+            "String",
+            "String",
+            "i8",
+            "u8",
+            "i16",
+            "u16",
+            "i32",
+            "u32",
+            "i64",
+            "u64",
+            "f32",
+            "f64",
+            "Vec<u8>",
+            "bool",
+            "TimeDate",
+            "TimeTime",
+            "TimeDateTime",
+            "TimeDateTime",
+            "TimeDateTimeWithTimeZone",
+        ];
+        for (mut col, rs_type) in columns.into_iter().zip(rs_types) {
+            let rs_type: TokenStream = rs_type.parse().unwrap();
+
+            col.not_null = true;
+            assert_eq!(
+                col.get_rs_type(&time_crate).to_string(),
+                quote!(#rs_type).to_string()
+            );
+
+            col.not_null = false;
+            assert_eq!(
+                col.get_rs_type(&time_crate).to_string(),
                 quote!(Option<#rs_type>).to_string()
             );
         }
