@@ -16,3 +16,13 @@ dotenv = "0.15.0"
 async-graphql-axum = "^3.0.38"
 entity = { path = "entity" }
 migration = { path = "migration" }
+
+[dependencies.sea-orm]
+path = "../../" # remove this line in your own project
+version = "^0.8.0"
+features = [
+  "runtime-tokio-native-tls",
+  # "sqlx-postgres",
+  # "sqlx-mysql",
+  "sqlx-sqlite"
+]

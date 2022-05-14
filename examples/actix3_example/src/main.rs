@@ -5,7 +5,6 @@ use actix_web::{
 
 use entity::post;
 use entity::post::Entity as Post;
-use entity::sea_orm;
 use listenfd::ListenFd;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::DatabaseConnection;

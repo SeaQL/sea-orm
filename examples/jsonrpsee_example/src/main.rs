@@ -2,7 +2,6 @@ use std::env;
 
 use anyhow::anyhow;
 use entity::post;
-use entity::sea_orm;
 use jsonrpsee::core::{async_trait, RpcResult};
 use jsonrpsee::http_server::HttpServerBuilder;
 use jsonrpsee::proc_macros::rpc;

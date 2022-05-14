@@ -8,7 +8,6 @@ use axum::{
     Router, Server,
 };
 use entity::post;
-use entity::sea_orm;
 use flash::{get_flash_cookie, post_response, PostResponse};
 use migration::{Migrator, MigratorTrait};
 use post::Entity as Post;

@@ -17,6 +17,17 @@ migration = { path = "migration" }
 prost = "0.10.0"
 serde = "1.0"
 
+[dependencies.sea-orm]
+path = "../../" # remove this line in your own project
+version = "^0.8.0"
+features = [
+  "debug-print",
+  "runtime-tokio-rustls",
+  # "sqlx-mysql",
+  "sqlx-postgres",
+  # "sqlx-sqlite",
+]
+
 [lib]
 path = "./src/lib.rs"
 
