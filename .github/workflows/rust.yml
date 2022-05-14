@@ -489,7 +489,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [10.6, 10.5, 10.4]
+        version: [10.6]
         runtime: [actix]
         tls: [native-tls]
     services:
@@ -550,7 +550,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [14, 13, 12, 11, 10]
+        version: [14, 13, 12]
         runtime: [tokio]
         tls: [native-tls]
     services:
