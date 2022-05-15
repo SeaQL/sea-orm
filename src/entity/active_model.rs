@@ -549,7 +549,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         Ok(am)
     }
 
-    /// Returns `true` if any columns were changed.
+    /// Return `true` if any field of `ActiveModel` is `Set`
     fn is_changed(&self) -> bool {
         <Self::Entity as EntityTrait>::Column::iter()
             .any(|col| self.get(col).is_set() && !self.get(col).is_unchanged())
