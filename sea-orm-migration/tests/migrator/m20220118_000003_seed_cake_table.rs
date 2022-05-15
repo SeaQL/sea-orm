@@ -19,8 +19,9 @@ impl MigrationTrait for Migration {
             ..Default::default()
         }
         .insert(db)
-        .await
-        .map(|_| ())
+        .await?;
+
+        Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
@@ -29,8 +30,9 @@ impl MigrationTrait for Migration {
         cake::Entity::delete_many()
             .filter(cake::Column::Name.eq("Cheesecake"))
             .exec(db)
-            .await
-            .map(|_| ())
+            .await?;
+
+        Ok(())
     }
 }
 
