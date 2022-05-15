@@ -1,6 +1,6 @@
 use super::m20220118_000001_create_cake_table::Cake;
-use sea_orm::DbBackend;
 use sea_orm_migration::prelude::*;
+use sea_orm_migration::sea_orm::DbBackend;
 
 pub struct Migration;
 
