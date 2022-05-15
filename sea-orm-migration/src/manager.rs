@@ -1,8 +1,8 @@
 use sea_orm::sea_query::{
     extension::postgres::{TypeAlterStatement, TypeCreateStatement, TypeDropStatement},
-    ForeignKeyCreateStatement, ForeignKeyDropStatement, IndexCreateStatement,
-    IndexDropStatement, TableAlterStatement, TableCreateStatement, TableDropStatement,
-    TableRenameStatement, TableTruncateStatement,
+    ForeignKeyCreateStatement, ForeignKeyDropStatement, IndexCreateStatement, IndexDropStatement,
+    TableAlterStatement, TableCreateStatement, TableDropStatement, TableRenameStatement,
+    TableTruncateStatement,
 };
 use sea_orm::{ConnectionTrait, DbBackend, DbConn, DbErr, StatementBuilder};
 use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};

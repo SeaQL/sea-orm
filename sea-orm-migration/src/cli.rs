@@ -1,4 +1,4 @@
-use clap::{App, Arg, AppSettings};
+use clap::{App, AppSettings, Arg};
 use dotenv::dotenv;
 use std::{fmt::Display, process::exit};
 use tracing_subscriber::{prelude::*, EnvFilter};
