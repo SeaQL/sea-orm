@@ -24,7 +24,7 @@ pub trait MigrationTrait: MigrationName + Send + Sync {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr>;
 
     /// Define actions to perform when rolling back the migration
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        Err(DbErr::Migration("We Don't Do That Here"))
+    async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
+        Err(DbErr::Migration(format!("We Don't Do That Here")))
     }
 }
