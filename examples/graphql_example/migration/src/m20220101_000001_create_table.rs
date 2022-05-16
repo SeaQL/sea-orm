@@ -2,6 +2,7 @@ use entity::note;
 use sea_orm::{DbBackend, EntityTrait, Schema};
 use sea_orm_migration::prelude::*;
 
+#[derive(DeriveMigrationName)]
 pub struct Migration;
 
 fn get_seaorm_create_stmt<E: EntityTrait>(e: E) -> TableCreateStatement {
@@ -15,12 +16,6 @@ fn get_seaorm_create_stmt<E: EntityTrait>(e: E) -> TableCreateStatement {
 
 fn get_seaorm_drop_stmt<E: EntityTrait>(e: E) -> TableDropStatement {
     Table::drop().table(e).if_exists().to_owned()
-}
-
-impl MigrationName for Migration {
-    fn name(&self) -> &str {
-        "m20220101_000001_create_table"
-    }
 }
 
 #[async_trait::async_trait]
