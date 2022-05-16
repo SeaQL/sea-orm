@@ -4,6 +4,7 @@ use regex::Regex;
 use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use url::Url;
+use tracing_subscriber::{prelude::*, EnvFilter};
 
 pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
     match matches.subcommand() {
@@ -21,6 +22,17 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                     .with_max_level(tracing::Level::DEBUG)
                     .with_test_writer()
                     .try_init();
+            } else {
+                let filter_layer = EnvFilter::try_new("sea_orm_codegen=info").unwrap();
+                let fmt_layer = tracing_subscriber::fmt::layer()
+                    .with_target(false)
+                    .with_level(false)
+                    .without_time();
+
+                tracing_subscriber::registry()
+                    .with(filter_layer)
+                    .with(fmt_layer)
+                    .init()
             }
 
             let max_connections = args

@@ -4,6 +4,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use std::{collections::HashMap, str::FromStr};
 use syn::{punctuated::Punctuated, token::Comma};
+use tracing::info;
 
 #[derive(Clone, Debug)]
 pub struct EntityWriter {
@@ -94,6 +95,12 @@ impl EntityWriter {
         self.entities
             .iter()
             .map(|entity| {
+                let entity_file = format!("{}.rs", entity.get_table_name_snake_case());
+                info!(
+                    "Generating {}",
+                    entity_file
+                );
+
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);
                 let code_blocks = if expanded_format {
@@ -103,7 +110,7 @@ impl EntityWriter {
                 };
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
-                    name: format!("{}.rs", entity.get_table_name_snake_case()),
+                    name: entity_file,
                     content: lines.join("\n\n"),
                 }
             })
