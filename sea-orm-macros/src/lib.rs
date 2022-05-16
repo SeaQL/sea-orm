@@ -586,7 +586,7 @@ pub fn derive_relation(input: TokenStream) -> TokenStream {
 ///
 /// ### Usage
 ///
-/// ```
+/// ```ignore
 /// #[derive(DeriveMigrationName)]
 /// pub struct Migration;
 /// ```
@@ -594,7 +594,7 @@ pub fn derive_relation(input: TokenStream) -> TokenStream {
 /// The derive macro above will provide following implementation,
 /// given the file name is `m20220120_000001_create_post_table.rs`.
 ///
-/// ```
+/// ```ignore
 /// impl MigrationName for Migration {
 ///     fn name(&self) -> &str {
 ///         "m20220120_000001_create_post_table"
