@@ -3,8 +3,8 @@ use clap::ArgMatches;
 use regex::Regex;
 use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
-use url::Url;
 use tracing_subscriber::{prelude::*, EnvFilter};
+use url::Url;
 
 pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
     match matches.subcommand() {
