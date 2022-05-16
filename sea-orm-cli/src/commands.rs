@@ -297,10 +297,8 @@ fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(),
     // TODO: make OS agnostic
     let migration_template =
         include_str!("../template/migration/src/m20220101_000001_create_table.rs");
-    let migration_content =
-        migration_template.replace("m20220101_000001_create_table", &migration_name);
     let mut migration_file = fs::File::create(migration_filepath)?;
-    migration_file.write_all(migration_content.as_bytes())?;
+    migration_file.write_all(migration_template.as_bytes())?;
     Ok(())
 }
 
@@ -466,8 +464,6 @@ mod tests {
             .join(format!("{}.rs", migration_name));
         assert!(migration_filepath.exists());
         let migration_content = fs::read_to_string(migration_filepath).unwrap();
-        let migration_content =
-            migration_content.replace(&migration_name, "m20220101_000001_create_table");
         assert_eq!(
             &migration_content,
             include_str!("../template/migration/src/m20220101_000001_create_table.rs")
