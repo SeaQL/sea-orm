@@ -1,22 +1,18 @@
 use clap::{App, AppSettings, Arg};
-use dotenv::dotenv;
 use std::{fmt::Display, process::exit};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
-use sea_orm::{Database, DbConn};
+use sea_orm::{DatabaseConnection, DbConn};
 use sea_orm_cli::migration::get_subcommands;
 
 use super::MigratorTrait;
 
-pub async fn run_cli<M>(migrator: M)
+pub async fn run_cli<M>(migrator: M, connection: DatabaseConnection)
 where
     M: MigratorTrait,
 {
-    dotenv().ok();
-    let url = std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
-    let db = &Database::connect(&url).await.unwrap();
     let app = build_cli();
-    get_matches(migrator, db, app).await;
+    get_matches(migrator, &connection, app).await;
 }
 
 pub async fn get_matches<M>(_: M, db: &DbConn, app: App<'static, 'static>)
