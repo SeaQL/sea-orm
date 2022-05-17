@@ -29,10 +29,10 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                     .with_level(false)
                     .without_time();
 
-                tracing_subscriber::registry()
+                let _ = tracing_subscriber::registry()
                     .with(filter_layer)
                     .with(fmt_layer)
-                    .init()
+                    .try_init();
             }
 
             let max_connections = args
