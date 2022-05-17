@@ -1,3 +1,4 @@
+use sea_query::Write;
 use crate::util::escape_rust_keyword;
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
@@ -150,22 +151,22 @@ impl Column {
         if key_info.is_empty() {
             return format!("Column `{}`: {}", self.name, type_info);
         } else {
-            return format!("Column `{}`: {}, {}", self.name, type_info, key_info);
+            return format!("Column `{}`: {}{}", self.name, type_info, key_info);
         }
     }
 
     fn key_info(&self) -> String {
-        let mut vec: Vec<&str> = vec![];
+        let mut info = String::from("");
         if self.auto_increment {
-            vec.push("auto_increment")
+            write!(&mut info, ", auto_increment").expect(&format!("Not written `{}`", self.get_name_snake_case()));
         }
         if self.not_null {
-            vec.push("not_null")
+            write!(&mut info, ", not_null").expect(&format!("Not written `{}`", self.get_name_snake_case()));
         }
         if self.unique {
-            vec.push("unique")
+            write!(&mut info, ", unique").expect(&format!("Not written `{}`", self.get_name_snake_case()));
         }
-        return vec.join(", ");
+        return info;
     }
 }
 
