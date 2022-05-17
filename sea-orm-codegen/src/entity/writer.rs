@@ -96,12 +96,16 @@ impl EntityWriter {
             .iter()
             .map(|entity| {
                 let entity_file = format!("{}.rs", entity.get_table_name_snake_case());
-                let column_names = entity
+                let column_info = entity
                     .columns
                     .iter()
-                    .map(|column| column.name.clone())
+                    .map(|column| column.get_info())
                     .collect::<Vec<String>>();
-                info!("Generating {} {:?}", entity_file, column_names);
+
+                info!("Generating {}", entity_file);
+                for info in column_info.iter() {
+                    info!("    > {}", info);
+                }
 
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);

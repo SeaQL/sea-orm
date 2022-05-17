@@ -143,6 +143,30 @@ impl Column {
         }
         col_def
     }
+
+    pub fn get_info(&self) -> String {
+        let type_info = self.get_rs_type().to_string().replace(" ", "");
+        let key_info = self.key_info();
+        if key_info.is_empty() {
+            return format!("Column `{}`: {}", self.name, type_info);
+        } else {
+            return format!("Column `{}`: {}, {}", self.name, type_info, key_info);
+        }
+    }
+
+    fn key_info(&self) -> String {
+        let mut vec: Vec<&str> = vec![];
+        if self.auto_increment {
+            vec.push("auto_increment")
+        }
+        if self.not_null {
+            vec.push("not_null")
+        }
+        if self.unique {
+            vec.push("unique")
+        }
+        return vec.join(", ");
+    }
 }
 
 impl From<ColumnDef> for Column {
@@ -359,6 +383,39 @@ mod tests {
             col_def.extend(quote!(.unique()));
             assert_eq!(col.get_def().to_string(), col_def.to_string());
         }
+    }
+
+    #[test]
+    fn test_get_info() {
+        let column: Column = ColumnDef::new(Alias::new("id"))
+            .string()
+            .to_owned()
+            .into();
+        assert_eq!(column.get_info(), String::from("Column `id`: Option<String>"));
+
+        let column: Column = ColumnDef::new(Alias::new("id"))
+            .string()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(column.get_info(), String::from("Column `id`: String, not_null"));
+
+        let column: Column = ColumnDef::new(Alias::new("id"))
+            .string()
+            .not_null()
+            .unique_key()
+            .to_owned()
+            .into();
+        assert_eq!(column.get_info(), String::from("Column `id`: String, not_null, unique"));
+
+        let column: Column = ColumnDef::new(Alias::new("id"))
+            .string()
+            .not_null()
+            .unique_key()
+            .auto_increment()
+            .to_owned()
+            .into();
+        assert_eq!(column.get_info(), String::from("Column `id`: String, auto_increment, not_null, unique"));
     }
 
     #[test]
