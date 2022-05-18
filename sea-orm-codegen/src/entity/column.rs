@@ -1,9 +1,9 @@
-use sea_query::Write;
 use crate::util::escape_rust_keyword;
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{ColumnDef, ColumnSpec, ColumnType};
+use std::fmt::Write as FmtWrite;
 
 #[derive(Clone, Debug)]
 pub struct Column {
@@ -146,27 +146,30 @@ impl Column {
     }
 
     pub fn get_info(&self) -> String {
-        let type_info = self.get_rs_type().to_string().replace(" ", "");
-        let key_info = self.key_info();
-        if key_info.is_empty() {
-            return format!("Column `{}`: {}", self.name, type_info);
-        } else {
-            return format!("Column `{}`: {}{}", self.name, type_info, key_info);
-        }
+        let mut info = String::new();
+        let type_info = self.get_rs_type().to_string().replace(' ', "");
+        let col_info = self.col_info();
+        write!(
+            &mut info,
+            "Column `{}`: {}{}",
+            self.name, type_info, col_info
+        )
+        .unwrap();
+        info
     }
 
-    fn key_info(&self) -> String {
-        let mut info = String::from("");
+    fn col_info(&self) -> String {
+        let mut info = String::new();
         if self.auto_increment {
-            write!(&mut info, ", auto_increment").expect(&format!("Not written `{}`", self.get_name_snake_case()));
+            write!(&mut info, ", auto_increment").unwrap();
         }
         if self.not_null {
-            write!(&mut info, ", not_null").expect(&format!("Not written `{}`", self.get_name_snake_case()));
+            write!(&mut info, ", not_null").unwrap();
         }
         if self.unique {
-            write!(&mut info, ", unique").expect(&format!("Not written `{}`", self.get_name_snake_case()));
+            write!(&mut info, ", unique").unwrap();
         }
-        return info;
+        info
     }
 }
 
@@ -388,18 +391,15 @@ mod tests {
 
     #[test]
     fn test_get_info() {
-        let column: Column = ColumnDef::new(Alias::new("id"))
-            .string()
-            .to_owned()
-            .into();
-        assert_eq!(column.get_info(), String::from("Column `id`: Option<String>"));
+        let column: Column = ColumnDef::new(Alias::new("id")).string().to_owned().into();
+        assert_eq!(column.get_info().as_str(), "Column `id`: Option<String>");
 
         let column: Column = ColumnDef::new(Alias::new("id"))
             .string()
             .not_null()
             .to_owned()
             .into();
-        assert_eq!(column.get_info(), String::from("Column `id`: String, not_null"));
+        assert_eq!(column.get_info().as_str(), "Column `id`: String, not_null");
 
         let column: Column = ColumnDef::new(Alias::new("id"))
             .string()
@@ -407,7 +407,10 @@ mod tests {
             .unique_key()
             .to_owned()
             .into();
-        assert_eq!(column.get_info(), String::from("Column `id`: String, not_null, unique"));
+        assert_eq!(
+            column.get_info().as_str(),
+            "Column `id`: String, not_null, unique"
+        );
 
         let column: Column = ColumnDef::new(Alias::new("id"))
             .string()
@@ -416,7 +419,10 @@ mod tests {
             .auto_increment()
             .to_owned()
             .into();
-        assert_eq!(column.get_info(), String::from("Column `id`: String, auto_increment, not_null, unique"));
+        assert_eq!(
+            column.get_info().as_str(),
+            "Column `id`: String, auto_increment, not_null, unique"
+        );
     }
 
     #[test]
