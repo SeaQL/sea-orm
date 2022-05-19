@@ -2,9 +2,11 @@
 use sqlx::Error;
 #[cfg(feature = "sqlx-error")]
 use std::fmt::{Display, Formatter};
+#[cfg(feature = "sqlx-error")]
+use std::sync::Arc;
 
 /// An error from unsuccessful database operations
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum DbErr {
     /// There was a problem with the database connection
     Conn(String),
@@ -29,16 +31,19 @@ pub enum DbErr {
 
 /// A wrapper around the error, which might have been generated from sqlx
 #[cfg(feature = "sqlx-error")]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ErrFromSqlx {
-    inner: sqlx::Error,
+    inner: Arc<sqlx::Error>,
     message: String,
 }
 
 #[cfg(feature = "sqlx-error")]
 impl ErrFromSqlx {
     pub fn new(inner: sqlx::Error, message: String) -> Self {
-        Self { inner, message }
+        Self {
+            inner: Arc::new(inner),
+            message,
+        }
     }
 
     pub fn inner(&self) -> &sqlx::Error {
@@ -50,7 +55,10 @@ impl ErrFromSqlx {
 impl From<sqlx::Error> for ErrFromSqlx {
     fn from(e: Error) -> Self {
         let message = e.to_string();
-        Self { inner: e, message }
+        Self {
+            inner: Arc::new(e),
+            message,
+        }
     }
 }
 
