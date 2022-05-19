@@ -1,3 +1,8 @@
+#[cfg(feature = "sqlx-error")]
+use sqlx::Error;
+#[cfg(feature = "sqlx-error")]
+use std::fmt::{Display, Formatter};
+
 /// An error from unsuccessful database operations
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DbErr {
@@ -17,6 +22,61 @@ pub enum DbErr {
     Json(String),
     /// A migration error
     Migration(String),
+    /// Error translated from Sqlx
+    #[cfg(feature = "sqlx-error")]
+    Sqlx(ErrFromSqlx),
+}
+
+/// A wrapper around the error, which might have been generated from sqlx
+#[cfg(feature = "sqlx-error")]
+#[derive(Debug)]
+pub struct ErrFromSqlx {
+    inner: sqlx::Error,
+    message: String,
+}
+
+#[cfg(feature = "sqlx-error")]
+impl ErrFromSqlx {
+    pub fn new(inner: sqlx::Error, message: String) -> Self {
+        Self { inner, message }
+    }
+
+    pub fn inner(&self) -> &sqlx::Error {
+        &self.inner
+    }
+}
+
+#[cfg(feature = "sqlx-error")]
+impl From<sqlx::Error> for ErrFromSqlx {
+    fn from(e: Error) -> Self {
+        let message = e.to_string();
+        Self { inner: e, message }
+    }
+}
+
+#[cfg(feature = "sqlx-error")]
+impl PartialEq for ErrFromSqlx {
+    fn eq(&self, other: &Self) -> bool {
+        self.message == other.message
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        self.message != other.message
+    }
+}
+
+#[cfg(feature = "sqlx-error")]
+impl From<ErrFromSqlx> for String {
+    fn from(e: ErrFromSqlx) -> Self {
+        e.message
+    }
+}
+
+#[cfg(feature = "sqlx-error")]
+impl Display for ErrFromSqlx {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
 }
 
 impl std::error::Error for DbErr {}
@@ -32,6 +92,8 @@ impl std::fmt::Display for DbErr {
             Self::Type(s) => write!(f, "Type Error: {}", s),
             Self::Json(s) => write!(f, "Json Error: {}", s),
             Self::Migration(s) => write!(f, "Migration Error: {}", s),
+            #[cfg(feature = "sqlx-error")]
+            Self::Sqlx(s) => write!(f, "Sqlx Error: {}", s),
         }
     }
 }

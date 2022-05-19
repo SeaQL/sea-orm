@@ -235,6 +235,17 @@ impl DatabaseTransaction {
             }
         }
     }
+
+    #[cfg(feature = "sqlx-dep")]
+    fn map_err_ignore_not_found<T: std::fmt::Debug>(
+        err: Result<Option<T>, sqlx::Error>,
+    ) -> Result<Option<T>, DbErr> {
+        if let Err(sqlx::Error::RowNotFound) = err {
+            Ok(None)
+        } else {
+            Err(sqlx_error_to_query_err(err.unwrap_err()))
+        }
+    }
 }
 
 impl Drop for DatabaseTransaction {
@@ -254,13 +265,14 @@ impl ConnectionTrait for DatabaseTransaction {
     async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
-        let _res = match &mut *self.conn.lock().await {
+        let _res: Result<ExecResult, DbErr> = match &mut *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
             InnerConnection::MySql(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
                 crate::metric::metric!(self.metric_callback, &stmt, {
                     query.execute(conn).await.map(Into::into)
                 })
+                .map_err(sqlx_error_to_exec_err)
             }
             #[cfg(feature = "sqlx-postgres")]
             InnerConnection::Postgres(conn) => {
@@ -268,6 +280,7 @@ impl ConnectionTrait for DatabaseTransaction {
                 crate::metric::metric!(self.metric_callback, &stmt, {
                     query.execute(conn).await.map(Into::into)
                 })
+                .map_err(sqlx_error_to_exec_err)
             }
             #[cfg(feature = "sqlx-sqlite")]
             InnerConnection::Sqlite(conn) => {
@@ -275,47 +288,52 @@ impl ConnectionTrait for DatabaseTransaction {
                 crate::metric::metric!(self.metric_callback, &stmt, {
                     query.execute(conn).await.map(Into::into)
                 })
+                .map_err(sqlx_error_to_exec_err)
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.execute(stmt),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         };
-        #[cfg(feature = "sqlx-dep")]
-        _res.map_err(sqlx_error_to_exec_err)
     }
 
     #[instrument(level = "trace")]
     async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
-        let _res = match &mut *self.conn.lock().await {
+        let _res: Result<Option<QueryResult>, DbErr> = match &mut *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
             InnerConnection::MySql(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
-                query.fetch_one(conn).await.map(|row| Some(row.into()))
+                query
+                    .fetch_one(conn)
+                    .await
+                    .map(|row| Some(row.into()))
+                    .map_err(Self::map_err_ignore_not_found)
             }
             #[cfg(feature = "sqlx-postgres")]
             InnerConnection::Postgres(conn) => {
                 let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
-                query.fetch_one(conn).await.map(|row| Some(row.into()))
+                query
+                    .fetch_one(conn)
+                    .await
+                    .map(|row| Some(row.into()))
+                    .map_err(Self::map_err_ignore_not_found)
             }
             #[cfg(feature = "sqlx-sqlite")]
             InnerConnection::Sqlite(conn) => {
                 let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
-                query.fetch_one(conn).await.map(|row| Some(row.into()))
+                query
+                    .fetch_one(conn)
+                    .await
+                    .map(|row| Some(row.into()))
+                    .map_err(Self::map_err_ignore_not_found)
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_one(stmt),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         };
-        #[cfg(feature = "sqlx-dep")]
-        if let Err(sqlx::Error::RowNotFound) = _res {
-            Ok(None)
-        } else {
-            _res.map_err(sqlx_error_to_query_err)
-        }
     }
 
     #[instrument(level = "trace")]
@@ -330,6 +348,7 @@ impl ConnectionTrait for DatabaseTransaction {
                     .fetch_all(conn)
                     .await
                     .map(|rows| rows.into_iter().map(|r| r.into()).collect())
+                    .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "sqlx-postgres")]
             InnerConnection::Postgres(conn) => {
@@ -338,6 +357,7 @@ impl ConnectionTrait for DatabaseTransaction {
                     .fetch_all(conn)
                     .await
                     .map(|rows| rows.into_iter().map(|r| r.into()).collect())
+                    .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "sqlx-sqlite")]
             InnerConnection::Sqlite(conn) => {
@@ -346,14 +366,13 @@ impl ConnectionTrait for DatabaseTransaction {
                     .fetch_all(conn)
                     .await
                     .map(|rows| rows.into_iter().map(|r| r.into()).collect())
+                    .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_all(stmt),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         };
-        #[cfg(feature = "sqlx-dep")]
-        _res.map_err(sqlx_error_to_query_err)
     }
 }
 
