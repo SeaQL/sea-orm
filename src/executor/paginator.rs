@@ -394,6 +394,32 @@ mod tests {
     }
 
     #[smol_potat::test]
+    async fn fetch_page_raw_complex() -> Result<(), DbErr> {
+        use crate::query::QueryTrait;
+        let (db, pages) = setup();
+        let builder = db.get_database_backend();
+
+        let berries = fruit::Entity::find().filter(fruit::Column::Name.contains("berry"));
+        let select_statement = SelectStatement::new()
+            .column((Alias::new("inner_fruit"), Alias::new("name")))
+            .from_subquery(berries.into_query(), Alias::new("inner_fruit"))
+            .to_owned();
+
+        let stmt = builder.build(&select_statement);
+
+        let paginator = fruit::Entity::find()
+            .from_raw_sql(stmt)
+            .into_json()
+            .paginate(&db, 2);
+
+        assert!(paginator.fetch_page(0).await.is_ok());
+        // assert_eq!(paginator.fetch_page(1).await?, pages[1].clone());
+        // assert_eq!(paginator.fetch_page(2).await?, pages[2].clone());
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
     async fn fetch() -> Result<(), DbErr> {
         let (db, pages) = setup();
 
