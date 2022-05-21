@@ -1,0 +1,10 @@
+default_stages: [commit]
+fail_fast: true
+repos:
+-   repo: local
+    hooks:
+    -   id: rust-fmt
+        name: rust-fmt
+        entry: cargo fmt --all -- --backup --files-with-diff 
+        language: system
+        types: [rust]
