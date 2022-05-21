@@ -8,3 +8,9 @@ repos:
         entry: cargo fmt --all -- --backup --files-with-diff 
         language: system
         types: [rust]
+    -   id: rust-lint
+        name: 'lint using clippy'
+        entry: cargo clippy --all-targets --workspace -- -D warnings
+        language: system
+        types: [rust]
+        pass_filenames: false
