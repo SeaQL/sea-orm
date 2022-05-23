@@ -289,6 +289,40 @@ pub trait MigratorTrait: Send {
 
         Ok(())
     }
+
+    /// Apply or Rollback migrations to version
+    async fn change_to_version(db: &DbConn, version: &str) -> Result<(), DbErr> {
+        let mut steps = Self::get_steps(Self::get_pending_migrations(db).await?, version);
+        if steps > 0 {
+            Self::up(db, Some(steps)).await
+        } else {
+            let mut migrations = Self::get_applied_migrations(db).await?;
+            migrations.reverse();
+            steps = Self::get_steps(migrations, version);
+            if steps > 1 {
+                Self::down(db, Some(steps - 1)).await
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    fn get_steps(migrations: Vec<Migration>, version: &str) -> u32 {
+        let mut index = 0;
+        let mut matched = false;
+        for Migration { migration, .. } in migrations {
+            index += 1;
+            if migration.name() == version {
+                matched = true;
+                break;
+            }
+        };
+        if matched {
+            index
+        } else {
+            0
+        }
+    }
 }
 
 pub(crate) fn query_tables(db: &DbConn) -> SelectStatement {

@@ -34,16 +34,30 @@ pub fn get_subcommands() -> Vec<App<'static, 'static>> {
                     .short("n")
                     .help("Number of pending migrations to be applied")
                     .takes_value(true),
+            )
+            .arg(
+                Arg::with_name("VERSION_MIGRATION")
+                    .long("version")
+                    .short("V")
+                    .help("Version of pending migrations to be applied")
+                    .takes_value(true),
             ),
-        SubCommand::with_name("down")
+            SubCommand::with_name("down")
             .about("Rollback applied migrations")
             .arg(
                 Arg::with_name("NUM_MIGRATION")
-                    .long("num")
-                    .short("n")
-                    .help("Number of pending migrations to be rolled back")
-                    .takes_value(true)
-                    .default_value("1"),
+                .long("num")
+                .short("n")
+                .help("Number of pending migrations to be rolled back")
+                .takes_value(true)
+                .default_value("1"),
+            )
+            .arg(
+                Arg::with_name("VERSION_MIGRATION")
+                    .long("version")
+                    .short("V")
+                    .help("Version of pending migrations to be rolled back")
+                    .takes_value(true),
             ),
     ]
 }

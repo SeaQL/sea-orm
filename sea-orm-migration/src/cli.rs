@@ -60,14 +60,24 @@ where
         ("up", None) => M::up(db, None).await,
         ("down", None) => M::down(db, Some(1)).await,
         ("up", Some(args)) => {
-            let str = args.value_of("NUM_MIGRATION").unwrap_or_default();
-            let steps = str.parse().ok();
-            M::up(db, steps).await
+            let version = args.value_of("VERSION_MIGRATION");
+            if version.is_some() {
+                M::change_to_version(db, version.unwrap()).await
+            } else {
+                let str = args.value_of("NUM_MIGRATION").unwrap_or_default();
+                let steps = str.parse().ok();
+                M::up(db, steps).await
+            }
         }
         ("down", Some(args)) => {
-            let str = args.value_of("NUM_MIGRATION").unwrap();
-            let steps = str.parse().ok().unwrap_or(1);
-            M::down(db, Some(steps)).await
+            let version = args.value_of("VERSION_MIGRATION");
+            if version.is_some() {
+                M::change_to_version(db, version.unwrap()).await
+            } else {
+                let str = args.value_of("NUM_MIGRATION").unwrap();
+                let steps = str.parse().ok().unwrap_or(1);
+                M::down(db, Some(steps)).await
+            }
         }
         _ => M::up(db, None).await,
     }
