@@ -42,11 +42,9 @@ where
         // so that self is dropped before entering await
         let mut query = self.query;
         if db.support_returning() && <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
-            let mut returning = Query::select();
-            returning.columns(
-                <A::Entity as EntityTrait>::PrimaryKey::iter().map(|c| c.into_column_ref()),
+            query.returning(
+                Query::returning().columns(<A::Entity as EntityTrait>::PrimaryKey::iter()),
             );
-            query.returning(returning);
         }
         Inserter::<A>::new(self.primary_key, query).exec(db)
     }
@@ -149,17 +147,17 @@ where
     let db_backend = db.get_database_backend();
     let found = match db.support_returning() {
         true => {
-            let mut returning = Query::select();
-            returning.exprs(<A::Entity as EntityTrait>::Column::iter().map(|c| {
-                let col = Expr::col(c);
-                let col_def = ColumnTrait::def(&c);
-                let col_type = col_def.get_column_type();
-                match col_type.get_enum_name() {
-                    Some(_) => col.as_enum(Alias::new("text")),
-                    None => col.into(),
-                }
-            }));
-            insert_statement.returning(returning);
+            insert_statement.returning(Query::returning().exprs(
+                <A::Entity as EntityTrait>::Column::iter().map(|c| {
+                    let col = Expr::col(c);
+                    let col_def = ColumnTrait::def(&c);
+                    let col_type = col_def.get_column_type();
+                    match col_type.get_enum_name() {
+                        Some(_) => col.as_enum(Alias::new("text")),
+                        None => col.into(),
+                    }
+                }),
+            ));
             SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
                 db_backend.build(&insert_statement),
             )

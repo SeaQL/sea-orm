@@ -91,17 +91,17 @@ where
 {
     match db.support_returning() {
         true => {
-            let mut returning = Query::select();
-            returning.exprs(<A::Entity as EntityTrait>::Column::iter().map(|c| {
-                let col = Expr::col(c);
-                let col_def = c.def();
-                let col_type = col_def.get_column_type();
-                match col_type.get_enum_name() {
-                    Some(_) => col.as_enum(Alias::new("text")),
-                    None => col.into(),
-                }
-            }));
-            query.returning(returning);
+            query.returning(Query::returning().exprs(
+                <A::Entity as EntityTrait>::Column::iter().map(|c| {
+                    let col = Expr::col(c);
+                    let col_def = c.def();
+                    let col_type = col_def.get_column_type();
+                    match col_type.get_enum_name() {
+                        Some(_) => col.as_enum(Alias::new("text")),
+                        None => col.into(),
+                    }
+                }),
+            ));
             let db_backend = db.get_database_backend();
             let found: Option<<A::Entity as EntityTrait>::Model> =
                 SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
