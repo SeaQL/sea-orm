@@ -32,8 +32,8 @@ async fn main() -> Result<(), DbErr> {
         ])
         .and_where(Column::Id.eq(1));
 
-    let mut returning = Query::select();
-    returning.columns(vec![Column::Id, Column::Name, Column::ProfitMargin]);
+    let returning =
+        Query::returning().columns([Column::Id, Column::Name, Column::ProfitMargin]);
 
     create_tables(db).await?;
 

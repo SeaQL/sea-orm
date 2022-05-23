@@ -2,9 +2,7 @@ use crate::{
     error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert, IntoActiveModel,
     Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
 };
-use sea_query::{
-    Alias, Expr, FromValueTuple, Iden, InsertStatement, IntoColumnRef, Query, ValueTuple,
-};
+use sea_query::{Alias, Expr, FromValueTuple, Iden, InsertStatement, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};
 
 /// Defines a structure to perform INSERT operations in an ActiveModel
