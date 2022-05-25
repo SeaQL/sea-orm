@@ -7,6 +7,7 @@ pub struct Model {
     pub uuid: Uuid,
     #[sea_orm(column_name = "type", enum_name = "Type")]
     pub ty: String,
+    #[sea_orm(unique)]
     pub key: String,
     pub value: String,
     pub bytes: Vec<u8>,

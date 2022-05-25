@@ -59,37 +59,34 @@ pub async fn insert_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
 }
 
 pub async fn create_and_update_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
-    let metadata = metadata::Model {
-        uuid: Uuid::new_v4(),
-        ty: "Type".to_owned(),
-        key: "markup".to_owned(),
-        value: "1.18".to_owned(),
-        bytes: vec![1, 2, 3],
-        date: Some(Date::from_ymd(2021, 9, 27)),
-        time: Some(Time::from_hms(11, 32, 55)),
-    };
+    dbg!(
+        metadata::Model {
+            uuid: Uuid::new_v4(),
+            ty: "Type".to_owned(),
+            key: "markup".to_owned(),
+            value: "1.18".to_owned(),
+            bytes: vec![1, 2, 3],
+            date: Some(Date::from_ymd(2021, 9, 27)),
+            time: Some(Time::from_hms(11, 32, 55)),
+        }
+        .into_active_model()
+        .insert(db)
+        .await?
+    );
 
-    let res = Metadata::insert(metadata.clone().into_active_model())
-        .exec(db)
-        .await?;
-
-    assert_eq!(Metadata::find().one(db).await?, Some(metadata.clone()));
-
-    assert_eq!(res.last_insert_id, metadata.uuid);
-
-    let update_res = Metadata::update(metadata::ActiveModel {
-        value: Set("0.22".to_owned()),
-        ..metadata.clone().into_active_model()
-    })
-    .filter(metadata::Column::Uuid.eq(Uuid::default()))
-    .exec(db)
-    .await;
-
-    assert_eq!(
-        update_res,
-        Err(DbErr::RecordNotFound(
-            "None of the database rows are affected".to_owned()
-        ))
+    dbg!(
+        metadata::Model {
+            uuid: Uuid::new_v4(),
+            ty: "Type".to_owned(),
+            key: "markup".to_owned(),
+            value: "1.18".to_owned(),
+            bytes: vec![1, 2, 3],
+            date: Some(Date::from_ymd(2021, 9, 27)),
+            time: Some(Time::from_hms(11, 32, 55)),
+        }
+        .into_active_model()
+        .insert(db)
+        .await?
     );
 
     Ok(())
