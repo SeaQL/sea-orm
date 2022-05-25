@@ -1,72 +1,79 @@
 use crate::{
-    ColumnTrait, ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Iterable,
-    PrimaryKeyToColumn, PrimaryKeyTrait, Select, SelectModel, SelectorTrait,
+    ColumnTrait, ConnectionTrait, DbErr, EntityTrait, FromQueryResult, QueryOrder, Select,
+    SelectModel, SelectorTrait,
 };
-use sea_query::{Condition, IntoValueTuple, Order, SelectStatement, SimpleExpr, Value};
+use sea_query::{OrderedStatement, SelectStatement, Value};
 use std::marker::PhantomData;
 
-/// Limit number of rows to be fetched from the cursor
-#[derive(Debug)]
-pub enum CursorLimit {
-    /// Fetch first N rows in ascending order of primary key
-    First(u32),
-    /// Fetch last N rows in descending order of primary key
-    Last(u32),
-}
-
 /// Cursor pagination
-#[derive(Debug)]
-pub struct Cursor<E, S>
+///
+/// To ensure proper ordering of the paginated result, the select statement must have order by expression.
+#[derive(Debug, Clone)]
+pub struct Cursor<S>
 where
-    E: EntityTrait,
     S: SelectorTrait,
 {
     pub(crate) query: SelectStatement,
-    pub(crate) condition: Option<Condition>,
-    pub(crate) limit: Option<CursorLimit>,
-    pub(crate) phantom: PhantomData<(E, S)>,
+    pub(crate) last: bool,
+    pub(crate) phantom: PhantomData<S>,
 }
 
-impl<E, S> Cursor<E, S>
+impl<S> Cursor<S>
 where
-    E: EntityTrait,
     S: SelectorTrait,
 {
     /// Initialize a cursor
     pub fn new(query: SelectStatement) -> Self {
         Self {
             query,
-            condition: None,
-            limit: None,
+            last: false,
             phantom: PhantomData,
         }
     }
 
-    /// Filter rows with primary key value less than the input value
-    pub fn before(&mut self, values: <E::PrimaryKey as PrimaryKeyTrait>::ValueType) -> &mut Self {
-        self.condition = Some(get_condition::<E, _>(values, |c: E::Column, v: Value| {
-            c.lt(v)
-        }));
+    /// Filter paginated rows with column value less than the input value
+    pub fn before<C, V>(&mut self, col: C, val: V) -> &mut Self
+    where
+        C: ColumnTrait,
+        V: Into<Value>,
+    {
+        self.query.and_where(col.lt(val));
         self
     }
 
-    /// Filter rows with primary key value greater than the input value
-    pub fn after(&mut self, values: <E::PrimaryKey as PrimaryKeyTrait>::ValueType) -> &mut Self {
-        self.condition = Some(get_condition::<E, _>(values, |c: E::Column, v: Value| {
-            c.gt(v)
-        }));
+    /// Filter paginated rows with column value greater than the input value
+    pub fn after<C, V>(&mut self, col: C, val: V) -> &mut Self
+    where
+        C: ColumnTrait,
+        V: Into<Value>,
+    {
+        self.query.and_where(col.gt(val));
         self
     }
 
-    /// Limit result set to only first N rows in ascending order of the primary key
-    pub fn first(&mut self, num_rows: u32) -> &mut Self {
-        self.limit = Some(CursorLimit::First(num_rows));
+    fn reverse_ordering(&mut self) {
+        self.query.orders_mut_for_each(|order_expr| {
+            order_expr.reverse_ordering();
+        });
+    }
+
+    /// Limit result set to only first N rows in ascending order of the paginated query
+    pub fn first(&mut self, num_rows: u64) -> &mut Self {
+        self.query.limit(num_rows);
+        if self.last {
+            self.reverse_ordering();
+        }
+        self.last = false;
         self
     }
 
-    /// Limit result set to only last N rows in ascending order of the primary key
-    pub fn last(&mut self, num_rows: u32) -> &mut Self {
-        self.limit = Some(CursorLimit::Last(num_rows));
+    /// Limit result set to only last N rows in ascending order of the paginated query
+    pub fn last(&mut self, num_rows: u64) -> &mut Self {
+        self.query.limit(num_rows);
+        if !self.last {
+            self.reverse_ordering();
+        }
+        self.last = true;
         self
     }
 
@@ -75,78 +82,48 @@ where
     where
         C: ConnectionTrait,
     {
-        let mut query = self.query.clone();
-        if let Some(condition) = self.condition.clone() {
-            query.cond_where(condition);
-        }
-        if let Some(limit) = &self.limit {
-            let (order, limit) = match limit {
-                CursorLimit::First(limit) => (Order::Asc, limit),
-                CursorLimit::Last(limit) => (Order::Desc, limit),
-            };
-            for key in E::PrimaryKey::iter() {
-                query.order_by(key, order.clone());
-            }
-            query.limit(*limit as u64);
-        }
         let builder = db.get_database_backend();
-        let stmt = builder.build(&query);
+        let stmt = builder.build(&self.query);
         let rows = db.query_all(stmt).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
             buffer.push(S::from_raw_query_result(row)?);
         }
-        if let Some(CursorLimit::Last(_)) = &self.limit {
+        if self.last {
             buffer.reverse()
         }
         Ok(buffer)
     }
 }
 
-fn get_condition<E, F>(
-    values: <E::PrimaryKey as PrimaryKeyTrait>::ValueType,
-    filter_fn: F,
-) -> Condition
+impl<S> QueryOrder for Cursor<S>
 where
-    E: EntityTrait,
-    F: Fn(E::Column, Value) -> SimpleExpr,
+    S: SelectorTrait,
 {
-    let mut condition = Condition::all();
-    let mut keys = E::PrimaryKey::iter();
-    for v in values.into_value_tuple() {
-        if let Some(key) = keys.next() {
-            let col = key.into_column();
-            condition = condition.add(filter_fn(col, v));
-        } else {
-            panic!("primary key arity mismatch");
-        }
+    type QueryStatement = SelectStatement;
+
+    fn query(&mut self) -> &mut SelectStatement {
+        &mut self.query
     }
-    if keys.next().is_some() {
-        panic!("primary key arity mismatch");
-    }
-    condition
 }
 
 /// A trait for any type that can be turn into a cursor
-pub trait CursorTrait<E>
-where
-    E: EntityTrait,
-{
+pub trait CursorTrait {
     /// Select operation
     type Selector: SelectorTrait + Send + Sync;
 
     /// Convert current type into a cursor
-    fn cursor(self) -> Cursor<E, Self::Selector>;
+    fn cursor(self) -> Cursor<Self::Selector>;
 }
 
-impl<E, M> CursorTrait<E> for Select<E>
+impl<E, M> CursorTrait for Select<E>
 where
     E: EntityTrait<Model = M>,
     M: FromQueryResult + Sized + Send + Sync,
 {
     type Selector = SelectModel<M>;
 
-    fn cursor(self) -> Cursor<E, Self::Selector> {
+    fn cursor(self) -> Cursor<Self::Selector> {
         Cursor::new(self.query)
     }
 }
@@ -156,10 +133,9 @@ where
 mod tests {
     use super::*;
     use crate::entity::prelude::*;
-    use crate::{tests_cfg::*, ConnectionTrait};
-    use crate::{DbBackend, MockDatabase, Transaction};
+    use crate::tests_cfg::*;
+    use crate::{DbBackend, MockDatabase, Statement, Transaction};
     use pretty_assertions::assert_eq;
-    use sea_query::{Expr, SelectStatement};
 
     #[smol_potat::test]
     async fn first_2_before_10() -> Result<(), DbErr> {
@@ -183,26 +159,32 @@ mod tests {
             .into_connection();
 
         assert_eq!(
-            Entity::find().cursor().before(10).first(2).all(&db).await?,
+            Entity::find()
+                .cursor()
+                .order_by_asc(Column::Id)
+                .before(Column::Id, 10)
+                .first(2)
+                .all(&db)
+                .await?,
             models
         );
 
-        let select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(Entity, Column::Id),
-                Expr::tbl(Entity, Column::Name),
-                Expr::tbl(Entity, Column::CakeId),
-            ])
-            .from(Entity)
-            .and_where(Column::Id.lt(10))
-            .order_by(Column::Id, Order::Asc)
-            .limit(2)
-            .to_owned();
-
-        let query_builder = db.get_database_backend();
-        let stmts = vec![query_builder.build(&select)];
-
-        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![Transaction::many(vec![Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
+                    r#"FROM "fruit""#,
+                    r#"WHERE "fruit"."id" < $1"#,
+                    r#"ORDER BY "fruit"."id" ASC"#,
+                    r#"LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                vec![10_i32.into(), 2_u64.into()]
+            ),])]
+        );
 
         Ok(())
     }
@@ -227,7 +209,13 @@ mod tests {
             .into_connection();
 
         assert_eq!(
-            Entity::find().cursor().after(10).last(2).all(&db).await?,
+            Entity::find()
+                .order_by_asc(Column::Id)
+                .cursor()
+                .after(Column::Id, 10)
+                .last(2)
+                .all(&db)
+                .await?,
             vec![
                 Model {
                     id: 21,
@@ -242,22 +230,85 @@ mod tests {
             ]
         );
 
-        let select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(Entity, Column::Id),
-                Expr::tbl(Entity, Column::Name),
-                Expr::tbl(Entity, Column::CakeId),
-            ])
-            .from(Entity)
-            .and_where(Column::Id.gt(10))
-            .order_by(Column::Id, Order::Desc)
-            .limit(2)
-            .to_owned();
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![Transaction::many(vec![Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
+                    r#"FROM "fruit""#,
+                    r#"WHERE "fruit"."id" > $1"#,
+                    r#"ORDER BY "fruit"."id" DESC"#,
+                    r#"LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                vec![10_i32.into(), 2_u64.into()]
+            ),])]
+        );
 
-        let query_builder = db.get_database_backend();
-        let stmts = vec![query_builder.build(&select)];
+        Ok(())
+    }
 
-        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
+    #[smol_potat::test]
+    async fn last_2_after_25_before_30() -> Result<(), DbErr> {
+        use fruit::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(vec![vec![
+                Model {
+                    id: 27,
+                    name: "Rasberry".into(),
+                    cake_id: Some(1),
+                },
+                Model {
+                    id: 26,
+                    name: "Blueberry".into(),
+                    cake_id: Some(1),
+                },
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Entity::find()
+                .order_by_asc(Column::Id)
+                .cursor()
+                .after(Column::Id, 25)
+                .before(Column::Id, 30)
+                .last(2)
+                .all(&db)
+                .await?,
+            vec![
+                Model {
+                    id: 26,
+                    name: "Blueberry".into(),
+                    cake_id: Some(1),
+                },
+                Model {
+                    id: 27,
+                    name: "Rasberry".into(),
+                    cake_id: Some(1),
+                },
+            ]
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![Transaction::many(vec![Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
+                    r#"FROM "fruit""#,
+                    r#"WHERE "fruit"."id" > $1"#,
+                    r#"AND "fruit"."id" < $2"#,
+                    r#"ORDER BY "fruit"."id" DESC"#,
+                    r#"LIMIT $3"#,
+                ]
+                .join(" ")
+                .as_str(),
+                vec![25_i32.into(), 30_i32.into(), 2_u64.into()]
+            ),])]
+        );
 
         Ok(())
     }

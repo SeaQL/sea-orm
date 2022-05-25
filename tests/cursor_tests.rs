@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::entity::prelude::*;
+use sea_orm::{entity::prelude::*, QueryOrder};
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -53,11 +53,11 @@ pub async fn create_insert_default(db: &DatabaseConnection) -> Result<(), DbErr>
 pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
     use insert_default::*;
 
-    let mut cursor = Entity::find().cursor();
-
     // Before 5, i.e. id < 5
 
-    cursor.before(5);
+    let mut cursor = Entity::find().order_by_asc(Column::Id).cursor();
+
+    cursor.before(Column::Id, 5);
 
     assert_eq!(
         cursor.first(4).all(db).await?,
@@ -101,7 +101,9 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     // After 5, i.e. id > 5
 
-    cursor.after(5);
+    let mut cursor = Entity::find().order_by_asc(Column::Id).cursor();
+
+    cursor.after(Column::Id, 5);
 
     assert_eq!(
         cursor.first(4).all(db).await?,
@@ -165,6 +167,36 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
             Model { id: 9 },
             Model { id: 10 },
         ]
+    );
+
+    // Between 5 and 8, i.e. id > 5 AND id < 8
+
+    let mut cursor = Entity::find().order_by_asc(Column::Id).cursor();
+
+    cursor.after(Column::Id, 5).before(Column::Id, 8);
+
+    assert_eq!(cursor.first(1).all(db).await?, vec![Model { id: 6 }]);
+
+    assert_eq!(
+        cursor.first(2).all(db).await?,
+        vec![Model { id: 6 }, Model { id: 7 }]
+    );
+
+    assert_eq!(
+        cursor.first(3).all(db).await?,
+        vec![Model { id: 6 }, Model { id: 7 }]
+    );
+
+    assert_eq!(cursor.last(1).all(db).await?, vec![Model { id: 7 }]);
+
+    assert_eq!(
+        cursor.last(2).all(db).await?,
+        vec![Model { id: 6 }, Model { id: 7 }]
+    );
+
+    assert_eq!(
+        cursor.last(3).all(db).await?,
+        vec![Model { id: 6 }, Model { id: 7 }]
     );
 
     Ok(())
