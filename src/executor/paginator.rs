@@ -80,8 +80,20 @@ where
     /// Get the total number of pages
     pub async fn num_pages(&self) -> Result<usize, DbErr> {
         let num_items = self.num_items().await?;
-        let num_pages = (num_items / self.page_size) + (num_items % self.page_size > 0) as usize;
+        let num_pages = self.compute_pages_number(num_items);
         Ok(num_pages)
+    }
+
+    /// Get the total number of items and pages
+    pub async fn num_items_and_pages(&self) -> Result<(usize, usize), DbErr> {
+        let num_items = self.num_items().await?;
+        let num_pages = self.compute_pages_number(num_items);
+        Ok((num_items, num_pages))
+    }
+
+    /// Compute the number of pages for the current page
+    fn compute_pages_number(&self, num_items: usize) -> usize {
+        (num_items / self.page_size) + (num_items % self.page_size > 0) as usize
     }
 
     /// Increment the page counter
