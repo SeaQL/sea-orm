@@ -84,7 +84,7 @@ where
         Ok(num_pages)
     }
 
-    /// Get the total number of items and pages
+    /// Get the total number of items and pages in a tuple as (number_of_items, number_of_pages)
     pub async fn num_items_and_pages(&self) -> Result<(usize, usize), DbErr> {
         let num_items = self.num_items().await?;
         let num_pages = self.compute_pages_number(num_items);
