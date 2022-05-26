@@ -22,8 +22,8 @@ impl Linked for SelfReferencingLink {
 
     type ToEntity = Entity;
 
-    fn link(&self) -> Vec<RelationDef> {
-        vec![Relation::SelfReferencing.def()]
+    fn link(&self) -> Vec<LinkDef> {
+        vec![Relation::SelfReferencing.def().into()]
     }
 }
 

@@ -31,8 +31,8 @@ impl Linked for ActiveEnumChildLink {
 
     type ToEntity = super::active_enum_child::Entity;
 
-    fn link(&self) -> Vec<RelationDef> {
-        vec![Relation::ActiveEnumChild.def()]
+    fn link(&self) -> Vec<LinkDef> {
+        vec![Relation::ActiveEnumChild.def().into()]
     }
 }
 

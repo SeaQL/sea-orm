@@ -37,8 +37,8 @@ impl Linked for ActiveEnumLink {
 
     type ToEntity = super::active_enum::Entity;
 
-    fn link(&self) -> Vec<RelationDef> {
-        vec![Relation::ActiveEnum.def()]
+    fn link(&self) -> Vec<LinkDef> {
+        vec![Relation::ActiveEnum.def().into()]
     }
 }
 
