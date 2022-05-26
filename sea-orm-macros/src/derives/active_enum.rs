@@ -1,7 +1,7 @@
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
-use syn::{punctuated::Punctuated, token::Comma, Lit, LitInt, LitStr, Meta};
+use syn::{punctuated::Punctuated, token::Comma, Expr, Lit, LitInt, LitStr, Meta};
 
 enum Error {
     InputNotEnum,
@@ -128,9 +128,20 @@ impl ActiveEnum {
             }
 
             if string_value.is_none() && num_value.is_none() {
-                return Err(Error::TT(quote_spanned! {
-                    variant_span => compile_error!("Missing macro attribute, either `string_value` or `num_value` should be specified");
-                }));
+                if let Some((_, Expr::Lit(exprlit))) = variant.discriminant {
+                    if let Lit::Int(litint) = exprlit.lit {
+                        is_int = true;
+                        num_value = Some(litint);
+                    } else {
+                        return Err(Error::TT(quote_spanned! {
+                            variant_span => compile_error!("Enum variant discriminant is not an integer");
+                        }));
+                    }
+                } else {
+                    return Err(Error::TT(quote_spanned! {
+                        variant_span => compile_error!("Missing macro attribute, either `string_value` or `num_value` should be specified or specify repr[X] and have a value for every entry");
+                    }));
+                }
             }
 
             variants.push(ActiveEnumVariant {
