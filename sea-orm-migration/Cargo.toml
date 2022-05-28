@@ -3,7 +3,7 @@
 
 [package]
 name = "sea-orm-migration"
-version = "0.8.2"
+version = "0.8.3"
 authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
 edition = "2021"
 description = "Migration utility for SeaORM"
