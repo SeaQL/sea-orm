@@ -7,7 +7,6 @@ pub mod seaql_migrations;
 pub use manager::*;
 pub use migrator::*;
 
-pub use async_std;
 pub use async_trait;
 pub use sea_orm;
 pub use sea_orm::sea_query;
