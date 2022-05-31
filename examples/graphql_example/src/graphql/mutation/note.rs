@@ -1,7 +1,7 @@
 use async_graphql::{Context, Object, Result};
 use entity::async_graphql::{self, InputObject, SimpleObject};
 use entity::note;
-use entity::sea_orm::{ActiveModelTrait, Set};
+use sea_orm::{ActiveModelTrait, Set};
 
 use crate::db::Database;
 

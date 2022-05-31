@@ -12,13 +12,5 @@ path = "src/lib.rs"
 serde = { version = "1", features = ["derive"] }
 
 [dependencies.sea-orm]
-# path = "../../../" # remove this line in your own project
-version = "^0.7.0"
-features = [
-  "macros",
-  "debug-print",
-  "runtime-tokio-native-tls",
-  "sqlx-postgres",
-  # "sqlx-mysql",
-  # "sqlx-sqlite",
-]
+path = "../../../" # remove this line in your own project
+version = "^0.8.0"

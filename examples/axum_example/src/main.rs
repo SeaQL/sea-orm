@@ -5,10 +5,9 @@ use axum::{
     http::StatusCode,
     response::Html,
     routing::{get, get_service, post},
-    AddExtensionLayer, Router, Server,
+    Router, Server,
 };
 use entity::post;
-use entity::sea_orm;
 use flash::{get_flash_cookie, post_response, PostResponse};
 use migration::{Migrator, MigratorTrait};
 use post::Entity as Post;
@@ -61,8 +60,8 @@ async fn main() -> anyhow::Result<()> {
         .layer(
             ServiceBuilder::new()
                 .layer(CookieManagerLayer::new())
-                .layer(AddExtensionLayer::new(conn))
-                .layer(AddExtensionLayer::new(templates)),
+                .layer(Extension(conn))
+                .layer(Extension(templates)),
         );
 
     let addr = SocketAddr::from_str(&server_url).unwrap();

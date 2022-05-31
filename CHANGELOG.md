@@ -5,10 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## Pending
+## 0.9.0 - Pending
+
+## sea-orm-migration 0.8.3
+
+* Removed `async-std` from dependency https://github.com/SeaQL/sea-orm/pull/758
+
+## 0.8.0 - 2022-05-10
+
+### New Features
+* [sea-orm-cli] `sea migrate generate` to generate a new, empty migration file https://github.com/SeaQL/sea-orm/pull/656
 
 ### Enhancements
-* Add max_connections option to CLI https://github.com/SeaQL/sea-orm/pull/670
+* Add `max_connections` option to CLI https://github.com/SeaQL/sea-orm/pull/670
+* Derive `Eq`, `Clone` for `DbErr` https://github.com/SeaQL/sea-orm/pull/677
+* Add `is_changed` to `ActiveModelTrait` https://github.com/SeaQL/sea-orm/pull/683
+
+### Bug Fixes
+* Fix `DerivePrimaryKey` with custom primary key column name https://github.com/SeaQL/sea-orm/pull/694
+* Fix `DeriveEntityModel` macros override column name https://github.com/SeaQL/sea-orm/pull/695
+* Fix Insert with no value supplied using `DEFAULT` https://github.com/SeaQL/sea-orm/pull/589
+
+### Breaking changes
+* Migration utilities are moved from sea-schema to sea-orm repo, under a new sub-crate `sea-orm-migration`. `sea_schema::migration::prelude` should be replaced by `sea_orm_migration::prelude` in all migration files
+
+### Upgrades
+* Upgrade `sea-query` to 0.24.x, `sea-schema` to 0.8.x
+* Upgrade example to Actix Web 4, Actix Web 3 remains https://github.com/SeaQL/sea-orm/pull/638
+* Added Tonic gRPC example https://github.com/SeaQL/sea-orm/pull/659
+* Upgrade GraphQL example to use axum 0.5.x
+* Upgrade axum example to 0.5.x
+
+### Fixed Issues
+* Failed to insert row with only default values https://github.com/SeaQL/sea-orm/issues/420
+* Reduce database connections to 1 during codegen https://github.com/SeaQL/sea-orm/issues/511
+* Column names with single letters separated by underscores are concatenated https://github.com/SeaQL/sea-orm/issues/630
+* Update Actix Web examples https://github.com/SeaQL/sea-orm/issues/639
+* Lower function missing https://github.com/SeaQL/sea-orm/issues/672
+* is_changed on active_model https://github.com/SeaQL/sea-orm/issues/674
+* Failing find_with_related with column_name attribute https://github.com/SeaQL/sea-orm/issues/693
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.7.1...0.8.0
 
 ## 0.7.1 - 2022-03-26
 

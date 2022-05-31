@@ -14,9 +14,19 @@ tonic = "0.7"
 tokio = { version = "1.17", features = ["macros", "rt-multi-thread", "full"] }
 entity = { path = "entity" }
 migration = { path = "migration" }
-sea-orm = { version = "0.7.1", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros" ] }
 prost = "0.10.0"
 serde = "1.0"
+
+[dependencies.sea-orm]
+path = "../../" # remove this line in your own project
+version = "^0.8.0"
+features = [
+  "debug-print",
+  "runtime-tokio-rustls",
+  # "sqlx-mysql",
+  "sqlx-postgres",
+  # "sqlx-sqlite",
+]
 
 [lib]
 path = "./src/lib.rs"

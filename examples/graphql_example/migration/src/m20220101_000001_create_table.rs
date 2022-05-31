@@ -1,11 +1,6 @@
-use entity::{
-    note,
-    sea_orm::{DbBackend, EntityTrait, Schema},
-};
-use sea_schema::migration::{
-    sea_query::*,
-    *,
-};
+use entity::note;
+use sea_orm::{DbBackend, EntityTrait, Schema};
+use sea_orm_migration::prelude::*;
 
 pub struct Migration;
 

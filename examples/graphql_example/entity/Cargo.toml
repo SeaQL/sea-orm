@@ -15,11 +15,5 @@ serde = { version = "1", features = ["derive"] }
 version = "^3.0.38"
 
 [dependencies.sea-orm]
-version = "^0.7.0"
-features = [
-  "macros",
-  "runtime-tokio-native-tls",
-  # "sqlx-postgres",
-  # "sqlx-mysql",
-  "sqlx-sqlite"
-]
+path = "../../../" # remove this line in your own project
+version = "^0.8.0"

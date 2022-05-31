@@ -22,3 +22,14 @@ serde = "1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 entity = { path = "entity" }
 migration = { path = "migration" }
+
+[dependencies.sea-orm]
+path = "../../" # remove this line in your own project
+version = "^0.8.0"
+features = [
+  "debug-print",
+  "runtime-actix-native-tls",
+  "sqlx-mysql",
+  # "sqlx-postgres",
+  # "sqlx-sqlite",
+]

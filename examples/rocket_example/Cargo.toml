@@ -26,3 +26,13 @@ migration = { path = "migration" }
 [dependencies.sea-orm-rocket]
 path = "../../sea-orm-rocket/lib" # remove this line in your own project and use the git line
 # git = "https://github.com/SeaQL/sea-orm"
+
+[dependencies.sea-orm]
+path = "../../" # remove this line in your own project
+version = "^0.8.0"
+features = [
+  "runtime-tokio-native-tls",
+  "sqlx-postgres",
+  # "sqlx-mysql",
+  # "sqlx-sqlite",
+]

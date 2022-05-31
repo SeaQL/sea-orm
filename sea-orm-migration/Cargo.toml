@@ -1,0 +1,42 @@
+[workspace]
+# A separate workspace
+
+[package]
+name = "sea-orm-migration"
+version = "0.8.3"
+authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
+edition = "2021"
+description = "Migration utility for SeaORM"
+license = "MIT OR Apache-2.0"
+documentation = "https://docs.rs/sea-orm"
+repository = "https://github.com/SeaQL/sea-orm"
+categories = [ "database" ]
+keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
+
+[lib]
+name = "sea_orm_migration"
+path = "src/lib.rs"
+
+[dependencies]
+async-trait = { version = "^0.1" }
+clap = { version = "^2.33" }
+dotenv = { version = "^0.15" }
+sea-orm = { version = "^0.8.0", path = "../", default-features = false, features = ["macros"] }
+sea-orm-cli = { version = "^0.8.1", path = "../sea-orm-cli", default-features = false }
+sea-schema = { version = "^0.8.0" }
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+async-std = { version = "^1", features = ["attributes", "tokio1"] }
+
+[features]
+sqlx-mysql = ["sea-orm/sqlx-mysql"]
+sqlx-postgres = ["sea-orm/sqlx-postgres"]
+sqlx-sqlite = ["sea-orm/sqlx-sqlite"]
+runtime-actix-native-tls = [ "sea-orm/runtime-actix-native-tls" ]
+runtime-async-std-native-tls = [ "sea-orm/runtime-async-std-native-tls" ]
+runtime-tokio-native-tls = [ "sea-orm/runtime-tokio-native-tls" ]
+runtime-actix-rustls = [ "sea-orm/runtime-actix-rustls" ]
+runtime-async-std-rustls = [ "sea-orm/runtime-async-std-rustls" ]
+runtime-tokio-rustls = [ "sea-orm/runtime-tokio-rustls" ]
