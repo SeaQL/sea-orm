@@ -84,6 +84,13 @@ pub fn build_cli() -> App<'static, 'static> {
                         .help("The maximum amount of connections to use when connecting to the database.")
                         .takes_value(true)
                         .default_value("1")
+                ).arg(
+                    Arg::with_name("DATE_TIME_CRATE")
+                        .long("date-time-crate")
+                        .help("The datetime crate to use for generating entities.")
+                        .takes_value(true)
+                        .possible_values(&["chrono", "time"])
+                        .default_value("chrono")
                 ),
         )
         .setting(AppSettings::SubcommandRequiredElseHelp);

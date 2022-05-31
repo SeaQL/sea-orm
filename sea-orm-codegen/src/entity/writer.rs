@@ -29,6 +29,20 @@ pub enum WithSerde {
     Both,
 }
 
+#[derive(Debug)]
+pub enum DateTimeCrate {
+    Chrono,
+    Time,
+}
+
+#[derive(Debug)]
+pub struct EntityWriterContext {
+    pub(crate) expanded_format: bool,
+    pub(crate) with_serde: WithSerde,
+    pub(crate) name_resolver: NameResolver,
+    pub(crate) date_time_crate: DateTimeCrate,
+}
+
 impl WithSerde {
     pub fn extra_derive(&self) -> TokenStream {
         let mut extra_derive = match self {
@@ -79,28 +93,71 @@ impl FromStr for WithSerde {
     }
 }
 
+impl FromStr for DateTimeCrate {
+    type Err = crate::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "chrono" => Self::Chrono,
+            "time" => Self::Time,
+            v => {
+                return Err(crate::Error::TransformError(format!(
+                    "Unsupported enum variant '{}'",
+                    v
+                )))
+            }
+        })
+    }
+}
+
+impl EntityWriterContext {
+    pub fn new(
+        expanded_format: bool,
+        with_serde: WithSerde,
+        name_resolver: NameResolver,
+        date_time_crate: DateTimeCrate,
+    ) -> Self {
+        Self {
+            expanded_format,
+            with_serde,
+            name_resolver,
+            date_time_crate,
+        }
+    }
+}
+
 impl EntityWriter {
-    pub fn generate(self, expanded_format: bool, with_serde: WithSerde) -> WriterOutput {
+    pub fn generate(self, context: &EntityWriterContext) -> WriterOutput {
         let mut files = Vec::new();
-        files.extend(self.write_entities(expanded_format, &with_serde));
+        files.extend(self.write_entities(context));
         files.push(self.write_mod());
         files.push(self.write_prelude());
         if !self.enums.is_empty() {
-            files.push(self.write_sea_orm_active_enums(&with_serde));
+            files.push(self.write_sea_orm_active_enums(&context.with_serde));
         }
         WriterOutput { files }
     }
 
-    pub fn write_entities(&self, expanded_format: bool, with_serde: &WithSerde) -> Vec<OutputFile> {
+    pub fn write_entities(&self, context: &EntityWriterContext) -> Vec<OutputFile> {
         self.entities
             .iter()
             .map(|entity| {
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);
-                let code_blocks = if expanded_format {
-                    Self::gen_expanded_code_blocks(entity, with_serde, &self.name_resolver)
+                let code_blocks = if context.expanded_format {
+                    Self::gen_expanded_code_blocks(
+                        entity,
+                        &context.with_serde,
+                        &context.name_resolver,
+                        &context.date_time_crate,
+                    )
                 } else {
-                    Self::gen_compact_code_blocks(entity, with_serde, &self.name_resolver)
+                    Self::gen_compact_code_blocks(
+                        entity,
+                        &context.with_serde,
+                        &context.name_resolver,
+                        &context.date_time_crate,
+                    )
                 };
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
@@ -184,17 +241,22 @@ impl EntityWriter {
         lines.push("".to_owned());
     }
 
-    pub fn gen_expanded_code_blocks(entity: &Entity, with_serde: &WithSerde, name_resolver: &NameResolver) -> Vec<TokenStream> {
+    pub fn gen_expanded_code_blocks(
+        entity: &Entity,
+        with_serde: &WithSerde,
+        name_resolver: &NameResolver,
+        date_time_crate: &DateTimeCrate,
+    ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
         let mut code_blocks = vec![
             imports,
             Self::gen_entity_struct(),
             Self::gen_impl_entity_name(entity),
-            Self::gen_model_struct(entity, with_serde),
+            Self::gen_model_struct(entity, with_serde, date_time_crate),
             Self::gen_column_enum(entity),
             Self::gen_primary_key_enum(entity),
-            Self::gen_impl_primary_key(entity),
+            Self::gen_impl_primary_key(entity, date_time_crate),
             Self::gen_relation_enum(entity, name_resolver),
             Self::gen_impl_column_trait(entity),
             Self::gen_impl_relation_trait(entity, name_resolver),
@@ -205,11 +267,19 @@ impl EntityWriter {
         code_blocks
     }
 
-    pub fn gen_compact_code_blocks(entity: &Entity, with_serde: &WithSerde, name_resolver: &NameResolver) -> Vec<TokenStream> {
+    pub fn gen_compact_code_blocks(
+        entity: &Entity,
+        with_serde: &WithSerde,
+        name_resolver: &NameResolver,
+        date_time_crate: &DateTimeCrate,
+    ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
-        let mut code_blocks = vec![imports, Self::gen_compact_model_struct(entity, with_serde)];
-        let relation_defs = if entity.resolve_relation_enum_name(name_resolver).is_empty() {
+        let mut code_blocks = vec![
+            imports,
+            Self::gen_compact_model_struct(entity, with_serde, date_time_crate),
+        ];
+        let relation_defs = if entity.get_relation_enum_name().is_empty() {
             vec![
                 Self::gen_relation_enum(entity, name_resolver),
                 Self::gen_impl_relation_trait(entity, name_resolver),
@@ -287,9 +357,13 @@ impl EntityWriter {
             })
     }
 
-    pub fn gen_model_struct(entity: &Entity, with_serde: &WithSerde) -> TokenStream {
+    pub fn gen_model_struct(
+        entity: &Entity,
+        with_serde: &WithSerde,
+        date_time_crate: &DateTimeCrate,
+    ) -> TokenStream {
         let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types();
+        let column_rs_types = entity.get_column_rs_types(date_time_crate);
 
         let extra_derive = with_serde.extra_derive();
 
@@ -332,9 +406,9 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_impl_primary_key(entity: &Entity) -> TokenStream {
+    pub fn gen_impl_primary_key(entity: &Entity, date_time_crate: &DateTimeCrate) -> TokenStream {
         let primary_key_auto_increment = entity.get_primary_key_auto_increment();
-        let value_type = entity.get_primary_key_rs_type();
+        let value_type = entity.get_primary_key_rs_type(date_time_crate);
         quote! {
             impl PrimaryKeyTrait for PrimaryKey {
                 type ValueType = #value_type;
@@ -469,10 +543,14 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_compact_model_struct(entity: &Entity, with_serde: &WithSerde) -> TokenStream {
+    pub fn gen_compact_model_struct(
+        entity: &Entity,
+        with_serde: &WithSerde,
+        date_time_crate: &DateTimeCrate,
+    ) -> TokenStream {
         let table_name = entity.table_name.as_str();
         let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types();
+        let column_rs_types = entity.get_column_rs_types(date_time_crate);
         let primary_keys: Vec<String> = entity
             .primary_keys
             .iter()
@@ -551,8 +629,8 @@ impl EntityWriter {
 #[cfg(test)]
 mod tests {
     use crate::{
-        Column, ConjunctRelation, Entity, EntityWriter, PrimaryKey, Relation, RelationType,
-        WithSerde, NameResolver
+        Column, ConjunctRelation, DateTimeCrate, Entity, EntityWriter, PrimaryKey, Relation,
+        RelationType, WithSerde, NameResolver
     };
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
@@ -948,13 +1026,18 @@ mod tests {
             }
             let content = lines.join("");
             let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_expanded_code_blocks(entity, &crate::WithSerde::None, &NameResolver::new(false))
-                .into_iter()
-                .skip(1)
-                .fold(TokenStream::new(), |mut acc, tok| {
-                    acc.extend(tok);
-                    acc
-                });
+            let generated = EntityWriter::gen_expanded_code_blocks(
+                entity,
+                &crate::WithSerde::None,
+                &NameResolver::new(false),
+                &crate::DateTimeCrate::Chrono,
+            )
+            .into_iter()
+            .skip(1)
+            .fold(TokenStream::new(), |mut acc, tok| {
+                acc.extend(tok);
+                acc
+            });
             assert_eq!(expected.to_string(), generated.to_string());
         }
 
@@ -988,13 +1071,18 @@ mod tests {
             }
             let content = lines.join("");
             let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_compact_code_blocks(entity, &crate::WithSerde::None, &NameResolver::new(false))
-                .into_iter()
-                .skip(1)
-                .fold(TokenStream::new(), |mut acc, tok| {
-                    acc.extend(tok);
-                    acc
-                });
+            let generated = EntityWriter::gen_compact_code_blocks(
+                entity,
+                &crate::WithSerde::None,
+                &NameResolver::new(false),
+                &crate::DateTimeCrate::Chrono,
+            )
+            .into_iter()
+            .skip(1)
+            .fold(TokenStream::new(), |mut acc, tok| {
+                acc.extend(tok);
+                acc
+            });
             assert_eq!(expected.to_string(), generated.to_string());
         }
 
@@ -1145,7 +1233,7 @@ mod tests {
     fn assert_serde_variant_results(
         cake_entity: &Entity,
         entity_serde_variant: &(String, WithSerde, &NameResolver),
-        generator: Box<dyn Fn(&Entity, &WithSerde, &NameResolver) -> Vec<TokenStream>>,
+        generator: Box<dyn Fn(&Entity, &WithSerde, &NameResolver, &DateTimeCrate) -> Vec<TokenStream>>,
     ) -> io::Result<()> {
         let mut reader = BufReader::new(entity_serde_variant.0.as_bytes());
         let mut lines: Vec<String> = Vec::new();
@@ -1159,7 +1247,7 @@ mod tests {
         }
         let content = lines.join("");
         let expected: TokenStream = content.parse().unwrap();
-        let generated = generator(cake_entity, &entity_serde_variant.1, entity_serde_variant.2)
+        let generated = generator(cake_entity, &entity_serde_variant.1, entity_serde_variant.2, &DateTimeCrate::Chrono)
             .into_iter()
             .fold(TokenStream::new(), |mut acc, tok| {
                 acc.extend(tok);
