@@ -24,21 +24,18 @@ pub async fn run_migrate<M>(
     _: M,
     db: &DbConn,
     command: Option<MigrateSubcommands>,
-    verbose: Option<bool>,
+    verbose: bool,
 ) where
     M: MigratorTrait,
 {
     let filter = match verbose {
-        Some(v) => match v {
-            true => "debug",
-            false => "sea_orm_migration=info",
-        },
-        None => "sea_schema::migration=info",
+        true => "debug",
+        false => "sea_orm_migration=info",
     };
 
     let filter_layer = EnvFilter::try_new(filter).unwrap();
 
-    if let Some(_) = verbose {
+    if verbose {
         let fmt_layer = tracing_subscriber::fmt::layer();
         tracing_subscriber::registry()
             .with(filter_layer)
@@ -71,7 +68,7 @@ pub async fn run_migrate<M>(
 #[clap(version)]
 pub struct Cli {
     #[clap(short = 'v', long, global = true, help = "Show debug messages")]
-    verbose: Option<bool>,
+    verbose: bool,
 
     #[clap(subcommand)]
     command: Option<MigrateSubcommands>,
