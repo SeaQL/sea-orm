@@ -248,20 +248,22 @@ pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error
         update_migrator(&migration_name, migration_dir)?;
         return Ok(());
     }
-    let (subcommand, migration_dir, steps, version, verbose) = match migrate_subcommand {
+    let (subcommand, migration_dir, steps, version, force, verbose) = match migrate_subcommand {
         // Catch all command with pattern `migrate xxx`
         (subcommand, Some(args)) => {
             let migration_dir = args.value_of("MIGRATION_DIR").unwrap();
             let steps = args.value_of("NUM_MIGRATION");
             let version = args.value_of("VERSION_MIGRATION");
+            let force = args.is_present("FORCE_MIGRATION");
             let verbose = args.is_present("VERBOSE");
-            (subcommand, migration_dir, steps, version, verbose)
+            (subcommand, migration_dir, steps, version, force, verbose)
         }
         // Catch command `migrate`, this will be treated as `migrate up`
         _ => {
             let migration_dir = matches.value_of("MIGRATION_DIR").unwrap();
             let verbose = matches.is_present("VERBOSE");
-            ("up", migration_dir, None, None, verbose)
+            let force = matches.is_present("FORCE_MIGRATION");
+            ("up", migration_dir, None, None, force, verbose)
         }
     };
     // Construct the `--manifest-path`
@@ -283,6 +285,9 @@ pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error
     }
     if let Some(version) = version {
         args.extend(["-V", version]);
+    }
+    if force {
+        args.push("-f");
     }
     if verbose {
         args.push("-v");

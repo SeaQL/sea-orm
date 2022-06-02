@@ -41,16 +41,23 @@ pub fn get_subcommands() -> Vec<App<'static, 'static>> {
                     .short("V")
                     .help("Version of pending migrations to be applied")
                     .takes_value(true),
+            )
+            .arg(
+                Arg::with_name("FORCE_MIGRATION")
+                    .long("force")
+                    .short("f")
+                    .help("force version of pending migrations to be applied")
+                    .takes_value(false),
             ),
             SubCommand::with_name("down")
             .about("Rollback applied migrations")
             .arg(
                 Arg::with_name("NUM_MIGRATION")
-                .long("num")
-                .short("n")
-                .help("Number of pending migrations to be rolled back")
-                .takes_value(true)
-                .default_value("1"),
+                    .long("num")
+                    .short("n")
+                    .help("Number of pending migrations to be rolled back")
+                    .takes_value(true)
+                    .default_value("1"),
             )
             .arg(
                 Arg::with_name("VERSION_MIGRATION")
@@ -58,6 +65,13 @@ pub fn get_subcommands() -> Vec<App<'static, 'static>> {
                     .short("V")
                     .help("Version of pending migrations to be rolled back")
                     .takes_value(true),
+            )
+            .arg(
+                Arg::with_name("FORCE_MIGRATION")
+                    .long("force")
+                    .short("f")
+                    .help("force version of pending migrations to be rolled back")
+                    .takes_value(false),
             ),
     ]
 }

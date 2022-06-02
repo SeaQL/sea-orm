@@ -62,7 +62,11 @@ where
         ("up", Some(args)) => {
             let version = args.value_of("VERSION_MIGRATION");
             if version.is_some() {
-                M::change_to_version(db, version.unwrap()).await
+                if args.is_present("FORCE_MIGRATION") {
+                    M::change_to_version(db, version.unwrap()).await
+                } else {
+                    M::up_to_version(db, version.unwrap()).await
+                }
             } else {
                 let str = args.value_of("NUM_MIGRATION").unwrap_or_default();
                 let steps = str.parse().ok();
@@ -72,7 +76,11 @@ where
         ("down", Some(args)) => {
             let version = args.value_of("VERSION_MIGRATION");
             if version.is_some() {
-                M::change_to_version(db, version.unwrap()).await
+                if args.is_present("FORCE_MIGRATION") {
+                    M::change_to_version(db, version.unwrap()).await
+                } else {
+                    M::down_to_version(db, version.unwrap()).await
+                }
             } else {
                 let str = args.value_of("NUM_MIGRATION").unwrap();
                 let steps = str.parse().ok().unwrap_or(1);

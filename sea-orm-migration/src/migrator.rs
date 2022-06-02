@@ -307,6 +307,28 @@ pub trait MigratorTrait: Send {
         }
     }
 
+    /// Apply migrations to version
+    async fn up_to_version(db: &DbConn, version: &str) -> Result<(), DbErr> {
+        let steps = Self::get_steps(Self::get_pending_migrations(db).await?, version);
+        if steps > 0 {
+            Self::up(db, Some(steps)).await
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Rollback migrations to version
+    async fn down_to_version(db: &DbConn, version: &str) -> Result<(), DbErr> {
+        let mut migrations = Self::get_applied_migrations(db).await?;
+        migrations.reverse();
+        let steps = Self::get_steps(migrations, version);
+        if steps > 1 {
+            Self::down(db, Some(steps - 1)).await
+        } else {
+            Ok(())
+        }
+    }
+
     fn get_steps(migrations: Vec<Migration>, version: &str) -> u32 {
         let mut index = 0;
         let mut matched = false;
@@ -340,3 +362,4 @@ pub(crate) fn get_current_schema(db: &DbConn) -> SimpleExpr {
         DbBackend::Sqlite => unimplemented!(),
     }
 }
+
