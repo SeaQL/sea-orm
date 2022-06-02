@@ -36,3 +36,4 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Quasar](https://github.com/Technik97/Quasar) | Rust REST API using Actix-Web, SeaOrm and Postgres with Svelte Typescript Frontend
 - [snmp-sim-rust](https://github.com/sonalake/snmp-sim-rust) | SNMP Simulator
 - [template_flow](https://github.com/hilary888/template_flow) | An experiment exploring replacing placeholders in pre-prepared templates with their actual values
+- [actix-react-starter-template](https://github.com/aslamplr/actix-react-starter-template) | Actix web + SeaORM + React + Redux + Redux Saga project starter template
