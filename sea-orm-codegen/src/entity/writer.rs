@@ -9,7 +9,6 @@ use syn::{punctuated::Punctuated, token::Comma};
 pub struct EntityWriter {
     pub(crate) entities: Vec<Entity>,
     pub(crate) enums: HashMap<String, ActiveEnum>,
-    pub(crate) name_resolver: NameResolver
 }
 
 pub struct WriterOutput {
@@ -130,8 +129,8 @@ impl EntityWriter {
     pub fn generate(self, context: &EntityWriterContext) -> WriterOutput {
         let mut files = Vec::new();
         files.extend(self.write_entities(context));
-        files.push(self.write_mod());
-        files.push(self.write_prelude());
+        files.push(self.write_mod(&context.name_resolver));
+        files.push(self.write_prelude(&context.name_resolver));
         if !self.enums.is_empty() {
             files.push(self.write_sea_orm_active_enums(&context.with_serde));
         }
@@ -161,17 +160,17 @@ impl EntityWriter {
                 };
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
-                    name: format!("{}.rs", entity.resolve_module_name(&self.name_resolver)),
+                    name: format!("{}.rs", entity.resolve_module_name(&context.name_resolver)),
                     content: lines.join("\n\n"),
                 }
             })
             .collect()
     }
 
-    pub fn write_mod(&self) -> OutputFile {
+    pub fn write_mod(&self, name_resolver: &NameResolver) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        let code_blocks: Vec<TokenStream> = self.entities.iter().map(|entity| Self::gen_mod(entity, &self.name_resolver)).collect();
+        let code_blocks: Vec<TokenStream> = self.entities.iter().map(|entity| Self::gen_mod(entity, name_resolver)).collect();
         Self::write(
             &mut lines,
             vec![quote! {
@@ -194,10 +193,10 @@ impl EntityWriter {
         }
     }
 
-    pub fn write_prelude(&self) -> OutputFile {
+    pub fn write_prelude(&self, name_resolver: &NameResolver) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        let code_blocks = self.entities.iter().map(|entity| Self::gen_prelude_use(entity, &self.name_resolver)).collect();
+        let code_blocks = self.entities.iter().map(|entity| Self::gen_prelude_use(entity, name_resolver)).collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
             name: "prelude.rs".to_owned(),
