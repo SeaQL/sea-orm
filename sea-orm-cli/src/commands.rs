@@ -241,11 +241,7 @@ pub fn run_migrate_command(
 
             // build new migration filename
             let now = Local::now();
-            let migration_name = format!(
-                "m{}_{}",
-                now.format("%Y%m%d_%H%M%S").to_string(),
-                migration_name
-            );
+            let migration_name = format!("m{}_{}", now.format("%Y%m%d_%H%M%S"), migration_name);
 
             create_new_migration(&migration_name, migration_dir)?;
             update_migrator(&migration_name, migration_dir)?;
@@ -307,7 +303,7 @@ fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(),
     let migration_template =
         include_str!("../template/migration/src/m20220101_000001_create_table.rs");
     let migration_content =
-        migration_template.replace("m20220101_000001_create_table", &migration_name);
+        migration_template.replace("m20220101_000001_create_table", migration_name);
     let mut migration_file = fs::File::create(migration_filepath)?;
     migration_file.write_all(migration_content.as_bytes())?;
     Ok(())
@@ -324,7 +320,7 @@ fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<
     let mut updated_migrator_content = migrator_content.clone();
 
     // create a backup of the migrator file in case something goes wrong
-    let migrator_backup_filepath = migrator_filepath.clone().with_file_name("lib.rs.bak");
+    let migrator_backup_filepath = migrator_filepath.with_file_name("lib.rs.bak");
     fs::copy(&migrator_filepath, &migrator_backup_filepath)?;
     let mut migrator_file = fs::File::create(&migrator_filepath)?;
 
@@ -345,7 +341,7 @@ fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<
         .map(|migration| format!("            Box::new({}::Migration),", migration))
         .collect::<Vec<String>>()
         .join("\n");
-    boxed_migrations.push_str("\n");
+    boxed_migrations.push('\n');
     let boxed_migrations = format!("vec![\n{}        ]\n", boxed_migrations);
     let vec_regex = Regex::new(r"vec!\[[\s\S]+\]\n")?;
     let updated_migrator_content = vec_regex.replace(&updated_migrator_content, &boxed_migrations);
@@ -387,7 +383,7 @@ mod tests {
             Commands::Generate { command } => {
                 smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
             }
-            _ => {}
+            _ => unreachable!(),
         }
     }
 
@@ -408,7 +404,7 @@ mod tests {
             Commands::Generate { command } => {
                 smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
             }
-            _ => {}
+            _ => unreachable!(),
         }
     }
 
@@ -429,7 +425,7 @@ mod tests {
             Commands::Generate { command } => {
                 smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
             }
-            _ => {}
+            _ => unreachable!(),
         }
     }
 
@@ -448,7 +444,7 @@ mod tests {
             Commands::Generate { command } => {
                 smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
             }
-            _ => {}
+            _ => unreachable!(),
         }
     }
 
@@ -467,7 +463,7 @@ mod tests {
             Commands::Generate { command } => {
                 smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
             }
-            _ => {}
+            _ => unreachable!(),
         }
     }
 
@@ -486,7 +482,7 @@ mod tests {
             Commands::Generate { command } => {
                 smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
             }
-            _ => {}
+            _ => unreachable!(),
         }
     }
     #[test]
