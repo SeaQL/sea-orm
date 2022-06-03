@@ -338,6 +338,9 @@ pub trait MigratorTrait: Send {
                         index += 1;
                     }
                     if migration.migration.name() == version {
+                        if migration.status == MigrationStatus::Pending {
+                            index += 1;
+                        }
                         matched = true;
                         break;
                     }
