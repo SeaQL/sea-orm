@@ -37,6 +37,12 @@ impl MigrationTrait for Migration {
     }
 }
 
+/// `Iden` is a trait for identifiers used in any query statement.
+/// 
+/// Commonly implemented by Enum where each Enum represents a table found in a database,
+/// and its variants include table name and column name.
+/// 
+/// Learn more at https://docs.rs/sea-query#iden
 #[derive(Iden)]
 enum Post {
     Table,
