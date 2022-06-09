@@ -1,6 +1,6 @@
-use crate::{EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select};
+use crate::{EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select, SoftDeleteTrait};
 use core::marker::PhantomData;
-use sea_query::{JoinType, TableRef};
+use sea_query::{DynIden, JoinType, TableRef};
 use std::fmt::Debug;
 
 /// Defines the type of relationship
@@ -54,6 +54,10 @@ pub struct RelationDef {
     pub from_col: Identity,
     /// Reference to another column
     pub to_col: Identity,
+    /// Defines soft delete column (if any)
+    pub from_soft_delete_col: Option<DynIden>,
+    /// Defines soft delete column (if any)
+    pub to_soft_delete_col: Option<DynIden>,
     /// Defines the owner of the Relation
     pub is_owner: bool,
     /// Defines an operation to be performed on a Foreign Key when a
@@ -79,6 +83,8 @@ where
     to_tbl: TableRef,
     from_col: Option<Identity>,
     to_col: Option<Identity>,
+    from_soft_delete_col: Option<DynIden>,
+    to_soft_delete_col: Option<DynIden>,
     is_owner: bool,
     on_delete: Option<ForeignKeyAction>,
     on_update: Option<ForeignKeyAction>,
@@ -94,6 +100,8 @@ impl RelationDef {
             to_tbl: self.from_tbl,
             from_col: self.to_col,
             to_col: self.from_col,
+            from_soft_delete_col: self.to_soft_delete_col,
+            to_soft_delete_col: self.from_soft_delete_col,
             is_owner: !self.is_owner,
             on_delete: self.on_delete,
             on_update: self.on_update,
@@ -115,6 +123,8 @@ where
             to_tbl: to.table_ref(),
             from_col: None,
             to_col: None,
+            from_soft_delete_col: <E::Column as SoftDeleteTrait>::soft_delete_column(),
+            to_soft_delete_col: <R::Column as SoftDeleteTrait>::soft_delete_column(),
             is_owner,
             on_delete: None,
             on_update: None,
@@ -130,6 +140,8 @@ where
             to_tbl: rel.to_tbl,
             from_col: Some(rel.from_col),
             to_col: Some(rel.to_col),
+            from_soft_delete_col: rel.from_soft_delete_col,
+            to_soft_delete_col: rel.to_soft_delete_col,
             is_owner,
             on_delete: None,
             on_update: None,
@@ -186,6 +198,8 @@ where
             to_tbl: b.to_tbl,
             from_col: b.from_col.unwrap(),
             to_col: b.to_col.unwrap(),
+            from_soft_delete_col: b.from_soft_delete_col,
+            to_soft_delete_col: b.to_soft_delete_col,
             is_owner: b.is_owner,
             on_delete: b.on_delete,
             on_update: b.on_update,

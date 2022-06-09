@@ -169,6 +169,16 @@ pub trait EntityTrait: EntityName {
         Select::new()
     }
 
+    ///
+    fn find_deleted() -> Select<Self> {
+        Select::deleted()
+    }
+
+    ///
+    fn find_with_deleted() -> Select<Self> {
+        Select::with_deleted()
+    }
+
     /// Find a model by primary key
     ///
     /// # Example
@@ -693,6 +703,14 @@ pub trait EntityTrait: EntityName {
         Delete::one(model)
     }
 
+    ///
+    fn delete_force<A>(model: A) -> DeleteOne<A>
+    where
+        A: ActiveModelTrait<Entity = Self>,
+    {
+        Delete::one_force(model)
+    }
+
     /// Delete many models from database
     ///
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
@@ -744,6 +762,11 @@ pub trait EntityTrait: EntityName {
     /// ```
     fn delete_many() -> DeleteMany<Self> {
         Delete::many(Self::default())
+    }
+
+    ///
+    fn delete_many_force() -> DeleteMany<Self> {
+        Delete::many_force(Self::default())
     }
 
     /// Delete a model based on primary key
@@ -820,21 +843,37 @@ pub trait EntityTrait: EntityName {
     /// # }
     /// ```
     fn delete_by_id(values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType) -> DeleteMany<Self> {
-        let mut delete = Self::delete_many();
-        let mut keys = Self::PrimaryKey::iter();
-        for v in values.into_value_tuple() {
-            if let Some(key) = keys.next() {
-                let col = key.into_column();
-                delete = delete.filter(col.eq(v));
-            } else {
-                panic!("primary key arity mismatch");
-            }
-        }
-        if keys.next().is_some() {
+        filter_by_primary_key(Self::delete_many(), values)
+    }
+
+    ///
+    fn delete_by_id_force(
+        values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType,
+    ) -> DeleteMany<Self> {
+        filter_by_primary_key(Self::delete_many_force(), values)
+    }
+}
+
+fn filter_by_primary_key<E>(
+    mut delete: DeleteMany<E>,
+    values: <E::PrimaryKey as PrimaryKeyTrait>::ValueType,
+) -> DeleteMany<E>
+where
+    E: EntityTrait,
+{
+    let mut keys = E::PrimaryKey::iter();
+    for v in values.into_value_tuple() {
+        if let Some(key) = keys.next() {
+            let col = key.into_column();
+            delete = delete.filter(col.eq(v));
+        } else {
             panic!("primary key arity mismatch");
         }
-        delete
     }
+    if keys.next().is_some() {
+        panic!("primary key arity mismatch");
+    }
+    delete
 }
 
 #[cfg(test)]
@@ -859,7 +898,20 @@ mod tests {
             cake_filling_price::Entity::delete_by_id((1, 2))
                 .build(DbBackend::Sqlite)
                 .to_string(),
-            r#"DELETE FROM "public"."cake_filling_price" WHERE "cake_filling_price"."cake_id" = 1 AND "cake_filling_price"."filling_id" = 2"#,
+            [
+                r#"UPDATE "public"."cake_filling_price""#,
+                r#"SET "deleted_at" = CURRENT_TIMESTAMP"#,
+                r#"WHERE "cake_filling_price"."cake_id" = 1 AND "cake_filling_price"."filling_id" = 2"#,
+            ].join(" ")
+        );
+        assert_eq!(
+            cake_filling_price::Entity::delete_by_id_force((1, 2))
+                .build(DbBackend::Sqlite)
+                .to_string(),
+            [
+                r#"DELETE FROM "public"."cake_filling_price""#,
+                r#"WHERE "cake_filling_price"."cake_id" = 1 AND "cake_filling_price"."filling_id" = 2"#,
+            ].join(" ")
         );
     }
 

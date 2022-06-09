@@ -1,13 +1,14 @@
 use crate::{
     error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, Statement,
 };
-use sea_query::DeleteStatement;
+use sea_query::{DeleteStatement, UpdateStatement};
 use std::future::Future;
 
 /// Handles DELETE operations in a ActiveModel using [DeleteStatement]
 #[derive(Clone, Debug)]
-pub struct Deleter {
-    query: DeleteStatement,
+pub enum Deleter {
+    Force { query: DeleteStatement },
+    Soft { query: UpdateStatement },
 }
 
 /// The result of a DELETE operation
@@ -27,7 +28,10 @@ where
         C: ConnectionTrait,
     {
         // so that self is dropped before entering await
-        exec_delete_only(self.query, db)
+        match self {
+            DeleteOne::Force { query, .. } => Deleter::force(query).exec(db),
+            DeleteOne::Soft { query, .. } => Deleter::soft(query).exec(db),
+        }
     }
 }
 
@@ -41,14 +45,27 @@ where
         C: ConnectionTrait,
     {
         // so that self is dropped before entering await
-        exec_delete_only(self.query, db)
+        match self {
+            DeleteMany::Force { query, .. } => Deleter::force(query).exec(db),
+            DeleteMany::Soft { query, .. } => Deleter::soft(query).exec(db),
+        }
     }
 }
 
 impl Deleter {
     /// Instantiate a new [Deleter] by passing it a [DeleteStatement]
     pub fn new(query: DeleteStatement) -> Self {
-        Self { query }
+        Self::force(query)
+    }
+
+    ///
+    pub fn force(query: DeleteStatement) -> Self {
+        Self::Force { query }
+    }
+
+    ///
+    pub fn soft(query: UpdateStatement) -> Self {
+        Self::Soft { query }
     }
 
     /// Execute a DELETE operation
@@ -57,15 +74,12 @@ impl Deleter {
         C: ConnectionTrait,
     {
         let builder = db.get_database_backend();
-        exec_delete(builder.build(&self.query), db)
+        let stmt = match self {
+            Deleter::Force { query } => builder.build(&query),
+            Deleter::Soft { query } => builder.build(&query),
+        };
+        exec_delete(stmt, db)
     }
-}
-
-async fn exec_delete_only<C>(query: DeleteStatement, db: &C) -> Result<DeleteResult, DbErr>
-where
-    C: ConnectionTrait,
-{
-    Deleter::new(query).exec(db).await
 }
 
 async fn exec_delete<C>(statement: Statement, db: &C) -> Result<DeleteResult, DbErr>

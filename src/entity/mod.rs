@@ -106,6 +106,7 @@ mod model;
 pub mod prelude;
 mod primary_key;
 mod relation;
+mod soft_delete;
 
 pub use active_enum::*;
 pub use active_model::*;
@@ -114,6 +115,7 @@ pub use column::*;
 pub use identity::*;
 pub use link::*;
 pub use model::*;
+pub use soft_delete::*;
 // pub use prelude::*;
 pub use primary_key::*;
 pub use relation::*;

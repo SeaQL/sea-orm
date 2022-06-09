@@ -23,10 +23,12 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
         })
         .collect();
 
+    let mut soft_delete_column = quote! { None };
     let name: Vec<TokenStream> = variants
         .iter()
         .map(|v| {
-            let mut column_name = v.ident.to_string().to_snake_case();
+            let variant_ident = &v.ident;
+            let mut column_name = variant_ident.to_string().to_snake_case();
             for attr in v.attrs.iter() {
                 if let Some(ident) = attr.path.get_ident() {
                     if ident != "sea_orm" {
@@ -52,6 +54,15 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
                                 }
                             }
                         }
+                        if let Meta::Path(p) = meta {
+                            if let Some(name) = p.get_ident() {
+                                if name == "soft_delete_column" {
+                                    soft_delete_column = quote! {
+                                        Some(sea_orm::sea_query::SeaRc::new(Self::#variant_ident) as sea_orm::sea_query::DynIden)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -66,6 +77,13 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
                 match self {
                     #(Self::#variant => #name),*
                 }
+            }
+        }
+
+        #[automatically_derived]
+        impl sea_orm::SoftDeleteTrait for #ident {
+            fn soft_delete_column() -> Option<sea_orm::sea_query::DynIden> {
+                #soft_delete_column
             }
         }
     ))

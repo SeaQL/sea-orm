@@ -93,6 +93,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut indexed = false;
                     let mut ignore = false;
                     let mut unique = false;
+                    let mut soft_delete_column = false;
                     let mut sql_type = None;
                     let mut column_name = if original_field_name
                         != original_field_name.to_camel_case().to_snake_case()
@@ -186,6 +187,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                                 indexed = true;
                                             } else if name == "unique" {
                                                 unique = true;
+                                            } else if name == "soft_delete_column" {
+                                                soft_delete_column = true;
                                             }
                                         }
                                     }
@@ -195,34 +198,36 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         }
                     }
 
+                    if ignore {
+                        continue;
+                    }
+
                     if let Some(enum_name) = enum_name {
                         field_name = enum_name;
                     }
 
                     field_name = Ident::new(&escape_rust_keyword(field_name), Span::call_site());
 
-                    let variant_attrs = match &column_name {
-                        Some(column_name) => quote! {
-                            #[sea_orm(column_name = #column_name)]
-                        },
-                        None => quote! {},
-                    };
+                    let mut variant_attrs: Punctuated<_, Comma> = Punctuated::new();
 
-                    if ignore {
-                        continue;
-                    } else {
-                        columns_enum.push(quote! {
-                            #variant_attrs
-                            #field_name
-                        });
+                    if let Some(column_name) = &column_name {
+                        variant_attrs.push(quote! { column_name = #column_name });
+                    }
+                    if soft_delete_column {
+                        variant_attrs.push(quote! { soft_delete_column });
                     }
 
                     if is_primary_key {
                         primary_keys.push(quote! {
-                            #variant_attrs
+                            #[sea_orm(#variant_attrs)]
                             #field_name
                         });
                     }
+
+                    columns_enum.push(quote! {
+                        #[sea_orm(#variant_attrs)]
+                        #field_name
+                    });
 
                     let col_type = match sql_type {
                         Some(t) => quote! { sea_orm::prelude::ColumnType::#t.def() },

@@ -257,6 +257,7 @@ mod tests {
                     .decimal()
                     .not_null(),
             )
+            .col(ColumnDef::new(cake_filling_price::Column::DeletedAt).timestamp_with_time_zone())
             .primary_key(
                 Index::create()
                     .name("pk-cake_filling_price")

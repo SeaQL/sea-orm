@@ -1,5 +1,6 @@
 use crate::{
-    join_tbl_on_condition, unpack_table_ref, EntityTrait, QuerySelect, RelationDef, Select,
+    join_tbl_on_condition, soft_delete_condition_tbl, unpack_table_ref, EntityTrait, QuerySelect,
+    RelationDef, Select,
 };
 use sea_query::{Alias, IntoIden, JoinType, SeaRc};
 
@@ -32,7 +33,16 @@ pub trait Linked {
                 JoinType::InnerJoin,
                 rel.from_tbl,
                 SeaRc::clone(&from_tbl),
-                join_tbl_on_condition(from_tbl, to_tbl, rel.from_col, rel.to_col),
+                soft_delete_condition_tbl(
+                    SeaRc::clone(&from_tbl),
+                    rel.from_soft_delete_col.as_ref(),
+                )
+                .add(join_tbl_on_condition(
+                    from_tbl,
+                    to_tbl,
+                    rel.from_col,
+                    rel.to_col,
+                )),
             );
         }
         select
