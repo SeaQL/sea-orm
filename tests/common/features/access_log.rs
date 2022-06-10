@@ -7,7 +7,6 @@ pub struct Model {
     pub id: i32,
     pub access_token_id: i32,
     pub description: String,
-    pub created_at: DateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

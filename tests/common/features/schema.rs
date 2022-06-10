@@ -329,7 +329,11 @@ pub async fn create_access_token_table(db: &DbConn) -> Result<ExecResult, DbErr>
                 .uuid()
                 .not_null(),
         )
-        .col(ColumnDef::new(access_token::Column::DeletedAt).timestamp_with_time_zone())
+        .col(
+            ColumnDef::new(access_token::Column::DeletedAt)
+                .timestamp_with_time_zone()
+                .extra("NULL".to_owned()), // Overcome the compatibility issue of MySQL 5.7 and MariaDB 10.6, https://github.com/SeaQL/sea-orm/runs/6827493845?check_suite_focus=true
+        )
         .foreign_key(
             ForeignKeyCreateStatement::new()
                 .name("fk-access_token-user_id")
@@ -342,7 +346,8 @@ pub async fn create_access_token_table(db: &DbConn) -> Result<ExecResult, DbErr>
         )
         .to_owned();
 
-    create_table(db, &create_table_stmt, AccessToken).await
+    create_table_without_asserts(db, &create_table_stmt).await
+    // create_table(db, &create_table_stmt, AccessToken).await //
 }
 
 pub async fn create_access_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
@@ -363,11 +368,6 @@ pub async fn create_access_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(
             ColumnDef::new(access_log::Column::Description)
                 .string()
-                .not_null(),
-        )
-        .col(
-            ColumnDef::new(access_log::Column::CreatedAt)
-                .timestamp_with_time_zone()
                 .not_null(),
         )
         .foreign_key(

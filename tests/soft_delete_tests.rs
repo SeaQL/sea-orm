@@ -91,25 +91,21 @@ pub async fn insert_models(db: &DatabaseConnection) -> Result<(), DbErr> {
             id: 1,
             access_token_id: 1,
             description: "Chris's first login".to_owned(),
-            created_at: get_date_time(),
         },
         access_log::Model {
             id: 2,
             access_token_id: 2,
             description: "Chris's first login".to_owned(),
-            created_at: get_date_time(),
         },
         access_log::Model {
             id: 3,
             access_token_id: 3,
             description: "Billy's first login".to_owned(),
-            created_at: get_date_time(),
         },
         access_log::Model {
             id: 4,
             access_token_id: 4,
             description: "Billy's first login".to_owned(),
-            created_at: get_date_time(),
         },
     ];
     AccessLog::insert_many(
@@ -292,13 +288,13 @@ pub async fn find_linked_models(db: &DatabaseConnection) -> Result<(), DbErr> {
             id: 4,
             access_token_id: 4,
             description: "Billy's first login".to_owned(),
-            created_at: get_date_time(),
         }]
     );
 
     // List all users and their access log
     let mut find_also_linked = User::find().find_also_linked(user::AccessLogLink);
-    QueryOrder::query(&mut find_also_linked).order_by((Alias::new("r1"), Alias::new("id")), Order::Asc);
+    QueryOrder::query(&mut find_also_linked)
+        .order_by((Alias::new("r1"), Alias::new("id")), Order::Asc);
     assert_eq!(
         find_also_linked.all(db).await?,
         [
@@ -311,7 +307,6 @@ pub async fn find_linked_models(db: &DatabaseConnection) -> Result<(), DbErr> {
                     id: 1,
                     access_token_id: 1,
                     description: "Chris's first login".to_owned(),
-                    created_at: get_date_time(),
                 })
             ),
             (
@@ -323,7 +318,6 @@ pub async fn find_linked_models(db: &DatabaseConnection) -> Result<(), DbErr> {
                     id: 2,
                     access_token_id: 2,
                     description: "Chris's first login".to_owned(),
-                    created_at: get_date_time(),
                 })
             ),
             (
@@ -335,7 +329,6 @@ pub async fn find_linked_models(db: &DatabaseConnection) -> Result<(), DbErr> {
                     id: 4,
                     access_token_id: 4,
                     description: "Billy's first login".to_owned(),
-                    created_at: get_date_time(),
                 })
             ),
         ]
