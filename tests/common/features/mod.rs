@@ -1,3 +1,5 @@
+pub mod access_log;
+pub mod access_token;
 pub mod active_enum;
 pub mod active_enum_child;
 pub mod applog;
@@ -10,7 +12,10 @@ pub mod schema;
 pub mod sea_orm_active_enums;
 pub mod self_join;
 pub mod transaction_log;
+pub mod user;
 
+pub use access_log::Entity as AccessLog;
+pub use access_token::Entity as AccessToken;
 pub use active_enum::Entity as ActiveEnum;
 pub use active_enum_child::Entity as ActiveEnumChild;
 pub use applog::Entity as Applog;
@@ -23,3 +28,4 @@ pub use schema::*;
 pub use sea_orm_active_enums::*;
 pub use self_join::Entity as SelfJoin;
 pub use transaction_log::Entity as TransactionLog;
+pub use user::Entity as User;

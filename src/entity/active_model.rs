@@ -484,6 +484,19 @@ pub trait ActiveModelTrait: Clone + Debug {
         Ok(delete_res)
     }
 
+    ///
+    async fn delete_force<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
+    where
+        Self: ActiveModelBehavior + 'a,
+        C: ConnectionTrait,
+    {
+        let am = ActiveModelBehavior::before_delete(self)?;
+        let am_clone = am.clone();
+        let delete_res = Self::Entity::delete_force(am).exec(db).await?;
+        ActiveModelBehavior::after_delete(am_clone)?;
+        Ok(delete_res)
+    }
+
     /// Set the corresponding attributes in the ActiveModel from a JSON value
     ///
     /// Note that this method will not alter the primary key values in ActiveModel.

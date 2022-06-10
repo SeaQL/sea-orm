@@ -46,6 +46,16 @@ pub trait ModelTrait: Clone + Send + Debug {
     {
         self.into_active_model().delete(db).await
     }
+
+    ///
+    async fn delete_force<'a, A, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
+    where
+        Self: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: ActiveModelTrait<Entity = Self::Entity> + ActiveModelBehavior + Send + 'a,
+    {
+        self.into_active_model().delete_force(db).await
+    }
 }
 
 /// A Trait for implementing a [QueryResult]

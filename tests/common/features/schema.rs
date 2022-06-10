@@ -6,7 +6,9 @@ use sea_orm::{
     error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName,
     ExecResult, Schema,
 };
-use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement};
+use sea_query::{
+    extension::postgres::Type, Alias, ColumnDef, ForeignKeyAction, ForeignKeyCreateStatement,
+};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     let db_backend = db.get_database_backend();
@@ -39,6 +41,10 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_active_enum_table(db).await?;
     create_active_enum_child_table(db).await?;
     create_insert_default_table(db).await?;
+
+    create_user_table(db).await?;
+    create_access_token_table(db).await?;
+    create_access_log_table(db).await?;
 
     Ok(())
 }
@@ -285,4 +291,96 @@ pub async fn create_insert_default_table(db: &DbConn) -> Result<ExecResult, DbEr
         .to_owned();
 
     create_table(db, &create_table_stmt, InsertDefault).await
+}
+
+pub async fn create_user_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(user::Entity.table_ref())
+        .col(
+            ColumnDef::new(user::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(user::Column::Name).string().not_null())
+        .to_owned();
+
+    create_table(db, &create_table_stmt, User).await
+}
+
+pub async fn create_access_token_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(access_token::Entity.table_ref())
+        .col(
+            ColumnDef::new(access_token::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(access_token::Column::UserId)
+                .integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(access_token::Column::Token)
+                .uuid()
+                .not_null(),
+        )
+        .col(ColumnDef::new(access_token::Column::DeletedAt).timestamp_with_time_zone())
+        .foreign_key(
+            ForeignKeyCreateStatement::new()
+                .name("fk-access_token-user_id")
+                .from_tbl(access_token::Entity)
+                .from_col(access_token::Column::UserId)
+                .to_tbl(user::Entity)
+                .to_col(user::Column::Id)
+                .on_update(ForeignKeyAction::Cascade)
+                .on_delete(ForeignKeyAction::Cascade),
+        )
+        .to_owned();
+
+    create_table(db, &create_table_stmt, AccessToken).await
+}
+
+pub async fn create_access_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(access_log::Entity.table_ref())
+        .col(
+            ColumnDef::new(access_log::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(access_log::Column::AccessTokenId)
+                .integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(access_log::Column::Description)
+                .string()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(access_log::Column::CreatedAt)
+                .timestamp_with_time_zone()
+                .not_null(),
+        )
+        .foreign_key(
+            ForeignKeyCreateStatement::new()
+                .name("fk-access_log-access_token_id")
+                .from_tbl(access_log::Entity)
+                .from_col(access_log::Column::AccessTokenId)
+                .to_tbl(access_token::Entity)
+                .to_col(access_token::Column::Id)
+                .on_update(ForeignKeyAction::Cascade)
+                .on_delete(ForeignKeyAction::Cascade),
+        )
+        .to_owned();
+
+    create_table(db, &create_table_stmt, AccessLog).await
 }
