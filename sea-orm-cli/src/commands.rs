@@ -5,6 +5,7 @@ use sea_orm_codegen::{
     DateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile, WithSerde, NameResolver
 };
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
+use tracing_subscriber::{prelude::*, EnvFilter};
 use url::Url;
 
 pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
@@ -24,6 +25,17 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                 let _ = tracing_subscriber::fmt()
                     .with_max_level(tracing::Level::DEBUG)
                     .with_test_writer()
+                    .try_init();
+            } else {
+                let filter_layer = EnvFilter::try_new("sea_orm_codegen=info").unwrap();
+                let fmt_layer = tracing_subscriber::fmt::layer()
+                    .with_target(false)
+                    .with_level(false)
+                    .without_time();
+
+                let _ = tracing_subscriber::registry()
+                    .with(filter_layer)
+                    .with(fmt_layer)
                     .try_init();
             }
 
