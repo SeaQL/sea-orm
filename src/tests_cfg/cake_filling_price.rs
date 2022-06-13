@@ -22,6 +22,7 @@ pub struct Model {
     pub price: Decimal,
     #[sea_orm(ignore)]
     pub ignored_attr: i32,
+    #[cfg(feature = "with-chrono")]
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 

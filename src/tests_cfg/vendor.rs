@@ -8,6 +8,7 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     #[sea_orm(soft_delete_column)]
+    #[cfg(feature = "with-chrono")]
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 
