@@ -1,4 +1,4 @@
-use sea_query::{DynIden, Expr, SimpleExpr};
+use sea_query::{DynIden, Func, SimpleExpr};
 
 ///
 pub trait SoftDeleteTrait {
@@ -7,6 +7,6 @@ pub trait SoftDeleteTrait {
 
     ///
     fn soft_delete_expr() -> SimpleExpr {
-        Expr::cust("CURRENT_TIMESTAMP")
+        Func::current_timestamp()
     }
 }
