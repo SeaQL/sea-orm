@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.9.0 - Pending
 
+* Improve sea-orm-cli logging (#735)
+
 ## sea-orm-migration 0.8.3
 
 * Removed `async-std` from dependency https://github.com/SeaQL/sea-orm/pull/758
