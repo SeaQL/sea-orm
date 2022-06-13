@@ -7,8 +7,16 @@ use std::future::Future;
 /// Handles DELETE operations in a ActiveModel using [DeleteStatement]
 #[derive(Clone, Debug)]
 pub enum Deleter {
-    Force { query: DeleteStatement },
-    Soft { query: UpdateStatement },
+    /// Force delete
+    Force {
+        /// Delete statement
+        query: DeleteStatement,
+    },
+    /// Soft delete
+    Soft {
+        /// Update statement
+        query: UpdateStatement,
+    },
 }
 
 /// The result of a DELETE operation
@@ -58,12 +66,12 @@ impl Deleter {
         Self::force(query)
     }
 
-    ///
+    /// Instantiate a force deleter
     pub fn force(query: DeleteStatement) -> Self {
         Self::Force { query }
     }
 
-    ///
+    /// Instantiate a soft deleter
     pub fn soft(query: UpdateStatement) -> Self {
         Self::Soft { query }
     }

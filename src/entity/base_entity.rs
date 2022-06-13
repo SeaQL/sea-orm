@@ -86,13 +86,13 @@ pub trait EntityTrait: EntityName {
         RelationBuilder::from_rel(RelationType::HasMany, R::to().rev(), true)
     }
 
-    /// Construct select statement to find one / all models
+    /// Construct select statement to find one / all models excluding models that are soft deleted
     ///
     /// - To select columns, join tables and group by expressions, see [`QuerySelect`](crate::query::QuerySelect)
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
     /// - To apply order by expressions, see [`QueryOrder`](crate::query::QueryOrder)
     ///
-    /// # Example
+    /// # Example (without soft delete)
     ///
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
@@ -165,16 +165,179 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Example (with soft delete)
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![
+    /// #         vec![
+    /// #             vendor::Model {
+    /// #                 id: 1,
+    /// #                 name: "Vendor A".to_owned(),
+    /// #                 deleted_at: None,
+    /// #             },
+    /// #         ],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::vendor};
+    ///
+    /// assert_eq!(
+    ///     vendor::Entity::find().all(&db).await?,
+    ///     vec![
+    ///         vendor::Model {
+    ///             id: 1,
+    ///             name: "Vendor A".to_owned(),
+    ///             deleted_at: None,
+    ///         },
+    ///     ]
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![
+    ///         Transaction::from_sql_and_values(
+    ///             DbBackend::Postgres,
+    ///             r#"SELECT "vendor"."id", "vendor"."name", "vendor"."deleted_at" FROM "vendor" WHERE "vendor"."deleted_at" IS NULL"#,
+    ///             vec![]
+    ///         ),
+    ///     ]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     fn find() -> Select<Self> {
         Select::new()
     }
 
+    /// Construct select statement to find one / all models including that are soft deleted
     ///
+    /// - To select columns, join tables and group by expressions, see [`QuerySelect`](crate::query::QuerySelect)
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    /// - To apply order by expressions, see [`QueryOrder`](crate::query::QueryOrder)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![
+    /// #         vec![
+    /// #             vendor::Model {
+    /// #                 id: 2,
+    /// #                 name: "Vendor B".to_owned(),
+    /// #                 deleted_at: Some("2022-06-10T16:24:00+00:00".parse().unwrap()),
+    /// #             },
+    /// #         ],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::vendor};
+    ///
+    /// assert_eq!(
+    ///     vendor::Entity::find_deleted().all(&db).await?,
+    ///     vec![
+    ///         vendor::Model {
+    ///             id: 2,
+    ///             name: "Vendor B".to_owned(),
+    ///             deleted_at: Some("2022-06-10T16:24:00+00:00".parse().unwrap()),
+    ///         },
+    ///     ]
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![
+    ///         Transaction::from_sql_and_values(
+    ///             DbBackend::Postgres,
+    ///             r#"SELECT "vendor"."id", "vendor"."name", "vendor"."deleted_at" FROM "vendor" WHERE "vendor"."deleted_at" IS NOT NULL"#,
+    ///             vec![]
+    ///         ),
+    ///     ]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     fn find_deleted() -> Select<Self> {
         Select::deleted()
     }
 
+    /// Construct select statement to find one / all models including models that are soft deleted
     ///
+    /// - To select columns, join tables and group by expressions, see [`QuerySelect`](crate::query::QuerySelect)
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    /// - To apply order by expressions, see [`QueryOrder`](crate::query::QueryOrder)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![
+    /// #         vec![
+    /// #             vendor::Model {
+    /// #                 id: 1,
+    /// #                 name: "Vendor A".to_owned(),
+    /// #                 deleted_at: None,
+    /// #             },
+    /// #             vendor::Model {
+    /// #                 id: 2,
+    /// #                 name: "Vendor B".to_owned(),
+    /// #                 deleted_at: Some("2022-06-10T16:24:00+00:00".parse().unwrap()),
+    /// #             },
+    /// #         ],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::vendor};
+    ///
+    /// assert_eq!(
+    ///     vendor::Entity::find_with_deleted().all(&db).await?,
+    ///     vec![
+    ///         vendor::Model {
+    ///             id: 1,
+    ///             name: "Vendor A".to_owned(),
+    ///             deleted_at: None,
+    ///         },
+    ///         vendor::Model {
+    ///             id: 2,
+    ///             name: "Vendor B".to_owned(),
+    ///             deleted_at: Some("2022-06-10T16:24:00+00:00".parse().unwrap()),
+    ///         },
+    ///     ]
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "vendor"."id", "vendor"."name", "vendor"."deleted_at" FROM "vendor""#,
+    ///         vec![]
+    ///     ),]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     fn find_with_deleted() -> Select<Self> {
         Select::with_deleted()
     }
@@ -651,11 +814,13 @@ pub trait EntityTrait: EntityName {
         Update::many(Self::default())
     }
 
-    /// Delete an model from database
+    /// Delete a model by:
+    ///   - Marking the target row in the database as deleted if soft delete is enabled
+    ///   - Otherwise, deleting the target row from the database
     ///
-    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    /// To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
     ///
-    /// # Example
+    /// # Example (without soft delete)
     ///
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
@@ -696,6 +861,48 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Example (with soft delete)
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::vendor};
+    ///
+    /// let vendor = vendor::ActiveModel {
+    ///     id: Set(3),
+    ///     ..Default::default()
+    /// };
+    ///
+    /// let delete_result = vendor::Entity::delete(vendor).exec(&db).await?;
+    ///
+    /// assert_eq!(delete_result.rows_affected, 1);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"UPDATE "vendor" SET "deleted_at" = CURRENT_TIMESTAMP WHERE "vendor"."id" = $1"#,
+    ///         vec![3i32.into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     fn delete<A>(model: A) -> DeleteOne<A>
     where
         A: ActiveModelTrait<Entity = Self>,
@@ -703,15 +910,7 @@ pub trait EntityTrait: EntityName {
         Delete::one(model)
     }
 
-    ///
-    fn delete_force<A>(model: A) -> DeleteOne<A>
-    where
-        A: ActiveModelTrait<Entity = Self>,
-    {
-        Delete::one_force(model)
-    }
-
-    /// Delete many models from database
+    /// Delete an model from database
     ///
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
     ///
@@ -728,13 +927,68 @@ pub trait EntityTrait: EntityName {
     /// #     .append_exec_results(vec![
     /// #         MockExecResult {
     /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// let orange = fruit::ActiveModel {
+    ///     id: Set(3),
+    ///     ..Default::default()
+    /// };
+    ///
+    /// let delete_result = orange.delete_force(&db).await?;
+    ///
+    /// assert_eq!(delete_result.rows_affected, 1);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"DELETE FROM "fruit" WHERE "fruit"."id" = $1"#,
+    ///         vec![3i32.into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    fn delete_force<A>(model: A) -> DeleteOne<A>
+    where
+        A: ActiveModelTrait<Entity = Self>,
+    {
+        Delete::one_force(model)
+    }
+
+    /// Delete many models by:
+    ///   - Marking the target rows in the database as deleted if soft delete is enabled
+    ///   - Otherwise, deleting the target rows from the database
+    ///
+    /// To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    ///
+    /// # Example (without soft delete)
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
     /// #             rows_affected: 5,
     /// #         },
     /// #     ])
     /// #     .append_query_results(vec![
-    /// #         vec![cake::Model {
+    /// #         vec![fruit::Model {
     /// #             id: 15,
     /// #             name: "Apple Pie".to_owned(),
+    /// #             cake_id: None,
     /// #         }],
     /// #     ])
     /// #     .into_connection();
@@ -760,18 +1014,116 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Example (with soft delete)
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 5,
+    /// #         },
+    /// #     ])
+    /// #     .append_query_results(vec![
+    /// #         vec![vendor::Model {
+    /// #             id: 15,
+    /// #             name: "ABC Bakery".to_owned(),
+    /// #             deleted_at: Some("2022-06-10T16:24:00+00:00".parse().unwrap()),
+    /// #         }],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::vendor};
+    ///
+    /// let delete_result = vendor::Entity::delete_many()
+    ///     .filter(vendor::Column::Name.contains("Bakery"))
+    ///     .exec(&db)
+    ///     .await?;
+    ///
+    /// assert_eq!(delete_result.rows_affected, 5);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"UPDATE "vendor" SET "deleted_at" = CURRENT_TIMESTAMP WHERE "vendor"."name" LIKE $1"#,
+    ///         vec!["%Bakery%".into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     fn delete_many() -> DeleteMany<Self> {
         Delete::many(Self::default())
     }
 
+    /// Delete many models from database
     ///
+    /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 5,
+    /// #         },
+    /// #     ])
+    /// #     .append_query_results(vec![
+    /// #         vec![fruit::Model {
+    /// #             id: 15,
+    /// #             name: "Apple Pie".to_owned(),
+    /// #             cake_id: None,
+    /// #         }],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// let delete_result = fruit::Entity::delete_many_force()
+    ///     .filter(fruit::Column::Name.contains("Apple"))
+    ///     .exec(&db)
+    ///     .await?;
+    ///
+    /// assert_eq!(delete_result.rows_affected, 5);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"DELETE FROM "fruit" WHERE "fruit"."name" LIKE $1"#,
+    ///         vec!["%Apple%".into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     fn delete_many_force() -> DeleteMany<Self> {
         Delete::many_force(Self::default())
     }
 
-    /// Delete a model based on primary key
+    /// Delete a model based on primary key by:
+    ///   - Marking the target row in the database as deleted if soft delete is enabled
+    ///   - Otherwise, deleting the target row from the database
     ///
-    /// # Example
+    /// # Example (without soft delete)
     ///
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
@@ -807,7 +1159,9 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
+    ///
     /// Delete by composite key
+    ///
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
@@ -842,11 +1196,122 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Example (with soft delete)
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::vendor};
+    ///
+    /// let delete_result = vendor::Entity::delete_by_id(1).exec(&db).await?;
+    ///
+    /// assert_eq!(delete_result.rows_affected, 1);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"UPDATE "vendor" SET "deleted_at" = CURRENT_TIMESTAMP WHERE "vendor"."id" = $1"#,
+    ///         vec![1i32.into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     fn delete_by_id(values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType) -> DeleteMany<Self> {
         filter_by_primary_key(Self::delete_many(), values)
     }
 
+    /// Delete a model based on primary key
     ///
+    /// # Example
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// let delete_result = fruit::Entity::delete_by_id_force(1).exec(&db).await?;
+    ///
+    /// assert_eq!(delete_result.rows_affected, 1);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"DELETE FROM "fruit" WHERE "fruit"."id" = $1"#,
+    ///         vec![1i32.into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Delete by composite key
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    ///
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake_filling};
+    ///
+    /// let delete_result = cake_filling::Entity::delete_by_id_force((2, 3)).exec(&db).await?;
+    ///
+    /// assert_eq!(delete_result.rows_affected, 1);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"DELETE FROM "cake_filling" WHERE "cake_filling"."cake_id" = $1 AND "cake_filling"."filling_id" = $2"#,
+    ///         vec![2i32.into(), 3i32.into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     fn delete_by_id_force(
         values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType,
     ) -> DeleteMany<Self> {

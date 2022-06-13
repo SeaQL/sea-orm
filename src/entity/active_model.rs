@@ -79,6 +79,16 @@ where
     ActiveValue::unchanged(value)
 }
 
+macro_rules! do_delete {
+    ($self: ident, $db: ident, $fn: ident) => {{
+        let am = ActiveModelBehavior::before_delete($self)?;
+        let am_clone = am.clone();
+        let delete_res = Self::Entity::$fn(am).exec($db).await?;
+        ActiveModelBehavior::after_delete(am_clone)?;
+        Ok(delete_res)
+    }};
+}
+
 /// A Trait for ActiveModel to perform Create, Update or Delete operation.
 /// The type must also implement the [EntityTrait].
 /// See module level docs [crate::entity] for a full example
@@ -429,9 +439,11 @@ pub trait ActiveModelTrait: Clone + Debug {
         Ok(res.into_active_model())
     }
 
-    /// Delete an active model by its primary key
+    /// Delete an active model by:
+    ///   - Marking the target row in the database as deleted if soft delete is enabled
+    ///   - Otherwise, deleting the target row from the database
     ///
-    /// # Example
+    /// # Example (without soft delete)
     ///
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
@@ -472,29 +484,105 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Example (with soft delete)
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::vendor};
+    ///
+    /// let vendor = vendor::ActiveModel {
+    ///     id: Set(3),
+    ///     ..Default::default()
+    /// };
+    ///
+    /// let delete_result = vendor.delete(&db).await?;
+    ///
+    /// assert_eq!(delete_result.rows_affected, 1);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"UPDATE "vendor" SET "deleted_at" = CURRENT_TIMESTAMP WHERE "vendor"."id" = $1"#,
+    ///         vec![3i32.into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     async fn delete<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait,
     {
-        let am = ActiveModelBehavior::before_delete(self)?;
-        let am_clone = am.clone();
-        let delete_res = Self::Entity::delete(am).exec(db).await?;
-        ActiveModelBehavior::after_delete(am_clone)?;
-        Ok(delete_res)
+        do_delete!(self, db, delete)
     }
 
+    /// Delete an active model from the database
     ///
+    /// # Example
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// let orange = fruit::ActiveModel {
+    ///     id: Set(3),
+    ///     ..Default::default()
+    /// };
+    ///
+    /// let delete_result = orange.delete_force(&db).await?;
+    ///
+    /// assert_eq!(delete_result.rows_affected, 1);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"DELETE FROM "fruit" WHERE "fruit"."id" = $1"#,
+    ///         vec![3i32.into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     async fn delete_force<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait,
     {
-        let am = ActiveModelBehavior::before_delete(self)?;
-        let am_clone = am.clone();
-        let delete_res = Self::Entity::delete_force(am).exec(db).await?;
-        ActiveModelBehavior::after_delete(am_clone)?;
-        Ok(delete_res)
+        do_delete!(self, db, delete_force)
     }
 
     /// Set the corresponding attributes in the ActiveModel from a JSON value

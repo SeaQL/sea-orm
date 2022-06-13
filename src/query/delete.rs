@@ -18,8 +18,20 @@ pub enum DeleteOne<A>
 where
     A: ActiveModelTrait,
 {
-    Force { query: DeleteStatement, model: A },
-    Soft { query: UpdateStatement, model: A },
+    /// Force delete
+    Force {
+        /// Delete statement
+        query: DeleteStatement,
+        /// Active model
+        model: A,
+    },
+    /// Soft delete
+    Soft {
+        /// Update statement
+        query: UpdateStatement,
+        /// Active model
+        model: A,
+    },
 }
 
 /// Perform a delete operation on multiple models
@@ -28,25 +40,34 @@ pub enum DeleteMany<E>
 where
     E: EntityTrait,
 {
+    /// Force delete
     Force {
+        /// Delete statement
         query: DeleteStatement,
+        /// Phantom
         entity: PhantomData<E>,
     },
+    /// Soft delete
     Soft {
+        /// Update statement
         query: UpdateStatement,
+        /// Phantom
         entity: PhantomData<E>,
     },
 }
 
 impl Delete {
-    /// Delete one Model or ActiveModel
+    /// Force delete one Model or ActiveModel
+    ///
+    /// # Example
     ///
     /// Model
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
-    ///     Delete::one(cake::Model {
+    ///     Delete::one_force(cake::Model {
     ///         id: 1,
     ///         name: "Apple Pie".to_owned(),
     ///     })
@@ -55,12 +76,14 @@ impl Delete {
     ///     r#"DELETE FROM "cake" WHERE "cake"."id" = 1"#,
     /// );
     /// ```
+    ///
     /// ActiveModel
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
-    ///     Delete::one(cake::ActiveModel {
+    ///     Delete::one_force(cake::ActiveModel {
     ///         id: ActiveValue::set(1),
     ///         name: ActiveValue::set("Apple Pie".to_owned()),
     ///     })
@@ -84,7 +107,79 @@ impl Delete {
         .prepare()
     }
 
+    /// Delete one Model or ActiveModel
+    ///   - Marking the target row in the database as deleted if soft delete is enabled
+    ///   - Otherwise, deleting the target row from the database
     ///
+    /// # Example (without soft delete)
+    ///
+    /// Model
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     Delete::one(cake::Model {
+    ///         id: 1,
+    ///         name: "Apple Pie".to_owned(),
+    ///     })
+    ///     .build(DbBackend::Postgres)
+    ///     .to_string(),
+    ///     r#"DELETE FROM "cake" WHERE "cake"."id" = 1"#,
+    /// );
+    /// ```
+    ///
+    /// ActiveModel
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     Delete::one(cake::ActiveModel {
+    ///         id: ActiveValue::set(1),
+    ///         name: ActiveValue::set("Apple Pie".to_owned()),
+    ///     })
+    ///     .build(DbBackend::Postgres)
+    ///     .to_string(),
+    ///     r#"DELETE FROM "cake" WHERE "cake"."id" = 1"#,
+    /// );
+    /// ```
+    ///
+    /// # Example (with soft delete)
+    ///
+    /// Model
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::vendor, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     Delete::one(vendor::Model {
+    ///         id: 1,
+    ///         name: "Vendor A".to_owned(),
+    ///         deleted_at: None,
+    ///     })
+    ///     .build(DbBackend::Postgres)
+    ///     .to_string(),
+    ///     r#"UPDATE "vendor" SET "deleted_at" = CURRENT_TIMESTAMP WHERE "vendor"."id" = 1"#,
+    /// );
+    /// ```
+    ///
+    /// ActiveModel
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::vendor, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     Delete::one(vendor::ActiveModel {
+    ///         id: ActiveValue::set(1),
+    ///         name: ActiveValue::set("Vendor A".to_owned()),
+    ///         deleted_at: ActiveValue::set(None),
+    ///     })
+    ///     .build(DbBackend::Postgres)
+    ///     .to_string(),
+    ///     r#"UPDATE "vendor" SET "deleted_at" = CURRENT_TIMESTAMP WHERE "vendor"."id" = 1"#,
+    /// );
+    /// ```
     pub fn one<E, A, M>(model: M) -> DeleteOne<A>
     where
         E: EntityTrait,
@@ -104,13 +199,15 @@ impl Delete {
         }
     }
 
-    /// Delete many ActiveModel
+    /// Force delete many ActiveModel
+    ///
+    /// # Example
     ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, DbBackend};
     ///
     /// assert_eq!(
-    ///     Delete::many(fruit::Entity)
+    ///     Delete::many_force(fruit::Entity)
     ///         .filter(fruit::Column::Name.contains("Apple"))
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
@@ -129,7 +226,37 @@ impl Delete {
         }
     }
 
+    /// Delete many ActiveModel
+    ///   - Marking the target rows in the database as deleted if soft delete is enabled
+    ///   - Otherwise, deleting the target rows from the database
     ///
+    /// # Example (without soft delete)
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     Delete::many(fruit::Entity)
+    ///         .filter(fruit::Column::Name.contains("Apple"))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"DELETE FROM "fruit" WHERE "fruit"."name" LIKE '%Apple%'"#,
+    /// );
+    /// ```
+    ///
+    /// # Example (with soft delete)
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::vendor, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     Delete::many(vendor::Entity)
+    ///         .filter(vendor::Column::Name.contains("Vendor"))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"UPDATE "vendor" SET "deleted_at" = CURRENT_TIMESTAMP WHERE "vendor"."name" LIKE '%Vendor%'"#,
+    /// );
+    /// ```
     pub fn many<E>(entity: E) -> DeleteMany<E>
     where
         E: EntityTrait,
@@ -168,185 +295,102 @@ where
     }
 }
 
-impl<A> ConditionalStatement for DeleteOne<A>
-where
-    A: ActiveModelTrait,
-{
-    fn and_or_where(&mut self, condition: LogicalChainOper) -> &mut Self {
-        match self {
-            DeleteOne::Force { query, .. } => {
-                query.and_or_where(condition);
-            }
-            DeleteOne::Soft { query, .. } => {
-                query.and_or_where(condition);
-            }
-        }
-        self
-    }
+macro_rules! impl_traits {
+    ($ty: ident, $t: ident) => {
+        impl<T> QueryTrait for $ty<T>
+        where
+            T: $t,
+        {
+            type QueryStatement = Self;
 
-    fn cond_where<C>(&mut self, condition: C) -> &mut Self
-    where
-        C: IntoCondition,
-    {
-        match self {
-            DeleteOne::Force { query, .. } => {
-                query.cond_where(condition);
+            fn query(&mut self) -> &mut Self {
+                self
             }
-            DeleteOne::Soft { query, .. } => {
-                query.cond_where(condition);
+
+            fn as_query(&self) -> &Self {
+                self
+            }
+
+            fn into_query(self) -> Self {
+                self
             }
         }
-        self
-    }
-}
 
-impl<A> QueryFilter for DeleteOne<A>
-where
-    A: ActiveModelTrait,
-{
-    type QueryStatement = Self;
+        impl<T> QueryFilter for $ty<T>
+        where
+            T: $t,
+        {
+            type QueryStatement = Self;
 
-    fn query(&mut self) -> &mut Self {
-        self
-    }
-}
-
-impl<E> ConditionalStatement for DeleteMany<E>
-where
-    E: EntityTrait,
-{
-    fn and_or_where(&mut self, condition: LogicalChainOper) -> &mut Self {
-        match self {
-            DeleteMany::Force { query, .. } => {
-                query.and_or_where(condition);
-            }
-            DeleteMany::Soft { query, .. } => {
-                query.and_or_where(condition);
+            fn query(&mut self) -> &mut Self {
+                self
             }
         }
-        self
-    }
 
-    fn cond_where<C>(&mut self, condition: C) -> &mut Self
-    where
-        C: IntoCondition,
-    {
-        match self {
-            DeleteMany::Force { query, .. } => {
-                query.cond_where(condition);
+        impl<T> ConditionalStatement for $ty<T>
+        where
+            T: $t,
+        {
+            fn and_or_where(&mut self, condition: LogicalChainOper) -> &mut Self {
+                match self {
+                    $ty::Force { query, .. } => {
+                        query.and_or_where(condition);
+                    }
+                    $ty::Soft { query, .. } => {
+                        query.and_or_where(condition);
+                    }
+                }
+                self
             }
-            DeleteMany::Soft { query, .. } => {
-                query.cond_where(condition);
-            }
-        }
-        self
-    }
-}
 
-impl<E> QueryFilter for DeleteMany<E>
-where
-    E: EntityTrait,
-{
-    type QueryStatement = Self;
-
-    fn query(&mut self) -> &mut Self {
-        self
-    }
-}
-
-impl<A> QueryStatementBuilder for DeleteOne<A>
-where
-    A: ActiveModelTrait,
-{
-    fn build_collect_any_into(
-        &self,
-        query_builder: &dyn sea_query::QueryBuilder,
-        sql: &mut sea_query::SqlWriter,
-        collector: &mut dyn FnMut(sea_query::Value),
-    ) {
-        match self {
-            DeleteOne::Force { query, .. } => {
-                query.build_collect_any_into(query_builder, sql, collector);
-            }
-            DeleteOne::Soft { query, .. } => {
-                query.build_collect_any_into(query_builder, sql, collector);
+            fn cond_where<C>(&mut self, condition: C) -> &mut Self
+            where
+                C: IntoCondition,
+            {
+                match self {
+                    $ty::Force { query, .. } => {
+                        query.cond_where(condition);
+                    }
+                    $ty::Soft { query, .. } => {
+                        query.cond_where(condition);
+                    }
+                }
+                self
             }
         }
-    }
 
-    fn into_sub_query_statement(self) -> sea_query::SubQueryStatement {
-        match self {
-            DeleteOne::Force { query, .. } => query.into_sub_query_statement(),
-            DeleteOne::Soft { query, .. } => query.into_sub_query_statement(),
-        }
-    }
-}
-
-impl<A> QueryTrait for DeleteOne<A>
-where
-    A: ActiveModelTrait,
-{
-    type QueryStatement = Self;
-
-    fn query(&mut self) -> &mut Self {
-        self
-    }
-
-    fn as_query(&self) -> &Self {
-        &self
-    }
-
-    fn into_query(self) -> Self {
-        self
-    }
-}
-
-impl<E> QueryStatementBuilder for DeleteMany<E>
-where
-    E: EntityTrait,
-{
-    fn build_collect_any_into(
-        &self,
-        query_builder: &dyn sea_query::QueryBuilder,
-        sql: &mut sea_query::SqlWriter,
-        collector: &mut dyn FnMut(sea_query::Value),
-    ) {
-        match self {
-            DeleteMany::Force { query, .. } => {
-                query.build_collect_any_into(query_builder, sql, collector);
+        impl<T> QueryStatementBuilder for $ty<T>
+        where
+            T: $t,
+        {
+            fn build_collect_any_into(
+                &self,
+                query_builder: &dyn sea_query::QueryBuilder,
+                sql: &mut sea_query::SqlWriter,
+                collector: &mut dyn FnMut(sea_query::Value),
+            ) {
+                match self {
+                    $ty::Force { query, .. } => {
+                        query.build_collect_any_into(query_builder, sql, collector);
+                    }
+                    $ty::Soft { query, .. } => {
+                        query.build_collect_any_into(query_builder, sql, collector);
+                    }
+                }
             }
-            DeleteMany::Soft { query, .. } => {
-                query.build_collect_any_into(query_builder, sql, collector);
+
+            fn into_sub_query_statement(self) -> sea_query::SubQueryStatement {
+                match self {
+                    $ty::Force { query, .. } => query.into_sub_query_statement(),
+                    $ty::Soft { query, .. } => query.into_sub_query_statement(),
+                }
             }
         }
-    }
-
-    fn into_sub_query_statement(self) -> sea_query::SubQueryStatement {
-        match self {
-            DeleteMany::Force { query, .. } => query.into_sub_query_statement(),
-            DeleteMany::Soft { query, .. } => query.into_sub_query_statement(),
-        }
-    }
+    };
 }
 
-impl<E> QueryTrait for DeleteMany<E>
-where
-    E: EntityTrait,
-{
-    type QueryStatement = Self;
-
-    fn query(&mut self) -> &mut Self {
-        self
-    }
-
-    fn as_query(&self) -> &Self {
-        &self
-    }
-
-    fn into_query(self) -> Self {
-        self
-    }
-}
+impl_traits!(DeleteOne, ActiveModelTrait);
+impl_traits!(DeleteMany, EntityTrait);
 
 #[cfg(test)]
 mod tests {
