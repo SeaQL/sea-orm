@@ -86,7 +86,7 @@ pub trait EntityTrait: EntityName {
         RelationBuilder::from_rel(RelationType::HasMany, R::to().rev(), true)
     }
 
-    /// Construct select statement to find one / all models excluding models that are soft deleted
+    /// Construct select statement to find one / all models excluding models that are being soft deleted
     ///
     /// - To select columns, join tables and group by expressions, see [`QuerySelect`](crate::query::QuerySelect)
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
@@ -218,7 +218,7 @@ pub trait EntityTrait: EntityName {
         Select::new()
     }
 
-    /// Construct select statement to find one / all models including that are soft deleted
+    /// Construct select statement to find one / all models that are being soft deleted
     ///
     /// - To select columns, join tables and group by expressions, see [`QuerySelect`](crate::query::QuerySelect)
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
@@ -276,7 +276,7 @@ pub trait EntityTrait: EntityName {
         Select::deleted()
     }
 
-    /// Construct select statement to find one / all models including models that are soft deleted
+    /// Construct select statement to find one / all models including models that are being soft deleted
     ///
     /// - To select columns, join tables and group by expressions, see [`QuerySelect`](crate::query::QuerySelect)
     /// - To apply where conditions / filters, see [`QueryFilter`](crate::query::QueryFilter)
