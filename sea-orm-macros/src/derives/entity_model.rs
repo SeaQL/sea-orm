@@ -219,6 +219,14 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     if let Some(column_name) = &column_name {
                         variant_attrs.push(quote! { column_name = #column_name });
                     }
+
+                    if is_primary_key {
+                        primary_keys.push(quote! {
+                            #[sea_orm(#variant_attrs)]
+                            #field_name
+                        });
+                    }
+
                     if soft_delete_column {
                         variant_attrs.push(quote! { soft_delete_column });
                     }
@@ -228,13 +236,6 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     if let Some(restore_soft_delete_expr) = &restore_soft_delete_expr {
                         variant_attrs
                             .push(quote! { restore_soft_delete_expr = #restore_soft_delete_expr });
-                    }
-
-                    if is_primary_key {
-                        primary_keys.push(quote! {
-                            #[sea_orm(#variant_attrs)]
-                            #field_name
-                        });
                     }
 
                     columns_enum.push(quote! {
