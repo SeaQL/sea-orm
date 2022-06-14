@@ -3,7 +3,7 @@ use clap::{ArgGroup, Parser, Subcommand};
 #[derive(Parser, Debug)]
 #[clap(version)]
 pub struct Cli {
-    #[clap(global = true, short, long, help = "Show debug messages")]
+    #[clap(action, global = true, short, long, help = "Show debug messages")]
     pub verbose: bool,
 
     #[clap(subcommand)]
@@ -21,6 +21,7 @@ pub enum Commands {
     #[clap(about = "Migration related commands")]
     Migrate {
         #[clap(
+            value_parser,
             global = true,
             short = 'd',
             long,
@@ -40,7 +41,12 @@ pub enum MigrateSubcommands {
     Init,
     #[clap(about = "Generate a new, empty migration")]
     Generate {
-        #[clap(long, required = true, help = "Name of the new migration")]
+        #[clap(
+            value_parser,
+            long,
+            required = true,
+            help = "Name of the new migration"
+        )]
         migration_name: String,
     },
     #[clap(about = "Drop all tables from the database, then reapply all migrations")]
@@ -54,6 +60,7 @@ pub enum MigrateSubcommands {
     #[clap(about = "Apply pending migrations")]
     Up {
         #[clap(
+            value_parser,
             short,
             long,
             default_value = "1",
@@ -61,9 +68,10 @@ pub enum MigrateSubcommands {
         )]
         num: u32,
     },
-    #[clap(about = "Rollback applied migrations")]
+    #[clap(value_parser, about = "Rollback applied migrations")]
     Down {
         #[clap(
+            value_parser,
             short,
             long,
             default_value = "1",
@@ -80,19 +88,21 @@ pub enum GenerateSubcommands {
     #[clap(group(ArgGroup::new("formats").args(&["compact-format", "expanded-format"])))]
     #[clap(group(ArgGroup::new("group-tables").args(&["tables", "include-hidden-tables"])))]
     Entity {
-        #[clap(long, help = "Generate entity file of compact format")]
+        #[clap(action, long, help = "Generate entity file of compact format")]
         compact_format: bool,
 
-        #[clap(long, help = "Generate entity file of expanded format")]
+        #[clap(action, long, help = "Generate entity file of expanded format")]
         expanded_format: bool,
 
         #[clap(
+            action,
             long,
             help = "Generate entity file for hidden tables (i.e. table name starts with an underscore)"
         )]
         include_hidden_tables: bool,
 
         #[clap(
+            value_parser,
             short = 't',
             long,
             use_value_delimiter = true,
@@ -102,6 +112,7 @@ pub enum GenerateSubcommands {
         tables: Option<String>,
 
         #[clap(
+            value_parser,
             long,
             default_value = "1",
             help = "The maximum amount of connections to use when connecting to the database."
@@ -109,6 +120,7 @@ pub enum GenerateSubcommands {
         max_connections: u32,
 
         #[clap(
+            value_parser,
             short = 'o',
             long,
             default_value = "./",
@@ -117,6 +129,7 @@ pub enum GenerateSubcommands {
         output_dir: String,
 
         #[clap(
+            value_parser,
             short = 's',
             long,
             env = "DATABASE_SCHEMA",
@@ -127,10 +140,17 @@ pub enum GenerateSubcommands {
         )]
         database_schema: String,
 
-        #[clap(short = 'u', long, env = "DATABASE_URL", help = "Database URL")]
+        #[clap(
+            value_parser,
+            short = 'u',
+            long,
+            env = "DATABASE_URL",
+            help = "Database URL"
+        )]
         database_url: String,
 
         #[clap(
+            value_parser,
             long,
             default_value = "none",
             help = "Automatically derive serde Serialize / Deserialize traits for the entity (none, serialize, deserialize, both)"

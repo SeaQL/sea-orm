@@ -67,7 +67,7 @@ pub async fn run_migrate<M>(
 #[derive(Parser)]
 #[clap(version)]
 pub struct Cli {
-    #[clap(short = 'v', long, global = true, help = "Show debug messages")]
+    #[clap(action, short = 'v', long, global = true, help = "Show debug messages")]
     verbose: bool,
 
     #[clap(subcommand)]
