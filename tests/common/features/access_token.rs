@@ -7,7 +7,11 @@ pub struct Model {
     pub id: i32,
     pub user_id: i32,
     pub token: Uuid,
-    #[sea_orm(soft_delete_column)]
+    #[sea_orm(
+        soft_delete_column,
+        soft_delete_expr = "Func::current_timestamp()",
+        restore_soft_delete_expr = r#"Expr::cust("NULL")"#
+    )]
     pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 

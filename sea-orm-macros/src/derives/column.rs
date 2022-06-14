@@ -1,7 +1,10 @@
 use heck::{MixedCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Fields, Lit, Meta, Variant};
+use syn::{
+    parse::Error, punctuated::Punctuated, spanned::Spanned, token::Comma, Data, DataEnum, Fields,
+    Lit, Meta, Variant,
+};
 
 /// Derive a Column name for an enum type
 pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
@@ -24,51 +27,87 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
         .collect();
 
     let mut soft_delete_column = quote! { None };
-    let name: Vec<TokenStream> = variants
-        .iter()
-        .map(|v| {
-            let variant_ident = &v.ident;
-            let mut column_name = variant_ident.to_string().to_snake_case();
-            for attr in v.attrs.iter() {
-                if let Some(ident) = attr.path.get_ident() {
-                    if ident != "sea_orm" {
-                        continue;
-                    }
-                } else {
+    let mut soft_delete_expr = None;
+    let mut restore_soft_delete_expr = None;
+    let mut name: Vec<TokenStream> = Vec::new();
+    for v in variants.iter() {
+        let variant_ident = &v.ident;
+        let mut column_name = variant_ident.to_string().to_snake_case();
+        for attr in v.attrs.iter() {
+            if let Some(ident) = attr.path.get_ident() {
+                if ident != "sea_orm" {
                     continue;
                 }
-                if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                {
-                    for meta in list.iter() {
-                        if let Meta::NameValue(nv) = meta {
-                            if let Some(name) = nv.path.get_ident() {
-                                if name == "column_name" {
-                                    if let Lit::Str(litstr) = &nv.lit {
-                                        column_name = litstr.value();
-                                    }
+            } else {
+                continue;
+            }
+            if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
+                for meta in list.iter() {
+                    if let Meta::NameValue(nv) = meta {
+                        if let Some(name) = nv.path.get_ident() {
+                            if name == "column_name" {
+                                if let Lit::Str(litstr) = &nv.lit {
+                                    column_name = litstr.value();
                                 }
-                                if name == "table_name" {
-                                    if let Lit::Str(litstr) = &nv.lit {
-                                        column_name = litstr.value();
-                                    }
+                            }
+                            if name == "table_name" {
+                                if let Lit::Str(litstr) = &nv.lit {
+                                    column_name = litstr.value();
+                                }
+                            }
+                            if name == "soft_delete_expr" {
+                                if let Lit::Str(litstr) = &nv.lit {
+                                    let expr: TokenStream = syn::parse_str(&litstr.value())?;
+                                    soft_delete_expr = Some(expr);
+                                } else {
+                                    return Err(Error::new(
+                                        v.span(),
+                                        format!("Invalid soft_delete_expr {:?}", nv.lit),
+                                    ));
+                                }
+                            }
+                            if name == "restore_soft_delete_expr" {
+                                if let Lit::Str(litstr) = &nv.lit {
+                                    let expr: TokenStream = syn::parse_str(&litstr.value())?;
+                                    restore_soft_delete_expr = Some(expr);
+                                } else {
+                                    return Err(Error::new(
+                                        v.span(),
+                                        format!("Invalid restore_soft_delete_expr {:?}", nv.lit),
+                                    ));
                                 }
                             }
                         }
-                        if let Meta::Path(p) = meta {
-                            if let Some(name) = p.get_ident() {
-                                if name == "soft_delete_column" {
-                                    soft_delete_column = quote! {
-                                        Some(sea_orm::sea_query::SeaRc::new(Self::#variant_ident) as sea_orm::sea_query::DynIden)
-                                    }
+                    }
+                    if let Meta::Path(p) = meta {
+                        if let Some(name) = p.get_ident() {
+                            if name == "soft_delete_column" {
+                                soft_delete_column = quote! {
+                                    Some(sea_orm::sea_query::SeaRc::new(Self::#variant_ident) as sea_orm::sea_query::DynIden)
                                 }
                             }
                         }
                     }
                 }
             }
-            quote! { #column_name }
-        })
-        .collect();
+        }
+        name.push(quote! { #column_name });
+    }
+
+    if let Some(expr) = soft_delete_expr {
+        soft_delete_expr = Some(quote! {
+            fn soft_delete_expr() -> sea_orm::sea_query::SimpleExpr {
+                sea_orm::sea_query::#expr
+            }
+        });
+    }
+    if let Some(expr) = restore_soft_delete_expr {
+        restore_soft_delete_expr = Some(quote! {
+            fn restore_soft_delete_expr() -> sea_orm::sea_query::SimpleExpr {
+                sea_orm::sea_query::#expr
+            }
+        });
+    }
 
     Ok(quote!(
         #[automatically_derived]
@@ -85,6 +124,10 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
             fn soft_delete_column() -> Option<sea_orm::sea_query::DynIden> {
                 #soft_delete_column
             }
+
+            #soft_delete_expr
+
+            #restore_soft_delete_expr
         }
     ))
 }

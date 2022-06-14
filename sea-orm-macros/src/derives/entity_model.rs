@@ -94,6 +94,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut ignore = false;
                     let mut unique = false;
                     let mut soft_delete_column = false;
+                    let mut soft_delete_expr = None;
+                    let mut restore_soft_delete_expr = None;
                     let mut sql_type = None;
                     let mut column_name = if original_field_name
                         != original_field_name.to_camel_case().to_snake_case()
@@ -170,6 +172,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                                         format!("Invalid enum_name {:?}", nv.lit),
                                                     ));
                                                 }
+                                            } else if name == "soft_delete_expr" {
+                                                soft_delete_expr = Some(nv.lit.to_owned());
+                                            } else if name == "restore_soft_delete_expr" {
+                                                restore_soft_delete_expr = Some(nv.lit.to_owned());
                                             }
                                         }
                                     }
@@ -215,6 +221,13 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     }
                     if soft_delete_column {
                         variant_attrs.push(quote! { soft_delete_column });
+                    }
+                    if let Some(soft_delete_expr) = &soft_delete_expr {
+                        variant_attrs.push(quote! { soft_delete_expr = #soft_delete_expr });
+                    }
+                    if let Some(restore_soft_delete_expr) = &restore_soft_delete_expr {
+                        variant_attrs
+                            .push(quote! { restore_soft_delete_expr = #restore_soft_delete_expr });
                     }
 
                     if is_primary_key {
