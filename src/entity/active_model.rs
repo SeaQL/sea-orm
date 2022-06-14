@@ -1,5 +1,6 @@
 use crate::{
-    error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn, Value,
+    error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn, QueryTrait,
+    SoftDeleteTrait, Value,
 };
 use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
@@ -583,6 +584,87 @@ pub trait ActiveModelTrait: Clone + Debug {
         C: ConnectionTrait,
     {
         do_delete!(self, db, delete_force)
+    }
+
+    /// Restore a soft deleted model
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results(vec![
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .append_query_results(vec![
+    /// #         vec![vendor::Model {
+    /// #             id: 15,
+    /// #             name: "ABC Bakery".to_owned(),
+    /// #             deleted_at: Some("2022-06-10T16:24:00+00:00".parse().unwrap()),
+    /// #         }],
+    /// #         vec![vendor::Model {
+    /// #             id: 15,
+    /// #             name: "ABC Bakery".to_owned(),
+    /// #             deleted_at: None,
+    /// #         }],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::vendor};
+    ///
+    /// let soft_deleted_vendor = vendor::Entity::find_with_deleted()
+    ///     .filter(vendor::Column::Id.eq(15))
+    ///     .one(&db)
+    ///     .await?
+    ///     .unwrap();
+    ///
+    /// soft_deleted_vendor.restore_deleted(&db).await?;
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![
+    ///         Transaction::from_sql_and_values(
+    ///             DbBackend::Postgres,
+    ///             r#"SELECT "vendor"."id", "vendor"."name", "vendor"."deleted_at" FROM "vendor" WHERE "vendor"."id" = $1 LIMIT $2"#,
+    ///             vec![15i32.into(), 1u64.into()]
+    ///         ),
+    ///         Transaction::from_sql_and_values(
+    ///             DbBackend::Postgres,
+    ///             r#"UPDATE "vendor" SET "deleted_at" = NULL WHERE "vendor"."id" = $1 RETURNING "id", "name", "deleted_at""#,
+    ///             vec![15i32.into()]
+    ///         ),
+    ///     ]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    async fn restore_deleted<'a, C>(
+        self,
+        db: &'a C,
+    ) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
+    where
+        Self: 'a,
+        C: ConnectionTrait,
+        <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+    {
+        let mut update = <Self::Entity as EntityTrait>::update(self);
+        match <<Self::Entity as EntityTrait>::Column as SoftDeleteTrait>::soft_delete_column() {
+            Some(col) => {
+                let expr = <<Self::Entity as EntityTrait>::Column as SoftDeleteTrait>::restore_soft_delete_expr();
+                update.query().col_expr(col, expr);
+            }
+            None => {}
+        }
+        update.exec(db).await
     }
 
     /// Set the corresponding attributes in the ActiveModel from a JSON value

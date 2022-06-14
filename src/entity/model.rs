@@ -58,6 +58,20 @@ pub trait ModelTrait: Clone + Send + Debug {
     {
         self.into_active_model().delete_force(db).await
     }
+
+    /// Restore a soft deleted model
+    async fn restore_deleted<'a, A, C>(
+        self,
+        db: &'a C,
+    ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
+    where
+        Self: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: ActiveModelTrait<Entity = Self::Entity> + Send + 'a,
+        <Self::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+    {
+        self.into_active_model().restore_deleted(db).await
+    }
 }
 
 /// A Trait for implementing a [QueryResult]
