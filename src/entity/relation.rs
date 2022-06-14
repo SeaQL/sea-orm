@@ -1,6 +1,6 @@
 use crate::{EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select};
 use core::marker::PhantomData;
-use sea_query::{JoinType, TableRef};
+use sea_query::{Condition, IntoCondition, JoinType, TableRef};
 use std::fmt::Debug;
 
 /// Defines the type of relationship
@@ -62,6 +62,8 @@ pub struct RelationDef {
     /// Defines an operation to be performed on a Foreign Key when a
     /// `UPDATE` Operation is performed
     pub on_update: Option<ForeignKeyAction>,
+    /// Custom join ON condition
+    pub on_condition: Option<Condition>,
     /// The name of foreign key constraint
     pub fk_name: Option<String>,
 }
@@ -82,6 +84,7 @@ where
     is_owner: bool,
     on_delete: Option<ForeignKeyAction>,
     on_update: Option<ForeignKeyAction>,
+    on_condition: Option<Condition>,
     fk_name: Option<String>,
 }
 
@@ -97,8 +100,18 @@ impl RelationDef {
             is_owner: !self.is_owner,
             on_delete: self.on_delete,
             on_update: self.on_update,
+            on_condition: self.on_condition,
             fk_name: None,
         }
+    }
+
+    /// Set custom join ON condition
+    pub fn on_condition<C>(mut self, condition: C) -> Self
+    where
+        C: IntoCondition,
+    {
+        self.on_condition = Some(condition.into_condition());
+        self
     }
 }
 
@@ -118,6 +131,7 @@ where
             is_owner,
             on_delete: None,
             on_update: None,
+            on_condition: None,
             fk_name: None,
         }
     }
@@ -133,6 +147,7 @@ where
             is_owner,
             on_delete: None,
             on_update: None,
+            on_condition: None,
             fk_name: None,
         }
     }
@@ -167,6 +182,15 @@ where
         self
     }
 
+    /// Set custom join ON condition
+    pub fn on_condition<C>(mut self, condition: C) -> Self
+    where
+        C: IntoCondition,
+    {
+        self.on_condition = Some(condition.into_condition());
+        self
+    }
+
     /// Set the name of foreign key constraint
     pub fn fk_name(mut self, fk_name: &str) -> Self {
         self.fk_name = Some(fk_name.to_owned());
@@ -189,6 +213,7 @@ where
             is_owner: b.is_owner,
             on_delete: b.on_delete,
             on_update: b.on_update,
+            on_condition: b.on_condition,
             fk_name: b.fk_name,
         }
     }

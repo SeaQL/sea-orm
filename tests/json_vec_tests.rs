@@ -22,11 +22,7 @@ async fn main() -> Result<(), DbErr> {
 pub async fn insert_json_vec(db: &DatabaseConnection) -> Result<(), DbErr> {
     let json_vec = json_vec::Model {
         id: 1,
-        str_vec: json_vec::StringVec(vec![
-            "1".to_string(),
-            "2".to_string(),
-            "3".to_string(),
-        ])
+        str_vec: json_vec::StringVec(vec!["1".to_string(), "2".to_string(), "3".to_string()]),
     };
 
     let result = json_vec.clone().into_active_model().insert(db).await?;
@@ -38,10 +34,7 @@ pub async fn insert_json_vec(db: &DatabaseConnection) -> Result<(), DbErr> {
         .one(db)
         .await?;
 
-    assert_eq!(
-        model,
-        Some(json_vec)
-    );
+    assert_eq!(model, Some(json_vec));
 
     Ok(())
 }

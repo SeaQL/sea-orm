@@ -298,11 +298,7 @@ pub async fn create_json_vec_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .auto_increment()
                 .primary_key(),
         )
-        .col(
-            ColumnDef::new(json_vec::Column::StrVec)
-                .string()
-                .not_null(),
-        )
+        .col(ColumnDef::new(json_vec::Column::StrVec).string().not_null())
         .to_owned();
 
     create_table(db, &create_table_stmt, JsonVec).await
