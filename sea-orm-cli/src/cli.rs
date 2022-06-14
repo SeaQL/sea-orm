@@ -78,6 +78,14 @@ pub fn build_cli() -> App<'static, 'static> {
                         .help("The maximum amount of connections to use when connecting to the database.")
                         .takes_value(true)
                         .default_value("1")
+                )
+                .arg(
+                    Arg::with_name("SOFT_DELETE_COLUMNS")
+                        .long("soft-delete-columns")
+                        .use_delimiter(true)
+                        .help("Column names of soft delete column (comma seperated)")
+                        .takes_value(true)
+                        .default_value("deleted_at"),
                 ),
         )
         .setting(AppSettings::SubcommandRequiredElseHelp);

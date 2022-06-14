@@ -15,6 +15,11 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                 .values_of("TABLES")
                 .unwrap_or_default()
                 .collect::<Vec<_>>();
+            let soft_delete_columns = args
+                .values_of("SOFT_DELETE_COLUMNS")
+                .unwrap_or_default()
+                .map(Into::into)
+                .collect::<Vec<String>>();
             let expanded_format = args.is_present("EXPANDED_FORMAT");
             let with_serde = args.value_of("WITH_SERDE").unwrap();
             if args.is_present("VERBOSE") {
@@ -165,7 +170,7 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
             };
 
             let output = EntityTransformer::transform(table_stmts)?
-                .generate(expanded_format, WithSerde::from_str(with_serde).unwrap());
+                .generate(expanded_format, WithSerde::from_str(with_serde).unwrap(), soft_delete_columns);
 
             let dir = Path::new(output_dir);
             fs::create_dir_all(dir)?;

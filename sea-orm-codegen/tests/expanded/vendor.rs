@@ -16,6 +16,7 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub fruit_id: Option<i32> ,
+    pub deleted_at: Option<DateTimeWithTimeZone> ,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -25,6 +26,8 @@ pub enum Column {
     Name,
     #[sea_orm(column_name = "fruitId")]
     FruitId,
+    #[sea_orm(soft_delete_column)]
+    DeletedAt,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -52,6 +55,7 @@ impl ColumnTrait for Column {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::String(Some(255u32)).def(),
             Self::FruitId => ColumnType::Integer.def().null(),
+            Self::DeletedAt => ColumnType::TimestampWithTimeZone.def().null(),
         }
     }
 }
