@@ -279,12 +279,13 @@ where
     A: ActiveModelTrait,
 {
     pub(crate) fn prepare(mut self) -> Self {
-        let model = match self {
-            DeleteOne::Force { ref model, .. } | DeleteOne::Soft { ref model, .. } => model.clone(),
-        };
         for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
-            let av = model.get(col);
+            let av = match self {
+                DeleteOne::Force { ref model, .. } | DeleteOne::Soft { ref model, .. } => {
+                    model.get(col)
+                }
+            };
             if av.is_set() || av.is_unchanged() {
                 self = self.filter(col.eq(av.unwrap()));
             } else {
