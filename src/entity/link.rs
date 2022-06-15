@@ -31,12 +31,12 @@ pub trait Linked {
 
             let mut condition = Condition::all().add(join_tbl_on_condition(
                 SeaRc::clone(&from_tbl),
-                to_tbl,
+                SeaRc::clone(&to_tbl),
                 rel.from_col,
                 rel.to_col,
             ));
-            if let Some(on_condition) = rel.on_condition.take() {
-                condition = condition.add(on_condition);
+            if let Some(f) = rel.on_condition.take() {
+                condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
             }
 
             select

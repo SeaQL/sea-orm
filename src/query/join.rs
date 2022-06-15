@@ -79,13 +79,13 @@ where
             let table_ref = rel.to_tbl;
 
             let mut condition = Condition::all().add(join_tbl_on_condition(
-                from_tbl,
+                SeaRc::clone(&from_tbl),
                 SeaRc::clone(&to_tbl),
                 rel.from_col,
                 rel.to_col,
             ));
-            if let Some(on_condition) = rel.on_condition.take() {
-                condition = condition.add(on_condition);
+            if let Some(f) = rel.on_condition.take() {
+                condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
             }
 
             slf.query()
@@ -399,7 +399,7 @@ mod tests {
                 r#"FROM `vendor`"#,
                 r#"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`"#,
                 r#"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`"#,
-                r#"INNER JOIN `cake` AS `r2` ON `r2`.`id` = `r1`.`cake_id`"#,
+                r#"INNER JOIN `cake` AS `r2` ON `r2`.`id` = `r1`.`cake_id` AND `r2`.`name` LIKE '%cheese%'"#,
                 r#"WHERE `r2`.`id` = 18"#,
             ]
             .join(" ")
@@ -417,7 +417,7 @@ mod tests {
                 r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
                 r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
                 r#"FROM `cake`"#,
-                r#"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id`"#,
+                r#"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id` AND `cake`.`name` LIKE '%cheese%'"#,
                 r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
                 r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
             ]

@@ -1,4 +1,5 @@
 use crate::entity::prelude::*;
+use sea_query::{Expr, IntoCondition};
 
 #[derive(Debug)]
 pub struct CakeToFilling;
@@ -45,7 +46,11 @@ impl Linked for CheeseCakeToFillingVendor {
         vec![
             super::cake_filling::Relation::Cake
                 .def()
-                .on_condition(super::cake::Column::Name.like("%cheese%"))
+                .on_condition(|left, _| {
+                    Expr::tbl(left, super::cake::Column::Name)
+                        .like("%cheese%")
+                        .into_condition()
+                })
                 .rev(),
             super::cake_filling::Relation::Filling.def(),
             super::filling::Relation::Vendor.def(),

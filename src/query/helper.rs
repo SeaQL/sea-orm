@@ -437,13 +437,13 @@ pub(crate) fn join_condition(mut rel: RelationDef) -> Condition {
     let foreign_keys = rel.to_col;
 
     let mut condition = Condition::all().add(join_tbl_on_condition(
-        from_tbl,
-        to_tbl,
+        SeaRc::clone(&from_tbl),
+        SeaRc::clone(&to_tbl),
         owner_keys,
         foreign_keys,
     ));
-    if let Some(on_condition) = rel.on_condition.take() {
-        condition = condition.add(on_condition);
+    if let Some(f) = rel.on_condition.take() {
+        condition = condition.add(f(from_tbl, to_tbl));
     }
 
     condition

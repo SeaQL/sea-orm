@@ -1,6 +1,6 @@
 use crate::{EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select};
 use core::marker::PhantomData;
-use sea_query::{Condition, IntoCondition, JoinType, TableRef};
+use sea_query::{Condition, DynIden, JoinType, TableRef};
 use std::fmt::Debug;
 
 /// Defines the type of relationship
@@ -42,7 +42,7 @@ where
 }
 
 /// Defines a relationship
-#[derive(Debug)]
+#[allow(missing_debug_implementations)]
 pub struct RelationDef {
     /// The type of relationship defined in [RelationType]
     pub rel_type: RelationType,
@@ -63,13 +63,13 @@ pub struct RelationDef {
     /// `UPDATE` Operation is performed
     pub on_update: Option<ForeignKeyAction>,
     /// Custom join ON condition
-    pub on_condition: Option<Condition>,
+    pub on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition>>,
     /// The name of foreign key constraint
     pub fk_name: Option<String>,
 }
 
 /// Defines a helper to build a relation
-#[derive(Debug)]
+#[allow(missing_debug_implementations)]
 pub struct RelationBuilder<E, R>
 where
     E: EntityTrait,
@@ -84,7 +84,7 @@ where
     is_owner: bool,
     on_delete: Option<ForeignKeyAction>,
     on_update: Option<ForeignKeyAction>,
-    on_condition: Option<Condition>,
+    on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition>>,
     fk_name: Option<String>,
 }
 
@@ -106,11 +106,11 @@ impl RelationDef {
     }
 
     /// Set custom join ON condition
-    pub fn on_condition<C>(mut self, condition: C) -> Self
+    pub fn on_condition<F>(mut self, f: F) -> Self
     where
-        C: IntoCondition,
+        F: Fn(DynIden, DynIden) -> Condition + 'static,
     {
-        self.on_condition = Some(condition.into_condition());
+        self.on_condition = Some(Box::new(f));
         self
     }
 }
@@ -183,11 +183,11 @@ where
     }
 
     /// Set custom join ON condition
-    pub fn on_condition<C>(mut self, condition: C) -> Self
+    pub fn on_condition<F>(mut self, f: F) -> Self
     where
-        C: IntoCondition,
+        F: Fn(DynIden, DynIden) -> Condition + 'static,
     {
-        self.on_condition = Some(condition.into_condition());
+        self.on_condition = Some(Box::new(f));
         self
     }
 

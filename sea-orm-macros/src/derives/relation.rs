@@ -144,7 +144,7 @@ impl DeriveRelation {
                         .ok_or_else(|| {
                             syn::Error::new_spanned(variant, "Missing value for 'on_condition'")
                         })??;
-                    result = quote! { #result.on_condition(#on_condition) };
+                    result = quote! { #result.on_condition(|_, _| sea_orm::sea_query::IntoCondition::into_condition(#on_condition)) };
                 }
 
                 if attr.fk_name.is_some() {
