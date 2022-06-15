@@ -1360,21 +1360,21 @@ mod tests {
         use crate::tests_cfg::cake_filling_price;
         use crate::{entity::*, query::*, DbBackend};
         assert_eq!(
+            cake_filling_price::Entity::delete_by_id_force((1, 2))
+                .build(DbBackend::Sqlite)
+                .to_string(),
+            [
+                r#"DELETE FROM "public"."cake_filling_price""#,
+                r#"WHERE "cake_filling_price"."cake_id" = 1 AND "cake_filling_price"."filling_id" = 2"#,
+            ].join(" ")
+        );
+        assert_eq!(
             cake_filling_price::Entity::delete_by_id((1, 2))
                 .build(DbBackend::Sqlite)
                 .to_string(),
             [
                 r#"UPDATE "public"."cake_filling_price""#,
                 r#"SET "deleted_at" = CURRENT_TIMESTAMP"#,
-                r#"WHERE "cake_filling_price"."cake_id" = 1 AND "cake_filling_price"."filling_id" = 2"#,
-            ].join(" ")
-        );
-        assert_eq!(
-            cake_filling_price::Entity::delete_by_id_force((1, 2))
-                .build(DbBackend::Sqlite)
-                .to_string(),
-            [
-                r#"DELETE FROM "public"."cake_filling_price""#,
                 r#"WHERE "cake_filling_price"."cake_id" = 1 AND "cake_filling_price"."filling_id" = 2"#,
             ].join(" ")
         );
