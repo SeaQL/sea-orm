@@ -150,13 +150,23 @@ pub async fn soft_delete_and_find(db: &DatabaseConnection) -> Result<(), DbErr> 
     find_linked_models(db).await?;
 
     // Restore soft deleted access token
-    AccessToken::find_with_deleted()
+    let deleted_access_token = AccessToken::find_with_deleted()
         .filter(access_token::Column::Id.eq(3))
         .one(db)
         .await?
-        .unwrap()
-        .restore_deleted(db)
-        .await?;
+        .unwrap();
+    assert_eq!(
+        deleted_access_token,
+        AccessToken::find_deleted_by_id(3).one(db).await?.unwrap()
+    );
+    assert_eq!(
+        deleted_access_token,
+        AccessToken::find_with_deleted_by_id(3)
+            .one(db)
+            .await?
+            .unwrap()
+    );
+    deleted_access_token.restore_deleted(db).await?;
 
     // Count access tokens
     assert_eq!(AccessToken::find().count(db).await?, 4);

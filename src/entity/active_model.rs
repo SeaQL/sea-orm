@@ -620,8 +620,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::vendor};
     ///
-    /// let soft_deleted_vendor = vendor::Entity::find_with_deleted()
-    ///     .filter(vendor::Column::Id.eq(15))
+    /// let soft_deleted_vendor = vendor::Entity::find_deleted_by_id(15)
     ///     .one(&db)
     ///     .await?
     ///     .unwrap();
@@ -633,7 +632,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///     vec![
     ///         Transaction::from_sql_and_values(
     ///             DbBackend::Postgres,
-    ///             r#"SELECT "vendor"."id", "vendor"."name", "vendor"."deleted_at" FROM "vendor" WHERE "vendor"."id" = $1 LIMIT $2"#,
+    ///             r#"SELECT "vendor"."id", "vendor"."name", "vendor"."deleted_at" FROM "vendor" WHERE "vendor"."deleted_at" IS NOT NULL AND "vendor"."id" = $1 LIMIT $2"#,
     ///             vec![15i32.into(), 1u64.into()]
     ///         ),
     ///         Transaction::from_sql_and_values(

@@ -342,9 +342,9 @@ pub trait EntityTrait: EntityName {
         Select::with_deleted()
     }
 
-    /// Find a model by primary key
+    /// Find a model by primary key excluding model that is being soft deleted
     ///
-    /// # Example
+    /// # Example (without soft delete)
     ///
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
@@ -386,7 +386,9 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
+    ///
     /// Find by composite key
+    ///
     /// ```
     /// # use sea_orm::{error::*, tests_cfg::*, *};
     /// #
@@ -429,21 +431,245 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Example (with soft delete)
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![
+    /// #         vec![
+    /// #            vendor::Model {
+    /// #                id: 2,
+    /// #                name: "Vendor B".to_owned(),
+    /// #                deleted_at: None,
+    /// #            },
+    /// #         ],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::vendor};
+    ///
+    /// assert_eq!(
+    ///     vendor::Entity::find_by_id(2).all(&db).await?,
+    ///     vec![vendor::Model {
+    ///         id: 2,
+    ///         name: "Vendor B".to_owned(),
+    ///         deleted_at: None,
+    ///     }]
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "vendor"."id", "vendor"."name", "vendor"."deleted_at" FROM "vendor" WHERE "vendor"."deleted_at" IS NULL AND "vendor"."id" = $1"#,
+    ///         vec![2i32.into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     fn find_by_id(values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType) -> Select<Self> {
-        let mut select = Self::find();
-        let mut keys = Self::PrimaryKey::iter();
-        for v in values.into_value_tuple() {
-            if let Some(key) = keys.next() {
-                let col = key.into_column();
-                select = select.filter(col.eq(v));
-            } else {
-                panic!("primary key arity mismatch");
-            }
-        }
-        if keys.next().is_some() {
-            panic!("primary key arity mismatch");
-        }
-        select
+        filter_by_primary_key::<Self, _>(Self::find(), values)
+    }
+
+    /// Find a soft deleted model by primary key
+    ///
+    /// # Example (with soft delete)
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![
+    /// #         vec![
+    /// #            vendor::Model {
+    /// #                id: 2,
+    /// #                name: "Vendor B".to_owned(),
+    /// #                deleted_at: Some("2022-06-10T16:24:00+00:00".parse().unwrap()),
+    /// #            },
+    /// #         ],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::vendor};
+    ///
+    /// assert_eq!(
+    ///     vendor::Entity::find_deleted_by_id(2).all(&db).await?,
+    ///     vec![vendor::Model {
+    ///         id: 2,
+    ///         name: "Vendor B".to_owned(),
+    ///         deleted_at: Some("2022-06-10T16:24:00+00:00".parse().unwrap()),
+    ///     }]
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "vendor"."id", "vendor"."name", "vendor"."deleted_at" FROM "vendor" WHERE "vendor"."deleted_at" IS NOT NULL AND "vendor"."id" = $1"#,
+    ///         vec![2i32.into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    fn find_deleted_by_id(
+        values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType,
+    ) -> Select<Self> {
+        filter_by_primary_key::<Self, _>(Self::find_deleted(), values)
+    }
+
+    /// Find a model by primary key including model that is being soft deleted
+    ///
+    /// # Example (without soft delete)
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![
+    /// #         vec![
+    /// #             cake::Model {
+    /// #                 id: 11,
+    /// #                 name: "Sponge Cake".to_owned(),
+    /// #             },
+    /// #         ],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find_with_deleted_by_id(11).all(&db).await?,
+    ///     vec![cake::Model {
+    ///         id: 11,
+    ///         name: "Sponge Cake".to_owned(),
+    ///     }]
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = $1"#,
+    ///         vec![11i32.into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Find by composite key
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![
+    /// #         vec![
+    /// #             cake_filling::Model {
+    /// #                 cake_id: 2,
+    /// #                 filling_id: 3,
+    /// #             },
+    /// #         ],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake_filling};
+    ///
+    /// assert_eq!(
+    ///     cake_filling::Entity::find_with_deleted_by_id((2, 3)).all(&db).await?,
+    ///     vec![cake_filling::Model {
+    ///         cake_id: 2,
+    ///         filling_id: 3,
+    ///     }]
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         [
+    ///             r#"SELECT "cake_filling"."cake_id", "cake_filling"."filling_id" FROM "cake_filling""#,
+    ///             r#"WHERE "cake_filling"."cake_id" = $1 AND "cake_filling"."filling_id" = $2"#,
+    ///         ].join(" ").as_str(),
+    ///         vec![2i32.into(), 3i32.into()]
+    ///     )]);
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Example (with soft delete)
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![
+    /// #         vec![
+    /// #            vendor::Model {
+    /// #                id: 2,
+    /// #                name: "Vendor B".to_owned(),
+    /// #                deleted_at: None,
+    /// #            },
+    /// #         ],
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::vendor};
+    ///
+    /// assert_eq!(
+    ///     vendor::Entity::find_with_deleted_by_id(2).all(&db).await?,
+    ///     vec![vendor::Model {
+    ///         id: 2,
+    ///         name: "Vendor B".to_owned(),
+    ///         deleted_at: None,
+    ///     }]
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "vendor"."id", "vendor"."name", "vendor"."deleted_at" FROM "vendor" WHERE "vendor"."id" = $1"#,
+    ///         vec![2i32.into()]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    fn find_with_deleted_by_id(
+        values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType,
+    ) -> Select<Self> {
+        filter_by_primary_key::<Self, _>(Self::find_with_deleted(), values)
     }
 
     /// Insert an model into database
@@ -1234,7 +1460,7 @@ pub trait EntityTrait: EntityName {
     /// # }
     /// ```
     fn delete_by_id(values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType) -> DeleteMany<Self> {
-        filter_by_primary_key(Self::delete_many(), values)
+        filter_by_primary_key::<Self, _>(Self::delete_many(), values)
     }
 
     /// Delete a model based on primary key
@@ -1315,22 +1541,23 @@ pub trait EntityTrait: EntityName {
     fn delete_by_id_force(
         values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType,
     ) -> DeleteMany<Self> {
-        filter_by_primary_key(Self::delete_many_force(), values)
+        filter_by_primary_key::<Self, _>(Self::delete_many_force(), values)
     }
 }
 
-fn filter_by_primary_key<E>(
-    mut delete: DeleteMany<E>,
+fn filter_by_primary_key<E, Q>(
+    mut stmt: Q,
     values: <E::PrimaryKey as PrimaryKeyTrait>::ValueType,
-) -> DeleteMany<E>
+) -> Q
 where
     E: EntityTrait,
+    Q: QueryFilter,
 {
     let mut keys = E::PrimaryKey::iter();
     for v in values.into_value_tuple() {
         if let Some(key) = keys.next() {
             let col = key.into_column();
-            delete = delete.filter(col.eq(v));
+            stmt = stmt.filter(col.eq(v));
         } else {
             panic!("primary key arity mismatch");
         }
@@ -1338,7 +1565,7 @@ where
     if keys.next().is_some() {
         panic!("primary key arity mismatch");
     }
-    delete
+    stmt
 }
 
 #[cfg(test)]
