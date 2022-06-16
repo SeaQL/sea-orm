@@ -330,7 +330,7 @@ pub use schema::*;
 pub use sea_orm_macros::{
     DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn,
     DeriveCustomColumn, DeriveEntity, DeriveEntityModel, DeriveIntoActiveModel, DeriveModel,
-    DerivePrimaryKey, DeriveRelation, FromQueryResult,
+    DerivePrimaryKey, DeriveRelation, DeriveTryGetableFromJson, FromQueryResult,
 };
 
 pub use sea_query;

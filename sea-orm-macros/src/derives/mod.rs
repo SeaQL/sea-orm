@@ -9,6 +9,7 @@ mod into_active_model;
 mod model;
 mod primary_key;
 mod relation;
+mod try_getable_from_json;
 
 pub use active_enum::*;
 pub use active_model::*;
@@ -21,3 +22,4 @@ pub use into_active_model::*;
 pub use model::*;
 pub use primary_key::*;
 pub use relation::*;
+pub use try_getable_from_json::*;

@@ -584,6 +584,66 @@ fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), Try
     }
 }
 
+// TryGetableFromJson //
+
+/// Perform a query on multiple columns
+#[cfg(feature = "with-json")]
+pub trait TryGetableFromJson: Sized
+where
+    for<'de> Self: serde::Deserialize<'de>,
+{
+    /// Ensure the type implements this method
+    fn try_get_from_json(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
+        let column = format!("{}{}", pre, col);
+        let res = match &res.row {
+            #[cfg(feature = "sqlx-mysql")]
+            QueryResultRow::SqlxMySql(row) => {
+                use sqlx::Row;
+                row.try_get::<Option<serde_json::Value>, _>(column.as_str())
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null))
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => {
+                use sqlx::Row;
+                row.try_get::<Option<serde_json::Value>, _>(column.as_str())
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null))
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            QueryResultRow::SqlxSqlite(row) => {
+                use sqlx::Row;
+                row.try_get::<Option<serde_json::Value>, _>(column.as_str())
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null))
+            }
+            #[cfg(feature = "mock")]
+            QueryResultRow::Mock(row) => {
+                row.try_get::<serde_json::Value>(column.as_str())
+                    .map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        TryGetError::Null
+                    })
+            }
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
+        };
+        res.and_then(|json| {
+            serde_json::from_value(json).map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))
+        })
+    }
+}
+
+#[cfg(feature = "with-json")]
+impl<T> TryGetable for T
+where
+    T: TryGetableFromJson,
+{
+    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
+        T::try_get_from_json(res, pre, col)
+    }
+}
+
 // TryFromU64 //
 /// Try to convert a type to a u64
 pub trait TryFromU64: Sized {
