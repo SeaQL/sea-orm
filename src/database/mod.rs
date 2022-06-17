@@ -42,6 +42,8 @@ pub struct ConnectOptions {
     pub(crate) max_lifetime: Option<Duration>,
     /// Enable SQLx statement logging
     pub(crate) sqlx_logging: bool,
+    /// SQLx statement logging level (ignored if `sqlx_logging` is false)
+    pub(crate) sqlx_logging_level: log::LevelFilter,
     /// set sqlcipher key
     pub(crate) sqlcipher_key: Option<Cow<'static, str>>,
 }
@@ -107,6 +109,7 @@ impl ConnectOptions {
             idle_timeout: None,
             max_lifetime: None,
             sqlx_logging: true,
+            sqlx_logging_level: log::LevelFilter::Info,
             sqlcipher_key: None,
         }
     }
@@ -209,6 +212,18 @@ impl ConnectOptions {
     /// Get whether SQLx statement logging is enabled
     pub fn get_sqlx_logging(&self) -> bool {
         self.sqlx_logging
+    }
+
+    /// Set SQLx statement logging level (default INFO)
+    /// (ignored if `sqlx_logging` is `false`)
+    pub fn sqlx_logging_level(&mut self, level: log::LevelFilter) -> &mut Self {
+        self.sqlx_logging_level = level;
+        self
+    }
+
+    /// Get the level of SQLx statement logging
+    pub fn get_sqlx_logging_level(&self) -> log::LevelFilter {
+        self.sqlx_logging_level
     }
 
     /// set key for sqlcipher
