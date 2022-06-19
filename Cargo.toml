@@ -29,7 +29,7 @@ time = { version = "^0.2", optional = true }
 futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 tracing = { version = "0.1", features = ["log"] }
-log = "^0.4"
+log = { version = "^0"}
 rust_decimal = { version = "^1", optional = true }
 sea-orm-macros = { version = "^0.8.0", path = "sea-orm-macros", optional = true }
 sea-query = { version = "^0.24.5", features = ["thread-safe"] }
