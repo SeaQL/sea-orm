@@ -124,7 +124,7 @@ mod tests {
         RelationTrait,
     };
     use pretty_assertions::assert_eq;
-    use sea_query::JoinType;
+    use sea_query::{Expr, IntoCondition, JoinType};
 
     #[test]
     fn join_1() {
@@ -412,7 +412,6 @@ mod tests {
             id: 18,
             name: "".to_owned(),
         };
-
         assert_eq!(
             cake_model
                 .find_linked(entity_linked::JoinWithoutReverse)
@@ -465,6 +464,46 @@ mod tests {
                     r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
                 ]
                 .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_19() {
+        assert_eq!(
+            cake::Entity::find()
+                .join(JoinType::LeftJoin, cake::Relation::TropicalFruit.def())
+                .join(
+                    JoinType::LeftJoin,
+                    cake_filling::Relation::Cake
+                        .def()
+                        .rev()
+                        .on_condition(|_left, right| {
+                            Expr::tbl(right, cake_filling::Column::CakeId)
+                                .gt(10)
+                                .into_condition()
+                        })
+                )
+                .join(
+                    JoinType::LeftJoin,
+                    cake_filling::Relation::Filling
+                        .def()
+                        .on_condition(|_left, right| {
+                            Expr::tbl(right, filling::Column::Name)
+                                .like("%lemon%")
+                                .into_condition()
+                        })
+                )
+                .join(JoinType::LeftJoin, filling::Relation::Vendor.def())
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id` AND `fruit`.`name` LIKE '%tropical%'",
+                "LEFT JOIN `cake_filling` ON `cake`.`id` = `cake_filling`.`cake_id` AND `cake_filling`.`cake_id` > 10",
+                "LEFT JOIN `filling` ON `cake_filling`.`filling_id` = `filling`.`id` AND `filling`.`name` LIKE '%lemon%'",
+                "LEFT JOIN `vendor` ON `filling`.`vendor_id` = `vendor`.`id`",
+            ]
+            .join(" ")
         );
     }
 }
