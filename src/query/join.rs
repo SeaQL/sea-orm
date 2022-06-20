@@ -408,6 +408,30 @@ mod tests {
 
     #[test]
     fn join_16() {
+        let cake_model = cake::Model {
+            id: 18,
+            name: "".to_owned(),
+        };
+
+        assert_eq!(
+            cake_model
+                .find_linked(entity_linked::JoinWithoutReverse)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                r#"SELECT `vendor`.`id`, `vendor`.`name`"#,
+                r#"FROM `vendor`"#,
+                r#"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`"#,
+                r#"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`"#,
+                r#"INNER JOIN `cake_filling` AS `r2` ON `r2`.`cake_id` = `r1`.`id` AND `r2`.`name` LIKE '%cheese%'"#,
+                r#"WHERE `r2`.`id` = 18"#,
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_17() {
         assert_eq!(
             cake::Entity::find()
                 .find_also_linked(entity_linked::CheeseCakeToFillingVendor)
@@ -422,6 +446,25 @@ mod tests {
                 r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
             ]
             .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_18() {
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_linked(entity_linked::JoinWithoutReverse)
+                .build(DbBackend::MySql)
+                .to_string(),
+                [
+                    r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
+                    r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
+                    r#"FROM `cake`"#,
+                    r#"LEFT JOIN `cake` AS `r0` ON `cake_filling`.`cake_id` = `r0`.`id` AND `cake_filling`.`name` LIKE '%cheese%'"#,
+                    r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
+                    r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
+                ]
+                .join(" ")
         );
     }
 }
