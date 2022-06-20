@@ -13,6 +13,7 @@ pub use db_connection::*;
 #[cfg(feature = "mock")]
 pub use mock::*;
 pub use statement::*;
+use std::borrow::Cow;
 pub use stream::*;
 use tracing::instrument;
 pub use transaction::*;
@@ -24,7 +25,7 @@ use crate::DbErr;
 pub struct Database;
 
 /// Defines the configuration options of a database
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConnectOptions {
     /// The URI of the database
     pub(crate) url: String,
@@ -41,6 +42,8 @@ pub struct ConnectOptions {
     pub(crate) max_lifetime: Option<Duration>,
     /// Enable SQLx statement logging
     pub(crate) sqlx_logging: bool,
+    /// set sqlcipher key
+    pub(crate) sqlcipher_key: Option<Cow<'static, str>>,
 }
 
 impl Database {
@@ -104,6 +107,7 @@ impl ConnectOptions {
             idle_timeout: None,
             max_lifetime: None,
             sqlx_logging: true,
+            sqlcipher_key: None,
         }
     }
 
@@ -205,5 +209,14 @@ impl ConnectOptions {
     /// Get whether SQLx statement logging is enabled
     pub fn get_sqlx_logging(&self) -> bool {
         self.sqlx_logging
+    }
+
+    /// set key for sqlcipher
+    pub fn sqlcipher_key<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<Cow<'static, str>>,
+    {
+        self.sqlcipher_key = Some(value.into());
+        self
     }
 }

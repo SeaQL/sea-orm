@@ -25,6 +25,7 @@ syn = { version = "^1", default-features = false, features = [
 quote = "^1"
 heck = "^0.3"
 proc-macro2 = "^1"
+tracing = { version = "0.1", features = ["log"] }
 
 [dev-dependencies]
 pretty_assertions = { version = "^0.7" }

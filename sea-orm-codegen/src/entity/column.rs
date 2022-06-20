@@ -3,6 +3,7 @@ use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{ColumnDef, ColumnSpec, ColumnType};
+use std::fmt::Write as FmtWrite;
 
 #[derive(Clone, Debug)]
 pub struct Column {
@@ -142,6 +143,33 @@ impl Column {
             });
         }
         col_def
+    }
+
+    pub fn get_info(&self) -> String {
+        let mut info = String::new();
+        let type_info = self.get_rs_type().to_string().replace(' ', "");
+        let col_info = self.col_info();
+        write!(
+            &mut info,
+            "Column `{}`: {}{}",
+            self.name, type_info, col_info
+        )
+        .unwrap();
+        info
+    }
+
+    fn col_info(&self) -> String {
+        let mut info = String::new();
+        if self.auto_increment {
+            write!(&mut info, ", auto_increment").unwrap();
+        }
+        if self.not_null {
+            write!(&mut info, ", not_null").unwrap();
+        }
+        if self.unique {
+            write!(&mut info, ", unique").unwrap();
+        }
+        info
     }
 }
 
@@ -359,6 +387,42 @@ mod tests {
             col_def.extend(quote!(.unique()));
             assert_eq!(col.get_def().to_string(), col_def.to_string());
         }
+    }
+
+    #[test]
+    fn test_get_info() {
+        let column: Column = ColumnDef::new(Alias::new("id")).string().to_owned().into();
+        assert_eq!(column.get_info().as_str(), "Column `id`: Option<String>");
+
+        let column: Column = ColumnDef::new(Alias::new("id"))
+            .string()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(column.get_info().as_str(), "Column `id`: String, not_null");
+
+        let column: Column = ColumnDef::new(Alias::new("id"))
+            .string()
+            .not_null()
+            .unique_key()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info().as_str(),
+            "Column `id`: String, not_null, unique"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("id"))
+            .string()
+            .not_null()
+            .unique_key()
+            .auto_increment()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info().as_str(),
+            "Column `id`: String, auto_increment, not_null, unique"
+        );
     }
 
     #[test]
