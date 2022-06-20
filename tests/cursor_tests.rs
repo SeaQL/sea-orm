@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, QueryOrder};
+use sea_orm::entity::prelude::*;
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -55,9 +55,9 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     // Before 5, i.e. id < 5
 
-    let mut cursor = Entity::find().order_by_asc(Column::Id).cursor();
+    let mut cursor = Entity::find().cursor(Column::Id);
 
-    cursor.before(Column::Id, 5);
+    cursor.before(5);
 
     assert_eq!(
         cursor.first(4).all(db).await?,
@@ -101,9 +101,9 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     // After 5, i.e. id > 5
 
-    let mut cursor = Entity::find().order_by_asc(Column::Id).cursor();
+    let mut cursor = Entity::find().cursor(Column::Id);
 
-    cursor.after(Column::Id, 5);
+    cursor.after(5);
 
     assert_eq!(
         cursor.first(4).all(db).await?,
@@ -171,9 +171,9 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     // Between 5 and 8, i.e. id > 5 AND id < 8
 
-    let mut cursor = Entity::find().order_by_asc(Column::Id).cursor();
+    let mut cursor = Entity::find().cursor(Column::Id);
 
-    cursor.after(Column::Id, 5).before(Column::Id, 8);
+    cursor.after(5).before(8);
 
     assert_eq!(cursor.first(1).all(db).await?, vec![Model { id: 6 }]);
 
