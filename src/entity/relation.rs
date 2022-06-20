@@ -1,6 +1,6 @@
 use crate::{EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select};
 use core::marker::PhantomData;
-use sea_query::{Condition, DynIden, JoinType, TableRef};
+use sea_query::{Alias, Condition, DynIden, JoinType, SeaRc, TableRef};
 use std::fmt::Debug;
 
 /// Defines the type of relationship
@@ -42,7 +42,6 @@ where
 }
 
 /// Defines a relationship
-#[allow(missing_debug_implementations)]
 pub struct RelationDef {
     /// The type of relationship defined in [RelationType]
     pub rel_type: RelationType,
@@ -68,8 +67,43 @@ pub struct RelationDef {
     pub fk_name: Option<String>,
 }
 
+impl std::fmt::Debug for RelationDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut d = f.debug_struct("RelationDef");
+        d.field("rel_type", &self.rel_type)
+            .field("from_tbl", &self.from_tbl)
+            .field("to_tbl", &self.to_tbl)
+            .field("from_col", &self.from_col)
+            .field("to_col", &self.to_col)
+            .field("is_owner", &self.is_owner)
+            .field("on_delete", &self.on_delete)
+            .field("on_update", &self.on_update);
+        debug_on_condition(&mut d, &self.on_condition);
+        d.field("fk_name", &self.fk_name).finish()
+    }
+}
+
+fn debug_on_condition(
+    d: &mut core::fmt::DebugStruct<'_, '_>,
+    on_condition: &Option<Box<dyn Fn(DynIden, DynIden) -> Condition>>,
+) {
+    match on_condition {
+        Some(func) => {
+            d.field(
+                "on_condition",
+                &func(
+                    SeaRc::new(Alias::new("left")),
+                    SeaRc::new(Alias::new("right")),
+                ),
+            );
+        }
+        None => {
+            d.field("on_condition", &Option::<Condition>::None);
+        }
+    }
+}
+
 /// Defines a helper to build a relation
-#[allow(missing_debug_implementations)]
 pub struct RelationBuilder<E, R>
 where
     E: EntityTrait,
@@ -86,6 +120,27 @@ where
     on_update: Option<ForeignKeyAction>,
     on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition>>,
     fk_name: Option<String>,
+}
+
+impl<E, R> std::fmt::Debug for RelationBuilder<E, R>
+where
+    E: EntityTrait,
+    R: EntityTrait,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut d = f.debug_struct("RelationBuilder");
+        d.field("entities", &self.entities)
+            .field("rel_type", &self.rel_type)
+            .field("from_tbl", &self.from_tbl)
+            .field("to_tbl", &self.to_tbl)
+            .field("from_col", &self.from_col)
+            .field("to_col", &self.to_col)
+            .field("is_owner", &self.is_owner)
+            .field("on_delete", &self.on_delete)
+            .field("on_update", &self.on_update);
+        debug_on_condition(&mut d, &self.on_condition);
+        d.field("fk_name", &self.fk_name).finish()
+    }
 }
 
 impl RelationDef {
