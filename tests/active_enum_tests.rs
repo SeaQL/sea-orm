@@ -220,7 +220,7 @@ pub async fn find_related_active_enum(db: &DatabaseConnection) -> Result<(), DbE
     assert_eq!(
         ActiveEnum::find()
             .find_also_related(ActiveEnumChild)
-            .all(db)
+            .all_mandatory(db)
             .await?,
         vec![(
             active_enum::Model {
@@ -229,13 +229,13 @@ pub async fn find_related_active_enum(db: &DatabaseConnection) -> Result<(), DbE
                 color: Some(Color::White),
                 tea: Some(Tea::BreakfastTea),
             },
-            Some(active_enum_child::Model {
+            active_enum_child::Model {
                 id: 1,
                 parent_id: 2,
                 category: Some(Category::Big),
                 color: Some(Color::Black),
                 tea: Some(Tea::EverydayTea),
-            })
+            }
         )]
     );
 
@@ -299,6 +299,27 @@ pub async fn find_related_active_enum(db: &DatabaseConnection) -> Result<(), DbE
             })
         )]
     );
+    assert_eq!(
+        ActiveEnumChild::find()
+            .find_also_related(ActiveEnum)
+            .all_mandatory(db)
+            .await?,
+        vec![(
+            active_enum_child::Model {
+                id: 1,
+                parent_id: 2,
+                category: Some(Category::Big),
+                color: Some(Color::Black),
+                tea: Some(Tea::EverydayTea),
+            },
+            active_enum::Model {
+                id: 2,
+                category: Some(Category::Small),
+                color: Some(Color::White),
+                tea: Some(Tea::BreakfastTea),
+            }
+        )]
+    );
 
     Ok(())
 }
@@ -343,6 +364,27 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
             })
         )]
     );
+    assert_eq!(
+        ActiveEnum::find()
+            .find_also_linked(active_enum::ActiveEnumChildLink)
+            .all_mandatory(db)
+            .await?,
+        vec![(
+            active_enum::Model {
+                id: 2,
+                category: Some(Category::Small),
+                color: Some(Color::White),
+                tea: Some(Tea::BreakfastTea),
+            },
+            active_enum_child::Model {
+                id: 1,
+                parent_id: 2,
+                category: Some(Category::Big),
+                color: Some(Color::Black),
+                tea: Some(Tea::EverydayTea),
+            }
+        )]
+    );
 
     assert_eq!(
         active_enum_child::Model {
@@ -381,6 +423,27 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
                 color: Some(Color::White),
                 tea: Some(Tea::BreakfastTea),
             })
+        )]
+    );
+    assert_eq!(
+        ActiveEnumChild::find()
+            .find_also_linked(active_enum_child::ActiveEnumLink)
+            .all_mandatory(db)
+            .await?,
+        vec![(
+            active_enum_child::Model {
+                id: 1,
+                parent_id: 2,
+                category: Some(Category::Big),
+                color: Some(Color::Black),
+                tea: Some(Tea::EverydayTea),
+            },
+            active_enum::Model {
+                id: 2,
+                category: Some(Category::Small),
+                color: Some(Color::White),
+                tea: Some(Tea::BreakfastTea),
+            }
         )]
     );
 

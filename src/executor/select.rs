@@ -61,9 +61,19 @@ where
     model: PhantomData<M>,
 }
 
-/// Defines a type to get two Modelss
+/// Defines a type to get two Models
 #[derive(Clone, Debug)]
 pub struct SelectTwoModel<M, N>
+where
+    M: FromQueryResult,
+    N: FromQueryResult,
+{
+    model: PhantomData<(M, N)>,
+}
+
+/// Defines a type to get two Models (for mandatory relationship)
+#[derive(Clone, Debug)]
+pub struct SelectTwoModelMandatory<M, N>
 where
     M: FromQueryResult,
     N: FromQueryResult,
@@ -106,6 +116,21 @@ where
         Ok((
             M::from_query_result(&res, SelectA.as_str())?,
             N::from_query_result_optional(&res, SelectB.as_str())?,
+        ))
+    }
+}
+
+impl<M, N> SelectorTrait for SelectTwoModelMandatory<M, N>
+where
+    M: FromQueryResult + Sized,
+    N: FromQueryResult + Sized,
+{
+    type Item = (M, N);
+
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr> {
+        Ok((
+            M::from_query_result(&res, SelectA.as_str())?,
+            N::from_query_result(&res, SelectB.as_str())?,
         ))
     }
 }
@@ -298,12 +323,33 @@ where
         }
     }
 
+    /// Perform a conversion into a [SelectTwoModelMandatory]
+    pub fn into_model_mandatory<M, N>(self) -> Selector<SelectTwoModelMandatory<M, N>>
+    where
+        M: FromQueryResult,
+        N: FromQueryResult,
+    {
+        Selector {
+            query: self.query,
+            selector: SelectTwoModelMandatory { model: PhantomData },
+        }
+    }
+
     /// Convert the Models into JsonValue
     #[cfg(feature = "with-json")]
     pub fn into_json(self) -> Selector<SelectTwoModel<JsonValue, JsonValue>> {
         Selector {
             query: self.query,
             selector: SelectTwoModel { model: PhantomData },
+        }
+    }
+
+    /// Convert the Models into JsonValue (for mandatory relationship)
+    #[cfg(feature = "with-json")]
+    pub fn into_json_mandatory(self) -> Selector<SelectTwoModelMandatory<JsonValue, JsonValue>> {
+        Selector {
+            query: self.query,
+            selector: SelectTwoModelMandatory { model: PhantomData },
         }
     }
 
@@ -315,12 +361,28 @@ where
         self.into_model().one(db).await
     }
 
+    /// Get one Model from the Select query (for mandatory relationship)
+    pub async fn one_mandatory<'a, C>(self, db: &C) -> Result<Option<(E::Model, F::Model)>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model_mandatory().one(db).await
+    }
+
     /// Get all Models from the Select query
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr>
     where
         C: ConnectionTrait,
     {
         self.into_model().all(db).await
+    }
+
+    /// Get all Models from the Select query (for mandatory relationship)
+    pub async fn all_mandatory<'a, C>(self, db: &C) -> Result<Vec<(E::Model, F::Model)>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model_mandatory().all(db).await
     }
 
     /// Stream the results of a Select operation on a Model
@@ -332,6 +394,17 @@ where
         C: ConnectionTrait + StreamTrait<'a> + Send,
     {
         self.into_model().stream(db).await
+    }
+
+    /// Stream the results of a Select operation on a Model (for mandatory relationship)
+    pub async fn stream_mandatory<'a: 'b, 'b, C>(
+        self,
+        db: &'a C,
+    ) -> Result<impl Stream<Item = Result<(E::Model, F::Model), DbErr>> + 'b, DbErr>
+    where
+        C: ConnectionTrait + StreamTrait<'a> + Send,
+    {
+        self.into_model_mandatory().stream(db).await
     }
 }
 
