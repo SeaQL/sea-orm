@@ -3,8 +3,8 @@ use crate::{
     Select, SelectModel, SelectorTrait,
 };
 use sea_query::{
-    Condition, DynIden, Expr, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr, Value,
-    ValueTuple, OrderedStatement,
+    Condition, DynIden, Expr, IntoValueTuple, Order, OrderedStatement, SeaRc, SelectStatement,
+    SimpleExpr, Value, ValueTuple,
 };
 use std::marker::PhantomData;
 
@@ -355,6 +355,80 @@ mod tests {
                 .join(" ")
                 .as_str(),
                 vec![25_i32.into(), 30_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn composite_keys() -> Result<(), DbErr> {
+        use cake_filling::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(vec![vec![
+                Model {
+                    cake_id: 1,
+                    filling_id: 2,
+                },
+                Model {
+                    cake_id: 1,
+                    filling_id: 3,
+                },
+                Model {
+                    cake_id: 2,
+                    filling_id: 3,
+                },
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Entity::find()
+                .cursor((Column::CakeId, Column::FillingId))
+                .after((0, 1))
+                .before((10, 11))
+                .first(3)
+                .all(&db)
+                .await?,
+            vec![
+                Model {
+                    cake_id: 1,
+                    filling_id: 2,
+                },
+                Model {
+                    cake_id: 1,
+                    filling_id: 3,
+                },
+                Model {
+                    cake_id: 2,
+                    filling_id: 3,
+                },
+            ]
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![Transaction::many(vec![Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake_filling"."cake_id", "cake_filling"."filling_id""#,
+                    r#"FROM "cake_filling""#,
+                    r#"WHERE "cake_filling"."cake_id" > $1"#,
+                    r#"AND "cake_filling"."filling_id" > $2"#,
+                    r#"AND ("cake_filling"."cake_id" < $3"#,
+                    r#"AND "cake_filling"."filling_id" < $4)"#,
+                    r#"ORDER BY "cake_filling"."cake_id" ASC, "cake_filling"."filling_id" ASC"#,
+                    r#"LIMIT $5"#,
+                ]
+                .join(" ")
+                .as_str(),
+                vec![
+                    0_i32.into(),
+                    1_i32.into(),
+                    10_i32.into(),
+                    11_i32.into(),
+                    3_u64.into()
+                ]
             ),])]
         );
 
