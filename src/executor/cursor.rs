@@ -39,7 +39,7 @@ where
         }
     }
 
-    /// Filter paginated rows with column value less than the input value
+    /// Filter paginated result with corresponding column less than the input value
     pub fn before<V>(&mut self, values: V) -> &mut Self
     where
         V: IntoValueTuple,
@@ -51,7 +51,7 @@ where
         self
     }
 
-    /// Filter paginated rows with column value greater than the input value
+    /// Filter paginated result with corresponding column greater than the input value
     pub fn after<V>(&mut self, values: V) -> &mut Self
     where
         V: IntoValueTuple,
@@ -81,7 +81,7 @@ where
         }
     }
 
-    /// Limit result set to only first N rows in ascending order of the paginated query
+    /// Limit result set to only first N rows in ascending order of the order by column
     pub fn first(&mut self, num_rows: u64) -> &mut Self {
         self.query.limit(num_rows).clear_order_by();
         let table = SeaRc::clone(&self.table);
@@ -92,7 +92,7 @@ where
         self
     }
 
-    /// Limit result set to only last N rows in ascending order of the paginated query
+    /// Limit result set to only last N rows in ascending order of the order by column
     pub fn last(&mut self, num_rows: u64) -> &mut Self {
         self.query.limit(num_rows).clear_order_by();
         let table = SeaRc::clone(&self.table);
@@ -124,7 +124,7 @@ where
         }
     }
 
-    /// Fetch the rows
+    /// Fetch the paginated result
     pub async fn all<C>(&mut self, db: &C) -> Result<Vec<S::Item>, DbErr>
     where
         C: ConnectionTrait,
