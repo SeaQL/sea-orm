@@ -81,7 +81,7 @@ impl Relation {
         let module_name = if let Some(module_name) = self.get_module_name() {
             format!("super::{}::", module_name)
         } else {
-            format!("")
+            String::new()
         };
         let ref_entity = format!("{}Entity", module_name);
         match self.rel_type {

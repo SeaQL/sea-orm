@@ -1,0 +1,43 @@
+[package]
+name = "sea-orm-tonic-example"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[workspace]
+members = [".", "entity", "migration"]
+
+[dependencies]
+tonic = "0.7"
+tokio = { version = "1.17", features = ["macros", "rt-multi-thread", "full"] }
+entity = { path = "entity" }
+migration = { path = "migration" }
+prost = "0.10.0"
+serde = "1.0"
+
+[dependencies.sea-orm]
+path = "../../" # remove this line in your own project
+version = "^0.8.0"
+features = [
+  "debug-print",
+  "runtime-tokio-rustls",
+  # "sqlx-mysql",
+  "sqlx-postgres",
+  # "sqlx-sqlite",
+]
+
+[lib]
+path = "./src/lib.rs"
+
+[[bin]]
+name="server"
+path="./src/server.rs"
+
+[[bin]]
+name="client"
+path="./src/client.rs"
+
+[build-dependencies]
+tonic-build = "0.7"

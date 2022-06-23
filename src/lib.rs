@@ -34,11 +34,16 @@
 //!
 //! + [Getting Started](https://www.sea-ql.org/SeaORM/docs/index)
 //! + [Usage Example](https://github.com/SeaQL/sea-orm/tree/master/examples/basic)
+//!
+//! Integration examples
+//!
 //! + [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
 //! + [Actix Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
 //! + [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
-//! + [Axum-GraphQL Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum-graphql_example)
 //! + [Poem Example](https://github.com/SeaQL/sea-orm/tree/master/examples/poem_example)
+//! + [GraphQL Example](https://github.com/SeaQL/sea-orm/tree/master/examples/graphql_example)
+//! + [jsonrpsee Example](https://github.com/SeaQL/sea-orm/tree/master/examples/jsonrpsee_example)
+//! + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
 //!
 //! ## Features
 //!
@@ -257,7 +262,21 @@
 //!
 //! ## Who's using SeaORM?
 //!
-//! [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm)
+//! The following products are powered by SeaORM:
+//!
+//! <table>
+//!   <tbody>
+//!     <tr>
+//!       <td><br><a href="https://caido.io/"><img src="https://www.sea-ql.org/SeaORM/img/other/caido-logo.png" width="250"/></a><br>A lightweight web security auditing toolkit</td>
+//!       <td><a href="https://l2.technology/sensei"><img src="https://www.sea-ql.org/SeaORM/img/other/sensei-logo.svg" width="250"/></a><br>A Bitcoin lightning node implementation</td>
+//!       <td><a href="https://www.svix.com/"><img src="https://www.sea-ql.org/SeaORM/img/other/svix-logo.svg" width="250"/></a><br>The enterprise ready webhooks service</td>
+//!     </tr>
+//!   </tbody>
+//! </table>
+//!
+//! SeaORM is the foundation of [StarfishQL](https://github.com/SeaQL/starfish-ql), an experimental graph database and query engine developed by SeaQL.
+//!
+//! For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm).
 //!
 //! ## License
 //!

@@ -137,7 +137,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -176,7 +176,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -215,7 +215,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -293,7 +293,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        path: [basic, actix_example, actix4_example, axum_example, axum-graphql_example, rocket_example, poem_example, jsonrpsee_example]
+        path: [basic, actix_example, actix3_example, axum_example, graphql_example, rocket_example, poem_example, jsonrpsee_example, tonic_example]
     steps:
       - uses: actions/checkout@v2
 
@@ -309,6 +309,19 @@ jobs:
           args: >
             --manifest-path examples/${{ matrix.path }}/Cargo.toml
 
+      - name: Check existence of migration directory
+        id: migration_dir_exists
+        uses: andstor/file-existence-action@v1
+        with:
+          files: examples/${{ matrix.path }}/migration/Cargo.toml
+
+      - uses: actions-rs/cargo@v1
+        if: steps.migration_dir_exists.outputs.files_exists == 'true'
+        with:
+          command: build
+          args: >
+            --manifest-path examples/${{ matrix.path }}/migration/Cargo.toml
+
   issues:
     name: Issues
     needs: init
@@ -318,7 +331,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        path: [86, 249, 262, 319, 324, 352, 356, 471]
+        path: [86, 249, 262, 319, 324, 352, 356, 471, 630, 693]
     steps:
       - uses: actions/checkout@v2
 
@@ -367,7 +380,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -382,6 +395,14 @@ jobs:
           args: >
             --test '*'
             --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --manifest-path sea-orm-migration/Cargo.toml
+            --test '*'
+            --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   mysql:
     name: MySQL
@@ -428,7 +449,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -443,6 +464,14 @@ jobs:
           args: >
             --test '*'
             --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --manifest-path sea-orm-migration/Cargo.toml
+            --test '*'
+            --features sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   mariadb:
     name: MariaDB
@@ -460,7 +489,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [10.6, 10.5, 10.4]
+        version: [10.6]
         runtime: [actix]
         tls: [native-tls]
     services:
@@ -489,7 +518,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -521,7 +550,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [13, 12, 11, 10, 9]
+        version: [14, 13, 12]
         runtime: [tokio]
         tls: [native-tls]
     services:
@@ -547,7 +576,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -562,3 +591,11 @@ jobs:
           args: >
             --test '*'
             --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: >
+            --manifest-path sea-orm-migration/Cargo.toml
+            --test '*'
+            --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}

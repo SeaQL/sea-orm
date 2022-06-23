@@ -73,17 +73,17 @@ impl Updater {
     }
 }
 
-async fn exec_update_only<'a, C>(query: UpdateStatement, db: &'a C) -> Result<UpdateResult, DbErr>
+async fn exec_update_only<C>(query: UpdateStatement, db: &C) -> Result<UpdateResult, DbErr>
 where
     C: ConnectionTrait,
 {
     Updater::new(query).exec(db).await
 }
 
-async fn exec_update_and_return_updated<'a, A, C>(
+async fn exec_update_and_return_updated<A, C>(
     mut query: UpdateStatement,
     model: A,
-    db: &'a C,
+    db: &C,
 ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
 where
     A: ActiveModelTrait,
@@ -136,9 +136,9 @@ where
     }
 }
 
-async fn exec_update<'a, C>(
+async fn exec_update<C>(
     statement: Statement,
-    db: &'a C,
+    db: &C,
     check_record_exists: bool,
 ) -> Result<UpdateResult, DbErr>
 where

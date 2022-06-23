@@ -10,16 +10,27 @@ publish = false
 members = [".", "entity", "migration"]
 
 [dependencies]
-tokio = { version = "1.14", features = ["full"] }
-axum = { version = "0.4.2" }
-tower = "0.4.11"
-tower-http = { version = "0.2", features = ["fs"] }
-tower-cookies = { version = "0.4" }
-anyhow = "1"
-dotenv = "0.15"
-serde = "1"
-serde_json = "1"
-tera = "1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio = { version = "1.18.1", features = ["full"] }
+axum = "0.5.4"
+tower = "0.4.12"
+tower-http = { version = "0.3.3", features = ["fs"] }
+tower-cookies = "0.6.0"
+anyhow = "1.0.57"
+dotenv = "0.15.0"
+serde = "1.0.137"
+serde_json = "1.0.81"
+tera = "1.15.0"
+tracing-subscriber = { version = "0.3.11", features = ["env-filter"] }
 entity = { path = "entity" }
 migration = { path = "migration" }
+
+[dependencies.sea-orm]
+path = "../../" # remove this line in your own project
+version = "^0.8.0"
+features = [
+  "debug-print",
+  "runtime-tokio-native-tls",
+  "sqlx-postgres",
+  # "sqlx-mysql",
+  # "sqlx-sqlite",
+]

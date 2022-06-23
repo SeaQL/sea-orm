@@ -9,6 +9,7 @@ pub struct QueryResult {
     pub(crate) row: QueryResultRow,
 }
 
+#[allow(clippy::enum_variant_names)]
 pub(crate) enum QueryResultRow {
     #[cfg(feature = "sqlx-mysql")]
     SqlxMySql(sqlx::mysql::MySqlRow),

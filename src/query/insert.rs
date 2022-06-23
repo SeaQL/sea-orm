@@ -34,6 +34,7 @@ where
         Self {
             query: InsertStatement::new()
                 .into_table(A::Entity::default().table_ref())
+                .or_default_values()
                 .to_owned(),
             columns: Vec::new(),
             primary_key: None,

@@ -1,3 +1,4 @@
+use crate::migration::get_subcommands;
 use clap::{App, AppSettings, Arg, SubCommand};
 
 pub fn build_cli() -> App<'static, 'static> {
@@ -70,6 +71,13 @@ pub fn build_cli() -> App<'static, 'static> {
                         .help("Automatically derive serde Serialize / Deserialize traits for the entity (none, serialize, deserialize, both)")
                         .takes_value(true)
                         .default_value("none")
+                )
+                .arg(
+                    Arg::with_name("MAX_CONNECTIONS")
+                        .long("max-connections")
+                        .help("The maximum amount of connections to use when connecting to the database.")
+                        .takes_value(true)
+                        .default_value("1")
                 ),
         )
         .setting(AppSettings::SubcommandRequiredElseHelp);
@@ -87,8 +95,19 @@ pub fn build_cli() -> App<'static, 'static> {
                 .about("Initialize migration directory")
                 .arg(arg_migration_dir.clone()),
         )
+        .subcommand(
+            SubCommand::with_name("generate")
+                .about("Generate a new, empty migration")
+                .arg(
+                    Arg::with_name("MIGRATION_NAME")
+                        .help("Name of the new migation")
+                        .required(true)
+                        .takes_value(true),
+                )
+                .arg(arg_migration_dir.clone()),
+        )
         .arg(arg_migration_dir.clone());
-    for subcommand in sea_schema::migration::get_subcommands() {
+    for subcommand in get_subcommands() {
         migrate_subcommands =
             migrate_subcommands.subcommand(subcommand.arg(arg_migration_dir.clone()));
     }
@@ -108,4 +127,3 @@ pub fn build_cli() -> App<'static, 'static> {
         )
         .setting(AppSettings::SubcommandRequiredElseHelp)
 }
-
