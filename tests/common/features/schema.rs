@@ -59,11 +59,13 @@ pub async fn create_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(
             ColumnDef::new(applog::Column::CreatedAt)
                 .timestamp_with_time_zone()
-                .not_null(),
+                .not_null()
+                .extra("DEFAULT CURRENT_TIMESTAMP".to_owned()),
         )
         .to_owned();
 
-    create_table(db, &stmt, Applog).await
+    // create_table(db, &stmt, Applog).await
+    create_table_without_asserts(db, &stmt).await
 }
 
 pub async fn create_metadata_table(db: &DbConn) -> Result<ExecResult, DbErr> {

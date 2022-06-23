@@ -1,7 +1,7 @@
 pub mod common;
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
+use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel, Set};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -66,6 +66,31 @@ pub async fn create_applog(db: &DatabaseConnection) -> Result<(), DbErr> {
             "created_at": "2021-09-17T09:50:20+00:00",
         }))
     );
+
+    // Insert our first row with `created_at` fill with default value: CURRENT_TIMESTAMP
+    applog::ActiveModel {
+        action: Set("Testing default timestamp - 1".to_owned()),
+        json: Set(Json::String("HI".to_owned())),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    // Sleep 5 seconds
+    std::thread::sleep(std::time::Duration::from_secs(5));
+
+    // Insert our second row with `created_at` fill with default value: CURRENT_TIMESTAMP
+    applog::ActiveModel {
+        action: Set("Testing default timestamp - 2".to_owned()),
+        json: Set(Json::String("HI".to_owned())),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+
+    dbg!(Applog::find().all(db).await?);
+
+    assert!(false);
 
     Ok(())
 }
