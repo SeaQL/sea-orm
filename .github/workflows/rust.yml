@@ -550,7 +550,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [v6.1.0]
+        version: [v6.1.0, v5.4.1]
         runtime: [actix]
         tls: [native-tls]
     steps:
