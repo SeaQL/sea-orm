@@ -578,7 +578,7 @@ jobs:
         run: RUNNER_TRACKING_ID="" && (nohup /home/runner/.tiup/bin/tiup playground ${{ matrix.version }} > nohup.txt &)
 
       - name: Wait TiDB ready
-        run: sleep 15s
+        run: sleep 15s && cat nohup.txt
         shell: bash
 
       - uses: actions-rs/cargo@v1
