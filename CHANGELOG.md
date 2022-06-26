@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Improve sea-orm-cli logging (#735)
 * Added `sqlx_logging_level` (#800)
+* Support on conflict in insert query #791
 
 ## sea-orm-migration 0.8.3
 
