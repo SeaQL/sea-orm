@@ -23,6 +23,6 @@ pub use update::*;
 pub use util::*;
 
 pub use crate::{
-    ConnectionTrait, CursorTrait, InsertResult, PaginatorTrait, Statement, StreamTrait,
-    TransactionTrait, UpdateResult, Value, Values,
+    ConnectionTrait, InsertResult, PaginatorTrait, Statement, StreamTrait, TransactionTrait,
+    UpdateResult, Value, Values,
 };

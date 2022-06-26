@@ -23,7 +23,7 @@ clap = { version = "^2.33" }
 dotenv = { version = "^0.15" }
 sea-orm = { version = "^0.8.0", path = "../", default-features = false, features = ["macros"] }
 sea-orm-cli = { version = "^0.8.1", path = "../sea-orm-cli", default-features = false }
-sea-schema = { version = "^0.8.1", git = "https://github.com/SeaQL/sea-schema", branch = "bump-for-sea-orm-cursor-pagination" }
+sea-schema = { version = "^0.8.1" }
 tracing = { version = "0.1", features = ["log"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
