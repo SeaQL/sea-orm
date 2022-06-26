@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.9.0 - Pending
 
+### Enhancements
+
 * Improve sea-orm-cli logging (#735)
+* Added `sqlx_logging_level` (#800)
 
 ## sea-orm-migration 0.8.3
 
