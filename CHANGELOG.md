@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Added `sqlx_logging_level` (#800)
 * Support on conflict in insert query (#791)
 
+### House keeping
+
+* Bump clap version to 3.2 (#706)
+* Refactor stream metrics (#778)
+
 ## sea-orm-migration 0.8.3
 
 * Removed `async-std` from dependency https://github.com/SeaQL/sea-orm/pull/758
