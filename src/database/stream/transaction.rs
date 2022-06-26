@@ -1,6 +1,6 @@
 #![allow(missing_docs)]
 
-use std::{ops::DerefMut, pin::Pin, task::Poll};
+use std::{ops::DerefMut, pin::Pin, task::Poll, time::SystemTime};
 
 use futures::Stream;
 #[cfg(feature = "sqlx-dep")]
@@ -15,6 +15,8 @@ use tracing::instrument;
 
 use crate::{DbErr, InnerConnection, QueryResult, Statement};
 
+use super::metric::MetricStream;
+
 /// `TransactionStream` cannot be used in a `transaction` closure as it does not impl `Send`.
 /// It seems to be a Rust limitation right now, and solution to work around this deemed to be extremely hard.
 #[ouroboros::self_referencing]
@@ -24,7 +26,7 @@ pub struct TransactionStream<'a> {
     metric_callback: Option<crate::metric::Callback>,
     #[borrows(mut conn, stmt, metric_callback)]
     #[not_covariant]
-    stream: Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + 'this + Send>>,
+    stream: MetricStream<'this>,
 }
 
 impl<'a> std::fmt::Debug for TransactionStream<'a> {
@@ -48,41 +50,40 @@ impl<'a> TransactionStream<'a> {
                 #[cfg(feature = "sqlx-mysql")]
                 InnerConnection::MySql(c) => {
                     let query = crate::driver::sqlx_mysql::sqlx_query(stmt);
-                    crate::metric::metric_ok!(_metric_callback, stmt, {
-                        Box::pin(
-                            c.fetch(query)
+                    let _start = _metric_callback.is_some().then(SystemTime::now);
+                    let stream = c.fetch(query)
                                 .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err),
-                        )
-                            as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send>>
-                    })
+                                .map_err(crate::sqlx_error_to_query_err);
+                    let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
+                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
                 #[cfg(feature = "sqlx-postgres")]
                 InnerConnection::Postgres(c) => {
                     let query = crate::driver::sqlx_postgres::sqlx_query(stmt);
-                    crate::metric::metric_ok!(_metric_callback, stmt, {
-                        Box::pin(
-                            c.fetch(query)
+                    let _start = _metric_callback.is_some().then(SystemTime::now);
+                    let stream = c.fetch(query)
                                 .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err),
-                        )
-                            as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send>>
-                    })
+                                .map_err(crate::sqlx_error_to_query_err);
+                    let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
+                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
                 #[cfg(feature = "sqlx-sqlite")]
                 InnerConnection::Sqlite(c) => {
                     let query = crate::driver::sqlx_sqlite::sqlx_query(stmt);
-                    crate::metric::metric_ok!(_metric_callback, stmt, {
-                        Box::pin(
-                            c.fetch(query)
+                    let _start = _metric_callback.is_some().then(SystemTime::now);
+                    let stream = c.fetch(query)
                                 .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err),
-                        )
-                            as Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send>>
-                    })
+                                .map_err(crate::sqlx_error_to_query_err);
+                    let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
+                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
                 #[cfg(feature = "mock")]
-                InnerConnection::Mock(c) => c.fetch(stmt),
+                InnerConnection::Mock(c) => {
+                    let _start = _metric_callback.is_some().then(SystemTime::now);
+                    let stream = c.fetch(stmt);
+                    let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
+                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
+                },
                 #[allow(unreachable_patterns)]
                 _ => unreachable!(),
             },
@@ -99,6 +100,6 @@ impl<'a> Stream for TransactionStream<'a> {
         cx: &mut std::task::Context<'_>,
     ) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
-        this.with_stream_mut(|stream| stream.as_mut().poll_next(cx))
+        this.with_stream_mut(|stream| Pin::new(stream).poll_next(cx))
     }
 }

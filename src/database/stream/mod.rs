@@ -1,3 +1,5 @@
+mod metric;
+
 mod query;
 mod transaction;
 
