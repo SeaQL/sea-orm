@@ -159,7 +159,7 @@ pub trait CursorTrait {
     type Selector: SelectorTrait + Send + Sync;
 
     /// Convert current type into a cursor
-    fn cursor<C>(self, order_columns: C) -> Cursor<Self::Selector>
+    fn cursor_by<C>(self, order_columns: C) -> Cursor<Self::Selector>
     where
         C: IntoIdentity;
 }
@@ -171,7 +171,7 @@ where
 {
     type Selector = SelectModel<M>;
 
-    fn cursor<C>(self, order_columns: C) -> Cursor<Self::Selector>
+    fn cursor_by<C>(self, order_columns: C) -> Cursor<Self::Selector>
     where
         C: IntoIdentity,
     {
@@ -211,7 +211,7 @@ mod tests {
 
         assert_eq!(
             Entity::find()
-                .cursor(Column::Id)
+                .cursor_by(Column::Id)
                 .before(10)
                 .first(2)
                 .all(&db)
@@ -260,7 +260,7 @@ mod tests {
 
         assert_eq!(
             Entity::find()
-                .cursor(Column::Id)
+                .cursor_by(Column::Id)
                 .after(10)
                 .last(2)
                 .all(&db)
@@ -320,7 +320,7 @@ mod tests {
 
         assert_eq!(
             Entity::find()
-                .cursor(Column::Id)
+                .cursor_by(Column::Id)
                 .after(25)
                 .before(30)
                 .last(2)
@@ -384,7 +384,7 @@ mod tests {
 
         assert_eq!(
             Entity::find()
-                .cursor((Column::CakeId, Column::FillingId))
+                .cursor_by((Column::CakeId, Column::FillingId))
                 .after((0, 1))
                 .before((10, 11))
                 .first(3)

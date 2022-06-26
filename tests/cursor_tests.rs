@@ -55,7 +55,7 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     // Before 5, i.e. id < 5
 
-    let mut cursor = Entity::find().cursor(Column::Id);
+    let mut cursor = Entity::find().cursor_by(Column::Id);
 
     cursor.before(5);
 
@@ -101,7 +101,7 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     // After 5, i.e. id > 5
 
-    let mut cursor = Entity::find().cursor(Column::Id);
+    let mut cursor = Entity::find().cursor_by(Column::Id);
 
     cursor.after(5);
 
@@ -171,7 +171,7 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     // Between 5 and 8, i.e. id > 5 AND id < 8
 
-    let mut cursor = Entity::find().cursor(Column::Id);
+    let mut cursor = Entity::find().cursor_by(Column::Id);
 
     cursor.after(5).before(8);
 
