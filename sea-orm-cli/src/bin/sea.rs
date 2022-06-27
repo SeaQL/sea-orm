@@ -1,19 +1,26 @@
 //! COPY FROM bin/main.rs
 
+use clap::StructOpt;
 use dotenv::dotenv;
-use sea_orm_cli::*;
+use sea_orm_cli::{handle_error, run_generate_command, run_migrate_command, Cli, Commands};
 
 #[async_std::main]
 async fn main() {
     dotenv().ok();
 
-    let matches = cli::build_cli().get_matches();
+    let cli = Cli::parse();
+    let verbose = cli.verbose;
 
-    match matches.subcommand() {
-        ("generate", Some(matches)) => run_generate_command(matches)
-            .await
+    match cli.command {
+        Commands::Generate { command } => {
+            run_generate_command(command, verbose)
+                .await
+                .unwrap_or_else(handle_error);
+        }
+        Commands::Migrate {
+            migration_dir,
+            command,
+        } => run_migrate_command(command, migration_dir.as_str(), verbose)
             .unwrap_or_else(handle_error),
-        ("migrate", Some(matches)) => run_migrate_command(matches).unwrap_or_else(handle_error),
-        _ => unreachable!("You should never see this message"),
     }
 }
