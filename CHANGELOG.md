@@ -13,9 +13,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Added `sqlx_logging_level` (#800)
 * Support on conflict in insert query (#791)
 
-### House keeping
+### Upgrades
 
 * Bump clap version to 3.2 (#706)
+
+### House keeping
+
 * Refactor stream metrics (#778)
 
 ## sea-orm-migration 0.8.3
