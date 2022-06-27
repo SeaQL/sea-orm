@@ -1,10 +1,10 @@
-use clap::{App, AppSettings, Arg};
+use clap::Parser;
 use dotenv::dotenv;
 use std::{fmt::Display, process::exit};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
 use sea_orm::{Database, DbConn};
-use sea_orm_cli::migration::get_subcommands;
+use sea_orm_cli::MigrateSubcommands;
 
 use super::MigratorTrait;
 
@@ -15,27 +15,26 @@ where
     dotenv().ok();
     let url = std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
     let db = &Database::connect(&url).await.unwrap();
-    let app = build_cli();
-    get_matches(migrator, db, app).await;
+    let cli = Cli::parse();
+
+    run_migrate(migrator, db, cli.command, cli.verbose).await;
 }
 
-pub async fn get_matches<M>(_: M, db: &DbConn, app: App<'static, 'static>)
-where
+pub async fn run_migrate<M>(
+    _: M,
+    db: &DbConn,
+    command: Option<MigrateSubcommands>,
+    verbose: bool,
+) where
     M: MigratorTrait,
 {
-    let matches = app.get_matches();
-    let mut verbose = false;
-    let filter = match matches.subcommand() {
-        (_, None) => "sea_orm_migration=info",
-        (_, Some(args)) => match args.is_present("VERBOSE") {
-            true => {
-                verbose = true;
-                "debug"
-            }
-            false => "sea_orm_migration=info",
-        },
+    let filter = match verbose {
+        true => "debug",
+        false => "sea_orm_migration=info",
     };
+
     let filter_layer = EnvFilter::try_new(filter).unwrap();
+
     if verbose {
         let fmt_layer = tracing_subscriber::fmt::layer();
         tracing_subscriber::registry()
@@ -52,62 +51,26 @@ where
             .with(fmt_layer)
             .init()
     };
-    match matches.subcommand() {
-        ("fresh", _) => M::fresh(db).await,
-        ("refresh", _) => M::refresh(db).await,
-        ("reset", _) => M::reset(db).await,
-        ("status", _) => M::status(db).await,
-        ("up", None) => M::up(db, None).await,
-        ("down", None) => M::down(db, Some(1)).await,
-        ("up", Some(args)) => {
-            let version = args.value_of("VERSION_MIGRATION");
-            if version.is_some() {
-                if args.is_present("FORCE_MIGRATION") {
-                    M::change_to_version(db, version.unwrap()).await
-                } else {
-                    M::up_to_version(db, version.unwrap()).await
-                }
-            } else {
-                let str = args.value_of("NUM_MIGRATION").unwrap_or_default();
-                let steps = str.parse().ok();
-                M::up(db, steps).await
-            }
-        }
-        ("down", Some(args)) => {
-            let version = args.value_of("VERSION_MIGRATION");
-            if version.is_some() {
-                if args.is_present("FORCE_MIGRATION") {
-                    M::change_to_version(db, version.unwrap()).await
-                } else {
-                    M::down_to_version(db, version.unwrap()).await
-                }
-            } else {
-                let str = args.value_of("NUM_MIGRATION").unwrap();
-                let steps = str.parse().ok().unwrap_or(1);
-                M::down(db, Some(steps)).await
-            }
-        }
+    match command {
+        Some(MigrateSubcommands::Fresh) => M::fresh(db).await,
+        Some(MigrateSubcommands::Refresh) => M::refresh(db).await,
+        Some(MigrateSubcommands::Reset) => M::reset(db).await,
+        Some(MigrateSubcommands::Status) => M::status(db).await,
+        Some(MigrateSubcommands::Up { num }) => M::up(db, Some(num)).await,
+        Some(MigrateSubcommands::Down { num }) => M::down(db, Some(num)).await,
         _ => M::up(db, None).await,
     }
     .unwrap_or_else(handle_error);
 }
 
-pub fn build_cli() -> App<'static, 'static> {
-    let mut app = App::new("sea-orm-migration")
-        .version(env!("CARGO_PKG_VERSION"))
-        .setting(AppSettings::VersionlessSubcommands)
-        .arg(
-            Arg::with_name("VERBOSE")
-                .long("verbose")
-                .short("v")
-                .help("Show debug messages")
-                .takes_value(false)
-                .global(true),
-        );
-    for subcommand in get_subcommands() {
-        app = app.subcommand(subcommand);
-    }
-    app
+#[derive(Parser)]
+#[clap(version)]
+pub struct Cli {
+    #[clap(action, short = 'v', long, global = true, help = "Show debug messages")]
+    verbose: bool,
+
+    #[clap(subcommand)]
+    command: Option<MigrateSubcommands>,
 }
 
 fn handle_error<E>(error: E)
