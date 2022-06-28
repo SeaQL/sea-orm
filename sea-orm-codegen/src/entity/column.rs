@@ -3,6 +3,7 @@ use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{ColumnDef, ColumnSpec, ColumnType};
+use std::fmt::Write as FmtWrite;
 
 #[derive(Clone, Debug)]
 pub struct Column {
@@ -37,6 +38,10 @@ impl Column {
             ColumnType::SmallInteger(_) => "i16".to_owned(),
             ColumnType::Integer(_) => "i32".to_owned(),
             ColumnType::BigInteger(_) => "i64".to_owned(),
+            ColumnType::TinyUnsigned(_) => "u8".to_owned(),
+            ColumnType::SmallUnsigned(_) => "u16".to_owned(),
+            ColumnType::Unsigned(_) => "u32".to_owned(),
+            ColumnType::BigUnsigned(_) => "u64".to_owned(),
             ColumnType::Float(_) => "f32".to_owned(),
             ColumnType::Double(_) => "f64".to_owned(),
             ColumnType::Json | ColumnType::JsonBinary => "Json".to_owned(),
@@ -90,6 +95,10 @@ impl Column {
             ColumnType::SmallInteger(_) => quote! { ColumnType::SmallInteger.def() },
             ColumnType::Integer(_) => quote! { ColumnType::Integer.def() },
             ColumnType::BigInteger(_) => quote! { ColumnType::BigInteger.def() },
+            ColumnType::TinyUnsigned(_) => quote! { ColumnType::TinyUnsigned.def() },
+            ColumnType::SmallUnsigned(_) => quote! { ColumnType::SmallUnsigned.def() },
+            ColumnType::Unsigned(_) => quote! { ColumnType::Unsigned.def() },
+            ColumnType::BigUnsigned(_) => quote! { ColumnType::BigUnsigned.def() },
             ColumnType::Float(_) => quote! { ColumnType::Float.def() },
             ColumnType::Double(_) => quote! { ColumnType::Double.def() },
             ColumnType::Decimal(s) => match s {
@@ -116,6 +125,10 @@ impl Column {
                 let s = s.to_string();
                 quote! { ColumnType::Custom(#s.to_owned()).def() }
             }
+            ColumnType::Enum(enum_name, _) => {
+                let enum_ident = format_ident!("{}", enum_name.to_camel_case());
+                quote! { #enum_ident::db_type() }
+            }
             #[allow(unreachable_patterns)]
             _ => unimplemented!(),
         };
@@ -130,6 +143,33 @@ impl Column {
             });
         }
         col_def
+    }
+
+    pub fn get_info(&self) -> String {
+        let mut info = String::new();
+        let type_info = self.get_rs_type().to_string().replace(' ', "");
+        let col_info = self.col_info();
+        write!(
+            &mut info,
+            "Column `{}`: {}{}",
+            self.name, type_info, col_info
+        )
+        .unwrap();
+        info
+    }
+
+    fn col_info(&self) -> String {
+        let mut info = String::new();
+        if self.auto_increment {
+            write!(&mut info, ", auto_increment").unwrap();
+        }
+        if self.not_null {
+            write!(&mut info, ", not_null").unwrap();
+        }
+        if self.unique {
+            write!(&mut info, ", unique").unwrap();
+        }
+        info
     }
 }
 
@@ -194,9 +234,13 @@ mod tests {
                 ColumnType::Custom(SeaRc::new(Alias::new("cus_col")))
             ),
             make_col!("CakeId", ColumnType::TinyInteger(None)),
+            make_col!("CakeId", ColumnType::TinyUnsigned(Some(9))),
             make_col!("CakeId", ColumnType::SmallInteger(None)),
-            make_col!("CakeId", ColumnType::Integer(Some(11))),
+            make_col!("CakeId", ColumnType::SmallUnsigned(Some(10))),
+            make_col!("CakeId", ColumnType::Integer(None)),
+            make_col!("CakeId", ColumnType::Unsigned(Some(11))),
             make_col!("CakeFillingId", ColumnType::BigInteger(None)),
+            make_col!("CakeFillingId", ColumnType::BigUnsigned(Some(12))),
             make_col!("cake-filling-id", ColumnType::Float(None)),
             make_col!("CAKE_FILLING_ID", ColumnType::Double(None)),
             make_col!("CAKE-FILLING-ID", ColumnType::Binary(None)),
@@ -218,6 +262,10 @@ mod tests {
             "cake_id",
             "cake_id",
             "cake_id",
+            "cake_id",
+            "cake_id",
+            "cake_id",
+            "cake_filling_id",
             "cake_filling_id",
             "cake_filling_id",
             "cake_filling_id",
@@ -243,6 +291,10 @@ mod tests {
             "CakeId",
             "CakeId",
             "CakeId",
+            "CakeId",
+            "CakeId",
+            "CakeId",
+            "CakeFillingId",
             "CakeFillingId",
             "CakeFillingId",
             "CakeFillingId",
@@ -266,9 +318,13 @@ mod tests {
             "String",
             "String",
             "i8",
+            "u8",
             "i16",
+            "u16",
             "i32",
+            "u32",
             "i64",
+            "u64",
             "f32",
             "f64",
             "Vec<u8>",
@@ -300,9 +356,13 @@ mod tests {
             "ColumnType::String(Some(255u32)).def()",
             "ColumnType::Custom(\"cus_col\".to_owned()).def()",
             "ColumnType::TinyInteger.def()",
+            "ColumnType::TinyUnsigned.def()",
             "ColumnType::SmallInteger.def()",
+            "ColumnType::SmallUnsigned.def()",
             "ColumnType::Integer.def()",
+            "ColumnType::Unsigned.def()",
             "ColumnType::BigInteger.def()",
+            "ColumnType::BigUnsigned.def()",
             "ColumnType::Float.def()",
             "ColumnType::Double.def()",
             "ColumnType::Binary.def()",
@@ -327,6 +387,42 @@ mod tests {
             col_def.extend(quote!(.unique()));
             assert_eq!(col.get_def().to_string(), col_def.to_string());
         }
+    }
+
+    #[test]
+    fn test_get_info() {
+        let column: Column = ColumnDef::new(Alias::new("id")).string().to_owned().into();
+        assert_eq!(column.get_info().as_str(), "Column `id`: Option<String>");
+
+        let column: Column = ColumnDef::new(Alias::new("id"))
+            .string()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(column.get_info().as_str(), "Column `id`: String, not_null");
+
+        let column: Column = ColumnDef::new(Alias::new("id"))
+            .string()
+            .not_null()
+            .unique_key()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info().as_str(),
+            "Column `id`: String, not_null, unique"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("id"))
+            .string()
+            .not_null()
+            .unique_key()
+            .auto_increment()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info().as_str(),
+            "Column `id`: String, auto_increment, not_null, unique"
+        );
     }
 
     #[test]

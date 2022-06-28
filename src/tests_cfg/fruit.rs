@@ -1,10 +1,15 @@
 use crate as sea_orm;
 use crate::entity::prelude::*;
 
+#[cfg(feature = "with-json")]
+use serde::{Deserialize, Serialize};
+
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[cfg_attr(feature = "with-json", derive(Serialize, Deserialize))]
 #[sea_orm(table_name = "fruit")]
 pub struct Model {
     #[sea_orm(primary_key)]
+    #[cfg_attr(feature = "with-json", serde(skip_deserializing))]
     pub id: i32,
     pub name: String,
     pub cake_id: Option<i32>,

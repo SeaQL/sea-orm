@@ -26,7 +26,7 @@
 //!
 //! ## Getting Started
 //!
-//! [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/SeaQL/sea-orm/stargazers/)
+//! [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
 //! If you like what we do, consider starring, commenting, sharing and contributing!
 //!
 //! [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
@@ -34,10 +34,16 @@
 //!
 //! + [Getting Started](https://www.sea-ql.org/SeaORM/docs/index)
 //! + [Usage Example](https://github.com/SeaQL/sea-orm/tree/master/examples/basic)
+//!
+//! Integration examples
+//!
 //! + [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
 //! + [Actix Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
 //! + [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
 //! + [Poem Example](https://github.com/SeaQL/sea-orm/tree/master/examples/poem_example)
+//! + [GraphQL Example](https://github.com/SeaQL/sea-orm/tree/master/examples/graphql_example)
+//! + [jsonrpsee Example](https://github.com/SeaQL/sea-orm/tree/master/examples/jsonrpsee_example)
+//! + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
 //!
 //! ## Features
 //!
@@ -253,6 +259,24 @@
 //! 1. [Architecture](https://github.com/SeaQL/sea-orm/tree/master/ARCHITECTURE.md)
 //! 1. [Release Model](https://www.sea-ql.org/SeaORM/blog/2021-08-30-release-model)
 //! 1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
+//!
+//! ## Who's using SeaORM?
+//!
+//! The following products are powered by SeaORM:
+//!
+//! <table>
+//!   <tbody>
+//!     <tr>
+//!       <td><br><a href="https://caido.io/"><img src="https://www.sea-ql.org/SeaORM/img/other/caido-logo.png" width="250"/></a><br>A lightweight web security auditing toolkit</td>
+//!       <td><a href="https://l2.technology/sensei"><img src="https://www.sea-ql.org/SeaORM/img/other/sensei-logo.svg" width="250"/></a><br>A Bitcoin lightning node implementation</td>
+//!       <td><a href="https://www.svix.com/"><img src="https://www.sea-ql.org/SeaORM/img/other/svix-logo.svg" width="250"/></a><br>The enterprise ready webhooks service</td>
+//!     </tr>
+//!   </tbody>
+//! </table>
+//!
+//! SeaORM is the foundation of [StarfishQL](https://github.com/SeaQL/starfish-ql), an experimental graph database and query engine developed by SeaQL.
+//!
+//! For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm).
 //!
 //! ## License
 //!

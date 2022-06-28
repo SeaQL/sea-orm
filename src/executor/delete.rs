@@ -11,7 +11,7 @@ pub struct Deleter {
 }
 
 /// The result of a DELETE operation
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DeleteResult {
     /// The number of rows affected by the DELETE operation
     pub rows_affected: u64,
@@ -61,14 +61,14 @@ impl Deleter {
     }
 }
 
-async fn exec_delete_only<'a, C>(query: DeleteStatement, db: &'a C) -> Result<DeleteResult, DbErr>
+async fn exec_delete_only<C>(query: DeleteStatement, db: &C) -> Result<DeleteResult, DbErr>
 where
     C: ConnectionTrait,
 {
     Deleter::new(query).exec(db).await
 }
 
-async fn exec_delete<'a, C>(statement: Statement, db: &'a C) -> Result<DeleteResult, DbErr>
+async fn exec_delete<C>(statement: Statement, db: &C) -> Result<DeleteResult, DbErr>
 where
     C: ConnectionTrait,
 {

@@ -17,6 +17,8 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_self_join_table(db).await?;
     create_byte_primary_key_table(db).await?;
     create_satellites_table(db).await?;
+    create_transaction_log_table(db).await?;
+    create_json_vec_table(db).await?;
 
     let create_enum_stmts = match db_backend {
         DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
@@ -37,6 +39,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     create_active_enum_table(db).await?;
     create_active_enum_child_table(db).await?;
+    create_insert_default_table(db).await?;
 
     Ok(())
 }
@@ -233,4 +236,70 @@ pub async fn create_satellites_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &stmt, Satellite).await
+}
+
+pub async fn create_transaction_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(transaction_log::Entity)
+        .col(
+            ColumnDef::new(transaction_log::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(transaction_log::Column::Date)
+                .date()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(transaction_log::Column::Time)
+                .time()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(transaction_log::Column::DateTime)
+                .date_time()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(transaction_log::Column::DateTimeTz)
+                .timestamp_with_time_zone()
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, TransactionLog).await
+}
+
+pub async fn create_insert_default_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(insert_default::Entity.table_ref())
+        .col(
+            ColumnDef::new(insert_default::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .to_owned();
+
+    create_table(db, &create_table_stmt, InsertDefault).await
+}
+
+pub async fn create_json_vec_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(json_vec::Entity.table_ref())
+        .col(
+            ColumnDef::new(json_vec::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(json_vec::Column::StrVec).string().not_null())
+        .to_owned();
+
+    create_table(db, &create_table_stmt, JsonVec).await
 }

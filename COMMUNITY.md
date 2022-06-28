@@ -8,6 +8,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 - [Caido](https://caido.io/) | A lightweight web security auditing toolkit
 - [Svix](https://www.svix.com/) ([repository](https://github.com/svix/svix-webhooks)) | The enterprise ready webhooks service
+- [Sensei](https://l2.technology/sensei) ([repository](https://github.com/L2-Technology/sensei)) | A Bitcoin lightning node implementation
 
 ### Open Source Projects
 
@@ -25,3 +26,15 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [mugen](https://github.com/koopa1338/mugen-dms) | DMS written in 🦀
 - [JinShu](https://github.com/gengteng/jinshu) | A cross-platform **I**nstant **M**essaging system written in 🦀
 - [rust-juniper-playground](https://github.com/Yama-Tomo/rust-juniper-playground) | juniper with SeaORM example
+- [Oura Postgres Sink](https://github.com/dcSpark/oura-postgres-sink) | Sync a postgres database with the cardano blockchain using [Oura](https://github.com/txpipe/oura)
+- [Rust Async-GraphQL Example: Caster API](https://github.com/bkonkle/rust-example-caster-api) | A demo GraphQL API using Tokio, Warp, async-graphql, and SeaOrm
+- [pansy](https://github.com/niuhuan/pansy) | An illustrations app using SeaORM, SQLite, flutter. runs on the desktop and mobile terminals
+- [Orca](https://github.com/workfoxes/orca) | An No-code Test Automation platfrom using actix, SeaORM, react. runs on the desktop and cloud
+- [symbols](https://github.com/nappa85/symbols) | A proc-macro utility to populates enum variants with primary keys values
+- [Warpgate](https://github.com/warp-tech/warpgate) | Smart SSH bastion that works with any SSH client
+- [suzuya](https://github.com/SH11235/suzuya) | A merchandise management application using SeaORM, Actix-Web, Tera
+- [Quasar](https://github.com/Technik97/Quasar) | Rust REST API using Actix-Web, SeaOrm and Postgres with Svelte Typescript Frontend
+- [snmp-sim-rust](https://github.com/sonalake/snmp-sim-rust) | SNMP Simulator
+- [template_flow](https://github.com/hilary888/template_flow) | An experiment exploring replacing placeholders in pre-prepared templates with their actual values
+- [actix-react-starter-template](https://github.com/aslamplr/actix-react-starter-template) | Actix web + SeaORM + React + Redux + Redux Saga project starter template
+- [ZAPP](https://zapp.epics.dev) ([repository](https://github.com/EpicsDAO/zapp)) | ZAPP is a serverless framework made by Rust. Quickly build a scalable GraphQL API web server.

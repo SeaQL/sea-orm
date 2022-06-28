@@ -9,6 +9,7 @@ pub struct QueryResult {
     pub(crate) row: QueryResultRow,
 }
 
+#[allow(clippy::enum_variant_names)]
 pub(crate) enum QueryResultRow {
     #[cfg(feature = "sqlx-mysql")]
     SqlxMySql(sqlx::mysql::MySqlRow),
@@ -252,6 +253,44 @@ macro_rules! try_getable_date_time {
     };
 }
 
+macro_rules! try_getable_time {
+    ( $type: ty ) => {
+        impl TryGetable for $type {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
+                let column = format!("{}{}", pre, col);
+                match &res.row {
+                    #[cfg(feature = "sqlx-mysql")]
+                    QueryResultRow::SqlxMySql(row) => {
+                        use sqlx::Row;
+                        row.try_get::<Option<$type>, _>(column.as_str())
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null))
+                    }
+                    #[cfg(feature = "sqlx-postgres")]
+                    QueryResultRow::SqlxPostgres(row) => {
+                        use sqlx::Row;
+                        row.try_get::<Option<$type>, _>(column.as_str())
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null))
+                    }
+                    #[cfg(feature = "sqlx-sqlite")]
+                    QueryResultRow::SqlxSqlite(_) => {
+                        panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+                    }
+                    #[cfg(feature = "mock")]
+                    #[allow(unused_variables)]
+                    QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        TryGetError::Null
+                    }),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
+                }
+            }
+        }
+    };
+}
+
 try_getable_all!(bool);
 try_getable_all!(i8);
 try_getable_all!(i16);
@@ -286,6 +325,18 @@ try_getable_all!(chrono::DateTime<chrono::Utc>);
 
 #[cfg(feature = "with-chrono")]
 try_getable_all!(chrono::DateTime<chrono::Local>);
+
+#[cfg(feature = "with-time")]
+try_getable_time!(time::Date);
+
+#[cfg(feature = "with-time")]
+try_getable_time!(time::Time);
+
+#[cfg(feature = "with-time")]
+try_getable_time!(time::PrimitiveDateTime);
+
+#[cfg(feature = "with-time")]
+try_getable_time!(time::OffsetDateTime);
 
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;

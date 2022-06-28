@@ -7,6 +7,7 @@ pub mod cake_filling_price;
 pub mod entity_linked;
 pub mod filling;
 pub mod fruit;
+pub mod indexes;
 pub mod rust_keyword;
 pub mod vendor;
 

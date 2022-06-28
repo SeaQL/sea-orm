@@ -4,6 +4,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use std::{collections::HashMap, str::FromStr};
 use syn::{punctuated::Punctuated, token::Comma};
+use tracing::info;
 
 #[derive(Clone, Debug)]
 pub struct EntityWriter {
@@ -104,6 +105,18 @@ impl EntityWriter {
         self.entities
             .iter()
             .map(|entity| {
+                let entity_file = format!("{}.rs", entity.get_table_name_snake_case());
+                let column_info = entity
+                    .columns
+                    .iter()
+                    .map(|column| column.get_info())
+                    .collect::<Vec<String>>();
+
+                info!("Generating {}", entity_file);
+                for info in column_info.iter() {
+                    info!("    > {}", info);
+                }
+
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);
                 let code_blocks = if expanded_format {
@@ -113,7 +126,7 @@ impl EntityWriter {
                 };
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
-                    name: format!("{}.rs", entity.get_table_name_snake_case()),
+                    name: entity_file,
                     content: lines.join("\n\n"),
                 }
             })
@@ -833,28 +846,28 @@ mod tests {
                     },
                     Column {
                         name: "testing".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::TinyInteger(Some(11)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "rust".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::TinyUnsigned(Some(11)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "keywords".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::SmallInteger(Some(11)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "type".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::SmallUnsigned(Some(11)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
@@ -868,21 +881,21 @@ mod tests {
                     },
                     Column {
                         name: "crate".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Unsigned(Some(11)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "self".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::BigInteger(Some(11)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "self_id1".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::BigUnsigned(Some(11)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,

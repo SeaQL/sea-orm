@@ -10,7 +10,6 @@ use rocket::{Build, Request, Rocket};
 use rocket_dyn_templates::Template;
 use serde_json::json;
 
-use entity::sea_orm;
 use migration::MigratorTrait;
 use sea_orm::{entity::*, query::*};
 use sea_orm_rocket::{Connection, Database};

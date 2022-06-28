@@ -7,6 +7,7 @@ pub struct ExecResult {
 }
 
 /// Holds a result depending on the database backend chosen by the feature flag
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug)]
 pub(crate) enum ExecResultHolder {
     /// Holds the result of executing an operation on a MySQL database
