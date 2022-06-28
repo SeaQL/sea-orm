@@ -127,9 +127,10 @@ impl QueryStream {
                 InnerConnection::MySql(c) => {
                     let query = crate::driver::sqlx_mysql::sqlx_query(stmt);
                     let _start = _metric_callback.is_some().then(SystemTime::now);
-                    let stream = c.fetch(query)
-                                .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err);
+                    let stream = c
+                        .fetch(query)
+                        .map_ok(Into::into)
+                        .map_err(crate::sqlx_error_to_query_err);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
@@ -137,9 +138,10 @@ impl QueryStream {
                 InnerConnection::Postgres(c) => {
                     let query = crate::driver::sqlx_postgres::sqlx_query(stmt);
                     let _start = _metric_callback.is_some().then(SystemTime::now);
-                    let stream = c.fetch(query)
-                                .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err);
+                    let stream = c
+                        .fetch(query)
+                        .map_ok(Into::into)
+                        .map_err(crate::sqlx_error_to_query_err);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
@@ -147,9 +149,10 @@ impl QueryStream {
                 InnerConnection::Sqlite(c) => {
                     let query = crate::driver::sqlx_sqlite::sqlx_query(stmt);
                     let _start = _metric_callback.is_some().then(SystemTime::now);
-                    let stream = c.fetch(query)
-                                .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err);
+                    let stream = c
+                        .fetch(query)
+                        .map_ok(Into::into)
+                        .map_err(crate::sqlx_error_to_query_err);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
@@ -159,7 +162,7 @@ impl QueryStream {
                     let stream = c.fetch(stmt);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
-                },
+                }
                 #[allow(unreachable_patterns)]
                 _ => unreachable!(),
             },
