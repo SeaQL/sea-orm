@@ -160,7 +160,34 @@ impl RelationDef {
         }
     }
 
-    /// Set custom join ON condition
+    /// Set custom join ON condition.
+    ///
+    /// This method takes a closure with parameters
+    /// denoting the left-hand side and right-hand side table in the join expression.
+    ///
+    /// # Examples
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .join(
+    ///             JoinType::LeftJoin,
+    ///             cake_filling::Relation::Cake
+    ///                 .def()
+    ///                 .rev()
+    ///                 .on_condition(|_left, right| {
+    ///                     Expr::tbl(right, cake_filling::Column::CakeId)
+    ///                         .gt(10)
+    ///                         .into_condition()
+    ///                 })
+    ///         )
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     [
+    ///         "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+    ///         "LEFT JOIN `cake_filling` ON `cake`.`id` = `cake_filling`.`cake_id` AND `cake_filling`.`cake_id` > 10",
+    ///     ]
+    ///     .join(" ")
+    /// );
     pub fn on_condition<F>(mut self, f: F) -> Self
     where
         F: Fn(DynIden, DynIden) -> Condition + 'static,
@@ -237,7 +264,10 @@ where
         self
     }
 
-    /// Set custom join ON condition
+    /// Set custom join ON condition.
+    ///
+    /// This method takes a closure with parameters
+    /// denoting the left-hand side and right-hand side table in the join expression.
     pub fn on_condition<F>(mut self, f: F) -> Self
     where
         F: Fn(DynIden, DynIden) -> Condition + 'static,
