@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### New Features
 
 * Custom join on conditions (#793)
+* `DeriveMigrationName` and `sea_orm_migration::util::get_file_stem` (#736)
 
 ### Enhancements
 
