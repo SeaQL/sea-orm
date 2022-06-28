@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.9.0 - Pending
 
+### New Features
+
+* Custom join on conditions (#793)
+
 ### Enhancements
 
 * Improve sea-orm-cli logging (#735)
