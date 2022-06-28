@@ -67,6 +67,22 @@ pub enum MigrateSubcommands {
             help = "Number of pending migrations to be rolled back"
         )]
         num: u32,
+
+        #[clap(
+            value_parser,
+            short = 'V',
+            long,
+            help = "Version of pending migrations to be applied"
+        )]
+        version: Option<String>,
+
+        #[clap(
+            value_parser,
+            short,
+            long,
+            help = "force version of pending migrations to be applied"
+        )]
+        force: bool,
     },
     #[clap(value_parser, about = "Rollback applied migrations")]
     Down {
@@ -78,6 +94,22 @@ pub enum MigrateSubcommands {
             help = "Number of pending migrations to be rolled back"
         )]
         num: u32,
+
+        #[clap(
+            value_parser,
+            short = 'V',
+            long,
+            help = "Version of pending migrations to be rolled back"
+        )]
+        version: Option<String>,
+
+        #[clap(
+            value_parser,
+            short,
+            long,
+            help = "force version of pending migrations to be rolled back"
+        )]
+        force: bool,
     },
 }
 

@@ -260,16 +260,30 @@ pub fn run_migrate_command(
             return Ok(());
         }
         _ => {
-            let (subcommand, migration_dir, steps, verbose) = match command {
-                Some(MigrateSubcommands::Fresh) => ("fresh", migration_dir, None, verbose),
-                Some(MigrateSubcommands::Refresh) => ("refresh", migration_dir, None, verbose),
-                Some(MigrateSubcommands::Reset) => ("reset", migration_dir, None, verbose),
-                Some(MigrateSubcommands::Status) => ("status", migration_dir, None, verbose),
-                Some(MigrateSubcommands::Up { num }) => ("up", migration_dir, Some(num), verbose),
-                Some(MigrateSubcommands::Down { num }) => {
-                    ("down", migration_dir, Some(num), verbose)
+            let (subcommand, migration_dir, steps, version, force, verbose) = match command {
+                Some(MigrateSubcommands::Fresh) => {
+                    ("fresh", migration_dir, None, None, false, verbose)
                 }
-                _ => ("up", migration_dir, None, verbose),
+                Some(MigrateSubcommands::Refresh) => {
+                    ("refresh", migration_dir, None, None, false, verbose)
+                }
+                Some(MigrateSubcommands::Reset) => {
+                    ("reset", migration_dir, None, None, false, verbose)
+                }
+                Some(MigrateSubcommands::Status) => {
+                    ("status", migration_dir, None, None, false, verbose)
+                }
+                Some(MigrateSubcommands::Up {
+                    num,
+                    version,
+                    force,
+                }) => ("up", migration_dir, Some(num), version, force, verbose),
+                Some(MigrateSubcommands::Down {
+                    num,
+                    version,
+                    force,
+                }) => ("down", migration_dir, Some(num), version, force, verbose),
+                _ => ("up", migration_dir, None, None, false, verbose),
             };
 
             // Construct the `--manifest-path`
@@ -294,6 +308,13 @@ pub fn run_migrate_command(
             if !num.is_empty() {
                 args.extend(["-n", num.as_str()])
             }
+            let version = version.unwrap_or(String::new());
+            if !version.is_empty() {
+                args.extend(["-V", version.as_str()]);
+            }
+            if force {
+                args.push("-f");
+            }
             if verbose {
                 args.push("-v");
             }
@@ -302,6 +323,7 @@ pub fn run_migrate_command(
             Command::new("cargo").args(args).spawn()?.wait()?;
         }
     }
+
     Ok(())
 }
 
