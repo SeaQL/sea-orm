@@ -35,3 +35,6 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [suzuya](https://github.com/SH11235/suzuya) | A merchandise management application using SeaORM, Actix-Web, Tera
 - [Quasar](https://github.com/Technik97/Quasar) | Rust REST API using Actix-Web, SeaOrm and Postgres with Svelte Typescript Frontend
 - [snmp-sim-rust](https://github.com/sonalake/snmp-sim-rust) | SNMP Simulator
+- [template_flow](https://github.com/hilary888/template_flow) | An experiment exploring replacing placeholders in pre-prepared templates with their actual values
+- [actix-react-starter-template](https://github.com/aslamplr/actix-react-starter-template) | Actix web + SeaORM + React + Redux + Redux Saga project starter template
+- [ZAPP](https://zapp.epics.dev) ([repository](https://github.com/EpicsDAO/zapp)) | ZAPP is a serverless framework made by Rust. Quickly build a scalable GraphQL API web server.

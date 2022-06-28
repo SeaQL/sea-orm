@@ -30,6 +30,7 @@ impl MigrationTrait for Migration {
     }
 }
 
+/// Learn more at https://docs.rs/sea-query#iden
 #[derive(Iden)]
 pub enum Cake {
     Table,
