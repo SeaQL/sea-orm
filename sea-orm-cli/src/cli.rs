@@ -156,5 +156,13 @@ pub enum GenerateSubcommands {
             help = "Automatically derive serde Serialize / Deserialize traits for the entity (none, serialize, deserialize, both)"
         )]
         with_serde: String,
+
+        #[clap(
+            value_parser,
+            long,
+            default_value = "chrono",
+            help = "The datetime crate to use for generating entities."
+        )]
+        date_time_crate: String,
     },
 }
