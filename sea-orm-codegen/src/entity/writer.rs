@@ -92,23 +92,6 @@ impl FromStr for WithSerde {
     }
 }
 
-impl FromStr for DateTimeCrate {
-    type Err = crate::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "chrono" => Self::Chrono,
-            "time" => Self::Time,
-            v => {
-                return Err(crate::Error::TransformError(format!(
-                    "Unsupported enum variant '{}'",
-                    v
-                )))
-            }
-        })
-    }
-}
-
 impl EntityWriterContext {
     pub fn new(
         expanded_format: bool,

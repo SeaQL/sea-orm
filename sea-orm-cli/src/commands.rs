@@ -1,7 +1,7 @@
 use chrono::Local;
 use regex::Regex;
 use sea_orm_codegen::{
-    DateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile, WithSerde,
+    EntityTransformer, EntityWriterContext, OutputFile, WithSerde,
 };
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
@@ -173,7 +173,7 @@ pub async fn run_generate_command(
             let writer_context = EntityWriterContext::new(
                 expanded_format,
                 WithSerde::from_str(&with_serde).unwrap(),
-                DateTimeCrate::from_str(&date_time_crate).unwrap(),
+                date_time_crate.into(),
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
