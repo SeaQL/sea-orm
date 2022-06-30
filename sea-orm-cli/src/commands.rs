@@ -1,23 +1,29 @@
 use chrono::Local;
-use clap::ArgMatches;
 use regex::Regex;
 use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
 use url::Url;
 
-pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
-    match matches.subcommand() {
-        ("entity", Some(args)) => {
-            let output_dir = args.value_of("OUTPUT_DIR").unwrap();
-            let include_hidden_tables = args.is_present("INCLUDE_HIDDEN_TABLES");
-            let tables = args
-                .values_of("TABLES")
-                .unwrap_or_default()
-                .collect::<Vec<_>>();
-            let expanded_format = args.is_present("EXPANDED_FORMAT");
-            let with_serde = args.value_of("WITH_SERDE").unwrap();
-            if args.is_present("VERBOSE") {
+use crate::{GenerateSubcommands, MigrateSubcommands};
+
+pub async fn run_generate_command(
+    command: GenerateSubcommands,
+    verbose: bool,
+) -> Result<(), Box<dyn Error>> {
+    match command {
+        GenerateSubcommands::Entity {
+            compact_format: _,
+            expanded_format,
+            include_hidden_tables,
+            tables,
+            max_connections,
+            output_dir,
+            database_schema,
+            database_url,
+            with_serde,
+        } => {
+            if verbose {
                 let _ = tracing_subscriber::fmt()
                     .with_max_level(tracing::Level::DEBUG)
                     .with_test_writer()
@@ -35,18 +41,9 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                     .try_init();
             }
 
-            let max_connections = args
-                .value_of("MAX_CONNECTIONS")
-                .map(str::parse::<u32>)
-                .transpose()?
-                .unwrap();
-
             // The database should be a valid URL that can be parsed
             // protocol://username:password@host/database_name
-            let url = Url::parse(
-                args.value_of("DATABASE_URL")
-                    .expect("No database url could be found"),
-            )?;
+            let url = Url::parse(&database_url)?;
 
             // Make sure we have all the required url components
             //
@@ -68,6 +65,11 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                 }
             }
 
+            let tables = match tables {
+                Some(t) => t,
+                _ => "".to_string(),
+            };
+
             // Closures for filtering tables
             let filter_tables = |table: &str| -> bool {
                 if !tables.is_empty() {
@@ -76,6 +78,7 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
 
                 true
             };
+
             let filter_hidden_tables = |table: &str| -> bool {
                 if include_hidden_tables {
                     true
@@ -149,7 +152,7 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                     use sea_schema::postgres::discovery::SchemaDiscovery;
                     use sqlx::Postgres;
 
-                    let schema = args.value_of("DATABASE_SCHEMA").unwrap_or("public");
+                    let schema = &database_schema;
                     let connection = connect::<Postgres>(max_connections, url.as_str()).await?;
                     let schema_discovery = SchemaDiscovery::new(connection, schema);
                     let schema = schema_discovery.discover().await;
@@ -165,9 +168,9 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
             };
 
             let output = EntityTransformer::transform(table_stmts)?
-                .generate(expanded_format, WithSerde::from_str(with_serde).unwrap());
+                .generate(expanded_format, WithSerde::from_str(&with_serde).unwrap());
 
-            let dir = Path::new(output_dir);
+            let dir = Path::new(&output_dir);
             fs::create_dir_all(dir)?;
 
             for OutputFile { name, content } in output.files.iter() {
@@ -184,8 +187,7 @@ pub async fn run_generate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dy
                     .wait()?;
             }
         }
-        _ => unreachable!("You should never see this message"),
-    };
+    }
 
     Ok(())
 }
@@ -201,103 +203,106 @@ where
         .map_err(Into::into)
 }
 
-pub fn run_migrate_command(matches: &ArgMatches<'_>) -> Result<(), Box<dyn Error>> {
-    let migrate_subcommand = matches.subcommand();
-    // If it's `migrate init`
-    if let ("init", Some(args)) = migrate_subcommand {
-        let migration_dir = args.value_of("MIGRATION_DIR").unwrap();
-        let migration_dir = match migration_dir.ends_with('/') {
-            true => migration_dir.to_string(),
-            false => format!("{}/", migration_dir),
-        };
-        println!("Initializing migration directory...");
-        macro_rules! write_file {
-            ($filename: literal) => {
-                let fn_content = |content: String| content;
-                write_file!($filename, $filename, fn_content);
+pub fn run_migrate_command(
+    command: Option<MigrateSubcommands>,
+    migration_dir: &str,
+    verbose: bool,
+) -> Result<(), Box<dyn Error>> {
+    match command {
+        Some(MigrateSubcommands::Init) => {
+            let migration_dir = match migration_dir.ends_with('/') {
+                true => migration_dir.to_string(),
+                false => format!("{}/", migration_dir),
             };
-            ($filename: literal, $template: literal, $fn_content: expr) => {
-                let filepath = [&migration_dir, $filename].join("");
-                println!("Creating file `{}`", filepath);
-                let path = Path::new(&filepath);
-                let prefix = path.parent().unwrap();
-                fs::create_dir_all(prefix).unwrap();
-                let mut file = fs::File::create(path)?;
-                let content = include_str!(concat!("../template/migration/", $template));
-                let content = $fn_content(content.to_string());
-                file.write_all(content.as_bytes())?;
-            };
+            println!("Initializing migration directory...");
+            macro_rules! write_file {
+                ($filename: literal) => {
+                    let fn_content = |content: String| content;
+                    write_file!($filename, $filename, fn_content);
+                };
+                ($filename: literal, $template: literal, $fn_content: expr) => {
+                    let filepath = [&migration_dir, $filename].join("");
+                    println!("Creating file `{}`", filepath);
+                    let path = Path::new(&filepath);
+                    let prefix = path.parent().unwrap();
+                    fs::create_dir_all(prefix).unwrap();
+                    let mut file = fs::File::create(path)?;
+                    let content = include_str!(concat!("../template/migration/", $template));
+                    let content = $fn_content(content.to_string());
+                    file.write_all(content.as_bytes())?;
+                };
+            }
+            write_file!("src/lib.rs");
+            write_file!("src/m20220101_000001_create_table.rs");
+            write_file!("src/main.rs");
+            write_file!("Cargo.toml", "_Cargo.toml", |content: String| {
+                let ver = format!(
+                    "^{}.{}.0",
+                    env!("CARGO_PKG_VERSION_MAJOR"),
+                    env!("CARGO_PKG_VERSION_MINOR")
+                );
+                content.replace("<sea-orm-migration-version>", &ver)
+            });
+            write_file!("README.md");
+            println!("Done!");
+            // Early exit!
+            return Ok(());
         }
-        write_file!("src/lib.rs");
-        write_file!("src/m20220101_000001_create_table.rs");
-        write_file!("src/main.rs");
-        write_file!("Cargo.toml", "_Cargo.toml", |content: String| {
-            let ver = format!(
-                "^{}.{}.0",
-                env!("CARGO_PKG_VERSION_MAJOR"),
-                env!("CARGO_PKG_VERSION_MINOR")
-            );
-            content.replace("<sea-orm-migration-version>", &ver)
-        });
-        write_file!("README.md");
-        println!("Done!");
-        // Early exit!
-        return Ok(());
-    } else if let ("generate", Some(args)) = migrate_subcommand {
-        let migration_dir = args.value_of("MIGRATION_DIR").unwrap();
-        let migration_name = args.value_of("MIGRATION_NAME").unwrap();
-        println!("Generating new migration...");
+        Some(MigrateSubcommands::Generate { migration_name }) => {
+            println!("Generating new migration...");
 
-        // build new migration filename
-        let now = Local::now();
-        let migration_name = format!(
-            "m{}_{}",
-            now.format("%Y%m%d_%H%M%S").to_string(),
-            migration_name
-        );
+            // build new migration filename
+            let now = Local::now();
+            let migration_name = format!("m{}_{}", now.format("%Y%m%d_%H%M%S"), migration_name);
 
-        create_new_migration(&migration_name, migration_dir)?;
-        update_migrator(&migration_name, migration_dir)?;
-        return Ok(());
-    }
-    let (subcommand, migration_dir, steps, verbose) = match migrate_subcommand {
-        // Catch all command with pattern `migrate xxx`
-        (subcommand, Some(args)) => {
-            let migration_dir = args.value_of("MIGRATION_DIR").unwrap();
-            let steps = args.value_of("NUM_MIGRATION");
-            let verbose = args.is_present("VERBOSE");
-            (subcommand, migration_dir, steps, verbose)
+            create_new_migration(&migration_name, migration_dir)?;
+            update_migrator(&migration_name, migration_dir)?;
+            return Ok(());
         }
-        // Catch command `migrate`, this will be treated as `migrate up`
         _ => {
-            let migration_dir = matches.value_of("MIGRATION_DIR").unwrap();
-            let verbose = matches.is_present("VERBOSE");
-            ("up", migration_dir, None, verbose)
+            let (subcommand, migration_dir, steps, verbose) = match command {
+                Some(MigrateSubcommands::Fresh) => ("fresh", migration_dir, None, verbose),
+                Some(MigrateSubcommands::Refresh) => ("refresh", migration_dir, None, verbose),
+                Some(MigrateSubcommands::Reset) => ("reset", migration_dir, None, verbose),
+                Some(MigrateSubcommands::Status) => ("status", migration_dir, None, verbose),
+                Some(MigrateSubcommands::Up { num }) => ("up", migration_dir, Some(num), verbose),
+                Some(MigrateSubcommands::Down { num }) => {
+                    ("down", migration_dir, Some(num), verbose)
+                }
+                _ => ("up", migration_dir, None, verbose),
+            };
+
+            // Construct the `--manifest-path`
+            let manifest_path = if migration_dir.ends_with('/') {
+                format!("{}Cargo.toml", migration_dir)
+            } else {
+                format!("{}/Cargo.toml", migration_dir)
+            };
+            // Construct the arguments that will be supplied to `cargo` command
+            let mut args = vec![
+                "run",
+                "--manifest-path",
+                manifest_path.as_str(),
+                "--",
+                subcommand,
+            ];
+
+            let mut num: String = "".to_string();
+            if let Some(steps) = steps {
+                num = steps.to_string();
+            }
+            if !num.is_empty() {
+                args.extend(["-n", num.as_str()])
+            }
+            if verbose {
+                args.push("-v");
+            }
+            // Run migrator CLI on user's behalf
+            println!("Running `cargo {}`", args.join(" "));
+            Command::new("cargo").args(args).spawn()?.wait()?;
         }
-    };
-    // Construct the `--manifest-path`
-    let manifest_path = if migration_dir.ends_with('/') {
-        format!("{}Cargo.toml", migration_dir)
-    } else {
-        format!("{}/Cargo.toml", migration_dir)
-    };
-    // Construct the arguments that will be supplied to `cargo` command
-    let mut args = vec![
-        "run",
-        "--manifest-path",
-        manifest_path.as_str(),
-        "--",
-        subcommand,
-    ];
-    if let Some(steps) = steps {
-        args.extend(["-n", steps]);
     }
-    if verbose {
-        args.push("-v");
-    }
-    // Run migrator CLI on user's behalf
-    println!("Running `cargo {}`", args.join(" "));
-    Command::new("cargo").args(args).spawn()?.wait()?;
+
     Ok(())
 }
 
@@ -310,9 +315,9 @@ fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(),
     let migration_template =
         include_str!("../template/migration/src/m20220101_000001_create_table.rs");
     let migration_content =
-        migration_template.replace("m20220101_000001_create_table", &migration_name);
+        migration_template.replace("m20220101_000001_create_table", migration_name);
     let mut migration_file = fs::File::create(migration_filepath)?;
-    migration_file.write_all(migration_content.as_bytes())?;
+    migration_file.write_all(migration_template.as_bytes())?;
     Ok(())
 }
 
@@ -327,7 +332,7 @@ fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<
     let mut updated_migrator_content = migrator_content.clone();
 
     // create a backup of the migrator file in case something goes wrong
-    let migrator_backup_filepath = migrator_filepath.clone().with_file_name("lib.rs.bak");
+    let migrator_backup_filepath = migrator_filepath.with_file_name("lib.rs.bak");
     fs::copy(&migrator_filepath, &migrator_backup_filepath)?;
     let mut migrator_file = fs::File::create(&migrator_filepath)?;
 
@@ -348,7 +353,7 @@ fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<
         .map(|migration| format!("            Box::new({}::Migration),", migration))
         .collect::<Vec<String>>()
         .join("\n");
-    boxed_migrations.push_str("\n");
+    boxed_migrations.push('\n');
     let boxed_migrations = format!("vec![\n{}        ]\n", boxed_migrations);
     let vec_regex = Regex::new(r"vec!\[[\s\S]+\]\n")?;
     let updated_migrator_content = vec_regex.replace(&updated_migrator_content, &boxed_migrations);
@@ -368,25 +373,30 @@ where
 
 #[cfg(test)]
 mod tests {
+    use clap::StructOpt;
+
     use super::*;
-    use crate::cli;
-    use clap::AppSettings;
+    use crate::{Cli, Commands};
 
     #[test]
     #[should_panic(
         expected = "called `Result::unwrap()` on an `Err` value: RelativeUrlWithoutBase"
     )]
     fn test_generate_entity_no_protocol() {
-        let matches = cli::build_cli()
-            .setting(AppSettings::NoBinaryName)
-            .get_matches_from(vec![
-                "generate",
-                "entity",
-                "--database-url",
-                "://root:root@localhost:3306/database",
-            ]);
+        let cli = Cli::parse_from(vec![
+            "sea-orm-cli",
+            "generate",
+            "entity",
+            "--database-url",
+            "://root:root@localhost:3306/database",
+        ]);
 
-        smol::block_on(run_generate_command(matches.subcommand().1.unwrap())).unwrap();
+        match cli.command {
+            Commands::Generate { command } => {
+                smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
+            }
+            _ => unreachable!(),
+        }
     }
 
     #[test]
@@ -394,16 +404,20 @@ mod tests {
         expected = "There is no database name as part of the url path: postgresql://root:root@localhost:3306"
     )]
     fn test_generate_entity_no_database_section() {
-        let matches = cli::build_cli()
-            .setting(AppSettings::NoBinaryName)
-            .get_matches_from(vec![
-                "generate",
-                "entity",
-                "--database-url",
-                "postgresql://root:root@localhost:3306",
-            ]);
+        let cli = Cli::parse_from(vec![
+            "sea-orm-cli",
+            "generate",
+            "entity",
+            "--database-url",
+            "postgresql://root:root@localhost:3306",
+        ]);
 
-        smol::block_on(run_generate_command(matches.subcommand().1.unwrap())).unwrap();
+        match cli.command {
+            Commands::Generate { command } => {
+                smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
+            }
+            _ => unreachable!(),
+        }
     }
 
     #[test]
@@ -411,61 +425,77 @@ mod tests {
         expected = "There is no database name as part of the url path: mysql://root:root@localhost:3306/"
     )]
     fn test_generate_entity_no_database_path() {
-        let matches = cli::build_cli()
-            .setting(AppSettings::NoBinaryName)
-            .get_matches_from(vec![
-                "generate",
-                "entity",
-                "--database-url",
-                "mysql://root:root@localhost:3306/",
-            ]);
+        let cli = Cli::parse_from(vec![
+            "sea-orm-cli",
+            "generate",
+            "entity",
+            "--database-url",
+            "mysql://root:root@localhost:3306/",
+        ]);
 
-        smol::block_on(run_generate_command(matches.subcommand().1.unwrap())).unwrap();
+        match cli.command {
+            Commands::Generate { command } => {
+                smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
+            }
+            _ => unreachable!(),
+        }
     }
 
     #[test]
     #[should_panic(expected = "No username was found in the database url")]
     fn test_generate_entity_no_username() {
-        let matches = cli::build_cli()
-            .setting(AppSettings::NoBinaryName)
-            .get_matches_from(vec![
-                "generate",
-                "entity",
-                "--database-url",
-                "mysql://:root@localhost:3306/database",
-            ]);
+        let cli = Cli::parse_from(vec![
+            "sea-orm-cli",
+            "generate",
+            "entity",
+            "--database-url",
+            "mysql://:root@localhost:3306/database",
+        ]);
 
-        smol::block_on(run_generate_command(matches.subcommand().1.unwrap())).unwrap();
+        match cli.command {
+            Commands::Generate { command } => {
+                smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
+            }
+            _ => unreachable!(),
+        }
     }
 
     #[test]
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: PoolTimedOut")]
     fn test_generate_entity_no_password() {
-        let matches = cli::build_cli()
-            .setting(AppSettings::NoBinaryName)
-            .get_matches_from(vec![
-                "generate",
-                "entity",
-                "--database-url",
-                "mysql://root:@localhost:3306/database",
-            ]);
+        let cli = Cli::parse_from(vec![
+            "sea-orm-cli",
+            "generate",
+            "entity",
+            "--database-url",
+            "mysql://root:@localhost:3306/database",
+        ]);
 
-        smol::block_on(run_generate_command(matches.subcommand().1.unwrap())).unwrap();
+        match cli.command {
+            Commands::Generate { command } => {
+                smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
+            }
+            _ => unreachable!(),
+        }
     }
 
     #[test]
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: EmptyHost")]
     fn test_generate_entity_no_host() {
-        let matches = cli::build_cli()
-            .setting(AppSettings::NoBinaryName)
-            .get_matches_from(vec![
-                "generate",
-                "entity",
-                "--database-url",
-                "postgres://root:root@/database",
-            ]);
+        let cli = Cli::parse_from(vec![
+            "sea-orm-cli",
+            "generate",
+            "entity",
+            "--database-url",
+            "postgres://root:root@/database",
+        ]);
 
-        smol::block_on(run_generate_command(matches.subcommand().1.unwrap())).unwrap();
+        match cli.command {
+            Commands::Generate { command } => {
+                smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
+            }
+            _ => unreachable!(),
+        }
     }
     #[test]
     fn test_create_new_migration() {
@@ -478,8 +508,6 @@ mod tests {
             .join(format!("{}.rs", migration_name));
         assert!(migration_filepath.exists());
         let migration_content = fs::read_to_string(migration_filepath).unwrap();
-        let migration_content =
-            migration_content.replace(&migration_name, "m20220101_000001_create_table");
         assert_eq!(
             &migration_content,
             include_str!("../template/migration/src/m20220101_000001_create_table.rs")

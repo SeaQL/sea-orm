@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.9.0 - Pending
 
+### New Features
+
+* Custom join on conditions (#793)
+* `DeriveMigrationName` and `sea_orm_migration::util::get_file_stem` (#736)
+
+### Enhancements
+
 * Improve sea-orm-cli logging (#735)
+* Added `sqlx_logging_level` (#800)
+* Support on conflict in insert query (#791)
+
+### Upgrades
+
+* Bump clap version to 3.2 (#706)
+
+### House keeping
+
+* Refactor stream metrics (#778)
 
 ## sea-orm-migration 0.8.3
 
