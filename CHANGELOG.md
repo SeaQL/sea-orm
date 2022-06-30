@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Improve sea-orm-cli logging (#735)
 * Added `sqlx_logging_level` (#800)
 * Support on conflict in insert query (#791)
+* CLI generate enum with numeric like variants (#588)
 
 ### Upgrades
 
