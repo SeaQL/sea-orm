@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Custom join on conditions (#793)
 * `DeriveMigrationName` and `sea_orm_migration::util::get_file_stem` (#736)
+* `FromJsonQueryResult` for deserializing `Json` from query result (#794)
 
 ### Enhancements
 
