@@ -609,6 +609,16 @@ pub fn derive_migration_name(input: TokenStream) -> TokenStream {
         .into()
 }
 
+#[proc_macro_derive(FromJsonQueryResult)]
+pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
+    let DeriveInput { ident, data, .. } = parse_macro_input!(input);
+
+    match derives::expand_derive_from_json_query_result(ident, data) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
 #[doc(hidden)]
 #[proc_macro_attribute]
 pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {

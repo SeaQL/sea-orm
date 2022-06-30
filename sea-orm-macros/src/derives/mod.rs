@@ -10,6 +10,7 @@ mod migration;
 mod model;
 mod primary_key;
 mod relation;
+mod try_getable_from_json;
 
 pub use active_enum::*;
 pub use active_model::*;
@@ -23,3 +24,4 @@ pub use migration::*;
 pub use model::*;
 pub use primary_key::*;
 pub use relation::*;
+pub use try_getable_from_json::*;
