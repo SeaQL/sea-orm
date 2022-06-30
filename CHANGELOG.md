@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * [sea-orm-cli] Improve logging (#735)
 * [sea-orm-cli] Generate enum with numeric like variants (#588)
 * [sea-orm-cli] Allow old pending migration to be applied (#755)
+* Added `num_items_and_pages` to `Paginator` (#768)
 
 ### Upgrades
 
