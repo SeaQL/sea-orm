@@ -2,7 +2,7 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{ext::IdentExt, Data, DataStruct, Field, Fields};
 
-pub fn expand_derive_try_getable_from_json(ident: Ident, data: Data) -> syn::Result<TokenStream> {
+pub fn expand_derive_from_json_query_result(ident: Ident, data: Data) -> syn::Result<TokenStream> {
     Ok(quote!(
         #[automatically_derived]
         impl sea_orm::TryGetableFromJson for #ident {}

@@ -9,7 +9,7 @@ pub use crate::{
 pub use crate::{
     DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn,
     DeriveCustomColumn, DeriveEntity, DeriveEntityModel, DeriveIntoActiveModel, DeriveModel,
-    DerivePrimaryKey, DeriveRelation, DeriveTryGetableFromJson,
+    DerivePrimaryKey, DeriveRelation, FromJsonQueryResult,
 };
 
 #[cfg(feature = "with-json")]

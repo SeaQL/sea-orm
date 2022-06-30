@@ -11,7 +11,7 @@ pub struct Model {
     pub json_value_opt: Option<KeyValue>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, DeriveTryGetableFromJson)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]
 pub struct KeyValue {
     pub id: i32,
     pub name: String,

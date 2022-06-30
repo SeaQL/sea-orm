@@ -582,11 +582,11 @@ pub fn derive_relation(input: TokenStream) -> TokenStream {
         .into()
 }
 
-#[proc_macro_derive(DeriveTryGetableFromJson)]
-pub fn derive_try_getable_from_json(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(FromJsonQueryResult)]
+pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
 
-    match derives::expand_derive_try_getable_from_json(ident, data) {
+    match derives::expand_derive_from_json_query_result(ident, data) {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }
