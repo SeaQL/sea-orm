@@ -1,7 +1,8 @@
+use clap::ArgEnum;
 use chrono::Local;
 use regex::Regex;
 use sea_orm_codegen::{
-    EntityTransformer, EntityWriterContext, OutputFile, WithSerde,
+    EntityTransformer, EntityWriterContext, OutputFile, WithSerde, DateTimeCrate as CodegenDateTimeCrate,
 };
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
@@ -376,6 +377,21 @@ where
 {
     eprintln!("{}", error);
     ::std::process::exit(1);
+}
+
+#[derive(ArgEnum, Copy, Clone, Debug, PartialEq)]
+pub enum DateTimeCrate {
+    Chrono,
+    Time,
+}
+
+impl From<DateTimeCrate> for CodegenDateTimeCrate {
+    fn from(date_time_crate: DateTimeCrate) -> CodegenDateTimeCrate {
+        match date_time_crate {
+            DateTimeCrate::Chrono => CodegenDateTimeCrate::Chrono,
+            DateTimeCrate::Time => CodegenDateTimeCrate::Time,
+        }
+    }
 }
 
 #[cfg(test)]
