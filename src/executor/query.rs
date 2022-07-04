@@ -596,7 +596,7 @@ where
     /// Ensure the type implements this method
     fn try_get_from_json(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
         let column = format!("{}{}", pre, col);
-        let res: Result<Value, TryGetError> = match &res.row {
+        let res: Result<_, _> = match &res.row {
             #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(row) => {
                 use sqlx::Row;
