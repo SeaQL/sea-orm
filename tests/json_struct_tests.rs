@@ -37,15 +37,13 @@ pub async fn insert_json_struct_1(db: &DatabaseConnection) -> Result<(), DbErr> 
             name: "apple".into(),
             price: 12.01,
             notes: Some("hand picked, organic".into()),
-        }
-        .into(),
+        },
         json_value_opt: Some(KeyValue {
             id: 1,
             name: "apple".into(),
             price: 12.01,
             notes: Some("hand picked, organic".into()),
-        })
-        .into(),
+        }),
     };
 
     let result = model.clone().into_active_model().insert(db).await?;
@@ -79,9 +77,8 @@ pub async fn insert_json_struct_2(db: &DatabaseConnection) -> Result<(), DbErr> 
             name: "orange".into(),
             price: 10.93,
             notes: None,
-        }
-        .into(),
-        json_value_opt: None.into(),
+        },
+        json_value_opt: None,
     };
 
     let result = model.clone().into_active_model().insert(db).await?;
