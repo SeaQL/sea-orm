@@ -42,7 +42,7 @@ pub async fn create_applog(db: &DatabaseConnection) -> Result<(), DbErr> {
             "id": 1,
             "action": "Testing",
             "json": r#""HI""#,
-            "created_at": "2021-09-17T09:50:20+00:00",
+            "created_at": "2021-09-17T17:50:20+08:00",
         }))
     );
     #[cfg(feature = "sqlx-mysql")]
@@ -91,7 +91,7 @@ pub async fn create_satellites_log(db: &DatabaseConnection) -> Result<(), DbErr>
             "id": 1,
             "satellite_name": "Sea-00001-2022",
             "launch_date": "2022-01-07T12:11:23+00:00",
-            "deployment_date": "2022-01-07T12:11:23+00:00",
+            "deployment_date": "2022-01-07T12:11:23Z".parse::<DateTimeLocal>().unwrap(),
         }))
     );
     #[cfg(feature = "sqlx-mysql")]
