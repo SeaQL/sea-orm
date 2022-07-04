@@ -67,7 +67,7 @@ impl FromQueryResult for JsonValue {
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => {
                 use serde_json::json;
-                use sqlx::{Column, Postgres, Row, Type, postgres::types::Oid};
+                use sqlx::{postgres::types::Oid, Column, Postgres, Row, Type};
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
                         continue;
