@@ -321,8 +321,6 @@ fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(),
     // TODO: make OS agnostic
     let migration_template =
         include_str!("../template/migration/src/m20220101_000001_create_table.rs");
-    let migration_content =
-        migration_template.replace("m20220101_000001_create_table", migration_name);
     let mut migration_file = fs::File::create(migration_filepath)?;
     migration_file.write_all(migration_template.as_bytes())?;
     Ok(())
