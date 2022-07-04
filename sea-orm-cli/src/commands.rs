@@ -19,6 +19,7 @@ pub async fn run_generate_command(
             expanded_format,
             include_hidden_tables,
             tables,
+            ignore_tables,
             max_connections,
             output_dir,
             database_schema,
@@ -89,6 +90,10 @@ pub async fn run_generate_command(
                 }
             };
 
+            let filter_skip_tables = |table: &String| -> bool {
+                !ignore_tables.contains(table)
+            };
+
             let database_name = if !is_sqlite {
                 // The database name should be the first element of the path string
                 //
@@ -132,6 +137,7 @@ pub async fn run_generate_command(
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.info.name))
                         .filter(|schema| filter_hidden_tables(&schema.info.name))
+                        .filter(|schema| filter_skip_tables(&schema.info.name))
                         .map(|schema| schema.write())
                         .collect()
                 }
@@ -147,6 +153,7 @@ pub async fn run_generate_command(
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.name))
                         .filter(|schema| filter_hidden_tables(&schema.name))
+                        .filter(|schema| filter_skip_tables(&schema.name))
                         .map(|schema| schema.write())
                         .collect()
                 }
@@ -163,6 +170,7 @@ pub async fn run_generate_command(
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.info.name))
                         .filter(|schema| filter_hidden_tables(&schema.info.name))
+                        .filter(|schema| filter_skip_tables(&schema.info.name))
                         .map(|schema| schema.write())
                         .collect()
                 }
