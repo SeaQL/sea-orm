@@ -340,6 +340,7 @@ try_getable_time!(time::OffsetDateTime);
 
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;
+use serde_json::Value;
 
 #[cfg(feature = "with-rust_decimal")]
 impl TryGetable for Decimal {
@@ -595,7 +596,7 @@ where
     /// Ensure the type implements this method
     fn try_get_from_json(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
         let column = format!("{}{}", pre, col);
-        let res = match &res.row {
+        let res: Result<Value, TryGetError> = match &res.row {
             #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(row) => {
                 use sqlx::Row;
