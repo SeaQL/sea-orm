@@ -298,7 +298,6 @@ try_getable_all!(i32);
 try_getable_all!(i64);
 try_getable_unsigned!(u8);
 try_getable_unsigned!(u16);
-try_getable_all!(u32);
 try_getable_mysql!(u64);
 try_getable_all!(f32);
 try_getable_all!(f64);
@@ -390,6 +389,47 @@ impl TryGetable for Decimal {
 
 #[cfg(feature = "with-uuid")]
 try_getable_all!(uuid::Uuid);
+
+impl TryGetable for u32 {
+    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
+        let _column = format!("{}{}", pre, col);
+        match &res.row {
+            #[cfg(feature = "sqlx-mysql")]
+            QueryResultRow::SqlxMySql(row) => {
+                use sqlx::Row;
+                row.try_get::<Option<u32>, _>(_column.as_str())
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null))
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => {
+                use sqlx::postgres::types::Oid;
+                // Since 0.6.0, SQLx has dropped direct mapping from PostgreSQL's OID to Rust's `u32`;
+                // Instead, `u32` was wrapped by a `sqlx::Oid`.
+                use sqlx::Row;
+                row.try_get::<Option<Oid>, _>(_column.as_str())
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null))
+                    .map(|oid| oid.0)
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            QueryResultRow::SqlxSqlite(row) => {
+                use sqlx::Row;
+                row.try_get::<Option<u32>, _>(_column.as_str())
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null))
+            }
+            #[cfg(feature = "mock")]
+            #[allow(unused_variables)]
+            QueryResultRow::Mock(row) => row.try_get(_column.as_str()).map_err(|e| {
+                debug_print!("{:#?}", e.to_string());
+                TryGetError::Null
+            }),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
+        }
+    }
+}
 
 // TryGetableMany //
 
