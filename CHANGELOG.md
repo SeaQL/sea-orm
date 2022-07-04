@@ -17,14 +17,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Added `sqlx_logging_level` to `ConnectOptions` (#800)
 * Support on conflict in insert query (#791)
+* Added `num_items_and_pages` to `Paginator` (#768)
 * [sea-orm-cli] Improve logging (#735)
 * [sea-orm-cli] Generate enum with numeric like variants (#588)
 * [sea-orm-cli] Allow old pending migration to be applied (#755)
-* Added `num_items_and_pages` to `Paginator` (#768)
+* [sea-orm-cli] Skip generating entity for ignored tables (#837)
 
 ### Upgrades
 
-* Bump clap version to 3.2 (#706)
+* Upgrade `clap` to 3.2 (#706)
+* Upgrade `time` to 0.3 (#834)
+* Upgrade `sqlx` to 0.6 (#834)
+* Upgrade `uuid` to 1.0 (#834)
+* Upgrade `sea-query` to 0.26 (#834)
+* Upgrade `sea-schema` to 0.9 (#834)
 
 ### House keeping
 
