@@ -132,7 +132,7 @@ impl ConnectOptions {
             opt = opt.min_connections(min_connections);
         }
         if let Some(connect_timeout) = self.connect_timeout {
-            opt = opt.connect_timeout(connect_timeout);
+            opt = opt.acquire_timeout(connect_timeout);
         }
         if let Some(idle_timeout) = self.idle_timeout {
             opt = opt.idle_timeout(Some(idle_timeout));

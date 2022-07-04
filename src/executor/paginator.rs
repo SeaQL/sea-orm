@@ -98,7 +98,10 @@ where
         let number_of_items = self.num_items().await?;
         let number_of_pages = self.compute_pages_number(number_of_items);
 
-        Ok(ItemsAndPagesNumber { number_of_items, number_of_pages })
+        Ok(ItemsAndPagesNumber {
+            number_of_items,
+            number_of_pages,
+        })
     }
 
     /// Compute the number of pages for the current page
