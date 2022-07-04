@@ -1,4 +1,3 @@
-use clap::ArgEnum;
 use chrono::Local;
 use regex::Regex;
 use sea_orm_codegen::{
@@ -8,7 +7,7 @@ use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Comman
 use tracing_subscriber::{prelude::*, EnvFilter};
 use url::Url;
 
-use crate::{GenerateSubcommands, MigrateSubcommands};
+use crate::{DateTimeCrate, GenerateSubcommands, MigrateSubcommands};
 
 pub async fn run_generate_command(
     command: GenerateSubcommands,
@@ -377,12 +376,6 @@ where
 {
     eprintln!("{}", error);
     ::std::process::exit(1);
-}
-
-#[derive(ArgEnum, Copy, Clone, Debug, PartialEq)]
-pub enum DateTimeCrate {
-    Chrono,
-    Time,
 }
 
 impl From<DateTimeCrate> for CodegenDateTimeCrate {

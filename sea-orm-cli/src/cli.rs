@@ -1,5 +1,4 @@
-use clap::{ArgGroup, Parser, Subcommand};
-use crate::DateTimeCrate;
+use clap::{ArgEnum, ArgGroup, Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[clap(version)]
@@ -167,4 +166,10 @@ pub enum GenerateSubcommands {
         )]
         date_time_crate: DateTimeCrate,
     },
+}
+
+#[derive(ArgEnum, Copy, Clone, Debug, PartialEq)]
+pub enum DateTimeCrate {
+    Chrono,
+    Time,
 }
