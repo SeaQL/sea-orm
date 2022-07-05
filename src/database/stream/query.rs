@@ -126,7 +126,7 @@ impl QueryStream {
                 #[cfg(feature = "sqlx-mysql")]
                 InnerConnection::MySql(c) => {
                     let query = crate::driver::sqlx_mysql::sqlx_query(stmt);
-                    let _start = _metric_callback.is_some().then(SystemTime::now);
+                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
@@ -137,7 +137,7 @@ impl QueryStream {
                 #[cfg(feature = "sqlx-postgres")]
                 InnerConnection::Postgres(c) => {
                     let query = crate::driver::sqlx_postgres::sqlx_query(stmt);
-                    let _start = _metric_callback.is_some().then(SystemTime::now);
+                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
@@ -148,7 +148,7 @@ impl QueryStream {
                 #[cfg(feature = "sqlx-sqlite")]
                 InnerConnection::Sqlite(c) => {
                     let query = crate::driver::sqlx_sqlite::sqlx_query(stmt);
-                    let _start = _metric_callback.is_some().then(SystemTime::now);
+                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
@@ -158,7 +158,7 @@ impl QueryStream {
                 }
                 #[cfg(feature = "mock")]
                 InnerConnection::Mock(c) => {
-                    let _start = _metric_callback.is_some().then(SystemTime::now);
+                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
                     let stream = c.fetch(stmt);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
