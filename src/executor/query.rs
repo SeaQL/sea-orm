@@ -210,6 +210,7 @@ macro_rules! try_getable_mysql {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! try_getable_date_time {
     ( $type: ty ) => {
         impl TryGetable for $type {
@@ -255,6 +256,7 @@ macro_rules! try_getable_date_time {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! try_getable_time {
     ( $type: ty ) => {
         #[allow(unused_variables)]

@@ -176,6 +176,7 @@ impl<D: Database> Initializer<D> {
     ///
     /// This method should never need to be called manually. See the [crate
     /// docs](crate) for usage information.
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self(None, std::marker::PhantomData)
     }
