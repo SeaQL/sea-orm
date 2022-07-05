@@ -87,8 +87,8 @@ jobs:
       - id: git-log
         run: echo "::set-output name=message::$(git log --no-merges -1 --oneline)"
 
-  clippy-fmt:
-    name: Clippy + Fmt
+  clippy:
+    name: Clippy
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -97,23 +97,16 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-          components: clippy, rustfmt
+          components: clippy
           override: true
 
-      # Make sure files are formatted
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: >
-            --all
-
-      # Run clippy
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: >
-            --all-targets
             --all
+            --
+            -D warnings
 
   compile-sqlite:
     name: Compile SQLite
