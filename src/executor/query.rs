@@ -340,7 +340,6 @@ try_getable_time!(time::OffsetDateTime);
 
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;
-use serde_json::Value;
 
 #[cfg(feature = "with-rust_decimal")]
 impl TryGetable for Decimal {
