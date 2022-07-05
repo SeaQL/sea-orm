@@ -100,11 +100,39 @@ jobs:
           components: clippy
           override: true
 
-      - uses: actions-rs/cargo@v1
+      - name: Run clippy on `sea-orm` workspace
+        uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: >
             --all
+            --
+            -D warnings
+
+      - name: Run clippy on `sea-orm-cli`
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: >
+            --manifest-path sea-orm-cli/Cargo.toml
+            --
+            -D warnings
+
+      - name: Run clippy on `sea-orm-migration`
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: >
+            --manifest-path sea-orm-migration/Cargo.toml
+            --
+            -D warnings
+
+      - name: Run clippy on `sea-orm-rocket`
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: >
+            --manifest-path sea-orm-rocket/Cargo.toml
             --
             -D warnings
 
