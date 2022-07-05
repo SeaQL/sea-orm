@@ -241,6 +241,7 @@ pub fn run_migrate_command(
                 };
             }
             write_file!("src/lib.rs");
+            //TODO change
             write_file!("src/m20220101_000001_create_table.rs");
             write_file!("src/main.rs");
             write_file!("Cargo.toml", "_Cargo.toml", |content: String| {
