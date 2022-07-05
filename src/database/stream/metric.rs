@@ -12,6 +12,7 @@ pub(crate) struct MetricStream<'a> {
 }
 
 impl<'a> MetricStream<'a> {
+    #[allow(dead_code)]
     pub(crate) fn new<S>(
         metric_callback: &'a Option<crate::metric::Callback>,
         stmt: &'a Statement,

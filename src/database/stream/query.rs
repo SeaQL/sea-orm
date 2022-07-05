@@ -1,6 +1,6 @@
-#![allow(missing_docs)]
+#![allow(missing_docs, unreachable_code, unused_variables)]
 
-use std::{pin::Pin, task::Poll, time::SystemTime};
+use std::{pin::Pin, task::Poll};
 
 #[cfg(feature = "mock")]
 use std::sync::Arc;
