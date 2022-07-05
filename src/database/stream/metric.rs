@@ -54,7 +54,7 @@ impl<'a> Drop for MetricStream<'a> {
     fn drop(&mut self) {
         if let (Some(callback), Some(elapsed)) = (self.metric_callback.as_deref(), self.elapsed) {
             let info = crate::metric::Info {
-                elapsed: elapsed,
+                elapsed,
                 statement: self.stmt,
                 failed: false,
             };

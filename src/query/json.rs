@@ -67,7 +67,7 @@ impl FromQueryResult for JsonValue {
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => {
                 use serde_json::json;
-                use sqlx::{Column, Postgres, Row, Type};
+                use sqlx::{postgres::types::Oid, Column, Postgres, Row, Type};
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
                         continue;
@@ -89,7 +89,11 @@ impl FromQueryResult for JsonValue {
                     match_postgres_type!(i64);
                     // match_postgres_type!(u8); // unsupported by SQLx Postgres
                     // match_postgres_type!(u16); // unsupported by SQLx Postgres
-                    match_postgres_type!(u32);
+                    // Since 0.6.0, SQLx has dropped direct mapping from PostgreSQL's OID to Rust's `u32`;
+                    // Instead, `u32` was wrapped by a `sqlx::Oid`.
+                    if <Oid as Type<Postgres>>::type_info().eq(col_type) {
+                        try_get_type!(u32, col)
+                    }
                     // match_postgres_type!(u64); // unsupported by SQLx Postgres
                     match_postgres_type!(f32);
                     match_postgres_type!(f64);
