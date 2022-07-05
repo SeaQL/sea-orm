@@ -213,7 +213,7 @@ mod tests {
     use crate::Column;
     use proc_macro2::TokenStream;
     use quote::quote;
-    use sea_query::{Alias, ColumnDef, ColumnType, SeaRc};
+    use sea_query::{Alias, BlobSize, ColumnDef, ColumnType, SeaRc};
 
     fn setup() -> Vec<Column> {
         macro_rules! make_col {
@@ -243,7 +243,7 @@ mod tests {
             make_col!("CakeFillingId", ColumnType::BigUnsigned(Some(12))),
             make_col!("cake-filling-id", ColumnType::Float(None)),
             make_col!("CAKE_FILLING_ID", ColumnType::Double(None)),
-            make_col!("CAKE-FILLING-ID", ColumnType::Binary(None)),
+            make_col!("CAKE-FILLING-ID", ColumnType::Binary(BlobSize::Blob(None))),
             make_col!("CAKE", ColumnType::Boolean),
             make_col!("date", ColumnType::Date),
             make_col!("time", ColumnType::Time(None)),

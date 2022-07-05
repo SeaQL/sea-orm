@@ -26,6 +26,7 @@ pub mod field_attr {
         pub has_many: Option<syn::Lit>,
         pub on_update: Option<syn::Lit>,
         pub on_delete: Option<syn::Lit>,
+        pub on_condition: Option<syn::Lit>,
         pub from: Option<syn::Lit>,
         pub to: Option<syn::Lit>,
         pub fk_name: Option<syn::Lit>,

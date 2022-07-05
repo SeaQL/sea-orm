@@ -20,7 +20,7 @@ pub struct StringVec(pub Vec<String>);
 
 impl From<StringVec> for Value {
     fn from(source: StringVec) -> Self {
-        Value::String(serde_json::to_string(&source).ok().map(|s| Box::new(s)))
+        Value::String(serde_json::to_string(&source).ok().map(Box::new))
     }
 }
 

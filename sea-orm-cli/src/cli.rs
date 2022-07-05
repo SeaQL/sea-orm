@@ -146,6 +146,16 @@ pub enum GenerateSubcommands {
         #[clap(
             value_parser,
             long,
+            use_value_delimiter = true,
+            takes_value = true,
+            default_value = "seaql_migrations",
+            help = "Skip generating entity file for specified tables (comma separated)"
+        )]
+        ignore_tables: Vec<String>,
+
+        #[clap(
+            value_parser,
+            long,
             default_value = "1",
             help = "The maximum amount of connections to use when connecting to the database."
         )]

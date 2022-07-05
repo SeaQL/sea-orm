@@ -430,13 +430,23 @@ pub trait QueryFilter: Sized {
     }
 }
 
-pub(crate) fn join_condition(rel: RelationDef) -> SimpleExpr {
+pub(crate) fn join_condition(mut rel: RelationDef) -> Condition {
     let from_tbl = unpack_table_ref(&rel.from_tbl);
     let to_tbl = unpack_table_ref(&rel.to_tbl);
     let owner_keys = rel.from_col;
     let foreign_keys = rel.to_col;
 
-    join_tbl_on_condition(from_tbl, to_tbl, owner_keys, foreign_keys)
+    let mut condition = Condition::all().add(join_tbl_on_condition(
+        SeaRc::clone(&from_tbl),
+        SeaRc::clone(&to_tbl),
+        owner_keys,
+        foreign_keys,
+    ));
+    if let Some(f) = rel.on_condition.take() {
+        condition = condition.add(f(from_tbl, to_tbl));
+    }
+
+    condition
 }
 
 pub(crate) fn join_tbl_on_condition(
@@ -472,6 +482,7 @@ pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> DynIden {
         | TableRef::TableAlias(tbl, _)
         | TableRef::SchemaTableAlias(_, tbl, _)
         | TableRef::DatabaseSchemaTableAlias(_, _, tbl, _)
-        | TableRef::SubQuery(_, tbl) => SeaRc::clone(tbl),
+        | TableRef::SubQuery(_, tbl)
+        | TableRef::ValuesList(_, tbl) => SeaRc::clone(tbl),
     }
 }

@@ -17,6 +17,7 @@ pub async fn run_generate_command(
             expanded_format,
             include_hidden_tables,
             tables,
+            ignore_tables,
             max_connections,
             output_dir,
             database_schema,
@@ -87,6 +88,10 @@ pub async fn run_generate_command(
                 }
             };
 
+            let filter_skip_tables = |table: &String| -> bool {
+                !ignore_tables.contains(table)
+            };
+
             let database_name = if !is_sqlite {
                 // The database name should be the first element of the path string
                 //
@@ -130,6 +135,7 @@ pub async fn run_generate_command(
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.info.name))
                         .filter(|schema| filter_hidden_tables(&schema.info.name))
+                        .filter(|schema| filter_skip_tables(&schema.info.name))
                         .map(|schema| schema.write())
                         .collect()
                 }
@@ -145,6 +151,7 @@ pub async fn run_generate_command(
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.name))
                         .filter(|schema| filter_hidden_tables(&schema.name))
+                        .filter(|schema| filter_skip_tables(&schema.name))
                         .map(|schema| schema.write())
                         .collect()
                 }
@@ -161,6 +168,7 @@ pub async fn run_generate_command(
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.info.name))
                         .filter(|schema| filter_hidden_tables(&schema.info.name))
+                        .filter(|schema| filter_skip_tables(&schema.info.name))
                         .map(|schema| schema.write())
                         .collect()
                 }
@@ -335,10 +343,8 @@ fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(),
     // TODO: make OS agnostic
     let migration_template =
         include_str!("../template/migration/src/m20220101_000001_create_table.rs");
-    let migration_content =
-        migration_template.replace("m20220101_000001_create_table", migration_name);
     let mut migration_file = fs::File::create(migration_filepath)?;
-    migration_file.write_all(migration_content.as_bytes())?;
+    migration_file.write_all(migration_template.as_bytes())?;
     Ok(())
 }
 
@@ -529,8 +535,6 @@ mod tests {
             .join(format!("{}.rs", migration_name));
         assert!(migration_filepath.exists());
         let migration_content = fs::read_to_string(migration_filepath).unwrap();
-        let migration_content =
-            migration_content.replace(&migration_name, "m20220101_000001_create_table");
         assert_eq!(
             &migration_content,
             include_str!("../template/migration/src/m20220101_000001_create_table.rs")
