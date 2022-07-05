@@ -241,8 +241,7 @@ pub fn run_migrate_command(
                 };
             }
             write_file!("src/lib.rs");
-            //TODO change
-            write_file!("src/m20220101_000001_create_table.rs");
+            // write_file!(format!("src/{}_create_table.rs",migration_name_prefix()));
             write_file!("src/main.rs");
             write_file!("Cargo.toml", "_Cargo.toml", |content: String| {
                 let ver = format!(
@@ -261,8 +260,7 @@ pub fn run_migrate_command(
             println!("Generating new migration...");
 
             // build new migration filename
-            let now = Local::now();
-            let migration_name = format!("m{}_{}", now.format("%Y%m%d_%H%M%S"), migration_name);
+            let migration_name = format!("m{}_{}", migration_name_prefix(), migration_name);
 
             create_new_migration(&migration_name, migration_dir)?;
             update_migrator(&migration_name, migration_dir)?;
@@ -313,6 +311,10 @@ pub fn run_migrate_command(
     }
 
     Ok(())
+}
+
+fn migration_name_prefix() -> String{
+    format!("m{}", Local::now().format("%Y%m%d_%H%M%S").to_string())
 }
 
 fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(), Box<dyn Error>> {
