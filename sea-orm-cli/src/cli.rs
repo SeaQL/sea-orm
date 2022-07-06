@@ -166,5 +166,12 @@ pub enum GenerateSubcommands {
             help = "Automatically derive serde Serialize / Deserialize traits for the entity (none, serialize, deserialize, both)"
         )]
         with_serde: String,
+
+        #[clap(
+            action,
+            long,
+            help = "Generate a serde field attribute for the primary keys to skip them during deserialization if they're not present"
+        )]
+        skip_primary_key_deserialization: bool,
     },
 }

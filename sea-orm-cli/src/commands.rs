@@ -23,6 +23,7 @@ pub async fn run_generate_command(
             database_schema,
             database_url,
             with_serde,
+            skip_primary_key_deserialization,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -88,9 +89,7 @@ pub async fn run_generate_command(
                 }
             };
 
-            let filter_skip_tables = |table: &String| -> bool {
-                !ignore_tables.contains(table)
-            };
+            let filter_skip_tables = |table: &String| -> bool { !ignore_tables.contains(table) };
 
             let database_name = if !is_sqlite {
                 // The database name should be the first element of the path string
@@ -175,8 +174,11 @@ pub async fn run_generate_command(
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
 
-            let output = EntityTransformer::transform(table_stmts)?
-                .generate(expanded_format, WithSerde::from_str(&with_serde).unwrap());
+            let output = EntityTransformer::transform(table_stmts)?.generate(
+                expanded_format,
+                WithSerde::from_str(&with_serde).unwrap(),
+                skip_primary_key_deserialization,
+            );
 
             let dir = Path::new(&output_dir);
             fs::create_dir_all(dir)?;

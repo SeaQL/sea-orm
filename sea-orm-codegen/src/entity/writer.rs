@@ -80,9 +80,18 @@ impl FromStr for WithSerde {
 }
 
 impl EntityWriter {
-    pub fn generate(self, expanded_format: bool, with_serde: WithSerde) -> WriterOutput {
+    pub fn generate(
+        self,
+        expanded_format: bool,
+        with_serde: WithSerde,
+        skip_primary_key_deserialization: bool,
+    ) -> WriterOutput {
         let mut files = Vec::new();
-        files.extend(self.write_entities(expanded_format, &with_serde));
+        files.extend(self.write_entities(
+            expanded_format,
+            &with_serde,
+            skip_primary_key_deserialization,
+        ));
         files.push(self.write_mod());
         files.push(self.write_prelude());
         if !self.enums.is_empty() {
@@ -91,7 +100,12 @@ impl EntityWriter {
         WriterOutput { files }
     }
 
-    pub fn write_entities(&self, expanded_format: bool, with_serde: &WithSerde) -> Vec<OutputFile> {
+    pub fn write_entities(
+        &self,
+        expanded_format: bool,
+        with_serde: &WithSerde,
+        skip_primary_key_deserialization: bool,
+    ) -> Vec<OutputFile> {
         self.entities
             .iter()
             .map(|entity| {
@@ -112,7 +126,11 @@ impl EntityWriter {
                 let code_blocks = if expanded_format {
                     Self::gen_expanded_code_blocks(entity, with_serde)
                 } else {
-                    Self::gen_compact_code_blocks(entity, with_serde)
+                    Self::gen_compact_code_blocks(
+                        entity,
+                        with_serde,
+                        skip_primary_key_deserialization,
+                    )
                 };
                 Self::write(&mut lines, code_blocks);
                 OutputFile {
@@ -217,10 +235,17 @@ impl EntityWriter {
         code_blocks
     }
 
-    pub fn gen_compact_code_blocks(entity: &Entity, with_serde: &WithSerde) -> Vec<TokenStream> {
+    pub fn gen_compact_code_blocks(
+        entity: &Entity,
+        with_serde: &WithSerde,
+        skip_primary_key_deserialization: bool,
+    ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
-        let mut code_blocks = vec![imports, Self::gen_compact_model_struct(entity, with_serde)];
+        let mut code_blocks = vec![
+            imports,
+            Self::gen_compact_model_struct(entity, with_serde, skip_primary_key_deserialization),
+        ];
         let relation_defs = if entity.get_relation_enum_name().is_empty() {
             vec![
                 Self::gen_relation_enum(entity),
@@ -479,7 +504,11 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_compact_model_struct(entity: &Entity, with_serde: &WithSerde) -> TokenStream {
+    pub fn gen_compact_model_struct(
+        entity: &Entity,
+        with_serde: &WithSerde,
+        skip_primary_key_deserialization: bool,
+    ) -> TokenStream {
         let table_name = entity.table_name.as_str();
         let column_names_snake_case = entity.get_column_names_snake_case();
         let column_rs_types = entity.get_column_rs_types();
@@ -493,6 +522,7 @@ impl EntityWriter {
             .iter()
             .map(|col| {
                 let mut attrs: Punctuated<_, Comma> = Punctuated::new();
+                let mut skip_pk_deserialization = false;
                 if !col.is_snake_case_name() {
                     let column_name = &col.name;
                     attrs.push(quote! { column_name = #column_name });
@@ -501,6 +531,12 @@ impl EntityWriter {
                     attrs.push(quote! { primary_key });
                     if !col.auto_increment {
                         attrs.push(quote! { auto_increment = false });
+                    }
+
+                    // if deserialization with serde is even desired, set it to what the user
+                    // wants
+                    if with_serde == &WithSerde::Deserialize || with_serde == &WithSerde::Both {
+                        skip_pk_deserialization = skip_primary_key_deserialization;
                     }
                 }
                 if let Some(ts) = col.get_col_type_attrs() {
@@ -520,9 +556,16 @@ impl EntityWriter {
                         }
                         ts = quote! { #ts #attr };
                     }
-                    quote! {
-                        #[sea_orm(#ts)]
-                    }
+                    return if skip_pk_deserialization {
+                        quote! {
+                            #[sea_orm(#ts)]
+                            #[serde(skip_deserialization)]
+                        }
+                    } else {
+                        quote! {
+                            #[sea_orm(#ts)]
+                        }
+                    };
                 } else {
                     TokenStream::new()
                 }
