@@ -4,6 +4,8 @@ use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
 use url::Url;
+use handlebars::Handlebars;
+use serde_json::json;
 
 use crate::{GenerateSubcommands, MigrateSubcommands};
 
@@ -223,25 +225,37 @@ pub fn run_migrate_command(
                 false => format!("{}/", migration_dir),
             };
             println!("Initializing migration directory...");
+            let datatime = migration_name_prefix();
             macro_rules! write_file {
-                ($filename: literal) => {
+                ($filename: expr) => {
                     let fn_content = |content: String| content;
                     write_file!($filename, $filename, fn_content);
                 };
-                ($filename: literal, $template: literal, $fn_content: expr) => {
-                    let filepath = [&migration_dir, $filename].join("");
-                    println!("Creating file `{}`", filepath);
+                ($filename: expr, $template: expr, $fn_content: expr) => {
+                    let filepath = [migration_dir.clone(), $filename.to_string()].join("");
+
+                    // replace path
+                    let mut handlebars = Handlebars::new();
+                    handlebars.register_template_string("path", &filepath).unwrap();
+                    let filepath = handlebars.render("path", &json!({"datatime": datatime})).unwrap();
+
+                    info!("Creating file `{}`", filepath);
                     let path = Path::new(&filepath);
                     let prefix = path.parent().unwrap();
                     fs::create_dir_all(prefix).unwrap();
                     let mut file = fs::File::create(path)?;
+
+                    // replace content
                     let content = include_str!(concat!("../template/migration/", $template));
+                    handlebars.register_template_string("content", &content).unwrap();
+                    let content = handlebars.render("content", &json!({"datatime": datatime})).unwrap();
+
                     let content = $fn_content(content.to_string());
                     file.write_all(content.as_bytes())?;
                 };
             }
             write_file!("src/lib.rs");
-            // write_file!(format!("src/{}_create_table.rs",migration_name_prefix()));
+            write_file!("src/{{datatime}}_create_table.rs");
             write_file!("src/main.rs");
             write_file!("Cargo.toml", "_Cargo.toml", |content: String| {
                 let ver = format!(
@@ -324,7 +338,7 @@ fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(),
     println!("Creating migration file `{}`", migration_filepath.display());
     // TODO: make OS agnostic
     let migration_template =
-        include_str!("../template/migration/src/m20220101_000001_create_table.rs");
+        include_str!("../template/migration/src/{{datatime}}_create_table.rs");
     let mut migration_file = fs::File::create(migration_filepath)?;
     migration_file.write_all(migration_template.as_bytes())?;
     Ok(())
