@@ -5,7 +5,6 @@ use sea_orm_cli::{handle_error, run_generate_command, run_migrate_command, Cli, 
 #[async_std::main]
 async fn main() {
     dotenv().ok();
-    simple_log::quick!();
 
     let cli = Cli::parse();
     let verbose = cli.verbose;

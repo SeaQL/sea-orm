@@ -29,7 +29,6 @@ path = "src/bin/sea.rs"
 required-features = ["codegen"]
 
 [dependencies]
-simple-log = "1.5.1"
 serde_json = "1.0.82"
 handlebars = "4.3.1"
 clap = { version = "^3.2", features = ["env", "derive"] }

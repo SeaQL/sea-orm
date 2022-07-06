@@ -19,7 +19,6 @@ impl DeriveMigrationName {
             #[automatically_derived]
             impl sea_orm_migration::MigrationName for #ident {
                 fn name(&self) -> &str {
-                    //TODO change
                     sea_orm_migration::util::get_file_stem(file!())
                 }
             }

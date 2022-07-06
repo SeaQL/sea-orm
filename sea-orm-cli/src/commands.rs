@@ -227,11 +227,11 @@ pub fn run_migrate_command(
             println!("Initializing migration directory...");
             let datatime = migration_name_prefix();
             macro_rules! write_file {
-                ($filename: expr) => {
+                ($filename: literal) => {
                     let fn_content = |content: String| content;
                     write_file!($filename, $filename, fn_content);
                 };
-                ($filename: expr, $template: expr, $fn_content: expr) => {
+                ($filename: literal, $template: literal, $fn_content: expr) => {
                     let filepath = [migration_dir.clone(), $filename.to_string()].join("");
 
                     // replace path
@@ -239,7 +239,7 @@ pub fn run_migrate_command(
                     handlebars.register_template_string("path", &filepath).unwrap();
                     let filepath = handlebars.render("path", &json!({"datatime": datatime})).unwrap();
 
-                    info!("Creating file `{}`", filepath);
+                    println!("Creating file `{}`", filepath);
                     let path = Path::new(&filepath);
                     let prefix = path.parent().unwrap();
                     fs::create_dir_all(prefix).unwrap();
@@ -274,7 +274,7 @@ pub fn run_migrate_command(
             println!("Generating new migration...");
 
             // build new migration filename
-            let migration_name = format!("m{}_{}", migration_name_prefix(), migration_name);
+            let migration_name = format!("{}_{}", migration_name_prefix(), migration_name);
 
             create_new_migration(&migration_name, migration_dir)?;
             update_migrator(&migration_name, migration_dir)?;
