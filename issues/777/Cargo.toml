@@ -1,0 +1,14 @@
+[workspace]
+# A separate workspace
+
+[package]
+name = "sea-orm-issues-777"
+version = "0.1.0"
+authors = []
+edition = "2021"
+publish = false
+
+[dependencies]
+smol = { version = "^1.2" }
+smol-potat = { version = "^1.1" }
+sea-orm = { path = "../../", features = [ "runtime-tokio-native-tls", "mock" ]}
