@@ -2,7 +2,7 @@ use crate::util::escape_rust_keyword;
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
-use sea_query::{ColumnDef, ColumnSpec, ColumnType};
+use sea_query::{BlobSize, ColumnDef, ColumnSpec, ColumnType};
 use std::fmt::Write as FmtWrite;
 
 #[derive(Clone, Debug)]
@@ -112,7 +112,10 @@ impl Column {
             }
             ColumnType::Time(_) => quote! { ColumnType::Time.def() },
             ColumnType::Date => quote! { ColumnType::Date.def() },
-            ColumnType::Binary(_) => quote! { ColumnType::Binary.def() },
+            ColumnType::Binary(BlobSize::Blob(_)) => quote! { ColumnType::Binary.def() },
+            ColumnType::Binary(BlobSize::Tiny) => quote! { ColumnType::TinyBinary.def() },
+            ColumnType::Binary(BlobSize::Medium) => quote! { ColumnType::MediumBinary.def() },
+            ColumnType::Binary(BlobSize::Long) => quote! { ColumnType::LongBinary.def() },
             ColumnType::Boolean => quote! { ColumnType::Boolean.def() },
             ColumnType::Money(s) => match s {
                 Some((s1, s2)) => quote! { ColumnType::Money(Some((#s1, #s2))).def() },

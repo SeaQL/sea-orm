@@ -58,6 +58,12 @@ pub enum ColumnType {
     Date,
     /// `BINARY` data types contain byte strings—a sequence of octets or bytes.
     Binary,
+    /// Tiny Binary
+    TinyBinary,
+    /// Medium Binary
+    MediumBinary,
+    /// Long Binary
+    LongBinary,
     /// `BOOLEAN` is the result of a comparison operator
     Boolean,
     /// `MONEY` data type handles monetary data
@@ -383,6 +389,9 @@ impl From<ColumnType> for sea_query::ColumnType {
             ColumnType::Time => sea_query::ColumnType::Time(None),
             ColumnType::Date => sea_query::ColumnType::Date,
             ColumnType::Binary => sea_query::ColumnType::Binary(sea_query::BlobSize::Blob(None)),
+            ColumnType::TinyBinary => sea_query::ColumnType::Binary(sea_query::BlobSize::Tiny),
+            ColumnType::MediumBinary => sea_query::ColumnType::Binary(sea_query::BlobSize::Medium),
+            ColumnType::LongBinary => sea_query::ColumnType::Binary(sea_query::BlobSize::Long),
             ColumnType::Boolean => sea_query::ColumnType::Boolean,
             ColumnType::Money(s) => sea_query::ColumnType::Money(s),
             ColumnType::Json => sea_query::ColumnType::Json,
@@ -419,7 +428,10 @@ impl From<sea_query::ColumnType> for ColumnType {
             sea_query::ColumnType::TimestampWithTimeZone(_) => Self::TimestampWithTimeZone,
             sea_query::ColumnType::Time(_) => Self::Time,
             sea_query::ColumnType::Date => Self::Date,
-            sea_query::ColumnType::Binary(_) => Self::Binary,
+            sea_query::ColumnType::Binary(sea_query::BlobSize::Blob(_)) => Self::Binary,
+            sea_query::ColumnType::Binary(sea_query::BlobSize::Tiny) => Self::TinyBinary,
+            sea_query::ColumnType::Binary(sea_query::BlobSize::Medium) => Self::MediumBinary,
+            sea_query::ColumnType::Binary(sea_query::BlobSize::Long) => Self::LongBinary,
             sea_query::ColumnType::Boolean => Self::Boolean,
             sea_query::ColumnType::Money(s) => Self::Money(s),
             sea_query::ColumnType::Json => Self::Json,
