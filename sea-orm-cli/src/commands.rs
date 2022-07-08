@@ -88,9 +88,7 @@ pub async fn run_generate_command(
                 }
             };
 
-            let filter_skip_tables = |table: &String| -> bool {
-                !ignore_tables.contains(table)
-            };
+            let filter_skip_tables = |table: &String| -> bool { !ignore_tables.contains(table) };
 
             let database_name = if !is_sqlite {
                 // The database name should be the first element of the path string
@@ -503,6 +501,7 @@ mod tests {
             _ => unreachable!(),
         }
     }
+
     #[test]
     fn test_create_new_migration() {
         let migration_name = "test_name";
