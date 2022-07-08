@@ -52,19 +52,7 @@ pub async fn run_generate_command(
             // above
             let url_username = url.username();
             let url_host = url.host_str();
-
             let is_sqlite = url.scheme() == "sqlite";
-
-            // Skip checking if it's SQLite
-            if !is_sqlite {
-                // Panic on any that are missing
-                if url_username.is_empty() {
-                    panic!("No username was found in the database url");
-                }
-                if url_host.is_none() {
-                    panic!("No host was found in the database url");
-                }
-            }
 
             let tables = match tables {
                 Some(t) => t,
@@ -435,25 +423,6 @@ mod tests {
             "entity",
             "--database-url",
             "mysql://root:root@localhost:3306/",
-        ]);
-
-        match cli.command {
-            Commands::Generate { command } => {
-                smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    #[test]
-    #[should_panic(expected = "No username was found in the database url")]
-    fn test_generate_entity_no_username() {
-        let cli = Cli::parse_from(vec![
-            "sea-orm-cli",
-            "generate",
-            "entity",
-            "--database-url",
-            "mysql://:root@localhost:3306/database",
         ]);
 
         match cli.command {
