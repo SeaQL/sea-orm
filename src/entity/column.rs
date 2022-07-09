@@ -15,6 +15,8 @@ pub struct ColumnDef {
     pub(crate) null: bool,
     pub(crate) unique: bool,
     pub(crate) indexed: bool,
+    pub(crate) created_at: bool,
+    pub(crate) updated_at: bool,
     pub(crate) default_value: Option<Value>,
 }
 
@@ -295,6 +297,8 @@ impl ColumnTypeTrait for ColumnType {
             null: false,
             unique: false,
             indexed: false,
+            created_at: false,
+            updated_at: false,
             default_value: None,
         }
     }
@@ -332,6 +336,18 @@ impl ColumnDef {
     /// Set the `indexed` field  to `true`
     pub fn indexed(mut self) -> Self {
         self.indexed = true;
+        self
+    }
+
+    /// Set the `created_at` field  to `true`
+    pub fn created_at(mut self) -> Self {
+        self.created_at = true;
+        self
+    }
+
+    /// Set the `updated_at` field  to `true`
+    pub fn updated_at(mut self) -> Self {
+        self.updated_at = true;
         self
     }
 

@@ -94,6 +94,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut default_expr = None;
                     let mut select_as = None;
                     let mut save_as = None;
+                    let mut created_at = false;
+                    let mut updated_at = false;
                     let mut indexed = false;
                     let mut ignore = false;
                     let mut unique = false;
@@ -208,6 +210,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                                 indexed = true;
                                             } else if name == "unique" {
                                                 unique = true;
+                                            } else if name == "created_at" {
+                                                created_at = true;
+                                            } else if name == "updated_at" {
+                                                updated_at = true;
                                             }
                                         }
                                     }
@@ -336,6 +342,12 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     }
                     if unique {
                         match_row = quote! { #match_row.unique() };
+                    }
+                    if created_at {
+                        match_row = quote! { #match_row.created_at() };
+                    }
+                    if updated_at {
+                        match_row = quote! { #match_row.updated_at() };
                     }
                     if let Some(default_value) = default_value {
                         match_row = quote! { #match_row.default_value(#default_value) };

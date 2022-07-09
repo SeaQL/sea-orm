@@ -107,6 +107,8 @@ where
             if <A::Entity as EntityTrait>::PrimaryKey::from_column(col).is_some() {
                 continue;
             }
+            let col_def = col.def();
+            let col_type = col_def.get_column_type();
             let av = self.model.get(col);
             if av.is_set() {
                 let expr = col.save_as(Expr::val(av.into_value().unwrap()));
