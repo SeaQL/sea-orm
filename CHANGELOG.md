@@ -17,15 +17,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Enhancements
 
 * Added `sqlx_logging_level` to `ConnectOptions` (#800)
-* Support on conflict in insert query (#791)
 * Added `num_items_and_pages` to `Paginator` (#768)
+* Added `TryFromU64` for `time` (#849)
+* Support on conflict in insert query (#791)
 * [sea-orm-cli] Improve logging (#735)
 * [sea-orm-cli] Generate enum with numeric like variants (#588)
 * [sea-orm-cli] Allow old pending migration to be applied (#755)
 * [sea-orm-cli] Skip generating entity for ignored tables (#837)
 * [sea-orm-cli] Generate code for `time` crate (#724)
 * [sea-orm-cli] Add various blob column types (#850)
-* Added `TryFromU64` for `time` (#849)
 
 ### Upgrades
 
