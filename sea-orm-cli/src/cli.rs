@@ -1,4 +1,4 @@
-use clap::{ArgGroup, Parser, Subcommand};
+use clap::{ArgEnum, ArgGroup, Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[clap(version)]
@@ -166,5 +166,20 @@ pub enum GenerateSubcommands {
             help = "Automatically derive serde Serialize / Deserialize traits for the entity (none, serialize, deserialize, both)"
         )]
         with_serde: String,
+
+        #[clap(
+            arg_enum,
+            value_parser,
+            long,
+            default_value = "chrono",
+            help = "The datetime crate to use for generating entities."
+        )]
+        date_time_crate: DateTimeCrate,
     },
+}
+
+#[derive(ArgEnum, Copy, Clone, Debug, PartialEq)]
+pub enum DateTimeCrate {
+    Chrono,
+    Time,
 }

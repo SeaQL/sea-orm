@@ -1,11 +1,13 @@
 use chrono::Local;
 use regex::Regex;
-use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
+use sea_orm_codegen::{
+    EntityTransformer, EntityWriterContext, OutputFile, WithSerde, DateTimeCrate as CodegenDateTimeCrate,
+};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
 use url::Url;
 
-use crate::{GenerateSubcommands, MigrateSubcommands};
+use crate::{DateTimeCrate, GenerateSubcommands, MigrateSubcommands};
 
 pub async fn run_generate_command(
     command: GenerateSubcommands,
@@ -23,6 +25,7 @@ pub async fn run_generate_command(
             database_schema,
             database_url,
             with_serde,
+            date_time_crate,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -173,8 +176,12 @@ pub async fn run_generate_command(
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
 
-            let output = EntityTransformer::transform(table_stmts)?
-                .generate(expanded_format, WithSerde::from_str(&with_serde).unwrap());
+            let writer_context = EntityWriterContext::new(
+                expanded_format,
+                WithSerde::from_str(&with_serde).unwrap(),
+                date_time_crate.into(),
+            );
+            let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
             let dir = Path::new(&output_dir);
             fs::create_dir_all(dir)?;
@@ -373,6 +380,15 @@ where
 {
     eprintln!("{}", error);
     ::std::process::exit(1);
+}
+
+impl From<DateTimeCrate> for CodegenDateTimeCrate {
+    fn from(date_time_crate: DateTimeCrate) -> CodegenDateTimeCrate {
+        match date_time_crate {
+            DateTimeCrate::Chrono => CodegenDateTimeCrate::Chrono,
+            DateTimeCrate::Time => CodegenDateTimeCrate::Time,
+        }
+    }
 }
 
 #[cfg(test)]
