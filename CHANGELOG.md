@@ -9,17 +9,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
+* Cursor pagination (#822)
 * Custom join on conditions (#793)
 * `DeriveMigrationName` and `sea_orm_migration::util::get_file_stem` (#736)
 * `FromJsonQueryResult` for deserializing `Json` from query result (#794)
-* Cursor pagination (#822)
 
 ### Enhancements
 
 * Added `sqlx_logging_level` to `ConnectOptions` (#800)
 * Added `num_items_and_pages` to `Paginator` (#768)
 * Added `TryFromU64` for `time` (#849)
-* Support on conflict in insert query (#791)
+* Added `Insert::on_conflict` (#791)
+* Added `QuerySelect::join_as` and `QuerySelect::join_as_rev` (#852)
 * [sea-orm-cli] Improve logging (#735)
 * [sea-orm-cli] Generate enum with numeric like variants (#588)
 * [sea-orm-cli] Allow old pending migration to be applied (#755)
