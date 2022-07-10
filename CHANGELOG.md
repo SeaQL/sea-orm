@@ -44,6 +44,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * [sea-orm-cli] skip checking connection string for credentials (#851)
 
+### Breaking changes
+
+* `SelectTwoMany::one()` has been dropped (#813), you can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity, then use [`ModelTrait::find_related`] on the model.
+
 ## sea-orm-migration 0.8.3
 
 * Removed `async-std` from dependency https://github.com/SeaQL/sea-orm/pull/758
