@@ -53,8 +53,6 @@ pub async fn run_generate_command(
             //
             // Missing scheme will have been caught by the Url::parse() call
             // above
-            let url_username = url.username();
-            let url_host = url.host_str();
             let is_sqlite = url.scheme() == "sqlite";
 
             let tables = match tables {
