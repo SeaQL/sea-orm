@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * [sea-orm-cli] Allow old pending migration to be applied (#755)
 * [sea-orm-cli] Skip generating entity for ignored tables (#837)
 * [sea-orm-cli] Generate code for `time` crate (#724)
+* [sea-orm-cli] Add various blob column types (#850)
 
 ### Upgrades
 
