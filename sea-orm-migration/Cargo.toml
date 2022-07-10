@@ -19,11 +19,11 @@ path = "src/lib.rs"
 
 [dependencies]
 async-trait = { version = "^0.1" }
-clap = { version = "^2.33" }
+clap = { version = "^3.2", features = ["env", "derive"] }
 dotenv = { version = "^0.15" }
 sea-orm = { version = "^0.8.0", path = "../", default-features = false, features = ["macros"] }
 sea-orm-cli = { version = "^0.8.1", path = "../sea-orm-cli", default-features = false }
-sea-schema = { version = "^0.8.1", git = "https://github.com/SeaQL/sea-schema", branch = "bump-for-sea-orm-cursor-pagination" }
+sea-schema = { version = "^0.9.2" }
 tracing = { version = "0.1", features = ["log"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 

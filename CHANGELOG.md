@@ -7,7 +7,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.9.0 - Pending
 
-* Improve sea-orm-cli logging (#735)
+### New Features
+
+* Custom join on conditions (#793)
+* `DeriveMigrationName` and `sea_orm_migration::util::get_file_stem` (#736)
+* `FromJsonQueryResult` for deserializing `Json` from query result (#794)
+
+### Enhancements
+
+* Added `sqlx_logging_level` to `ConnectOptions` (#800)
+* Support on conflict in insert query (#791)
+* [sea-orm-cli] Improve logging (#735)
+* [sea-orm-cli] Generate enum with numeric like variants (#588)
+* [sea-orm-cli] Allow old pending migration to be applied (#755)
+* Added `num_items_and_pages` to `Paginator` (#768)
+
+### Upgrades
+
+* Bump clap version to 3.2 (#706)
+
+### House keeping
+
+* Refactor stream metrics (#778)
 
 ## sea-orm-migration 0.8.3
 

@@ -244,7 +244,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// ```
     fn starts_with(&self, s: &str) -> SimpleExpr {
         let pattern = format!("{}%", s);
-        Expr::tbl(self.entity_name(), *self).like(&pattern)
+        Expr::tbl(self.entity_name(), *self).like(pattern)
     }
 
     /// ```
@@ -260,7 +260,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// ```
     fn ends_with(&self, s: &str) -> SimpleExpr {
         let pattern = format!("%{}", s);
-        Expr::tbl(self.entity_name(), *self).like(&pattern)
+        Expr::tbl(self.entity_name(), *self).like(pattern)
     }
 
     /// ```
@@ -276,7 +276,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// ```
     fn contains(&self, s: &str) -> SimpleExpr {
         let pattern = format!("%{}%", s);
-        Expr::tbl(self.entity_name(), *self).like(&pattern)
+        Expr::tbl(self.entity_name(), *self).like(pattern)
     }
 
     bind_func_no_params!(max);
@@ -382,7 +382,7 @@ impl From<ColumnType> for sea_query::ColumnType {
             ColumnType::TimestampWithTimeZone => sea_query::ColumnType::TimestampWithTimeZone(None),
             ColumnType::Time => sea_query::ColumnType::Time(None),
             ColumnType::Date => sea_query::ColumnType::Date,
-            ColumnType::Binary => sea_query::ColumnType::Binary(None),
+            ColumnType::Binary => sea_query::ColumnType::Binary(sea_query::BlobSize::Blob(None)),
             ColumnType::Boolean => sea_query::ColumnType::Boolean,
             ColumnType::Money(s) => sea_query::ColumnType::Money(s),
             ColumnType::Json => sea_query::ColumnType::Json,

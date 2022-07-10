@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fmt::Display;
 use std::time::SystemTime;
 use tracing::info;
@@ -66,18 +67,35 @@ pub trait MigratorTrait: Send {
         Self::install(db).await?;
         let mut migration_files = Self::get_migration_files();
         let migration_models = Self::get_migration_models(db).await?;
-        for (i, migration_model) in migration_models.into_iter().enumerate() {
-            if let Some(migration_file) = migration_files.get_mut(i) {
-                if migration_file.migration.name() == migration_model.version.as_str() {
-                    migration_file.status = MigrationStatus::Applied;
-                } else {
-                    return Err(DbErr::Custom(format!("Migration mismatch: applied migration != migration file, '{0}' != '{1}'\nMigration '{0}' has been applied but its corresponding migration file is missing.", migration_file.migration.name(), migration_model.version)));
-                }
-            } else {
-                return Err(DbErr::Custom(format!("Migration file of version '{}' is missing, this migration has been applied but its file is missing", migration_model.version)));
+
+        let migration_in_db: HashSet<String> = migration_models
+            .into_iter()
+            .map(|model| model.version)
+            .collect();
+        let migration_in_fs: HashSet<String> = migration_files
+            .iter()
+            .map(|file| file.migration.name().to_string())
+            .collect();
+
+        let pending_migrations = &migration_in_fs - &migration_in_db;
+        for migration_file in migration_files.iter_mut() {
+            if !pending_migrations.contains(migration_file.migration.name()) {
+                migration_file.status = MigrationStatus::Applied;
             }
         }
-        Ok(migration_files)
+
+        let missing_migrations_in_fs = &migration_in_db - &migration_in_fs;
+        let errors: Vec<String> = missing_migrations_in_fs
+            .iter()
+            .map(|missing_migration| {
+                format!("Migration file of version '{}' is missing, this migration has been applied but its file is missing", missing_migration)
+            }).collect();
+
+        if !errors.is_empty() {
+            Err(DbErr::Custom(errors.join("\n")))
+        } else {
+            Ok(migration_files)
+        }
     }
 
     /// Get list of pending migrations
