@@ -3,8 +3,8 @@ use crate::{
     PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
-    Alias, Expr, Iden, IntoCondition, LockType, SeaRc, SelectExpr, SelectStatement, SimpleExpr,
-    TableRef,
+    Alias, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr, SelectStatement,
+    SimpleExpr, TableRef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -177,6 +177,32 @@ pub trait QuerySelect: Sized {
     /// Assume when there exist a relation A to B.
     /// You can reverse join B from A.
     fn join_rev(mut self, join: JoinType, rel: RelationDef) -> Self {
+        self.query()
+            .join(join, rel.from_tbl.clone(), join_condition(rel));
+        self
+    }
+
+    /// Join via [`RelationDef`] with table alias.
+    fn join_as<I>(mut self, join: JoinType, mut rel: RelationDef, alias: I) -> Self
+    where
+        I: IntoIden,
+    {
+        let alias = alias.into_iden();
+        rel.to_tbl = rel.to_tbl.alias(SeaRc::clone(&alias));
+        self.query()
+            .join(join, rel.to_tbl.clone(), join_condition(rel));
+        self
+    }
+
+    /// Join via [`RelationDef`] with table alias but in reverse direction.
+    /// Assume when there exist a relation A to B.
+    /// You can reverse join B from A.
+    fn join_as_rev<I>(mut self, join: JoinType, mut rel: RelationDef, alias: I) -> Self
+    where
+        I: IntoIden,
+    {
+        let alias = alias.into_iden();
+        rel.from_tbl = rel.from_tbl.alias(SeaRc::clone(&alias));
         self.query()
             .join(join, rel.from_tbl.clone(), join_condition(rel));
         self
@@ -431,8 +457,15 @@ pub trait QueryFilter: Sized {
 }
 
 pub(crate) fn join_condition(mut rel: RelationDef) -> Condition {
-    let from_tbl = unpack_table_ref(&rel.from_tbl);
-    let to_tbl = unpack_table_ref(&rel.to_tbl);
+    // Use table alias (if any) to construct the join condition
+    let from_tbl = match unpack_table_alias(&rel.from_tbl) {
+        Some(alias) => alias,
+        None => unpack_table_ref(&rel.from_tbl),
+    };
+    let to_tbl = match unpack_table_alias(&rel.to_tbl) {
+        Some(alias) => alias,
+        None => unpack_table_ref(&rel.to_tbl),
+    };
     let owner_keys = rel.from_col;
     let foreign_keys = rel.to_col;
 
@@ -484,5 +517,18 @@ pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> DynIden {
         | TableRef::DatabaseSchemaTableAlias(_, _, tbl, _)
         | TableRef::SubQuery(_, tbl)
         | TableRef::ValuesList(_, tbl) => SeaRc::clone(tbl),
+    }
+}
+
+pub(crate) fn unpack_table_alias(table_ref: &TableRef) -> Option<DynIden> {
+    match table_ref {
+        TableRef::Table(_)
+        | TableRef::SchemaTable(_, _)
+        | TableRef::DatabaseSchemaTable(_, _, _)
+        | TableRef::SubQuery(_, _)
+        | TableRef::ValuesList(_, _) => None,
+        TableRef::TableAlias(_, alias)
+        | TableRef::SchemaTableAlias(_, _, alias)
+        | TableRef::DatabaseSchemaTableAlias(_, _, _, alias) => Some(SeaRc::clone(alias)),
     }
 }
