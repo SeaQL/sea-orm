@@ -7,7 +7,7 @@ use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Comman
 use tracing_subscriber::{prelude::*, EnvFilter};
 use url::Url;
 
-use crate::{GenerateSubcommands, MigrateSubcommands};
+use crate::{DateTimeCrate, GenerateSubcommands, MigrateSubcommands};
 
 pub async fn run_generate_command(
     command: GenerateSubcommands,
@@ -25,6 +25,8 @@ pub async fn run_generate_command(
             database_schema,
             database_url,
             with_serde,
+            singularize,
+            date_time_crate,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -380,6 +382,15 @@ where
 {
     eprintln!("{}", error);
     ::std::process::exit(1);
+}
+
+impl From<DateTimeCrate> for CodegenDateTimeCrate {
+    fn from(date_time_crate: DateTimeCrate) -> CodegenDateTimeCrate {
+        match date_time_crate {
+            DateTimeCrate::Chrono => CodegenDateTimeCrate::Chrono,
+            DateTimeCrate::Time => CodegenDateTimeCrate::Time,
+        }
+    }
 }
 
 #[cfg(test)]

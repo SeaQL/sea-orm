@@ -1259,7 +1259,7 @@ mod tests {
         }
         let content = lines.join("");
         let expected: TokenStream = content.parse().unwrap();
-        let generated = generator(cake_entity, &entity_serde_variant.1, entity_serde_variant.2, &DateTimeCrate::Chrono)
+        let generated = generator(cake_entity, &entity_serde_variant.1)
             .into_iter()
             .fold(TokenStream::new(), |mut acc, tok| {
                 acc.extend(tok);

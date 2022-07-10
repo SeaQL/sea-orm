@@ -163,7 +163,7 @@ impl Column {
 
     pub fn get_info(&self) -> String {
         let mut info = String::new();
-        let type_info = self.get_rs_type().to_string().replace(' ', "");
+        let type_info = self.get_rs_type(&DateTimeCrate::Chrono).to_string().replace(' ', "");
         let col_info = self.col_info();
         write!(
             &mut info,
