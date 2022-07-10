@@ -39,6 +39,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Refactor stream metrics (#778)
 
+### Bug Fixes
+
+* [sea-orm-cli] skip checking connection string for credentials (#851)
+
 ## sea-orm-migration 0.8.3
 
 * Removed `async-std` from dependency https://github.com/SeaQL/sea-orm/pull/758
