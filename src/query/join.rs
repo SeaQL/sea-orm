@@ -124,7 +124,7 @@ mod tests {
         RelationTrait,
     };
     use pretty_assertions::assert_eq;
-    use sea_query::{Expr, IntoCondition, JoinType};
+    use sea_query::{Alias, Expr, IntoCondition, JoinType};
 
     #[test]
     fn join_1() {
@@ -502,6 +502,66 @@ mod tests {
                 "LEFT JOIN `cake_filling` ON `cake`.`id` = `cake_filling`.`cake_id` AND `cake_filling`.`cake_id` > 10",
                 "LEFT JOIN `filling` ON `cake_filling`.`filling_id` = `filling`.`id` AND `filling`.`name` LIKE '%lemon%'",
                 "LEFT JOIN `vendor` ON `filling`.`vendor_id` = `vendor`.`id`",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_20() {
+        assert_eq!(
+            cake::Entity::find()
+                .column_as(
+                    Expr::tbl(Alias::new("fruit_alias"), fruit::Column::Name).into_simple_expr(),
+                    "fruit_name"
+                )
+                .join_as(
+                    JoinType::LeftJoin,
+                    cake::Relation::Fruit
+                        .def()
+                        .on_condition(|_left, right| {
+                            Expr::tbl(right, fruit::Column::Name)
+                                .like("%tropical%")
+                                .into_condition()
+                        }),
+                    Alias::new("fruit_alias")
+                )
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name`, `fruit_alias`.`name` AS `fruit_name` FROM `cake`",
+                "LEFT JOIN `fruit` AS `fruit_alias` ON `cake`.`id` = `fruit_alias`.`cake_id` AND `fruit_alias`.`name` LIKE '%tropical%'",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_21() {
+        assert_eq!(
+            cake::Entity::find()
+                .column_as(
+                    Expr::tbl(Alias::new("cake_filling_alias"), cake_filling::Column::CakeId).into_simple_expr(),
+                    "cake_filling_cake_id"
+                )
+                .join(JoinType::LeftJoin, cake::Relation::TropicalFruit.def())
+                .join_as_rev(
+                    JoinType::LeftJoin,
+                    cake_filling::Relation::Cake
+                        .def()
+                        .on_condition(|left, _right| {
+                            Expr::tbl(left, cake_filling::Column::CakeId)
+                                .gt(10)
+                                .into_condition()
+                        }),
+                    Alias::new("cake_filling_alias")
+                )
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name`, `cake_filling_alias`.`cake_id` AS `cake_filling_cake_id` FROM `cake`",
+                "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id` AND `fruit`.`name` LIKE '%tropical%'",
+                "LEFT JOIN `cake_filling` AS `cake_filling_alias` ON `cake_filling_alias`.`cake_id` = `cake`.`id` AND `cake_filling_alias`.`cake_id` > 10",
             ]
             .join(" ")
         );
