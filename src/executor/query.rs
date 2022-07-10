@@ -65,6 +65,7 @@ impl QueryResult {
     }
 }
 
+#[allow(unused_variables)]
 impl fmt::Debug for QueryResultRow {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -96,6 +97,7 @@ impl<T: TryGetable> TryGetable for Option<T> {
 
 macro_rules! try_getable_all {
     ( $type: ty ) => {
+        #[allow(unused_variables)]
         impl TryGetable for $type {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
                 let column = format!("{}{}", pre, col);
@@ -208,6 +210,7 @@ macro_rules! try_getable_mysql {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! try_getable_date_time {
     ( $type: ty ) => {
         impl TryGetable for $type {
@@ -253,8 +256,10 @@ macro_rules! try_getable_date_time {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! try_getable_time {
     ( $type: ty ) => {
+        #[allow(unused_variables)]
         impl TryGetable for $type {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
                 let column = format!("{}{}", pre, col);
@@ -342,6 +347,7 @@ use rust_decimal::Decimal;
 
 #[cfg(feature = "with-rust_decimal")]
 impl TryGetable for Decimal {
+    #[allow(unused_variables)]
     fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
         let column = format!("{}{}", pre, col);
         match &res.row {
@@ -633,6 +639,7 @@ where
     for<'de> Self: serde::Deserialize<'de>,
 {
     /// Ensure the type implements this method
+    #[allow(unused_variables, unreachable_code)]
     fn try_get_from_json(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
         let column = format!("{}{}", pre, col);
         let res: Result<_, _> = match &res.row {
