@@ -361,14 +361,6 @@ where
         }
     }
 
-    /// Select one Model
-    pub async fn one<'a, C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
-    where
-        C: ConnectionTrait,
-    {
-        self.into_model().one(db).await
-    }
-
     /// Stream the result of the operation
     pub async fn stream<'a: 'b, 'b, C>(
         self,
@@ -379,6 +371,22 @@ where
     {
         self.into_model().stream(db).await
     }
+
+    /// `SelectTwoMany::one()` method is being dropped:
+    /// `SelectTwoMany` is for selecting models of a one-to-many relationship
+    /// but `SelectTwoMany::one()` returns `Option<(E, Option<F>)>`
+    /// and the return value is a pair of models instead of `(E, Vec<F>)`
+    /// which is a weird query result for a one-to-many relationship.
+    /// 
+    /// Users are advised to query `(E, Vec<F>)` by first querying `E` from the database,
+    /// then use `find_related` method to query `Vec<F>`.
+    /// Read https://www.sea-ql.org/SeaORM/docs/basic-crud/select#lazy-loading for details.
+    // pub async fn one<'a, C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
+    // where
+    //     C: ConnectionTrait,
+    // {
+    //     self.into_model().one(db).await
+    // }
 
     /// Get all Models from the select operation
     pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>
