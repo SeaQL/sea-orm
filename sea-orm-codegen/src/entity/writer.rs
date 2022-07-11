@@ -1069,14 +1069,19 @@ mod tests {
         for (i, entity) in entities.iter().enumerate() {
             assert_eq!(
                 parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
-                EntityWriter::gen_expanded_code_blocks(entity, &crate::WithSerde::None, &None)
-                    .into_iter()
-                    .skip(1)
-                    .fold(TokenStream::new(), |mut acc, tok| {
-                        acc.extend(tok);
-                        acc
-                    })
-                    .to_string()
+                EntityWriter::gen_expanded_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &crate::DateTimeCrate::Chrono,
+                    &None
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
             );
             assert_eq!(
                 parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
@@ -1140,14 +1145,19 @@ mod tests {
         for (i, entity) in entities.iter().enumerate() {
             assert_eq!(
                 parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
-                EntityWriter::gen_compact_code_blocks(entity, &crate::WithSerde::None, &None)
-                    .into_iter()
-                    .skip(1)
-                    .fold(TokenStream::new(), |mut acc, tok| {
-                        acc.extend(tok);
-                        acc
-                    })
-                    .to_string()
+                EntityWriter::gen_compact_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &crate::DateTimeCrate::Chrono,
+                    &None
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
             );
             assert_eq!(
                 parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
