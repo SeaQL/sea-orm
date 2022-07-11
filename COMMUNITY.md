@@ -38,3 +38,4 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [template_flow](https://github.com/hilary888/template_flow) | An experiment exploring replacing placeholders in pre-prepared templates with their actual values
 - [actix-react-starter-template](https://github.com/aslamplr/actix-react-starter-template) | Actix web + SeaORM + React + Redux + Redux Saga project starter template
 - [ZAPP](https://zapp.epics.dev) ([repository](https://github.com/EpicsDAO/zapp)) | ZAPP is a serverless framework made by Rust. Quickly build a scalable GraphQL API web server.
+- [poem_admin](https://github.com/lingdu1234/poem_admin) | An admin panel built with poem, **Sea-orm** and Vue 3.

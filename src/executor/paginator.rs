@@ -24,6 +24,15 @@ where
     pub(crate) selector: PhantomData<S>,
 }
 
+/// Define a structure containing the numbers of items and pages of a Paginator
+#[derive(Clone, Debug)]
+pub struct ItemsAndPagesNumber {
+    /// The total number of items of a paginator
+    pub number_of_items: usize,
+    /// The total number of pages of a paginator
+    pub number_of_pages: usize,
+}
+
 // LINT: warn if paginator is used without an order by clause
 
 impl<'db, C, S> Paginator<'db, C, S>
@@ -80,8 +89,24 @@ where
     /// Get the total number of pages
     pub async fn num_pages(&self) -> Result<usize, DbErr> {
         let num_items = self.num_items().await?;
-        let num_pages = (num_items / self.page_size) + (num_items % self.page_size > 0) as usize;
+        let num_pages = self.compute_pages_number(num_items);
         Ok(num_pages)
+    }
+
+    /// Get the total number of items and pages
+    pub async fn num_items_and_pages(&self) -> Result<ItemsAndPagesNumber, DbErr> {
+        let number_of_items = self.num_items().await?;
+        let number_of_pages = self.compute_pages_number(number_of_items);
+
+        Ok(ItemsAndPagesNumber {
+            number_of_items,
+            number_of_pages,
+        })
+    }
+
+    /// Compute the number of pages for the current page
+    fn compute_pages_number(&self, num_items: usize) -> usize {
+        (num_items / self.page_size) + (num_items % self.page_size > 0) as usize
     }
 
     /// Increment the page counter

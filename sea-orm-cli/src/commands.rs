@@ -1,11 +1,13 @@
 use chrono::Local;
 use regex::Regex;
-use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
+use sea_orm_codegen::{
+    EntityTransformer, EntityWriterContext, OutputFile, WithSerde, DateTimeCrate as CodegenDateTimeCrate,
+};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
 use url::Url;
 
-use crate::{GenerateSubcommands, MigrateSubcommands};
+use crate::{DateTimeCrate, GenerateSubcommands, MigrateSubcommands};
 
 pub async fn run_generate_command(
     command: GenerateSubcommands,
@@ -17,11 +19,13 @@ pub async fn run_generate_command(
             expanded_format,
             include_hidden_tables,
             tables,
+            ignore_tables,
             max_connections,
             output_dir,
             database_schema,
             database_url,
             with_serde,
+            date_time_crate,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -49,21 +53,7 @@ pub async fn run_generate_command(
             //
             // Missing scheme will have been caught by the Url::parse() call
             // above
-            let url_username = url.username();
-            let url_host = url.host_str();
-
             let is_sqlite = url.scheme() == "sqlite";
-
-            // Skip checking if it's SQLite
-            if !is_sqlite {
-                // Panic on any that are missing
-                if url_username.is_empty() {
-                    panic!("No username was found in the database url");
-                }
-                if url_host.is_none() {
-                    panic!("No host was found in the database url");
-                }
-            }
 
             let tables = match tables {
                 Some(t) => t,
@@ -86,6 +76,8 @@ pub async fn run_generate_command(
                     !table.starts_with('_')
                 }
             };
+
+            let filter_skip_tables = |table: &String| -> bool { !ignore_tables.contains(table) };
 
             let database_name = if !is_sqlite {
                 // The database name should be the first element of the path string
@@ -130,6 +122,7 @@ pub async fn run_generate_command(
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.info.name))
                         .filter(|schema| filter_hidden_tables(&schema.info.name))
+                        .filter(|schema| filter_skip_tables(&schema.info.name))
                         .map(|schema| schema.write())
                         .collect();
                     (None, table_stmts)
@@ -146,6 +139,7 @@ pub async fn run_generate_command(
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.name))
                         .filter(|schema| filter_hidden_tables(&schema.name))
+                        .filter(|schema| filter_skip_tables(&schema.name))
                         .map(|schema| schema.write())
                         .collect();
                     (None, table_stmts)
@@ -163,6 +157,7 @@ pub async fn run_generate_command(
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.info.name))
                         .filter(|schema| filter_hidden_tables(&schema.info.name))
+                        .filter(|schema| filter_skip_tables(&schema.info.name))
                         .map(|schema| schema.write())
                         .collect();
                     (Some(schema.schema), table_stmts)
@@ -170,11 +165,13 @@ pub async fn run_generate_command(
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
 
-            let output = EntityTransformer::transform(table_stmts)?.generate(
+            let writer_context = EntityWriterContext::new(
                 expanded_format,
                 WithSerde::from_str(&with_serde).unwrap(),
+                date_time_crate.into(),
                 schema_name,
             );
+            let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
             let dir = Path::new(&output_dir);
             fs::create_dir_all(dir)?;
@@ -320,10 +317,8 @@ fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(),
     // TODO: make OS agnostic
     let migration_template =
         include_str!("../template/migration/src/m20220101_000001_create_table.rs");
-    let migration_content =
-        migration_template.replace("m20220101_000001_create_table", migration_name);
     let mut migration_file = fs::File::create(migration_filepath)?;
-    migration_file.write_all(migration_content.as_bytes())?;
+    migration_file.write_all(migration_template.as_bytes())?;
     Ok(())
 }
 
@@ -375,6 +370,15 @@ where
 {
     eprintln!("{}", error);
     ::std::process::exit(1);
+}
+
+impl From<DateTimeCrate> for CodegenDateTimeCrate {
+    fn from(date_time_crate: DateTimeCrate) -> CodegenDateTimeCrate {
+        match date_time_crate {
+            DateTimeCrate::Chrono => CodegenDateTimeCrate::Chrono,
+            DateTimeCrate::Time => CodegenDateTimeCrate::Time,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -448,25 +452,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "No username was found in the database url")]
-    fn test_generate_entity_no_username() {
-        let cli = Cli::parse_from(vec![
-            "sea-orm-cli",
-            "generate",
-            "entity",
-            "--database-url",
-            "mysql://:root@localhost:3306/database",
-        ]);
-
-        match cli.command {
-            Commands::Generate { command } => {
-                smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    #[test]
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: PoolTimedOut")]
     fn test_generate_entity_no_password() {
         let cli = Cli::parse_from(vec![
@@ -503,6 +488,7 @@ mod tests {
             _ => unreachable!(),
         }
     }
+
     #[test]
     fn test_create_new_migration() {
         let migration_name = "test_name";
@@ -514,8 +500,6 @@ mod tests {
             .join(format!("{}.rs", migration_name));
         assert!(migration_filepath.exists());
         let migration_content = fs::read_to_string(migration_filepath).unwrap();
-        let migration_content =
-            migration_content.replace(&migration_name, "m20220101_000001_create_table");
         assert_eq!(
             &migration_content,
             include_str!("../template/migration/src/m20220101_000001_create_table.rs")

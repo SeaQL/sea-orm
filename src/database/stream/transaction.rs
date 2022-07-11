@@ -1,6 +1,6 @@
 #![allow(missing_docs)]
 
-use std::{ops::DerefMut, pin::Pin, task::Poll, time::SystemTime};
+use std::{ops::DerefMut, pin::Pin, task::Poll};
 
 use futures::Stream;
 #[cfg(feature = "sqlx-dep")]
@@ -37,6 +37,7 @@ impl<'a> std::fmt::Debug for TransactionStream<'a> {
 
 impl<'a> TransactionStream<'a> {
     #[instrument(level = "trace", skip(metric_callback))]
+    #[allow(unused_variables)]
     pub(crate) fn build(
         conn: MutexGuard<'a, InnerConnection>,
         stmt: Statement,
@@ -50,40 +51,43 @@ impl<'a> TransactionStream<'a> {
                 #[cfg(feature = "sqlx-mysql")]
                 InnerConnection::MySql(c) => {
                     let query = crate::driver::sqlx_mysql::sqlx_query(stmt);
-                    let _start = _metric_callback.is_some().then(SystemTime::now);
-                    let stream = c.fetch(query)
-                                .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err);
+                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
+                    let stream = c
+                        .fetch(query)
+                        .map_ok(Into::into)
+                        .map_err(crate::sqlx_error_to_query_err);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
                 #[cfg(feature = "sqlx-postgres")]
                 InnerConnection::Postgres(c) => {
                     let query = crate::driver::sqlx_postgres::sqlx_query(stmt);
-                    let _start = _metric_callback.is_some().then(SystemTime::now);
-                    let stream = c.fetch(query)
-                                .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err);
+                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
+                    let stream = c
+                        .fetch(query)
+                        .map_ok(Into::into)
+                        .map_err(crate::sqlx_error_to_query_err);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
                 #[cfg(feature = "sqlx-sqlite")]
                 InnerConnection::Sqlite(c) => {
                     let query = crate::driver::sqlx_sqlite::sqlx_query(stmt);
-                    let _start = _metric_callback.is_some().then(SystemTime::now);
-                    let stream = c.fetch(query)
-                                .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err);
+                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
+                    let stream = c
+                        .fetch(query)
+                        .map_ok(Into::into)
+                        .map_err(crate::sqlx_error_to_query_err);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
                 #[cfg(feature = "mock")]
                 InnerConnection::Mock(c) => {
-                    let _start = _metric_callback.is_some().then(SystemTime::now);
+                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
                     let stream = c.fetch(stmt);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
-                },
+                }
                 #[allow(unreachable_patterns)]
                 _ => unreachable!(),
             },

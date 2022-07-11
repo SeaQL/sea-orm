@@ -1,8 +1,9 @@
-use crate::{DbErr, FromQueryResult, QueryResult, QueryResultRow};
+use crate::{DbErr, FromQueryResult, QueryResult};
 use serde_json::Map;
 pub use serde_json::Value as JsonValue;
 
 impl FromQueryResult for JsonValue {
+    #[allow(unused_variables, unused_mut)]
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
         let mut map = Map::new();
         #[allow(unused_macros)]
@@ -16,7 +17,7 @@ impl FromQueryResult for JsonValue {
         }
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
-            QueryResultRow::SqlxMySql(row) => {
+            crate::QueryResultRow::SqlxMySql(row) => {
                 use serde_json::json;
                 use sqlx::{Column, MySql, Row, Type};
                 for column in row.columns() {
@@ -65,9 +66,9 @@ impl FromQueryResult for JsonValue {
                 Ok(JsonValue::Object(map))
             }
             #[cfg(feature = "sqlx-postgres")]
-            QueryResultRow::SqlxPostgres(row) => {
+            crate::QueryResultRow::SqlxPostgres(row) => {
                 use serde_json::json;
-                use sqlx::{Column, Postgres, Row, Type};
+                use sqlx::{postgres::types::Oid, Column, Postgres, Row, Type};
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
                         continue;
@@ -89,7 +90,11 @@ impl FromQueryResult for JsonValue {
                     match_postgres_type!(i64);
                     // match_postgres_type!(u8); // unsupported by SQLx Postgres
                     // match_postgres_type!(u16); // unsupported by SQLx Postgres
-                    match_postgres_type!(u32);
+                    // Since 0.6.0, SQLx has dropped direct mapping from PostgreSQL's OID to Rust's `u32`;
+                    // Instead, `u32` was wrapped by a `sqlx::Oid`.
+                    if <Oid as Type<Postgres>>::type_info().eq(col_type) {
+                        try_get_type!(u32, col)
+                    }
                     // match_postgres_type!(u64); // unsupported by SQLx Postgres
                     match_postgres_type!(f32);
                     match_postgres_type!(f64);
@@ -113,7 +118,7 @@ impl FromQueryResult for JsonValue {
                 Ok(JsonValue::Object(map))
             }
             #[cfg(feature = "sqlx-sqlite")]
-            QueryResultRow::SqlxSqlite(row) => {
+            crate::QueryResultRow::SqlxSqlite(row) => {
                 use serde_json::json;
                 use sqlx::{Column, Row, Sqlite, Type};
                 for column in row.columns() {
@@ -155,7 +160,7 @@ impl FromQueryResult for JsonValue {
                 Ok(JsonValue::Object(map))
             }
             #[cfg(feature = "mock")]
-            QueryResultRow::Mock(row) => {
+            crate::QueryResultRow::Mock(row) => {
                 for (column, value) in row.clone().into_column_value_tuples() {
                     let col = if !column.starts_with(pre) {
                         continue;
