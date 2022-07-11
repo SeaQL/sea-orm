@@ -1,7 +1,8 @@
 use chrono::Local;
 use regex::Regex;
 use sea_orm_codegen::{
-    EntityTransformer, EntityWriterContext, OutputFile, WithSerde, DateTimeCrate as CodegenDateTimeCrate,
+    DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
+    WithSerde,
 };
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};

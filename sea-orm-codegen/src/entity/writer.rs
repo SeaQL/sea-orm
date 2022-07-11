@@ -1275,7 +1275,9 @@ mod tests {
     fn assert_serde_variant_results(
         cake_entity: &Entity,
         entity_serde_variant: &(String, WithSerde, Option<String>),
-        generator: Box<dyn Fn(&Entity, &WithSerde, &DateTimeCrate, &Option<String>) -> Vec<TokenStream>>,
+        generator: Box<
+            dyn Fn(&Entity, &WithSerde, &DateTimeCrate, &Option<String>) -> Vec<TokenStream>,
+        >,
     ) -> io::Result<()> {
         let mut reader = BufReader::new(entity_serde_variant.0.as_bytes());
         let mut lines: Vec<String> = Vec::new();
@@ -1292,7 +1294,7 @@ mod tests {
         let generated = generator(
             cake_entity,
             &entity_serde_variant.1,
-            &DateTimeCrate::Chrono
+            &DateTimeCrate::Chrono,
             &entity_serde_variant.2,
         )
         .into_iter()
