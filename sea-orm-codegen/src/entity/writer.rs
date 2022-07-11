@@ -41,6 +41,7 @@ pub struct EntityWriterContext {
     pub(crate) with_serde: WithSerde,
     pub(crate) name_resolver: NameResolver,
     pub(crate) date_time_crate: DateTimeCrate,
+    pub(crate) schema_name: Option<String>,
 }
 
 impl WithSerde {
@@ -116,12 +117,14 @@ impl EntityWriterContext {
         with_serde: WithSerde,
         name_resolver: NameResolver,
         date_time_crate: DateTimeCrate,
+        schema_name: Option<String>,
     ) -> Self {
         Self {
             expanded_format,
             with_serde,
             name_resolver,
             date_time_crate,
+            schema_name,
         }
     }
 }
@@ -162,6 +165,7 @@ impl EntityWriter {
                         &context.with_serde,
                         &context.name_resolver,
                         &context.date_time_crate,
+                        &context.schema_name,
                     )
                 } else {
                     Self::gen_compact_code_blocks(
@@ -169,6 +173,7 @@ impl EntityWriter {
                         &context.with_serde,
                         &context.name_resolver,
                         &context.date_time_crate,
+                        &context.schema_name,
                     )
                 };
                 Self::write(&mut lines, code_blocks);
@@ -258,13 +263,14 @@ impl EntityWriter {
         with_serde: &WithSerde,
         name_resolver: &NameResolver,
         date_time_crate: &DateTimeCrate,
+        schema_name: &Option<String>,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
         let mut code_blocks = vec![
             imports,
             Self::gen_entity_struct(),
-            Self::gen_impl_entity_name(entity),
+            Self::gen_impl_entity_name(entity, schema_name),
             Self::gen_model_struct(entity, with_serde, date_time_crate),
             Self::gen_column_enum(entity),
             Self::gen_primary_key_enum(entity),
@@ -284,12 +290,13 @@ impl EntityWriter {
         with_serde: &WithSerde,
         name_resolver: &NameResolver,
         date_time_crate: &DateTimeCrate,
+        schema_name: &Option<String>,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
         let mut code_blocks = vec![
             imports,
-            Self::gen_compact_model_struct(entity, with_serde, date_time_crate),
+            Self::gen_compact_model_struct(entity, with_serde, date_time_crate, schema_name),
         ];
         let relation_defs = if entity.get_relation_enum_name().is_empty() {
             vec![
@@ -343,13 +350,25 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_impl_entity_name(entity: &Entity) -> TokenStream {
+    pub fn gen_impl_entity_name(entity: &Entity, schema_name: &Option<String>) -> TokenStream {
+        let schema_name = match Self::gen_schema_name(schema_name) {
+            Some(schema_name) => quote! {
+                fn schema_name(&self) -> Option<&str> {
+                    Some(#schema_name)
+                }
+            },
+            None => quote! {},
+        };
         let table_name = entity.table_name.as_str();
+        let table_name = quote! {
+            fn table_name(&self) -> &str {
+                #table_name
+            }
+        };
         quote! {
             impl EntityName for Entity {
-                fn table_name(&self) -> &str {
-                    #table_name
-                }
+                #schema_name
+                #table_name
             }
         }
     }
@@ -559,6 +578,7 @@ impl EntityWriter {
         entity: &Entity,
         with_serde: &WithSerde,
         date_time_crate: &DateTimeCrate,
+        schema_name: &Option<String>,
     ) -> TokenStream {
         let table_name = entity.table_name.as_str();
         let column_names_snake_case = entity.get_column_names_snake_case();
@@ -608,12 +628,20 @@ impl EntityWriter {
                 }
             })
             .collect();
-
+        let schema_name = match Self::gen_schema_name(schema_name) {
+            Some(schema_name) => quote! {
+                schema_name = #schema_name,
+            },
+            None => quote! {},
+        };
         let extra_derive = with_serde.extra_derive();
 
         quote! {
             #[derive(Clone, Debug, PartialEq, DeriveEntityModel #extra_derive)]
-            #[sea_orm(table_name = #table_name)]
+            #[sea_orm(
+                #schema_name
+                table_name = #table_name
+            )]
             pub struct Model {
                 #(
                     #attrs
@@ -636,6 +664,19 @@ impl EntityWriter {
             }
         }
     }
+
+    pub fn gen_schema_name(schema_name: &Option<String>) -> Option<TokenStream> {
+        match schema_name {
+            Some(schema_name) => {
+                if schema_name != "public" {
+                    Some(quote! { #schema_name })
+                } else {
+                    None
+                }
+            }
+            None => None,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -647,7 +688,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
     use sea_query::{ColumnType, ForeignKeyAction};
-    use std::io::{self, BufRead, BufReader};
+    use std::io::{self, BufRead, BufReader, Read};
 
     fn setup() -> Vec<Entity> {
         vec![
@@ -1011,6 +1052,24 @@ mod tests {
         ]
     }
 
+    fn parse_from_file<R>(inner: R) -> io::Result<TokenStream>
+    where
+        R: Read,
+    {
+        let mut reader = BufReader::new(inner);
+        let mut lines: Vec<String> = Vec::new();
+
+        reader.read_until(b';', &mut Vec::new())?;
+
+        let mut line = String::new();
+        while reader.read_line(&mut line)? > 0 {
+            lines.push(line.to_owned());
+            line.clear();
+        }
+        let content = lines.join("");
+        Ok(content.parse().unwrap())
+    }
+
     #[test]
     fn test_gen_expanded_code_blocks() -> io::Result<()> {
         let entities = setup();
@@ -1022,35 +1081,69 @@ mod tests {
             include_str!("../../tests/expanded/vendor.rs"),
             include_str!("../../tests/expanded/rust_keyword.rs"),
         ];
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 6] = [
+            include_str!("../../tests/expanded_with_schema_name/cake.rs"),
+            include_str!("../../tests/expanded_with_schema_name/cake_filling.rs"),
+            include_str!("../../tests/expanded_with_schema_name/filling.rs"),
+            include_str!("../../tests/expanded_with_schema_name/fruit.rs"),
+            include_str!("../../tests/expanded_with_schema_name/vendor.rs"),
+            include_str!("../../tests/expanded_with_schema_name/rust_keyword.rs"),
+        ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
 
         for (i, entity) in entities.iter().enumerate() {
-            let mut reader = BufReader::new(ENTITY_FILES[i].as_bytes());
-            let mut lines: Vec<String> = Vec::new();
-
-            reader.read_until(b';', &mut Vec::new())?;
-
-            let mut line = String::new();
-            while reader.read_line(&mut line)? > 0 {
-                lines.push(line.to_owned());
-                line.clear();
-            }
-            let content = lines.join("");
-            let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_expanded_code_blocks(
-                entity,
-                &crate::WithSerde::None,
-                &NameResolver::new(false),
-                &crate::DateTimeCrate::Chrono,
-            )
-            .into_iter()
-            .skip(1)
-            .fold(TokenStream::new(), |mut acc, tok| {
-                acc.extend(tok);
-                acc
-            });
-            assert_eq!(expected.to_string(), generated.to_string());
+            assert_eq!(
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
+                EntityWriter::gen_expanded_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &NameResolver::new(false),
+                    &crate::DateTimeCrate::Chrono,
+                    &None
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+            assert_eq!(
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
+                EntityWriter::gen_expanded_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &NameResolver::new(false),
+                    &crate::DateTimeCrate::Chrono,
+                    &Some("public".to_owned())
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+            assert_eq!(
+                parse_from_file(ENTITY_FILES_WITH_SCHEMA_NAME[i].as_bytes())?.to_string(),
+                EntityWriter::gen_expanded_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &NameResolver::new(false),
+                    &crate::DateTimeCrate::Chrono,
+                    &Some("schema_name".to_owned())
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
         }
 
         Ok(())
@@ -1067,35 +1160,69 @@ mod tests {
             include_str!("../../tests/compact/vendor.rs"),
             include_str!("../../tests/compact/rust_keyword.rs"),
         ];
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 6] = [
+            include_str!("../../tests/compact_with_schema_name/cake.rs"),
+            include_str!("../../tests/compact_with_schema_name/cake_filling.rs"),
+            include_str!("../../tests/compact_with_schema_name/filling.rs"),
+            include_str!("../../tests/compact_with_schema_name/fruit.rs"),
+            include_str!("../../tests/compact_with_schema_name/vendor.rs"),
+            include_str!("../../tests/compact_with_schema_name/rust_keyword.rs"),
+        ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
 
         for (i, entity) in entities.iter().enumerate() {
-            let mut reader = BufReader::new(ENTITY_FILES[i].as_bytes());
-            let mut lines: Vec<String> = Vec::new();
-
-            reader.read_until(b';', &mut Vec::new())?;
-
-            let mut line = String::new();
-            while reader.read_line(&mut line)? > 0 {
-                lines.push(line.to_owned());
-                line.clear();
-            }
-            let content = lines.join("");
-            let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_compact_code_blocks(
-                entity,
-                &crate::WithSerde::None,
-                &NameResolver::new(false),
-                &crate::DateTimeCrate::Chrono,
-            )
-            .into_iter()
-            .skip(1)
-            .fold(TokenStream::new(), |mut acc, tok| {
-                acc.extend(tok);
-                acc
-            });
-            assert_eq!(expected.to_string(), generated.to_string());
+            assert_eq!(
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
+                EntityWriter::gen_compact_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &NameResolver::new(false),
+                    &crate::DateTimeCrate::Chrono,
+                    &None
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+            assert_eq!(
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
+                EntityWriter::gen_compact_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &NameResolver::new(false),
+                    &crate::DateTimeCrate::Chrono,
+                    &Some("public".to_owned())
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+            assert_eq!(
+                parse_from_file(ENTITY_FILES_WITH_SCHEMA_NAME[i].as_bytes())?.to_string(),
+                EntityWriter::gen_compact_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &NameResolver::new(false),
+                    &crate::DateTimeCrate::Chrono,
+                    &Some("schema_name".to_owned())
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
         }
 
         Ok(())
@@ -1114,6 +1241,7 @@ mod tests {
                 include_str!("../../tests/compact_with_serde/cake_none.rs").into(),
                 WithSerde::None,
                 &NameResolver::new(false),
+                None,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1123,6 +1251,7 @@ mod tests {
                 include_str!("../../tests/compact_with_serde/cake_serialize.rs").into(),
                 WithSerde::Serialize,
                 &NameResolver::new(false),
+                None,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1132,6 +1261,7 @@ mod tests {
                 include_str!("../../tests/compact_with_serde/cake_deserialize.rs").into(),
                 WithSerde::Deserialize,
                 &NameResolver::new(false),
+                None,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1141,6 +1271,7 @@ mod tests {
                 include_str!("../../tests/compact_with_serde/cake_both.rs").into(),
                 WithSerde::Both,
                 &NameResolver::new(false),
+                None,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1152,6 +1283,7 @@ mod tests {
                 include_str!("../../tests/expanded_with_serde/cake_none.rs").into(),
                 WithSerde::None,
                 &NameResolver::new(false),
+                None,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1161,6 +1293,7 @@ mod tests {
                 include_str!("../../tests/expanded_with_serde/cake_serialize.rs").into(),
                 WithSerde::Serialize,
                 &NameResolver::new(false),
+                None,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1170,6 +1303,7 @@ mod tests {
                 include_str!("../../tests/expanded_with_serde/cake_deserialize.rs").into(),
                 WithSerde::Deserialize,
                 &NameResolver::new(false),
+                None,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1179,6 +1313,7 @@ mod tests {
                 include_str!("../../tests/expanded_with_serde/cake_both.rs").into(),
                 WithSerde::Both,
                 &NameResolver::new(false),
+                None,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1235,6 +1370,7 @@ mod tests {
                 include_str!("../../tests/compact/singular-cake.rs").into(),
                 WithSerde::None,
                 &name_resolver,
+                None,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1244,8 +1380,10 @@ mod tests {
 
     fn assert_serde_variant_results(
         cake_entity: &Entity,
-        entity_serde_variant: &(String, WithSerde, &NameResolver),
-        generator: Box<dyn Fn(&Entity, &WithSerde, &NameResolver, &DateTimeCrate) -> Vec<TokenStream>>,
+        entity_serde_variant: &(String, WithSerde, &NameResolver, Option<String>),
+        generator: Box<
+            dyn Fn(&Entity, &WithSerde, &NameResolver, &DateTimeCrate, &Option<String>) -> Vec<TokenStream>,
+        >,
     ) -> io::Result<()> {
         let mut reader = BufReader::new(entity_serde_variant.0.as_bytes());
         let mut lines: Vec<String> = Vec::new();
@@ -1259,12 +1397,18 @@ mod tests {
         }
         let content = lines.join("");
         let expected: TokenStream = content.parse().unwrap();
-        let generated = generator(cake_entity, &entity_serde_variant.1)
-            .into_iter()
-            .fold(TokenStream::new(), |mut acc, tok| {
-                acc.extend(tok);
-                acc
-            });
+        let generated = generator(
+            cake_entity,
+            &entity_serde_variant.1,
+            &entity_serde_variant.2,
+            &DateTimeCrate::Chrono,
+            &None,
+        )
+        .into_iter()
+        .fold(TokenStream::new(), |mut acc, tok| {
+            acc.extend(tok);
+            acc
+        });
 
         assert_eq!(expected.to_string(), generated.to_string());
         Ok(())
