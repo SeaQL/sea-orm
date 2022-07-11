@@ -1,7 +1,8 @@
 use chrono::Local;
 use regex::Regex;
 use sea_orm_codegen::{
-    EntityTransformer, EntityWriterContext, OutputFile, WithSerde, DateTimeCrate as CodegenDateTimeCrate,
+    DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
+    WithSerde,
 };
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
@@ -109,7 +110,7 @@ pub async fn run_generate_command(
                 Default::default()
             };
 
-            let table_stmts = match url.scheme() {
+            let (schema_name, table_stmts) = match url.scheme() {
                 "mysql" => {
                     use sea_schema::mysql::discovery::SchemaDiscovery;
                     use sqlx::MySql;
@@ -117,14 +118,15 @@ pub async fn run_generate_command(
                     let connection = connect::<MySql>(max_connections, url.as_str()).await?;
                     let schema_discovery = SchemaDiscovery::new(connection, database_name);
                     let schema = schema_discovery.discover().await;
-                    schema
+                    let table_stmts = schema
                         .tables
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.info.name))
                         .filter(|schema| filter_hidden_tables(&schema.info.name))
                         .filter(|schema| filter_skip_tables(&schema.info.name))
                         .map(|schema| schema.write())
-                        .collect()
+                        .collect();
+                    (None, table_stmts)
                 }
                 "sqlite" => {
                     use sea_schema::sqlite::discovery::SchemaDiscovery;
@@ -133,14 +135,15 @@ pub async fn run_generate_command(
                     let connection = connect::<Sqlite>(max_connections, url.as_str()).await?;
                     let schema_discovery = SchemaDiscovery::new(connection);
                     let schema = schema_discovery.discover().await?;
-                    schema
+                    let table_stmts = schema
                         .tables
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.name))
                         .filter(|schema| filter_hidden_tables(&schema.name))
                         .filter(|schema| filter_skip_tables(&schema.name))
                         .map(|schema| schema.write())
-                        .collect()
+                        .collect();
+                    (None, table_stmts)
                 }
                 "postgres" | "postgresql" => {
                     use sea_schema::postgres::discovery::SchemaDiscovery;
@@ -150,14 +153,15 @@ pub async fn run_generate_command(
                     let connection = connect::<Postgres>(max_connections, url.as_str()).await?;
                     let schema_discovery = SchemaDiscovery::new(connection, schema);
                     let schema = schema_discovery.discover().await;
-                    schema
+                    let table_stmts = schema
                         .tables
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.info.name))
                         .filter(|schema| filter_hidden_tables(&schema.info.name))
                         .filter(|schema| filter_skip_tables(&schema.info.name))
                         .map(|schema| schema.write())
-                        .collect()
+                        .collect();
+                    (Some(schema.schema), table_stmts)
                 }
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
@@ -166,6 +170,7 @@ pub async fn run_generate_command(
                 expanded_format,
                 WithSerde::from_str(&with_serde).unwrap(),
                 date_time_crate.into(),
+                schema_name,
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
