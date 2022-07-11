@@ -143,14 +143,15 @@ macro_rules! try_getable_unsigned {
     ( $type: ty ) => {
         impl TryGetable for $type {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
-                let _column = format!("{}{}", pre, col);
+                #[allow(unused_variables)]
+                let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
-                        row.try_get::<Option<$type>, _>(_column.as_str())
+                        row.try_get::<Option<$type>, _>(column.as_str())
                             .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
-                            .and_then(|opt| opt.ok_or(TryGetError::Null(_column)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(_) => {
@@ -159,15 +160,15 @@ macro_rules! try_getable_unsigned {
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => {
                         use sqlx::Row;
-                        row.try_get::<Option<$type>, _>(_column.as_str())
+                        row.try_get::<Option<$type>, _>(column.as_str())
                             .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
-                            .and_then(|opt| opt.ok_or(TryGetError::Null(_column)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
                     }
                     #[cfg(feature = "mock")]
                     #[allow(unused_variables)]
-                    QueryResultRow::Mock(row) => row.try_get(_column.as_str()).map_err(|e| {
+                    QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
-                        TryGetError::Null(_column)
+                        TryGetError::Null(column)
                     }),
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
@@ -181,14 +182,15 @@ macro_rules! try_getable_mysql {
     ( $type: ty ) => {
         impl TryGetable for $type {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
-                let _column = format!("{}{}", pre, col);
+                #[allow(unused_variables)]
+                let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
-                        row.try_get::<Option<$type>, _>(_column.as_str())
+                        row.try_get::<Option<$type>, _>(column.as_str())
                             .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
-                            .and_then(|opt| opt.ok_or(TryGetError::Null(_column)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(_) => {
@@ -200,9 +202,9 @@ macro_rules! try_getable_mysql {
                     }
                     #[cfg(feature = "mock")]
                     #[allow(unused_variables)]
-                    QueryResultRow::Mock(row) => row.try_get(_column.as_str()).map_err(|e| {
+                    QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
-                        TryGetError::Null(_column)
+                        TryGetError::Null(column)
                     }),
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
@@ -217,38 +219,39 @@ macro_rules! try_getable_date_time {
     ( $type: ty ) => {
         impl TryGetable for $type {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
-                let _column = format!("{}{}", pre, col);
+                #[allow(unused_variables)]
+                let column = format!("{}{}", pre, col);
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use chrono::{DateTime, Utc};
                         use sqlx::Row;
-                        row.try_get::<Option<DateTime<Utc>>, _>(_column.as_str())
+                        row.try_get::<Option<DateTime<Utc>>, _>(column.as_str())
                             .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
-                            .and_then(|opt| opt.ok_or(TryGetError::Null(_column)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
                             .map(|v| v.into())
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => {
                         use sqlx::Row;
-                        row.try_get::<Option<$type>, _>(_column.as_str())
+                        row.try_get::<Option<$type>, _>(column.as_str())
                             .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
-                            .and_then(|opt| opt.ok_or(TryGetError::Null(_column)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => {
                         use chrono::{DateTime, Utc};
                         use sqlx::Row;
-                        row.try_get::<Option<DateTime<Utc>>, _>(_column.as_str())
+                        row.try_get::<Option<DateTime<Utc>>, _>(column.as_str())
                             .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
-                            .and_then(|opt| opt.ok_or(TryGetError::Null(_column)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
                             .map(|v| v.into())
                     }
                     #[cfg(feature = "mock")]
                     #[allow(unused_variables)]
-                    QueryResultRow::Mock(row) => row.try_get(_column.as_str()).map_err(|e| {
+                    QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
-                        TryGetError::Null(_column)
+                        TryGetError::Null(column)
                     }),
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
@@ -400,14 +403,15 @@ try_getable_all!(uuid::Uuid);
 
 impl TryGetable for u32 {
     fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
-        let _column = format!("{}{}", pre, col);
+        #[allow(unused_variables)]
+        let column = format!("{}{}", pre, col);
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(row) => {
                 use sqlx::Row;
-                row.try_get::<Option<u32>, _>(_column.as_str())
+                row.try_get::<Option<u32>, _>(column.as_str())
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
-                    .and_then(|opt| opt.ok_or(TryGetError::Null(_column)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
             }
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => {
@@ -415,23 +419,23 @@ impl TryGetable for u32 {
                 // Since 0.6.0, SQLx has dropped direct mapping from PostgreSQL's OID to Rust's `u32`;
                 // Instead, `u32` was wrapped by a `sqlx::Oid`.
                 use sqlx::Row;
-                row.try_get::<Option<Oid>, _>(_column.as_str())
+                row.try_get::<Option<Oid>, _>(column.as_str())
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
-                    .and_then(|opt| opt.ok_or(TryGetError::Null(_column)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
                     .map(|oid| oid.0)
             }
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => {
                 use sqlx::Row;
-                row.try_get::<Option<u32>, _>(_column.as_str())
+                row.try_get::<Option<u32>, _>(column.as_str())
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
-                    .and_then(|opt| opt.ok_or(TryGetError::Null(_column)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
             }
             #[cfg(feature = "mock")]
             #[allow(unused_variables)]
-            QueryResultRow::Mock(row) => row.try_get(_column.as_str()).map_err(|e| {
+            QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
                 debug_print!("{:#?}", e.to_string());
-                TryGetError::Null(_column)
+                TryGetError::Null(column)
             }),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
