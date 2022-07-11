@@ -40,9 +40,9 @@ impl From<TryGetError> for DbErr {
     fn from(e: TryGetError) -> DbErr {
         match e {
             TryGetError::DbErr(e) => e,
-            TryGetError::Null(s) => DbErr::Query(
-                format!("error occurred while decoding {}: Null", s)
-            ),
+            TryGetError::Null(s) => {
+                DbErr::Query(format!("error occurred while decoding {}: Null", s))
+            }
         }
     }
 }
@@ -822,7 +822,7 @@ try_from_u64_err!(uuid::Uuid);
 
 #[cfg(test)]
 mod tests {
-    use super::{TryGetError};
+    use super::TryGetError;
     use crate::error::DbErr;
 
     #[test]
