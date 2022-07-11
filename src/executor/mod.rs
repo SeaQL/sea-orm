@@ -1,3 +1,4 @@
+mod cursor;
 mod delete;
 mod execute;
 mod insert;
@@ -6,6 +7,7 @@ mod query;
 mod select;
 mod update;
 
+pub use cursor::*;
 pub use delete::*;
 pub use execute::*;
 pub use insert::*;

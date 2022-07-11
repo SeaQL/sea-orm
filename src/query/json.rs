@@ -1,8 +1,9 @@
-use crate::{DbErr, FromQueryResult, QueryResult, QueryResultRow};
+use crate::{DbErr, FromQueryResult, QueryResult};
 use serde_json::Map;
 pub use serde_json::Value as JsonValue;
 
 impl FromQueryResult for JsonValue {
+    #[allow(unused_variables, unused_mut)]
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
         let mut map = Map::new();
         #[allow(unused_macros)]
@@ -16,7 +17,7 @@ impl FromQueryResult for JsonValue {
         }
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
-            QueryResultRow::SqlxMySql(row) => {
+            crate::QueryResultRow::SqlxMySql(row) => {
                 use serde_json::json;
                 use sqlx::{Column, MySql, Row, Type};
                 for column in row.columns() {
@@ -65,7 +66,7 @@ impl FromQueryResult for JsonValue {
                 Ok(JsonValue::Object(map))
             }
             #[cfg(feature = "sqlx-postgres")]
-            QueryResultRow::SqlxPostgres(row) => {
+            crate::QueryResultRow::SqlxPostgres(row) => {
                 use serde_json::json;
                 use sqlx::{postgres::types::Oid, Column, Postgres, Row, Type};
                 for column in row.columns() {
@@ -117,7 +118,7 @@ impl FromQueryResult for JsonValue {
                 Ok(JsonValue::Object(map))
             }
             #[cfg(feature = "sqlx-sqlite")]
-            QueryResultRow::SqlxSqlite(row) => {
+            crate::QueryResultRow::SqlxSqlite(row) => {
                 use serde_json::json;
                 use sqlx::{Column, Row, Sqlite, Type};
                 for column in row.columns() {
@@ -159,7 +160,7 @@ impl FromQueryResult for JsonValue {
                 Ok(JsonValue::Object(map))
             }
             #[cfg(feature = "mock")]
-            QueryResultRow::Mock(row) => {
+            crate::QueryResultRow::Mock(row) => {
                 for (column, value) in row.clone().into_column_value_tuples() {
                     let col = if !column.starts_with(pre) {
                         continue;
