@@ -1,6 +1,6 @@
 use crate::{
     error::*, ConnectionTrait, DatabaseTransaction, ExecResult, QueryResult, Statement,
-    StatementBuilder, StreamTrait, TransactionError, TransactionTrait,
+    StatementBuilder, StatementBuilderPlugin, StreamTrait, TransactionError, TransactionTrait,
 };
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 use std::{future::Future, pin::Pin};
@@ -299,6 +299,15 @@ impl DbBackend {
         S: StatementBuilder,
     {
         statement.build(self)
+    }
+
+    pub fn build_with_plugins<S, I, T>(&self, statement: &S, plugins: I) -> Statement
+    where
+        S: StatementBuilder,
+        I: IntoIterator<Item = T>,
+        T: StatementBuilderPlugin,
+    {
+        statement.build_with_plugins(self, plugins)
     }
 
     /// A helper for building SQL queries

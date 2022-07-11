@@ -308,6 +308,7 @@ pub mod entity;
 pub mod error;
 /// This module performs execution of queries on a Model or ActiveModel
 mod executor;
+pub mod linter;
 /// Holds types and methods to perform metric collection
 pub mod metric;
 /// Holds types and methods to perform queries
@@ -324,6 +325,7 @@ pub use driver::*;
 pub use entity::*;
 pub use error::*;
 pub use executor::*;
+pub use linter::*;
 pub use query::*;
 pub use schema::*;
 

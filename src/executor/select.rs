@@ -1,7 +1,7 @@
 use crate::{
     error::*, ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, ModelTrait,
-    PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement,
-    StreamTrait, TryGetableMany,
+    PrimaryKeyToColumn, QueryLinter, QueryResult, Select, SelectA, SelectB, SelectTwo,
+    SelectTwoMany, Statement, StreamTrait, TryGetableMany,
 };
 use futures::{Stream, TryStreamExt};
 use sea_query::SelectStatement;
@@ -376,7 +376,7 @@ where
     ///
     /// > `SelectTwoMany::one()` method has been dropped (#486)
     /// >
-    /// > You can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity, 
+    /// > You can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity,
     /// > then use [`ModelTrait::find_related`] on the model.
     /// >
     /// > See https://www.sea-ql.org/SeaORM/docs/basic-crud/select#lazy-loading for details.
@@ -423,7 +423,8 @@ where
         C: ConnectionTrait,
     {
         let builder = db.get_database_backend();
-        let stmt = builder.build(&self.query);
+        let linter = QueryLinter::new(db);
+        let stmt = builder.build_with_plugins(&self.query, [linter]);
         SelectorRaw {
             stmt,
             selector: self.selector,

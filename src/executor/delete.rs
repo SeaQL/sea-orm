@@ -1,5 +1,6 @@
 use crate::{
-    error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, Statement,
+    error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, QueryLinter,
+    Statement,
 };
 use sea_query::DeleteStatement;
 use std::future::Future;
@@ -57,7 +58,8 @@ impl Deleter {
         C: ConnectionTrait,
     {
         let builder = db.get_database_backend();
-        exec_delete(builder.build(&self.query), db)
+        let linter = QueryLinter::new(db);
+        exec_delete(builder.build_with_plugins(&self.query, [linter]), db)
     }
 }
 

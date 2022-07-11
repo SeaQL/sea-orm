@@ -1,6 +1,6 @@
 use crate::{
     error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
-    Iterable, SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
+    Iterable, QueryLinter, SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
 };
 use sea_query::{Alias, Expr, FromValueTuple, Query, UpdateStatement};
 use std::future::Future;
@@ -69,7 +69,12 @@ impl Updater {
         C: ConnectionTrait,
     {
         let builder = db.get_database_backend();
-        exec_update(builder.build(&self.query), db, self.check_record_exists)
+        let linter = QueryLinter::new(db);
+        exec_update(
+            builder.build_with_plugins(&self.query, [linter]),
+            db,
+            self.check_record_exists,
+        )
     }
 }
 
