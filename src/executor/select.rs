@@ -376,7 +376,7 @@ where
     ///
     /// > `SelectTwoMany::one()` method has been dropped (#486)
     /// >
-    /// > You can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity, 
+    /// > You can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity,
     /// > then use [`ModelTrait::find_related`] on the model.
     /// >
     /// > See https://www.sea-ql.org/SeaORM/docs/basic-crud/select#lazy-loading for details.
