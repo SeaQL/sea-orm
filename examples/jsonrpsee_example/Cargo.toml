@@ -9,8 +9,7 @@ publish = false
 members = [".", "entity", "migration"]
 
 [dependencies]
-jsonrpsee = { [dependencies.sea-orm]
-version = "^0.8.0" # sea-orm version, features = ["full"] }
+jsonrpsee = { version = "^0.8.0", features = ["full"] }
 jsonrpsee-core = "0.9.0"
 tokio = { version = "1.8.0", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
