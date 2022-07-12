@@ -24,7 +24,7 @@ simplelog = "*"
 
 [dependencies.sea-orm]
 path = "../../" # remove this line in your own project
-version = "^0.8.0" # sea-orm version
+version = "^0.9.0" # sea-orm version
 features = [
   "debug-print",
   "runtime-tokio-native-tls",
