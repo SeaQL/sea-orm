@@ -3,7 +3,11 @@ use crate::{
     PrimaryKeyTrait, QueryTrait,
 };
 use core::marker::PhantomData;
+<<<<<<< HEAD
 use sea_query::{Expr, InsertStatement, OnConflict, ValueTuple};
+=======
+use sea_query::{Alias, Expr, Function, InsertStatement, OnConflict, SimpleExpr, ValueTuple};
+>>>>>>> 7916606d (try using sql function to get timestamp)
 
 /// Performs INSERT operations on a ActiveModel
 #[derive(Debug)]
@@ -138,6 +142,9 @@ where
             if av_has_val {
                 columns.push(col);
                 values.push(col.save_as(Expr::val(av.into_value().unwrap())));
+            } else if col_def.created_at || col_def.updated_at {
+                columns.push(col);
+                values.push(Expr::current_timestamp());
             }
         }
         self.query.columns(columns);

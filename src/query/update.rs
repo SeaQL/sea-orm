@@ -3,7 +3,11 @@ use crate::{
     QueryTrait,
 };
 use core::marker::PhantomData;
+<<<<<<< HEAD
 use sea_query::{Expr, IntoIden, SimpleExpr, UpdateStatement};
+=======
+use sea_query::{Alias, Expr, Function, IntoIden, SimpleExpr, UpdateStatement};
+>>>>>>> 7916606d (try using sql function to get timestamp)
 
 /// Defines a structure to perform UPDATE query operations on a ActiveModel
 #[derive(Clone, Debug)]
@@ -113,6 +117,12 @@ where
             if av.is_set() {
                 let expr = col.save_as(Expr::val(av.into_value().unwrap()));
                 self.query.value(col, expr);
+
+            } else if col_def.updated_at {
+                self.query.value_expr(
+                    col,
+                    Expr::current_timestamp()
+                );
             }
         }
         self
