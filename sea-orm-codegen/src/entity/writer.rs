@@ -39,6 +39,7 @@ pub enum DateTimeCrate {
 pub struct EntityWriterContext {
     pub(crate) expanded_format: bool,
     pub(crate) with_serde: WithSerde,
+    pub(crate) with_copy_enums: bool,
     pub(crate) date_time_crate: DateTimeCrate,
     pub(crate) schema_name: Option<String>,
 }
@@ -97,12 +98,14 @@ impl EntityWriterContext {
     pub fn new(
         expanded_format: bool,
         with_serde: WithSerde,
+        with_copy_enums: bool,
         date_time_crate: DateTimeCrate,
         schema_name: Option<String>,
     ) -> Self {
         Self {
             expanded_format,
             with_serde,
+            with_copy_enums,
             date_time_crate,
             schema_name,
         }
@@ -116,7 +119,7 @@ impl EntityWriter {
         files.push(self.write_mod());
         files.push(self.write_prelude());
         if !self.enums.is_empty() {
-            files.push(self.write_sea_orm_active_enums(&context.with_serde));
+            files.push(self.write_sea_orm_active_enums(&context.with_serde, context.with_copy_enums));
         }
         WriterOutput { files }
     }
@@ -200,7 +203,7 @@ impl EntityWriter {
         }
     }
 
-    pub fn write_sea_orm_active_enums(&self, with_serde: &WithSerde) -> OutputFile {
+    pub fn write_sea_orm_active_enums(&self, with_serde: &WithSerde, with_copy_enums: bool) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
         Self::write(&mut lines, vec![Self::gen_import(with_serde)]);
@@ -208,7 +211,7 @@ impl EntityWriter {
         let code_blocks = self
             .enums
             .iter()
-            .map(|(_, active_enum)| active_enum.impl_active_enum(with_serde))
+            .map(|(_, active_enum)| active_enum.impl_active_enum(with_serde, with_copy_enums))
             .collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {

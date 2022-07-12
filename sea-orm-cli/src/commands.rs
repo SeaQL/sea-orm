@@ -26,6 +26,7 @@ pub async fn run_generate_command(
             database_schema,
             database_url,
             with_serde,
+            with_copy_enums,
             date_time_crate,
         } => {
             if verbose {
@@ -169,6 +170,7 @@ pub async fn run_generate_command(
             let writer_context = EntityWriterContext::new(
                 expanded_format,
                 WithSerde::from_str(&with_serde).unwrap(),
+                with_copy_enums,
                 date_time_crate.into(),
                 schema_name,
             );
