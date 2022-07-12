@@ -80,10 +80,10 @@ where
             None => return Ok(0),
         };
         let num_items = match builder {
-            DbBackend::Postgres => result.try_get::<i64>("", "num_items")? as usize,
-            _ => result.try_get::<i32>("", "num_items")? as usize,
+            DbBackend::Postgres => result.try_get::<i64>("", "num_items")? as u64,
+            _ => result.try_get::<i32>("", "num_items")? as u64,
         };
-        Ok(num_items as u64)
+        Ok(num_items)
     }
 
     /// Get the total number of pages
@@ -105,8 +105,8 @@ where
     }
 
     /// Compute the number of pages for the current page
-    fn compute_pages_number(&self, num_items: usize) -> usize {
-        (num_items / self.page_size) + (num_items % self.page_size > 0) as usize
+    fn compute_pages_number(&self, num_items: u64) -> u64 {
+        (num_items / self.page_size) + (num_items % self.page_size > 0) as u64
     }
 
     /// Increment the page counter
