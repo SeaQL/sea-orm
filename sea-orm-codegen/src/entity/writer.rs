@@ -119,7 +119,9 @@ impl EntityWriter {
         files.push(self.write_mod());
         files.push(self.write_prelude());
         if !self.enums.is_empty() {
-            files.push(self.write_sea_orm_active_enums(&context.with_serde, context.with_copy_enums));
+            files.push(
+                self.write_sea_orm_active_enums(&context.with_serde, context.with_copy_enums),
+            );
         }
         WriterOutput { files }
     }
@@ -203,7 +205,11 @@ impl EntityWriter {
         }
     }
 
-    pub fn write_sea_orm_active_enums(&self, with_serde: &WithSerde, with_copy_enums: bool) -> OutputFile {
+    pub fn write_sea_orm_active_enums(
+        &self,
+        with_serde: &WithSerde,
+        with_copy_enums: bool,
+    ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
         Self::write(&mut lines, vec![Self::gen_import(with_serde)]);

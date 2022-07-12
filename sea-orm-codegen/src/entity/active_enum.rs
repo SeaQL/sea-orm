@@ -26,7 +26,7 @@ impl ActiveEnum {
         let copy_derive = if with_copy_enums {
             quote! { , Copy }
         } else {
-            quote! { }
+            quote! {}
         };
 
         quote! {
