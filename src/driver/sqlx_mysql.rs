@@ -46,9 +46,11 @@ impl SqlxMySqlConnector {
             .url
             .parse::<MySqlConnectOptions>()
             .map_err(|e| DbErr::Conn(e.to_string()))?;
+        use sqlx::ConnectOptions;
         if !options.sqlx_logging {
-            use sqlx::ConnectOptions;
             opt.disable_statement_logging();
+        } else {
+            opt.log_statements(options.sqlx_logging_level);
         }
         match options.pool_options().connect_with(opt).await {
             Ok(pool) => Ok(DatabaseConnection::SqlxMySqlPoolConnection(

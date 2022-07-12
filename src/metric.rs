@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 pub(crate) type Callback = Arc<dyn Fn(&Info<'_>) + Send + Sync>;
 
 #[allow(unused_imports)]
-pub(crate) use inner::{metric, metric_ok};
+pub(crate) use inner::metric;
 
 #[derive(Debug)]
 /// Query execution infos
@@ -20,9 +20,9 @@ mod inner {
     #[allow(unused_macros)]
     macro_rules! metric {
         ($metric_callback:expr, $stmt:expr, $code:block) => {{
-            let _start = std::time::SystemTime::now();
+            let _start = $metric_callback.is_some().then(std::time::SystemTime::now);
             let res = $code;
-            if let Some(callback) = $metric_callback.as_deref() {
+            if let (Some(_start), Some(callback)) = (_start, $metric_callback.as_deref()) {
                 let info = crate::metric::Info {
                     elapsed: _start.elapsed().unwrap_or_default(),
                     statement: $stmt,
@@ -34,21 +34,4 @@ mod inner {
         }};
     }
     pub(crate) use metric;
-    #[allow(unused_macros)]
-    macro_rules! metric_ok {
-        ($metric_callback:expr, $stmt:expr, $code:block) => {{
-            let _start = std::time::SystemTime::now();
-            let res = $code;
-            if let Some(callback) = $metric_callback.as_deref() {
-                let info = crate::metric::Info {
-                    elapsed: _start.elapsed().unwrap_or_default(),
-                    statement: $stmt,
-                    failed: false,
-                };
-                callback(&info);
-            }
-            res
-        }};
-    }
-    pub(crate) use metric_ok;
 }

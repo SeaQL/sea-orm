@@ -5,9 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.9.0 - Pending
+## 0.9.0 - 2022-07-11
 
-* Improve sea-orm-cli logging (#735)
+### New Features
+
+* Cursor pagination (#822)
+* Custom join on conditions (#793)
+* `DeriveMigrationName` and `sea_orm_migration::util::get_file_stem` (#736)
+* `FromJsonQueryResult` for deserializing `Json` from query result (#794)
+
+### Enhancements
+
+* Added `sqlx_logging_level` to `ConnectOptions` (#800)
+* Added `num_items_and_pages` to `Paginator` (#768)
+* Added `TryFromU64` for `time` (#849)
+* Added `Insert::on_conflict` (#791)
+* Added `QuerySelect::join_as` and `QuerySelect::join_as_rev` (#852)
+* Include column name in `TryGetError::Null` (#853)
+* [sea-orm-cli] Improve logging (#735)
+* [sea-orm-cli] Generate enum with numeric like variants (#588)
+* [sea-orm-cli] Allow old pending migration to be applied (#755)
+* [sea-orm-cli] Skip generating entity for ignored tables (#837)
+* [sea-orm-cli] Generate code for `time` crate (#724)
+* [sea-orm-cli] Add various blob column types (#850)
+* [sea-orm-cli] Generate entity files with Postgres's schema name (#422)
+
+### Upgrades
+
+* Upgrade `clap` to 3.2 (#706)
+* Upgrade `time` to 0.3 (#834)
+* Upgrade `sqlx` to 0.6 (#834)
+* Upgrade `uuid` to 1.0 (#834)
+* Upgrade `sea-query` to 0.26 (#834)
+* Upgrade `sea-schema` to 0.9 (#834)
+
+### House keeping
+
+* Refactor stream metrics (#778)
+
+### Bug Fixes
+
+* [sea-orm-cli] skip checking connection string for credentials (#851)
+
+### Breaking changes
+
+* `SelectTwoMany::one()` has been dropped (#813), you can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity, then use [`ModelTrait::find_related`] on the model.
 
 ## sea-orm-migration 0.8.3
 
