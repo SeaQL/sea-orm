@@ -39,6 +39,10 @@ cargo run -- generate entity -u postgres://sea:sea@localhost/bakery -s public -o
     ```sh
     cargo run -- migrate init
     ```
+- Generate a new migration file
+    ```sh
+    cargo run -- migrate generate --migration-name NAME_OF_MIGRATION
+    ```
 - Apply all pending migrations
     ```sh
     cargo run -- migrate
