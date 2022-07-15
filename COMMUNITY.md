@@ -9,6 +9,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Caido](https://caido.io/) | A lightweight web security auditing toolkit
 - [Svix](https://www.svix.com/) ([repository](https://github.com/svix/svix-webhooks)) | The enterprise ready webhooks service
 - [Sensei](https://l2.technology/sensei) ([repository](https://github.com/L2-Technology/sensei)) | A Bitcoin lightning node implementation
+- [Spyglass](https://github.com/a5huynh/spyglass) | 🔭 A personal search engine that indexes what you want w/ a simple set of rules.
 
 ### Open Source Projects
 
@@ -36,3 +37,8 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Quasar](https://github.com/Technik97/Quasar) | Rust REST API using Actix-Web, SeaOrm and Postgres with Svelte Typescript Frontend
 - [snmp-sim-rust](https://github.com/sonalake/snmp-sim-rust) | SNMP Simulator
 - [template_flow](https://github.com/hilary888/template_flow) | An experiment exploring replacing placeholders in pre-prepared templates with their actual values
+- [actix-react-starter-template](https://github.com/aslamplr/actix-react-starter-template) | Actix web + SeaORM + React + Redux + Redux Saga project starter template
+- [ZAPP](https://zapp.epics.dev) ([repository](https://github.com/EpicsDAO/zapp)) | ZAPP is a serverless framework made by Rust. Quickly build a scalable GraphQL API web server.
+- [poem_admin](https://github.com/lingdu1234/poem_admin) | An admin panel built with poem, **Sea-orm** and Vue 3.
+- [VeryRezsi](https://github.com/szattila98/veryrezsi) | VeryRezsi is a subscription and expense calculator web-application. Powered by SvelteKit on client side, and Rust on server side.
+- [todo-rs](https://github.com/anshulxyz/todo-rs/) | A TUI ToDo-app written in Rust using Cursive library and SeaORM for SQLite

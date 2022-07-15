@@ -14,10 +14,13 @@ impl ActiveEnum {
         let enum_name = &self.enum_name;
         let enum_iden = format_ident!("{}", enum_name.to_camel_case());
         let values = &self.values;
-        let variants = self
-            .values
-            .iter()
-            .map(|v| format_ident!("{}", v.to_camel_case()));
+        let variants = self.values.iter().map(|v| v.trim()).map(|v| {
+            if v.chars().all(|c| c.is_numeric()) {
+                format_ident!("_{}", v)
+            } else {
+                format_ident!("{}", v.to_camel_case())
+            }
+        });
 
         let extra_derive = with_serde.extra_derive();
 

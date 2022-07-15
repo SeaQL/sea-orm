@@ -87,8 +87,8 @@ jobs:
       - id: git-log
         run: echo "::set-output name=message::$(git log --no-merges -1 --oneline)"
 
-  clippy-fmt:
-    name: Clippy + Fmt
+  clippy:
+    name: Clippy
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -97,23 +97,44 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-          components: clippy, rustfmt
+          components: clippy
           override: true
 
-      # Make sure files are formatted
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: >
-            --all
-
-      # Run clippy
-      - uses: actions-rs/cargo@v1
+      - name: Run clippy on `sea-orm` workspace
+        uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: >
-            --all-targets
             --all
+            --
+            -D warnings
+
+      - name: Run clippy on `sea-orm-cli`
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: >
+            --manifest-path sea-orm-cli/Cargo.toml
+            --
+            -D warnings
+
+      - name: Run clippy on `sea-orm-migration`
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: >
+            --manifest-path sea-orm-migration/Cargo.toml
+            --
+            -D warnings
+
+      - name: Run clippy on `sea-orm-rocket`
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: >
+            --manifest-path sea-orm-rocket/Cargo.toml
+            --
+            -D warnings
 
   compile-sqlite:
     name: Compile SQLite
@@ -137,7 +158,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -176,7 +197,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -215,7 +236,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -380,7 +401,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -449,7 +470,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -518,7 +539,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -550,7 +571,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [14, 13, 12]
+        version: [14.4]
         runtime: [tokio]
         tls: [native-tls]
     services:
@@ -576,7 +597,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry

@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+#![allow(missing_docs, unreachable_code, unused_variables)]
 
 use std::{pin::Pin, task::Poll};
 
@@ -16,6 +16,8 @@ use tracing::instrument;
 
 use crate::{DbErr, InnerConnection, QueryResult, Statement};
 
+use super::metric::MetricStream;
+
 /// Creates a stream from a [QueryResult]
 #[ouroboros::self_referencing]
 pub struct QueryStream {
@@ -24,7 +26,7 @@ pub struct QueryStream {
     metric_callback: Option<crate::metric::Callback>,
     #[borrows(mut conn, stmt, metric_callback)]
     #[not_covariant]
-    stream: Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send + 'this>>,
+    stream: MetricStream<'this>,
 }
 
 #[cfg(feature = "sqlx-mysql")]
@@ -124,38 +126,43 @@ impl QueryStream {
                 #[cfg(feature = "sqlx-mysql")]
                 InnerConnection::MySql(c) => {
                     let query = crate::driver::sqlx_mysql::sqlx_query(stmt);
-                    crate::metric::metric_ok!(_metric_callback, stmt, {
-                        Box::pin(
-                            c.fetch(query)
-                                .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err),
-                        )
-                    })
+                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
+                    let stream = c
+                        .fetch(query)
+                        .map_ok(Into::into)
+                        .map_err(crate::sqlx_error_to_query_err);
+                    let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
+                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
                 #[cfg(feature = "sqlx-postgres")]
                 InnerConnection::Postgres(c) => {
                     let query = crate::driver::sqlx_postgres::sqlx_query(stmt);
-                    crate::metric::metric_ok!(_metric_callback, stmt, {
-                        Box::pin(
-                            c.fetch(query)
-                                .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err),
-                        )
-                    })
+                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
+                    let stream = c
+                        .fetch(query)
+                        .map_ok(Into::into)
+                        .map_err(crate::sqlx_error_to_query_err);
+                    let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
+                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
                 #[cfg(feature = "sqlx-sqlite")]
                 InnerConnection::Sqlite(c) => {
                     let query = crate::driver::sqlx_sqlite::sqlx_query(stmt);
-                    crate::metric::metric_ok!(_metric_callback, stmt, {
-                        Box::pin(
-                            c.fetch(query)
-                                .map_ok(Into::into)
-                                .map_err(crate::sqlx_error_to_query_err),
-                        )
-                    })
+                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
+                    let stream = c
+                        .fetch(query)
+                        .map_ok(Into::into)
+                        .map_err(crate::sqlx_error_to_query_err);
+                    let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
+                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
                 #[cfg(feature = "mock")]
-                InnerConnection::Mock(c) => c.fetch(stmt),
+                InnerConnection::Mock(c) => {
+                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
+                    let stream = c.fetch(stmt);
+                    let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
+                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
+                }
                 #[allow(unreachable_patterns)]
                 _ => unreachable!(),
             },
@@ -172,6 +179,6 @@ impl Stream for QueryStream {
         cx: &mut std::task::Context<'_>,
     ) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
-        this.with_stream_mut(|stream| stream.as_mut().poll_next(cx))
+        this.with_stream_mut(|stream| Pin::new(stream).poll_next(cx))
     }
 }

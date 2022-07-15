@@ -13,6 +13,7 @@ pub use db_connection::*;
 #[cfg(feature = "mock")]
 pub use mock::*;
 pub use statement::*;
+use std::borrow::Cow;
 pub use stream::*;
 use tracing::instrument;
 pub use transaction::*;
@@ -24,7 +25,7 @@ use crate::DbErr;
 pub struct Database;
 
 /// Defines the configuration options of a database
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConnectOptions {
     /// The URI of the database
     pub(crate) url: String,
@@ -41,6 +42,10 @@ pub struct ConnectOptions {
     pub(crate) max_lifetime: Option<Duration>,
     /// Enable SQLx statement logging
     pub(crate) sqlx_logging: bool,
+    /// SQLx statement logging level (ignored if `sqlx_logging` is false)
+    pub(crate) sqlx_logging_level: log::LevelFilter,
+    /// set sqlcipher key
+    pub(crate) sqlcipher_key: Option<Cow<'static, str>>,
 }
 
 impl Database {
@@ -104,6 +109,8 @@ impl ConnectOptions {
             idle_timeout: None,
             max_lifetime: None,
             sqlx_logging: true,
+            sqlx_logging_level: log::LevelFilter::Info,
+            sqlcipher_key: None,
         }
     }
 
@@ -125,7 +132,7 @@ impl ConnectOptions {
             opt = opt.min_connections(min_connections);
         }
         if let Some(connect_timeout) = self.connect_timeout {
-            opt = opt.connect_timeout(connect_timeout);
+            opt = opt.acquire_timeout(connect_timeout);
         }
         if let Some(idle_timeout) = self.idle_timeout {
             opt = opt.idle_timeout(Some(idle_timeout));
@@ -205,5 +212,26 @@ impl ConnectOptions {
     /// Get whether SQLx statement logging is enabled
     pub fn get_sqlx_logging(&self) -> bool {
         self.sqlx_logging
+    }
+
+    /// Set SQLx statement logging level (default INFO)
+    /// (ignored if `sqlx_logging` is `false`)
+    pub fn sqlx_logging_level(&mut self, level: log::LevelFilter) -> &mut Self {
+        self.sqlx_logging_level = level;
+        self
+    }
+
+    /// Get the level of SQLx statement logging
+    pub fn get_sqlx_logging_level(&self) -> log::LevelFilter {
+        self.sqlx_logging_level
+    }
+
+    /// set key for sqlcipher
+    pub fn sqlcipher_key<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<Cow<'static, str>>,
+    {
+        self.sqlcipher_key = Some(value.into());
+        self
     }
 }
