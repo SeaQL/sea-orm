@@ -397,6 +397,7 @@ mod tests {
             "f32",
             "f64",
             "Vec<u8>",
+            "Vec<u8>",
             "bool",
             "TimeDate",
             "TimeTime",
