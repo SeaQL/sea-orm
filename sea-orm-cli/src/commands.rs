@@ -253,6 +253,14 @@ pub fn run_migrate_command(
             return Ok(());
         }
         Some(MigrateSubcommands::Generate { migration_name }) => {
+            // Make sure the migration name doesn't contain any characters that
+            // are invalid module names in Rust.
+            if migration_name.contains('-') {
+                return Err(Box::new(MigrationCommandError::InvalidName(
+                    "Invalid character used in migration name".to_string(),
+                )));
+            }
+
             println!("Generating new migration...");
 
             // build new migration filename
@@ -309,6 +317,23 @@ pub fn run_migrate_command(
 
     Ok(())
 }
+
+#[derive(Debug)]
+enum MigrationCommandError {
+    InvalidName(String),
+}
+
+impl Display for MigrationCommandError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MigrationCommandError::InvalidName(name) => {
+                write!(f, "Invalid migration name: {}", name)
+            }
+        }
+    }
+}
+
+impl Error for MigrationCommandError {}
 
 fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(), Box<dyn Error>> {
     let migration_filepath = Path::new(migration_dir)
