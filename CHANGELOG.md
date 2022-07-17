@@ -11,7 +11,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Remove unnecessary `async_trait` (#737)
 
-## 0.9.0 - 2022-07-11
+## 0.9.1 - Pending
+
+* [sea-orm-cli] Codegen support for `VarBinary` column type
+
+## 0.9.0 - 2022-07-17
 
 ### New Features
 
