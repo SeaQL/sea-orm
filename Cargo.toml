@@ -3,7 +3,7 @@ members = [".", "sea-orm-macros", "sea-orm-codegen"]
 
 [package]
 name = "sea-orm"
-version = "0.8.0"
+version = "0.9.0"
 authors = ["Chris Tsang <tyt2y7@gmail.com>"]
 edition = "2021"
 description = "🐚 An async & dynamic ORM for Rust"
@@ -24,18 +24,18 @@ path = "src/lib.rs"
 [dependencies]
 async-stream = { version = "^0.3" }
 async-trait = { version = "^0.1" }
-chrono = { version = "^0", optional = true }
+chrono = { version = "^0.4", optional = true }
 time = { version = "^0.3", optional = true }
 futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
-log = { version = "^0" }
-tracing = { version = "0.1", features = ["log"] }
+log = { version = "^0.4" }
+tracing = { version = "^0.1", features = ["log"] }
 rust_decimal = { version = "^1", optional = true }
-sea-orm-macros = { version = "^0.8.0", path = "sea-orm-macros", optional = true }
+sea-orm-macros = { version = "^0.9.0", path = "sea-orm-macros", optional = true }
 sea-query = { version = "^0.26", features = ["thread-safe"] }
 sea-strum = { version = "^0.23", features = ["derive", "sea-orm"] }
 serde = { version = "^1.0", features = ["derive"] }
-serde_json = { version = "^1", optional = true }
+serde_json = { version = "^1.0", optional = true }
 sqlx = { version = "^0.6", optional = true }
 uuid = { version = "^1", features = ["serde", "v4"], optional = true }
 ouroboros = "0.15"

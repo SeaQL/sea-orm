@@ -33,6 +33,7 @@
 //! Join our Discord server to chat with others in the SeaQL community!
 //!
 //! + [Getting Started](https://www.sea-ql.org/SeaORM/docs/index)
+//! + [Step-by-step Tutorials](https://www.sea-ql.org/sea-orm-tutorial/)
 //! + [Usage Example](https://github.com/SeaQL/sea-orm/tree/master/examples/basic)
 //!
 //! Integration examples
