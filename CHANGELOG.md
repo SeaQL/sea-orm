@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.10.0 - Pending
+
+### House keeping
+
+* Remove unnecessary `async_trait` (#737)
+
 ## 0.9.0 - 2022-07-11
 
 ### New Features
