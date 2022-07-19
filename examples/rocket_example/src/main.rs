@@ -8,10 +8,10 @@ use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};
 use rocket::{Build, Request, Rocket};
 use rocket_dyn_templates::Template;
+use rocket_example_core::{Mutation, Query};
 use serde_json::json;
 
 use migration::MigratorTrait;
-use sea_orm::{entity::*, query::*};
 use sea_orm_rocket::{Connection, Database};
 
 mod pool;
@@ -33,14 +33,9 @@ async fn create(conn: Connection<'_, Db>, post_form: Form<post::Model>) -> Flash
 
     let form = post_form.into_inner();
 
-    post::ActiveModel {
-        title: Set(form.title.to_owned()),
-        text: Set(form.text.to_owned()),
-        ..Default::default()
-    }
-    .save(db)
-    .await
-    .expect("could not insert post");
+    Mutation::create_post(db, form)
+        .await
+        .expect("could not insert post");
 
     Flash::success(Redirect::to("/"), "Post successfully added.")
 }
@@ -53,26 +48,11 @@ async fn update(
 ) -> Flash<Redirect> {
     let db = conn.into_inner();
 
-    let post: post::ActiveModel = Post::find_by_id(id).one(db).await.unwrap().unwrap().into();
-
     let form = post_form.into_inner();
 
-    db.transaction::<_, (), sea_orm::DbErr>(|txn| {
-        Box::pin(async move {
-            post::ActiveModel {
-                id: post.id,
-                title: Set(form.title.to_owned()),
-                text: Set(form.text.to_owned()),
-            }
-            .save(txn)
-            .await
-            .expect("could not edit post");
-
-            Ok(())
-        })
-    })
-    .await
-    .unwrap();
+    Mutation::update_post_by_id(db, id, form)
+        .await
+        .expect("could not update post");
 
     Flash::success(Redirect::to("/"), "Post successfully edited.")
 }
@@ -93,17 +73,9 @@ async fn list(
         panic!("Page number cannot be zero");
     }
 
-    // Setup paginator
-    let paginator = Post::find()
-        .order_by_asc(post::Column::Id)
-        .paginate(db, posts_per_page);
-    let num_pages = paginator.num_pages().await.ok().unwrap();
-
-    // Fetch paginated posts
-    let posts = paginator
-        .fetch_page(page - 1)
+    let (posts, num_pages) = Query::find_posts_in_page(db, page, posts_per_page)
         .await
-        .expect("could not retrieve posts");
+        .expect("Cannot find posts in page");
 
     Template::render(
         "index",
@@ -121,8 +93,7 @@ async fn list(
 async fn edit(conn: Connection<'_, Db>, id: i32) -> Template {
     let db = conn.into_inner();
 
-    let post: Option<post::Model> = Post::find_by_id(id)
-        .one(db)
+    let post: Option<post::Model> = Query::find_post_by_id(db, id)
         .await
         .expect("could not find post");
 
@@ -138,18 +109,21 @@ async fn edit(conn: Connection<'_, Db>, id: i32) -> Template {
 async fn delete(conn: Connection<'_, Db>, id: i32) -> Flash<Redirect> {
     let db = conn.into_inner();
 
-    let post: post::ActiveModel = Post::find_by_id(id).one(db).await.unwrap().unwrap().into();
-
-    post.delete(db).await.unwrap();
+    Mutation::delete_post(db, id)
+        .await
+        .expect("could not delete post");
 
     Flash::success(Redirect::to("/"), "Post successfully deleted.")
 }
 
 #[delete("/")]
-async fn destroy(conn: Connection<'_, Db>) -> Result<(), rocket::response::Debug<sea_orm::DbErr>> {
+async fn destroy(conn: Connection<'_, Db>) -> Result<(), rocket::response::Debug<String>> {
     let db = conn.into_inner();
 
-    Post::delete_many().exec(db).await.unwrap();
+    Mutation::delete_all_posts(db)
+        .await
+        .map_err(|e| e.to_string())?;
+
     Ok(())
 }
 

@@ -6,11 +6,12 @@ edition = "2021"
 publish = false
 
 [workspace]
-members = [".", "entity", "migration"]
+members = [".", "core", "entity", "migration"]
 
 [dependencies]
 async-stream = { version = "^0.3" }
 async-trait = { version = "0.1" }
+rocket-example-core = { path = "core" }
 futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 rocket = { version = "0.5.0-rc.1", features = [
@@ -26,13 +27,3 @@ migration = { path = "migration" }
 [dependencies.sea-orm-rocket]
 path = "../../sea-orm-rocket/lib" # remove this line in your own project and use the git line
 # git = "https://github.com/SeaQL/sea-orm"
-
-[dependencies.sea-orm]
-path = "../../" # remove this line in your own project
-version = "^0.9.0" # sea-orm version
-features = [
-  "runtime-tokio-native-tls",
-  "sqlx-postgres",
-  # "sqlx-mysql",
-  # "sqlx-sqlite",
-]
