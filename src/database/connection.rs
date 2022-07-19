@@ -1,8 +1,9 @@
 use crate::{
-    DatabaseTransaction, DbBackend, DbErr, ExecResult, QueryResult, Statement, TransactionError,
+    DatabaseTransaction, DbBackend, DbErr, ExecResult, QueryResult, Statement,
+    StatementBuilderPlugin, TransactionError,
 };
 use futures::Stream;
-use std::{future::Future, pin::Pin};
+use std::{future::Future, pin::Pin, sync::Arc};
 
 /// Creates constraints for any structure that can create a database connection
 /// and execute SQL statements
@@ -30,6 +31,17 @@ pub trait ConnectionTrait: Sync {
     /// Check if the connection is a test connection for the Mock database
     fn is_mock_connection(&self) -> bool {
         false
+    }
+
+    /// Try to get the connection pool.
+    #[cfg(feature = "sqlx-dep")]
+    fn try_get_pool<Db: sqlx::Database>(&self) -> Option<sqlx::Pool<Db>> {
+        None
+    }
+
+    /// Try to get the statement builder plugins of a connection.
+    fn try_get_plugin(&self) -> Option<Arc<dyn StatementBuilderPlugin>> {
+        None
     }
 }
 
