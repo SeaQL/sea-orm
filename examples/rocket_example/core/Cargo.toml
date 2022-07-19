@@ -17,3 +17,7 @@ features = [
   # "sqlx-mysql",
   # "sqlx-sqlite",
 ]
+
+[[test]]
+name = "mock"
+required-features = ["sea-orm/mock"]
