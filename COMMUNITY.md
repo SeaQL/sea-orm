@@ -6,7 +6,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 ### Startups
 
-- [My Data My Consent](https://mydatamyconsent.com/) | A platform that simplified data organizing and sharing
+- [My Data My Consent](https://mydatamyconsent.com/) | Online data sharing for people and businesses simplified
 - [Caido](https://caido.io/) | A lightweight web security auditing toolkit
 - [Svix](https://www.svix.com/) ([repository](https://github.com/svix/svix-webhooks)) | The enterprise ready webhooks service
 - [Sensei](https://l2.technology/sensei) ([repository](https://github.com/L2-Technology/sensei)) | A Bitcoin lightning node implementation
