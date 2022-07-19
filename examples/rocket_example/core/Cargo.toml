@@ -18,6 +18,9 @@ features = [
   # "sqlx-sqlite",
 ]
 
+[dev-dependencies]
+tokio = "1.20.0"
+
 [[test]]
 name = "mock"
 required-features = ["sea-orm/mock"]
