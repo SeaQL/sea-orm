@@ -15,3 +15,13 @@ pub use paginator::*;
 pub use query::*;
 pub use select::*;
 pub use update::*;
+
+#[derive(Debug)]
+pub enum ExecutorType {
+    Cursor,
+    Delete,
+    Insert,
+    Paginator,
+    Select,
+    Update,
+}
