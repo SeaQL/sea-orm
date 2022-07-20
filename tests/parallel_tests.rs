@@ -15,7 +15,7 @@ async fn main() -> Result<(), DbErr> {
     let fn_conn_opt = |url: &str| {
         ConnectOptions::new(url.to_string())
             .max_connections(10)
-            .acquire_timeout(Duration::from_secs(90))
+            .acquire_timeout(Duration::from_secs(120))
             .to_owned()
     };
     let ctx = TestContext::new_with_opt("features_parallel_tests", fn_conn_opt).await;
