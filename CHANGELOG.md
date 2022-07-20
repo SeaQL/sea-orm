@@ -13,7 +13,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.9.1 - Pending
 
-* [sea-orm-cli] Codegen support for `VarBinary` column type
+### Enhancements
+
+* [sea-orm-cli] Codegen support for `VarBinary` column type https://github.com/SeaQL/sea-orm/pull/746
+* [sea-orm-cli] Generate entity for SYSTEM VERSIONED tables on MariaDB https://github.com/SeaQL/sea-orm/pull/876
+
+### Bug Fixes
+
+* The `on_conflict` field in `RelationDef` and `RelationBuilder` should be marked as `Send` and `Sync` https://github.com/SeaQL/sea-orm/pull/898
 
 ## 0.9.0 - 2022-07-17
 
