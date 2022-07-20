@@ -301,12 +301,11 @@ impl DbBackend {
         statement.build(self)
     }
 
-    pub fn build_with_plugins<S, I, T, B>(&self, statement: &S, plugins: I) -> Statement
+    /// Build an SQL [Statement] while passing it to [StatementBuilderPlugin]s.
+    pub fn build_with_plugins<S, I>(&self, statement: &S, plugins: I) -> Statement
     where
         S: StatementBuilder,
-        I: IntoIterator<Item = T>,
-        T: AsRef<B>,
-        B: StatementBuilderPlugin,
+        I: IntoIterator<Item = std::sync::Arc<dyn StatementBuilderPlugin>>,
     {
         statement.build_with_plugins(self, plugins)
     }

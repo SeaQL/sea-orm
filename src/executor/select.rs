@@ -1,6 +1,6 @@
 use crate::{
     error::*, ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, ModelTrait,
-    PrimaryKeyToColumn, QueryLinter, QueryResult, Select, SelectA, SelectB, SelectTwo,
+    PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo,
     SelectTwoMany, Statement, StreamTrait, TryGetableMany,
 };
 use futures::{Stream, TryStreamExt};
@@ -423,12 +423,7 @@ where
         C: ConnectionTrait,
     {
         let builder = db.get_database_backend();
-        let stmt = if let Some(plugin) = db.try_get_plugin() {
-            builder.build_with_plugins(&self.query, &[*plugin])
-        } else {
-            builder.build(&self.query)
-        };
-        // let stmt = builder.build_with_plugins(&self.query, db.try_get_plugin());
+        let stmt = builder.build_with_plugins(&self.query, db.get_plugins());
         SelectorRaw {
             stmt,
             selector: self.selector,

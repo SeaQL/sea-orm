@@ -1,5 +1,5 @@
 use crate::{
-    error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, QueryLinter,
+    error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait,
     Statement,
 };
 use sea_query::DeleteStatement;
@@ -58,8 +58,10 @@ impl Deleter {
         C: ConnectionTrait,
     {
         let builder = db.get_database_backend();
-        let linter = QueryLinter::new(db);
-        exec_delete(builder.build_with_plugins(&self.query, [linter]), db)
+        exec_delete(
+            builder.build_with_plugins(&self.query, db.get_plugins()),
+            db,
+        )
     }
 }
 

@@ -20,16 +20,15 @@ pub trait StatementBuilder: IntoAnyStatement {
     /// Method to call in order to build a [Statement]
     fn build(&self, db_backend: &DbBackend) -> Statement;
 
-    fn build_with_plugins<I, T, B>(&self, db_backend: &DbBackend, plugins: I) -> Statement
+    /// Build a [Statement] while passing it to [StatementBuilderPlugin]s
+    fn build_with_plugins<I>(&self, db_backend: &DbBackend, plugins: I) -> Statement
     where
-        I: IntoIterator<Item = T>,
-        T: AsRef<B>,
-        B: StatementBuilderPlugin,
+        I: IntoIterator<Item = std::sync::Arc<dyn StatementBuilderPlugin>>,
     {
         let stmt = self.build(db_backend);
         let any_stmt = self.into_any_statement();
         for plugin in plugins {
-            plugin.as_ref().run(&any_stmt);
+            plugin.run(&any_stmt);
         }
         stmt
     }

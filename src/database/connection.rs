@@ -40,8 +40,8 @@ pub trait ConnectionTrait: Sync {
     }
 
     /// Try to get the statement builder plugins of a connection.
-    fn try_get_plugin<S: StatementBuilderPlugin>(&self) -> Option<Arc<S>> {
-        None
+    fn get_plugins(&self) -> Vec<Arc<dyn StatementBuilderPlugin>> {
+        Vec::new()
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::{
     error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert, IntoActiveModel,
-    Iterable, PrimaryKeyTrait, QueryLinter, SelectModel, SelectorRaw, Statement, TryFromU64,
+    Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
 };
 use sea_query::{
     Alias, Expr, FromValueTuple, Iden, InsertStatement, IntoColumnRef, Query, ValueTuple,
@@ -84,10 +84,9 @@ where
         A: 'a,
     {
         let builder = db.get_database_backend();
-        let linter = QueryLinter::new(db);
         exec_insert(
             self.primary_key,
-            builder.build_with_plugins(&self.query, [linter]),
+            builder.build_with_plugins(&self.query, db.get_plugins()),
             db,
         )
     }
