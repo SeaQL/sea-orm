@@ -1,18 +1,14 @@
 use pretty_assertions::assert_eq;
 use sea_orm::{
-    ColumnTrait, ColumnType, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
-    DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, ExecResult, Iterable, Schema,
-    Statement,
+    ColumnTrait, ColumnType, ConnectionTrait, Database, DatabaseBackend, DatabaseConnection,
+    DbBackend, DbConn, DbErr, EntityTrait, ExecResult, Iterable, Schema, Statement,
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
     Alias, Table, TableCreateStatement,
 };
 
-pub async fn setup<F>(base_url: &str, db_name: &str, fn_conn_opt: F) -> DatabaseConnection
-where
-    F: Fn(&str) -> ConnectOptions,
-{
+pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
     let db = if cfg!(feature = "sqlx-mysql") {
         let url = format!("{}/mysql", base_url);
         let db = Database::connect(&url).await.unwrap();
@@ -31,7 +27,7 @@ where
             .await;
 
         let url = format!("{}/{}", base_url, db_name);
-        Database::connect(fn_conn_opt(&url)).await.unwrap()
+        Database::connect(&url).await.unwrap()
     } else if cfg!(feature = "sqlx-postgres") {
         let url = format!("{}/postgres", base_url);
         let db = Database::connect(&url).await.unwrap();
@@ -50,9 +46,9 @@ where
             .await;
 
         let url = format!("{}/{}", base_url, db_name);
-        Database::connect(fn_conn_opt(&url)).await.unwrap()
+        Database::connect(&url).await.unwrap()
     } else {
-        Database::connect(fn_conn_opt(base_url)).await.unwrap()
+        Database::connect(base_url).await.unwrap()
     };
 
     db

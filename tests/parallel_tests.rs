@@ -2,8 +2,7 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, ConnectOptions, DatabaseConnection, IntoActiveModel, Set};
-use std::time::Duration;
+use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel, Set};
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -12,13 +11,7 @@ use std::time::Duration;
     feature = "sqlx-postgres"
 ))]
 async fn main() -> Result<(), DbErr> {
-    let fn_conn_opt = |url: &str| {
-        ConnectOptions::new(url.to_string())
-            .max_connections(10)
-            .acquire_timeout(Duration::from_secs(120))
-            .to_owned()
-    };
-    let ctx = TestContext::new_with_opt("features_parallel_tests", fn_conn_opt).await;
+    let ctx = TestContext::new("features_parallel_tests").await;
     create_tables(&ctx.db).await?;
     crud_in_parallel(&ctx.db).await?;
     ctx.delete().await;
@@ -120,25 +113,6 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
     )?;
 
     assert_eq!(Metadata::find().all(db).await?, vec![]);
-
-    const SIZE: usize = 10_000;
-    let mut handles = Vec::with_capacity(SIZE);
-    for _ in 0..SIZE {
-        handles.push(
-            metadata::Model {
-                uuid: Uuid::new_v4(),
-                ty: "Type".to_owned(),
-                key: "service_charge".to_owned(),
-                value: "1.1".to_owned(),
-                bytes: vec![1, 2, 3],
-                date: None,
-                time: None,
-            }
-            .into_active_model()
-            .insert(db),
-        );
-    }
-    futures::future::try_join_all(handles).await?;
 
     Ok(())
 }
