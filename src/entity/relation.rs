@@ -62,7 +62,7 @@ pub struct RelationDef {
     /// `UPDATE` Operation is performed
     pub on_update: Option<ForeignKeyAction>,
     /// Custom join ON condition
-    pub on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition>>,
+    pub on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
     /// The name of foreign key constraint
     pub fk_name: Option<String>,
 }
@@ -85,7 +85,7 @@ impl std::fmt::Debug for RelationDef {
 
 fn debug_on_condition(
     d: &mut core::fmt::DebugStruct<'_, '_>,
-    on_condition: &Option<Box<dyn Fn(DynIden, DynIden) -> Condition>>,
+    on_condition: &Option<Box<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
 ) {
     match on_condition {
         Some(func) => {
@@ -118,7 +118,7 @@ where
     is_owner: bool,
     on_delete: Option<ForeignKeyAction>,
     on_update: Option<ForeignKeyAction>,
-    on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition>>,
+    on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
     fk_name: Option<String>,
 }
 
@@ -190,7 +190,7 @@ impl RelationDef {
     /// );
     pub fn on_condition<F>(mut self, f: F) -> Self
     where
-        F: Fn(DynIden, DynIden) -> Condition + 'static,
+        F: Fn(DynIden, DynIden) -> Condition + 'static + Send + Sync,
     {
         self.on_condition = Some(Box::new(f));
         self
@@ -270,7 +270,7 @@ where
     /// denoting the left-hand side and right-hand side table in the join expression.
     pub fn on_condition<F>(mut self, f: F) -> Self
     where
-        F: Fn(DynIden, DynIden) -> Condition + 'static,
+        F: Fn(DynIden, DynIden) -> Condition + 'static + Send + Sync,
     {
         self.on_condition = Some(Box::new(f));
         self
@@ -301,5 +301,21 @@ where
             on_condition: b.on_condition,
             fk_name: b.fk_name,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        tests_cfg::{cake, fruit},
+        RelationBuilder, RelationDef,
+    };
+
+    #[test]
+    fn assert_relation_traits() {
+        fn assert_send_sync<T: Send + Sync>() {}
+
+        assert_send_sync::<RelationDef>();
+        assert_send_sync::<RelationBuilder<cake::Entity, fruit::Entity>>();
     }
 }
