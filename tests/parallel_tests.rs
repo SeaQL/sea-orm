@@ -114,5 +114,24 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     assert_eq!(Metadata::find().all(db).await?, vec![]);
 
+    const SIZE: usize = 10_000;
+    let mut handles = Vec::with_capacity(SIZE);
+    for _ in 0..SIZE {
+        handles.push(
+            metadata::Model {
+                uuid: Uuid::new_v4(),
+                ty: "Type".to_owned(),
+                key: "service_charge".to_owned(),
+                value: "1.1".to_owned(),
+                bytes: vec![1, 2, 3],
+                date: None,
+                time: None,
+            }
+            .into_active_model()
+            .insert(db),
+        );
+    }
+    futures::future::try_join_all(handles).await?;
+
     Ok(())
 }
