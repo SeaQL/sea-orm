@@ -1,7 +1,7 @@
 use crate::{
     error::*, ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, ModelTrait,
-    PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo,
-    SelectTwoMany, Statement, StreamTrait, TryGetableMany,
+    PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement,
+    StreamTrait, TryGetableMany,
 };
 use futures::{Stream, TryStreamExt};
 use sea_query::SelectStatement;

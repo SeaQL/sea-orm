@@ -16,6 +16,7 @@ pub use query::*;
 pub use select::*;
 pub use update::*;
 
+#[allow(missing_docs)]
 #[derive(Debug)]
 pub enum ExecutorType {
     Cursor,

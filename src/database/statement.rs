@@ -34,6 +34,8 @@ pub trait StatementBuilder: IntoAnyStatement {
     }
 }
 
+/// Represents all possible queries
+#[allow(missing_docs)]
 #[derive(Debug)]
 pub enum AnyStatement<'a> {
     Insert(&'a sea_query::InsertStatement),
@@ -54,11 +56,15 @@ pub enum AnyStatement<'a> {
     TypeDrop(&'a sea_query::extension::postgres::TypeDropStatement),
 }
 
+/// Conversion into an [AnyStatement].
 pub trait IntoAnyStatement {
+    /// Creates an [AnyStatement] from a value.
     fn into_any_statement(&self) -> AnyStatement;
 }
 
+/// A plugin that can be called while building a [Statement].
 pub trait StatementBuilderPlugin {
+    /// Passes the [Statement] to the plugin.
     fn run(&self, stmt: &AnyStatement);
 }
 

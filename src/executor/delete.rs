@@ -1,6 +1,5 @@
 use crate::{
-    error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait,
-    Statement,
+    error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, Statement,
 };
 use sea_query::DeleteStatement;
 use std::future::Future;
