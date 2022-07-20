@@ -2,7 +2,8 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel, Set};
+use sea_orm::{entity::prelude::*, ConnectOptions, DatabaseConnection, IntoActiveModel, Set};
+use std::time::Duration;
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -11,7 +12,13 @@ use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel, Set};
     feature = "sqlx-postgres"
 ))]
 async fn main() -> Result<(), DbErr> {
-    let ctx = TestContext::new("features_parallel_tests").await;
+    let fn_conn_opt = |url: &str| {
+        ConnectOptions::new(url.to_string())
+            .max_connections(10)
+            .acquire_timeout(Duration::from_secs(90))
+            .to_owned()
+    };
+    let ctx = TestContext::new_with_opt("features_parallel_tests", fn_conn_opt).await;
     create_tables(&ctx.db).await?;
     crud_in_parallel(&ctx.db).await?;
     ctx.delete().await;
