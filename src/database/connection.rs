@@ -40,7 +40,7 @@ pub trait ConnectionTrait: Sync {
     }
 
     /// Try to get the statement builder plugins of a connection.
-    fn try_get_plugin(&self) -> Option<Arc<dyn StatementBuilderPlugin>> {
+    fn try_get_plugin<S: StatementBuilderPlugin>(&self) -> Option<Arc<S>> {
         None
     }
 }

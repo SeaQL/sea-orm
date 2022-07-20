@@ -423,8 +423,12 @@ where
         C: ConnectionTrait,
     {
         let builder = db.get_database_backend();
-        let linter = QueryLinter::new(db);
-        let stmt = builder.build_with_plugins(&self.query, [linter]);
+        let stmt = if let Some(plugin) = db.try_get_plugin() {
+            builder.build_with_plugins(&self.query, &[*plugin])
+        } else {
+            builder.build(&self.query)
+        };
+        // let stmt = builder.build_with_plugins(&self.query, db.try_get_plugin());
         SelectorRaw {
             stmt,
             selector: self.selector,

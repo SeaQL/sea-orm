@@ -301,11 +301,12 @@ impl DbBackend {
         statement.build(self)
     }
 
-    pub fn build_with_plugins<S, I, T>(&self, statement: &S, plugins: I) -> Statement
+    pub fn build_with_plugins<S, I, T, B>(&self, statement: &S, plugins: I) -> Statement
     where
         S: StatementBuilder,
         I: IntoIterator<Item = T>,
-        T: StatementBuilderPlugin,
+        T: AsRef<B>,
+        B: StatementBuilderPlugin,
     {
         statement.build_with_plugins(self, plugins)
     }
