@@ -162,7 +162,7 @@ impl RelationDef {
 
     /// Set custom join ON condition.
     ///
-    /// This method takes a closure with parameters
+    /// This method takes a closure with two parameters
     /// denoting the left-hand side and right-hand side table in the join expression.
     ///
     /// # Examples
