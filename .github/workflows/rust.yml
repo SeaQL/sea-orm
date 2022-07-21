@@ -146,6 +146,7 @@ jobs:
       }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         runtime: [async-std]
         tls: [native-tls, rustls]
@@ -185,6 +186,7 @@ jobs:
       }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         runtime: [actix]
         tls: [native-tls, rustls]
@@ -224,6 +226,7 @@ jobs:
       }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         runtime: [tokio]
         tls: [native-tls, rustls]
@@ -311,7 +314,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - id: set-matrix
-        run: echo "::set-output name=path_matrix::$(find examples -type f -name '*.toml' -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "examples/\(.)" ]')"
+        run: echo "::set-output name=path_matrix::$(find examples -type f -name 'Cargo.toml' -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "examples/\(.)" ]')"
     outputs:
       path_matrix: ${{ steps.set-matrix.outputs.path_matrix }}
 
@@ -321,6 +324,7 @@ jobs:
     needs: examples-matrix
     strategy:
       fail-fast: false
+      max-parallel: 12
       matrix:
         path: ${{ fromJson(needs.examples-matrix.outputs.path_matrix) }}
     steps:
@@ -353,7 +357,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - id: set-matrix
-        run: echo "::set-output name=path_matrix::$(find issues -type f -name '*.toml' -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "issues/\(.)" ]')"
+        run: echo "::set-output name=path_matrix::$(find issues -type f -name 'Cargo.toml' -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "issues/\(.)" ]')"
     outputs:
       path_matrix: ${{ steps.set-matrix.outputs.path_matrix }}
 
