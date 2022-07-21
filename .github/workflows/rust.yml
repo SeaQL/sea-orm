@@ -343,8 +343,8 @@ jobs:
           args: >
             --manifest-path examples/${{ matrix.path }}/migration/Cargo.toml
 
-  issues:
-    name: Issues
+  issues-matrix:
+    name: Issues Matrix
     needs: init
     if: ${{ (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-issues == 'true') }}
     runs-on: ${{ matrix.os }}
@@ -352,7 +352,26 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        path: [86, 249, 262, 319, 324, 352, 356, 471, 630, 693]
+    steps:
+      - uses: actions/checkout@v2
+
+      - id: set-matrix
+        run: echo "::set-output name=path_matrix::$(find issues -type f -name '*.toml' -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "issues/\(.)" ]')"
+    outputs:
+      path_matrix: ${{ steps.set-matrix.outputs.path_matrix }}
+
+  issues:
+    name: Issues
+    needs:
+      - init
+      - issues-matrix
+    if: ${{ (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-issues == 'true') }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        path: ${{ fromJson(needs.issues-matrix.outputs.path_matrix) }}
     steps:
       - uses: actions/checkout@v2
 
@@ -366,13 +385,13 @@ jobs:
         with:
           command: build
           args: >
-            --manifest-path issues/${{ matrix.path }}/Cargo.toml
+            --manifest-path ${{ matrix.path }}
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: >
-            --manifest-path issues/${{ matrix.path }}/Cargo.toml
+            --manifest-path ${{ matrix.path }}
 
   sqlite:
     name: SQLite
