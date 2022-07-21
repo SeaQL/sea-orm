@@ -7,11 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.10.0 - Pending
 
-### House keeping
-
-* Remove unnecessary `async_trait` https://github.com/SeaQL/sea-orm/pull/737
-
-## 0.9.1 - Pending
+## 0.9.1 - 2022-07-22
 
 ### Enhancements
 
@@ -20,7 +16,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Bug Fixes
 
-* The `on_conflict` field in `RelationDef` and `RelationBuilder` should be marked as `Send` and `Sync` https://github.com/SeaQL/sea-orm/pull/898
+* `RelationDef` & `RelationBuilder` should be `Send` & `Sync` https://github.com/SeaQL/sea-orm/pull/898/files
+
+### House keeping
+
+* Remove unnecessary `async_trait` https://github.com/SeaQL/sea-orm/pull/737
 
 ## 0.9.0 - 2022-07-17
 
