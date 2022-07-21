@@ -9,57 +9,64 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### House keeping
 
-* Remove unnecessary `async_trait` (#737)
+* Remove unnecessary `async_trait` https://github.com/SeaQL/sea-orm/pull/737
 
 ## 0.9.1 - Pending
 
-* [sea-orm-cli] Codegen support for `VarBinary` column type
+### Enhancements
+
+* [sea-orm-cli] Codegen support for `VarBinary` column type https://github.com/SeaQL/sea-orm/pull/746
+* [sea-orm-cli] Generate entity for SYSTEM VERSIONED tables on MariaDB https://github.com/SeaQL/sea-orm/pull/876
+
+### Bug Fixes
+
+* The `on_conflict` field in `RelationDef` and `RelationBuilder` should be marked as `Send` and `Sync` https://github.com/SeaQL/sea-orm/pull/898
 
 ## 0.9.0 - 2022-07-17
 
 ### New Features
 
-* Cursor pagination (#822)
-* Custom join on conditions (#793)
-* `DeriveMigrationName` and `sea_orm_migration::util::get_file_stem` (#736)
-* `FromJsonQueryResult` for deserializing `Json` from query result (#794)
+* Cursor pagination https://github.com/SeaQL/sea-orm/pull/822
+* Custom join on conditions https://github.com/SeaQL/sea-orm/pull/793
+* `DeriveMigrationName` and `sea_orm_migration::util::get_file_stem` https://github.com/SeaQL/sea-orm/pull/736
+* `FromJsonQueryResult` for deserializing `Json` from query result https://github.com/SeaQL/sea-orm/pull/794
 
 ### Enhancements
 
-* Added `sqlx_logging_level` to `ConnectOptions` (#800)
-* Added `num_items_and_pages` to `Paginator` (#768)
-* Added `TryFromU64` for `time` (#849)
-* Added `Insert::on_conflict` (#791)
-* Added `QuerySelect::join_as` and `QuerySelect::join_as_rev` (#852)
-* Include column name in `TryGetError::Null` (#853)
-* [sea-orm-cli] Improve logging (#735)
-* [sea-orm-cli] Generate enum with numeric like variants (#588)
-* [sea-orm-cli] Allow old pending migration to be applied (#755)
-* [sea-orm-cli] Skip generating entity for ignored tables (#837)
-* [sea-orm-cli] Generate code for `time` crate (#724)
-* [sea-orm-cli] Add various blob column types (#850)
-* [sea-orm-cli] Generate entity files with Postgres's schema name (#422)
+* Added `sqlx_logging_level` to `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/800
+* Added `num_items_and_pages` to `Paginator` https://github.com/SeaQL/sea-orm/pull/768
+* Added `TryFromU64` for `time` https://github.com/SeaQL/sea-orm/pull/849
+* Added `Insert::on_conflict` https://github.com/SeaQL/sea-orm/pull/791
+* Added `QuerySelect::join_as` and `QuerySelect::join_as_rev` https://github.com/SeaQL/sea-orm/pull/852
+* Include column name in `TryGetError::Null` https://github.com/SeaQL/sea-orm/pull/853
+* [sea-orm-cli] Improve logging https://github.com/SeaQL/sea-orm/pull/735
+* [sea-orm-cli] Generate enum with numeric like variants https://github.com/SeaQL/sea-orm/pull/588
+* [sea-orm-cli] Allow old pending migration to be applied https://github.com/SeaQL/sea-orm/pull/755
+* [sea-orm-cli] Skip generating entity for ignored tables https://github.com/SeaQL/sea-orm/pull/837
+* [sea-orm-cli] Generate code for `time` crate https://github.com/SeaQL/sea-orm/pull/724
+* [sea-orm-cli] Add various blob column types https://github.com/SeaQL/sea-orm/pull/850
+* [sea-orm-cli] Generate entity files with Postgres's schema name https://github.com/SeaQL/sea-orm/pull/422
 
 ### Upgrades
 
-* Upgrade `clap` to 3.2 (#706)
-* Upgrade `time` to 0.3 (#834)
-* Upgrade `sqlx` to 0.6 (#834)
-* Upgrade `uuid` to 1.0 (#834)
-* Upgrade `sea-query` to 0.26 (#834)
-* Upgrade `sea-schema` to 0.9 (#834)
+* Upgrade `clap` to 3.2 https://github.com/SeaQL/sea-orm/pull/706
+* Upgrade `time` to 0.3 https://github.com/SeaQL/sea-orm/pull/834
+* Upgrade `sqlx` to 0.6 https://github.com/SeaQL/sea-orm/pull/834
+* Upgrade `uuid` to 1.0 https://github.com/SeaQL/sea-orm/pull/834
+* Upgrade `sea-query` to 0.26 https://github.com/SeaQL/sea-orm/pull/834
+* Upgrade `sea-schema` to 0.9 https://github.com/SeaQL/sea-orm/pull/834
 
 ### House keeping
 
-* Refactor stream metrics (#778)
+* Refactor stream metrics https://github.com/SeaQL/sea-orm/pull/778
 
 ### Bug Fixes
 
-* [sea-orm-cli] skip checking connection string for credentials (#851)
+* [sea-orm-cli] skip checking connection string for credentials https://github.com/SeaQL/sea-orm/pull/851
 
 ### Breaking changes
 
-* `SelectTwoMany::one()` has been dropped (#813), you can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity, then use [`ModelTrait::find_related`] on the model.
+* `SelectTwoMany::one()` has been dropped https://github.com/SeaQL/sea-orm/pull/813, you can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity, then use [`ModelTrait::find_related`] on the model.
 
 ## sea-orm-migration 0.8.3
 
