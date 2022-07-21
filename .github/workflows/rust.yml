@@ -639,4 +639,3 @@ jobs:
             --manifest-path sea-orm-migration/Cargo.toml
             --test '*'
             --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-
