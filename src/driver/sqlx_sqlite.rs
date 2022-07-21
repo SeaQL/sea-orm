@@ -208,6 +208,11 @@ impl SqlxSqlitePoolConnection {
     {
         self.metric_callback = Some(Arc::new(callback));
     }
+
+    /// Get the inner [sqlx::Pool].
+    pub fn get_pool(&self) -> sqlx::Pool<sqlx::Sqlite> {
+        self.pool.clone()
+    }
 }
 
 impl From<SqliteRow> for QueryResult {

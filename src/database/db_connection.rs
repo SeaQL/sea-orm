@@ -70,6 +70,17 @@ pub(crate) enum InnerConnection {
     Mock(std::sync::Arc<crate::MockDatabaseConnection>),
 }
 
+#[allow(missing_docs)]
+#[derive(Debug)]
+pub enum ConnectionPool {
+    #[cfg(feature = "sqlx-mysql")]
+    MySql(sqlx::Pool<sqlx::MySql>),
+    #[cfg(feature = "sqlx-postgres")]
+    Postgres(sqlx::Pool<sqlx::Postgres>),
+    #[cfg(feature = "sqlx-sqlite")]
+    Sqlite(sqlx::Pool<sqlx::Sqlite>),
+}
+
 impl Default for DatabaseConnection {
     fn default() -> Self {
         Self::Disconnected
@@ -163,6 +174,27 @@ impl ConnectionTrait for DatabaseConnection {
     #[cfg(feature = "mock")]
     fn is_mock_connection(&self) -> bool {
         matches!(self, DatabaseConnection::MockDatabaseConnection(..))
+    }
+
+    #[cfg(feature = "sqlx-dep")]
+    fn get_pool(&self) -> Option<ConnectionPool> {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn, ..) => {
+                Some(ConnectionPool::MySql(conn.get_pool()))
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn, ..) => {
+                Some(ConnectionPool::Postgres(conn.get_pool()))
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn, ..) => {
+                Some(ConnectionPool::Sqlite(conn.get_pool()))
+            }
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(conn, ..) => None,
+            DatabaseConnection::Disconnected => None,
+        }
     }
 }
 
@@ -299,11 +331,11 @@ impl DatabaseConnection {
     {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(conn, ..) => todo!(),
+            DatabaseConnection::SqlxMySqlPoolConnection(.., plugins) => plugins.extend(iter),
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(conn, ..) => todo!(),
+            DatabaseConnection::SqlxPostgresPoolConnection(.., plugins) => plugins.extend(iter),
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(_, plugins) => plugins.extend(iter),
+            DatabaseConnection::SqlxSqlitePoolConnection(.., plugins) => plugins.extend(iter),
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(..) => unimplemented!(),
             DatabaseConnection::Disconnected => unimplemented!(),

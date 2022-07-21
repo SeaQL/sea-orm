@@ -35,7 +35,7 @@ pub trait ConnectionTrait: Sync {
 
     /// Try to get the connection pool.
     #[cfg(feature = "sqlx-dep")]
-    fn try_get_pool<Db: sqlx::Database>(&self) -> Option<sqlx::Pool<Db>> {
+    fn get_pool(&self) -> Option<crate::ConnectionPool> {
         None
     }
 

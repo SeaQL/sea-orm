@@ -197,6 +197,11 @@ impl SqlxPostgresPoolConnection {
     {
         self.metric_callback = Some(Arc::new(callback));
     }
+
+    /// Get the inner [sqlx::Pool].
+    pub fn get_pool(&self) -> sqlx::Pool<sqlx::Postgres> {
+        self.pool.clone()
+    }
 }
 
 impl From<PgRow> for QueryResult {

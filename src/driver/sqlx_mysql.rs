@@ -197,6 +197,11 @@ impl SqlxMySqlPoolConnection {
     {
         self.metric_callback = Some(Arc::new(callback));
     }
+
+    /// Get the inner [sqlx::Pool].
+    pub fn get_pool(&self) -> sqlx::Pool<sqlx::MySql> {
+        self.pool.clone()
+    }
 }
 
 impl From<MySqlRow> for QueryResult {
