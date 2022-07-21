@@ -21,6 +21,9 @@ features = [
 [dev-dependencies]
 tokio = "1.20.0"
 
+[features]
+mock = ["sea-orm/mock"]
+
 [[test]]
 name = "mock"
-required-features = ["sea-orm/mock"]
+required-features = ["mock"]
