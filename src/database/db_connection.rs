@@ -118,7 +118,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(..) => DbBackend::Sqlite,
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn, ..) => conn.get_database_backend(),
+            DatabaseConnection::MockDatabaseConnection(conn) => conn.get_database_backend(),
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
     }
@@ -134,7 +134,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn, ..) => conn.execute(stmt).await,
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn, ..) => conn.execute(stmt),
+            DatabaseConnection::MockDatabaseConnection(conn) => conn.execute(stmt),
             DatabaseConnection::Disconnected => Err(DbErr::Conn("Disconnected".to_owned())),
         }
     }
@@ -150,7 +150,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn, ..) => conn.query_one(stmt).await,
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn, ..) => conn.query_one(stmt),
+            DatabaseConnection::MockDatabaseConnection(conn) => conn.query_one(stmt),
             DatabaseConnection::Disconnected => Err(DbErr::Conn("Disconnected".to_owned())),
         }
     }
@@ -166,7 +166,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn, ..) => conn.query_all(stmt).await,
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn, ..) => conn.query_all(stmt),
+            DatabaseConnection::MockDatabaseConnection(conn) => conn.query_all(stmt),
             DatabaseConnection::Disconnected => Err(DbErr::Conn("Disconnected".to_owned())),
         }
     }
@@ -192,9 +192,24 @@ impl ConnectionTrait for DatabaseConnection {
                 Some(ConnectionPool::Sqlite(conn.get_pool()))
             }
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn, ..) => None,
+            DatabaseConnection::MockDatabaseConnection(conn) => None,
             DatabaseConnection::Disconnected => None,
         }
+    }
+
+    fn get_plugins(&self) -> Vec<Arc<dyn StatementBuilderPlugin>> {
+        let plugins = match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(.., plugins) => plugins,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(.., plugins) => plugins,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(.., plugins) => plugins.as_slice(),
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(..) => &[],
+            DatabaseConnection::Disconnected => &[],
+        };
+        plugins.iter().map(|plugin| plugin.clone()).collect()
     }
 }
 
@@ -219,7 +234,7 @@ impl<'a> StreamTrait<'a> for DatabaseConnection {
                 #[cfg(feature = "sqlx-sqlite")]
                 DatabaseConnection::SqlxSqlitePoolConnection(conn, ..) => conn.stream(stmt).await?,
                 #[cfg(feature = "mock")]
-                DatabaseConnection::MockDatabaseConnection(conn, ..) => {
+                DatabaseConnection::MockDatabaseConnection(conn) => {
                     crate::QueryStream::from((Arc::clone(conn), stmt, None))
                 }
                 DatabaseConnection::Disconnected => panic!("Disconnected"),
@@ -240,7 +255,7 @@ impl TransactionTrait for DatabaseConnection {
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn, ..) => conn.begin().await,
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn, ..) => {
+            DatabaseConnection::MockDatabaseConnection(conn) => {
                 DatabaseTransaction::new_mock(Arc::clone(conn), None).await
             }
             DatabaseConnection::Disconnected => panic!("Disconnected"),
@@ -273,7 +288,7 @@ impl TransactionTrait for DatabaseConnection {
                 conn.transaction(_callback).await
             }
             #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn, ..) => {
+            DatabaseConnection::MockDatabaseConnection(conn) => {
                 let transaction = DatabaseTransaction::new_mock(Arc::clone(conn), None)
                     .await
                     .map_err(TransactionError::Connection)?;
