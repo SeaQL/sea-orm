@@ -10,7 +10,6 @@ use url::Url;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::pool::PoolConnection;
 
-#[cfg(feature = "mock")]
 use std::sync::Arc;
 
 /// Handle a database connection depending on the backend
@@ -25,7 +24,10 @@ pub enum DatabaseConnection {
     SqlxPostgresPoolConnection(crate::SqlxPostgresPoolConnection),
     /// Create a  SQLite database connection and pool
     #[cfg(feature = "sqlx-sqlite")]
-    SqlxSqlitePoolConnection(crate::SqlxSqlitePoolConnection),
+    SqlxSqlitePoolConnection(
+        crate::SqlxSqlitePoolConnection,
+        Vec<Arc<dyn StatementBuilderPlugin>>,
+    ),
     /// Create a  Mock database connection useful for testing
     #[cfg(feature = "mock")]
     MockDatabaseConnection(Arc<crate::MockDatabaseConnection>),
@@ -275,6 +277,23 @@ impl DatabaseConnection {
                 conn.set_metric_callback(_callback)
             }
             _ => {}
+        }
+    }
+
+    pub fn add_plugins<I>(&mut self, iter: I)
+    where
+        I: IntoIterator<Item = Arc<dyn StatementBuilderPlugin>>,
+    {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => todo!(),
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => todo!(),
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn, plugins) => plugins.extend(iter),
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(conn) => unimplemented!(),
+            DatabaseConnection::Disconnected => unimplemented!(),
         }
     }
 }

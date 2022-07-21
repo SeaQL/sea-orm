@@ -63,7 +63,7 @@ pub trait IntoAnyStatement {
 }
 
 /// A plugin that can be called while building a [Statement].
-pub trait StatementBuilderPlugin {
+pub trait StatementBuilderPlugin: Send + Sync {
     /// Passes the [Statement] to the plugin.
     fn run(&self, stmt: &AnyStatement);
 }
