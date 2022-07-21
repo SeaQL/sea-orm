@@ -18,10 +18,16 @@ use std::sync::Arc;
 pub enum DatabaseConnection {
     /// Create a MYSQL database connection and pool
     #[cfg(feature = "sqlx-mysql")]
-    SqlxMySqlPoolConnection(crate::SqlxMySqlPoolConnection),
+    SqlxMySqlPoolConnection(
+        crate::SqlxMySqlPoolConnection,
+        Vec<Arc<dyn StatementBuilderPlugin>>,
+    ),
     /// Create a  PostgreSQL database connection and pool
     #[cfg(feature = "sqlx-postgres")]
-    SqlxPostgresPoolConnection(crate::SqlxPostgresPoolConnection),
+    SqlxPostgresPoolConnection(
+        crate::SqlxPostgresPoolConnection,
+        Vec<Arc<dyn StatementBuilderPlugin>>,
+    ),
     /// Create a  SQLite database connection and pool
     #[cfg(feature = "sqlx-sqlite")]
     SqlxSqlitePoolConnection(
