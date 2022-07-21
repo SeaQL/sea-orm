@@ -65,6 +65,7 @@ impl SqlxSqliteConnector {
                     pool,
                     metric_callback: None,
                 },
+                Vec::new(),
             )),
             Err(e) => Err(sqlx_error_to_conn_err(e)),
         }
@@ -74,10 +75,13 @@ impl SqlxSqliteConnector {
 impl SqlxSqliteConnector {
     /// Instantiate a sqlx pool connection to a [DatabaseConnection]
     pub fn from_sqlx_sqlite_pool(pool: SqlitePool) -> DatabaseConnection {
-        DatabaseConnection::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection {
-            pool,
-            metric_callback: None,
-        })
+        DatabaseConnection::SqlxSqlitePoolConnection(
+            SqlxSqlitePoolConnection {
+                pool,
+                metric_callback: None,
+            },
+            Vec::new(),
+        )
     }
 }
 
