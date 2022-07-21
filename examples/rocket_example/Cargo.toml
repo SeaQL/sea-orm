@@ -6,24 +6,7 @@ edition = "2021"
 publish = false
 
 [workspace]
-members = [".", "core", "entity", "migration"]
+members = [".", "api", "core", "entity", "migration"]
 
 [dependencies]
-async-stream = { version = "^0.3" }
-async-trait = { version = "0.1" }
-rocket-example-core = { path = "core" }
-futures = { version = "^0.3" }
-futures-util = { version = "^0.3" }
-rocket = { version = "0.5.0-rc.1", features = [
-  "json",
-] }
-rocket_dyn_templates = { version = "0.1.0-rc.1", features = [
-  "tera",
-] }
-serde_json = { version = "^1" }
-entity = { path = "entity" }
-migration = { path = "migration" }
-
-[dependencies.sea-orm-rocket]
-path = "../../sea-orm-rocket/lib" # remove this line in your own project and use the git line
-# git = "https://github.com/SeaQL/sea-orm"
+rocket-example-api = { path = "api" }
