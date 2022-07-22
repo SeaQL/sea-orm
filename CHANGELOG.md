@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Bug Fixes
 
-* `RelationDef` & `RelationBuilder` should be `Send` & `Sync` https://github.com/SeaQL/sea-orm/pull/898/files
+* `RelationDef` & `RelationBuilder` should be `Send` & `Sync` https://github.com/SeaQL/sea-orm/pull/898
 
 ### House keeping
 
