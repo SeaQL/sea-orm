@@ -167,6 +167,10 @@ impl RelationDef {
     ///
     /// # Examples
     ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, DbBackend, tests_cfg::{cake, cake_filling}};
+    /// use sea_query::{Expr, IntoCondition};
+    /// 
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .join(
@@ -176,7 +180,7 @@ impl RelationDef {
     ///                 .rev()
     ///                 .on_condition(|_left, right| {
     ///                     Expr::tbl(right, cake_filling::Column::CakeId)
-    ///                         .gt(10)
+    ///                         .gt(10i32)
     ///                         .into_condition()
     ///                 })
     ///         )
@@ -188,6 +192,7 @@ impl RelationDef {
     ///     ]
     ///     .join(" ")
     /// );
+    /// ```
     pub fn on_condition<F>(mut self, f: F) -> Self
     where
         F: Fn(DynIden, DynIden) -> Condition + 'static + Send + Sync,
