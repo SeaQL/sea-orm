@@ -68,7 +68,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * `SelectTwoMany::one()` has been dropped https://github.com/SeaQL/sea-orm/pull/813, you can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity, then use [`ModelTrait::find_related`] on the model.
 * #### Feature flag revamp
-    We now adopt the [weak dependency](https://blog.rust-lang.org/2022/04/07/Rust-1.60.0.html#new-syntax-for-cargo-features) syntax in Cargo. That means the flags `["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid", "sqlx-time"]` are not needed and now removed. Instead, `with-time` will enable `sqlx?/time` only if `sqlx` is already enabled. Also, now the flags `with-json`, `with-chrono`, `with-rust_decimal`, `with-uuid`, `with-time` has to be specified manually.
+    We now adopt the [weak dependency](https://blog.rust-lang.org/2022/04/07/Rust-1.60.0.html#new-syntax-for-cargo-features) syntax in Cargo. That means the flags `["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid", "sqlx-time"]` are not needed and now removed. Instead, `with-time` will enable `sqlx?/time` only if `sqlx` is already enabled. As a consequence, now the features `with-json`, `with-chrono`, `with-rust_decimal`, `with-uuid`, `with-time` will not be enabled as a side-effects of enabling `sqlx`.
 
 ## sea-orm-migration 0.8.3
 
