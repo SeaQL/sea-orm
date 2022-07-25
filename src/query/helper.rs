@@ -8,7 +8,6 @@ use sea_query::{
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
-#[cfg(feature = "sqlx-postgres")]
 use sea_query::IntoColumnRef;
 
 // LINT: when the column does not appear in tables selected from
@@ -198,7 +197,6 @@ pub trait QuerySelect: Sized {
     ///     "SELECT DISTINCT ON (\"name\") \"cake\".\"id\", \"cake\".\"name\" FROM \"cake\" WHERE \"cake\".\"name\" LIKE '%cheese%'"
     /// );
     /// ```
-    #[cfg(feature = "sqlx-postgres")]
     fn distinct_on<C>(mut self, col: C) -> Self
     where
         C: IntoColumnRef,
