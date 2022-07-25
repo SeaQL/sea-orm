@@ -191,17 +191,18 @@ pub trait QuerySelect: Sized {
     ///         .filter(
     ///             Condition::all().add_option(input.name.map(|n| cake::Column::Name.contains(&n)))
     ///         )
-    ///         .distinct_on(cake::Column::Name)
+    ///         .distinct_on([cake::Column::Name])
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
     ///     "SELECT DISTINCT ON (\"name\") \"cake\".\"id\", \"cake\".\"name\" FROM \"cake\" WHERE \"cake\".\"name\" LIKE '%cheese%'"
     /// );
     /// ```
-    fn distinct_on<C>(mut self, col: C) -> Self
+    fn distinct_on<T, I>(mut self, cols: I) -> Self
     where
-        C: IntoColumnRef,
+        T: IntoColumnRef,
+        I: IntoIterator<Item = T>,
     {
-        self.query().distinct_on(vec![col]);
+        self.query().distinct_on(cols);
         self
     }
 
