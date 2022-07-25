@@ -37,6 +37,7 @@ Integration examples
 + [GraphQL Example](https://github.com/SeaQL/sea-orm/tree/master/examples/graphql_example)
 + [jsonrpsee Example](https://github.com/SeaQL/sea-orm/tree/master/examples/jsonrpsee_example)
 + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
++ [Salvo Example](https://github.com/SeaQL/sea-orm/tree/master/examples/salvo_example)
 
 ## Features
 
