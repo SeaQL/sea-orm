@@ -149,7 +149,7 @@ impl EntityWriter {
                 let column_info = entity
                     .columns
                     .iter()
-                    .map(|column| column.get_info())
+                    .map(|column| column.get_info(&context.date_time_crate))
                     .collect::<Vec<String>>();
 
                 info!("Generating {}", entity_file);
