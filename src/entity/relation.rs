@@ -170,7 +170,7 @@ impl RelationDef {
     /// ```
     /// use sea_orm::{entity::*, query::*, DbBackend, tests_cfg::{cake, cake_filling}};
     /// use sea_query::{Expr, IntoCondition};
-    /// 
+    ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .join(
