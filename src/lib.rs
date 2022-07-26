@@ -38,12 +38,14 @@
 //!
 //! Integration examples
 //!
-//! + [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
-//! + [Actix Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
+//! + [Actix v4 Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
+//! + [Actix v3 Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix3_example)
 //! + [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
-//! + [Poem Example](https://github.com/SeaQL/sea-orm/tree/master/examples/poem_example)
 //! + [GraphQL Example](https://github.com/SeaQL/sea-orm/tree/master/examples/graphql_example)
 //! + [jsonrpsee Example](https://github.com/SeaQL/sea-orm/tree/master/examples/jsonrpsee_example)
+//! + [Poem Example](https://github.com/SeaQL/sea-orm/tree/master/examples/poem_example)
+//! + [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
+//! + [Salvo Example](https://github.com/SeaQL/sea-orm/tree/master/examples/salvo_example)
 //! + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
 //!
 //! ## Features
