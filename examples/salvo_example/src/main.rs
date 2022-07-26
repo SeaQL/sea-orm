@@ -92,7 +92,7 @@ async fn edit(req: &mut Request, depot: &mut Depot) -> Result<Text<String>> {
     let state = depot
         .obtain::<AppState>()
         .ok_or_else(StatusError::internal_server_error)?;
-    let id = req.query::<i32>("id").unwrap_or_default();
+    let id = req.param::<i32>("id").unwrap_or_default();
     let post: post::Model = post::Entity::find_by_id(id)
         .one(&state.conn)
         .await
@@ -114,7 +114,7 @@ async fn update(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
     let state = depot
         .obtain::<AppState>()
         .ok_or_else(StatusError::internal_server_error)?;
-    let id = req.query::<i32>("id").unwrap_or_default();
+    let id = req.param::<i32>("id").unwrap_or_default();
     let form = req
         .extract_form::<post::Model>()
         .await
@@ -136,7 +136,7 @@ async fn delete(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
     let state = depot
         .obtain::<AppState>()
         .ok_or_else(StatusError::internal_server_error)?;
-    let id = req.query::<i32>("id").unwrap_or_default();
+    let id = req.param::<i32>("id").unwrap_or_default();
     let post: post::ActiveModel = post::Entity::find_by_id(id)
         .one(&state.conn)
         .await
