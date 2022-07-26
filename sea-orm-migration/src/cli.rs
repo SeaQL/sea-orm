@@ -20,12 +20,8 @@ where
     run_migrate(migrator, db, cli.command, cli.verbose).await;
 }
 
-pub async fn run_migrate<M>(
-    _: M,
-    db: &DbConn,
-    command: Option<MigrateSubcommands>,
-    verbose: bool,
-) where
+pub async fn run_migrate<M>(_: M, db: &DbConn, command: Option<MigrateSubcommands>, verbose: bool)
+where
     M: MigratorTrait,
 {
     let filter = match verbose {
