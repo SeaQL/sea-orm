@@ -164,10 +164,10 @@ impl Column {
         col_def
     }
 
-    pub fn get_info(&self) -> String {
+    pub fn get_info(&self, date_time_crate: &DateTimeCrate) -> String {
         let mut info = String::new();
         let type_info = self
-            .get_rs_type(&DateTimeCrate::Chrono)
+            .get_rs_type(date_time_crate)
             .to_string()
             .replace(' ', "");
         let col_info = self.col_info();
@@ -466,14 +466,14 @@ mod tests {
     #[test]
     fn test_get_info() {
         let column: Column = ColumnDef::new(Alias::new("id")).string().to_owned().into();
-        assert_eq!(column.get_info().as_str(), "Column `id`: Option<String>");
+        assert_eq!(column.get_info(&DateTimeCrate::Chrono).as_str(), "Column `id`: Option<String>");
 
         let column: Column = ColumnDef::new(Alias::new("id"))
             .string()
             .not_null()
             .to_owned()
             .into();
-        assert_eq!(column.get_info().as_str(), "Column `id`: String, not_null");
+        assert_eq!(column.get_info(&DateTimeCrate::Chrono).as_str(), "Column `id`: String, not_null");
 
         let column: Column = ColumnDef::new(Alias::new("id"))
             .string()
@@ -482,7 +482,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info().as_str(),
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
             "Column `id`: String, not_null, unique"
         );
 
@@ -494,8 +494,108 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info().as_str(),
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
             "Column `id`: String, auto_increment, not_null, unique"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("date_field"))
+        .date()
+        .not_null()
+        .to_owned()
+        .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            "Column `date_field`: Date, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("date_field"))
+        .date()
+        .not_null()
+        .to_owned()
+        .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Time).as_str(),
+            "Column `date_field`: TimeDate, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("time_field"))
+        .time()
+        .not_null()
+        .to_owned()
+        .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            "Column `time_field`: Time, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("time_field"))
+        .time()
+        .not_null()
+        .to_owned()
+        .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Time).as_str(),
+            "Column `time_field`: TimeTime, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("date_time_field"))
+        .date_time()
+        .not_null()
+        .to_owned()
+        .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            "Column `date_time_field`: DateTime, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("date_time_field"))
+        .date_time()
+        .not_null()
+        .to_owned()
+        .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Time).as_str(),
+            "Column `date_time_field`: TimeDateTime, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("timestamp_field"))
+        .timestamp()
+        .not_null()
+        .to_owned()
+        .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            "Column `timestamp_field`: DateTimeUtc, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("timestamp_field"))
+        .timestamp()
+        .not_null()
+        .to_owned()
+        .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Time).as_str(),
+            "Column `timestamp_field`: TimeDateTime, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("timestamp_with_timezone_field"))
+        .timestamp_with_time_zone()
+        .not_null()
+        .to_owned()
+        .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            "Column `timestamp_with_timezone_field`: DateTimeWithTimeZone, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("timestamp_with_timezone_field"))
+        .timestamp_with_time_zone()
+        .not_null()
+        .to_owned()
+        .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Time).as_str(),
+            "Column `timestamp_with_timezone_field`: TimeDateTimeWithTimeZone, not_null"
         );
     }
 
