@@ -29,14 +29,16 @@ use rocket::serde::{Deserialize, Serialize};
 /// # use rocket::launch;
 /// #[launch]
 /// fn rocket() -> _ {
-///     let figment = rocket::Config::figment()
-///         .merge(("databases.name", sea_orm_rocket::Config {
+///     let figment = rocket::Config::figment().merge((
+///         "databases.name",
+///         sea_orm_rocket::Config {
 ///             url: "db:specific@config&url".into(),
 ///             min_connections: None,
 ///             max_connections: 1024,
 ///             connect_timeout: 3,
 ///             idle_timeout: None,
-///         }));
+///         },
+///     ));
 ///
 ///     rocket::custom(figment)
 /// }
