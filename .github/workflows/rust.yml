@@ -56,7 +56,6 @@ on:
     branches:
       - master
       - 0.2.x
-      - pr/919
 
 env:
   CARGO_TERM_COLOR: always
