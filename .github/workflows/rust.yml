@@ -400,8 +400,14 @@ jobs:
           args: >
             --manifest-path ${{ matrix.path }}
 
-      - name: Run rustfmt
-        uses: actions-rs/cargo@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          components: rustfmt
+          override: true
+
+      - uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: >
