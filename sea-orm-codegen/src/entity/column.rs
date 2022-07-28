@@ -68,7 +68,7 @@ impl Column {
             },
             ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal".to_owned(),
             ColumnType::Uuid => "Uuid".to_owned(),
-            ColumnType::Binary(_) => "Vec<u8>".to_owned(),
+            ColumnType::Binary(_) | ColumnType::VarBinary(_) => "Vec<u8>".to_owned(),
             ColumnType::Boolean => "bool".to_owned(),
             ColumnType::Enum(name, _) => name.to_camel_case(),
             _ => unimplemented!(),
@@ -128,7 +128,9 @@ impl Column {
             }
             ColumnType::Time(_) => quote! { ColumnType::Time.def() },
             ColumnType::Date => quote! { ColumnType::Date.def() },
-            ColumnType::Binary(BlobSize::Blob(_)) => quote! { ColumnType::Binary.def() },
+            ColumnType::Binary(BlobSize::Blob(_)) | ColumnType::VarBinary(_) => {
+                quote! { ColumnType::Binary.def() }
+            }
             ColumnType::Binary(BlobSize::Tiny) => quote! { ColumnType::TinyBinary.def() },
             ColumnType::Binary(BlobSize::Medium) => quote! { ColumnType::MediumBinary.def() },
             ColumnType::Binary(BlobSize::Long) => quote! { ColumnType::LongBinary.def() },
@@ -164,10 +166,10 @@ impl Column {
         col_def
     }
 
-    pub fn get_info(&self) -> String {
+    pub fn get_info(&self, date_time_crate: &DateTimeCrate) -> String {
         let mut info = String::new();
         let type_info = self
-            .get_rs_type(&DateTimeCrate::Chrono)
+            .get_rs_type(date_time_crate)
             .to_string()
             .replace(' ', "");
         let col_info = self.col_info();
@@ -266,6 +268,7 @@ mod tests {
             make_col!("cake-filling-id", ColumnType::Float(None)),
             make_col!("CAKE_FILLING_ID", ColumnType::Double(None)),
             make_col!("CAKE-FILLING-ID", ColumnType::Binary(BlobSize::Blob(None))),
+            make_col!("CAKE-FILLING-ID", ColumnType::VarBinary(10)),
             make_col!("CAKE", ColumnType::Boolean),
             make_col!("date", ColumnType::Date),
             make_col!("time", ColumnType::Time(None)),
@@ -287,6 +290,7 @@ mod tests {
             "cake_id",
             "cake_id",
             "cake_id",
+            "cake_filling_id",
             "cake_filling_id",
             "cake_filling_id",
             "cake_filling_id",
@@ -321,6 +325,7 @@ mod tests {
             "CakeFillingId",
             "CakeFillingId",
             "CakeFillingId",
+            "CakeFillingId",
             "Cake",
             "Date",
             "Time",
@@ -350,6 +355,7 @@ mod tests {
             "u64",
             "f32",
             "f64",
+            "Vec<u8>",
             "Vec<u8>",
             "bool",
             "Date",
@@ -393,6 +399,7 @@ mod tests {
             "f32",
             "f64",
             "Vec<u8>",
+            "Vec<u8>",
             "bool",
             "TimeDate",
             "TimeTime",
@@ -434,6 +441,7 @@ mod tests {
             "ColumnType::Float.def()",
             "ColumnType::Double.def()",
             "ColumnType::Binary.def()",
+            "ColumnType::Binary.def()",
             "ColumnType::Boolean.def()",
             "ColumnType::Date.def()",
             "ColumnType::Time.def()",
@@ -460,14 +468,20 @@ mod tests {
     #[test]
     fn test_get_info() {
         let column: Column = ColumnDef::new(Alias::new("id")).string().to_owned().into();
-        assert_eq!(column.get_info().as_str(), "Column `id`: Option<String>");
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            "Column `id`: Option<String>"
+        );
 
         let column: Column = ColumnDef::new(Alias::new("id"))
             .string()
             .not_null()
             .to_owned()
             .into();
-        assert_eq!(column.get_info().as_str(), "Column `id`: String, not_null");
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            "Column `id`: String, not_null"
+        );
 
         let column: Column = ColumnDef::new(Alias::new("id"))
             .string()
@@ -476,7 +490,7 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info().as_str(),
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
             "Column `id`: String, not_null, unique"
         );
 
@@ -488,8 +502,108 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info().as_str(),
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
             "Column `id`: String, auto_increment, not_null, unique"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("date_field"))
+            .date()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            "Column `date_field`: Date, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("date_field"))
+            .date()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Time).as_str(),
+            "Column `date_field`: TimeDate, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("time_field"))
+            .time()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            "Column `time_field`: Time, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("time_field"))
+            .time()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Time).as_str(),
+            "Column `time_field`: TimeTime, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("date_time_field"))
+            .date_time()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            "Column `date_time_field`: DateTime, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("date_time_field"))
+            .date_time()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Time).as_str(),
+            "Column `date_time_field`: TimeDateTime, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("timestamp_field"))
+            .timestamp()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            "Column `timestamp_field`: DateTimeUtc, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("timestamp_field"))
+            .timestamp()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Time).as_str(),
+            "Column `timestamp_field`: TimeDateTime, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("timestamp_with_timezone_field"))
+            .timestamp_with_time_zone()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            "Column `timestamp_with_timezone_field`: DateTimeWithTimeZone, not_null"
+        );
+
+        let column: Column = ColumnDef::new(Alias::new("timestamp_with_timezone_field"))
+            .timestamp_with_time_zone()
+            .not_null()
+            .to_owned()
+            .into();
+        assert_eq!(
+            column.get_info(&DateTimeCrate::Time).as_str(),
+            "Column `timestamp_with_timezone_field`: TimeDateTimeWithTimeZone, not_null"
         );
     }
 

@@ -43,8 +43,8 @@ pub enum MigrateSubcommands {
     Generate {
         #[clap(
             value_parser,
-            long,
             required = true,
+            takes_value = true,
             help = "Name of the new migration"
         )]
         migration_name: String,
