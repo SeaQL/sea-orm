@@ -307,6 +307,109 @@ pub trait MigratorTrait: Send {
 
         Ok(())
     }
+
+    /// Apply or Rollback migrations to version
+    async fn change_to_version(db: &DbConn, version: &str) -> Result<(), DbErr> {
+        Self::up_to_version(db, version).await?;
+        Self::down_to_version(db, version).await
+    }
+
+    /// Apply migrations to version
+    async fn up_to_version(db: &DbConn, version: &str) -> Result<(), DbErr> {
+        let migrations = Self::prepare_migration(db, MigrationStatus::Pending, version).await?;
+        Self::exec_migration(db, MigrationStatus::Pending, migrations).await
+    }
+
+    /// Rollback migrations to version
+    async fn down_to_version(db: &DbConn, version: &str) -> Result<(), DbErr> {
+        let mut migrations = Self::prepare_migration(db, MigrationStatus::Applied, version).await?;
+        if !migrations.is_empty() {
+            if migrations[migrations.len() - 1].migration.name() == version {
+                migrations.pop();
+            }
+        }
+        Self::exec_migration(db, MigrationStatus::Applied, migrations).await
+    }
+
+    async fn exec_migration(
+        db: &DbConn,
+        status: MigrationStatus,
+        migrations: Vec<Migration>,
+    ) -> Result<(), DbErr> {
+        Self::install(db).await?;
+        let manager = SchemaManager::new(db);
+
+        match status {
+            MigrationStatus::Pending => {
+                for Migration { migration, .. } in migrations {
+                    info!("Applying migration '{}'", migration.name());
+                    migration.up(&manager).await?;
+                    info!("Migration '{}' has been applied", migration.name());
+                    let now = SystemTime::now()
+                        .duration_since(SystemTime::UNIX_EPOCH)
+                        .expect("SystemTime before UNIX EPOCH!");
+                    seaql_migrations::ActiveModel {
+                        version: ActiveValue::Set(migration.name().to_owned()),
+                        applied_at: ActiveValue::Set(now.as_secs() as i64),
+                    }
+                    .insert(db)
+                    .await?;
+                }
+            }
+            MigrationStatus::Applied => {
+                for Migration { migration, .. } in migrations {
+                    info!("Rolling back migration '{}'", migration.name());
+                    migration.down(&manager).await?;
+                    info!("Migration '{}' has been rollbacked", migration.name());
+                    seaql_migrations::Entity::delete_many()
+                        .filter(seaql_migrations::Column::Version.eq(migration.name()))
+                        .exec(db)
+                        .await?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    async fn prepare_migration(
+        db: &DbConn,
+        status: MigrationStatus,
+        version: &str,
+    ) -> Result<Vec<Migration>, DbErr> {
+        let mut matched = false;
+        let migrations = Self::get_migration_with_status(db).await?;
+        let mut rs: Vec<Migration> = Vec::new();
+        match status {
+            MigrationStatus::Pending => {
+                for migration in migrations {
+                    let name = migration.migration.name().to_owned();
+                    if migration.status == MigrationStatus::Pending {
+                        rs.push(migration);
+                    }
+                    if name == version {
+                        matched = true;
+                        break;
+                    }
+                }
+            }
+            MigrationStatus::Applied => {
+                for migration in migrations.into_iter().rev() {
+                    let name = migration.migration.name().to_owned();
+                    if migration.status == MigrationStatus::Applied {
+                        rs.push(migration);
+                    }
+                    if name == version {
+                        matched = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if !matched {
+            rs.clear();
+        }
+        Ok(rs)
+    }
 }
 
 pub(crate) fn query_tables(db: &DbConn) -> SelectStatement {

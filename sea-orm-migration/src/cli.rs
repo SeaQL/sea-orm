@@ -53,8 +53,36 @@ where
         Some(MigrateSubcommands::Refresh) => M::refresh(db).await,
         Some(MigrateSubcommands::Reset) => M::reset(db).await,
         Some(MigrateSubcommands::Status) => M::status(db).await,
-        Some(MigrateSubcommands::Up { num }) => M::up(db, Some(num)).await,
-        Some(MigrateSubcommands::Down { num }) => M::down(db, Some(num)).await,
+        Some(MigrateSubcommands::Up {
+            num,
+            version,
+            force,
+        }) => {
+            if version.is_some() {
+                if force {
+                    M::change_to_version(db, version.unwrap().as_str()).await
+                } else {
+                    M::up_to_version(db, version.unwrap().as_str()).await
+                }
+            } else {
+                M::up(db, Some(num)).await
+            }
+        }
+        Some(MigrateSubcommands::Down {
+            num,
+            version,
+            force,
+        }) => {
+            if version.is_some() {
+                if force {
+                    M::change_to_version(db, version.unwrap().as_str()).await
+                } else {
+                    M::down_to_version(db, version.unwrap().as_str()).await
+                }
+            } else {
+                M::down(db, Some(num)).await
+            }
+        }
         _ => M::up(db, None).await,
     }
     .unwrap_or_else(handle_error);
