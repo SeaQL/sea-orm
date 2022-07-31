@@ -405,7 +405,7 @@ jobs:
         run: |
           rustup override set nightly
           rustup component add rustfmt
-          cargo +nightly fmt --all -- --check
+          cargo +nightly fmt --manifest-path ${{ matrix.path }} --all -- --check
 
   issues-matrix:
     name: Issues Matrix
