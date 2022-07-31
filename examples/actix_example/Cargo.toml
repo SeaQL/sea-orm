@@ -1,5 +1,5 @@
 [package]
-name = "sea-orm-actix-example"
+name = "sea-orm-actix-4-beta-example"
 version = "0.1.0"
 authors = ["Sam Samai <sam@studio2pi.com.au>"]
 edition = "2021"
@@ -9,16 +9,27 @@ publish = false
 members = [".", "entity", "migration"]
 
 [dependencies]
-actix-http = "2"
-actix-web = "3"
-actix-flash = "0.2"
-actix-files = "0.5"
-futures = { version = "^0.3" }
-futures-util = { version = "^0.3" }
-tera = "1.8.0"
+actix-files = "0.6"
+actix-http = "3"
+actix-rt = "2.7"
+actix-service = "2"
+actix-web = "4"
+
+tera = "1.15.0"
 dotenv = "0.15"
-listenfd = "0.3.3"
+listenfd = "0.5"
 serde = "1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 entity = { path = "entity" }
 migration = { path = "migration" }
+
+[dependencies.sea-orm]
+path = "../../" # remove this line in your own project
+version = "^0.9.1" # sea-orm version
+features = [
+  "debug-print",
+  "runtime-actix-native-tls",
+  "sqlx-mysql",
+  # "sqlx-postgres",
+  # "sqlx-sqlite",
+]

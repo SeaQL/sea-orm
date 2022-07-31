@@ -76,7 +76,6 @@ async fn seed_data(db: &DatabaseConnection) {
     let cake_baker = cakes_bakers::ActiveModel {
         cake_id: Set(cake_insert_res.last_insert_id as i32),
         baker_id: Set(baker_1.id.clone().unwrap()),
-        ..Default::default()
     };
 
     let cake_baker_res = CakesBakers::insert(cake_baker.clone())
@@ -181,7 +180,7 @@ async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model>
         .unwrap()
         .into_iter()
         .map(|b| LeastSalesBakerResult {
-            id: b.id.clone(),
+            id: b.id,
             cakes_sold: b.cakes_sold_opt.unwrap_or_default().into(),
         })
         .collect();
@@ -201,7 +200,7 @@ async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cak
         price: Set(dec!(8.00)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
-        bakery_id: Set(Some(baker.bakery_id.clone().unwrap())),
+        bakery_id: Set(Some(baker.bakery_id.unwrap())),
         ..Default::default()
     };
 
@@ -213,7 +212,6 @@ async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cak
     let cake_baker = cakes_bakers::ActiveModel {
         cake_id: Set(cake_insert_res.last_insert_id as i32),
         baker_id: Set(baker.id),
-        ..Default::default()
     };
 
     let cake_baker_res = CakesBakers::insert(cake_baker.clone())

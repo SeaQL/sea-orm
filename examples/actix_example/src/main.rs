@@ -1,11 +1,10 @@
-use actix_files as fs;
+use actix_files::Files as Fs;
 use actix_web::{
     error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result,
 };
 
 use entity::post;
 use entity::post::Entity as Post;
-use entity::sea_orm;
 use listenfd::ListenFd;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::DatabaseConnection;
@@ -21,6 +20,7 @@ struct AppState {
     templates: tera::Tera,
     conn: DatabaseConnection,
 }
+
 #[derive(Debug, Deserialize)]
 pub struct Params {
     page: Option<usize>,
@@ -34,11 +34,7 @@ struct FlashData {
 }
 
 #[get("/")]
-async fn list(
-    req: HttpRequest,
-    data: web::Data<AppState>,
-    opt_flash: Option<actix_flash::Message<FlashData>>,
-) -> Result<HttpResponse, Error> {
+async fn list(req: HttpRequest, data: web::Data<AppState>) -> Result<HttpResponse, Error> {
     let template = &data.templates;
     let conn = &data.conn;
 
@@ -62,11 +58,6 @@ async fn list(
     ctx.insert("posts_per_page", &posts_per_page);
     ctx.insert("num_pages", &num_pages);
 
-    if let Some(flash) = opt_flash {
-        let flash_inner = flash.into_inner();
-        ctx.insert("flash", &flash_inner);
-    }
-
     let body = template
         .render("index.html.tera", &ctx)
         .map_err(|_| error::ErrorInternalServerError("Template error"))?;
@@ -87,7 +78,7 @@ async fn new(data: web::Data<AppState>) -> Result<HttpResponse, Error> {
 async fn create(
     data: web::Data<AppState>,
     post_form: web::Form<post::Model>,
-) -> actix_flash::Response<HttpResponse, FlashData> {
+) -> Result<HttpResponse, Error> {
     let conn = &data.conn;
 
     let form = post_form.into_inner();
@@ -101,12 +92,9 @@ async fn create(
     .await
     .expect("could not insert post");
 
-    let flash = FlashData {
-        kind: "success".to_owned(),
-        message: "Post successfully added.".to_owned(),
-    };
-
-    actix_flash::Response::with_redirect(flash, "/")
+    Ok(HttpResponse::Found()
+        .append_header(("location", "/"))
+        .finish())
 }
 
 #[get("/{id}")]
@@ -134,7 +122,7 @@ async fn update(
     data: web::Data<AppState>,
     id: web::Path<i32>,
     post_form: web::Form<post::Model>,
-) -> actix_flash::Response<HttpResponse, FlashData> {
+) -> Result<HttpResponse, Error> {
     let conn = &data.conn;
     let form = post_form.into_inner();
 
@@ -147,19 +135,13 @@ async fn update(
     .await
     .expect("could not edit post");
 
-    let flash = FlashData {
-        kind: "success".to_owned(),
-        message: "Post successfully updated.".to_owned(),
-    };
-
-    actix_flash::Response::with_redirect(flash, "/")
+    Ok(HttpResponse::Found()
+        .append_header(("location", "/"))
+        .finish())
 }
 
 #[post("/delete/{id}")]
-async fn delete(
-    data: web::Data<AppState>,
-    id: web::Path<i32>,
-) -> actix_flash::Response<HttpResponse, FlashData> {
+async fn delete(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
     let conn = &data.conn;
 
     let post: post::ActiveModel = Post::find_by_id(id.into_inner())
@@ -171,12 +153,20 @@ async fn delete(
 
     post.delete(conn).await.unwrap();
 
-    let flash = FlashData {
-        kind: "success".to_owned(),
-        message: "Post successfully deleted.".to_owned(),
-    };
+    Ok(HttpResponse::Found()
+        .append_header(("location", "/"))
+        .finish())
+}
 
-    actix_flash::Response::with_redirect(flash, "/")
+async fn not_found(data: web::Data<AppState>, request: HttpRequest) -> Result<HttpResponse, Error> {
+    let mut ctx = tera::Context::new();
+    ctx.insert("uri", request.uri().path());
+
+    let template = &data.templates;
+    let body = template.render("error/404.html.tera", &ctx)
+        .map_err(|_| error::ErrorInternalServerError("Template error"))?;
+
+    Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
 #[actix_web::main]
@@ -191,20 +181,24 @@ async fn main() -> std::io::Result<()> {
     let port = env::var("PORT").expect("PORT is not set in .env file");
     let server_url = format!("{}:{}", host, port);
 
-    // create post table if not exists
+    // establish connection to database and apply migrations
+    // -> create post table if not exists
     let conn = sea_orm::Database::connect(&db_url).await.unwrap();
     Migrator::up(&conn, None).await.unwrap();
+
+    // load tera templates and build app state
     let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).unwrap();
     let state = AppState { templates, conn };
 
+    // create server and try to serve over socket if possible
     let mut listenfd = ListenFd::from_env();
     let mut server = HttpServer::new(move || {
         App::new()
-            .data(state.clone())
+            .service(Fs::new("/static", "./static"))
+            .app_data(web::Data::new(state.clone()))
             .wrap(middleware::Logger::default()) // enable logger
-            .wrap(actix_flash::Flash::default())
+            .default_service(web::route().to(not_found))
             .configure(init)
-            .service(fs::Files::new("/static", "./static").show_files_listing())
     });
 
     server = match listenfd.take_tcp_listener(0)? {

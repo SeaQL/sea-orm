@@ -105,6 +105,7 @@ impl ConnectionTrait for DatabaseConnection {
     }
 
     #[instrument(level = "trace")]
+    #[allow(unused_variables)]
     async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -120,6 +121,7 @@ impl ConnectionTrait for DatabaseConnection {
     }
 
     #[instrument(level = "trace")]
+    #[allow(unused_variables)]
     async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -135,6 +137,7 @@ impl ConnectionTrait for DatabaseConnection {
     }
 
     #[instrument(level = "trace")]
+    #[allow(unused_variables)]
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -160,6 +163,7 @@ impl<'a> StreamTrait<'a> for DatabaseConnection {
     type Stream = crate::QueryStream;
 
     #[instrument(level = "trace")]
+    #[allow(unused_variables, unreachable_code)]
     fn stream(
         &'a self,
         stmt: Statement,

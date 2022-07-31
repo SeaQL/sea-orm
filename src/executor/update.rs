@@ -73,17 +73,17 @@ impl Updater {
     }
 }
 
-async fn exec_update_only<'a, C>(query: UpdateStatement, db: &'a C) -> Result<UpdateResult, DbErr>
+async fn exec_update_only<C>(query: UpdateStatement, db: &C) -> Result<UpdateResult, DbErr>
 where
     C: ConnectionTrait,
 {
     Updater::new(query).exec(db).await
 }
 
-async fn exec_update_and_return_updated<'a, A, C>(
+async fn exec_update_and_return_updated<A, C>(
     mut query: UpdateStatement,
     model: A,
-    db: &'a C,
+    db: &C,
 ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
 where
     A: ActiveModelTrait,
@@ -91,16 +91,16 @@ where
 {
     match db.support_returning() {
         true => {
-            let mut returning = Query::select();
-            returning.exprs(<A::Entity as EntityTrait>::Column::iter().map(|c| {
-                let col = Expr::col(c);
-                let col_def = c.def();
-                let col_type = col_def.get_column_type();
-                match col_type.get_enum_name() {
-                    Some(_) => col.as_enum(Alias::new("text")),
-                    None => col.into(),
-                }
-            }));
+            let returning =
+                Query::returning().exprs(<A::Entity as EntityTrait>::Column::iter().map(|c| {
+                    let col = Expr::col(c);
+                    let col_def = c.def();
+                    let col_type = col_def.get_column_type();
+                    match col_type.get_enum_name() {
+                        Some(_) => col.as_enum(Alias::new("text")),
+                        None => col.into(),
+                    }
+                }));
             query.returning(returning);
             let db_backend = db.get_database_backend();
             let found: Option<<A::Entity as EntityTrait>::Model> =
@@ -136,9 +136,9 @@ where
     }
 }
 
-async fn exec_update<'a, C>(
+async fn exec_update<C>(
     statement: Statement,
-    db: &'a C,
+    db: &C,
     check_record_exists: bool,
 ) -> Result<UpdateResult, DbErr>
 where

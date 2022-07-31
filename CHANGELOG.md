@@ -5,6 +5,111 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.10.0 - Pending
+
+## 0.9.1 - 2022-07-22
+
+### Enhancements
+
+* [sea-orm-cli] Codegen support for `VarBinary` column type https://github.com/SeaQL/sea-orm/pull/746
+* [sea-orm-cli] Generate entity for SYSTEM VERSIONED tables on MariaDB https://github.com/SeaQL/sea-orm/pull/876
+
+### Bug Fixes
+
+* `RelationDef` & `RelationBuilder` should be `Send` & `Sync` https://github.com/SeaQL/sea-orm/pull/898
+
+### House keeping
+
+* Remove unnecessary `async_trait` https://github.com/SeaQL/sea-orm/pull/737
+
+## 0.9.0 - 2022-07-17
+
+### New Features
+
+* Cursor pagination https://github.com/SeaQL/sea-orm/pull/822
+* Custom join on conditions https://github.com/SeaQL/sea-orm/pull/793
+* `DeriveMigrationName` and `sea_orm_migration::util::get_file_stem` https://github.com/SeaQL/sea-orm/pull/736
+* `FromJsonQueryResult` for deserializing `Json` from query result https://github.com/SeaQL/sea-orm/pull/794
+
+### Enhancements
+
+* Added `sqlx_logging_level` to `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/800
+* Added `num_items_and_pages` to `Paginator` https://github.com/SeaQL/sea-orm/pull/768
+* Added `TryFromU64` for `time` https://github.com/SeaQL/sea-orm/pull/849
+* Added `Insert::on_conflict` https://github.com/SeaQL/sea-orm/pull/791
+* Added `QuerySelect::join_as` and `QuerySelect::join_as_rev` https://github.com/SeaQL/sea-orm/pull/852
+* Include column name in `TryGetError::Null` https://github.com/SeaQL/sea-orm/pull/853
+* [sea-orm-cli] Improve logging https://github.com/SeaQL/sea-orm/pull/735
+* [sea-orm-cli] Generate enum with numeric like variants https://github.com/SeaQL/sea-orm/pull/588
+* [sea-orm-cli] Allow old pending migration to be applied https://github.com/SeaQL/sea-orm/pull/755
+* [sea-orm-cli] Skip generating entity for ignored tables https://github.com/SeaQL/sea-orm/pull/837
+* [sea-orm-cli] Generate code for `time` crate https://github.com/SeaQL/sea-orm/pull/724
+* [sea-orm-cli] Add various blob column types https://github.com/SeaQL/sea-orm/pull/850
+* [sea-orm-cli] Generate entity files with Postgres's schema name https://github.com/SeaQL/sea-orm/pull/422
+
+### Upgrades
+
+* Upgrade `clap` to 3.2 https://github.com/SeaQL/sea-orm/pull/706
+* Upgrade `time` to 0.3 https://github.com/SeaQL/sea-orm/pull/834
+* Upgrade `sqlx` to 0.6 https://github.com/SeaQL/sea-orm/pull/834
+* Upgrade `uuid` to 1.0 https://github.com/SeaQL/sea-orm/pull/834
+* Upgrade `sea-query` to 0.26 https://github.com/SeaQL/sea-orm/pull/834
+* Upgrade `sea-schema` to 0.9 https://github.com/SeaQL/sea-orm/pull/834
+
+### House keeping
+
+* Refactor stream metrics https://github.com/SeaQL/sea-orm/pull/778
+
+### Bug Fixes
+
+* [sea-orm-cli] skip checking connection string for credentials https://github.com/SeaQL/sea-orm/pull/851
+
+### Breaking changes
+
+* `SelectTwoMany::one()` has been dropped https://github.com/SeaQL/sea-orm/pull/813, you can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity, then use [`ModelTrait::find_related`] on the model.
+* #### Feature flag revamp
+    We now adopt the [weak dependency](https://blog.rust-lang.org/2022/04/07/Rust-1.60.0.html#new-syntax-for-cargo-features) syntax in Cargo. That means the flags `["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid", "sqlx-time"]` are not needed and now removed. Instead, `with-time` will enable `sqlx?/time` only if `sqlx` is already enabled. As a consequence, now the features `with-json`, `with-chrono`, `with-rust_decimal`, `with-uuid`, `with-time` will not be enabled as a side-effects of enabling `sqlx`.
+
+## sea-orm-migration 0.8.3
+
+* Removed `async-std` from dependency https://github.com/SeaQL/sea-orm/pull/758
+
+## 0.8.0 - 2022-05-10
+
+### New Features
+* [sea-orm-cli] `sea migrate generate` to generate a new, empty migration file https://github.com/SeaQL/sea-orm/pull/656
+
+### Enhancements
+* Add `max_connections` option to CLI https://github.com/SeaQL/sea-orm/pull/670
+* Derive `Eq`, `Clone` for `DbErr` https://github.com/SeaQL/sea-orm/pull/677
+* Add `is_changed` to `ActiveModelTrait` https://github.com/SeaQL/sea-orm/pull/683
+
+### Bug Fixes
+* Fix `DerivePrimaryKey` with custom primary key column name https://github.com/SeaQL/sea-orm/pull/694
+* Fix `DeriveEntityModel` macros override column name https://github.com/SeaQL/sea-orm/pull/695
+* Fix Insert with no value supplied using `DEFAULT` https://github.com/SeaQL/sea-orm/pull/589
+
+### Breaking changes
+* Migration utilities are moved from sea-schema to sea-orm repo, under a new sub-crate `sea-orm-migration`. `sea_schema::migration::prelude` should be replaced by `sea_orm_migration::prelude` in all migration files
+
+### Upgrades
+* Upgrade `sea-query` to 0.24.x, `sea-schema` to 0.8.x
+* Upgrade example to Actix Web 4, Actix Web 3 remains https://github.com/SeaQL/sea-orm/pull/638
+* Added Tonic gRPC example https://github.com/SeaQL/sea-orm/pull/659
+* Upgrade GraphQL example to use axum 0.5.x
+* Upgrade axum example to 0.5.x
+
+### Fixed Issues
+* Failed to insert row with only default values https://github.com/SeaQL/sea-orm/issues/420
+* Reduce database connections to 1 during codegen https://github.com/SeaQL/sea-orm/issues/511
+* Column names with single letters separated by underscores are concatenated https://github.com/SeaQL/sea-orm/issues/630
+* Update Actix Web examples https://github.com/SeaQL/sea-orm/issues/639
+* Lower function missing https://github.com/SeaQL/sea-orm/issues/672
+* is_changed on active_model https://github.com/SeaQL/sea-orm/issues/674
+* Failing find_with_related with column_name attribute https://github.com/SeaQL/sea-orm/issues/693
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.7.1...0.8.0
+
 ## 0.7.1 - 2022-03-26
 
 * Fix sea-orm-cli error

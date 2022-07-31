@@ -195,7 +195,7 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
 /// #
 /// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
-#[proc_macro_derive(DerivePrimaryKey)]
+#[proc_macro_derive(DerivePrimaryKey, attributes(sea_orm))]
 pub fn derive_primary_key(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
 
@@ -580,6 +580,43 @@ pub fn derive_relation(input: TokenStream) -> TokenStream {
     derives::expand_derive_relation(input)
         .unwrap_or_else(Error::into_compile_error)
         .into()
+}
+
+/// The DeriveMigrationName derive macro will implement `sea_orm_migration::MigrationName` for a migration.
+///
+/// ### Usage
+///
+/// ```ignore
+/// #[derive(DeriveMigrationName)]
+/// pub struct Migration;
+/// ```
+///
+/// The derive macro above will provide following implementation,
+/// given the file name is `m20220120_000001_create_post_table.rs`.
+///
+/// ```ignore
+/// impl MigrationName for Migration {
+///     fn name(&self) -> &str {
+///         "m20220120_000001_create_post_table"
+///     }
+/// }
+/// ```
+#[proc_macro_derive(DeriveMigrationName)]
+pub fn derive_migration_name(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_migration_name(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
+#[proc_macro_derive(FromJsonQueryResult)]
+pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
+    let DeriveInput { ident, .. } = parse_macro_input!(input);
+
+    match derives::expand_derive_from_json_query_result(ident) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
 }
 
 #[doc(hidden)]

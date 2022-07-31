@@ -1,5 +1,5 @@
 use crate::util::{escape_rust_keyword, trim_starting_raw_identifier};
-use heck::CamelCase;
+use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{
@@ -83,10 +83,9 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         if let Fields::Named(fields) = item_struct.fields {
             for field in fields.named {
                 if let Some(ident) = &field.ident {
-                    let mut field_name = Ident::new(
-                        &trim_starting_raw_identifier(&ident).to_camel_case(),
-                        Span::call_site(),
-                    );
+                    let original_field_name = trim_starting_raw_identifier(&ident);
+                    let mut field_name =
+                        Ident::new(&original_field_name.to_camel_case(), Span::call_site());
 
                     let mut nullable = false;
                     let mut default_value = None;
@@ -95,7 +94,14 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut ignore = false;
                     let mut unique = false;
                     let mut sql_type = None;
-                    let mut column_name = None;
+                    let mut column_name = if original_field_name
+                        != original_field_name.to_camel_case().to_snake_case()
+                    {
+                        // `to_snake_case` was used to trim prefix and tailing underscore
+                        Some(original_field_name.to_snake_case())
+                    } else {
+                        None
+                    };
                     let mut enum_name = None;
                     let mut is_primary_key = false;
                     // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(Some(255))", default_value = "new user", default_expr = "gen_random_uuid()", column_name = "name", enum_name = "Name", nullable, indexed, unique)]
@@ -195,15 +201,16 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
                     field_name = Ident::new(&escape_rust_keyword(field_name), Span::call_site());
 
+                    let variant_attrs = match &column_name {
+                        Some(column_name) => quote! {
+                            #[sea_orm(column_name = #column_name)]
+                        },
+                        None => quote! {},
+                    };
+
                     if ignore {
                         continue;
                     } else {
-                        let variant_attrs = match &column_name {
-                            Some(column_name) => quote! {
-                                #[sea_orm(column_name = #column_name)]
-                            },
-                            None => quote! {},
-                        };
                         columns_enum.push(quote! {
                             #variant_attrs
                             #field_name
@@ -211,7 +218,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     }
 
                     if is_primary_key {
-                        primary_keys.push(quote! { #field_name });
+                        primary_keys.push(quote! {
+                            #variant_attrs
+                            #field_name
+                        });
                     }
 
                     let col_type = match sql_type {
@@ -220,7 +230,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             let field_type = &field.ty;
                             let temp = quote! { #field_type }
                                 .to_string() //E.g.: "Option < String >"
-                                .replace(" ", "");
+                                .replace(' ', "");
                             let temp = if temp.starts_with("Option<") {
                                 nullable = true;
                                 &temp[7..(temp.len() - 1)]

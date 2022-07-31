@@ -18,6 +18,11 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::fruit::Entity")]
     Fruit,
+    #[sea_orm(
+        has_many = "super::fruit::Entity",
+        on_condition = r#"super::fruit::Column::Name.like("%tropical%")"#
+    )]
+    TropicalFruit,
 }
 
 impl Related<super::fruit::Entity> for Entity {

@@ -3,7 +3,7 @@ use crate::{
     PrimaryKeyTrait, QueryTrait,
 };
 use core::marker::PhantomData;
-use sea_query::{Alias, Expr, InsertStatement, ValueTuple};
+use sea_query::{Alias, Expr, InsertStatement, OnConflict, ValueTuple};
 
 /// Performs INSERT operations on a ActiveModel
 #[derive(Debug)]
@@ -34,6 +34,7 @@ where
         Self {
             query: InsertStatement::new()
                 .into_table(A::Entity::default().table_ref())
+                .or_default_values()
                 .to_owned(),
             columns: Vec::new(),
             primary_key: None,
@@ -159,6 +160,54 @@ where
         }
         self
     }
+
+    /// On conflict
+    ///
+    /// on conflict do nothing
+    /// ```
+    /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
+    ///
+    /// let orange = cake::ActiveModel {
+    ///     id: ActiveValue::set(2),
+    ///     name: ActiveValue::set("Orange".to_owned()),
+    /// };
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange)
+    ///         .on_conflict(
+    ///             OnConflict::column(cake::Column::Name)
+    ///                 .do_nothing()
+    ///                 .to_owned()
+    ///         )
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO NOTHING"#,
+    /// );
+    /// ```
+    ///
+    /// on conflict do update
+    /// ```
+    /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
+    ///
+    /// let orange = cake::ActiveModel {
+    ///     id: ActiveValue::set(2),
+    ///     name: ActiveValue::set("Orange".to_owned()),
+    /// };
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange)
+    ///         .on_conflict(
+    ///             OnConflict::column(cake::Column::Name)
+    ///                 .update_column(cake::Column::Name)
+    ///                 .to_owned()
+    ///         )
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO UPDATE SET "name" = "excluded"."name""#,
+    /// );
+    /// ```
+    pub fn on_conflict(mut self, on_conflict: OnConflict) -> Self {
+        self.query.on_conflict(on_conflict);
+        self
+    }
 }
 
 impl<A> QueryTrait for Insert<A>
@@ -182,8 +231,10 @@ where
 
 #[cfg(test)]
 mod tests {
+    use sea_query::OnConflict;
+
     use crate::tests_cfg::cake;
-    use crate::{ActiveValue, DbBackend, Insert, QueryTrait};
+    use crate::{ActiveValue, DbBackend, EntityTrait, Insert, QueryTrait};
 
     #[test]
     fn insert_1() {
@@ -264,6 +315,46 @@ mod tests {
                 .build(DbBackend::Postgres)
                 .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (NULL, 'Apple'), (2, 'Orange')"#,
+        );
+    }
+
+    #[test]
+    fn insert_6() {
+        let orange = cake::ActiveModel {
+            id: ActiveValue::set(2),
+            name: ActiveValue::set("Orange".to_owned()),
+        };
+
+        assert_eq!(
+            cake::Entity::insert(orange)
+                .on_conflict(
+                    OnConflict::column(cake::Column::Name)
+                        .do_nothing()
+                        .to_owned()
+                )
+                .build(DbBackend::Postgres)
+                .to_string(),
+            r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO NOTHING"#,
+        );
+    }
+
+    #[test]
+    fn insert_7() {
+        let orange = cake::ActiveModel {
+            id: ActiveValue::set(2),
+            name: ActiveValue::set("Orange".to_owned()),
+        };
+
+        assert_eq!(
+            cake::Entity::insert(orange)
+                .on_conflict(
+                    OnConflict::column(cake::Column::Name)
+                        .update_column(cake::Column::Name)
+                        .to_owned()
+                )
+                .build(DbBackend::Postgres)
+                .to_string(),
+            r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO UPDATE SET "name" = "excluded"."name""#,
         );
     }
 }

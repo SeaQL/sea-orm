@@ -136,6 +136,17 @@ impl DeriveRelation {
                     result = quote! { #result.on_delete(sea_orm::prelude::ForeignKeyAction::#on_delete) };
                 }
 
+                if attr.on_condition.is_some() {
+                    let on_condition = attr
+                        .on_condition
+                        .as_ref()
+                        .map(Self::parse_lit_string)
+                        .ok_or_else(|| {
+                            syn::Error::new_spanned(variant, "Missing value for 'on_condition'")
+                        })??;
+                    result = quote! { #result.on_condition(|_, _| sea_orm::sea_query::IntoCondition::into_condition(#on_condition)) };
+                }
+
                 if attr.fk_name.is_some() {
                     let fk_name = attr
                         .fk_name
