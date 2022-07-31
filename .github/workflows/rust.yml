@@ -123,7 +123,7 @@ jobs:
         needs.init.outputs.run-partial == 'false' ||
         (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-sqlite == 'true')
       }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         runtime: [async-std]
@@ -269,7 +269,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-22.04]
     steps:
       - uses: actions/checkout@v2
 
@@ -350,7 +350,7 @@ jobs:
         needs.init.outputs.run-partial == 'false' ||
         (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-sqlite == 'true')
       }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       DATABASE_URL: "sqlite::memory:"
     strategy:
