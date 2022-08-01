@@ -48,3 +48,5 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [todo-rs](https://github.com/anshulxyz/todo-rs/) | A TUI ToDo-app written in Rust using Cursive library and SeaORM for SQLite
 - [KrakenPics](https://github.com/kraken-pics/backend) | A public file host written in rust using seaorm & actix_web
 - [service_auth](https://github.com/shorii/service_auth) | A simple JWT authentication web-application
+- [rj45less-server](https://github.com/pmnxis/rj45less-server) | A simple unique number allocator for custom router
+
