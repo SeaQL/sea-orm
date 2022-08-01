@@ -68,7 +68,7 @@ impl MockDatabaseConnector {
         false
     }
 
-    /// Cpnnect to the [MockDatabase]
+    /// Connect to the [MockDatabase]
     #[allow(unused_variables)]
     #[instrument(level = "trace")]
     pub async fn connect(string: &str) -> Result<DatabaseConnection, DbErr> {
