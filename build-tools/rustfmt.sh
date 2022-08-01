@@ -2,6 +2,7 @@
 set -e
 if [ -d ./build-tools ]; then
     targets=(
+        "Cargo.toml"
         "sea-orm-cli/Cargo.toml"
         "sea-orm-codegen/Cargo.toml"
         "sea-orm-macros/Cargo.toml"
