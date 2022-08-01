@@ -163,7 +163,8 @@ async fn not_found(data: web::Data<AppState>, request: HttpRequest) -> Result<Ht
     ctx.insert("uri", request.uri().path());
 
     let template = &data.templates;
-    let body = template.render("error/404.html.tera", &ctx)
+    let body = template
+        .render("error/404.html.tera", &ctx)
         .map_err(|_| error::ErrorInternalServerError("Template error"))?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
