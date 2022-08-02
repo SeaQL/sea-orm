@@ -19,7 +19,7 @@ migration = { path = "migration" }
 
 [dependencies.sea-orm]
 path = "../../" # remove this line in your own project
-version = "^0.8.0"
+version = "^0.9.1" # sea-orm version
 features = [
   "debug-print",
   "runtime-tokio-native-tls",

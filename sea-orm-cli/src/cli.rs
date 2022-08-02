@@ -1,4 +1,4 @@
-use clap::{ArgGroup, Parser, Subcommand};
+use clap::{ArgEnum, ArgGroup, Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[clap(version)]
@@ -43,8 +43,8 @@ pub enum MigrateSubcommands {
     Generate {
         #[clap(
             value_parser,
-            long,
             required = true,
+            takes_value = true,
             help = "Name of the new migration"
         )]
         migration_name: String,
@@ -168,10 +168,25 @@ pub enum GenerateSubcommands {
         with_serde: String,
 
         #[clap(
+            arg_enum,
+            value_parser,
+            long,
+            default_value = "chrono",
+            help = "The datetime crate to use for generating entities."
+        )]
+        date_time_crate: DateTimeCrate,
+
+        #[clap(
             action,
             long,
             help = "Generate a serde field attribute for the primary keys to skip them during deserialization if they're not present"
         )]
         skip_primary_key_deserialization: bool,
     },
+}
+
+#[derive(ArgEnum, Copy, Clone, Debug, PartialEq)]
+pub enum DateTimeCrate {
+    Chrono,
+    Time,
 }

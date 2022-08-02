@@ -5,30 +5,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.9.0 - Pending
+## 0.10.0 - Pending
 
-### New Features
-
-* Custom join on conditions (#793)
-* `DeriveMigrationName` and `sea_orm_migration::util::get_file_stem` (#736)
-* `FromJsonQueryResult` for deserializing `Json` from query result (#794)
+## 0.9.1 - 2022-07-22
 
 ### Enhancements
 
-* Added `sqlx_logging_level` to `ConnectOptions` (#800)
-* Support on conflict in insert query (#791)
-* [sea-orm-cli] Improve logging (#735)
-* [sea-orm-cli] Generate enum with numeric like variants (#588)
-* [sea-orm-cli] Allow old pending migration to be applied (#755)
-* Added `num_items_and_pages` to `Paginator` (#768)
+* [sea-orm-cli] Codegen support for `VarBinary` column type https://github.com/SeaQL/sea-orm/pull/746
+* [sea-orm-cli] Generate entity for SYSTEM VERSIONED tables on MariaDB https://github.com/SeaQL/sea-orm/pull/876
 
-### Upgrades
+### Bug Fixes
 
-* Bump clap version to 3.2 (#706)
+* `RelationDef` & `RelationBuilder` should be `Send` & `Sync` https://github.com/SeaQL/sea-orm/pull/898
 
 ### House keeping
 
-* Refactor stream metrics (#778)
+* Remove unnecessary `async_trait` https://github.com/SeaQL/sea-orm/pull/737
+
+## 0.9.0 - 2022-07-17
+
+### New Features
+
+* Cursor pagination https://github.com/SeaQL/sea-orm/pull/822
+* Custom join on conditions https://github.com/SeaQL/sea-orm/pull/793
+* `DeriveMigrationName` and `sea_orm_migration::util::get_file_stem` https://github.com/SeaQL/sea-orm/pull/736
+* `FromJsonQueryResult` for deserializing `Json` from query result https://github.com/SeaQL/sea-orm/pull/794
+
+### Enhancements
+
+* Added `sqlx_logging_level` to `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/800
+* Added `num_items_and_pages` to `Paginator` https://github.com/SeaQL/sea-orm/pull/768
+* Added `TryFromU64` for `time` https://github.com/SeaQL/sea-orm/pull/849
+* Added `Insert::on_conflict` https://github.com/SeaQL/sea-orm/pull/791
+* Added `QuerySelect::join_as` and `QuerySelect::join_as_rev` https://github.com/SeaQL/sea-orm/pull/852
+* Include column name in `TryGetError::Null` https://github.com/SeaQL/sea-orm/pull/853
+* [sea-orm-cli] Improve logging https://github.com/SeaQL/sea-orm/pull/735
+* [sea-orm-cli] Generate enum with numeric like variants https://github.com/SeaQL/sea-orm/pull/588
+* [sea-orm-cli] Allow old pending migration to be applied https://github.com/SeaQL/sea-orm/pull/755
+* [sea-orm-cli] Skip generating entity for ignored tables https://github.com/SeaQL/sea-orm/pull/837
+* [sea-orm-cli] Generate code for `time` crate https://github.com/SeaQL/sea-orm/pull/724
+* [sea-orm-cli] Add various blob column types https://github.com/SeaQL/sea-orm/pull/850
+* [sea-orm-cli] Generate entity files with Postgres's schema name https://github.com/SeaQL/sea-orm/pull/422
+
+### Upgrades
+
+* Upgrade `clap` to 3.2 https://github.com/SeaQL/sea-orm/pull/706
+* Upgrade `time` to 0.3 https://github.com/SeaQL/sea-orm/pull/834
+* Upgrade `sqlx` to 0.6 https://github.com/SeaQL/sea-orm/pull/834
+* Upgrade `uuid` to 1.0 https://github.com/SeaQL/sea-orm/pull/834
+* Upgrade `sea-query` to 0.26 https://github.com/SeaQL/sea-orm/pull/834
+* Upgrade `sea-schema` to 0.9 https://github.com/SeaQL/sea-orm/pull/834
+
+### House keeping
+
+* Refactor stream metrics https://github.com/SeaQL/sea-orm/pull/778
+
+### Bug Fixes
+
+* [sea-orm-cli] skip checking connection string for credentials https://github.com/SeaQL/sea-orm/pull/851
+
+### Breaking changes
+
+* `SelectTwoMany::one()` has been dropped https://github.com/SeaQL/sea-orm/pull/813, you can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity, then use [`ModelTrait::find_related`] on the model.
+* #### Feature flag revamp
+    We now adopt the [weak dependency](https://blog.rust-lang.org/2022/04/07/Rust-1.60.0.html#new-syntax-for-cargo-features) syntax in Cargo. That means the flags `["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid", "sqlx-time"]` are not needed and now removed. Instead, `with-time` will enable `sqlx?/time` only if `sqlx` is already enabled. As a consequence, now the features `with-json`, `with-chrono`, `with-rust_decimal`, `with-uuid`, `with-time` will not be enabled as a side-effects of enabling `sqlx`.
 
 ## sea-orm-migration 0.8.3
 

@@ -1,11 +1,14 @@
 use chrono::Local;
 use regex::Regex;
-use sea_orm_codegen::{EntityTransformer, OutputFile, WithSerde};
+use sea_orm_codegen::{
+    DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
+    WithSerde,
+};
 use std::{error::Error, fmt::Display, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
 use url::Url;
 
-use crate::{GenerateSubcommands, MigrateSubcommands};
+use crate::{DateTimeCrate, GenerateSubcommands, MigrateSubcommands};
 
 pub async fn run_generate_command(
     command: GenerateSubcommands,
@@ -23,6 +26,7 @@ pub async fn run_generate_command(
             database_schema,
             database_url,
             with_serde,
+            date_time_crate,
             skip_primary_key_deserialization,
         } => {
             if verbose {
@@ -51,21 +55,7 @@ pub async fn run_generate_command(
             //
             // Missing scheme will have been caught by the Url::parse() call
             // above
-            let url_username = url.username();
-            let url_host = url.host_str();
-
             let is_sqlite = url.scheme() == "sqlite";
-
-            // Skip checking if it's SQLite
-            if !is_sqlite {
-                // Panic on any that are missing
-                if url_username.is_empty() {
-                    panic!("No username was found in the database url");
-                }
-                if url_host.is_none() {
-                    panic!("No host was found in the database url");
-                }
-            }
 
             let tables = match tables {
                 Some(t) => t,
@@ -121,7 +111,7 @@ pub async fn run_generate_command(
                 Default::default()
             };
 
-            let table_stmts = match url.scheme() {
+            let (schema_name, table_stmts) = match url.scheme() {
                 "mysql" => {
                     use sea_schema::mysql::discovery::SchemaDiscovery;
                     use sqlx::MySql;
@@ -129,14 +119,15 @@ pub async fn run_generate_command(
                     let connection = connect::<MySql>(max_connections, url.as_str()).await?;
                     let schema_discovery = SchemaDiscovery::new(connection, database_name);
                     let schema = schema_discovery.discover().await;
-                    schema
+                    let table_stmts = schema
                         .tables
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.info.name))
                         .filter(|schema| filter_hidden_tables(&schema.info.name))
                         .filter(|schema| filter_skip_tables(&schema.info.name))
                         .map(|schema| schema.write())
-                        .collect()
+                        .collect();
+                    (None, table_stmts)
                 }
                 "sqlite" => {
                     use sea_schema::sqlite::discovery::SchemaDiscovery;
@@ -145,14 +136,15 @@ pub async fn run_generate_command(
                     let connection = connect::<Sqlite>(max_connections, url.as_str()).await?;
                     let schema_discovery = SchemaDiscovery::new(connection);
                     let schema = schema_discovery.discover().await?;
-                    schema
+                    let table_stmts = schema
                         .tables
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.name))
                         .filter(|schema| filter_hidden_tables(&schema.name))
                         .filter(|schema| filter_skip_tables(&schema.name))
                         .map(|schema| schema.write())
-                        .collect()
+                        .collect();
+                    (None, table_stmts)
                 }
                 "postgres" | "postgresql" => {
                     use sea_schema::postgres::discovery::SchemaDiscovery;
@@ -162,23 +154,27 @@ pub async fn run_generate_command(
                     let connection = connect::<Postgres>(max_connections, url.as_str()).await?;
                     let schema_discovery = SchemaDiscovery::new(connection, schema);
                     let schema = schema_discovery.discover().await;
-                    schema
+                    let table_stmts = schema
                         .tables
                         .into_iter()
                         .filter(|schema| filter_tables(&schema.info.name))
                         .filter(|schema| filter_hidden_tables(&schema.info.name))
                         .filter(|schema| filter_skip_tables(&schema.info.name))
                         .map(|schema| schema.write())
-                        .collect()
+                        .collect();
+                    (Some(schema.schema), table_stmts)
                 }
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
 
-            let output = EntityTransformer::transform(table_stmts)?.generate(
+            let writer_context = EntityWriterContext::new(
                 expanded_format,
                 WithSerde::from_str(&with_serde).unwrap(),
+                date_time_crate.into(),
+                schema_name,
                 skip_primary_key_deserialization,
             );
+            let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
             let dir = Path::new(&output_dir);
             fs::create_dir_all(dir)?;
@@ -379,6 +375,15 @@ where
     ::std::process::exit(1);
 }
 
+impl From<DateTimeCrate> for CodegenDateTimeCrate {
+    fn from(date_time_crate: DateTimeCrate) -> CodegenDateTimeCrate {
+        match date_time_crate {
+            DateTimeCrate::Chrono => CodegenDateTimeCrate::Chrono,
+            DateTimeCrate::Time => CodegenDateTimeCrate::Time,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use clap::StructOpt;
@@ -450,25 +455,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "No username was found in the database url")]
-    fn test_generate_entity_no_username() {
-        let cli = Cli::parse_from(vec![
-            "sea-orm-cli",
-            "generate",
-            "entity",
-            "--database-url",
-            "mysql://:root@localhost:3306/database",
-        ]);
-
-        match cli.command {
-            Commands::Generate { command } => {
-                smol::block_on(run_generate_command(command, cli.verbose)).unwrap();
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    #[test]
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: PoolTimedOut")]
     fn test_generate_entity_no_password() {
         let cli = Cli::parse_from(vec![
@@ -505,6 +491,7 @@ mod tests {
             _ => unreachable!(),
         }
     }
+
     #[test]
     fn test_create_new_migration() {
         let migration_name = "test_name";
