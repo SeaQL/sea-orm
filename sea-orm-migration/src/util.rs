@@ -1,4 +1,16 @@
+use handlebars::Handlebars;
+use serde_json::json;
+
+fn migration_name_prefix() -> String{
+    format!("m{}", Local::now().format("%Y%m%d_%H%M%S").to_string())
+}
+
 pub fn get_file_stem(path: &str) -> &str {
+    let datatime = migration_name_prefix();
+    // replace path
+    let mut handlebars = Handlebars::new();
+    handlebars.register_template_string("path", &path).unwrap();
+    let path = handlebars.render("path", &json!({"datatime": datatime})).unwrap();
     std::path::Path::new(path)
         .file_stem()
         .map(|f| f.to_str().unwrap())

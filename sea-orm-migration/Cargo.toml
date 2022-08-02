@@ -18,6 +18,8 @@ name = "sea_orm_migration"
 path = "src/lib.rs"
 
 [dependencies]
+handlebars = "4.3.1"
+serde_json = "1.0.82"
 async-trait = { version = "^0.1" }
 clap = { version = "^3.2", features = ["env", "derive"] }
 dotenv = { version = "^0.15" }
