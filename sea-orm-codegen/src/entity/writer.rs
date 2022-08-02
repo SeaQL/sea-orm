@@ -124,7 +124,7 @@ impl EntityWriter {
                 let mut lines = Vec::new();
                 Self::write_doc_comment(&mut lines);
                 let code_blocks = if expanded_format {
-                    Self::gen_expanded_code_blocks(entity, with_serde)
+                    Self::gen_expanded_code_blocks(entity, with_serde, false)
                 } else {
                     Self::gen_compact_code_blocks(
                         entity,
@@ -214,7 +214,11 @@ impl EntityWriter {
         lines.push("".to_owned());
     }
 
-    pub fn gen_expanded_code_blocks(entity: &Entity, with_serde: &WithSerde) -> Vec<TokenStream> {
+    pub fn gen_expanded_code_blocks(
+        entity: &Entity,
+        with_serde: &WithSerde,
+        _primary_key_auto_increment: bool,
+    ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
         let mut code_blocks = vec![
@@ -556,7 +560,7 @@ impl EntityWriter {
                         }
                         ts = quote! { #ts #attr };
                     }
-                    return if skip_pk_deserialization {
+                    if skip_pk_deserialization {
                         quote! {
                             #[sea_orm(#ts)]
                             #[serde(skip_deserialization)]
@@ -565,7 +569,7 @@ impl EntityWriter {
                         quote! {
                             #[sea_orm(#ts)]
                         }
-                    };
+                    }
                 } else {
                     TokenStream::new()
                 }
@@ -1001,13 +1005,14 @@ mod tests {
             }
             let content = lines.join("");
             let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_expanded_code_blocks(entity, &crate::WithSerde::None)
-                .into_iter()
-                .skip(1)
-                .fold(TokenStream::new(), |mut acc, tok| {
-                    acc.extend(tok);
-                    acc
-                });
+            let generated =
+                EntityWriter::gen_expanded_code_blocks(entity, &crate::WithSerde::None, false)
+                    .into_iter()
+                    .skip(1)
+                    .fold(TokenStream::new(), |mut acc, tok| {
+                        acc.extend(tok);
+                        acc
+                    });
             assert_eq!(expected.to_string(), generated.to_string());
         }
 
@@ -1041,13 +1046,14 @@ mod tests {
             }
             let content = lines.join("");
             let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_compact_code_blocks(entity, &crate::WithSerde::None)
-                .into_iter()
-                .skip(1)
-                .fold(TokenStream::new(), |mut acc, tok| {
-                    acc.extend(tok);
-                    acc
-                });
+            let generated =
+                EntityWriter::gen_compact_code_blocks(entity, &crate::WithSerde::None, false)
+                    .into_iter()
+                    .skip(1)
+                    .fold(TokenStream::new(), |mut acc, tok| {
+                        acc.extend(tok);
+                        acc
+                    });
             assert_eq!(expected.to_string(), generated.to_string());
         }
 
@@ -1067,6 +1073,7 @@ mod tests {
                 include_str!("../../tests/compact_with_serde/cake_none.rs").into(),
                 WithSerde::None,
             ),
+            false,
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
         assert_serde_variant_results(
@@ -1075,6 +1082,7 @@ mod tests {
                 include_str!("../../tests/compact_with_serde/cake_serialize.rs").into(),
                 WithSerde::Serialize,
             ),
+            false,
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
         assert_serde_variant_results(
@@ -1083,6 +1091,7 @@ mod tests {
                 include_str!("../../tests/compact_with_serde/cake_deserialize.rs").into(),
                 WithSerde::Deserialize,
             ),
+            false,
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
         assert_serde_variant_results(
@@ -1091,6 +1100,7 @@ mod tests {
                 include_str!("../../tests/compact_with_serde/cake_both.rs").into(),
                 WithSerde::Both,
             ),
+            false,
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
 
@@ -1101,6 +1111,7 @@ mod tests {
                 include_str!("../../tests/expanded_with_serde/cake_none.rs").into(),
                 WithSerde::None,
             ),
+            false,
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
         assert_serde_variant_results(
@@ -1109,6 +1120,7 @@ mod tests {
                 include_str!("../../tests/expanded_with_serde/cake_serialize.rs").into(),
                 WithSerde::Serialize,
             ),
+            false,
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
         assert_serde_variant_results(
@@ -1117,6 +1129,7 @@ mod tests {
                 include_str!("../../tests/expanded_with_serde/cake_deserialize.rs").into(),
                 WithSerde::Deserialize,
             ),
+            false,
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
         assert_serde_variant_results(
@@ -1125,6 +1138,7 @@ mod tests {
                 include_str!("../../tests/expanded_with_serde/cake_both.rs").into(),
                 WithSerde::Both,
             ),
+            false,
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
 
@@ -1134,7 +1148,8 @@ mod tests {
     fn assert_serde_variant_results(
         cake_entity: &Entity,
         entity_serde_variant: &(String, WithSerde),
-        generator: Box<dyn Fn(&Entity, &WithSerde) -> Vec<TokenStream>>,
+        primary_key_auto_increment: bool,
+        generator: Box<dyn Fn(&Entity, &WithSerde, bool) -> Vec<TokenStream>>,
     ) -> io::Result<()> {
         let mut reader = BufReader::new(entity_serde_variant.0.as_bytes());
         let mut lines: Vec<String> = Vec::new();
@@ -1148,12 +1163,16 @@ mod tests {
         }
         let content = lines.join("");
         let expected: TokenStream = content.parse().unwrap();
-        let generated = generator(cake_entity, &entity_serde_variant.1)
-            .into_iter()
-            .fold(TokenStream::new(), |mut acc, tok| {
-                acc.extend(tok);
-                acc
-            });
+        let generated = generator(
+            cake_entity,
+            &entity_serde_variant.1,
+            primary_key_auto_increment,
+        )
+        .into_iter()
+        .fold(TokenStream::new(), |mut acc, tok| {
+            acc.extend(tok);
+            acc
+        });
 
         assert_eq!(expected.to_string(), generated.to_string());
         Ok(())
