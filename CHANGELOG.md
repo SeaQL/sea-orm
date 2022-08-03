@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.10.0 - Pending
 
+## 0.9.2 - Pending
+
+* [sea-orm-cli] Migrator CLI handles init and generate commands https://github.com/SeaQL/sea-orm/pull/931
+
 ## 0.9.1 - 2022-07-22
 
 ### Enhancements
