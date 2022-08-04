@@ -1,6 +1,12 @@
 use chrono::Local;
 use regex::Regex;
-use std::{error::Error, fs, io::Write, path::Path, process::Command};
+use std::{
+    error::Error,
+    fs,
+    io::Write,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use crate::MigrateSubcommands;
 
@@ -117,10 +123,18 @@ pub fn run_migrate_generate(
     Ok(())
 }
 
+fn get_full_migration_dir(migration_dir: &str) -> PathBuf {
+    let without_src = Path::new(migration_dir).to_owned();
+    let with_src = without_src.join("src");
+    match () {
+        _ if with_src.is_dir() => with_src,
+        _ => without_src,
+    }
+}
+
 fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(), Box<dyn Error>> {
-    let migration_filepath = Path::new(migration_dir)
-        .join("src")
-        .join(format!("{}.rs", &migration_name));
+    let migration_filepath =
+        get_full_migration_dir(migration_dir).join(format!("{}.rs", &migration_name));
     println!("Creating migration file `{}`", migration_filepath.display());
     // TODO: make OS agnostic
     let migration_template =
@@ -130,8 +144,17 @@ fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(),
     Ok(())
 }
 
+fn get_migrator_filepath(migration_dir: &str) -> PathBuf {
+    let full_migration_dir = get_full_migration_dir(migration_dir);
+    let with_lib = full_migration_dir.join("lib.rs");
+    match () {
+        _ if with_lib.is_file() => with_lib,
+        _ => full_migration_dir.join("mod.rs"),
+    }
+}
+
 fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<dyn Error>> {
-    let migrator_filepath = Path::new(migration_dir).join("src").join("lib.rs");
+    let migrator_filepath = get_migrator_filepath(migration_dir);
     println!(
         "Adding migration `{}` to `{}`",
         migration_name,
