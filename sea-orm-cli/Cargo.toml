@@ -13,6 +13,7 @@ repository = "https://github.com/SeaQL/sea-orm"
 categories = [ "database" ]
 keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 default-run = "sea-orm-cli"
+rust-version = "1.60"
 
 [lib]
 name = "sea_orm_cli"
