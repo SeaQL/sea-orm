@@ -65,9 +65,10 @@ where
         Some(MigrateSubcommands::Up { num }) => M::up(db, Some(num)).await?,
         Some(MigrateSubcommands::Down { num }) => M::down(db, Some(num)).await?,
         Some(MigrateSubcommands::Init) => run_migrate_init(MIGRATION_DIR)?,
-        Some(MigrateSubcommands::Generate { migration_name }) => {
-            run_migrate_generate(MIGRATION_DIR, &migration_name)?
-        }
+        Some(MigrateSubcommands::Generate {
+            migration_name,
+            universal_time,
+        }) => run_migrate_generate(MIGRATION_DIR, &migration_name, universal_time)?,
         _ => M::up(db, None).await?,
     };
 

@@ -1,4 +1,4 @@
-use chrono::Local;
+use chrono::{Local, Utc};
 use regex::Regex;
 use std::{error::Error, fs, io::Write, path::Path, process::Command};
 
@@ -11,9 +11,10 @@ pub fn run_migrate_command(
 ) -> Result<(), Box<dyn Error>> {
     match command {
         Some(MigrateSubcommands::Init) => run_migrate_init(migration_dir)?,
-        Some(MigrateSubcommands::Generate { migration_name }) => {
-            run_migrate_generate(migration_dir, &migration_name)?
-        }
+        Some(MigrateSubcommands::Generate {
+            migration_name,
+            universal_time,
+        }) => run_migrate_generate(migration_dir, &migration_name, universal_time)?,
         _ => {
             let (subcommand, migration_dir, steps, verbose) = match command {
                 Some(MigrateSubcommands::Fresh) => ("fresh", migration_dir, None, verbose),
@@ -104,12 +105,18 @@ pub fn run_migrate_init(migration_dir: &str) -> Result<(), Box<dyn Error>> {
 pub fn run_migrate_generate(
     migration_dir: &str,
     migration_name: &str,
+    universal_time: bool,
 ) -> Result<(), Box<dyn Error>> {
     println!("Generating new migration...");
 
     // build new migration filename
-    let now = Local::now();
-    let migration_name = format!("m{}_{}", now.format("%Y%m%d_%H%M%S"), migration_name);
+    const FMT: &str = "%Y%m%d_%H%M%S";
+    let formatted_now = if universal_time {
+        Utc::now().format(FMT)
+    } else {
+        Local::now().format(FMT)
+    };
+    let migration_name = format!("m{}_{}", formatted_now, migration_name);
 
     create_new_migration(&migration_name, migration_dir)?;
     update_migrator(&migration_name, migration_dir)?;
