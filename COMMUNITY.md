@@ -49,4 +49,4 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [KrakenPics](https://github.com/kraken-pics/backend) | A public file host written in rust using seaorm & actix_web
 - [service_auth](https://github.com/shorii/service_auth) | A simple JWT authentication web-application
 - [rj45less-server](https://github.com/pmnxis/rj45less-server) | A simple unique number allocator for custom router
-
+- [SophyCore](https://github.com/FarDragi/SophyCore) | Main system that centralizes all rules, to be used by both the discord bot and the future site 
