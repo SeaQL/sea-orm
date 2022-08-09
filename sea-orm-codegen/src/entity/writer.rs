@@ -119,7 +119,7 @@ impl EntityWriter {
     pub fn generate(self, context: &EntityWriterContext) -> WriterOutput {
         let mut files = Vec::new();
         files.extend(self.write_entities(context));
-        files.push(self.write_mod(context.lib));
+        files.push(self.write_index_file(context.lib));
         files.push(self.write_prelude());
         if !self.enums.is_empty() {
             files.push(
@@ -171,7 +171,7 @@ impl EntityWriter {
             .collect()
     }
 
-    pub fn write_mod(&self, lib: bool) -> OutputFile {
+    pub fn write_index_file(&self, lib: bool) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
         let code_blocks: Vec<TokenStream> = self.entities.iter().map(Self::gen_mod).collect();
