@@ -42,6 +42,7 @@ pub struct EntityWriterContext {
     pub(crate) with_copy_enums: bool,
     pub(crate) date_time_crate: DateTimeCrate,
     pub(crate) schema_name: Option<String>,
+    pub(crate) lib: bool,
 }
 
 impl WithSerde {
@@ -101,6 +102,7 @@ impl EntityWriterContext {
         with_copy_enums: bool,
         date_time_crate: DateTimeCrate,
         schema_name: Option<String>,
+        lib: bool,
     ) -> Self {
         Self {
             expanded_format,
@@ -108,6 +110,7 @@ impl EntityWriterContext {
             with_copy_enums,
             date_time_crate,
             schema_name,
+            lib,
         }
     }
 }
@@ -116,7 +119,7 @@ impl EntityWriter {
     pub fn generate(self, context: &EntityWriterContext) -> WriterOutput {
         let mut files = Vec::new();
         files.extend(self.write_entities(context));
-        files.push(self.write_mod());
+        files.push(self.write_mod(context.lib));
         files.push(self.write_prelude());
         if !self.enums.is_empty() {
             files.push(
@@ -168,7 +171,7 @@ impl EntityWriter {
             .collect()
     }
 
-    pub fn write_mod(&self) -> OutputFile {
+    pub fn write_mod(&self, lib: bool) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
         let code_blocks: Vec<TokenStream> = self.entities.iter().map(Self::gen_mod).collect();
@@ -188,8 +191,14 @@ impl EntityWriter {
                 }],
             );
         }
+
+        let file_name = match lib {
+            true => "lib.rs".to_owned(),
+            false => "mod.rs".to_owned(),
+        };
+
         OutputFile {
-            name: "mod.rs".to_owned(),
+            name: file_name,
             content: lines.join("\n"),
         }
     }
