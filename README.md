@@ -231,4 +231,4 @@ SeaORM is a community driven project. We welcome you to participate, contribute 
 
 A big shout out to our contributors:
 
-[![Contributors](https://opencollective.com/sea-orm/contributors.svg?width=1000)](https://github.com/SeaQL/sea-orm/graphs/contributors)
+[![Contributors](https://opencollective.com/sea-orm/contributors.svg?width=1000&button=false)](https://github.com/SeaQL/sea-orm/graphs/contributors)
