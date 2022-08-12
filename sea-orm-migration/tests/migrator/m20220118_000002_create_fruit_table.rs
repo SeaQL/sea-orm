@@ -2,13 +2,8 @@ use super::m20220118_000001_create_cake_table::Cake;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::sea_orm::DbBackend;
 
+#[derive(DeriveMigrationName)]
 pub struct Migration;
-
-impl MigrationName for Migration {
-    fn name(&self) -> &str {
-        "m20220118_000002_create_fruit_table"
-    }
-}
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
@@ -54,6 +49,7 @@ impl MigrationTrait for Migration {
     }
 }
 
+/// Learn more at https://docs.rs/sea-query#iden
 #[derive(Iden)]
 pub enum Fruit {
     Table,

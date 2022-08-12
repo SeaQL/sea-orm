@@ -81,6 +81,7 @@ impl DatabaseTransaction {
     }
 
     #[instrument(level = "trace", skip(metric_callback))]
+    #[allow(unreachable_code)]
     async fn begin(
         conn: Arc<Mutex<InnerConnection>>,
         backend: DbBackend,
@@ -144,6 +145,7 @@ impl DatabaseTransaction {
 
     /// Commit a transaction atomically
     #[instrument(level = "trace")]
+    #[allow(unreachable_code)]
     pub async fn commit(mut self) -> Result<(), DbErr> {
         self.open = false;
         match *self.conn.lock().await {
@@ -175,6 +177,7 @@ impl DatabaseTransaction {
 
     /// rolls back a transaction in case error are encountered during the operation
     #[instrument(level = "trace")]
+    #[allow(unreachable_code)]
     pub async fn rollback(mut self) -> Result<(), DbErr> {
         self.open = false;
         match *self.conn.lock().await {
@@ -262,6 +265,7 @@ impl ConnectionTrait for DatabaseTransaction {
     }
 
     #[instrument(level = "trace")]
+    #[allow(unused_variables)]
     async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", stmt);
 
@@ -298,6 +302,7 @@ impl ConnectionTrait for DatabaseTransaction {
     }
 
     #[instrument(level = "trace")]
+    #[allow(unused_variables)]
     async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -331,6 +336,7 @@ impl ConnectionTrait for DatabaseTransaction {
     }
 
     #[instrument(level = "trace")]
+    #[allow(unused_variables)]
     async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
@@ -371,6 +377,7 @@ impl ConnectionTrait for DatabaseTransaction {
 }
 
 #[async_trait::async_trait]
+#[allow(unused_variables)]
 impl<'a> StreamTrait<'a> for DatabaseTransaction {
     type Stream = TransactionStream<'a>;
 

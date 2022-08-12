@@ -1,6 +1,6 @@
 use crate::{EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select};
 use core::marker::PhantomData;
-use sea_query::{JoinType, TableRef};
+use sea_query::{Alias, Condition, DynIden, JoinType, SeaRc, TableRef};
 use std::fmt::Debug;
 
 /// Defines the type of relationship
@@ -42,7 +42,6 @@ where
 }
 
 /// Defines a relationship
-#[derive(Debug)]
 pub struct RelationDef {
     /// The type of relationship defined in [RelationType]
     pub rel_type: RelationType,
@@ -62,12 +61,49 @@ pub struct RelationDef {
     /// Defines an operation to be performed on a Foreign Key when a
     /// `UPDATE` Operation is performed
     pub on_update: Option<ForeignKeyAction>,
+    /// Custom join ON condition
+    pub on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
     /// The name of foreign key constraint
     pub fk_name: Option<String>,
 }
 
+impl std::fmt::Debug for RelationDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut d = f.debug_struct("RelationDef");
+        d.field("rel_type", &self.rel_type)
+            .field("from_tbl", &self.from_tbl)
+            .field("to_tbl", &self.to_tbl)
+            .field("from_col", &self.from_col)
+            .field("to_col", &self.to_col)
+            .field("is_owner", &self.is_owner)
+            .field("on_delete", &self.on_delete)
+            .field("on_update", &self.on_update);
+        debug_on_condition(&mut d, &self.on_condition);
+        d.field("fk_name", &self.fk_name).finish()
+    }
+}
+
+fn debug_on_condition(
+    d: &mut core::fmt::DebugStruct<'_, '_>,
+    on_condition: &Option<Box<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
+) {
+    match on_condition {
+        Some(func) => {
+            d.field(
+                "on_condition",
+                &func(
+                    SeaRc::new(Alias::new("left")),
+                    SeaRc::new(Alias::new("right")),
+                ),
+            );
+        }
+        None => {
+            d.field("on_condition", &Option::<Condition>::None);
+        }
+    }
+}
+
 /// Defines a helper to build a relation
-#[derive(Debug)]
 pub struct RelationBuilder<E, R>
 where
     E: EntityTrait,
@@ -82,7 +118,29 @@ where
     is_owner: bool,
     on_delete: Option<ForeignKeyAction>,
     on_update: Option<ForeignKeyAction>,
+    on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
     fk_name: Option<String>,
+}
+
+impl<E, R> std::fmt::Debug for RelationBuilder<E, R>
+where
+    E: EntityTrait,
+    R: EntityTrait,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut d = f.debug_struct("RelationBuilder");
+        d.field("entities", &self.entities)
+            .field("rel_type", &self.rel_type)
+            .field("from_tbl", &self.from_tbl)
+            .field("to_tbl", &self.to_tbl)
+            .field("from_col", &self.from_col)
+            .field("to_col", &self.to_col)
+            .field("is_owner", &self.is_owner)
+            .field("on_delete", &self.on_delete)
+            .field("on_update", &self.on_update);
+        debug_on_condition(&mut d, &self.on_condition);
+        d.field("fk_name", &self.fk_name).finish()
+    }
 }
 
 impl RelationDef {
@@ -97,8 +155,50 @@ impl RelationDef {
             is_owner: !self.is_owner,
             on_delete: self.on_delete,
             on_update: self.on_update,
+            on_condition: self.on_condition,
             fk_name: None,
         }
+    }
+
+    /// Set custom join ON condition.
+    ///
+    /// This method takes a closure with two parameters
+    /// denoting the left-hand side and right-hand side table in the join expression.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, DbBackend, tests_cfg::{cake, cake_filling}};
+    /// use sea_query::{Expr, IntoCondition};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .join(
+    ///             JoinType::LeftJoin,
+    ///             cake_filling::Relation::Cake
+    ///                 .def()
+    ///                 .rev()
+    ///                 .on_condition(|_left, right| {
+    ///                     Expr::tbl(right, cake_filling::Column::CakeId)
+    ///                         .gt(10i32)
+    ///                         .into_condition()
+    ///                 })
+    ///         )
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     [
+    ///         "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+    ///         "LEFT JOIN `cake_filling` ON `cake`.`id` = `cake_filling`.`cake_id` AND `cake_filling`.`cake_id` > 10",
+    ///     ]
+    ///     .join(" ")
+    /// );
+    /// ```
+    pub fn on_condition<F>(mut self, f: F) -> Self
+    where
+        F: Fn(DynIden, DynIden) -> Condition + 'static + Send + Sync,
+    {
+        self.on_condition = Some(Box::new(f));
+        self
     }
 }
 
@@ -118,6 +218,7 @@ where
             is_owner,
             on_delete: None,
             on_update: None,
+            on_condition: None,
             fk_name: None,
         }
     }
@@ -133,6 +234,7 @@ where
             is_owner,
             on_delete: None,
             on_update: None,
+            on_condition: None,
             fk_name: None,
         }
     }
@@ -167,6 +269,18 @@ where
         self
     }
 
+    /// Set custom join ON condition.
+    ///
+    /// This method takes a closure with parameters
+    /// denoting the left-hand side and right-hand side table in the join expression.
+    pub fn on_condition<F>(mut self, f: F) -> Self
+    where
+        F: Fn(DynIden, DynIden) -> Condition + 'static + Send + Sync,
+    {
+        self.on_condition = Some(Box::new(f));
+        self
+    }
+
     /// Set the name of foreign key constraint
     pub fn fk_name(mut self, fk_name: &str) -> Self {
         self.fk_name = Some(fk_name.to_owned());
@@ -189,7 +303,24 @@ where
             is_owner: b.is_owner,
             on_delete: b.on_delete,
             on_update: b.on_update,
+            on_condition: b.on_condition,
             fk_name: b.fk_name,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        tests_cfg::{cake, fruit},
+        RelationBuilder, RelationDef,
+    };
+
+    #[test]
+    fn assert_relation_traits() {
+        fn assert_send_sync<T: Send + Sync>() {}
+
+        assert_send_sync::<RelationDef>();
+        assert_send_sync::<RelationBuilder<cake::Entity, fruit::Entity>>();
     }
 }

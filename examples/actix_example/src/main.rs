@@ -158,6 +158,18 @@ async fn delete(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpRes
         .finish())
 }
 
+async fn not_found(data: web::Data<AppState>, request: HttpRequest) -> Result<HttpResponse, Error> {
+    let mut ctx = tera::Context::new();
+    ctx.insert("uri", request.uri().path());
+
+    let template = &data.templates;
+    let body = template
+        .render("error/404.html.tera", &ctx)
+        .map_err(|_| error::ErrorInternalServerError("Template error"))?;
+
+    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "debug");
@@ -186,6 +198,7 @@ async fn main() -> std::io::Result<()> {
             .service(Fs::new("/static", "./static"))
             .app_data(web::Data::new(state.clone()))
             .wrap(middleware::Logger::default()) // enable logger
+            .default_service(web::route().to(not_found))
             .configure(init)
     });
 

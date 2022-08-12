@@ -13,8 +13,7 @@ serde = "^1"
 tokio = { version = "^1", features = ["rt", "rt-multi-thread", "macros"] }
 
 [dependencies.sea-orm]
-path = "../../" # remove this line in your own project
-version = "^0.7"
+path = "../../"
 default-features = false
 features = ["macros", "runtime-tokio-native-tls", "debug-print", "with-json", "with-chrono"]
 
