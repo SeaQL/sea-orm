@@ -9,8 +9,6 @@ use sea_query::{
 };
 
 pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
-    
-
     if cfg!(feature = "sqlx-mysql") {
         let url = format!("{}/mysql", base_url);
         let db = Database::connect(&url).await.unwrap();
