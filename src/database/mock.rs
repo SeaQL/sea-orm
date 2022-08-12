@@ -349,7 +349,7 @@ mod tests {
     };
     use pretty_assertions::assert_eq;
 
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, Eq)]
     pub struct MyErr(String);
 
     impl std::error::Error for MyErr {}

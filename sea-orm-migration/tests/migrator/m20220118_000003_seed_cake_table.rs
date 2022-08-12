@@ -34,7 +34,7 @@ impl MigrationTrait for Migration {
 mod cake {
     use sea_orm_migration::sea_orm::entity::prelude::*;
 
-    #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm(table_name = "cake")]
     pub struct Model {
         #[sea_orm(primary_key)]

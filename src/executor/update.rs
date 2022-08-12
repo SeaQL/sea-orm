@@ -13,7 +13,7 @@ pub struct Updater {
 }
 
 /// The result of an update operation on an ActiveModel
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UpdateResult {
     /// The rows affected by the update operation
     pub rows_affected: u64,
