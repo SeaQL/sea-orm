@@ -71,7 +71,7 @@ mod form {
     use sea_orm::entity::prelude::*;
 
     #[derive(
-        Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, DeriveActiveModelBehavior,
+        Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel, DeriveActiveModelBehavior,
     )]
     pub struct Model {
         pub id: i32,

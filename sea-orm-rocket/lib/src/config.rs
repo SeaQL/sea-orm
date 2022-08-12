@@ -47,7 +47,7 @@ use rocket::serde::{Deserialize, Serialize};
 /// For general information on configuration in Rocket, see [`rocket::config`].
 /// For higher-level details on configuring a database, see the [crate-level
 /// docs](crate#configuration).
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(crate = "rocket::serde")]
 pub struct Config {
     /// Database-specific connection and configuration URL.

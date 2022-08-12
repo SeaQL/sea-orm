@@ -10,7 +10,7 @@ pub struct Cli {
     pub command: Commands,
 }
 
-#[derive(Subcommand, PartialEq, Debug)]
+#[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum Commands {
     #[clap(about = "Codegen related commands")]
     #[clap(arg_required_else_help = true)]
@@ -35,7 +35,7 @@ pub enum Commands {
     },
 }
 
-#[derive(Subcommand, PartialEq, Debug)]
+#[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum MigrateSubcommands {
     #[clap(about = "Initialize migration directory")]
     Init,
@@ -81,7 +81,7 @@ pub enum MigrateSubcommands {
     },
 }
 
-#[derive(Subcommand, PartialEq, Debug)]
+#[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum GenerateSubcommands {
     #[clap(about = "Generate entity")]
     #[clap(arg_required_else_help = true)]
@@ -190,7 +190,7 @@ pub enum GenerateSubcommands {
     },
 }
 
-#[derive(ArgEnum, Copy, Clone, Debug, PartialEq)]
+#[derive(ArgEnum, Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DateTimeCrate {
     Chrono,
     Time,
