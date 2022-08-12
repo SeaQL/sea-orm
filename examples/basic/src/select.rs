@@ -28,15 +28,15 @@ pub async fn all_about_select(db: &DbConn) -> Result<(), DbErr> {
 
     println!("===== =====\n");
 
-    find_all_stream(&db).await.unwrap();
+    find_all_stream(db).await.unwrap();
 
     println!("===== =====\n");
 
-    find_first_page(&db).await.unwrap();
+    find_first_page(db).await.unwrap();
 
     println!("===== =====\n");
 
-    find_num_pages(&db).await.unwrap();
+    find_num_pages(db).await.unwrap();
 
     Ok(())
 }
@@ -180,15 +180,15 @@ async fn find_many_to_many(db: &DbConn) -> Result<(), DbErr> {
 }
 
 async fn all_about_select_json(db: &DbConn) -> Result<(), DbErr> {
-    find_all_json(&db).await?;
+    find_all_json(db).await?;
 
     println!("===== =====\n");
 
-    find_together_json(&db).await?;
+    find_together_json(db).await?;
 
     println!("===== =====\n");
 
-    count_fruits_by_cake_json(&db).await?;
+    count_fruits_by_cake_json(db).await?;
 
     Ok(())
 }

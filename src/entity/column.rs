@@ -13,7 +13,7 @@ pub struct ColumnDef {
 }
 
 /// The type of column as defined in the SQL format
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ColumnType {
     /// `CHAR` type of specified fixed length
     Char(Option<u32>),
@@ -534,7 +534,7 @@ mod tests {
             use crate as sea_orm;
             use crate::entity::prelude::*;
 
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "hello")]
             pub struct Model {
                 #[sea_orm(primary_key)]
@@ -608,7 +608,7 @@ mod tests {
             use crate as sea_orm;
             use crate::entity::prelude::*;
 
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "hello")]
             pub struct Model {
                 #[sea_orm(primary_key)]
@@ -649,7 +649,7 @@ mod tests {
                 }
             }
 
-            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
             pub struct Model {
                 pub id: i32,
                 pub one: i32,
@@ -713,7 +713,7 @@ mod tests {
             use crate as sea_orm;
             use crate::entity::prelude::*;
 
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "hello")]
             pub struct Model {
                 #[sea_orm(primary_key)]
@@ -754,7 +754,7 @@ mod tests {
                 }
             }
 
-            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
             pub struct Model {
                 pub id: i32,
                 #[sea_orm(enum_name = "One1")]
@@ -819,7 +819,7 @@ mod tests {
             use crate as sea_orm;
             use crate::entity::prelude::*;
 
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "hello")]
             pub struct Model {
                 #[sea_orm(primary_key, column_name = "ID", enum_name = "IdentityColumn")]
@@ -861,7 +861,7 @@ mod tests {
                 }
             }
 
-            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
             pub struct Model {
                 #[sea_orm(enum_name = "IdentityCol")]
                 pub id: i32,
@@ -930,7 +930,7 @@ mod tests {
             use crate as sea_orm;
             use crate::entity::prelude::*;
 
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "my_entity")]
             pub struct Model {
                 #[sea_orm(primary_key, enum_name = "IdentityColumn", column_name = "id")]

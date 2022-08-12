@@ -21,7 +21,7 @@ pub struct OutputFile {
     pub content: String,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum WithSerde {
     None,
     Serialize,
