@@ -1,6 +1,5 @@
 use sea_orm_migration::prelude::*;
 
-
 #[cfg(debug_assertions)]
 use dotenv::dotenv;
 
