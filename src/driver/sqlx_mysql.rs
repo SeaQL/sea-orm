@@ -1,3 +1,4 @@
+use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
@@ -5,8 +6,7 @@ use sqlx::{
     MySql, MySqlPool,
 };
 
-sea_query::sea_query_driver_mysql!();
-use sea_query_driver_mysql::bind_query;
+use sea_query_binder::{SqlxBinder, SqlxValues};
 use tracing::instrument;
 
 use crate::{
@@ -215,10 +215,10 @@ impl From<MySqlQueryResult> for ExecResult {
     }
 }
 
-pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, MySqlArguments> {
-    let mut query = sqlx::query(&stmt.sql);
+pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, SqlxValues> {
     if let Some(values) = &stmt.values {
-        query = bind_query(query, values);
+        sqlx::query_with(&stmt.sql, SqlxValues(values.clone()))
+    } else {
+        sqlx::query_with(&stmt.sql, SqlxValues(Values(Vec::new())))
     }
-    query
 }
