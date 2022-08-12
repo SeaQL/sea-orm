@@ -1,7 +1,7 @@
 use crate as sea_orm;
 use crate::entity::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "rust_keyword")]
 pub struct Model {
     #[sea_orm(primary_key)]

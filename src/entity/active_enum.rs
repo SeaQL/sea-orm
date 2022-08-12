@@ -139,7 +139,7 @@ mod tests {
 
     #[test]
     fn active_enum_string() {
-        #[derive(Debug, PartialEq, EnumIter)]
+        #[derive(Debug, PartialEq, Eq, EnumIter)]
         pub enum Category {
             Big,
             Small,
@@ -176,7 +176,7 @@ mod tests {
             }
         }
 
-        #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+        #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
         #[sea_orm(
             rs_type = "String",
             db_type = "String(Some(1))",
@@ -234,7 +234,7 @@ mod tests {
     fn active_enum_derive_signed_integers() {
         macro_rules! test_num_value_int {
             ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 pub enum $ident {
                     #[sea_orm(num_value = -10)]
@@ -251,7 +251,7 @@ mod tests {
 
         macro_rules! test_fallback_int {
             ($ident: ident, $fallback_type: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 #[repr(i32)]
                 pub enum $ident {
@@ -300,7 +300,7 @@ mod tests {
     fn active_enum_derive_unsigned_integers() {
         macro_rules! test_num_value_uint {
             ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 pub enum $ident {
                     #[sea_orm(num_value = 1)]
@@ -315,7 +315,7 @@ mod tests {
 
         macro_rules! test_fallback_uint {
             ($ident: ident, $fallback_type: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 #[repr($fallback_type)]
                 pub enum $ident {

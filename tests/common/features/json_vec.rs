@@ -2,7 +2,7 @@ use sea_orm::entity::prelude::*;
 use sea_orm::{TryGetError, TryGetable};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "json_vec")]
 pub struct Model {
     #[sea_orm(primary_key)]
@@ -15,7 +15,7 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StringVec(pub Vec<String>);
 
 impl From<StringVec> for Value {
