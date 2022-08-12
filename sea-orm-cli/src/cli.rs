@@ -64,7 +64,7 @@ pub enum MigrateSubcommands {
             short,
             long,
             default_value = "1",
-            help = "Number of pending migrations to be rolled back"
+            help = "Number of pending migrations to apply"
         )]
         num: u32,
     },
@@ -75,7 +75,7 @@ pub enum MigrateSubcommands {
             short,
             long,
             default_value = "1",
-            help = "Number of pending migrations to be rolled back"
+            help = "Number of applied migrations to be rolled back"
         )]
         num: u32,
     },
