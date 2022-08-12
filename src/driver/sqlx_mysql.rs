@@ -91,6 +91,7 @@ impl SqlxMySqlPoolConnection {
         } else {
             Err(DbErr::Exec(
                 "Failed to acquire connection from pool.".to_owned(),
+                None,
             ))
         }
     }
@@ -107,13 +108,14 @@ impl SqlxMySqlPoolConnection {
                     Ok(row) => Ok(Some(row.into())),
                     Err(err) => match err {
                         sqlx::Error::RowNotFound => Ok(None),
-                        _ => Err(DbErr::Query(err.to_string())),
+                        _ => Err(DbErr::Query(err.to_string(), None)),
                     },
                 }
             })
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),
+                None,
             ))
         }
     }
@@ -134,6 +136,7 @@ impl SqlxMySqlPoolConnection {
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),
+                None,
             ))
         }
     }
@@ -152,6 +155,7 @@ impl SqlxMySqlPoolConnection {
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),
+                None,
             ))
         }
     }
@@ -164,6 +168,7 @@ impl SqlxMySqlPoolConnection {
         } else {
             Err(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),
+                None,
             ))
         }
     }
@@ -187,6 +192,7 @@ impl SqlxMySqlPoolConnection {
         } else {
             Err(TransactionError::Connection(DbErr::Query(
                 "Failed to acquire connection from pool.".to_owned(),
+                None,
             )))
         }
     }
