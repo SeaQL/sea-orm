@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### House keeping
 
 * Set minimal rustc version to `1.60` https://github.com/SeaQL/sea-orm/pull/938
+* Exclude `chrono` default features https://github.com/SeaQL/sea-orm/pull/950
 
 ## 0.9.2 - Pending
 
