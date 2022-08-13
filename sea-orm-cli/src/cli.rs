@@ -25,7 +25,11 @@ pub enum Commands {
             global = true,
             short = 'd',
             long,
-            help = "Migration script directory",
+            help = "Migration script directory.
+If your migrations are in their own crate,
+you can provide the root of that crate.
+If your migrations are in a submodule of your app,
+you should provide the directory of that submodule.",
             default_value = "./migration"
         )]
         migration_dir: String,
