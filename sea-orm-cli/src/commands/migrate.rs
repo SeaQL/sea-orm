@@ -164,7 +164,7 @@ fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<
     let mut updated_migrator_content = migrator_content.clone();
 
     // create a backup of the migrator file in case something goes wrong
-    let migrator_backup_filepath = migrator_filepath.with_file_name("lib.rs.bak");
+    let migrator_backup_filepath = migrator_filepath.with_extension("rs.bak");
     fs::copy(&migrator_filepath, &migrator_backup_filepath)?;
     let mut migrator_file = fs::File::create(&migrator_filepath)?;
 
