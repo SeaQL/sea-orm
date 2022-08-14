@@ -368,7 +368,10 @@ mod tests {
             let rs_type: TokenStream = rs_type.parse().unwrap();
 
             col.not_null = true;
-            assert_eq!(col.get_rs_type(&chrono_crate).to_string(), quote!(#rs_type).to_string());
+            assert_eq!(
+                col.get_rs_type(&chrono_crate).to_string(),
+                quote!(#rs_type).to_string()
+            );
 
             col.not_null = false;
             assert_eq!(

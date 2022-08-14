@@ -95,23 +95,6 @@ impl FromStr for WithSerde {
     }
 }
 
-impl FromStr for DateTimeCrate {
-    type Err = crate::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "chrono" => Self::Chrono,
-            "time" => Self::Time,
-            v => {
-                return Err(crate::Error::TransformError(format!(
-                    "Unsupported enum variant '{}'",
-                    v
-                )))
-            }
-        })
-    }
-}
-
 impl EntityWriterContext {
     pub fn new(
         expanded_format: bool,
@@ -1387,6 +1370,7 @@ mod tests {
         Ok(())
     }
 
+    #[allow(clippy::type_complexity)]
     fn assert_serde_variant_results(
         cake_entity: &Entity,
         entity_serde_variant: &(String, WithSerde, &NameResolver, Option<String>),
