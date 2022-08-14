@@ -376,9 +376,8 @@ impl EntityWriter {
         };
         quote! {
             impl EntityName for Entity {
-                fn table_name(&self) -> &str {
-                    #table_name
-                }
+                #schema_name
+                #table_name
             }
         }
     }
@@ -1103,32 +1102,57 @@ mod tests {
         assert_eq!(entities.len(), ENTITY_FILES.len());
 
         for (i, entity) in entities.iter().enumerate() {
-            let mut reader = BufReader::new(ENTITY_FILES[i].as_bytes());
-            let mut lines: Vec<String> = Vec::new();
-
-            reader.read_until(b';', &mut Vec::new())?;
-
-            let mut line = String::new();
-            while reader.read_line(&mut line)? > 0 {
-                lines.push(line.to_owned());
-                line.clear();
-            }
-            let content = lines.join("");
-            let expected: TokenStream = content.parse().unwrap();
-            let generated = EntityWriter::gen_expanded_code_blocks(
-                entity,
-                &crate::WithSerde::None,
-                &NameResolver::new(false),
-                &crate::DateTimeCrate::Chrono,
-                &None,
-            )
-            .into_iter()
-            .skip(1)
-            .fold(TokenStream::new(), |mut acc, tok| {
-                acc.extend(tok);
-                acc
-            });
-            assert_eq!(expected.to_string(), generated.to_string());
+            assert_eq!(
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
+                EntityWriter::gen_expanded_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &NameResolver::new(false),
+                    &crate::DateTimeCrate::Chrono,
+                    &None
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+            assert_eq!(
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
+                EntityWriter::gen_expanded_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &NameResolver::new(false),
+                    &crate::DateTimeCrate::Chrono,
+                    &Some("public".to_owned())
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+            assert_eq!(
+                parse_from_file(ENTITY_FILES_WITH_SCHEMA_NAME[i].as_bytes())?.to_string(),
+                EntityWriter::gen_expanded_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &NameResolver::new(false),
+                    &crate::DateTimeCrate::Chrono,
+                    &Some("schema_name".to_owned())
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
         }
 
         Ok(())
