@@ -1,9 +1,9 @@
-use heck::{CamelCase,SnakeCase};
+use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{ForeignKeyAction, TableForeignKey};
 
-use super::name_resolver::{NameResolver};
+use super::name_resolver::NameResolver;
 
 #[derive(Clone, Debug)]
 pub enum RelationType {
@@ -29,7 +29,10 @@ impl Relation {
         let name = if self.self_referencing {
             format_ident!("SelfRef")
         } else {
-            format_ident!("{}", name_resolver.resolve_relation_name(self.ref_table.as_str()))
+            format_ident!(
+                "{}",
+                name_resolver.resolve_relation_name(self.ref_table.as_str())
+            )
         };
         if self.num_suffix > 0 {
             format_ident!("{}{}", name, self.num_suffix)
@@ -42,10 +45,13 @@ impl Relation {
         if self.self_referencing {
             None
         } else {
-            Some(format_ident!("{}", name_resolver.resolve_module_name(self.ref_table.as_str())))
+            Some(format_ident!(
+                "{}",
+                name_resolver.resolve_module_name(self.ref_table.as_str())
+            ))
         }
     }
-    
+
     pub fn get_enum_name(&self) -> Ident {
         let name = if self.self_referencing {
             format_ident!("SelfRef")

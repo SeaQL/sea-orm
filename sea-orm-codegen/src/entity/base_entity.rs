@@ -1,4 +1,4 @@
-use crate::{Column, ConjunctRelation, DateTimeCrate, PrimaryKey, Relation, NameResolver};
+use crate::{Column, ConjunctRelation, DateTimeCrate, NameResolver, PrimaryKey, Relation};
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::format_ident;
@@ -85,7 +85,7 @@ impl Entity {
             .collect()
     }
 
-    pub fn resolve_relation_module_name(&self, name_resolver: &NameResolver) -> Vec<Option<Ident>>  {
+    pub fn resolve_relation_module_name(&self, name_resolver: &NameResolver) -> Vec<Option<Ident>> {
         self.relations
             .iter()
             .map(|rel| rel.resolve_module_name(name_resolver))
@@ -114,7 +114,10 @@ impl Entity {
     }
 
     pub fn resolve_relation_defs(&self, name_resolver: &NameResolver) -> Vec<TokenStream> {
-        self.relations.iter().map(|rel| rel.resolve_def(name_resolver)).collect()
+        self.relations
+            .iter()
+            .map(|rel| rel.resolve_def(name_resolver))
+            .collect()
     }
 
     pub fn get_relation_defs(&self) -> Vec<TokenStream> {
@@ -122,7 +125,10 @@ impl Entity {
     }
 
     pub fn resolve_relation_attrs(&self, name_resolver: &NameResolver) -> Vec<TokenStream> {
-        self.relations.iter().map(|rel| rel.resolve_attrs(name_resolver)).collect()
+        self.relations
+            .iter()
+            .map(|rel| rel.resolve_attrs(name_resolver))
+            .collect()
     }
 
     pub fn get_relation_attrs(&self) -> Vec<TokenStream> {
@@ -159,21 +165,30 @@ impl Entity {
         }
     }
 
-    pub fn resolve_conjunct_relations_via_module_name(&self, name_resolver: &NameResolver) -> Vec<Ident> {
+    pub fn resolve_conjunct_relations_via_module_name(
+        &self,
+        name_resolver: &NameResolver,
+    ) -> Vec<Ident> {
         self.conjunct_relations
             .iter()
             .map(|con_rel| con_rel.resolve_via_module_name(name_resolver))
             .collect()
     }
 
-    pub fn resolve_conjunct_relations_to_module_name(&self, name_resolver: &NameResolver) -> Vec<Ident> {
+    pub fn resolve_conjunct_relations_to_module_name(
+        &self,
+        name_resolver: &NameResolver,
+    ) -> Vec<Ident> {
         self.conjunct_relations
             .iter()
             .map(|con_rel| con_rel.resolve_to_module_name(name_resolver))
             .collect()
     }
 
-    pub fn resolve_conjunct_relations_to_relation_name(&self, name_resolver: &NameResolver) -> Vec<Ident> {
+    pub fn resolve_conjunct_relations_to_relation_name(
+        &self,
+        name_resolver: &NameResolver,
+    ) -> Vec<Ident> {
         self.conjunct_relations
             .iter()
             .map(|con_rel| con_rel.resolve_to_relation_name(name_resolver))

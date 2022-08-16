@@ -1,5 +1,6 @@
 use sea_orm_codegen::{
-    DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile, WithSerde, NameResolver
+    DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, NameResolver,
+    OutputFile, WithSerde,
 };
 use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};

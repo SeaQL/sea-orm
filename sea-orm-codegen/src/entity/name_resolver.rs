@@ -3,16 +3,14 @@ use inflection::singular;
 
 #[derive(Clone, Debug)]
 pub struct NameResolver {
-    singularize: bool
+    singularize: bool,
 }
 
 impl NameResolver {
     pub fn new(singularize: bool) -> Self {
-        Self {
-            singularize
-        }
+        Self { singularize }
     }
-    
+
     pub fn resolve_module_name(&self, name: &str) -> String {
         let name = name.to_snake_case();
 
@@ -25,7 +23,7 @@ impl NameResolver {
 
     pub fn resolve_entity_name(&self, name: &str) -> String {
         let name = name.to_camel_case();
-        
+
         if self.singularize {
             singular(name)
         } else {

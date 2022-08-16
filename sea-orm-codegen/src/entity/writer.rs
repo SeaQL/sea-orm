@@ -176,7 +176,11 @@ impl EntityWriter {
     pub fn write_mod(&self, name_resolver: &NameResolver) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        let code_blocks: Vec<TokenStream> = self.entities.iter().map(|entity| Self::gen_mod(entity, name_resolver)).collect();
+        let code_blocks: Vec<TokenStream> = self
+            .entities
+            .iter()
+            .map(|entity| Self::gen_mod(entity, name_resolver))
+            .collect();
         Self::write(
             &mut lines,
             vec![quote! {
@@ -202,7 +206,11 @@ impl EntityWriter {
     pub fn write_prelude(&self, name_resolver: &NameResolver) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        let code_blocks = self.entities.iter().map(|entity| Self::gen_prelude_use(entity, name_resolver)).collect();
+        let code_blocks = self
+            .entities
+            .iter()
+            .map(|entity| Self::gen_prelude_use(entity, name_resolver))
+            .collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
             name: "prelude.rs".to_owned(),
@@ -518,7 +526,10 @@ impl EntityWriter {
             .collect()
     }
 
-    pub fn gen_impl_conjunct_related(entity: &Entity, name_resolver: &NameResolver) -> Vec<TokenStream> {
+    pub fn gen_impl_conjunct_related(
+        entity: &Entity,
+        name_resolver: &NameResolver,
+    ) -> Vec<TokenStream> {
         let entity_name = entity.resolve_entity_name_ident(name_resolver);
 
         let via_module_name = entity.resolve_conjunct_relations_via_module_name(name_resolver);
@@ -674,8 +685,8 @@ impl EntityWriter {
 #[cfg(test)]
 mod tests {
     use crate::{
-        Column, ConjunctRelation, DateTimeCrate, Entity, EntityWriter, PrimaryKey, Relation,
-        RelationType, WithSerde, NameResolver
+        Column, ConjunctRelation, DateTimeCrate, Entity, EntityWriter, NameResolver, PrimaryKey,
+        Relation, RelationType, WithSerde,
     };
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
@@ -1375,7 +1386,13 @@ mod tests {
         cake_entity: &Entity,
         entity_serde_variant: &(String, WithSerde, &NameResolver, Option<String>),
         generator: Box<
-            dyn Fn(&Entity, &WithSerde, &NameResolver, &DateTimeCrate, &Option<String>) -> Vec<TokenStream>,
+            dyn Fn(
+                &Entity,
+                &WithSerde,
+                &NameResolver,
+                &DateTimeCrate,
+                &Option<String>,
+            ) -> Vec<TokenStream>,
         >,
     ) -> io::Result<()> {
         let mut reader = BufReader::new(entity_serde_variant.0.as_bytes());
