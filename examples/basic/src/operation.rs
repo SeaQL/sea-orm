@@ -70,20 +70,17 @@ mod form {
     use super::fruit::*;
     use sea_orm::entity::prelude::*;
 
-    #[derive(
-        Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel, DeriveActiveModelBehavior,
-    )]
-    pub struct Model {
-        pub id: i32,
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveIntoActiveModel)]
+    pub struct InputModel {
         pub name: String,
     }
 }
 
 async fn save_custom_active_model(db: &DbConn) -> Result<(), DbErr> {
-    let pineapple = form::ActiveModel {
-        id: NotSet,
-        name: Set("Pineapple".to_owned()),
-    };
+    let pineapple = form::InputModel {
+        name: "Pineapple".to_owned(),
+    }
+    .into_active_model();
 
     let pineapple = pineapple.save(db).await?;
 
