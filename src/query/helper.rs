@@ -38,6 +38,29 @@ pub trait QuerySelect: Sized {
     ///     r#"SELECT "cake"."name" FROM "cake""#
     /// );
     /// ```
+    ///
+    /// Enum column will be casted into text (PostgreSQL only)
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::lunch_set, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     lunch_set::Entity::find()
+    ///         .select_only()
+    ///         .column(lunch_set::Column::Tea)
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    /// );
+    /// assert_eq!(
+    ///     lunch_set::Entity::find()
+    ///         .select_only()
+    ///         .column(lunch_set::Column::Tea)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     r#"SELECT `lunch_set`.`tea` FROM `lunch_set`"#
+    /// );
+    /// ```
     fn column<C>(mut self, col: C) -> Self
     where
         C: ColumnTrait,
