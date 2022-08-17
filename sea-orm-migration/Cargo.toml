@@ -4,13 +4,13 @@
 [package]
 name = "sea-orm-migration"
 version = "0.9.1"
-authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
+authors = ["Billy Chan <ccw.billy.123@gmail.com>"]
 edition = "2021"
 description = "Migration utility for SeaORM"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
-categories = [ "database" ]
+categories = ["database"]
 keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 rust-version = "1.60"
 
@@ -20,10 +20,12 @@ path = "src/lib.rs"
 
 [dependencies]
 async-trait = { version = "^0.1" }
-clap = { version = "^3.2", features = ["env", "derive"] }
-dotenv = { version = "^0.15" }
-sea-orm = { version = "^0.9.1", path = "../", default-features = false, features = ["macros"] }
-sea-orm-cli = { version = "^0.9.1", path = "../sea-orm-cli", default-features = false }
+clap = { version = "^3.2", features = ["env", "derive"], optional = true }
+dotenv = { version = "^0.15", optional = true }
+sea-orm = { version = "^0.9.1", path = "../", default-features = false, features = [
+    "macros",
+] }
+sea-orm-cli = { version = "^0.9.1", path = "../sea-orm-cli", default-features = false, optional = true }
 sea-schema = { version = "^0.9.3" }
 tracing = { version = "0.1", features = ["log"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -32,12 +34,14 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 async-std = { version = "^1", features = ["attributes", "tokio1"] }
 
 [features]
+default = ["cli"]
+cli = ["clap", "dotenv", "sea-orm-cli"]
 sqlx-mysql = ["sea-orm/sqlx-mysql"]
 sqlx-postgres = ["sea-orm/sqlx-postgres"]
 sqlx-sqlite = ["sea-orm/sqlx-sqlite"]
-runtime-actix-native-tls = [ "sea-orm/runtime-actix-native-tls" ]
-runtime-async-std-native-tls = [ "sea-orm/runtime-async-std-native-tls" ]
-runtime-tokio-native-tls = [ "sea-orm/runtime-tokio-native-tls" ]
-runtime-actix-rustls = [ "sea-orm/runtime-actix-rustls" ]
-runtime-async-std-rustls = [ "sea-orm/runtime-async-std-rustls" ]
-runtime-tokio-rustls = [ "sea-orm/runtime-tokio-rustls" ]
+runtime-actix-native-tls = ["sea-orm/runtime-actix-native-tls"]
+runtime-async-std-native-tls = ["sea-orm/runtime-async-std-native-tls"]
+runtime-tokio-native-tls = ["sea-orm/runtime-tokio-native-tls"]
+runtime-actix-rustls = ["sea-orm/runtime-actix-rustls"]
+runtime-async-std-rustls = ["sea-orm/runtime-async-std-rustls"]
+runtime-tokio-rustls = ["sea-orm/runtime-tokio-rustls"]
