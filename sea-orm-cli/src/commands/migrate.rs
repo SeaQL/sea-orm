@@ -2,8 +2,10 @@ use chrono::Local;
 use regex::Regex;
 use std::{error::Error, fs, io::Write, path::Path, process::Command};
 
+#[cfg(feature = "cli")]
 use crate::MigrateSubcommands;
 
+#[cfg(feature = "cli")]
 pub fn run_migrate_command(
     command: Option<MigrateSubcommands>,
     migration_dir: &str,

@@ -22,16 +22,16 @@ path = "src/lib.rs"
 [[bin]]
 name = "sea-orm-cli"
 path = "src/bin/main.rs"
-required-features = ["async_std", "codegen"]
+required-features = ["async_std", "cli", "codegen"]
 
 [[bin]]
 name = "sea"
 path = "src/bin/sea.rs"
-required-features = ["async_std", "codegen"]
+required-features = ["async_std", "cli", "codegen"]
 
 [dependencies]
-clap = { version = "^3.2", features = ["env", "derive"] }
-dotenv = { version = "^0.15" }
+clap = { version = "^3.2", features = ["env", "derive"], optional = true }
+dotenv = { version = "^0.15", optional = true }
 async-std = { version = "^1.9", features = [
     "attributes",
     "tokio1",
@@ -52,9 +52,10 @@ regex = "1"
 smol = "1.2.5"
 
 [features]
-default = ["codegen", "runtime-async-std-native-tls"]
+default = ["codegen", "cli", "runtime-async-std-native-tls"]
 async_std = ["async-std"]
 codegen = ["sea-schema/sqlx-all", "sea-orm-codegen"]
+cli = ["clap", "dotenv"]
 runtime-actix-native-tls = [
     "sqlx/runtime-actix-native-tls",
     "sea-schema/runtime-actix-native-tls",
