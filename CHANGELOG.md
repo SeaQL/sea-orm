@@ -7,17 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.10.0 - Pending
 
-### House keeping
-
-* Set minimal rustc version to `1.60` https://github.com/SeaQL/sea-orm/pull/938
-* Exclude `chrono` default features https://github.com/SeaQL/sea-orm/pull/950
-
 ## 0.9.2 - Pending
 
 ### Enhancements
 
 * [sea-orm-cli] Migrator CLI handles init and generate commands https://github.com/SeaQL/sea-orm/pull/931
 * [sea-orm-cli] added `with-copy-enums` flag to conditional derive `Copy` on `ActiveEnum` https://github.com/SeaQL/sea-orm/pull/936
+
+### House keeping
+
+* Exclude `chrono` default features https://github.com/SeaQL/sea-orm/pull/950
+* Set minimal rustc version to `1.60` https://github.com/SeaQL/sea-orm/pull/938
+* Update `sea-query` to `0.26.3`
 
 ## 0.9.1 - 2022-07-22
 
