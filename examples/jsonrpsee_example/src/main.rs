@@ -16,15 +16,15 @@ use std::net::SocketAddr;
 use tokio::signal::ctrl_c;
 use tokio::signal::unix::{signal, SignalKind};
 
-const DEFAULT_POSTS_PER_PAGE: usize = 5;
+const DEFAULT_POSTS_PER_PAGE: u64 = 5;
 
 #[rpc(server, client)]
 pub trait PostRpc {
     #[method(name = "Post.List")]
     async fn list(
         &self,
-        page: Option<usize>,
-        posts_per_page: Option<usize>,
+        page: Option<u64>,
+        posts_per_page: Option<u64>,
     ) -> RpcResult<Vec<post::Model>>;
 
     #[method(name = "Post.Insert")]
@@ -45,8 +45,8 @@ pub struct PpcImpl {
 impl PostRpcServer for PpcImpl {
     async fn list(
         &self,
-        page: Option<usize>,
-        posts_per_page: Option<usize>,
+        page: Option<u64>,
+        posts_per_page: Option<u64>,
     ) -> RpcResult<Vec<post::Model>> {
         let page = page.unwrap_or(1);
         let posts_per_page = posts_per_page.unwrap_or(DEFAULT_POSTS_PER_PAGE);
