@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.10.0 - Pending
 
+### Breaking changes
+
+* Replaced `usize` with `u64` in `PaginatorTrait` https://github.com/SeaQL/sea-orm/pull/789
+
 ## 0.9.2 - 2022-08-20
 
 ### Enhancements
