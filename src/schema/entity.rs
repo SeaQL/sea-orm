@@ -211,6 +211,9 @@ where
     if let Some(value) = orm_column_def.default_value {
         column_def.default(value);
     }
+    if let Some(value) = orm_column_def.extra {
+        column_def.default(value);
+    }
     for primary_key in E::PrimaryKey::iter() {
         if column.to_string() == primary_key.into_column().to_string() {
             if E::PrimaryKey::auto_increment() {

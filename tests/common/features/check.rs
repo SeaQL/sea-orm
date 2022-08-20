@@ -7,9 +7,9 @@ pub struct Model {
     pub id: i32,
     pub pay: String,
     pub amount: f64,
-    #[sea_orm(updated_at, nullable)]
+    #[sea_orm(updated_at, nullable, extra = "DEFAULT CURRENT_TIMESTAMP")]
     pub updated_at: DateTimeWithTimeZone,
-    #[sea_orm(created_at, nullable)]
+    #[sea_orm(created_at, nullable, extra = "DEFAULT CURRENT_TIMESTAMP")]
     pub created_at: DateTimeWithTimeZone,
 }
 
