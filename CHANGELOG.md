@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Set minimal rustc version to `1.60` https://github.com/SeaQL/sea-orm/pull/938
 * Update `sea-query` to `0.26.3`
 
+### Notes
+
+In this minor release, we removed `time` v0.1 from the dependency graph
+
 ## 0.9.1 - 2022-07-22
 
 ### Enhancements
