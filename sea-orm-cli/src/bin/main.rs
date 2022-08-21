@@ -16,9 +16,15 @@ async fn main() {
                 .unwrap_or_else(handle_error);
         }
         Commands::Migrate {
+            database_schema,
             migration_dir,
             command,
-        } => run_migrate_command(command, migration_dir.as_str(), verbose)
-            .unwrap_or_else(handle_error),
+        } => run_migrate_command(
+            command,
+            database_schema.as_str(),
+            migration_dir.as_str(),
+            verbose,
+        )
+        .unwrap_or_else(handle_error),
     }
 }

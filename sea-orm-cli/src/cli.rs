@@ -22,6 +22,18 @@ pub enum Commands {
     Migrate {
         #[clap(
             value_parser,
+            short = 's',
+            long,
+            env = "DATABASE_SCHEMA",
+            default_value = "public",
+            long_help = "Database schema\n \
+                        - For MySQL, this argument is ignored.\n \
+                        - For PostgreSQL, this argument is optional with default value 'public'."
+        )]
+        database_schema: String,
+
+        #[clap(
+            value_parser,
             global = true,
             short = 'd',
             long,

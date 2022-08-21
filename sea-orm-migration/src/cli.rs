@@ -80,6 +80,18 @@ pub struct Cli {
     #[clap(action, short = 'v', long, global = true, help = "Show debug messages")]
     verbose: bool,
 
+    #[clap(
+        value_parser,
+        short = 's',
+        long,
+        env = "DATABASE_SCHEMA",
+        default_value = "public",
+        long_help = "Database schema\n \
+                    - For MySQL, this argument is ignored.\n \
+                    - For PostgreSQL, this argument is optional with default value 'public'."
+    )]
+    database_schema: String,
+
     #[clap(subcommand)]
     command: Option<MigrateSubcommands>,
 }

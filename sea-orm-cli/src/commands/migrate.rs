@@ -6,6 +6,7 @@ use crate::MigrateSubcommands;
 
 pub fn run_migrate_command(
     command: Option<MigrateSubcommands>,
+    database_schema: &str,
     migration_dir: &str,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
@@ -15,16 +16,26 @@ pub fn run_migrate_command(
             run_migrate_generate(migration_dir, &migration_name)?
         }
         _ => {
-            let (subcommand, migration_dir, steps, verbose) = match command {
-                Some(MigrateSubcommands::Fresh) => ("fresh", migration_dir, None, verbose),
-                Some(MigrateSubcommands::Refresh) => ("refresh", migration_dir, None, verbose),
-                Some(MigrateSubcommands::Reset) => ("reset", migration_dir, None, verbose),
-                Some(MigrateSubcommands::Status) => ("status", migration_dir, None, verbose),
-                Some(MigrateSubcommands::Up { num }) => ("up", migration_dir, Some(num), verbose),
-                Some(MigrateSubcommands::Down { num }) => {
-                    ("down", migration_dir, Some(num), verbose)
+            let (subcommand, database_schema, migration_dir, steps, verbose) = match command {
+                Some(MigrateSubcommands::Fresh) => {
+                    ("fresh", database_schema, migration_dir, None, verbose)
                 }
-                _ => ("up", migration_dir, None, verbose),
+                Some(MigrateSubcommands::Refresh) => {
+                    ("refresh", database_schema, migration_dir, None, verbose)
+                }
+                Some(MigrateSubcommands::Reset) => {
+                    ("reset", database_schema, migration_dir, None, verbose)
+                }
+                Some(MigrateSubcommands::Status) => {
+                    ("status", database_schema, migration_dir, None, verbose)
+                }
+                Some(MigrateSubcommands::Up { num }) => {
+                    ("up", database_schema, migration_dir, Some(num), verbose)
+                }
+                Some(MigrateSubcommands::Down { num }) => {
+                    ("down", database_schema, migration_dir, Some(num), verbose)
+                }
+                _ => ("up", database_schema, migration_dir, None, verbose),
             };
 
             // Construct the `--manifest-path`
@@ -34,11 +45,13 @@ pub fn run_migrate_command(
                 format!("{}/Cargo.toml", migration_dir)
             };
             // Construct the arguments that will be supplied to `cargo` command
+            let database_schema_option = &format!("--database-schema={}", database_schema);
             let mut args = vec![
                 "run",
                 "--manifest-path",
                 manifest_path.as_str(),
                 "--",
+                database_schema_option,
                 subcommand,
             ];
 
