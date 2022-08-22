@@ -37,8 +37,8 @@ pub use ActiveValue::NotSet;
 /// ```
 #[derive(Clone, Debug)]
 pub enum ActiveValue<V>
-where
-    V: Into<Value>,
+    where
+        V: Into<Value>,
 {
     /// A defined [Value] actively being set
     Set(V),
@@ -51,21 +51,21 @@ where
 /// Defines a set operation on an [ActiveValue]
 #[allow(non_snake_case)]
 pub fn Set<V>(v: V) -> ActiveValue<V>
-where
-    V: Into<Value>,
+    where
+        V: Into<Value>,
 {
     ActiveValue::set(v)
 }
 
 /// Defines an not set operation on an [ActiveValue]
 #[deprecated(
-    since = "0.5.0",
-    note = "Please use [`ActiveValue::NotSet`] or [`NotSet`]"
+since = "0.5.0",
+note = "Please use [`ActiveValue::NotSet`] or [`NotSet`]"
 )]
 #[allow(non_snake_case)]
 pub fn Unset<V>(_: Option<bool>) -> ActiveValue<V>
-where
-    V: Into<Value>,
+    where
+        V: Into<Value>,
 {
     ActiveValue::not_set()
 }
@@ -73,8 +73,8 @@ where
 /// Defines an unchanged operation on an [ActiveValue]
 #[allow(non_snake_case)]
 pub fn Unchanged<V>(value: V) -> ActiveValue<V>
-where
-    V: Into<Value>,
+    where
+        V: Into<Value>,
 {
     ActiveValue::unchanged(value)
 }
@@ -273,10 +273,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # }
     /// ```
     async fn insert<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
-    where
-        <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait,
+        where
+            <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+            Self: ActiveModelBehavior + 'a,
+            C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_save(self, true)?;
         let model = <Self::Entity as EntityTrait>::insert(am)
@@ -395,10 +395,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # }
     /// ```
     async fn update<'a, C>(self, db: &'a C) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
-    where
-        <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait,
+        where
+            <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+            Self: ActiveModelBehavior + 'a,
+            C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_save(self, false)?;
         let model: <Self::Entity as EntityTrait>::Model = Self::Entity::update(am).exec(db).await?;
@@ -408,10 +408,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Insert the model if primary key is `NotSet`, update otherwise.
     /// Only works if the entity has auto increment primary key.
     async fn save<'a, C>(self, db: &'a C) -> Result<Self, DbErr>
-    where
-        <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait,
+        where
+            <Self::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+            Self: ActiveModelBehavior + 'a,
+            C: ConnectionTrait,
     {
         let mut is_update = true;
         for key in <Self::Entity as EntityTrait>::PrimaryKey::iter() {
@@ -473,9 +473,9 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # }
     /// ```
     async fn delete<'a, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
-    where
-        Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait,
+        where
+            Self: ActiveModelBehavior + 'a,
+            C: ConnectionTrait,
     {
         let am = ActiveModelBehavior::before_delete(self)?;
         let am_clone = am.clone();
@@ -489,9 +489,9 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Note that this method will not alter the primary key values in ActiveModel.
     #[cfg(feature = "with-json")]
     fn set_from_json(&mut self, json: serde_json::Value) -> Result<(), DbErr>
-    where
-        <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
+        where
+            <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+            for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
             serde::de::Deserialize<'de>,
     {
         use crate::Iterable;
@@ -519,9 +519,9 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Create ActiveModel from a JSON value
     #[cfg(feature = "with-json")]
     fn from_json(json: serde_json::Value) -> Result<Self, DbErr>
-    where
-        <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
+        where
+            <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+            for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
             serde::de::Deserialize<'de>,
     {
         use crate::{Iden, Iterable};
@@ -616,16 +616,16 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
 
 /// A Trait for any type that can be converted into an ActiveModel
 pub trait IntoActiveModel<A>
-where
-    A: ActiveModelTrait,
+    where
+        A: ActiveModelTrait,
 {
     /// Method to call to perform the conversion
     fn into_active_model(self) -> A;
 }
 
 impl<A> IntoActiveModel<A> for A
-where
-    A: ActiveModelTrait,
+    where
+        A: ActiveModelTrait,
 {
     fn into_active_model(self) -> A {
         self
@@ -634,8 +634,8 @@ where
 
 /// Constraints to perform the conversion of a type into an [ActiveValue]
 pub trait IntoActiveValue<V>
-where
-    V: Into<Value>,
+    where
+        V: Into<Value>,
 {
     /// Method to perform the conversion
     fn into_active_value(self) -> ActiveValue<V>;
@@ -720,8 +720,8 @@ impl_into_active_value!(crate::prelude::Decimal);
 impl_into_active_value!(crate::prelude::Uuid);
 
 impl<V> Default for ActiveValue<V>
-where
-    V: Into<Value>,
+    where
+        V: Into<Value>,
 {
     /// Create an [ActiveValue::NotSet]
     fn default() -> Self {
@@ -730,8 +730,8 @@ where
 }
 
 impl<V> ActiveValue<V>
-where
-    V: Into<Value>,
+    where
+        V: Into<Value>,
 {
     /// Create an [ActiveValue::Set]
     pub fn set(value: V) -> Self {
@@ -799,8 +799,8 @@ where
 }
 
 impl<V> std::convert::AsRef<V> for ActiveValue<V>
-where
-    V: Into<Value>,
+    where
+        V: Into<Value>,
 {
     fn as_ref(&self) -> &V {
         match self {
@@ -811,8 +811,8 @@ where
 }
 
 impl<V> PartialEq for ActiveValue<V>
-where
-    V: Into<Value> + std::cmp::PartialEq,
+    where
+        V: Into<Value> + std::cmp::PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -825,8 +825,8 @@ where
 }
 
 impl<V> From<ActiveValue<V>> for ActiveValue<Option<V>>
-where
-    V: Into<Value> + Nullable,
+    where
+        V: Into<Value> + Nullable,
 {
     fn from(value: ActiveValue<V>) -> Self {
         match value {
@@ -867,7 +867,7 @@ mod tests {
                 name: "Apple".to_owned(),
                 cake_id: 1,
             }
-            .into_active_model(),
+                .into_active_model(),
             fruit::ActiveModel {
                 id: NotSet,
                 name: Set("Apple".to_owned()),
@@ -894,7 +894,7 @@ mod tests {
             my_fruit::UpdateFruit {
                 cake_id: Some(Some(1)),
             }
-            .into_active_model(),
+                .into_active_model(),
             fruit::ActiveModel {
                 id: NotSet,
                 name: NotSet,
@@ -906,7 +906,7 @@ mod tests {
             my_fruit::UpdateFruit {
                 cake_id: Some(None),
             }
-            .into_active_model(),
+                .into_active_model(),
             fruit::ActiveModel {
                 id: NotSet,
                 name: NotSet,
@@ -925,9 +925,139 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_try_into_model_1() {
+        mod my_fruit {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "fruit")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub name: String,
+                pub cake_id: Option<i32>,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Pineapple".to_owned()),
+                cake_id: Set(None),
+            }.try_into_model().unwrap(),
+            my_fruit::Model {
+                id: 1,
+                name: "Pineapple".to_owned(),
+                cake_id: None,
+            });
+
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(2),
+                name: Set("Apple".to_owned()),
+                cake_id: Set(Some(1)),
+            }.try_into_model().unwrap(),
+            my_fruit::Model {
+                id: 2,
+                name: "Apple".to_owned(),
+                cake_id: Some(1),
+            });
+
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                name: NotSet,
+                cake_id: Set(None),
+            }.try_into_model(),
+            Err(DbErr::Custom(String::from("field name is NotSet"))));
+
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Pineapple".to_owned()),
+                cake_id: NotSet,
+            }.try_into_model(),
+            Err(DbErr::Custom(String::from("field cake_id is NotSet"))));
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_try_into_model_2() {
+        mod my_fruit {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "fruit")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub name: String,
+                #[sea_orm(ignore)]
+                pub cake_id: Option<i32>,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Pineapple".to_owned()),
+            }.try_into_model().unwrap(),
+            my_fruit::Model {
+                id: 1,
+                name: "Pineapple".to_owned(),
+                cake_id: None,
+            });
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_try_into_model_3() {
+        mod my_fruit {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "fruit")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                #[sea_orm(ignore)]
+                pub name: String,
+                pub cake_id: Option<i32>,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                cake_id: Set(Some(1)),
+            }.try_into_model().unwrap(),
+            my_fruit::Model {
+                id: 1,
+                name: "".to_owned(),
+                cake_id: Some(1),
+            });
+    }
+
+    #[test]
     #[cfg(feature = "with-json")]
     #[should_panic(
-        expected = r#"called `Result::unwrap()` on an `Err` value: Json("missing field `id`")"#
+    expected = r#"called `Result::unwrap()` on an `Err` value: Json("missing field `id`")"#
     )]
     fn test_active_model_set_from_json_1() {
         let mut cake: cake::ActiveModel = Default::default();
@@ -935,7 +1065,7 @@ mod tests {
         cake.set_from_json(json!({
             "name": "Apple Pie",
         }))
-        .unwrap();
+            .unwrap();
     }
 
     #[test]
@@ -1082,12 +1212,12 @@ mod tests {
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"INSERT INTO "fruit" ("name") VALUES ($1) RETURNING "id", "name", "cake_id""#,
-                    vec!["Apple".into()]
+                    vec!["Apple".into()],
                 ),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"UPDATE "fruit" SET "name" = $1, "cake_id" = $2 WHERE "fruit"."id" = $3 RETURNING "id", "name", "cake_id""#,
-                    vec!["Orange".into(), 1i32.into(), 2i32.into()]
+                    vec!["Orange".into(), 1i32.into(), 2i32.into()],
                 ),
             ]
         );
