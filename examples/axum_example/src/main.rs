@@ -72,8 +72,8 @@ async fn main() -> anyhow::Result<()> {
 
 #[derive(Deserialize)]
 struct Params {
-    page: Option<usize>,
-    posts_per_page: Option<usize>,
+    page: Option<u64>,
+    posts_per_page: Option<u64>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
