@@ -115,7 +115,7 @@ impl SqlxSqlitePoolConnection {
                     Ok(row) => Ok(Some(row.into())),
                     Err(err) => match err {
                         sqlx::Error::RowNotFound => Ok(None),
-                        _ => Err(DbErr::Query(err.to_string(), None)),
+                        _ => Err(sqlx_error_to_query_err(err)),
                     },
                 }
             })
