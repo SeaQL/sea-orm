@@ -9,7 +9,7 @@ use salvo::writer::Text;
 use sea_orm::{entity::*, query::*, DatabaseConnection};
 use tera::Tera;
 
-const DEFAULT_POSTS_PER_PAGE: usize = 5;
+const DEFAULT_POSTS_PER_PAGE: u64 = 5;
 type Result<T> = std::result::Result<T, StatusError>;
 
 #[derive(Debug, Clone)]
