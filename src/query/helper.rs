@@ -556,31 +556,32 @@ pub(crate) fn unpack_table_alias(table_ref: &TableRef) -> Option<DynIden> {
     }
 }
 
+#[derive(Iden)]
+struct Text;
+
 pub(crate) fn cast_enum_as_text<C>(expr: Expr, col: &C) -> SimpleExpr
 where
     C: ColumnTrait,
 {
-    cast_enum_text_inner(expr, col, |col, _| col.as_enum(Alias::new("text")))
+    cast_enum_text_inner(expr, col, |col, _| col.as_enum(Text))
 }
 
 pub(crate) fn cast_text_as_enum<C>(expr: Expr, col: &C) -> SimpleExpr
 where
     C: ColumnTrait,
 {
-    cast_enum_text_inner(expr, col, |col, enum_name| {
-        col.as_enum(Alias::new(enum_name))
-    })
+    cast_enum_text_inner(expr, col, |col, enum_name| col.as_enum(enum_name))
 }
 
 fn cast_enum_text_inner<C, F>(expr: Expr, col: &C, f: F) -> SimpleExpr
 where
     C: ColumnTrait,
-    F: Fn(Expr, &String) -> SimpleExpr,
+    F: Fn(Expr, DynIden) -> SimpleExpr,
 {
     let col_def = col.def();
     let col_type = col_def.get_column_type();
     match col_type.get_enum_name() {
-        Some(enum_name) => f(expr, enum_name),
+        Some(enum_name) => f(expr, SeaRc::new(Alias::new(enum_name))),
         None => expr.into(),
     }
 }
