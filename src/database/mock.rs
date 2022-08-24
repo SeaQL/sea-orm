@@ -102,10 +102,7 @@ impl MockDatabaseTrait for MockDatabase {
                 result: ExecResultHolder::Mock(std::mem::take(&mut self.exec_results[counter])),
             })
         } else {
-            Err(DbErr::Exec(
-                "`exec_results` buffer is empty.".to_owned(),
-                None,
-            ))
+            Err(DbErr::Query("`exec_results` buffer is empty.".to_owned()))
         }
     }
 
@@ -124,10 +121,7 @@ impl MockDatabaseTrait for MockDatabase {
                 })
                 .collect())
         } else {
-            Err(DbErr::Query(
-                "`query_results` buffer is empty.".to_owned(),
-                None,
-            ))
+            Err(DbErr::Query("`query_results` buffer is empty.".to_owned()))
         }
     }
 
@@ -182,8 +176,7 @@ impl MockRow {
     where
         T: ValueType,
     {
-        T::try_from(self.values.get(col).unwrap().clone())
-            .map_err(|e| DbErr::Query(e.to_string(), None))
+        T::try_from(self.values.get(col).unwrap().clone()).map_err(|e| DbErr::Query(e.to_string()))
     }
 
     /// An iterator over the keys and values of a mock row

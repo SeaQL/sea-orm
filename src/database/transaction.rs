@@ -246,7 +246,7 @@ impl DatabaseTransaction {
         if let Err(sqlx::Error::RowNotFound) = err {
             Ok(None)
         } else {
-            Err(sqlx_error_to_query_err(err.unwrap_err()))
+            err.map_err(|e| sqlx_error_to_query_err(e))
         }
     }
 }

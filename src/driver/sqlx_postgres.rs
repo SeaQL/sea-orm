@@ -45,7 +45,7 @@ impl SqlxPostgresConnector {
         let mut opt = options
             .url
             .parse::<PgConnectOptions>()
-            .map_err(|e| DbErr::Conn(e.to_string()))?;
+            .map_err(|e| DbErr::ConnSqlX(e))?;
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
             opt.disable_statement_logging();
@@ -89,10 +89,7 @@ impl SqlxPostgresPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::Exec(
-                "Failed to acquire connection from pool.".to_owned(),
-                None,
-            ))
+            Err(DbErr::ConnFromPool)
         }
     }
 
@@ -113,10 +110,7 @@ impl SqlxPostgresPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-                None,
-            ))
+            Err(DbErr::ConnFromPool)
         }
     }
 
@@ -134,10 +128,7 @@ impl SqlxPostgresPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-                None,
-            ))
+            Err(DbErr::ConnFromPool)
         }
     }
 
@@ -153,10 +144,7 @@ impl SqlxPostgresPoolConnection {
                 self.metric_callback.clone(),
             )))
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-                None,
-            ))
+            Err(DbErr::ConnFromPool)
         }
     }
 
@@ -166,10 +154,7 @@ impl SqlxPostgresPoolConnection {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_postgres(conn, self.metric_callback.clone()).await
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-                None,
-            ))
+            Err(DbErr::ConnFromPool)
         }
     }
 
@@ -190,10 +175,7 @@ impl SqlxPostgresPoolConnection {
                 .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
-            Err(TransactionError::Connection(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-                None,
-            )))
+            Err(TransactionError::Connection(DbErr::ConnFromPool))
         }
     }
 
