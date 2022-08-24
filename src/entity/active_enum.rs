@@ -228,6 +228,9 @@ mod tests {
 
         assert_eq!(Category::name(), DeriveCategory::name());
         assert_eq!(Category::values(), DeriveCategory::values());
+
+        assert_eq!(format!("{}", DeriveCategory::Big), "'B'");
+        assert_eq!(format!("{}", DeriveCategory::Small), "'S'");
     }
 
     #[test]
@@ -282,6 +285,10 @@ mod tests {
                 );
 
                 assert_eq!($ident::db_type(), ColumnType::$col_def.def());
+
+                assert_eq!(format!("{}", $ident::Big), "1");
+                assert_eq!(format!("{}", $ident::Small), "0");
+                assert_eq!(format!("{}", $ident::Negative), "-10");
             };
         }
 
@@ -343,6 +350,9 @@ mod tests {
                 );
 
                 assert_eq!($ident::db_type(), ColumnType::$col_def.def());
+
+                assert_eq!(format!("{}", $ident::Big), "1");
+                assert_eq!(format!("{}", $ident::Small), "0");
             };
         }
 

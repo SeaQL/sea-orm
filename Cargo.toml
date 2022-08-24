@@ -44,7 +44,7 @@ url = "^2.2"
 once_cell = "1.8"
 
 [patch.crates-io]
-sea-query = { git = "https://github.com/SeaQL/sea-query" }
+sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "impl-display-for-value" }
 
 [dev-dependencies]
 smol = { version = "^1.2" }
