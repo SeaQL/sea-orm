@@ -1,8 +1,14 @@
-use crate::util::{escape_rust_keyword, field_not_ignored, trim_starting_raw_identifier};
+use crate::util::{
+    escape_rust_keyword, field_not_ignored, format_field_ident, trim_starting_raw_identifier,
+};
 use heck::CamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
-use syn::{punctuated::Punctuated, token::Comma, Data, DataStruct, Field, Fields, Lit, Meta, Type};
+use syn::{
+    punctuated::{IntoIter, Punctuated},
+    token::Comma,
+    Data, DataStruct, Field, Fields, Lit, Meta, Type,
+};
 
 /// Method to derive an [ActiveModel](sea_orm::ActiveModel)
 pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<TokenStream> {
@@ -20,19 +26,19 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
     }
     .into_iter();
 
-    let fields = all_fields.clone().filter(field_not_ignored);
+    let derive_active_model = derive_active_model(all_fields.clone())?;
+    let derive_into_model = derive_into_model(all_fields.clone())?;
 
-    let all_field: Vec<Ident> = all_fields
-        .clone()
-        .into_iter()
-        .map(|Field { ident, .. }| format_ident!("{}", ident.unwrap().to_string()))
-        .collect();
+    Ok(quote!(
+        #derive_active_model
+        #derive_into_model
+    ))
+}
 
-    let field: Vec<Ident> = fields
-        .clone()
-        .into_iter()
-        .map(|Field { ident, .. }| format_ident!("{}", ident.unwrap().to_string()))
-        .collect();
+fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> {
+    let fields = all_fields.filter(field_not_ignored);
+
+    let field: Vec<Ident> = fields.clone().into_iter().map(format_field_ident).collect();
 
     let name: Vec<Ident> = fields
         .clone()
@@ -71,27 +77,6 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
 
     let ty: Vec<Type> = fields.into_iter().map(|Field { ty, .. }| ty).collect();
 
-    let ignore_attr: Vec<bool> = all_fields
-        .clone()
-        .map(|field| !field_not_ignored(&field))
-        .collect();
-
-    let field_value: Vec<TokenStream> = all_field
-        .iter()
-        .zip(ignore_attr)
-        .map(|(field, ignore)| {
-            if ignore {
-                quote! {
-                Default::default()
-                }
-            } else {
-                quote! {
-                a.#field.into_value().unwrap().unwrap()
-                }
-            }
-        })
-        .collect();
-
     Ok(quote!(
         #[derive(Clone, Debug, PartialEq)]
         pub struct ActiveModel {
@@ -118,28 +103,6 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
         impl sea_orm::IntoActiveModel<ActiveModel> for <Entity as EntityTrait>::Model {
             fn into_active_model(self) -> ActiveModel {
                 self.into()
-            }
-        }
-
-        #[automatically_derived]
-        impl std::convert::TryFrom<ActiveModel> for <Entity as EntityTrait>::Model {
-            type Error = DbErr;
-            fn try_from(a: ActiveModel) -> Result<Self, DbErr> {
-                #(if matches!(a.#field, sea_orm::ActiveValue::NotSet) {
-                    return Err(DbErr::Custom(format!("field {} is NotSet", stringify!(#field))));
-                })*
-                Ok(
-                    Self {
-                        #(#all_field: #field_value),*
-                    }
-                )
-            }
-        }
-
-        #[automatically_derived]
-        impl sea_orm::TryIntoModel<<Entity as EntityTrait>::Model> for ActiveModel {
-            fn try_into_model(self) -> Result<<Entity as EntityTrait>::Model, DbErr> {
-                self.try_into()
             }
         }
 
@@ -190,6 +153,65 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
                 Self {
                     #(#field: sea_orm::ActiveValue::not_set()),*
                 }
+            }
+        }
+    ))
+}
+
+fn derive_into_model(model_fields: IntoIter<Field>) -> syn::Result<TokenStream> {
+    let active_model_fields = model_fields.clone().filter(field_not_ignored);
+
+    let active_model_field: Vec<Ident> = active_model_fields
+        .into_iter()
+        .map(format_field_ident)
+        .collect();
+    let model_field: Vec<Ident> = model_fields
+        .clone()
+        .into_iter()
+        .map(format_field_ident)
+        .collect();
+
+    let ignore_attr: Vec<bool> = model_fields
+        .clone()
+        .map(|field| !field_not_ignored(&field))
+        .collect();
+
+    let model_field_value: Vec<TokenStream> = model_field
+        .iter()
+        .zip(ignore_attr)
+        .map(|(field, ignore)| {
+            if ignore {
+                quote! {
+                    Default::default()
+                }
+            } else {
+                quote! {
+                    a.#field.into_value().unwrap().unwrap()
+                }
+            }
+        })
+        .collect();
+
+    Ok(quote!(
+        #[automatically_derived]
+        impl std::convert::TryFrom<ActiveModel> for <Entity as EntityTrait>::Model {
+            type Error = DbErr;
+            fn try_from(a: ActiveModel) -> Result<Self, DbErr> {
+                #(if matches!(a.#active_model_field, sea_orm::ActiveValue::NotSet) {
+                    return Err(DbErr::Custom(format!("field {} is NotSet", stringify!(#active_model_field))));
+                })*
+                Ok(
+                    Self {
+                        #(#model_field: #model_field_value),*
+                    }
+                )
+            }
+        }
+
+        #[automatically_derived]
+        impl sea_orm::TryIntoModel<<Entity as EntityTrait>::Model> for ActiveModel {
+            fn try_into_model(self) -> Result<<Entity as EntityTrait>::Model, DbErr> {
+                self.try_into()
             }
         }
     ))
