@@ -3,7 +3,7 @@
 use sea_orm::entity::prelude:: * ;
 use serde::Deserialize;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Deserialize)]
 #[sea_orm(table_name = "cake")]
 pub struct Model {
     #[sea_orm(primary_key)]

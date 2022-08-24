@@ -1,7 +1,8 @@
-use crate::WithSerde;
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
+
+use crate::WithSerde;
 
 #[derive(Clone, Debug)]
 pub struct ActiveEnum {
@@ -30,7 +31,7 @@ impl ActiveEnum {
         };
 
         quote! {
-            #[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum #copy_derive #extra_derive)]
+            #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum #copy_derive #extra_derive)]
             #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = #enum_name)]
             pub enum #enum_iden {
                 #(
