@@ -4,8 +4,8 @@ use std::time::SystemTime;
 use tracing::info;
 
 use sea_orm::sea_query::{
-    extension::postgres::Type, Alias, Expr, ForeignKey, JoinType, Query, SelectStatement,
-    SimpleExpr, Table,
+    self, extension::postgres::Type, Alias, Expr, ForeignKey, Iden, JoinType, Query,
+    SelectStatement, SimpleExpr, Table,
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, Condition, ConnectionTrait, DbBackend, DbConn,
@@ -149,25 +149,7 @@ pub trait MigratorTrait: Send {
         // Drop all foreign keys
         if db_backend == DbBackend::MySql {
             info!("Dropping all foreign keys");
-            let mut stmt = Query::select();
-            stmt.columns([Alias::new("TABLE_NAME"), Alias::new("CONSTRAINT_NAME")])
-                .from((
-                    Alias::new("information_schema"),
-                    Alias::new("table_constraints"),
-                ))
-                .cond_where(
-                    Condition::all()
-                        .add(
-                            Expr::expr(get_current_schema(db)).equals(
-                                Alias::new("table_constraints"),
-                                Alias::new("table_schema"),
-                            ),
-                        )
-                        .add(Expr::expr(Expr::value("FOREIGN KEY")).equals(
-                            Alias::new("table_constraints"),
-                            Alias::new("constraint_type"),
-                        )),
-                );
+            let stmt = query_mysql_foreign_keys(db);
             let rows = db.query_all(db_backend.build(&stmt)).await?;
             for row in rows.into_iter() {
                 let constraint_name: String = row.try_get("", "CONSTRAINT_NAME")?;
@@ -202,25 +184,7 @@ pub trait MigratorTrait: Send {
         // Drop all types
         if db_backend == DbBackend::Postgres {
             info!("Dropping all types");
-
-            let mut stmt = Query::select();
-            stmt.columns([Alias::new("typname")])
-                .from(Alias::new("pg_type"))
-                .join(
-                    JoinType::LeftJoin,
-                    Alias::new("pg_namespace"),
-                    Expr::tbl(Alias::new("pg_namespace"), Alias::new("oid"))
-                        .equals(Alias::new("pg_type"), Alias::new("typnamespace")),
-                )
-                .cond_where(
-                    Condition::all()
-                        .add(
-                            Expr::expr(get_current_schema(db))
-                                .equals(Alias::new("pg_namespace"), Alias::new("nspname")),
-                        )
-                        .add(Expr::tbl(Alias::new("pg_type"), Alias::new("typelem")).eq(0)),
-                );
-
+            let stmt = query_pg_types(db);
             let rows = db.query_all(db_backend.build(&stmt)).await?;
             for row in rows {
                 let type_name: String = row.try_get("", "typname")?;
@@ -359,4 +323,80 @@ pub(crate) fn get_current_schema(db: &DbConn) -> SimpleExpr {
         DbBackend::Postgres => Postgres::get_current_schema(),
         DbBackend::Sqlite => unimplemented!(),
     }
+}
+
+#[derive(Iden)]
+enum InformationSchema {
+    #[iden = "information_schema"]
+    Schema,
+    #[iden = "TABLE_NAME"]
+    TableName,
+    #[iden = "CONSTRAINT_NAME"]
+    ConstraintName,
+    TableConstraints,
+    TableSchema,
+    ConstraintType,
+}
+
+fn query_mysql_foreign_keys(db: &DbConn) -> SelectStatement {
+    let mut stmt = Query::select();
+    stmt.columns([
+        InformationSchema::TableName,
+        InformationSchema::ConstraintName,
+    ])
+    .from((
+        InformationSchema::Schema,
+        InformationSchema::TableConstraints,
+    ))
+    .cond_where(
+        Condition::all()
+            .add(Expr::expr(get_current_schema(db)).equals(
+                InformationSchema::TableConstraints,
+                InformationSchema::TableSchema,
+            ))
+            .add(
+                Expr::tbl(
+                    InformationSchema::TableConstraints,
+                    InformationSchema::ConstraintType,
+                )
+                .eq("FOREIGN KEY"),
+            ),
+    );
+    stmt
+}
+
+#[derive(Iden)]
+enum PgType {
+    Table,
+    Typname,
+    Typnamespace,
+    Typelem,
+}
+
+#[derive(Iden)]
+enum PgNamespace {
+    Table,
+    Oid,
+    Nspname,
+}
+
+fn query_pg_types(db: &DbConn) -> SelectStatement {
+    let mut stmt = Query::select();
+    stmt.column(PgType::Typname)
+        .from(PgType::Table)
+        .join(
+            JoinType::LeftJoin,
+            PgNamespace::Table,
+            Expr::tbl(PgNamespace::Table, PgNamespace::Oid)
+                .equals(PgType::Table, PgType::Typnamespace),
+        )
+        .cond_where(
+            Condition::all()
+                .add(
+                    Expr::expr(get_current_schema(db))
+                        .equals(PgNamespace::Table, PgNamespace::Nspname),
+                )
+                .add(Expr::tbl(PgType::Table, PgType::Typelem).eq(0)),
+        );
+    stmt
 }
