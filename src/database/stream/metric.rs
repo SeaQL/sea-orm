@@ -12,6 +12,7 @@ pub(crate) struct MetricStream<'a> {
 }
 
 impl<'a> MetricStream<'a> {
+    #[allow(dead_code)]
     pub(crate) fn new<S>(
         metric_callback: &'a Option<crate::metric::Callback>,
         stmt: &'a Statement,
@@ -54,7 +55,7 @@ impl<'a> Drop for MetricStream<'a> {
     fn drop(&mut self) {
         if let (Some(callback), Some(elapsed)) = (self.metric_callback.as_deref(), self.elapsed) {
             let info = crate::metric::Info {
-                elapsed: elapsed,
+                elapsed,
                 statement: self.stmt,
                 failed: false,
             };

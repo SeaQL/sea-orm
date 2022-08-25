@@ -1,15 +1,16 @@
 pub use crate::{
     error::*, ActiveEnum, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait,
-    ColumnType, DatabaseConnection, DbConn, EntityName, EntityTrait, EnumIter, ForeignKeyAction,
-    Iden, IdenStatic, Linked, ModelTrait, PaginatorTrait, PrimaryKeyToColumn, PrimaryKeyTrait,
-    QueryFilter, QueryResult, Related, RelationDef, RelationTrait, Select, SoftDeleteTrait, Value,
+    ColumnType, CursorTrait, DatabaseConnection, DbConn, EntityName, EntityTrait, EnumIter,
+    ForeignKeyAction, Iden, IdenStatic, Linked, ModelTrait, PaginatorTrait, PrimaryKeyToColumn,
+    PrimaryKeyTrait, QueryFilter, QueryResult, Related, RelationDef, RelationTrait, Select,
+    SoftDeleteTrait, Value,
 };
 
 #[cfg(feature = "macros")]
 pub use crate::{
     DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn,
     DeriveCustomColumn, DeriveEntity, DeriveEntityModel, DeriveIntoActiveModel, DeriveModel,
-    DerivePrimaryKey, DeriveRelation,
+    DerivePrimaryKey, DeriveRelation, FromJsonQueryResult,
 };
 
 #[cfg(feature = "with-json")]

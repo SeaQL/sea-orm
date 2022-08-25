@@ -3,7 +3,7 @@
 
 [package]
 name = "sea-orm-migration"
-version = "0.8.3"
+version = "0.10.0"
 authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
 edition = "2021"
 description = "Migration utility for SeaORM"
@@ -12,6 +12,7 @@ documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
 categories = [ "database" ]
 keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
+rust-version = "1.60"
 
 [lib]
 name = "sea_orm_migration"
@@ -21,9 +22,9 @@ path = "src/lib.rs"
 async-trait = { version = "^0.1" }
 clap = { version = "^3.2", features = ["env", "derive"] }
 dotenv = { version = "^0.15" }
-sea-orm = { version = "^0.8.0", path = "../", default-features = false, features = ["macros"] }
-sea-orm-cli = { version = "^0.8.1", path = "../sea-orm-cli", default-features = false }
-sea-schema = { version = "^0.8.0", git = "https://github.com/SeaQL/sea-schema", branch = "bump-for-sea-orm-soft-delete" }
+sea-orm = { version = "^0.10.0", path = "../", default-features = false, features = ["macros"] }
+sea-orm-cli = { version = "^0.10.0", path = "../sea-orm-cli", default-features = false }
+sea-schema = { version = "^0.9.3" }
 tracing = { version = "0.1", features = ["log"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 

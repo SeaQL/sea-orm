@@ -21,6 +21,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_satellites_table(db).await?;
     create_transaction_log_table(db).await?;
     create_json_vec_table(db).await?;
+    create_json_struct_table(db).await?;
 
     let create_enum_stmts = match db_backend {
         DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
@@ -308,6 +309,28 @@ pub async fn create_json_vec_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &create_table_stmt, JsonVec).await
+}
+
+pub async fn create_json_struct_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(json_struct::Entity)
+        .col(
+            ColumnDef::new(json_struct::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(json_struct::Column::Json).json().not_null())
+        .col(
+            ColumnDef::new(json_struct::Column::JsonValue)
+                .json()
+                .not_null(),
+        )
+        .col(ColumnDef::new(json_struct::Column::JsonValueOpt).json())
+        .to_owned();
+
+    create_table(db, &stmt, JsonStruct).await
 }
 
 pub async fn create_user_table(db: &DbConn) -> Result<ExecResult, DbErr> {

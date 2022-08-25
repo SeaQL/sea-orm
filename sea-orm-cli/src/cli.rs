@@ -1,4 +1,4 @@
-use clap::{ArgGroup, Parser, Subcommand};
+use clap::{ArgEnum, ArgGroup, Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[clap(version)]
@@ -10,7 +10,7 @@ pub struct Cli {
     pub command: Commands,
 }
 
-#[derive(Subcommand, PartialEq, Debug)]
+#[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum Commands {
     #[clap(about = "Codegen related commands")]
     #[clap(arg_required_else_help = true)]
@@ -35,7 +35,7 @@ pub enum Commands {
     },
 }
 
-#[derive(Subcommand, PartialEq, Debug)]
+#[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum MigrateSubcommands {
     #[clap(about = "Initialize migration directory")]
     Init,
@@ -43,8 +43,8 @@ pub enum MigrateSubcommands {
     Generate {
         #[clap(
             value_parser,
-            long,
             required = true,
+            takes_value = true,
             help = "Name of the new migration"
         )]
         migration_name: String,
@@ -64,7 +64,7 @@ pub enum MigrateSubcommands {
             short,
             long,
             default_value = "1",
-            help = "Number of pending migrations to be rolled back"
+            help = "Number of pending migrations to apply"
         )]
         num: u32,
     },
@@ -75,13 +75,13 @@ pub enum MigrateSubcommands {
             short,
             long,
             default_value = "1",
-            help = "Number of pending migrations to be rolled back"
+            help = "Number of applied migrations to be rolled back"
         )]
         num: u32,
     },
 }
 
-#[derive(Subcommand, PartialEq, Debug)]
+#[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum GenerateSubcommands {
     #[clap(about = "Generate entity")]
     #[clap(arg_required_else_help = true)]
@@ -110,6 +110,16 @@ pub enum GenerateSubcommands {
             help = "Generate entity file for specified tables only (comma separated)"
         )]
         tables: Option<String>,
+
+        #[clap(
+            value_parser,
+            long,
+            use_value_delimiter = true,
+            takes_value = true,
+            default_value = "seaql_migrations",
+            help = "Skip generating entity file for specified tables (comma separated)"
+        )]
+        ignore_tables: Vec<String>,
 
         #[clap(
             value_parser,
@@ -153,9 +163,30 @@ pub enum GenerateSubcommands {
             value_parser,
             long,
             default_value = "none",
-            help = "Automatically derive serde Serialize / Deserialize traits for the entity (none, serialize, deserialize, both)"
+            help = "Automatically derive serde Serialize / Deserialize traits for the entity (none,\
+                serialize, deserialize, both)"
         )]
         with_serde: String,
+
+        #[clap(
+            action,
+            long,
+            default_value = "false",
+            long_help = "Automatically derive the Copy trait on generated enums.\n\
+            Enums generated from a database don't have associated data by default, and as such can\
+            derive Copy.
+            "
+        )]
+        with_copy_enums: bool,
+
+        #[clap(
+            arg_enum,
+            value_parser,
+            long,
+            default_value = "chrono",
+            help = "The datetime crate to use for generating entities."
+        )]
+        date_time_crate: DateTimeCrate,
 
         #[clap(
             takes_value = true,
@@ -167,4 +198,10 @@ pub enum GenerateSubcommands {
         )]
         soft_delete_columns: Vec<String>,
     },
+}
+
+#[derive(ArgEnum, Copy, Clone, Debug, PartialEq, Eq)]
+pub enum DateTimeCrate {
+    Chrono,
+    Time,
 }

@@ -13,7 +13,7 @@ pub struct ColumnDef {
 }
 
 /// The type of column as defined in the SQL format
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ColumnType {
     /// `CHAR` type of specified fixed length
     Char(Option<u32>),
@@ -58,6 +58,12 @@ pub enum ColumnType {
     Date,
     /// `BINARY` data types contain byte strings—a sequence of octets or bytes.
     Binary,
+    /// Tiny Binary
+    TinyBinary,
+    /// Medium Binary
+    MediumBinary,
+    /// Long Binary
+    LongBinary,
     /// `BOOLEAN` is the result of a comparison operator
     Boolean,
     /// `MONEY` data type handles monetary data
@@ -244,7 +250,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr + SoftDeleteTrait {
     /// ```
     fn starts_with(&self, s: &str) -> SimpleExpr {
         let pattern = format!("{}%", s);
-        Expr::tbl(self.entity_name(), *self).like(&pattern)
+        Expr::tbl(self.entity_name(), *self).like(pattern)
     }
 
     /// ```
@@ -260,7 +266,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr + SoftDeleteTrait {
     /// ```
     fn ends_with(&self, s: &str) -> SimpleExpr {
         let pattern = format!("%{}", s);
-        Expr::tbl(self.entity_name(), *self).like(&pattern)
+        Expr::tbl(self.entity_name(), *self).like(pattern)
     }
 
     /// ```
@@ -276,7 +282,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr + SoftDeleteTrait {
     /// ```
     fn contains(&self, s: &str) -> SimpleExpr {
         let pattern = format!("%{}%", s);
-        Expr::tbl(self.entity_name(), *self).like(&pattern)
+        Expr::tbl(self.entity_name(), *self).like(pattern)
     }
 
     bind_func_no_params!(max);
@@ -382,7 +388,10 @@ impl From<ColumnType> for sea_query::ColumnType {
             ColumnType::TimestampWithTimeZone => sea_query::ColumnType::TimestampWithTimeZone(None),
             ColumnType::Time => sea_query::ColumnType::Time(None),
             ColumnType::Date => sea_query::ColumnType::Date,
-            ColumnType::Binary => sea_query::ColumnType::Binary(None),
+            ColumnType::Binary => sea_query::ColumnType::Binary(sea_query::BlobSize::Blob(None)),
+            ColumnType::TinyBinary => sea_query::ColumnType::Binary(sea_query::BlobSize::Tiny),
+            ColumnType::MediumBinary => sea_query::ColumnType::Binary(sea_query::BlobSize::Medium),
+            ColumnType::LongBinary => sea_query::ColumnType::Binary(sea_query::BlobSize::Long),
             ColumnType::Boolean => sea_query::ColumnType::Boolean,
             ColumnType::Money(s) => sea_query::ColumnType::Money(s),
             ColumnType::Json => sea_query::ColumnType::Json,
@@ -419,7 +428,10 @@ impl From<sea_query::ColumnType> for ColumnType {
             sea_query::ColumnType::TimestampWithTimeZone(_) => Self::TimestampWithTimeZone,
             sea_query::ColumnType::Time(_) => Self::Time,
             sea_query::ColumnType::Date => Self::Date,
-            sea_query::ColumnType::Binary(_) => Self::Binary,
+            sea_query::ColumnType::Binary(sea_query::BlobSize::Blob(_)) => Self::Binary,
+            sea_query::ColumnType::Binary(sea_query::BlobSize::Tiny) => Self::TinyBinary,
+            sea_query::ColumnType::Binary(sea_query::BlobSize::Medium) => Self::MediumBinary,
+            sea_query::ColumnType::Binary(sea_query::BlobSize::Long) => Self::LongBinary,
             sea_query::ColumnType::Boolean => Self::Boolean,
             sea_query::ColumnType::Money(s) => Self::Money(s),
             sea_query::ColumnType::Json => Self::Json,
@@ -522,7 +534,7 @@ mod tests {
             use crate as sea_orm;
             use crate::entity::prelude::*;
 
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "hello")]
             pub struct Model {
                 #[sea_orm(primary_key)]
@@ -596,7 +608,7 @@ mod tests {
             use crate as sea_orm;
             use crate::entity::prelude::*;
 
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "hello")]
             pub struct Model {
                 #[sea_orm(primary_key)]
@@ -637,7 +649,7 @@ mod tests {
                 }
             }
 
-            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
             pub struct Model {
                 pub id: i32,
                 pub one: i32,
@@ -701,7 +713,7 @@ mod tests {
             use crate as sea_orm;
             use crate::entity::prelude::*;
 
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "hello")]
             pub struct Model {
                 #[sea_orm(primary_key)]
@@ -742,7 +754,7 @@ mod tests {
                 }
             }
 
-            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
             pub struct Model {
                 pub id: i32,
                 #[sea_orm(enum_name = "One1")]
@@ -807,7 +819,7 @@ mod tests {
             use crate as sea_orm;
             use crate::entity::prelude::*;
 
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "hello")]
             pub struct Model {
                 #[sea_orm(primary_key, column_name = "ID", enum_name = "IdentityColumn")]
@@ -849,7 +861,7 @@ mod tests {
                 }
             }
 
-            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
             pub struct Model {
                 #[sea_orm(enum_name = "IdentityCol")]
                 pub id: i32,
@@ -918,7 +930,7 @@ mod tests {
             use crate as sea_orm;
             use crate::entity::prelude::*;
 
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "my_entity")]
             pub struct Model {
                 #[sea_orm(primary_key, enum_name = "IdentityColumn", column_name = "id")]

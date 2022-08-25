@@ -5,7 +5,7 @@ use crate::entity::prelude::*;
 #[sea_orm(table_name = "filling")]
 pub struct Entity;
 
-#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
     pub id: i32,
     pub name: String,

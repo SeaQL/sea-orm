@@ -139,7 +139,7 @@ mod tests {
 
     #[test]
     fn active_enum_string() {
-        #[derive(Debug, PartialEq, EnumIter)]
+        #[derive(Debug, PartialEq, Eq, EnumIter)]
         pub enum Category {
             Big,
             Small,
@@ -176,7 +176,7 @@ mod tests {
             }
         }
 
-        #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+        #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
         #[sea_orm(
             rs_type = "String",
             db_type = "String(Some(1))",
@@ -232,19 +232,40 @@ mod tests {
 
     #[test]
     fn active_enum_derive_signed_integers() {
-        macro_rules! test_int {
+        macro_rules! test_num_value_int {
             ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 pub enum $ident {
+                    #[sea_orm(num_value = -10)]
+                    Negative,
                     #[sea_orm(num_value = 1)]
                     Big,
                     #[sea_orm(num_value = 0)]
                     Small,
-                    #[sea_orm(num_value = -10)]
-                    Negative,
                 }
 
+                test_int!($ident, $rs_type, $db_type, $col_def);
+            };
+        }
+
+        macro_rules! test_fallback_int {
+            ($ident: ident, $fallback_type: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+                #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
+                #[repr(i32)]
+                pub enum $ident {
+                    Big = 1,
+                    Small = 0,
+                    Negative = -10,
+                }
+
+                test_int!($ident, $rs_type, $db_type, $col_def);
+            };
+        }
+
+        macro_rules! test_int {
+            ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
                 assert_eq!($ident::Big.to_value(), 1);
                 assert_eq!($ident::Small.to_value(), 0);
                 assert_eq!($ident::Negative.to_value(), -10);
@@ -264,17 +285,22 @@ mod tests {
             };
         }
 
-        test_int!(I8, "i8", "TinyInteger", TinyInteger);
-        test_int!(I16, "i16", "SmallInteger", SmallInteger);
-        test_int!(I32, "i32", "Integer", Integer);
-        test_int!(I64, "i64", "BigInteger", BigInteger);
+        test_num_value_int!(I8, "i8", "TinyInteger", TinyInteger);
+        test_num_value_int!(I16, "i16", "SmallInteger", SmallInteger);
+        test_num_value_int!(I32, "i32", "Integer", Integer);
+        test_num_value_int!(I64, "i64", "BigInteger", BigInteger);
+
+        test_fallback_int!(I8Fallback, i8, "i8", "TinyInteger", TinyInteger);
+        test_fallback_int!(I16Fallback, i16, "i16", "SmallInteger", SmallInteger);
+        test_fallback_int!(I32Fallback, i32, "i32", "Integer", Integer);
+        test_fallback_int!(I64Fallback, i64, "i64", "BigInteger", BigInteger);
     }
 
     #[test]
     fn active_enum_derive_unsigned_integers() {
-        macro_rules! test_uint {
+        macro_rules! test_num_value_uint {
             ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 pub enum $ident {
                     #[sea_orm(num_value = 1)]
@@ -283,6 +309,26 @@ mod tests {
                     Small,
                 }
 
+                test_uint!($ident, $rs_type, $db_type, $col_def);
+            };
+        }
+
+        macro_rules! test_fallback_uint {
+            ($ident: ident, $fallback_type: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+                #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
+                #[repr($fallback_type)]
+                pub enum $ident {
+                    Big = 1,
+                    Small = 0,
+                }
+
+                test_uint!($ident, $rs_type, $db_type, $col_def);
+            };
+        }
+
+        macro_rules! test_uint {
+            ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
                 assert_eq!($ident::Big.to_value(), 1);
                 assert_eq!($ident::Small.to_value(), 0);
 
@@ -300,9 +346,14 @@ mod tests {
             };
         }
 
-        test_uint!(U8, "u8", "TinyInteger", TinyInteger);
-        test_uint!(U16, "u16", "SmallInteger", SmallInteger);
-        test_uint!(U32, "u32", "Integer", Integer);
-        test_uint!(U64, "u64", "BigInteger", BigInteger);
+        test_num_value_uint!(U8, "u8", "TinyInteger", TinyInteger);
+        test_num_value_uint!(U16, "u16", "SmallInteger", SmallInteger);
+        test_num_value_uint!(U32, "u32", "Integer", Integer);
+        test_num_value_uint!(U64, "u64", "BigInteger", BigInteger);
+
+        test_fallback_uint!(U8Fallback, u8, "u8", "TinyInteger", TinyInteger);
+        test_fallback_uint!(U16Fallback, u16, "u16", "SmallInteger", SmallInteger);
+        test_fallback_uint!(U32Fallback, u32, "u32", "Integer", Integer);
+        test_fallback_uint!(U64Fallback, u64, "u64", "BigInteger", BigInteger);
     }
 }

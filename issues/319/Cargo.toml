@@ -14,5 +14,6 @@ sea-orm = { path = "../../", features = [
     "sqlx-mysql",
     "runtime-async-std-native-tls",
     "with-json",
+    "with-chrono",
     "macros",
 ], default-features = false }

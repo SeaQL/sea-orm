@@ -1,13 +1,8 @@
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::sea_orm::{entity::*, query::*};
 
+#[derive(DeriveMigrationName)]
 pub struct Migration;
-
-impl MigrationName for Migration {
-    fn name(&self) -> &str {
-        "m20220118_000003_seed_cake_table"
-    }
-}
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
@@ -39,7 +34,7 @@ impl MigrationTrait for Migration {
 mod cake {
     use sea_orm_migration::sea_orm::entity::prelude::*;
 
-    #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm(table_name = "cake")]
     pub struct Model {
         #[sea_orm(primary_key)]

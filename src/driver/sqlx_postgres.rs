@@ -39,7 +39,7 @@ impl SqlxPostgresConnector {
         string.starts_with("postgres://") && string.parse::<PgConnectOptions>().is_ok()
     }
 
-    /// Add configuration options for the MySQL database
+    /// Add configuration options for the PostgreSQL database
     #[instrument(level = "trace")]
     pub async fn connect(options: ConnectOptions) -> Result<DatabaseConnection, DbErr> {
         let mut opt = options

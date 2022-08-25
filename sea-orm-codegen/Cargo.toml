@@ -1,6 +1,6 @@
 [package]
 name = "sea-orm-codegen"
-version = "0.8.0"
+version = "0.10.0"
 authors = ["Billy Chan <ccw.billy.123@gmail.com>"]
 edition = "2021"
 description = "Code Generator for SeaORM"
@@ -9,13 +9,14 @@ documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
 categories = ["database"]
 keywords = ["sql", "mysql", "postgres", "sqlite"]
+rust-version = "1.60"
 
 [lib]
 name = "sea_orm_codegen"
 path = "src/lib.rs"
 
 [dependencies]
-sea-query = { version = "^0.24.0" }
+sea-query = { version = "^0.26.3" }
 syn = { version = "^1", default-features = false, features = [
     "derive",
     "parsing",

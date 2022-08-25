@@ -29,7 +29,7 @@ path = "../../sea-orm-rocket/lib" # remove this line in your own project and use
 
 [dependencies.sea-orm]
 path = "../../" # remove this line in your own project
-version = "^0.8.0"
+version = "^0.10.0" # sea-orm version
 features = [
   "runtime-tokio-native-tls",
   "sqlx-postgres",

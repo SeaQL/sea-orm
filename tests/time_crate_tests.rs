@@ -1,7 +1,7 @@
 pub mod common;
 pub use common::{features::*, setup::*, TestContext};
 use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
-use time::{date, time};
+use time::macros::{date, time};
 
 #[sea_orm_macros::test]
 #[cfg(any(
