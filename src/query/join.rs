@@ -1,9 +1,10 @@
 use crate::{
-    join_tbl_on_condition, unpack_table_ref, ColumnTrait, EntityTrait, IdenStatic, Iterable,
-    Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
+    join_tbl_on_condition, soft_delete_condition_tbl, unpack_table_ref, ColumnTrait, EntityTrait,
+    IdenStatic, Iterable, Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectTwo,
+    SelectTwoMany,
 };
 pub use sea_query::JoinType;
-use sea_query::{Alias, Condition, DynIden, Expr, IntoIden, SeaRc, SelectExpr};
+use sea_query::{Alias, DynIden, Expr, IntoIden, SeaRc, SelectExpr};
 
 impl<E> Select<E>
 where
@@ -78,14 +79,17 @@ where
             };
             let table_ref = rel.to_tbl;
 
-            let mut condition = Condition::all().add(join_tbl_on_condition(
-                SeaRc::clone(&from_tbl),
-                SeaRc::clone(&to_tbl),
-                rel.from_col,
-                rel.to_col,
-            ));
+            let mut condition =
+                soft_delete_condition_tbl(SeaRc::clone(&to_tbl), rel.to_soft_delete_col.as_ref())
+                    .add(join_tbl_on_condition(
+                        SeaRc::clone(&from_tbl),
+                        SeaRc::clone(&to_tbl),
+                        rel.from_col,
+                        rel.to_col,
+                    ));
+
             if let Some(f) = rel.on_condition.take() {
-                condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
+                condition = condition.add(f(from_tbl, SeaRc::clone(&to_tbl)));
             }
 
             slf.query()
@@ -254,11 +258,12 @@ mod tests {
         assert_eq!(
             find_cake_filling_price.build(DbBackend::Postgres).to_string(),
             [
-                r#"SELECT "cake_filling_price"."cake_id", "cake_filling_price"."filling_id", "cake_filling_price"."price""#,
+                r#"SELECT "cake_filling_price"."cake_id", "cake_filling_price"."filling_id", "cake_filling_price"."price", "cake_filling_price"."deleted_at""#,
                 r#"FROM "public"."cake_filling_price""#,
                 r#"INNER JOIN "cake_filling" ON"#,
                 r#"("cake_filling"."cake_id" = "cake_filling_price"."cake_id") AND"#,
                 r#"("cake_filling"."filling_id" = "cake_filling_price"."filling_id")"#,
+                r#"WHERE "cake_filling_price"."deleted_at" IS NULL"#,
             ]
             .join(" ")
         );
@@ -276,8 +281,9 @@ mod tests {
                 r#"SELECT "cake_filling"."cake_id", "cake_filling"."filling_id""#,
                 r#"FROM "cake_filling""#,
                 r#"INNER JOIN "public"."cake_filling_price" ON"#,
-                r#"("cake_filling_price"."cake_id" = "cake_filling"."cake_id") AND"#,
-                r#"("cake_filling_price"."filling_id" = "cake_filling"."filling_id")"#,
+                r#""cake_filling_price"."deleted_at" IS NULL AND"#,
+                r#"(("cake_filling_price"."cake_id" = "cake_filling"."cake_id") AND"#,
+                r#"("cake_filling_price"."filling_id" = "cake_filling"."filling_id"))"#,
             ]
             .join(" ")
         );
@@ -319,12 +325,13 @@ mod tests {
                 .build(DbBackend::MySql)
                 .to_string(),
             [
-                r#"SELECT `vendor`.`id`, `vendor`.`name`"#,
+                r#"SELECT `vendor`.`id`, `vendor`.`name`, `vendor`.`deleted_at`"#,
                 r#"FROM `vendor`"#,
                 r#"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`"#,
                 r#"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`"#,
                 r#"INNER JOIN `cake` AS `r2` ON `r2`.`id` = `r1`.`cake_id`"#,
-                r#"WHERE `r2`.`id` = 18"#,
+                r#"WHERE `vendor`.`deleted_at` IS NULL"#,
+                r#"AND `r2`.`id` = 18"#,
             ]
             .join(" ")
         );
@@ -357,11 +364,11 @@ mod tests {
                 .to_string(),
             [
                 r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
-                r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
+                r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`, `r2`.`deleted_at` AS `B_deleted_at`"#,
                 r#"FROM `cake`"#,
                 r#"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id`"#,
                 r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
-                r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
+                r#"LEFT JOIN `vendor` AS `r2` ON `r2`.`deleted_at` IS NULL AND `r1`.`vendor_id` = `r2`.`id`"#,
             ]
             .join(" ")
         );
@@ -395,12 +402,12 @@ mod tests {
                 .build(DbBackend::MySql)
                 .to_string(),
             [
-                r#"SELECT `vendor`.`id`, `vendor`.`name`"#,
+                r#"SELECT `vendor`.`id`, `vendor`.`name`, `vendor`.`deleted_at`"#,
                 r#"FROM `vendor`"#,
                 r#"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`"#,
                 r#"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`"#,
                 r#"INNER JOIN `cake` AS `r2` ON `r2`.`id` = `r1`.`cake_id` AND `r2`.`name` LIKE '%cheese%'"#,
-                r#"WHERE `r2`.`id` = 18"#,
+                r#"WHERE `vendor`.`deleted_at` IS NULL AND `r2`.`id` = 18"#,
             ]
             .join(" ")
         );
@@ -418,12 +425,12 @@ mod tests {
                 .build(DbBackend::MySql)
                 .to_string(),
             [
-                r#"SELECT `vendor`.`id`, `vendor`.`name`"#,
+                r#"SELECT `vendor`.`id`, `vendor`.`name`, `vendor`.`deleted_at`"#,
                 r#"FROM `vendor`"#,
                 r#"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`"#,
                 r#"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`"#,
                 r#"INNER JOIN `cake_filling` AS `r2` ON `r2`.`cake_id` = `r1`.`id` AND `r2`.`name` LIKE '%cheese%'"#,
-                r#"WHERE `r2`.`id` = 18"#,
+                r#"WHERE `vendor`.`deleted_at` IS NULL AND `r2`.`id` = 18"#,
             ]
             .join(" ")
         );
@@ -438,11 +445,11 @@ mod tests {
                 .to_string(),
             [
                 r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
-                r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
+                r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`, `r2`.`deleted_at` AS `B_deleted_at`"#,
                 r#"FROM `cake`"#,
                 r#"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id` AND `cake`.`name` LIKE '%cheese%'"#,
                 r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
-                r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
+                r#"LEFT JOIN `vendor` AS `r2` ON `r2`.`deleted_at` IS NULL AND `r1`.`vendor_id` = `r2`.`id`"#,
             ]
             .join(" ")
         );
@@ -457,11 +464,11 @@ mod tests {
                 .to_string(),
                 [
                     r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
-                    r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
+                    r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`, `r2`.`deleted_at` AS `B_deleted_at`"#,
                     r#"FROM `cake`"#,
                     r#"LEFT JOIN `cake` AS `r0` ON `cake_filling`.`cake_id` = `r0`.`id` AND `cake_filling`.`name` LIKE '%cheese%'"#,
                     r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
-                    r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
+                    r#"LEFT JOIN `vendor` AS `r2` ON `r2`.`deleted_at` IS NULL AND `r1`.`vendor_id` = `r2`.`id`"#,
                 ]
                 .join(" ")
         );
@@ -501,7 +508,7 @@ mod tests {
                 "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id` AND `fruit`.`name` LIKE '%tropical%'",
                 "LEFT JOIN `cake_filling` ON `cake`.`id` = `cake_filling`.`cake_id` AND `cake_filling`.`cake_id` > 10",
                 "LEFT JOIN `filling` ON `cake_filling`.`filling_id` = `filling`.`id` AND `filling`.`name` LIKE '%lemon%'",
-                "LEFT JOIN `vendor` ON `filling`.`vendor_id` = `vendor`.`id`",
+                "LEFT JOIN `vendor` ON `vendor`.`deleted_at` IS NULL AND `filling`.`vendor_id` = `vendor`.`id`",
             ]
             .join(" ")
         );

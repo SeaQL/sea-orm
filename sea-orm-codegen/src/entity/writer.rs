@@ -42,6 +42,7 @@ pub struct EntityWriterContext {
     pub(crate) with_copy_enums: bool,
     pub(crate) date_time_crate: DateTimeCrate,
     pub(crate) schema_name: Option<String>,
+    pub(crate) soft_delete_columns: Vec<String>,
 }
 
 impl WithSerde {
@@ -101,6 +102,7 @@ impl EntityWriterContext {
         with_copy_enums: bool,
         date_time_crate: DateTimeCrate,
         schema_name: Option<String>,
+        soft_delete_columns: Vec<String>,
     ) -> Self {
         Self {
             expanded_format,
@@ -108,6 +110,7 @@ impl EntityWriterContext {
             with_copy_enums,
             date_time_crate,
             schema_name,
+            soft_delete_columns,
         }
     }
 }
@@ -150,6 +153,7 @@ impl EntityWriter {
                         &context.with_serde,
                         &context.date_time_crate,
                         &context.schema_name,
+                        &context.soft_delete_columns,
                     )
                 } else {
                     Self::gen_compact_code_blocks(
@@ -157,6 +161,7 @@ impl EntityWriter {
                         &context.with_serde,
                         &context.date_time_crate,
                         &context.schema_name,
+                        &context.soft_delete_columns,
                     )
                 };
                 Self::write(&mut lines, code_blocks);
@@ -250,6 +255,7 @@ impl EntityWriter {
         with_serde: &WithSerde,
         date_time_crate: &DateTimeCrate,
         schema_name: &Option<String>,
+        soft_delete_columns: &[String],
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
@@ -258,7 +264,7 @@ impl EntityWriter {
             Self::gen_entity_struct(),
             Self::gen_impl_entity_name(entity, schema_name),
             Self::gen_model_struct(entity, with_serde, date_time_crate),
-            Self::gen_column_enum(entity),
+            Self::gen_column_enum(entity, soft_delete_columns),
             Self::gen_primary_key_enum(entity),
             Self::gen_impl_primary_key(entity, date_time_crate),
             Self::gen_relation_enum(entity),
@@ -276,12 +282,19 @@ impl EntityWriter {
         with_serde: &WithSerde,
         date_time_crate: &DateTimeCrate,
         schema_name: &Option<String>,
+        soft_delete_columns: &[String],
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
         let mut code_blocks = vec![
             imports,
-            Self::gen_compact_model_struct(entity, with_serde, date_time_crate, schema_name),
+            Self::gen_compact_model_struct(
+                entity,
+                with_serde,
+                date_time_crate,
+                schema_name,
+                soft_delete_columns,
+            ),
         ];
         let relation_defs = if entity.get_relation_enum_name().is_empty() {
             vec![
@@ -391,18 +404,28 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_column_enum(entity: &Entity) -> TokenStream {
+    pub fn gen_column_enum(entity: &Entity, soft_delete_columns: &[String]) -> TokenStream {
         let column_variants = entity.columns.iter().map(|col| {
+            let column_name = &col.name;
             let variant = col.get_name_camel_case();
-            let mut variant = quote! { #variant };
+            let mut attrs: Punctuated<_, Comma> = Punctuated::new();
             if !col.is_snake_case_name() {
-                let column_name = &col.name;
-                variant = quote! {
-                    #[sea_orm(column_name = #column_name)]
-                    #variant
-                };
+                attrs.push(quote! { column_name = #column_name });
             }
-            variant
+            if soft_delete_columns.contains(column_name) {
+                attrs.push(quote! { soft_delete_column });
+            }
+            let attrs = if !attrs.is_empty() {
+                quote! {
+                    #[sea_orm(#attrs)]
+                }
+            } else {
+                TokenStream::new()
+            };
+            quote! {
+                #attrs
+                #variant
+            }
         });
         quote! {
             #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -562,6 +585,7 @@ impl EntityWriter {
         with_serde: &WithSerde,
         date_time_crate: &DateTimeCrate,
         schema_name: &Option<String>,
+        soft_delete_columns: &[String],
     ) -> TokenStream {
         let table_name = entity.table_name.as_str();
         let column_names_snake_case = entity.get_column_names_snake_case();
@@ -594,6 +618,9 @@ impl EntityWriter {
                 };
                 if col.unique {
                     attrs.push(quote! { unique });
+                }
+                if soft_delete_columns.contains(&col.name) {
+                    attrs.push(quote! { soft_delete_column });
                 }
                 if !attrs.is_empty() {
                     let mut ts = TokenStream::new();
@@ -864,6 +891,13 @@ mod tests {
                         not_null: false,
                         unique: false,
                     },
+                    Column {
+                        name: "deleted_at".to_owned(),
+                        col_type: ColumnType::TimestampWithTimeZone(None),
+                        auto_increment: false,
+                        not_null: false,
+                        unique: false,
+                    },
                 ],
                 relations: vec![Relation {
                     ref_table: "fruit".to_owned(),
@@ -1075,6 +1109,8 @@ mod tests {
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
 
+        let soft_delete_columns = vec!["deleted_at".to_owned()];
+
         for (i, entity) in entities.iter().enumerate() {
             assert_eq!(
                 parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
@@ -1082,7 +1118,8 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
-                    &None
+                    &None,
+                    &soft_delete_columns,
                 )
                 .into_iter()
                 .skip(1)
@@ -1098,7 +1135,8 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
-                    &Some("public".to_owned())
+                    &Some("public".to_owned()),
+                    &soft_delete_columns,
                 )
                 .into_iter()
                 .skip(1)
@@ -1114,7 +1152,8 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
-                    &Some("schema_name".to_owned())
+                    &Some("schema_name".to_owned()),
+                    &soft_delete_columns,
                 )
                 .into_iter()
                 .skip(1)
@@ -1151,6 +1190,8 @@ mod tests {
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
 
+        let soft_delete_columns = vec!["deleted_at".to_owned()];
+
         for (i, entity) in entities.iter().enumerate() {
             assert_eq!(
                 parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
@@ -1158,7 +1199,8 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
-                    &None
+                    &None,
+                    &soft_delete_columns,
                 )
                 .into_iter()
                 .skip(1)
@@ -1174,7 +1216,8 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
-                    &Some("public".to_owned())
+                    &Some("public".to_owned()),
+                    &soft_delete_columns,
                 )
                 .into_iter()
                 .skip(1)
@@ -1190,7 +1233,8 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
-                    &Some("schema_name".to_owned())
+                    &Some("schema_name".to_owned()),
+                    &soft_delete_columns,
                 )
                 .into_iter()
                 .skip(1)
@@ -1208,6 +1252,7 @@ mod tests {
     #[test]
     fn test_gen_with_serde() -> io::Result<()> {
         let cake_entity = setup().get(0).unwrap().clone();
+        let soft_delete_columns = vec!["deleted_at".to_owned()];
 
         assert_eq!(cake_entity.get_table_name_snake_case(), "cake");
 
@@ -1218,6 +1263,7 @@ mod tests {
                 include_str!("../../tests/compact_with_serde/cake_none.rs").into(),
                 WithSerde::None,
                 None,
+                &soft_delete_columns,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1227,6 +1273,7 @@ mod tests {
                 include_str!("../../tests/compact_with_serde/cake_serialize.rs").into(),
                 WithSerde::Serialize,
                 None,
+                &soft_delete_columns,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1236,6 +1283,7 @@ mod tests {
                 include_str!("../../tests/compact_with_serde/cake_deserialize.rs").into(),
                 WithSerde::Deserialize,
                 None,
+                &soft_delete_columns,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1245,6 +1293,7 @@ mod tests {
                 include_str!("../../tests/compact_with_serde/cake_both.rs").into(),
                 WithSerde::Both,
                 None,
+                &soft_delete_columns,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
         )?;
@@ -1256,6 +1305,7 @@ mod tests {
                 include_str!("../../tests/expanded_with_serde/cake_none.rs").into(),
                 WithSerde::None,
                 None,
+                &soft_delete_columns,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1265,6 +1315,7 @@ mod tests {
                 include_str!("../../tests/expanded_with_serde/cake_serialize.rs").into(),
                 WithSerde::Serialize,
                 None,
+                &soft_delete_columns,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1274,6 +1325,7 @@ mod tests {
                 include_str!("../../tests/expanded_with_serde/cake_deserialize.rs").into(),
                 WithSerde::Deserialize,
                 None,
+                &soft_delete_columns,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1283,6 +1335,7 @@ mod tests {
                 include_str!("../../tests/expanded_with_serde/cake_both.rs").into(),
                 WithSerde::Both,
                 None,
+                &soft_delete_columns,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
@@ -1293,9 +1346,15 @@ mod tests {
     #[allow(clippy::type_complexity)]
     fn assert_serde_variant_results(
         cake_entity: &Entity,
-        entity_serde_variant: &(String, WithSerde, Option<String>),
+        entity_serde_variant: &(String, WithSerde, Option<String>, &[String]),
         generator: Box<
-            dyn Fn(&Entity, &WithSerde, &DateTimeCrate, &Option<String>) -> Vec<TokenStream>,
+            dyn Fn(
+                &Entity,
+                &WithSerde,
+                &DateTimeCrate,
+                &Option<String>,
+                &[String],
+            ) -> Vec<TokenStream>,
         >,
     ) -> io::Result<()> {
         let mut reader = BufReader::new(entity_serde_variant.0.as_bytes());
@@ -1315,6 +1374,7 @@ mod tests {
             &entity_serde_variant.1,
             &DateTimeCrate::Chrono,
             &entity_serde_variant.2,
+            &entity_serde_variant.3,
         )
         .into_iter()
         .fold(TokenStream::new(), |mut acc, tok| {

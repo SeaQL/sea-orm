@@ -2,7 +2,8 @@ pub use crate::{
     error::*, ActiveEnum, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait,
     ColumnType, CursorTrait, DatabaseConnection, DbConn, EntityName, EntityTrait, EnumIter,
     ForeignKeyAction, Iden, IdenStatic, Linked, ModelTrait, PaginatorTrait, PrimaryKeyToColumn,
-    PrimaryKeyTrait, QueryFilter, QueryResult, Related, RelationDef, RelationTrait, Select, Value,
+    PrimaryKeyTrait, QueryFilter, QueryResult, Related, RelationDef, RelationTrait, Select,
+    SoftDeleteTrait, Value,
 };
 
 #[cfg(feature = "macros")]

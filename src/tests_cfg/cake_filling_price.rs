@@ -22,6 +22,8 @@ pub struct Model {
     pub price: Decimal,
     #[sea_orm(ignore)]
     pub ignored_attr: i32,
+    #[cfg(feature = "with-chrono")]
+    pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -29,6 +31,8 @@ pub enum Column {
     CakeId,
     FillingId,
     Price,
+    #[sea_orm(soft_delete_column)]
+    DeletedAt,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -58,6 +62,7 @@ impl ColumnTrait for Column {
             Self::CakeId => ColumnType::Integer.def(),
             Self::FillingId => ColumnType::Integer.def(),
             Self::Price => ColumnType::Decimal(None).def(),
+            Self::DeletedAt => ColumnType::TimestampWithTimeZone.def().null(),
         }
     }
 }

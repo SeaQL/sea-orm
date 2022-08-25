@@ -7,6 +7,13 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub name: String,
+    #[sea_orm(
+        soft_delete_column,
+        soft_delete_expr = "Func::current_timestamp()",
+        restore_soft_delete_expr = r#"Expr::cust("NULL")"#
+    )]
+    #[cfg(feature = "with-chrono")]
+    pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]

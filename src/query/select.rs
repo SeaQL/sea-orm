@@ -1,4 +1,7 @@
-use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySelect, QueryTrait};
+use crate::{
+    ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
+    SoftDeleteTrait,
+};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
@@ -105,6 +108,14 @@ where
     E: EntityTrait,
 {
     pub(crate) fn new() -> Self {
+        Self::with_deleted().filter_not_deleted()
+    }
+
+    pub(crate) fn deleted() -> Self {
+        Self::with_deleted().filter_deleted()
+    }
+
+    pub(crate) fn with_deleted() -> Self {
         Self {
             query: SelectStatement::new(),
             entity: PhantomData,
@@ -136,6 +147,30 @@ where
 
     fn prepare_from(mut self) -> Self {
         self.query.from(E::default().table_ref());
+        self
+    }
+
+    /// Construct condition for returning non-deleted rows
+    fn filter_not_deleted(mut self) -> Self {
+        match <E::Column as SoftDeleteTrait>::soft_delete_column() {
+            Some(col) => {
+                self.query
+                    .cond_where(Expr::tbl(E::default(), col).is_null());
+            }
+            None => {}
+        }
+        self
+    }
+
+    /// Construct condition for returning deleted rows
+    fn filter_deleted(mut self) -> Self {
+        match <E::Column as SoftDeleteTrait>::soft_delete_column() {
+            Some(col) => {
+                self.query
+                    .cond_where(Expr::tbl(E::default(), col).is_not_null());
+            }
+            None => {}
+        }
         self
     }
 }

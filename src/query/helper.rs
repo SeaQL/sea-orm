@@ -168,8 +168,12 @@ pub trait QuerySelect: Sized {
 
     /// Join via [`RelationDef`].
     fn join(mut self, join: JoinType, rel: RelationDef) -> Self {
-        self.query()
-            .join(join, rel.to_tbl.clone(), join_condition(rel));
+        self.query().join(
+            join,
+            rel.to_tbl.clone(),
+            soft_delete_condition(&rel.to_tbl, rel.to_soft_delete_col.as_ref())
+                .add(join_condition(rel)),
+        );
         self
     }
 
@@ -177,8 +181,12 @@ pub trait QuerySelect: Sized {
     /// Assume when there exist a relation A to B.
     /// You can reverse join B from A.
     fn join_rev(mut self, join: JoinType, rel: RelationDef) -> Self {
-        self.query()
-            .join(join, rel.from_tbl.clone(), join_condition(rel));
+        self.query().join(
+            join,
+            rel.from_tbl.clone(),
+            soft_delete_condition(&rel.from_tbl, rel.from_soft_delete_col.as_ref())
+                .add(join_condition(rel)),
+        );
         self
     }
 
@@ -453,6 +461,26 @@ pub trait QueryFilter: Sized {
             self = self.filter(expr);
         }
         self
+    }
+}
+
+pub(crate) fn soft_delete_condition(
+    table: &TableRef,
+    soft_delete_col: Option<&DynIden>,
+) -> Condition {
+    soft_delete_condition_tbl(unpack_table_ref(table), soft_delete_col)
+}
+
+pub(crate) fn soft_delete_condition_tbl(
+    tbl: DynIden,
+    soft_delete_col: Option<&DynIden>,
+) -> Condition {
+    match soft_delete_col {
+        Some(col) => {
+            let col = SeaRc::clone(col);
+            Condition::all().add(Expr::tbl(tbl, col).is_null())
+        }
+        None => Condition::all(),
     }
 }
 

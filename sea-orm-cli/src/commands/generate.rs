@@ -26,6 +26,7 @@ pub async fn run_generate_command(
             with_serde,
             with_copy_enums,
             date_time_crate,
+            soft_delete_columns,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -171,6 +172,7 @@ pub async fn run_generate_command(
                 with_copy_enums,
                 date_time_crate.into(),
                 schema_name,
+                soft_delete_columns,
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 

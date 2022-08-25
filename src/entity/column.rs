@@ -1,4 +1,4 @@
-use crate::{EntityName, IdenStatic, Iterable};
+use crate::{EntityName, IdenStatic, Iterable, SoftDeleteTrait};
 use sea_query::{Alias, BinOper, DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
 use std::str::FromStr;
 
@@ -147,7 +147,7 @@ macro_rules! bind_subquery_func {
 
 // LINT: when the operand value does not match column type
 /// Wrapper of the identically named method in [`sea_query::Expr`]
-pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
+pub trait ColumnTrait: IdenStatic + Iterable + FromStr + SoftDeleteTrait {
     #[allow(missing_docs)]
     type EntityName: EntityName;
 

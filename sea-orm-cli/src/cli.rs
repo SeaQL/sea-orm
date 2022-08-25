@@ -187,6 +187,16 @@ pub enum GenerateSubcommands {
             help = "The datetime crate to use for generating entities."
         )]
         date_time_crate: DateTimeCrate,
+
+        #[clap(
+            takes_value = true,
+            value_delimiter = ',',
+            value_parser,
+            long,
+            default_value = "deleted_at",
+            help = "Column names of soft delete column (comma seperated)"
+        )]
+        soft_delete_columns: Vec<String>,
     },
 }
 

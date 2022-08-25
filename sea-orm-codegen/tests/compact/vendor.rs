@@ -11,6 +11,8 @@ pub struct Model {
     pub name: String,
     #[sea_orm(column_name = "fruitId")]
     pub fruit_id: Option<i32> ,
+    #[sea_orm(soft_delete_column)]
+    pub deleted_at: Option<DateTimeWithTimeZone> ,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

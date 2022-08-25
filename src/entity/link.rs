@@ -1,7 +1,8 @@
 use crate::{
-    join_tbl_on_condition, unpack_table_ref, EntityTrait, QuerySelect, RelationDef, Select,
+    join_tbl_on_condition, soft_delete_condition_tbl, unpack_table_ref, EntityTrait, QuerySelect,
+    RelationDef, Select,
 };
-use sea_query::{Alias, Condition, IntoIden, JoinType, SeaRc};
+use sea_query::{Alias, IntoIden, JoinType, SeaRc};
 
 /// Same as [RelationDef]
 pub type LinkDef = RelationDef;
@@ -29,14 +30,19 @@ pub trait Linked {
             };
             let table_ref = rel.from_tbl;
 
-            let mut condition = Condition::all().add(join_tbl_on_condition(
+            let mut condition = soft_delete_condition_tbl(
+                SeaRc::clone(&from_tbl),
+                rel.from_soft_delete_col.as_ref(),
+            )
+            .add(join_tbl_on_condition(
                 SeaRc::clone(&from_tbl),
                 SeaRc::clone(&to_tbl),
                 rel.from_col,
                 rel.to_col,
             ));
+
             if let Some(f) = rel.on_condition.take() {
-                condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
+                condition = condition.add(f(SeaRc::clone(&from_tbl), to_tbl));
             }
 
             select

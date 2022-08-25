@@ -37,7 +37,9 @@ pub trait ModelTrait: Clone + Send + Debug {
         l.find_linked().belongs_to_tbl_alias(self, tbl_alias)
     }
 
-    /// Delete an model
+    /// Delete an model by:
+    ///   - Marking the target row in the database as deleted if soft delete is enabled
+    ///   - Otherwise, deleting the target row from the database
     async fn delete<'a, A, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
         Self: IntoActiveModel<A>,
@@ -45,6 +47,30 @@ pub trait ModelTrait: Clone + Send + Debug {
         A: ActiveModelTrait<Entity = Self::Entity> + ActiveModelBehavior + Send + 'a,
     {
         self.into_active_model().delete(db).await
+    }
+
+    /// Delete an model by deleting the target row from the database
+    async fn delete_force<'a, A, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
+    where
+        Self: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: ActiveModelTrait<Entity = Self::Entity> + ActiveModelBehavior + Send + 'a,
+    {
+        self.into_active_model().delete_force(db).await
+    }
+
+    /// Restore a soft deleted model
+    async fn restore_deleted<'a, A, C>(
+        self,
+        db: &'a C,
+    ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
+    where
+        Self: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: ActiveModelTrait<Entity = Self::Entity> + Send + 'a,
+        <Self::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+    {
+        self.into_active_model().restore_deleted(db).await
     }
 }
 
