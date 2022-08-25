@@ -3,7 +3,10 @@ use std::fmt::Display;
 use std::time::SystemTime;
 use tracing::info;
 
-use sea_orm::sea_query::{Alias, Expr, ForeignKey, Query, SelectStatement, SimpleExpr, Table};
+use sea_orm::sea_query::{
+    extension::postgres::Type, Alias, Expr, ForeignKey, JoinType, Query, SelectStatement,
+    SimpleExpr, Table,
+};
 use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, Condition, ConnectionTrait, DbBackend, DbConn,
     DbErr, EntityTrait, QueryFilter, QueryOrder, Schema, Statement,
@@ -194,6 +197,39 @@ pub trait MigratorTrait: Send {
                 .cascade();
             db.execute(db_backend.build(&stmt)).await?;
             info!("Table '{}' has been dropped", table_name);
+        }
+
+        // Drop all types
+        if db_backend == DbBackend::Postgres {
+            info!("Dropping all types");
+
+            let mut stmt = Query::select();
+            stmt.columns([Alias::new("typname")])
+                .from(Alias::new("pg_type"))
+                .join(
+                    JoinType::LeftJoin,
+                    Alias::new("pg_namespace"),
+                    Expr::tbl(Alias::new("pg_namespace"), Alias::new("oid"))
+                        .equals(Alias::new("pg_type"), Alias::new("typnamespace")),
+                )
+                .cond_where(
+                    Condition::all()
+                        .add(
+                            Expr::expr(get_current_schema(db))
+                                .equals(Alias::new("pg_namespace"), Alias::new("nspname")),
+                        )
+                        .add(Expr::tbl(Alias::new("pg_type"), Alias::new("typelem")).eq(0)),
+                );
+
+            let rows = db.query_all(db_backend.build(&stmt)).await?;
+            for row in rows {
+                let type_name: String = row.try_get("", "typname")?;
+                info!("Dropping type '{}'", type_name);
+                let mut stmt = Type::drop();
+                stmt.name(Alias::new(&type_name as &str));
+                db.execute(db_backend.build(&stmt)).await?;
+                info!("Type '{}' has been dropped", type_name);
+            }
         }
 
         // Restore the foreign key check
