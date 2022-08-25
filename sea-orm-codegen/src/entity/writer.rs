@@ -1223,21 +1223,25 @@ mod tests {
     #[test]
     fn test_gen_compact_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 6] = [
+        const ENTITY_FILES: [&str; 8] = [
             include_str!("../../tests/compact/cake.rs"),
             include_str!("../../tests/compact/cake_filling.rs"),
             include_str!("../../tests/compact/filling.rs"),
             include_str!("../../tests/compact/fruit.rs"),
             include_str!("../../tests/compact/vendor.rs"),
             include_str!("../../tests/compact/rust_keyword.rs"),
+            include_str!("../../tests/compact/cake_with_float.rs"),
+            include_str!("../../tests/compact/cake_with_double.rs"),
         ];
-        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 6] = [
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 8] = [
             include_str!("../../tests/compact_with_schema_name/cake.rs"),
             include_str!("../../tests/compact_with_schema_name/cake_filling.rs"),
             include_str!("../../tests/compact_with_schema_name/filling.rs"),
             include_str!("../../tests/compact_with_schema_name/fruit.rs"),
             include_str!("../../tests/compact_with_schema_name/vendor.rs"),
             include_str!("../../tests/compact_with_schema_name/rust_keyword.rs"),
+            include_str!("../../tests/compact_with_schema_name/cake_with_float.rs"),
+            include_str!("../../tests/compact_with_schema_name/cake_with_double.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
