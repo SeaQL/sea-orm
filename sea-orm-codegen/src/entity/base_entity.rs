@@ -152,9 +152,11 @@ impl Entity {
     pub fn get_eq_needed(&self) -> TokenStream {
         self.columns
             .iter()
-            .find(|column| match column.col_type {
-                ColumnType::Float(_) | ColumnType::Double(_) => true,
-                _ => false,
+            .find(|column| {
+                matches!(
+                    column.col_type,
+                    ColumnType::Float(_) | ColumnType::Double(_)
+                )
             })
             // check if float or double exist.
             // if exist, return nothing
