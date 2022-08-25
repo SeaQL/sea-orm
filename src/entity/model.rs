@@ -115,3 +115,21 @@ pub trait FromQueryResult: Sized {
         SelectorRaw::<SelectModel<Self>>::from_statement(stmt)
     }
 }
+
+/// A Trait for any type that can be converted into an Model
+pub trait TryIntoModel<M>
+where
+    M: ModelTrait,
+{
+    /// Method to call to perform the conversion
+    fn try_into_model(self) -> Result<M, DbErr>;
+}
+
+impl<M> TryIntoModel<M> for M
+where
+    M: ModelTrait,
+{
+    fn try_into_model(self) -> Result<M, DbErr> {
+        Ok(self)
+    }
+}

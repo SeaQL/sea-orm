@@ -948,6 +948,152 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_try_into_model_1() {
+        mod my_fruit {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "fruit")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub name: String,
+                pub cake_id: Option<i32>,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Pineapple".to_owned()),
+                cake_id: Set(None),
+            }
+            .try_into_model()
+            .unwrap(),
+            my_fruit::Model {
+                id: 1,
+                name: "Pineapple".to_owned(),
+                cake_id: None,
+            }
+        );
+
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(2),
+                name: Set("Apple".to_owned()),
+                cake_id: Set(Some(1)),
+            }
+            .try_into_model()
+            .unwrap(),
+            my_fruit::Model {
+                id: 2,
+                name: "Apple".to_owned(),
+                cake_id: Some(1),
+            }
+        );
+
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                name: NotSet,
+                cake_id: Set(None),
+            }
+            .try_into_model(),
+            Err(DbErr::Custom(String::from("field name is NotSet")))
+        );
+
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Pineapple".to_owned()),
+                cake_id: NotSet,
+            }
+            .try_into_model(),
+            Err(DbErr::Custom(String::from("field cake_id is NotSet")))
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_try_into_model_2() {
+        mod my_fruit {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "fruit")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub name: String,
+                #[sea_orm(ignore)]
+                pub cake_id: Option<i32>,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Pineapple".to_owned()),
+            }
+            .try_into_model()
+            .unwrap(),
+            my_fruit::Model {
+                id: 1,
+                name: "Pineapple".to_owned(),
+                cake_id: None,
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_try_into_model_3() {
+        mod my_fruit {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "fruit")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                #[sea_orm(ignore)]
+                pub name: String,
+                pub cake_id: Option<i32>,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                cake_id: Set(Some(1)),
+            }
+            .try_into_model()
+            .unwrap(),
+            my_fruit::Model {
+                id: 1,
+                name: "".to_owned(),
+                cake_id: Some(1),
+            }
+        );
+    }
+
+    #[test]
     #[cfg(feature = "with-json")]
     #[should_panic(
         expected = r#"called `Result::unwrap()` on an `Err` value: Json("missing field `id`")"#
@@ -1105,12 +1251,12 @@ mod tests {
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"INSERT INTO "fruit" ("name") VALUES ($1) RETURNING "id", "name", "cake_id""#,
-                    vec!["Apple".into()]
+                    vec!["Apple".into()],
                 ),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"UPDATE "fruit" SET "name" = $1, "cake_id" = $2 WHERE "fruit"."id" = $3 RETURNING "id", "name", "cake_id""#,
-                    vec!["Orange".into(), 1i32.into(), 2i32.into()]
+                    vec!["Orange".into(), 1i32.into(), 2i32.into()],
                 ),
             ]
         );
