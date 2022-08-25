@@ -27,7 +27,7 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
     .into_iter();
 
     let derive_active_model = derive_active_model(all_fields.clone())?;
-    let derive_into_model = derive_into_model(all_fields.clone())?;
+    let derive_into_model = derive_into_model(all_fields)?;
 
     Ok(quote!(
         #derive_active_model
@@ -172,7 +172,6 @@ fn derive_into_model(model_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
         .collect();
 
     let ignore_attr: Vec<bool> = model_fields
-        .clone()
         .map(|field| !field_not_ignored(&field))
         .collect();
 
