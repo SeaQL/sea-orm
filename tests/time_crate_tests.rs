@@ -9,10 +9,6 @@ use time::macros::{date, time};
     feature = "sqlx-sqlite",
     feature = "sqlx-postgres"
 ))]
-#[cfg_attr(
-    feature = "sqlx-sqlite",
-    should_panic(expected = "time::Date unsupported by sqlx-sqlite")
-)]
 async fn main() {
     let ctx = TestContext::new("time_crate_tests").await;
     create_tables(&ctx.db).await.unwrap();
