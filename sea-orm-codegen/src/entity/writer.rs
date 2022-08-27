@@ -42,6 +42,7 @@ pub struct EntityWriterContext {
     pub(crate) with_copy_enums: bool,
     pub(crate) date_time_crate: DateTimeCrate,
     pub(crate) schema_name: Option<String>,
+    pub(crate) no_prelude: bool,
 }
 
 impl WithSerde {
@@ -101,6 +102,7 @@ impl EntityWriterContext {
         with_copy_enums: bool,
         date_time_crate: DateTimeCrate,
         schema_name: Option<String>,
+        no_prelude: bool,
     ) -> Self {
         Self {
             expanded_format,
@@ -108,6 +110,7 @@ impl EntityWriterContext {
             with_copy_enums,
             date_time_crate,
             schema_name,
+            no_prelude,
         }
     }
 }
@@ -117,7 +120,9 @@ impl EntityWriter {
         let mut files = Vec::new();
         files.extend(self.write_entities(context));
         files.push(self.write_mod());
-        files.push(self.write_prelude());
+        if !context.no_prelude {
+            files.push(self.write_prelude());
+        }
         if !self.enums.is_empty() {
             files.push(
                 self.write_sea_orm_active_enums(&context.with_serde, context.with_copy_enums),

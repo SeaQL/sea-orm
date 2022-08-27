@@ -187,6 +187,14 @@ pub enum GenerateSubcommands {
             help = "The datetime crate to use for generating entities."
         )]
         date_time_crate: DateTimeCrate,
+
+        #[clap(
+            action,
+            long,
+            default_value = "false",
+            help = "Whether to generate `prelude.rs` file or not."
+        )]
+        no_prelude: bool,
     },
 }
 
