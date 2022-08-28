@@ -16,7 +16,7 @@ pub enum DbErr {
         /// Into type
         into: &'static str,
         /// TryError
-        source: Box<dyn std::error::Error + Send>,
+        source: Box<dyn std::error::Error + Send + Sync>,
     },
     /// Type error: the specified type cannot be converted from u64. This is not a runtime error.
     #[error("Type `{0}` cannot be converted from u64")]
@@ -69,14 +69,14 @@ impl PartialEq for DbErr {
     }
 }
 
-/// An error from a failed column operation when trying to convert the column to a string
-#[derive(Debug, Clone)]
-pub struct ColumnFromStrErr(pub String);
+impl Eq for DbErr {}
 
-impl std::error::Error for ColumnFromStrErr {}
-
-impl std::fmt::Display for ColumnFromStrErr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0.as_str())
-    }
+/// Error during `impl FromStr for Entity::Column`
+#[derive(Error, Debug)]
+#[error("Failed to match \"{string}\" as Column for `{entity}`")]
+pub struct ColumnFromStrErr {
+    /// Source of error
+    pub string: String,
+    /// Entity this column belongs to
+    pub entity: String,
 }

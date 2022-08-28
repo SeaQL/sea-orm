@@ -521,7 +521,7 @@ mod tests {
         ));
         assert!(matches!(
             fruit::Column::from_str("does_not_exist"),
-            Err(crate::ColumnFromStrErr(_))
+            Err(crate::ColumnFromStrErr { .. })
         ));
     }
 
