@@ -76,10 +76,5 @@ impl Eq for DbErr {}
 
 /// Error during `impl FromStr for Entity::Column`
 #[derive(Error, Debug)]
-#[error("Failed to match \"{string}\" as Column for `{entity}`")]
-pub struct ColumnFromStrErr {
-    /// Source of error
-    pub string: String,
-    /// Entity this column belongs to
-    pub entity: String,
-}
+#[error("Failed to match \"{0}\" as Column")]
+pub struct ColumnFromStrErr(pub String);

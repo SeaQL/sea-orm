@@ -816,20 +816,22 @@ try_from_u64_err!(uuid::Uuid);
 #[cfg(test)]
 mod tests {
     use super::TryGetError;
-    use crate::error::DbErr;
+    use crate::error::*;
 
     #[test]
     fn from_try_get_error() {
         // TryGetError::DbErr
-        let try_get_error = TryGetError::DbErr(DbErr::Query("expected error message".to_owned()));
+        let try_get_error = TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
+            "expected error message".to_owned(),
+        )));
         assert_eq!(
             DbErr::from(try_get_error),
-            DbErr::Query("expected error message".to_owned())
+            DbErr::Query(RuntimeErr::Internal("expected error message".to_owned()))
         );
 
         // TryGetError::Null
         let try_get_error = TryGetError::Null("column".to_owned());
-        let expected = "error occurred while decoding column: Null".to_owned();
-        assert_eq!(DbErr::from(try_get_error), DbErr::Query(expected));
+        let expected = "A null value was encountered while decoding column".to_owned();
+        assert_eq!(DbErr::from(try_get_error), DbErr::Type(expected));
     }
 }

@@ -1,6 +1,6 @@
 pub use super::*;
 use rust_decimal_macros::dec;
-use sea_orm::DbErr;
+use sea_orm::error::*;
 #[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",
@@ -32,7 +32,7 @@ pub async fn test_cake_error_sqlx(db: &DbConn) {
 
     #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
     match error {
-        DbErr::ExecSqlX(sqlx_error) => match sqlx_error {
+        DbErr::Exec(RuntimeErr::SqlxError(error)) => match error {
             Error::Database(e) => {
                 #[cfg(feature = "sqlx-mysql")]
                 assert_eq!(e.code().unwrap(), "23000");
@@ -45,7 +45,7 @@ pub async fn test_cake_error_sqlx(db: &DbConn) {
     }
     #[cfg(feature = "sqlx-postgres")]
     match error {
-        DbErr::QuerySqlX(sqlx_error) => match sqlx_error {
+        DbErr::Query(RuntimeErr::SqlxError(error)) => match error {
             Error::Database(e) => {
                 assert_eq!(e.code().unwrap(), "23505");
             }

@@ -508,7 +508,9 @@ pub async fn transaction_nested() {
                                     assert_eq!(bakeries.len(), 4);
 
                                     if true {
-                                        Err(DbErr::Query("Force Rollback!".to_owned()))
+                                        Err(DbErr::Query(RuntimeErr::Internal(
+                                            "Force Rollback!".to_owned(),
+                                        )))
                                     } else {
                                         Ok(())
                                     }
@@ -633,7 +635,9 @@ pub async fn transaction_nested() {
                                         assert_eq!(bakeries.len(), 7);
 
                                         if true {
-                                            Err(DbErr::Query("Force Rollback!".to_owned()))
+                                            Err(DbErr::Query(RuntimeErr::Internal(
+                                                "Force Rollback!".to_owned(),
+                                            )))
                                         } else {
                                             Ok(())
                                         }
@@ -652,7 +656,9 @@ pub async fn transaction_nested() {
                             assert_eq!(bakeries.len(), 6);
 
                             if true {
-                                Err(DbErr::Query("Force Rollback!".to_owned()))
+                                Err(DbErr::Query(RuntimeErr::Internal(
+                                    "Force Rollback!".to_owned(),
+                                )))
                             } else {
                                 Ok(())
                             }

@@ -91,17 +91,6 @@ pub fn impl_col_from_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream>
         )
     });
 
-    let entity_name = data_enum
-        .variants
-        .first()
-        .map(|column| {
-            let column_iden = column.ident.clone();
-            quote!(
-                #ident::#column_iden.entity_name().to_string()
-            )
-        })
-        .unwrap();
-
     Ok(quote!(
         #[automatically_derived]
         impl std::str::FromStr for #ident {
@@ -110,7 +99,7 @@ pub fn impl_col_from_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream>
             fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
                 match s {
                     #(#columns),*,
-                    _ => Err(sea_orm::ColumnFromStrErr{ string: s.to_owned(), entity: #entity_name }),
+                    _ => Err(sea_orm::ColumnFromStrErr(s.to_owned())),
                 }
             }
         }
