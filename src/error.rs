@@ -5,15 +5,22 @@ use thiserror::Error;
 /// An error from unsuccessful database operations
 #[derive(Error, Debug)]
 pub enum DbErr {
-    /// This error happens, when a pool was not able to create a connection
+    /// This error can happen when the connection pool is fully-utilized
     #[error("Failed to acquire connection from pool.")]
     ConnFromPool,
-    /// Error in case of invalid type conversion attempts
-    #[error("fail to convert '{0}' into '{1}'")]
-    CannotConvertInto(String, String),
-    /// Error in case of invalid type conversion from an u64
-    #[error("{0} cannot be converted from u64")]
-    ConvertFromU64(String),
+    /// Runtime type conversion error
+    #[error("Error converting `{from}` into `{into}`: {source}")]
+    TryIntoErr {
+        /// From type
+        from: &'static str,
+        /// Into type
+        into: &'static str,
+        /// TryError
+        source: Box<dyn std::error::Error + Send>,
+    },
+    /// Type error: the specified type cannot be converted from u64. This is not a runtime error.
+    #[error("Type `{0}` cannot be converted from u64")]
+    CannotConvertFromU64(&'static str),
     /// After an insert statement it was impossible to retrieve the last_insert_id
     #[error("Fail to unpack last_insert_id")]
     InsertCouldNotUnpackInsertId,

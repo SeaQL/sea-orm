@@ -376,13 +376,13 @@ impl TryGetable for Decimal {
                 let val: Option<f64> = row
                     .try_get(column.as_str())
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))?;
-                use rust_decimal::prelude::FromPrimitive;
                 match val {
-                    Some(v) => Decimal::from_f64(v).ok_or_else(|| {
-                        TryGetError::DbErr(DbErr::CannotConvertInto(
-                            "f64".to_owned(),
-                            "Decimal".to_owned(),
-                        ))
+                    Some(v) => Decimal::try_from(v).map_err(|e| {
+                        TryGetError::DbErr(DbErr::TryIntoErr {
+                            from: "f64",
+                            into: "Decimal",
+                            source: Box::new(e),
+                        })
                     }),
                     None => Err(TryGetError::Null(column)),
                 }
@@ -709,7 +709,7 @@ macro_rules! try_from_u64_err {
     ( $type: ty ) => {
         impl TryFromU64 for $type {
             fn try_from_u64(_: u64) -> Result<Self, DbErr> {
-                Err(DbErr::ConvertFromU64(stringify!($type).to_string()))
+                Err(DbErr::CannotConvertFromU64(stringify!($type)))
             }
         }
     };
@@ -720,7 +720,7 @@ macro_rules! try_from_u64_err {
             $( $gen_type: TryFromU64, )*
         {
             fn try_from_u64(_: u64) -> Result<Self, DbErr> {
-                Err(DbErr::ConvertFromU64(stringify!($($gen_type,)*).to_string()))
+                Err(DbErr::CannotConvertFromU64(stringify!($($gen_type,)*)))
             }
         }
     };
@@ -738,8 +738,10 @@ macro_rules! try_from_u64_numeric {
         impl TryFromU64 for $type {
             fn try_from_u64(n: u64) -> Result<Self, DbErr> {
                 use std::convert::TryInto;
-                n.try_into().map_err(|_| {
-                    DbErr::CannotConvertInto(n.to_string(), stringify!($type).to_string())
+                n.try_into().map_err(|e| DbErr::TryIntoErr {
+                    from: stringify!(u64),
+                    into: stringify!($type),
+                    source: Box::new(e),
                 })
             }
         }

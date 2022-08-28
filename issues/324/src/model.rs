@@ -26,7 +26,7 @@ macro_rules! impl_try_from_u64_err {
     ($newtype: ident) => {
         impl sea_orm::TryFromU64 for $newtype {
             fn try_from_u64(_n: u64) -> Result<Self, sea_orm::DbErr> {
-                Err(sea_orm::ConvertFromU64(stringify!($newtype)))
+                Err(sea_orm::CannotConvertFromU64(stringify!($newtype)))
             }
         }
     };
