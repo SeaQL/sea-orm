@@ -46,7 +46,7 @@ impl SqlxSqliteConnector {
         let mut opt = options
             .url
             .parse::<SqliteConnectOptions>()
-            .map_err(|e| DbErr::Conn(e.to_string()))?;
+            .map_err(|e| DbErr::ConnSqlX(e))?;
         if options.sqlcipher_key.is_some() {
             opt = opt.pragma("key", options.sqlcipher_key.clone().unwrap());
         }
@@ -96,9 +96,7 @@ impl SqlxSqlitePoolConnection {
                 }
             })
         } else {
-            Err(DbErr::Exec(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnFromPool)
         }
     }
 
@@ -114,14 +112,12 @@ impl SqlxSqlitePoolConnection {
                     Ok(row) => Ok(Some(row.into())),
                     Err(err) => match err {
                         sqlx::Error::RowNotFound => Ok(None),
-                        _ => Err(DbErr::Query(err.to_string())),
+                        _ => Err(sqlx_error_to_query_err(err)),
                     },
                 }
             })
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnFromPool)
         }
     }
 
@@ -139,9 +135,7 @@ impl SqlxSqlitePoolConnection {
                 }
             })
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnFromPool)
         }
     }
 
@@ -157,9 +151,7 @@ impl SqlxSqlitePoolConnection {
                 self.metric_callback.clone(),
             )))
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnFromPool)
         }
     }
 
@@ -169,9 +161,7 @@ impl SqlxSqlitePoolConnection {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_sqlite(conn, self.metric_callback.clone()).await
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnFromPool)
         }
     }
 
@@ -192,9 +182,7 @@ impl SqlxSqlitePoolConnection {
                 .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
-            Err(TransactionError::Connection(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            )))
+            Err(TransactionError::Connection(DbErr::ConnFromPool))
         }
     }
 

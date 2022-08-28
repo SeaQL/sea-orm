@@ -122,7 +122,7 @@ where
             Updater::new(query).check_record_exists().exec(db).await?;
             let primary_key_value = match model.get_primary_key_value() {
                 Some(val) => FromValueTuple::from_value_tuple(val),
-                None => return Err(DbErr::Exec("Fail to get primary key from model".to_owned())),
+                None => return Err(DbErr::UpdateCouldNotGetPrimaryKey),
             };
             let found = <A::Entity as EntityTrait>::find_by_id(primary_key_value)
                 .one(db)
@@ -130,7 +130,9 @@ where
             // If we cannot select the updated row from db by the cached primary key
             match found {
                 Some(model) => Ok(model),
-                None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
+                None => Err(DbErr::RecordNotFound(
+                    "Failed to find inserted item".to_owned(),
+                )),
             }
         }
     }

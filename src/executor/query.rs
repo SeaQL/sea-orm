@@ -379,8 +379,9 @@ impl TryGetable for Decimal {
                 use rust_decimal::prelude::FromPrimitive;
                 match val {
                     Some(v) => Decimal::from_f64(v).ok_or_else(|| {
-                        TryGetError::DbErr(DbErr::Query(
-                            "Failed to convert f64 into Decimal".to_owned(),
+                        TryGetError::DbErr(DbErr::CannotConvertInto(
+                            "f64".to_owned(),
+                            "Decimal".to_owned(),
                         ))
                     }),
                     None => Err(TryGetError::Null(column)),
@@ -708,10 +709,7 @@ macro_rules! try_from_u64_err {
     ( $type: ty ) => {
         impl TryFromU64 for $type {
             fn try_from_u64(_: u64) -> Result<Self, DbErr> {
-                Err(DbErr::Exec(format!(
-                    "{} cannot be converted from u64",
-                    stringify!($type)
-                )))
+                Err(DbErr::ConvertFromU64(stringify!($type).to_string()))
             }
         }
     };
@@ -722,10 +720,7 @@ macro_rules! try_from_u64_err {
             $( $gen_type: TryFromU64, )*
         {
             fn try_from_u64(_: u64) -> Result<Self, DbErr> {
-                Err(DbErr::Exec(format!(
-                    "{} cannot be converted from u64",
-                    stringify!(($($gen_type,)*))
-                )))
+                Err(DbErr::ConvertFromU64(stringify!($($gen_type,)*).to_string()))
             }
         }
     };
@@ -744,11 +739,7 @@ macro_rules! try_from_u64_numeric {
             fn try_from_u64(n: u64) -> Result<Self, DbErr> {
                 use std::convert::TryInto;
                 n.try_into().map_err(|_| {
-                    DbErr::Exec(format!(
-                        "fail to convert '{}' into '{}'",
-                        n,
-                        stringify!($type)
-                    ))
+                    DbErr::CannotConvertInto(n.to_string(), stringify!($type).to_string())
                 })
             }
         }
@@ -828,9 +819,11 @@ mod tests {
     #[test]
     fn from_try_get_error() {
         // TryGetError::DbErr
-        let expected = DbErr::Query("expected error message".to_owned());
-        let try_get_error = TryGetError::DbErr(expected.clone());
-        assert_eq!(DbErr::from(try_get_error), expected);
+        let try_get_error = TryGetError::DbErr(DbErr::Query("expected error message".to_owned()));
+        assert_eq!(
+            DbErr::from(try_get_error),
+            DbErr::Query("expected error message".to_owned())
+        );
 
         // TryGetError::Null
         let try_get_error = TryGetError::Null("column".to_owned());

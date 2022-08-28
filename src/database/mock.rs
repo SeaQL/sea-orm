@@ -102,7 +102,7 @@ impl MockDatabaseTrait for MockDatabase {
                 result: ExecResultHolder::Mock(std::mem::take(&mut self.exec_results[counter])),
             })
         } else {
-            Err(DbErr::Exec("`exec_results` buffer is empty.".to_owned()))
+            Err(DbErr::Query("`exec_results` buffer is empty.".to_owned()))
         }
     }
 
