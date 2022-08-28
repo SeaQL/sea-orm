@@ -30,22 +30,13 @@ pub enum DbErr {
     UpdateCouldNotGetPrimaryKey,
     /// There was a problem with the database connection
     #[error("Connection Error: {0}")]
-    Conn(String),
-    /// There was a problem with the database connection from sqlx
-    #[cfg(feature = "sqlx-dep")]
-    #[error("Connection Error: {0}")]
-    ConnSqlX(#[source] SqlxError),
+    Conn(#[source] RuntimeErr),
     /// An operation did not execute successfully
-    #[cfg(feature = "sqlx-dep")]
     #[error("Execution Error: {0}")]
-    ExecSqlX(#[source] SqlxError),
-    /// An error occurred while performing a query, with more details from sqlx
-    #[cfg(feature = "sqlx-dep")]
-    #[error("Query Error: {0}")]
-    QuerySqlX(#[source] SqlxError),
+    Exec(#[source] RuntimeErr),
     /// An error occurred while performing a query
     #[error("Query Error: {0}")]
-    Query(String),
+    Query(#[source] RuntimeErr),
     /// The record was not found in the database
     #[error("RecordNotFound Error: {0}")]
     RecordNotFound(String),
@@ -61,6 +52,18 @@ pub enum DbErr {
     /// A migration error
     #[error("Migration Error: {0}")]
     Migration(String),
+}
+
+/// Runtime error
+#[derive(Error, Debug)]
+pub enum RuntimeErr {
+    #[cfg(feature = "sqlx-dep")]
+    /// SQLx Error
+    #[error("{0}")]
+    SqlxError(SqlxError),
+    #[error("{0}")]
+    /// Error generated from within SeaORM
+    Internal(String),
 }
 
 impl PartialEq for DbErr {

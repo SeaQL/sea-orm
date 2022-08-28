@@ -1,16 +1,16 @@
-use crate::DbErr;
+use crate::{DbErr, RuntimeErr};
 
 /// Converts an [sqlx::error] execution error to a [DbErr]
 pub fn sqlx_error_to_exec_err(err: sqlx::Error) -> DbErr {
-    DbErr::ExecSqlX(err)
+    DbErr::Exec(RuntimeErr::SqlxError(err))
 }
 
 /// Converts an [sqlx::error] query error to a [DbErr]
 pub fn sqlx_error_to_query_err(err: sqlx::Error) -> DbErr {
-    DbErr::QuerySqlX(err)
+    DbErr::Query(RuntimeErr::SqlxError(err))
 }
 
 /// Converts an [sqlx::error] connection error to a [DbErr]
 pub fn sqlx_error_to_conn_err(err: sqlx::Error) -> DbErr {
-    DbErr::ConnSqlX(err)
+    DbErr::Conn(RuntimeErr::SqlxError(err))
 }

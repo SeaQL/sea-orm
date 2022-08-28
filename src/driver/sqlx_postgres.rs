@@ -45,7 +45,7 @@ impl SqlxPostgresConnector {
         let mut opt = options
             .url
             .parse::<PgConnectOptions>()
-            .map_err(|e| DbErr::ConnSqlX(e))?;
+            .map_err(sqlx_error_to_conn_err)?;
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
             opt.disable_statement_logging();

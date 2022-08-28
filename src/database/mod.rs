@@ -18,7 +18,7 @@ pub use stream::*;
 use tracing::instrument;
 pub use transaction::*;
 
-use crate::DbErr;
+use crate::{DbErr, RuntimeErr};
 
 /// Defines a database
 #[derive(Debug, Default)]
@@ -73,10 +73,10 @@ impl Database {
         if crate::MockDatabaseConnector::accepts(&opt.url) {
             return crate::MockDatabaseConnector::connect(&opt.url).await;
         }
-        Err(DbErr::Conn(format!(
+        Err(DbErr::Conn(RuntimeErr::Internal(format!(
             "The connection string '{}' has no supporting driver.",
             opt.url
-        )))
+        ))))
     }
 }
 

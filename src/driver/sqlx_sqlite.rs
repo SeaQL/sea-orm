@@ -46,7 +46,7 @@ impl SqlxSqliteConnector {
         let mut opt = options
             .url
             .parse::<SqliteConnectOptions>()
-            .map_err(|e| DbErr::ConnSqlX(e))?;
+            .map_err(sqlx_error_to_conn_err)?;
         if options.sqlcipher_key.is_some() {
             opt = opt.pragma("key", options.sqlcipher_key.clone().unwrap());
         }

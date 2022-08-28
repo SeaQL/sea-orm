@@ -41,7 +41,7 @@ impl From<TryGetError> for DbErr {
         match e {
             TryGetError::DbErr(e) => e,
             TryGetError::Null(s) => {
-                DbErr::Query(format!("error occurred while decoding {}: Null", s))
+                DbErr::Type(format!("A null value was encountered while decoding {}", s))
             }
         }
     }
@@ -627,7 +627,7 @@ where
 
 fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), TryGetError> {
     if cols.len() < len {
-        Err(TryGetError::DbErr(DbErr::Query(format!(
+        Err(TryGetError::DbErr(DbErr::Type(format!(
             "Expect {} column names supplied but got slice of length {}",
             len,
             cols.len()
