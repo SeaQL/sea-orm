@@ -1,3 +1,4 @@
+use crate::MigrationConnection;
 use sea_orm::sea_query::{
     extension::postgres::{TypeAlterStatement, TypeCreateStatement, TypeDropStatement},
     ForeignKeyCreateStatement, ForeignKeyDropStatement, IndexCreateStatement, IndexDropStatement,
@@ -9,28 +10,37 @@ use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::S
 
 /// Helper struct for writing migration scripts in migration file
 pub struct SchemaManager<'c> {
-    conn: &'c DbConn,
+    migration_conn: MigrationConnection<'c>,
 }
 
 impl<'c> SchemaManager<'c> {
-    pub fn new(conn: &'c DbConn) -> Self {
-        Self { conn }
+    pub fn new<T>(conn: T) -> Self
+    where
+        T: Into<MigrationConnection<'c>>,
+    {
+        Self {
+            migration_conn: conn.into(),
+        }
     }
 
     pub async fn exec_stmt<S>(&self, stmt: S) -> Result<(), DbErr>
     where
         S: StatementBuilder,
     {
-        let builder = self.conn.get_database_backend();
-        self.conn.execute(builder.build(&stmt)).await.map(|_| ())
+        let builder = self.conn().get_database_backend();
+        self.conn().execute(builder.build(&stmt)).await.map(|_| ())
     }
 
     pub fn get_database_backend(&self) -> DbBackend {
-        self.conn.get_database_backend()
+        self.conn().get_database_backend()
     }
 
     pub fn get_connection(&self) -> &'c DbConn {
-        self.conn
+        self.conn()
+    }
+
+    pub fn conn(&self) -> &'c DbConn {
+        self.migration_conn.conn
     }
 }
 
@@ -94,15 +104,15 @@ impl<'c> SchemaManager<'c> {
     where
         T: AsRef<str>,
     {
-        let stmt = match self.conn.get_database_backend() {
+        let stmt = match self.conn().get_database_backend() {
             DbBackend::MySql => MySql::has_table(table),
             DbBackend::Postgres => Postgres::has_table(table),
             DbBackend::Sqlite => Sqlite::has_table(table),
         };
 
-        let builder = self.conn.get_database_backend();
+        let builder = self.conn().get_database_backend();
         let res = self
-            .conn
+            .conn()
             .query_one(builder.build(&stmt))
             .await?
             .ok_or_else(|| DbErr::Custom("Failed to check table exists".to_owned()))?;
@@ -115,15 +125,15 @@ impl<'c> SchemaManager<'c> {
         T: AsRef<str>,
         C: AsRef<str>,
     {
-        let stmt = match self.conn.get_database_backend() {
+        let stmt = match self.conn().get_database_backend() {
             DbBackend::MySql => MySql::has_column(table, column),
             DbBackend::Postgres => Postgres::has_column(table, column),
             DbBackend::Sqlite => Sqlite::has_column(table, column),
         };
 
-        let builder = self.conn.get_database_backend();
+        let builder = self.conn().get_database_backend();
         let res = self
-            .conn
+            .conn()
             .query_one(builder.build(&stmt))
             .await?
             .ok_or_else(|| DbErr::Custom("Failed to check column exists".to_owned()))?;
