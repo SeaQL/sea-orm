@@ -131,7 +131,7 @@ where
             match found {
                 Some(model) => Ok(model),
                 None => Err(DbErr::RecordNotFound(
-                    "Failed to find inserted item".to_owned(),
+                    "Failed to find updated item".to_owned(),
                 )),
             }
         }
