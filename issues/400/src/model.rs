@@ -31,7 +31,7 @@ impl<T> From<AccountId<T>> for Uuid {
 
 impl<T> sea_orm::TryFromU64 for AccountId<T> {
     fn try_from_u64(_n: u64) -> Result<Self, sea_orm::DbErr> {
-        Err(sea_orm::CannotConvertFromU64(stringify!(AccountId<T>)))
+        Err(sea_orm::DbErr::CannotConvertFromU64(stringify!(AccountId<T>)))
     }
 }
 
