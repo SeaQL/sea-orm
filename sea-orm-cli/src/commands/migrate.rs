@@ -20,7 +20,7 @@ pub fn run_migrate_command(
                 Some(MigrateSubcommands::Refresh) => ("refresh", migration_dir, None, verbose),
                 Some(MigrateSubcommands::Reset) => ("reset", migration_dir, None, verbose),
                 Some(MigrateSubcommands::Status) => ("status", migration_dir, None, verbose),
-                Some(MigrateSubcommands::Up { num }) => ("up", migration_dir, Some(num), verbose),
+                Some(MigrateSubcommands::Up { num }) => ("up", migration_dir, num, verbose),
                 Some(MigrateSubcommands::Down { num }) => {
                     ("down", migration_dir, Some(num), verbose)
                 }

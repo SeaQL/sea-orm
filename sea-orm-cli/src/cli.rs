@@ -63,10 +63,9 @@ pub enum MigrateSubcommands {
             value_parser,
             short,
             long,
-            default_value = "1",
             help = "Number of pending migrations to apply"
         )]
-        num: u32,
+        num: Option<u32>,
     },
     #[clap(value_parser, about = "Rollback applied migrations")]
     Down {
