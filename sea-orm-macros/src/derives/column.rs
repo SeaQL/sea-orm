@@ -90,6 +90,7 @@ pub fn impl_col_from_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream>
             #column_str_snake | #column_str_mixed => Ok(#ident::#column_iden)
         )
     });
+    
 
     Ok(quote!(
         #[automatically_derived]
