@@ -8,6 +8,7 @@ authors = ["Chris Tsang <tyt2y7@gmail.com>"]
 edition = "2021"
 description = "🐚 An async & dynamic ORM for Rust"
 license = "MIT OR Apache-2.0"
+homepage = "https://www.sea-ql.org/SeaORM"
 documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
 categories = ["database"]
