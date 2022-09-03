@@ -26,7 +26,7 @@ pub enum DbErr {
     InsertCouldNotUnpackInsertId,
     /// When updating, a model should know it's primary key to check
     /// if the record has been correctly updated, otherwise this error will occur
-    #[error("Fail to get primary key from model")]
+    #[error("Failed to get primary key from model")]
     UpdateCouldNotGetPrimaryKey,
     /// There was a problem with the database connection
     #[error("Connection Error: {0}")]
