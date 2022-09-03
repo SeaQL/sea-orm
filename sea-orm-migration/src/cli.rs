@@ -3,10 +3,10 @@ use dotenv::dotenv;
 use std::{error::Error, fmt::Display, process::exit};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
-use sea_orm::{Database, DbConn};
+use sea_orm::Database;
 use sea_orm_cli::{run_migrate_generate, run_migrate_init, MigrateSubcommands};
 
-use super::MigratorTrait;
+use super::{MigrationConnection, MigratorTrait};
 
 const MIGRATION_DIR: &str = "./";
 
@@ -16,17 +16,22 @@ where
 {
     dotenv().ok();
     let url = std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
-    let db = &Database::connect(&url).await.unwrap();
+    let db = Database::connect(&url).await.unwrap();
     let cli = Cli::parse();
 
-    run_migrate(migrator, db, cli.command, cli.verbose)
+    let migration_conn = MigrationConnection {
+        conn: &db,
+        schema_name: Some(cli.database_schema),
+    };
+
+    run_migrate(migrator, &migration_conn, cli.command, cli.verbose)
         .await
         .unwrap_or_else(handle_error);
 }
 
-pub async fn run_migrate<M>(
+pub async fn run_migrate<'c, M>(
     _: M,
-    db: &DbConn,
+    migration_conn: &MigrationConnection<'c>,
     command: Option<MigrateSubcommands>,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>>
@@ -58,17 +63,17 @@ where
     };
 
     match command {
-        Some(MigrateSubcommands::Fresh) => M::fresh(db).await?,
-        Some(MigrateSubcommands::Refresh) => M::refresh(db).await?,
-        Some(MigrateSubcommands::Reset) => M::reset(db).await?,
-        Some(MigrateSubcommands::Status) => M::status(db).await?,
-        Some(MigrateSubcommands::Up { num }) => M::up(db, Some(num)).await?,
-        Some(MigrateSubcommands::Down { num }) => M::down(db, Some(num)).await?,
+        Some(MigrateSubcommands::Fresh) => M::fresh(migration_conn).await?,
+        Some(MigrateSubcommands::Refresh) => M::refresh(migration_conn).await?,
+        Some(MigrateSubcommands::Reset) => M::reset(migration_conn).await?,
+        Some(MigrateSubcommands::Status) => M::status(migration_conn).await?,
+        Some(MigrateSubcommands::Up { num }) => M::up(migration_conn, Some(num)).await?,
+        Some(MigrateSubcommands::Down { num }) => M::down(migration_conn, Some(num)).await?,
         Some(MigrateSubcommands::Init) => run_migrate_init(MIGRATION_DIR)?,
         Some(MigrateSubcommands::Generate { migration_name }) => {
             run_migrate_generate(MIGRATION_DIR, &migration_name)?
         }
-        _ => M::up(db, None).await?,
+        _ => M::up(migration_conn, None).await?,
     };
 
     Ok(())
