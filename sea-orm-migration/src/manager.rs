@@ -1,9 +1,9 @@
 use crate::MigrationConnection;
 use sea_orm::sea_query::{
     extension::postgres::{TypeAlterStatement, TypeCreateStatement, TypeDropStatement},
-    ForeignKeyCreateStatement, ForeignKeyDropStatement, IndexCreateStatement, IndexDropStatement,
-    TableAlterStatement, TableCreateStatement, TableDropStatement, TableRenameStatement,
-    TableTruncateStatement,
+    Alias, ForeignKeyCreateStatement, ForeignKeyDropStatement, IndexCreateStatement,
+    IndexDropStatement, IntoIden, TableAlterStatement, TableCreateStatement, TableDropStatement,
+    TableRef, TableRenameStatement, TableTruncateStatement,
 };
 use sea_orm::{ConnectionTrait, DbBackend, DbConn, DbErr, StatementBuilder};
 use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
@@ -46,11 +46,37 @@ impl<'c> SchemaManager<'c> {
 
 /// Schema Creation
 impl<'c> SchemaManager<'c> {
-    pub async fn create_table(&self, stmt: TableCreateStatement) -> Result<(), DbErr> {
+    pub async fn create_table(&self, mut stmt: TableCreateStatement) -> Result<(), DbErr> {
+        let stmt_clone = stmt.clone();
+        let stmt_table_ref = stmt_clone.get_table_name().clone();
+
+        let stmt = match stmt_table_ref {
+            Some(table_ref) => match (table_ref, self.migration_conn.schema_name.clone()) {
+                (TableRef::Table(table_name), Some(schema_name)) => stmt
+                    .table((Alias::new(&schema_name), table_name.clone().into_iden()))
+                    .to_owned(),
+                _ => stmt,
+            },
+            None => stmt,
+        };
+
         self.exec_stmt(stmt).await
     }
 
     pub async fn create_index(&self, stmt: IndexCreateStatement) -> Result<(), DbErr> {
+        let stmt_clone = stmt.clone();
+        let stmt_table_ref = stmt_clone.get_table_name().clone();
+
+        let stmt = match stmt_table_ref {
+            Some(table_ref) => match (table_ref, self.migration_conn.schema_name.clone()) {
+                (TableRef::Table(table_name), Some(schema_name)) => stmt
+                    .table((Alias::new(&schema_name), table_name.clone().into_iden()))
+                    .to_owned(),
+                _ => stmt,
+            },
+            None => stmt,
+        };
+
         self.exec_stmt(stmt).await
     }
 
