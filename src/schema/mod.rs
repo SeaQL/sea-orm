@@ -7,11 +7,15 @@ mod entity;
 #[derive(Debug)]
 pub struct Schema {
     backend: DbBackend,
+    schema_name: Option<String>,
 }
 
 impl Schema {
     /// Create a helper for a specific database backend
-    pub fn new(backend: DbBackend) -> Self {
-        Self { backend }
+    pub fn new(backend: DbBackend, schema_name: Option<String>) -> Self {
+        Self {
+            backend,
+            schema_name,
+        }
     }
 }

@@ -4,8 +4,8 @@ use crate::{
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
-    Alias, ColumnDef, ForeignKeyCreateStatement, Iden, Index, IndexCreateStatement,
-    TableCreateStatement,
+    Alias, ColumnDef, ForeignKeyCreateStatement, Iden, Index, IndexCreateStatement, IntoIden,
+    IntoTableRef, TableCreateStatement,
 };
 
 impl Schema {
@@ -30,7 +30,7 @@ impl Schema {
     where
         E: EntityTrait,
     {
-        create_table_from_entity(entity, self.backend)
+        create_table_from_entity(entity, self.backend, self.schema_name.as_ref())
     }
 
     /// Creates the indexes from an Entity, returning an empty Vec if there are none
@@ -114,7 +114,11 @@ where
     vec
 }
 
-pub(crate) fn create_table_from_entity<E>(entity: E, backend: DbBackend) -> TableCreateStatement
+pub(crate) fn create_table_from_entity<E>(
+    entity: E,
+    backend: DbBackend,
+    schema_name: Option<&String>,
+) -> TableCreateStatement
 where
     E: EntityTrait,
 {
@@ -217,7 +221,13 @@ where
         );
     }
 
-    stmt.table(entity.table_ref()).take()
+    // If table schema name is present, inject into `TableCreateStatement`
+    if let Some(table_schema_name) = schema_name {
+        stmt.table((Alias::new(&table_schema_name), entity.into_iden()).into_table_ref())
+            .take()
+    } else {
+        stmt.table(entity.table_ref()).take()
+    }
 }
 
 #[cfg(test)]
@@ -228,7 +238,7 @@ mod tests {
     #[test]
     fn test_create_table_from_entity_table_ref() {
         for builder in [DbBackend::MySql, DbBackend::Postgres, DbBackend::Sqlite] {
-            let schema = Schema::new(builder);
+            let schema = Schema::new(builder, None);
             assert_eq!(
                 builder.build(&schema.create_table_from_entity(CakeFillingPrice)),
                 builder.build(
@@ -280,7 +290,7 @@ mod tests {
     #[test]
     fn test_create_index_from_entity_table_ref() {
         for builder in [DbBackend::MySql, DbBackend::Postgres, DbBackend::Sqlite] {
-            let schema = Schema::new(builder);
+            let schema = Schema::new(builder, None);
 
             assert_eq!(
                 builder.build(&schema.create_table_from_entity(indexes::Entity)),
