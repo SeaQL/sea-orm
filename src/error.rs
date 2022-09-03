@@ -22,7 +22,7 @@ pub enum DbErr {
     #[error("Type `{0}` cannot be converted from u64")]
     CannotConvertFromU64(&'static str),
     /// After an insert statement it was impossible to retrieve the last_insert_id
-    #[error("Fail to unpack last_insert_id")]
+    #[error("Failed to unpack last_insert_id")]
     InsertCouldNotUnpackInsertId,
     /// When updating, a model should know it's primary key to check
     /// if the record has been correctly updated, otherwise this error will occur
