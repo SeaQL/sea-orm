@@ -10,7 +10,7 @@ use sea_orm::{
 };
 use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
 
-use super::{seaql_migrations, MigrationTrait, SchemaManager};
+use super::{seaql_migrations, MigrationConnection, MigrationTrait, SchemaManager};
 
 #[derive(Debug, PartialEq, Eq)]
 /// Status of migration
@@ -54,19 +54,23 @@ pub trait MigratorTrait: Send {
     }
 
     /// Get list of applied migrations from database
-    async fn get_migration_models(db: &DbConn) -> Result<Vec<seaql_migrations::Model>, DbErr> {
-        Self::install(db).await?;
+    async fn get_migration_models(
+        migration_conn: &MigrationConnection,
+    ) -> Result<Vec<seaql_migrations::Model>, DbErr> {
+        Self::install(migration_conn).await?;
         seaql_migrations::Entity::find()
             .order_by_asc(seaql_migrations::Column::Version)
-            .all(db)
+            .all(migration_conn.conn)
             .await
     }
 
     /// Get list of migrations with status
-    async fn get_migration_with_status(db: &DbConn) -> Result<Vec<Migration>, DbErr> {
-        Self::install(db).await?;
+    async fn get_migration_with_status(
+        migration_conn: &MigrationConnection,
+    ) -> Result<Vec<Migration>, DbErr> {
+        Self::install(migration_conn).await?;
         let mut migration_files = Self::get_migration_files();
-        let migration_models = Self::get_migration_models(db).await?;
+        let migration_models = Self::get_migration_models(migration_conn).await?;
 
         let migration_in_db: HashSet<String> = migration_models
             .into_iter()
@@ -99,9 +103,11 @@ pub trait MigratorTrait: Send {
     }
 
     /// Get list of pending migrations
-    async fn get_pending_migrations(db: &DbConn) -> Result<Vec<Migration>, DbErr> {
-        Self::install(db).await?;
-        Ok(Self::get_migration_with_status(db)
+    async fn get_pending_migrations(
+        migration_conn: &MigrationConnection,
+    ) -> Result<Vec<Migration>, DbErr> {
+        Self::install(migration_conn).await?;
+        Ok(Self::get_migration_with_status(migration_conn)
             .await?
             .into_iter()
             .filter(|file| file.status == MigrationStatus::Pending)
@@ -109,9 +115,11 @@ pub trait MigratorTrait: Send {
     }
 
     /// Get list of applied migrations
-    async fn get_applied_migrations(db: &DbConn) -> Result<Vec<Migration>, DbErr> {
-        Self::install(db).await?;
-        Ok(Self::get_migration_with_status(db)
+    async fn get_applied_migrations(
+        migration_conn: &MigrationConnection,
+    ) -> Result<Vec<Migration>, DbErr> {
+        Self::install(migration_conn).await?;
+        Ok(Self::get_migration_with_status(migration_conn)
             .await?
             .into_iter()
             .filter(|file| file.status == MigrationStatus::Applied)
@@ -119,17 +127,19 @@ pub trait MigratorTrait: Send {
     }
 
     /// Create migration table `seaql_migrations` in the database
-    async fn install(db: &DbConn) -> Result<(), DbErr> {
+    async fn install(migration_conn: &MigrationConnection) -> Result<(), DbErr> {
+        let db = migration_conn.conn;
         let builder = db.get_database_backend();
-        let schema = Schema::new(builder);
+        let schema = Schema::new(builder, migration_conn.schema_name.clone());
         let mut stmt = schema.create_table_from_entity(seaql_migrations::Entity);
         stmt.if_not_exists();
         db.execute(builder.build(&stmt)).await.map(|_| ())
     }
 
     /// Drop all tables from the database, then reapply all migrations
-    async fn fresh(db: &DbConn) -> Result<(), DbErr> {
-        Self::install(db).await?;
+    async fn fresh(migration_conn: &MigrationConnection) -> Result<(), DbErr> {
+        Self::install(migration_conn).await?;
+        let db = migration_conn.conn;
         let db_backend = db.get_database_backend();
 
         // Temporarily disable the foreign key check
@@ -208,27 +218,29 @@ pub trait MigratorTrait: Send {
         }
 
         // Reapply all migrations
-        Self::up(db, None).await
+        Self::up(migration_conn, None).await
     }
 
     /// Rollback all applied migrations, then reapply all migrations
-    async fn refresh(db: &DbConn) -> Result<(), DbErr> {
-        Self::down(db, None).await?;
-        Self::up(db, None).await
+    async fn refresh(migration_conn: &MigrationConnection) -> Result<(), DbErr> {
+        Self::down(migration_conn, None).await?;
+        Self::up(migration_conn, None).await
     }
 
     /// Rollback all applied migrations
-    async fn reset(db: &DbConn) -> Result<(), DbErr> {
-        Self::down(db, None).await
+    async fn reset(migration_conn: &MigrationConnection) -> Result<(), DbErr> {
+        Self::down(migration_conn, None).await
     }
 
     /// Check the status of all migrations
-    async fn status(db: &DbConn) -> Result<(), DbErr> {
-        Self::install(db).await?;
+    async fn status(migration_conn: &MigrationConnection) -> Result<(), DbErr> {
+        Self::install(migration_conn).await?;
 
         info!("Checking migration status");
 
-        for Migration { migration, status } in Self::get_migration_with_status(db).await? {
+        for Migration { migration, status } in
+            Self::get_migration_with_status(migration_conn).await?
+        {
             info!("Migration '{}'... {}", migration.name(), status);
         }
 
@@ -236,9 +248,13 @@ pub trait MigratorTrait: Send {
     }
 
     /// Apply pending migrations
-    async fn up(db: &DbConn, mut steps: Option<u32>) -> Result<(), DbErr> {
-        Self::install(db).await?;
-        let manager = SchemaManager::new(db);
+    async fn up(migration_conn: &MigrationConnection, mut steps: Option<u32>) -> Result<(), DbErr> {
+        Self::install(migration_conn).await?;
+
+        let manager = match migration_conn.schema_name.clone() {
+            Some(schema_name) => SchemaManager::new((migration_conn.conn, schema_name)),
+            None => SchemaManager::new(migration_conn.conn),
+        };
 
         if let Some(steps) = steps {
             info!("Applying {} pending migrations", steps);
@@ -246,7 +262,9 @@ pub trait MigratorTrait: Send {
             info!("Applying all pending migrations");
         }
 
-        let migrations = Self::get_pending_migrations(db).await?.into_iter();
+        let migrations = Self::get_pending_migrations(migration_conn)
+            .await?
+            .into_iter();
         if migrations.len() == 0 {
             info!("No pending migrations");
         }
@@ -267,7 +285,7 @@ pub trait MigratorTrait: Send {
                 version: ActiveValue::Set(migration.name().to_owned()),
                 applied_at: ActiveValue::Set(now.as_secs() as i64),
             }
-            .insert(db)
+            .insert(migration_conn.conn)
             .await?;
         }
 
@@ -275,9 +293,16 @@ pub trait MigratorTrait: Send {
     }
 
     /// Rollback applied migrations
-    async fn down(db: &DbConn, mut steps: Option<u32>) -> Result<(), DbErr> {
-        Self::install(db).await?;
-        let manager = SchemaManager::new(db);
+    async fn down(
+        migration_conn: &MigrationConnection,
+        mut steps: Option<u32>,
+    ) -> Result<(), DbErr> {
+        Self::install(migration_conn).await?;
+
+        let manager = match migration_conn.schema_name.clone() {
+            Some(schema_name) => SchemaManager::new((migration_conn.conn, schema_name)),
+            None => SchemaManager::new(migration_conn.conn),
+        };
 
         if let Some(steps) = steps {
             info!("Rolling back {} applied migrations", steps);
@@ -285,7 +310,10 @@ pub trait MigratorTrait: Send {
             info!("Rolling back all applied migrations");
         }
 
-        let migrations = Self::get_applied_migrations(db).await?.into_iter().rev();
+        let migrations = Self::get_applied_migrations(migration_conn)
+            .await?
+            .into_iter()
+            .rev();
         if migrations.len() == 0 {
             info!("No applied migrations");
         }
@@ -301,7 +329,7 @@ pub trait MigratorTrait: Send {
             info!("Migration '{}' has been rollbacked", migration.name());
             seaql_migrations::Entity::delete_many()
                 .filter(seaql_migrations::Column::Version.eq(migration.name()))
-                .exec(db)
+                .exec(migration_conn.conn)
                 .await?;
         }
 
