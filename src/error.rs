@@ -19,7 +19,7 @@ pub enum DbErr {
         source: Box<dyn std::error::Error + Send + Sync>,
     },
     /// Type error: the specified type cannot be converted from u64. This is not a runtime error.
-    #[error("Type `{0}` cannot be converted from u64")]
+    #[error("Type '{0}' cannot be converted from u64")]
     CannotConvertFromU64(&'static str),
     /// After an insert statement it was impossible to retrieve the last_insert_id
     #[error("Failed to unpack last_insert_id")]
