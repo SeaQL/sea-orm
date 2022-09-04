@@ -1,12 +1,10 @@
 use crate::{
-    ColumnTrait, EntityTrait, IdenStatic, IntoSimpleExpr, Iterable, QueryTrait, Select, SelectTwo,
-    SelectTwoMany,
+    cast_enum_as_text, ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select,
+    SelectTwo, SelectTwoMany,
 };
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{
-    Alias, ColumnRef, DynIden, Expr, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr,
-};
+use sea_query::{Alias, ColumnRef, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
 
 macro_rules! select_def {
     ( $ident: ident, $str: expr ) => {
@@ -148,18 +146,10 @@ where
     F: EntityTrait,
     S: QueryTrait<QueryStatement = SelectStatement>,
 {
-    let text_type = SeaRc::new(Alias::new("text")) as DynIden;
     for col in <F::Column as Iterable>::iter() {
-        let col_def = col.def();
-        let col_type = col_def.get_column_type();
         let alias = format!("{}{}", SelectB.as_str(), col.as_str());
-        let expr = Expr::expr(col.into_simple_expr());
-        let expr = match col_type.get_enum_name() {
-            Some(_) => expr.as_enum(text_type.clone()),
-            None => expr.into(),
-        };
         selector.query().expr(SelectExpr {
-            expr,
+            expr: cast_enum_as_text(col.into_expr(), &col),
             alias: Some(SeaRc::new(Alias::new(&alias))),
             window: None,
         });
