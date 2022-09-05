@@ -54,3 +54,4 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [lldap](https://github.com/nitnelave/lldap) ![GitHub stars](https://img.shields.io/github/stars/nitnelave/lldap.svg?style=social) | Light LDAP implementation for authentication
 - [nitro_repo](https://github.com/wyatt-herkamp/nitro_repo) | An OpenSource, lightweight, and fast artifact manager.
 - [MoonRamp](https://github.com/MoonRamp/MoonRamp) | A free and open source crypto payment gateway
+- [url_shortener](https://github.com/michidk/url_shortener) | A simple self-hosted URL shortener written in Rust
