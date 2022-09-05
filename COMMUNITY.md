@@ -55,3 +55,11 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [nitro_repo](https://github.com/wyatt-herkamp/nitro_repo) | An OpenSource, lightweight, and fast artifact manager.
 - [MoonRamp](https://github.com/MoonRamp/MoonRamp) | A free and open source crypto payment gateway
 - [url_shortener](https://github.com/michidk/url_shortener) | A simple self-hosted URL shortener written in Rust
+
+## Learning Resources
+
+If you have article, tutorial, podcast or video reated to SeaORM and want to share it with the community, feel free to submit a PR and add it to the list below!
+
+### Tutorials
+
+- Async GraphQL with Rust: [Part 1](https://konkle.us/async-graphql-rust-1-introduction/), [Part 2](https://konkle.us/async-graphql-with-rust-part-two/), [Part 3](https://konkle.us/async-graphql-with-rust-part-three/) by [Brandon Konkle](https://github.com/bkonkle)
