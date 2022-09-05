@@ -1,9 +1,9 @@
 use crate::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, Iterable, PrimaryKeyToColumn, QueryFilter,
-    QueryTrait,
+    cast_text_as_enum, ActiveModelTrait, ColumnTrait, EntityTrait, Iterable, PrimaryKeyToColumn,
+    QueryFilter, QueryTrait,
 };
 use core::marker::PhantomData;
-use sea_query::{Alias, Expr, IntoIden, SimpleExpr, UpdateStatement};
+use sea_query::{Expr, IntoIden, SimpleExpr, UpdateStatement};
 
 /// Defines a structure to perform UPDATE query operations on a ActiveModel
 #[derive(Clone, Debug)]
@@ -109,13 +109,7 @@ where
             }
             let av = self.model.get(col);
             if av.is_set() {
-                let val = Expr::val(av.into_value().unwrap());
-                let col_def = col.def();
-                let col_type = col_def.get_column_type();
-                let expr = match col_type.get_enum_name() {
-                    Some(enum_name) => val.as_enum(Alias::new(enum_name)),
-                    None => val.into(),
-                };
+                let expr = cast_text_as_enum(Expr::val(av.into_value().unwrap()), &col);
                 self.query.value_expr(col, expr);
             }
         }
