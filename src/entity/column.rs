@@ -1,5 +1,5 @@
-use crate::{EntityName, IdenStatic, Iterable};
-use sea_query::{Alias, BinOper, DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
+use crate::{cast_text_as_enum, EntityName, IdenStatic, IntoSimpleExpr, Iterable};
+use sea_query::{BinOper, DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
 use std::str::FromStr;
 
 /// Defines a Column for an Entity
@@ -100,13 +100,7 @@ macro_rules! bind_oper_with_enum_casting {
         where
             V: Into<Value>,
         {
-            let val = Expr::val(v);
-            let col_def = self.def();
-            let col_type = col_def.get_column_type();
-            let expr = match col_type.get_enum_name() {
-                Some(enum_name) => val.as_enum(Alias::new(enum_name)),
-                None => val.into(),
-            };
+            let expr = cast_text_as_enum(Expr::val(v), self);
             Expr::tbl(self.entity_name(), *self).binary(BinOper::$bin_op, expr)
         }
     };
@@ -305,6 +299,11 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
 
     bind_subquery_func!(in_subquery);
     bind_subquery_func!(not_in_subquery);
+
+    /// Construct a [`SimpleExpr::Column`] wrapped in [`Expr`].
+    fn into_expr(self) -> Expr {
+        Expr::expr(self.into_simple_expr())
+    }
 }
 
 impl ColumnType {
