@@ -10,7 +10,7 @@ pub struct Cli {
     pub command: Commands,
 }
 
-#[derive(Subcommand, PartialEq, Debug)]
+#[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum Commands {
     #[clap(about = "Codegen related commands")]
     #[clap(arg_required_else_help = true)]
@@ -35,7 +35,7 @@ pub enum Commands {
     },
 }
 
-#[derive(Subcommand, PartialEq, Debug)]
+#[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum MigrateSubcommands {
     #[clap(about = "Initialize migration directory")]
     Init,
@@ -64,7 +64,7 @@ pub enum MigrateSubcommands {
             short,
             long,
             default_value = "1",
-            help = "Number of pending migrations to be rolled back"
+            help = "Number of pending migrations to apply"
         )]
         num: u32,
     },
@@ -75,13 +75,13 @@ pub enum MigrateSubcommands {
             short,
             long,
             default_value = "1",
-            help = "Number of pending migrations to be rolled back"
+            help = "Number of applied migrations to be rolled back"
         )]
         num: u32,
     },
 }
 
-#[derive(Subcommand, PartialEq, Debug)]
+#[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum GenerateSubcommands {
     #[clap(about = "Generate entity")]
     #[clap(arg_required_else_help = true)]
@@ -163,9 +163,21 @@ pub enum GenerateSubcommands {
             value_parser,
             long,
             default_value = "none",
-            help = "Automatically derive serde Serialize / Deserialize traits for the entity (none, serialize, deserialize, both)"
+            help = "Automatically derive serde Serialize / Deserialize traits for the entity (none,\
+                serialize, deserialize, both)"
         )]
         with_serde: String,
+
+        #[clap(
+            action,
+            long,
+            default_value = "false",
+            long_help = "Automatically derive the Copy trait on generated enums.\n\
+            Enums generated from a database don't have associated data by default, and as such can\
+            derive Copy.
+            "
+        )]
+        with_copy_enums: bool,
 
         #[clap(
             arg_enum,
@@ -178,7 +190,7 @@ pub enum GenerateSubcommands {
     },
 }
 
-#[derive(ArgEnum, Copy, Clone, Debug, PartialEq)]
+#[derive(ArgEnum, Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DateTimeCrate {
     Chrono,
     Time,

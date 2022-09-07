@@ -7,11 +7,32 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.10.0 - Pending
 
+### Breaking changes
+
+* Replaced `usize` with `u64` in `PaginatorTrait` https://github.com/SeaQL/sea-orm/pull/789
+
+### Enhancements
+
+* `fn column()` also handle enum type https://github.com/SeaQL/sea-orm/pull/973
+
+## 0.9.2 - 2022-08-20
+
+### Enhancements
+
+* [sea-orm-cli] Migrator CLI handles init and generate commands https://github.com/SeaQL/sea-orm/pull/931
+* [sea-orm-cli] added `with-copy-enums` flag to conditional derive `Copy` on `ActiveEnum` https://github.com/SeaQL/sea-orm/pull/936
+
 ### House keeping
 
-* Remove unnecessary `async_trait` https://github.com/SeaQL/sea-orm/pull/737
+* Exclude `chrono` default features https://github.com/SeaQL/sea-orm/pull/950
+* Set minimal rustc version to `1.60` https://github.com/SeaQL/sea-orm/pull/938
+* Update `sea-query` to `0.26.3`
 
-## 0.9.1 - Pending
+### Notes
+
+In this minor release, we removed `time` v0.1 from the dependency graph
+
+## 0.9.1 - 2022-07-22
 
 ### Enhancements
 
@@ -20,7 +41,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Bug Fixes
 
-* The `on_conflict` field in `RelationDef` and `RelationBuilder` should be marked as `Send` and `Sync` https://github.com/SeaQL/sea-orm/pull/898
+* `RelationDef` & `RelationBuilder` should be `Send` & `Sync` https://github.com/SeaQL/sea-orm/pull/898
+
+### House keeping
+
+* Remove unnecessary `async_trait` https://github.com/SeaQL/sea-orm/pull/737
 
 ## 0.9.0 - 2022-07-17
 
@@ -67,6 +92,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Breaking changes
 
 * `SelectTwoMany::one()` has been dropped https://github.com/SeaQL/sea-orm/pull/813, you can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity, then use [`ModelTrait::find_related`] on the model.
+* #### Feature flag revamp
+    We now adopt the [weak dependency](https://blog.rust-lang.org/2022/04/07/Rust-1.60.0.html#new-syntax-for-cargo-features) syntax in Cargo. That means the flags `["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid", "sqlx-time"]` are not needed and now removed. Instead, `with-time` will enable `sqlx?/time` only if `sqlx` is already enabled. As a consequence, now the features `with-json`, `with-chrono`, `with-rust_decimal`, `with-uuid`, `with-time` will not be enabled as a side-effects of enabling `sqlx`.
 
 ## sea-orm-migration 0.8.3
 

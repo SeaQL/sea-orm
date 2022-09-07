@@ -9,7 +9,7 @@ use sea_query::{
 };
 
 pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
-    let db = if cfg!(feature = "sqlx-mysql") {
+    if cfg!(feature = "sqlx-mysql") {
         let url = format!("{}/mysql", base_url);
         let db = Database::connect(&url).await.unwrap();
         let _drop_db_result = db
@@ -49,9 +49,7 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
         Database::connect(&url).await.unwrap()
     } else {
         Database::connect(base_url).await.unwrap()
-    };
-
-    db
+    }
 }
 
 pub async fn tear_down(base_url: &str, db_name: &str) {

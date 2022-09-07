@@ -12,7 +12,7 @@ use sea_orm::{entity::*, query::*, DatabaseConnection};
 use serde::Deserialize;
 use tera::Tera;
 
-const DEFAULT_POSTS_PER_PAGE: usize = 5;
+const DEFAULT_POSTS_PER_PAGE: u64 = 5;
 
 #[derive(Debug, Clone)]
 struct AppState {
@@ -22,8 +22,8 @@ struct AppState {
 
 #[derive(Deserialize)]
 struct Params {
-    page: Option<usize>,
-    posts_per_page: Option<usize>,
+    page: Option<u64>,
+    posts_per_page: Option<u64>,
 }
 
 #[handler]

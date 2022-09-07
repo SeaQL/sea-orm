@@ -38,7 +38,7 @@ pub type DbConn = DatabaseConnection;
 
 /// The type of database backend for real world databases.
 /// This is enabled by feature flags as specified in the crate documentation
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DatabaseBackend {
     /// A MySQL backend
     MySql,

@@ -38,11 +38,34 @@ pub trait QuerySelect: Sized {
     ///     r#"SELECT "cake"."name" FROM "cake""#
     /// );
     /// ```
+    ///
+    /// Enum column will be casted into text (PostgreSQL only)
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::lunch_set, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     lunch_set::Entity::find()
+    ///         .select_only()
+    ///         .column(lunch_set::Column::Tea)
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    /// );
+    /// assert_eq!(
+    ///     lunch_set::Entity::find()
+    ///         .select_only()
+    ///         .column(lunch_set::Column::Tea)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     r#"SELECT `lunch_set`.`tea` FROM `lunch_set`"#
+    /// );
+    /// ```
     fn column<C>(mut self, col: C) -> Self
     where
         C: ColumnTrait,
     {
-        self.query().expr(col.into_simple_expr());
+        self.query().expr(cast_enum_as_text(col.into_expr(), &col));
         self
     }
 
@@ -530,5 +553,35 @@ pub(crate) fn unpack_table_alias(table_ref: &TableRef) -> Option<DynIden> {
         TableRef::TableAlias(_, alias)
         | TableRef::SchemaTableAlias(_, _, alias)
         | TableRef::DatabaseSchemaTableAlias(_, _, _, alias) => Some(SeaRc::clone(alias)),
+    }
+}
+
+#[derive(Iden)]
+struct Text;
+
+pub(crate) fn cast_enum_as_text<C>(expr: Expr, col: &C) -> SimpleExpr
+where
+    C: ColumnTrait,
+{
+    cast_enum_text_inner(expr, col, |col, _| col.as_enum(Text))
+}
+
+pub(crate) fn cast_text_as_enum<C>(expr: Expr, col: &C) -> SimpleExpr
+where
+    C: ColumnTrait,
+{
+    cast_enum_text_inner(expr, col, |col, enum_name| col.as_enum(enum_name))
+}
+
+fn cast_enum_text_inner<C, F>(expr: Expr, col: &C, f: F) -> SimpleExpr
+where
+    C: ColumnTrait,
+    F: Fn(Expr, DynIden) -> SimpleExpr,
+{
+    let col_def = col.def();
+    let col_type = col_def.get_column_type();
+    match col_type.get_enum_name() {
+        Some(enum_name) => f(expr, SeaRc::new(Alias::new(enum_name))),
+        None => expr.into(),
     }
 }

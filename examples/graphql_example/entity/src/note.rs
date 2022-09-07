@@ -2,7 +2,7 @@ use async_graphql::*;
 use sea_orm::{entity::prelude::*, DeleteMany};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize, SimpleObject)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize, SimpleObject)]
 #[sea_orm(table_name = "notes")]
 #[graphql(concrete(name = "Note", params()))]
 pub struct Model {

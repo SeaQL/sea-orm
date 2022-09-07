@@ -1,10 +1,8 @@
 use crate::{
-    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert, IntoActiveModel,
-    Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
+    cast_enum_as_text, error::*, ActiveModelTrait, ConnectionTrait, EntityTrait, Insert,
+    IntoActiveModel, Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
 };
-use sea_query::{
-    Alias, Expr, FromValueTuple, Iden, InsertStatement, IntoColumnRef, Query, ValueTuple,
-};
+use sea_query::{Expr, FromValueTuple, Iden, InsertStatement, IntoColumnRef, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};
 
 /// Defines a structure to perform INSERT operations in an ActiveModel
@@ -149,16 +147,10 @@ where
     let db_backend = db.get_database_backend();
     let found = match db.support_returning() {
         true => {
-            let returning =
-                Query::returning().exprs(<A::Entity as EntityTrait>::Column::iter().map(|c| {
-                    let col = Expr::col(c);
-                    let col_def = ColumnTrait::def(&c);
-                    let col_type = col_def.get_column_type();
-                    match col_type.get_enum_name() {
-                        Some(_) => col.as_enum(Alias::new("text")),
-                        None => col.into(),
-                    }
-                }));
+            let returning = Query::returning().exprs(
+                <A::Entity as EntityTrait>::Column::iter()
+                    .map(|c| cast_enum_as_text(Expr::col(c), &c)),
+            );
             insert_statement.returning(returning);
             SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
                 db_backend.build(&insert_statement),

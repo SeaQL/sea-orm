@@ -1,0 +1,29 @@
+[package]
+name = "sea-orm-salvo-example"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = [".", "entity", "migration"]
+
+[dependencies]
+tokio = { version = "1.15.0", features = ["macros", "rt-multi-thread"] }
+salvo = { version = "0.27", features = ["affix", "serve-static"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde = { version = "1", features = ["derive"] }
+tera = "1.8.0"
+dotenv = "0.15"
+entity = { path = "entity" }
+migration = { path = "migration" }
+
+[dependencies.sea-orm]
+path = "../../" # remove this line in your own project
+version = "^0.10.0" # sea-orm version
+features = [
+  "debug-print",
+  "runtime-tokio-native-tls",
+  "sqlx-sqlite",
+  # "sqlx-postgres",
+  # "sqlx-mysql",
+]

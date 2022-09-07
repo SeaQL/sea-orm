@@ -30,12 +30,14 @@ Join our Discord server to chat with others in the SeaQL community!
 
 Integration examples
 
-+ [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
-+ [Actix Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
++ [Actix v4 Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
++ [Actix v3 Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix3_example)
 + [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
-+ [Poem Example](https://github.com/SeaQL/sea-orm/tree/master/examples/poem_example)
 + [GraphQL Example](https://github.com/SeaQL/sea-orm/tree/master/examples/graphql_example)
 + [jsonrpsee Example](https://github.com/SeaQL/sea-orm/tree/master/examples/jsonrpsee_example)
++ [Poem Example](https://github.com/SeaQL/sea-orm/tree/master/examples/poem_example)
++ [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
++ [Salvo Example](https://github.com/SeaQL/sea-orm/tree/master/examples/salvo_example)
 + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
 
 ## Features
@@ -224,3 +226,9 @@ at your option.
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
+
+SeaORM is a community driven project. We welcome you to participate, contribute and together build for Rust's future.
+
+A big shout out to our contributors:
+
+[![Contributors](https://opencollective.com/sea-orm/contributors.svg?width=1000&button=false)](https://github.com/SeaQL/sea-orm/graphs/contributors)

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use tera::Tera;
 
-const DEFAULT_POSTS_PER_PAGE: usize = 5;
+const DEFAULT_POSTS_PER_PAGE: u64 = 5;
 
 #[derive(Debug, Clone)]
 struct AppState {
@@ -23,8 +23,8 @@ struct AppState {
 
 #[derive(Debug, Deserialize)]
 pub struct Params {
-    page: Option<usize>,
-    posts_per_page: Option<usize>,
+    page: Option<u64>,
+    posts_per_page: Option<u64>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -163,7 +163,8 @@ async fn not_found(data: web::Data<AppState>, request: HttpRequest) -> Result<Ht
     ctx.insert("uri", request.uri().path());
 
     let template = &data.templates;
-    let body = template.render("error/404.html.tera", &ctx)
+    let body = template
+        .render("error/404.html.tera", &ctx)
         .map_err(|_| error::ErrorInternalServerError("Template error"))?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
