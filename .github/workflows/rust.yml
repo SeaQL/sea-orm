@@ -405,18 +405,13 @@ jobs:
           args: >
             --manifest-path ${{ matrix.path }}
 
-      - name: Check existence of core directory
-        id: core_dir_exists
-        uses: andstor/file-existence-action@v1
-        with:
-          files: examples/${{ matrix.path }}/core/Cargo.toml
-
-      - uses: actions-rs/cargo@v1
-        if: steps.core_dir_exists.outputs.files_exists == 'true'
+      - name: Run mock test if it is core crate
+        uses: actions-rs/cargo@v1
+        if: ${{ contains(matrix.path, 'core') }}
         with:
           command: test
           args: >
-            --manifest-path examples/${{ matrix.path }}/core/Cargo.toml
+            --manifest-path ${{ matrix.path }}
             --features mock
 
       - name: check rustfmt
