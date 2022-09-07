@@ -21,7 +21,7 @@ use pool::Db;
 pub use entity::post;
 pub use entity::post::Entity as Post;
 
-const DEFAULT_POSTS_PER_PAGE: usize = 5;
+const DEFAULT_POSTS_PER_PAGE: u64 = 5;
 
 #[get("/new")]
 async fn new() -> Template {
@@ -61,8 +61,8 @@ async fn update(
 #[get("/?<page>&<posts_per_page>")]
 async fn list(
     conn: Connection<'_, Db>,
-    page: Option<usize>,
-    posts_per_page: Option<usize>,
+    page: Option<u64>,
+    posts_per_page: Option<u64>,
     flash: Option<FlashMessage<'_>>,
 ) -> Template {
     let db = conn.into_inner();
