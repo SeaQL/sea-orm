@@ -306,16 +306,15 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         }
     }
 
-    let primary_key = (!primary_keys.is_empty())
-        .then(|| {
-            let auto_increment = auto_increment && primary_keys.len() == 1;
-            let primary_key_types = if primary_key_types.len() == 1 {
-                let first = primary_key_types.first();
-                quote! { #first }
-            } else {
-                quote! { (#primary_key_types) }
-            };
-            quote! {
+    let primary_key = {
+        let auto_increment = auto_increment && primary_keys.len() == 1;
+        let primary_key_types = if primary_key_types.len() == 1 {
+            let first = primary_key_types.first();
+            quote! { #first }
+        } else {
+            quote! { (#primary_key_types) }
+        };
+        quote! {
             #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
             pub enum PrimaryKey {
                 #primary_keys
@@ -329,9 +328,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     #auto_increment
                 }
             }
-                    }
-        })
-        .unwrap_or_default();
+        }
+    };
 
     Ok(quote! {
         #[derive(Copy, Clone, Debug, sea_orm::prelude::EnumIter, sea_orm::prelude::DeriveColumn)]
