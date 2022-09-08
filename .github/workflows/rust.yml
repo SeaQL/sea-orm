@@ -407,7 +407,7 @@ jobs:
 
       - name: Run mock test if it is core crate
         uses: actions-rs/cargo@v1
-        if: ${{ contains(matrix.path, 'core') }}
+        if: ${{ contains(matrix.path, 'core/Cargo.toml') }}
         with:
           command: test
           args: >
