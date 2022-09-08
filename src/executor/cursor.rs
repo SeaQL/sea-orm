@@ -415,8 +415,8 @@ mod tests {
                     r#"FROM "cake_filling""#,
                     r#"WHERE "cake_filling"."cake_id" > $1"#,
                     r#"AND "cake_filling"."filling_id" > $2"#,
-                    r#"AND ("cake_filling"."cake_id" < $3"#,
-                    r#"AND "cake_filling"."filling_id" < $4)"#,
+                    r#"AND "cake_filling"."cake_id" < $3"#,
+                    r#"AND "cake_filling"."filling_id" < $4"#,
                     r#"ORDER BY "cake_filling"."cake_id" ASC, "cake_filling"."filling_id" ASC"#,
                     r#"LIMIT $5"#,
                 ]
