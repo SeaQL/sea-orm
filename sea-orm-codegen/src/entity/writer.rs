@@ -282,16 +282,8 @@ impl EntityWriter {
         let mut code_blocks = vec![
             imports,
             Self::gen_compact_model_struct(entity, with_serde, date_time_crate, schema_name),
+            Self::gen_compact_relation_enum(entity),
         ];
-        let relation_defs = if entity.get_relation_enum_name().is_empty() {
-            vec![
-                Self::gen_relation_enum(entity),
-                Self::gen_impl_relation_trait(entity),
-            ]
-        } else {
-            vec![Self::gen_compact_relation_enum(entity)]
-        };
-        code_blocks.extend(relation_defs);
         code_blocks.extend(Self::gen_impl_related(entity));
         code_blocks.extend(Self::gen_impl_conjunct_related(entity));
         code_blocks.extend(vec![Self::gen_impl_active_model_behavior()]);
