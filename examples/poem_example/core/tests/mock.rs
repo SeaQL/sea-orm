@@ -1,7 +1,7 @@
 mod prepare;
 
-use poem_example_core::{Mutation, Query};
 use entity::post;
+use poem_example_core::{Mutation, Query};
 use prepare::prepare_mock_db;
 
 #[tokio::test]

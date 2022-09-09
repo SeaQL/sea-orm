@@ -1,8 +1,8 @@
 mod prepare;
 
-use tonic_example_core::{Mutation, Query};
 use entity::post;
 use prepare::prepare_mock_db;
+use tonic_example_core::{Mutation, Query};
 
 #[tokio::test]
 async fn main() {
