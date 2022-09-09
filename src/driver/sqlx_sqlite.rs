@@ -1,3 +1,4 @@
+use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
@@ -5,8 +6,7 @@ use sqlx::{
     Sqlite, SqlitePool,
 };
 
-sea_query::sea_query_driver_sqlite!();
-use sea_query_driver_sqlite::bind_query;
+use sea_query_binder::SqlxValues;
 use tracing::instrument;
 
 use crate::{
@@ -222,10 +222,10 @@ impl From<SqliteQueryResult> for ExecResult {
     }
 }
 
-pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, SqliteArguments> {
-    let mut query = sqlx::query(&stmt.sql);
-    if let Some(values) = &stmt.values {
-        query = bind_query(query, values);
-    }
-    query
+pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, SqlxValues> {
+    let values = stmt
+        .values
+        .as_ref()
+        .map_or(Values(Vec::new()), |values| values.clone());
+    sqlx::query_with(&stmt.sql, SqlxValues(values))
 }

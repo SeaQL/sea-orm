@@ -6,6 +6,11 @@ use sea_orm_migration::prelude::*;
 
 #[async_std::test]
 async fn main() -> Result<(), DbErr> {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .with_test_writer()
+        .init();
+
     let url = std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
     let db_name = "sea_orm_migration";
     let db = Database::connect(&url).await?;
