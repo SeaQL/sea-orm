@@ -2,11 +2,11 @@
 
 1. Modify the `DATABASE_URL` var in `.env` to point to your chosen database
 
-1. Turn on the appropriate database feature for your chosen db in `Cargo.toml` (the `"sqlx-sqlite",` line)
+1. Turn on the appropriate database feature for your chosen db in `core/Cargo.toml` (the `"sqlx-sqlite",` line)
 
 1. Execute `cargo run` to start the server
 
-2. Send jsonrpc request to server
+1. Send jsonrpc request to server
 
 ```shell
 #insert
@@ -20,7 +20,7 @@ curl --location --request POST 'http://127.0.0.1:8000' \
     }
 ], "id": 2}'
 
-#list 
+#list
 curl --location --request POST 'http://127.0.0.1:8000' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -33,7 +33,7 @@ curl --location --request POST 'http://127.0.0.1:8000' \
     "id": 2
 }'
 
-#delete 
+#delete
 curl --location --request POST 'http://127.0.0.1:8000' \
 --header 'Content-Type: application/json' \
 --data-raw '{
