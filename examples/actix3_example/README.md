@@ -18,3 +18,10 @@ Run server with auto-reloading:
 cargo install systemfd
 systemfd --no-pid -s http::8000 -- cargo watch -x run
 ```
+
+Run mock test on the core logic crate:
+
+```bash
+cd core
+cargo test --features mock
+```

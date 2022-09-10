@@ -9,3 +9,10 @@
 1. Execute `cargo run` to start the server
 
 1. Visit [localhost:8000](http://localhost:8000) in browser
+
+Run mock test on the core logic crate:
+
+```bash
+cd core
+cargo test --features mock
+```

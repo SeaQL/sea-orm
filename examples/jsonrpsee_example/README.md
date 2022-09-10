@@ -62,3 +62,10 @@ curl --location --request POST 'http://127.0.0.1:8000' \
 }'
 
 ```
+
+Run mock test on the core logic crate:
+
+```bash
+cd core
+cargo test --features mock
+```

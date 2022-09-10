@@ -11,3 +11,10 @@
 1. Execute `cargo run` to start the server
 
 1. Visit [localhost:3000/api/graphql](http://localhost:3000/api/graphql) in browser
+
+Run mock test on the core logic crate:
+
+```bash
+cd core
+cargo test --features mock
+```
