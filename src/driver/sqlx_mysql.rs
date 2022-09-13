@@ -89,7 +89,7 @@ impl SqlxMySqlPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -110,7 +110,7 @@ impl SqlxMySqlPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -128,7 +128,7 @@ impl SqlxMySqlPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -144,7 +144,7 @@ impl SqlxMySqlPoolConnection {
                 self.metric_callback.clone(),
             )))
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -154,7 +154,7 @@ impl SqlxMySqlPoolConnection {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_mysql(conn, self.metric_callback.clone()).await
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -175,7 +175,7 @@ impl SqlxMySqlPoolConnection {
                 .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
-            Err(TransactionError::Connection(DbErr::ConnFromPool))
+            Err(TransactionError::Connection(DbErr::ConnectionAcquire))
         }
     }
 

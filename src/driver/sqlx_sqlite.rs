@@ -96,7 +96,7 @@ impl SqlxSqlitePoolConnection {
                 }
             })
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -117,7 +117,7 @@ impl SqlxSqlitePoolConnection {
                 }
             })
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -135,7 +135,7 @@ impl SqlxSqlitePoolConnection {
                 }
             })
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -151,7 +151,7 @@ impl SqlxSqlitePoolConnection {
                 self.metric_callback.clone(),
             )))
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -161,7 +161,7 @@ impl SqlxSqlitePoolConnection {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_sqlite(conn, self.metric_callback.clone()).await
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -182,7 +182,7 @@ impl SqlxSqlitePoolConnection {
                 .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
-            Err(TransactionError::Connection(DbErr::ConnFromPool))
+            Err(TransactionError::Connection(DbErr::ConnectionAcquire))
         }
     }
 

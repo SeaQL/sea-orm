@@ -7,7 +7,7 @@ use thiserror::Error;
 pub enum DbErr {
     /// This error can happen when the connection pool is fully-utilized
     #[error("Failed to acquire connection from pool")]
-    ConnFromPool,
+    ConnectionAcquire,
     /// Runtime type conversion error
     #[error("Error converting `{from}` into `{into}`: {source}")]
     TryIntoErr {
@@ -20,14 +20,14 @@ pub enum DbErr {
     },
     /// Type error: the specified type cannot be converted from u64. This is not a runtime error.
     #[error("Type '{0}' cannot be converted from u64")]
-    CannotConvertFromU64(&'static str),
+    ConvertFromU64(&'static str),
     /// After an insert statement it was impossible to retrieve the last_insert_id
     #[error("Failed to unpack last_insert_id")]
-    InsertCouldNotUnpackInsertId,
+    UnpackInsertId,
     /// When updating, a model should know it's primary key to check
     /// if the record has been correctly updated, otherwise this error will occur
     #[error("Failed to get primary key from model")]
-    UpdateCouldNotGetPrimaryKey,
+    UpdateGetPrimeryKey,
     /// There was a problem with the database connection
     #[error("Connection Error: {0}")]
     Conn(#[source] RuntimeErr),
@@ -57,12 +57,12 @@ pub enum DbErr {
 /// Runtime error
 #[derive(Error, Debug)]
 pub enum RuntimeErr {
-    #[cfg(feature = "sqlx-dep")]
     /// SQLx Error
+    #[cfg(feature = "sqlx-dep")]
     #[error("{0}")]
     SqlxError(SqlxError),
-    #[error("{0}")]
     /// Error generated from within SeaORM
+    #[error("{0}")]
     Internal(String),
 }
 

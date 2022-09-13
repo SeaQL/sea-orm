@@ -130,7 +130,7 @@ where
         Some(value_tuple) => FromValueTuple::from_value_tuple(value_tuple),
         None => match last_insert_id_opt {
             Some(last_insert_id) => last_insert_id,
-            None => return Err(DbErr::InsertCouldNotUnpackInsertId),
+            None => return Err(DbErr::UnpackInsertId),
         },
     };
     Ok(InsertResult { last_insert_id })

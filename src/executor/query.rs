@@ -709,7 +709,7 @@ macro_rules! try_from_u64_err {
     ( $type: ty ) => {
         impl TryFromU64 for $type {
             fn try_from_u64(_: u64) -> Result<Self, DbErr> {
-                Err(DbErr::CannotConvertFromU64(stringify!($type)))
+                Err(DbErr::ConvertFromU64(stringify!($type)))
             }
         }
     };
@@ -720,7 +720,7 @@ macro_rules! try_from_u64_err {
             $( $gen_type: TryFromU64, )*
         {
             fn try_from_u64(_: u64) -> Result<Self, DbErr> {
-                Err(DbErr::CannotConvertFromU64(stringify!($($gen_type,)*)))
+                Err(DbErr::ConvertFromU64(stringify!($($gen_type,)*)))
             }
         }
     };

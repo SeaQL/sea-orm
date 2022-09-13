@@ -89,7 +89,7 @@ impl SqlxPostgresPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -110,7 +110,7 @@ impl SqlxPostgresPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -128,7 +128,7 @@ impl SqlxPostgresPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -144,7 +144,7 @@ impl SqlxPostgresPoolConnection {
                 self.metric_callback.clone(),
             )))
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -154,7 +154,7 @@ impl SqlxPostgresPoolConnection {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_postgres(conn, self.metric_callback.clone()).await
         } else {
-            Err(DbErr::ConnFromPool)
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -175,7 +175,7 @@ impl SqlxPostgresPoolConnection {
                 .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
-            Err(TransactionError::Connection(DbErr::ConnFromPool))
+            Err(TransactionError::Connection(DbErr::ConnectionAcquire))
         }
     }
 
