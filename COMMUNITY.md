@@ -55,6 +55,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [nitro_repo](https://github.com/wyatt-herkamp/nitro_repo) | An OpenSource, lightweight, and fast artifact manager.
 - [MoonRamp](https://github.com/MoonRamp/MoonRamp) | A free and open source crypto payment gateway
 - [url_shortener](https://github.com/michidk/url_shortener) | A simple self-hosted URL shortener written in Rust
+- [RGB Lib](https://github.com/RGB-Tools/rgb-lib) | A library to manage wallets for RGB assets
 
 ## Learning Resources
 
