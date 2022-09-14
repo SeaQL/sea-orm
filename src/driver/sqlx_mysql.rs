@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::error::DatabaseError;
+use sqlx::mysql::MySqlDatabaseError;
 use sqlx::{
     mysql::{MySqlArguments, MySqlConnectOptions, MySqlQueryResult, MySqlRow},
     MySql, MySqlPool,
@@ -219,13 +220,28 @@ pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, MySq
 }
 
 pub(crate) fn map_mysql_database_error_exec(err: Box<dyn DatabaseError>) -> DbErr {
-    match err.code() {
-        None => DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(err))),
-        Some(code) => match code.borrow() {
-            "23000" => {
-                DbErr::UniqueConstraintViolation(RuntimeErr::SqlxError(sqlx::Error::Database(err)))
+    match err.try_downcast_ref::<MySqlDatabaseError>() {
+        Some(mysql_db_err) => {
+            if let Some(code) = mysql_db_err.code() {
+                match code.borrow() {
+                    "23000" => match mysql_db_err.number() {
+                        1062 => {
+                            return DbErr::UniqueConstraintViolation(RuntimeErr::SqlxError(
+                                sqlx::Error::Database(err),
+                            ));
+                        }
+                        1452 => {
+                            return DbErr::ForeignKeyConstraintViolation(RuntimeErr::SqlxError(
+                                sqlx::Error::Database(err),
+                            ));
+                        }
+                        _ => {}
+                    },
+                    _ => {}
+                };
             }
-            _ => DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(err))),
-        },
+            DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(err)))
+        }
+        None => DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(err))),
     }
 }

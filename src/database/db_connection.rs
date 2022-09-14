@@ -328,6 +328,7 @@ impl DbBackend {
     }
 
     /// Checks the error that occurred and maps it into an appropriate `DbErr` type
+    #[cfg(feature = "sqlx-dep")]
     pub fn map_exec_err(&self, err: sqlx::Error) -> DbErr {
         match err {
             sqlx::Error::Database(sqlx_db_err) => match self {
@@ -355,6 +356,7 @@ impl DbBackend {
     }
 
     /// Checks the error that occurred and maps it into an appropriate `DbErr` type
+    #[cfg(feature = "sqlx-dep")]
     pub fn map_query_err(&self, err: sqlx::Error) -> DbErr {
         match err {
             sqlx::Error::Database(sqlx_db_err) => match self {
