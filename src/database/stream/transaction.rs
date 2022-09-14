@@ -13,7 +13,7 @@ use futures::lock::MutexGuard;
 
 use tracing::instrument;
 
-use crate::{DbErr, InnerConnection, QueryResult, Statement};
+use crate::{DbBackend, DbErr, InnerConnection, QueryResult, Statement};
 
 use super::metric::MetricStream;
 
@@ -55,7 +55,7 @@ impl<'a> TransactionStream<'a> {
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
-                        .map_err(crate::sqlx_error_to_query_err);
+                        .map_err(|e| DbBackend::MySql.map_query_err(e));
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
@@ -66,7 +66,7 @@ impl<'a> TransactionStream<'a> {
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
-                        .map_err(crate::sqlx_error_to_query_err);
+                        .map_err(|e| DbBackend::Postgres.map_query_err(e));
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
@@ -77,7 +77,7 @@ impl<'a> TransactionStream<'a> {
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
-                        .map_err(crate::sqlx_error_to_query_err);
+                        .map_err(|e| DbBackend::Sqlite.map_query_err(e));
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }

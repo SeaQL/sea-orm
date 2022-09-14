@@ -30,27 +30,23 @@ pub async fn test_cake_error_sqlx(db: &DbConn) {
         .await
         .expect_err("inserting should fail due to duplicate primary key");
 
-    #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
+    #[cfg(any(
+        feature = "sqlx-mysql",
+        feature = "sqlx-sqlite",
+        feature = "sqlx-postgres"
+    ))]
     match error {
-        DbErr::Exec(RuntimeErr::SqlxError(error)) => match error {
+        DbErr::UniqueConstraintViolation(RuntimeErr::SqlxError(error)) => match error {
             Error::Database(e) => {
                 #[cfg(feature = "sqlx-mysql")]
                 assert_eq!(e.code().unwrap(), "23000");
                 #[cfg(feature = "sqlx-sqlite")]
                 assert_eq!(e.code().unwrap(), "1555");
-            }
-            _ => panic!("Unexpected sqlx-error kind"),
-        },
-        _ => panic!("Unexpected Error kind"),
-    }
-    #[cfg(feature = "sqlx-postgres")]
-    match error {
-        DbErr::Query(RuntimeErr::SqlxError(error)) => match error {
-            Error::Database(e) => {
+                #[cfg(feature = "sqlx-postgres")]
                 assert_eq!(e.code().unwrap(), "23505");
             }
-            _ => panic!("Unexpected sqlx-error kind"),
+            _ => panic!("Unexpected sqlx-error kind {:?}", error),
         },
-        _ => panic!("Unexpected Error kind"),
+        _ => panic!("Unexpected Error kind {:?}", error),
     }
 }

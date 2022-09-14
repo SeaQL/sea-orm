@@ -31,6 +31,9 @@ pub enum DbErr {
     /// There was a problem with the database connection
     #[error("Connection Error: {0}")]
     Conn(#[source] RuntimeErr),
+    /// A unique constraint rejected the change
+    #[error("Unique Constraint Violation: {0}")]
+    UniqueConstraintViolation(#[source] RuntimeErr),
     /// An operation did not execute successfully
     #[error("Execution Error: {0}")]
     Exec(#[source] RuntimeErr),
@@ -60,7 +63,7 @@ pub enum RuntimeErr {
     /// SQLx Error
     #[cfg(feature = "sqlx-dep")]
     #[error("{0}")]
-    SqlxError(SqlxError),
+    SqlxError(#[source] SqlxError),
     /// Error generated from within SeaORM
     #[error("{0}")]
     Internal(String),
