@@ -1,6 +1,8 @@
 #[cfg(feature = "mock")]
 use crate::debug_print;
-use crate::{DbBackend, DbErr, SelectGetableValue, SelectorRaw, Statement};
+#[cfg(feature = "sqlx-dep")]
+use crate::DbBackend;
+use crate::{DbErr, SelectGetableValue, SelectorRaw, Statement};
 use std::fmt;
 
 /// Defines the result of a query operation on a Model

@@ -242,6 +242,9 @@ pub(crate) fn map_postgres_database_error_query(err: Box<dyn DatabaseError>) -> 
     match err.code() {
         None => DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(err))),
         Some(code) => match code.borrow() {
+            "23503" => DbErr::ForeignKeyConstraintViolation(RuntimeErr::SqlxError(
+                sqlx::Error::Database(err),
+            )),
             "23505" => {
                 DbErr::UniqueConstraintViolation(RuntimeErr::SqlxError(sqlx::Error::Database(err)))
             }

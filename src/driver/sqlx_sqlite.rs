@@ -229,6 +229,9 @@ pub(crate) fn map_sqlite_database_error_exec(err: Box<dyn DatabaseError>) -> DbE
     match err.code() {
         None => DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(err))),
         Some(code) => match code.borrow() {
+            "787" => DbErr::ForeignKeyConstraintViolation(RuntimeErr::SqlxError(
+                sqlx::Error::Database(err),
+            )),
             "1555" => {
                 DbErr::UniqueConstraintViolation(RuntimeErr::SqlxError(sqlx::Error::Database(err)))
             }

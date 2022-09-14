@@ -24,6 +24,9 @@ pub enum DbErr {
     /// A unique constraint rejected the change
     #[error("Unique Constraint Violation: {0}")]
     UniqueConstraintViolation(#[source] RuntimeErr),
+    /// A foreign key constraint rejected the change
+    #[error("Foreign Key Constraint Violation: {0}")]
+    ForeignKeyConstraintViolation(#[source] RuntimeErr),
     /// An operation did not execute successfully
     #[error("Execution Error: {0}")]
     Exec(#[source] RuntimeErr),

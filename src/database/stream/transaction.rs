@@ -13,7 +13,9 @@ use futures::lock::MutexGuard;
 
 use tracing::instrument;
 
-use crate::{DbBackend, DbErr, InnerConnection, QueryResult, Statement};
+#[cfg(feature = "sqlx-dep")]
+use crate::DbBackend;
+use crate::{DbErr, InnerConnection, QueryResult, Statement};
 
 use super::metric::MetricStream;
 
