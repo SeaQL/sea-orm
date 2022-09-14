@@ -1,5 +1,7 @@
+use std::borrow::Borrow;
 use std::{future::Future, pin::Pin, sync::Arc};
 
+use sqlx::error::DatabaseError;
 use sqlx::{
     sqlite::{SqliteArguments, SqliteConnectOptions, SqliteQueryResult, SqliteRow},
     Sqlite, SqlitePool,
@@ -92,7 +94,12 @@ impl SqlxSqlitePoolConnection {
             crate::metric::metric!(self.metric_callback, &stmt, {
                 match query.execute(conn).await {
                     Ok(res) => Ok(res.into()),
-                    Err(err) => Err(sqlx_error_to_exec_err(err)),
+                    Err(err) => match err {
+                        sqlx::Error::Database(sqlx_db_err) => {
+                            Err(map_sqlite_database_error_exec(sqlx_db_err))
+                        }
+                        _ => Err(DbErr::Exec(RuntimeErr::SqlxError(err))),
+                    },
                 }
             })
         } else {
@@ -112,7 +119,7 @@ impl SqlxSqlitePoolConnection {
                     Ok(row) => Ok(Some(row.into())),
                     Err(err) => match err {
                         sqlx::Error::RowNotFound => Ok(None),
-                        _ => Err(sqlx_error_to_query_err(err)),
+                        _ => Err(DbErr::Query(RuntimeErr::SqlxError(err))),
                     },
                 }
             })
@@ -131,7 +138,7 @@ impl SqlxSqlitePoolConnection {
             crate::metric::metric!(self.metric_callback, &stmt, {
                 match query.fetch_all(conn).await {
                     Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
-                    Err(err) => Err(sqlx_error_to_query_err(err)),
+                    Err(err) => Err(DbErr::Query(RuntimeErr::SqlxError(err))),
                 }
             })
         } else {
@@ -216,4 +223,16 @@ pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, Sql
         query = bind_query(query, values);
     }
     query
+}
+
+pub(crate) fn map_sqlite_database_error_exec(err: Box<dyn DatabaseError>) -> DbErr {
+    match err.code() {
+        None => DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(err))),
+        Some(code) => match code.borrow() {
+            "1555" => {
+                DbErr::UniqueConstraintViolation(RuntimeErr::SqlxError(sqlx::Error::Database(err)))
+            }
+            _ => DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(err))),
+        },
+    }
 }

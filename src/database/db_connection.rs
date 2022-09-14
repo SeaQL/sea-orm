@@ -7,6 +7,12 @@ use std::{future::Future, pin::Pin};
 use tracing::instrument;
 use url::Url;
 
+#[cfg(feature = "sqlx-mysql")]
+use crate::map_mysql_database_error_exec;
+#[cfg(feature = "sqlx-sqlite")]
+use crate::map_sqlite_database_error_exec;
+#[cfg(feature = "sqlx-postgres")]
+use crate::{map_postgres_database_error_exec, map_postgres_database_error_query};
 #[cfg(feature = "sqlx-dep")]
 use sqlx::pool::PoolConnection;
 
@@ -319,6 +325,49 @@ impl DbBackend {
     /// Check if the database supports `RETURNING` syntax on insert and update
     pub fn support_returning(&self) -> bool {
         matches!(self, Self::Postgres)
+    }
+
+    /// Checks the error that occurred and maps it into an appropriate `DbErr` type
+    pub fn map_exec_err(&self, err: sqlx::Error) -> DbErr {
+        match err {
+            sqlx::Error::Database(sqlx_db_err) => match self {
+                DbBackend::MySql => {
+                    #[cfg(not(feature = "sqlx-mysql"))]
+                    return DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(sqlx_db_err)));
+                    #[cfg(feature = "sqlx-mysql")]
+                    map_mysql_database_error_exec(sqlx_db_err)
+                }
+                DbBackend::Postgres => {
+                    #[cfg(not(feature = "sqlx-postgres"))]
+                    return DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(sqlx_db_err)));
+                    #[cfg(feature = "sqlx-postgres")]
+                    map_postgres_database_error_exec(sqlx_db_err)
+                }
+                DbBackend::Sqlite => {
+                    #[cfg(not(feature = "sqlx-sqlite"))]
+                    return DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(sqlx_db_err)));
+                    #[cfg(feature = "sqlx-sqlite")]
+                    map_sqlite_database_error_exec(sqlx_db_err)
+                }
+            },
+            _ => DbErr::Exec(RuntimeErr::SqlxError(err)),
+        }
+    }
+
+    /// Checks the error that occurred and maps it into an appropriate `DbErr` type
+    pub fn map_query_err(&self, err: sqlx::Error) -> DbErr {
+        match err {
+            sqlx::Error::Database(sqlx_db_err) => match self {
+                DbBackend::Postgres => {
+                    #[cfg(not(feature = "sqlx-postgres"))]
+                    return DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(sqlx_db_err)));
+                    #[cfg(feature = "sqlx-postgres")]
+                    map_postgres_database_error_query(sqlx_db_err)
+                }
+                _ => DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(sqlx_db_err))),
+            },
+            _ => DbErr::Query(RuntimeErr::SqlxError(err)),
+        }
     }
 }
 
