@@ -51,7 +51,7 @@ async fn list(req: &mut Request, depot: &mut Depot) -> Result<Text<String>> {
         .unwrap_or(DEFAULT_POSTS_PER_PAGE);
     let paginator = post::Entity::find()
         .order_by_asc(post::Column::Id)
-        .paginate(&state.conn, posts_per_page);
+        .paginate(&state.conn, posts_per_page.try_into().unwrap());
     let num_pages = paginator
         .num_pages()
         .await
