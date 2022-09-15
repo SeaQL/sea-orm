@@ -682,6 +682,7 @@ impl_into_active_value!(f32);
 impl_into_active_value!(f64);
 impl_into_active_value!(&'static str);
 impl_into_active_value!(String);
+impl_into_active_value!(Vec<u8>);
 
 #[cfg(feature = "with-json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-json")))]
