@@ -20,6 +20,7 @@ pub fn it_impl_try_getable<T: TryGetable>() {}
 
 pub fn it_impl_try_from_u64<T: TryFromU64>() {}
 
+#[allow(unused_macros)]
 macro_rules! it_impl_traits {
     ( $ty: ty ) => {
         it_impl_into_active_value::<$ty, $ty>();
@@ -34,6 +35,7 @@ macro_rules! it_impl_traits {
 }
 
 #[sea_orm_macros::test]
+#[cfg(feature = "sqlx-dep")]
 fn main() {
     it_impl_traits!(i8);
     it_impl_traits!(i16);
