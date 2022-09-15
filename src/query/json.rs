@@ -54,6 +54,14 @@ impl FromQueryResult for JsonValue {
                     match_mysql_type!(chrono::NaiveDateTime);
                     #[cfg(feature = "with-chrono")]
                     match_mysql_type!(chrono::DateTime<chrono::Utc>);
+                    #[cfg(feature = "with-time")]
+                    match_mysql_type!(time::Date);
+                    #[cfg(feature = "with-time")]
+                    match_mysql_type!(time::Time);
+                    #[cfg(feature = "with-time")]
+                    match_mysql_type!(time::PrimitiveDateTime);
+                    #[cfg(feature = "with-time")]
+                    match_mysql_type!(time::OffsetDateTime);
                     #[cfg(feature = "with-rust_decimal")]
                     match_mysql_type!(rust_decimal::Decimal);
                     #[cfg(feature = "with-json")]
@@ -106,6 +114,14 @@ impl FromQueryResult for JsonValue {
                     match_postgres_type!(chrono::NaiveDateTime);
                     #[cfg(feature = "with-chrono")]
                     match_postgres_type!(chrono::DateTime<chrono::FixedOffset>);
+                    #[cfg(feature = "with-time")]
+                    match_postgres_type!(time::Date);
+                    #[cfg(feature = "with-time")]
+                    match_postgres_type!(time::Time);
+                    #[cfg(feature = "with-time")]
+                    match_postgres_type!(time::PrimitiveDateTime);
+                    #[cfg(feature = "with-time")]
+                    match_postgres_type!(time::OffsetDateTime);
                     #[cfg(feature = "with-rust_decimal")]
                     match_postgres_type!(rust_decimal::Decimal);
                     #[cfg(feature = "with-json")]
