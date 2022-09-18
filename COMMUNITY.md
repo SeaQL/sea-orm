@@ -59,7 +59,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 ## Learning Resources
 
-If you have article, tutorial, podcast or video reated to SeaORM and want to share it with the community, feel free to submit a PR and add it to the list below!
+If you have an article, tutorial, podcast or video reated to SeaORM and want to share it with the community, feel free to submit a PR and add it to the list below!
 
 ### Tutorials
 
