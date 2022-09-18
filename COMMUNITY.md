@@ -37,14 +37,14 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [JinShu](https://github.com/gengteng/jinshu) | A cross-platform **I**nstant **M**essaging system written in 🦀
 - [rust-juniper-playground](https://github.com/Yama-Tomo/rust-juniper-playground) | juniper with SeaORM example
 - [Oura Postgres Sink](https://github.com/dcSpark/oura-postgres-sink) | Sync a postgres database with the cardano blockchain using [Oura](https://github.com/txpipe/oura)
-- [pansy](https://github.com/niuhuan/pansy) | An illustrations app using SeaORM, SQLite, flutter. runs on the desktop and mobile terminals
-- [Orca](https://github.com/workfoxes/orca) | An No-code Test Automation platfrom using actix, SeaORM, react. runs on the desktop and cloud
+- [pansy](https://github.com/niuhuan/pansy) | An illustration app using SeaORM, SQLite, flutter. runs on the desktop and mobile terminals
+- [Orca](https://github.com/workfoxes/orca) | An No-code Test Automation platform using actix, SeaORM, react. runs on the desktop and cloud
 - [symbols](https://github.com/nappa85/symbols) | A proc-macro utility to populates enum variants with primary keys values
 - [Warpgate](https://github.com/warp-tech/warpgate) ![GitHub stars](https://img.shields.io/github/stars/warp-tech/warpgate.svg?style=social) | Smart SSH bastion that works with any SSH client
 - [suzuya](https://github.com/SH11235/suzuya) | A merchandise management application using SeaORM, Actix-Web, Tera
 - [snmp-sim-rust](https://github.com/sonalake/snmp-sim-rust) | SNMP Simulator
 - [template_flow](https://github.com/hilary888/template_flow) | An experiment exploring replacing placeholders in pre-prepared templates with their actual values
-- [poem_admin](https://github.com/lingdu1234/poem_admin) | An admin panel built with poem, **Sea-orm** and Vue 3.
+- [poem_admin](https://github.com/lingdu1234/poem_admin) | An admin panel built with poems, **Sea-orm** and Vue 3.
 - [VeryRezsi](https://github.com/szattila98/veryrezsi) | VeryRezsi is a subscription and expense calculator web-application. Powered by SvelteKit on client side, and Rust on server side.
 - [todo-rs](https://github.com/anshulxyz/todo-rs/) | A TUI ToDo-app written in Rust using Cursive library and SeaORM for SQLite
 - [KrakenPics](https://github.com/kraken-pics/backend) | A public file host written in rust using seaorm & actix_web
@@ -59,7 +59,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 ## Learning Resources
 
-If you have an article, tutorial, podcast or video reated to SeaORM and want to share it with the community, feel free to submit a PR and add it to the list below!
+If you have an article, tutorial, podcast or video related to SeaORM and want to share it with the community, feel free to submit a PR and add it to the list below!
 
 ### Tutorials
 
