@@ -10,11 +10,11 @@ This project is governed by the [SeaQL Code of Conduct](https://github.com/SeaQL
 
 ## I have a question
 
-If you got a question to ask, please do not open an issue for it. It's quicker to ask us on [SeaQL Discord Server](https://discord.com/invite/uCPdDXzbdv) or open a [GitHub Discussion](https://docs.github.com/en/discussions/quickstart#creating-a-new-discussion) on the corresponding repository.
+If you have a question to ask, please do not open an issue for it. It's quicker to ask us on [SeaQL Discord Server](https://discord.com/invite/uCPdDXzbdv) or open a [GitHub Discussion](https://docs.github.com/en/discussions/quickstart#creating-a-new-discussion) on the corresponding repository.
 
 ## I need a feature
 
-Feature request from anyone is definitely welcomed! Actually, since 0.2, many features are proposed and/or contributed by non-core members, e.g. [#105](https://github.com/SeaQL/sea-orm/issues/105), [#142](https://github.com/SeaQL/sea-orm/issues/142), [#252](https://github.com/SeaQL/sea-orm/issues/252), with various degrees of involvement. We will implement feature proposals if it benefits everyone, but of course code contributions will more likely be accepted.
+Feature requests from anyone is definitely welcomed! Actually, since 0.2, many features are proposed and/or contributed by non-core members, e.g. [#105](https://github.com/SeaQL/sea-orm/issues/105), [#142](https://github.com/SeaQL/sea-orm/issues/142), [#252](https://github.com/SeaQL/sea-orm/issues/252), with various degrees of involvement. We will implement feature proposals if it benefits everyone, but of course code contributions will more likely be accepted.
 
 ## I want to support
 
@@ -22,7 +22,7 @@ Awesome! The best way to support us is to recommend it to your classmates/collea
 
 ## I want to join
 
-We are always looking for long-term contributors. If you want to commit longer-term to SeaQL's open source effort, definitely talk with us! There may be various form of "grant" to compensate your devotion. Although at this stage we are not resourceful enough to offer a stable stream of income to contributors.
+We are always looking for long-term contributors. If you want to commit longer-term to SeaQL's open source effort, definitely talk with us! There may be various forms of "grant" to compensate for your devotion. Although at this stage we are not resourceful enough to offer a stable stream of income to contributors.
 
 ## I want to sponsor
 
@@ -51,7 +51,7 @@ Without involving a live database, you can run unit tests on your machine with t
 
 ### Integration Test
 
-Next, if you want to run integration tests on a live database. We recommand using Docker to spawn your database instance, you can refer to [this](build-tools/docker-compose.yml) docker compose file for reference.
+Next, if you want to run integration tests on a live database. We recommend using Docker to spawn your database instance, you can refer to [this](build-tools/docker-compose.yml) docker compose file for reference.
 
 Running integration tests on a live database:
 - SQLite
