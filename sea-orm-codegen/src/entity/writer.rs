@@ -1,4 +1,4 @@
-use crate::{ActiveEnum, Entity};
+use crate::{util::escape_rust_keyword, ActiveEnum, Entity};
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -544,7 +544,10 @@ impl EntityWriter {
     }
 
     pub fn gen_mod(entity: &Entity) -> TokenStream {
-        let table_name_snake_case_ident = entity.get_table_name_snake_case_ident();
+        let table_name_snake_case_ident = format_ident!(
+            "{}",
+            escape_rust_keyword(entity.get_table_name_snake_case_ident())
+        );
         quote! {
             pub mod #table_name_snake_case_ident;
         }

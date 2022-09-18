@@ -3,6 +3,8 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{ForeignKeyAction, TableForeignKey};
 
+use crate::util::escape_rust_keyword;
+
 #[derive(Clone, Debug)]
 pub enum RelationType {
     HasOne,
@@ -40,7 +42,10 @@ impl Relation {
         if self.self_referencing {
             None
         } else {
-            Some(format_ident!("{}", self.ref_table.to_snake_case()))
+            Some(format_ident!(
+                "{}",
+                escape_rust_keyword(self.ref_table.to_snake_case())
+            ))
         }
     }
 
