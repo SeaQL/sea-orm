@@ -1,6 +1,12 @@
 use chrono::Local;
 use regex::Regex;
-use std::{error::Error, fs, io::Write, path::Path, process::Command};
+use std::{
+    error::Error,
+    fs,
+    io::Write,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use crate::MigrateSubcommands;
 
@@ -117,10 +123,27 @@ pub fn run_migrate_generate(
     Ok(())
 }
 
+/// `get_full_migration_dir` looks for a `src` directory
+/// inside of `migration_dir` and appends that to the returned path if found.
+///
+/// Otherwise, `migration_dir` can point directly to a directory containing the
+/// migrations. In that case, nothing is appended.
+///
+/// This way, `src` doesn't need to be appended in the standard case where
+/// migrations are in their own crate. If the migrations are in a submodule
+/// of another crate, `migration_dir` can point directly to that module.
+fn get_full_migration_dir(migration_dir: &str) -> PathBuf {
+    let without_src = Path::new(migration_dir).to_owned();
+    let with_src = without_src.join("src");
+    match () {
+        _ if with_src.is_dir() => with_src,
+        _ => without_src,
+    }
+}
+
 fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(), Box<dyn Error>> {
-    let migration_filepath = Path::new(migration_dir)
-        .join("src")
-        .join(format!("{}.rs", &migration_name));
+    let migration_filepath =
+        get_full_migration_dir(migration_dir).join(format!("{}.rs", &migration_name));
     println!("Creating migration file `{}`", migration_filepath.display());
     // TODO: make OS agnostic
     let migration_template =
@@ -130,8 +153,29 @@ fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(),
     Ok(())
 }
 
+/// `get_migrator_filepath` looks for a file `migration_dir/src/lib.rs`
+/// and returns that path if found.
+///
+/// If `src` is not found, it will look directly in `migration_dir` for `lib.rs`.
+///
+/// If `lib.rs` is not found, it will look for `mod.rs` instead,
+/// e.g. `migration_dir/mod.rs`.
+///
+/// This way, `src` doesn't need to be appended in the standard case where
+/// migrations are in their own crate (with a file `lib.rs`). If the
+/// migrations are in a submodule of another crate (with a file `mod.rs`),
+/// `migration_dir` can point directly to that module.
+fn get_migrator_filepath(migration_dir: &str) -> PathBuf {
+    let full_migration_dir = get_full_migration_dir(migration_dir);
+    let with_lib = full_migration_dir.join("lib.rs");
+    match () {
+        _ if with_lib.is_file() => with_lib,
+        _ => full_migration_dir.join("mod.rs"),
+    }
+}
+
 fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<dyn Error>> {
-    let migrator_filepath = Path::new(migration_dir).join("src").join("lib.rs");
+    let migrator_filepath = get_migrator_filepath(migration_dir);
     println!(
         "Adding migration `{}` to `{}`",
         migration_name,
@@ -141,7 +185,7 @@ fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<
     let mut updated_migrator_content = migrator_content.clone();
 
     // create a backup of the migrator file in case something goes wrong
-    let migrator_backup_filepath = migrator_filepath.with_file_name("lib.rs.bak");
+    let migrator_backup_filepath = migrator_filepath.with_extension("rs.bak");
     fs::copy(&migrator_filepath, &migrator_backup_filepath)?;
     let mut migrator_file = fs::File::create(&migrator_filepath)?;
 
