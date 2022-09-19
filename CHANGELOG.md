@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Enhancements
 
 * `fn column()` also handle enum type https://github.com/SeaQL/sea-orm/pull/973
+* Generate migration in modules https://github.com/SeaQL/sea-orm/pull/933
 
 ## 0.9.2 - 2022-08-20
 
