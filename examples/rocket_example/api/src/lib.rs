@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate rocket;
 
-use futures::executor::block_on;
 use rocket::fairing::{self, AdHoc};
 use rocket::form::{Context, Form};
 use rocket::fs::{relative, FileServer};
@@ -144,7 +143,8 @@ async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
     Ok(rocket)
 }
 
-fn rocket() -> Rocket<Build> {
+#[tokio::main]
+async fn start() -> Result<(), rocket::Error> {
     rocket::build()
         .attach(Db::init())
         .attach(AdHoc::try_on_ignite("Migrations", run_migrations))
@@ -155,10 +155,13 @@ fn rocket() -> Rocket<Build> {
         )
         .register("/", catchers![not_found])
         .attach(Template::fairing())
+        .launch()
+        .await
+        .map(|_| ())
 }
 
 pub fn main() {
-    let result = block_on(rocket().launch());
+    let result = start();
 
     println!("Rocket: deorbit.");
 
