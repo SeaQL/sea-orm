@@ -23,11 +23,11 @@ impl Mutation {
         id: i32,
         form_data: note::Model,
     ) -> Result<note::Model, DbErr> {
-        let note: note::ActiveModel = if let Ok(Some(note)) = Note::find_by_id(id).one(db).await {
-            note.into()
-        } else {
-            return Err(DbErr::Custom("Cannot find note.".to_owned()));
-        };
+        let note: note::ActiveModel = Note::find_by_id(id)
+            .one(db)
+            .await?
+            .ok_or(DbErr::Custom("Cannot find note.".to_owned()))
+            .map(Into::into)?;
 
         note::ActiveModel {
             id: note.id,
@@ -39,11 +39,11 @@ impl Mutation {
     }
 
     pub async fn delete_note(db: &DbConn, id: i32) -> Result<DeleteResult, DbErr> {
-        let note: note::ActiveModel = if let Ok(Some(note)) = Note::find_by_id(id).one(db).await {
-            note.into()
-        } else {
-            return Err(DbErr::Custom("Cannot find note.".to_owned()));
-        };
+        let note: note::ActiveModel = Note::find_by_id(id)
+            .one(db)
+            .await?
+            .ok_or(DbErr::Custom("Cannot find note.".to_owned()))
+            .map(Into::into)?;
 
         note.delete(db).await
     }
