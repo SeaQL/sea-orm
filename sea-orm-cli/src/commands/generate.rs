@@ -45,155 +45,266 @@ pub async fn run_generate_command(
                     .try_init();
             }
 
-            // The database should be a valid URL that can be parsed
-            // protocol://username:password@host/database_name
-            let url = Url::parse(&database_url)?;
-
-            // Make sure we have all the required url components
-            //
-            // Missing scheme will have been caught by the Url::parse() call
-            // above
-            let is_sqlite = url.scheme() == "sqlite";
-
-            let tables = match tables {
-                Some(t) => t,
-                _ => "".to_string(),
-            };
-
-            // Closures for filtering tables
-            let filter_tables = |table: &str| -> bool {
-                if !tables.is_empty() {
-                    return tables.contains(&table);
-                }
-
-                true
-            };
-
-            let filter_hidden_tables = |table: &str| -> bool {
-                if include_hidden_tables {
-                    true
-                } else {
-                    !table.starts_with('_')
-                }
-            };
-
-            let filter_skip_tables = |table: &String| -> bool { !ignore_tables.contains(table) };
-
-            let database_name = if !is_sqlite {
-                // The database name should be the first element of the path string
-                //
-                // Throwing an error if there is no database name since it might be
-                // accepted by the database without it, while we're looking to dump
-                // information from a particular database
-                let database_name = url
-                    .path_segments()
-                    .unwrap_or_else(|| {
-                        panic!(
-                            "There is no database name as part of the url path: {}",
-                            url.as_str()
-                        )
-                    })
-                    .next()
-                    .unwrap();
-
-                // An empty string as the database name is also an error
-                if database_name.is_empty() {
-                    panic!(
-                        "There is no database name as part of the url path: {}",
-                        url.as_str()
-                    );
-                }
-
-                database_name
-            } else {
-                Default::default()
-            };
-
-            let (schema_name, table_stmts) = match url.scheme() {
-                "mysql" => {
-                    use sea_schema::mysql::discovery::SchemaDiscovery;
-                    use sqlx::MySql;
-
-                    let connection = connect::<MySql>(max_connections, url.as_str()).await?;
-                    let schema_discovery = SchemaDiscovery::new(connection, database_name);
-                    let schema = schema_discovery.discover().await;
-                    let table_stmts = schema
-                        .tables
-                        .into_iter()
-                        .filter(|schema| filter_tables(&schema.info.name))
-                        .filter(|schema| filter_hidden_tables(&schema.info.name))
-                        .filter(|schema| filter_skip_tables(&schema.info.name))
-                        .map(|schema| schema.write())
-                        .collect();
-                    (None, table_stmts)
-                }
-                "sqlite" => {
-                    use sea_schema::sqlite::discovery::SchemaDiscovery;
-                    use sqlx::Sqlite;
-
-                    let connection = connect::<Sqlite>(max_connections, url.as_str()).await?;
-                    let schema_discovery = SchemaDiscovery::new(connection);
-                    let schema = schema_discovery.discover().await?;
-                    let table_stmts = schema
-                        .tables
-                        .into_iter()
-                        .filter(|schema| filter_tables(&schema.name))
-                        .filter(|schema| filter_hidden_tables(&schema.name))
-                        .filter(|schema| filter_skip_tables(&schema.name))
-                        .map(|schema| schema.write())
-                        .collect();
-                    (None, table_stmts)
-                }
-                "postgres" | "postgresql" => {
-                    use sea_schema::postgres::discovery::SchemaDiscovery;
-                    use sqlx::Postgres;
-
-                    let schema = &database_schema;
-                    let connection = connect::<Postgres>(max_connections, url.as_str()).await?;
-                    let schema_discovery = SchemaDiscovery::new(connection, schema);
-                    let schema = schema_discovery.discover().await;
-                    let table_stmts = schema
-                        .tables
-                        .into_iter()
-                        .filter(|schema| filter_tables(&schema.info.name))
-                        .filter(|schema| filter_hidden_tables(&schema.info.name))
-                        .filter(|schema| filter_skip_tables(&schema.info.name))
-                        .map(|schema| schema.write())
-                        .collect();
-                    (Some(schema.schema), table_stmts)
-                }
-                _ => unimplemented!("{} is not supported", url.scheme()),
-            };
-
-            let writer_context = EntityWriterContext::new(
-                expanded_format,
-                WithSerde::from_str(&with_serde).unwrap(),
-                with_copy_enums,
-                date_time_crate.into(),
-                schema_name,
-            );
-            let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
-
-            let dir = Path::new(&output_dir);
-            fs::create_dir_all(dir)?;
-
-            for OutputFile { name, content } in output.files.iter() {
-                let file_path = dir.join(name);
-                let mut file = fs::File::create(file_path)?;
-                file.write_all(content.as_bytes())?;
-            }
-
-            // Format each of the files
-            for OutputFile { name, .. } in output.files.iter() {
-                Command::new("rustfmt")
-                    .arg(dir.join(name))
-                    .spawn()?
-                    .wait()?;
-            }
+            GenerateEntity::new(database_url)
+                .set_expanded_format(expanded_format)
+                .set_include_hidden_tables(include_hidden_tables)
+                .set_tables(tables)
+                .set_ignore_tables(ignore_tables)
+                .set_max_connections(max_connections)
+                .set_output_dir(output_dir)
+                .set_database_schema(database_schema)
+                .set_with_serde(
+                    WithSerde::from_str(&with_serde)
+                        .expect("`with_serde` expect one of none, serialize, deserialize, both"),
+                )
+                .set_with_copy_enums(with_copy_enums)
+                .set_date_time_crate(date_time_crate)
+                .execute()
+                .await?;
         }
     }
 
     Ok(())
+}
+
+pub struct GenerateEntity {
+    expanded_format: bool,
+    include_hidden_tables: bool,
+    tables: Option<String>,
+    ignore_tables: Vec<String>,
+    max_connections: u32,
+    output_dir: String,
+    database_schema: String,
+    database_url: String,
+    with_serde: WithSerde,
+    with_copy_enums: bool,
+    date_time_crate: DateTimeCrate,
+}
+
+impl GenerateEntity {
+    pub fn new<T>(database_url: T) -> Self
+    where
+        T: ToString,
+    {
+        Self {
+            expanded_format: false,
+            include_hidden_tables: false,
+            tables: None,
+            ignore_tables: vec!["seaql_migrations".into()],
+            max_connections: 1,
+            output_dir: "./".into(),
+            database_schema: "public".into(),
+            database_url: database_url.to_string(),
+            with_serde: WithSerde::None,
+            with_copy_enums: false,
+            date_time_crate: DateTimeCrate::Chrono,
+        }
+    }
+
+    pub fn set_expanded_format(mut self, expanded_format: bool) -> Self {
+        self.expanded_format = expanded_format;
+        self
+    }
+
+    pub fn set_include_hidden_tables(mut self, include_hidden_tables: bool) -> Self {
+        self.include_hidden_tables = include_hidden_tables;
+        self
+    }
+
+    pub fn set_tables(mut self, tables: Option<String>) -> Self {
+        self.tables = tables;
+        self
+    }
+
+    pub fn set_ignore_tables(mut self, ignore_tables: Vec<String>) -> Self {
+        self.ignore_tables = ignore_tables;
+        self
+    }
+
+    pub fn set_max_connections(mut self, max_connections: u32) -> Self {
+        self.max_connections = max_connections;
+        self
+    }
+
+    pub fn set_output_dir(mut self, output_dir: String) -> Self {
+        self.output_dir = output_dir;
+        self
+    }
+
+    pub fn set_database_schema(mut self, database_schema: String) -> Self {
+        self.database_schema = database_schema;
+        self
+    }
+
+    pub fn set_database_url(mut self, database_url: String) -> Self {
+        self.database_url = database_url;
+        self
+    }
+
+    pub fn set_with_serde(mut self, with_serde: WithSerde) -> Self {
+        self.with_serde = with_serde;
+        self
+    }
+
+    pub fn set_with_copy_enums(mut self, with_copy_enums: bool) -> Self {
+        self.with_copy_enums = with_copy_enums;
+        self
+    }
+
+    pub fn set_date_time_crate(mut self, date_time_crate: DateTimeCrate) -> Self {
+        self.date_time_crate = date_time_crate;
+        self
+    }
+
+    pub async fn execute(self) -> Result<(), Box<dyn Error>> {
+        // The database should be a valid URL that can be parsed
+        // protocol://username:password@host/database_name
+        let url = Url::parse(&self.database_url)?;
+
+        // Make sure we have all the required url components
+        //
+        // Missing scheme will have been caught by the Url::parse() call
+        // above
+        let is_sqlite = url.scheme() == "sqlite";
+
+        let tables = match self.tables {
+            Some(t) => t,
+            _ => "".to_string(),
+        };
+
+        // Closures for filtering tables
+        let filter_tables = |table: &str| -> bool {
+            if !tables.is_empty() {
+                return tables.contains(&table);
+            }
+
+            true
+        };
+
+        let filter_hidden_tables = |table: &str| -> bool {
+            if self.include_hidden_tables {
+                true
+            } else {
+                !table.starts_with('_')
+            }
+        };
+
+        let filter_skip_tables = |table: &String| -> bool { !self.ignore_tables.contains(table) };
+
+        let database_name = if !is_sqlite {
+            // The database name should be the first element of the path string
+            //
+            // Throwing an error if there is no database name since it might be
+            // accepted by the database without it, while we're looking to dump
+            // information from a particular database
+            let database_name = url
+                .path_segments()
+                .unwrap_or_else(|| {
+                    panic!(
+                        "There is no database name as part of the url path: {}",
+                        url.as_str()
+                    )
+                })
+                .next()
+                .unwrap();
+
+            // An empty string as the database name is also an error
+            if database_name.is_empty() {
+                panic!(
+                    "There is no database name as part of the url path: {}",
+                    url.as_str()
+                );
+            }
+
+            database_name
+        } else {
+            Default::default()
+        };
+
+        let (schema_name, table_stmts) = match url.scheme() {
+            "mysql" => {
+                use sea_schema::mysql::discovery::SchemaDiscovery;
+                use sqlx::MySql;
+
+                let connection = connect::<MySql>(self.max_connections, url.as_str()).await?;
+                let schema_discovery = SchemaDiscovery::new(connection, database_name);
+                let schema = schema_discovery.discover().await;
+                let table_stmts = schema
+                    .tables
+                    .into_iter()
+                    .filter(|schema| filter_tables(&schema.info.name))
+                    .filter(|schema| filter_hidden_tables(&schema.info.name))
+                    .filter(|schema| filter_skip_tables(&schema.info.name))
+                    .map(|schema| schema.write())
+                    .collect();
+                (None, table_stmts)
+            }
+            "sqlite" => {
+                use sea_schema::sqlite::discovery::SchemaDiscovery;
+                use sqlx::Sqlite;
+
+                let connection = connect::<Sqlite>(self.max_connections, url.as_str()).await?;
+                let schema_discovery = SchemaDiscovery::new(connection);
+                let schema = schema_discovery.discover().await?;
+                let table_stmts = schema
+                    .tables
+                    .into_iter()
+                    .filter(|schema| filter_tables(&schema.name))
+                    .filter(|schema| filter_hidden_tables(&schema.name))
+                    .filter(|schema| filter_skip_tables(&schema.name))
+                    .map(|schema| schema.write())
+                    .collect();
+                (None, table_stmts)
+            }
+            "postgres" | "postgresql" => {
+                use sea_schema::postgres::discovery::SchemaDiscovery;
+                use sqlx::Postgres;
+
+                let schema = &self.database_schema;
+                let connection = connect::<Postgres>(self.max_connections, url.as_str()).await?;
+                let schema_discovery = SchemaDiscovery::new(connection, schema);
+                let schema = schema_discovery.discover().await;
+                let table_stmts = schema
+                    .tables
+                    .into_iter()
+                    .filter(|schema| filter_tables(&schema.info.name))
+                    .filter(|schema| filter_hidden_tables(&schema.info.name))
+                    .filter(|schema| filter_skip_tables(&schema.info.name))
+                    .map(|schema| schema.write())
+                    .collect();
+                (Some(schema.schema), table_stmts)
+            }
+            _ => unimplemented!("{} is not supported", url.scheme()),
+        };
+
+        let writer_context = EntityWriterContext::new(
+            self.expanded_format,
+            self.with_serde,
+            self.with_copy_enums,
+            self.date_time_crate.into(),
+            schema_name,
+        );
+        let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
+
+        let dir = Path::new(&self.output_dir);
+        fs::create_dir_all(dir)?;
+
+        for OutputFile { name, content } in output.files.iter() {
+            let file_path = dir.join(name);
+            let mut file = fs::File::create(file_path)?;
+            file.write_all(content.as_bytes())?;
+        }
+
+        // Format each of the files
+        for OutputFile { name, .. } in output.files.iter() {
+            Command::new("rustfmt")
+                .arg(dir.join(name))
+                .spawn()?
+                .wait()?;
+        }
+
+        Ok(())
+    }
 }
 
 async fn connect<DB>(max_connections: u32, url: &str) -> Result<sqlx::Pool<DB>, Box<dyn Error>>
