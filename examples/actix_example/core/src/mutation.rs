@@ -22,11 +22,11 @@ impl Mutation {
         id: i32,
         form_data: post::Model,
     ) -> Result<post::Model, DbErr> {
-        let post: post::ActiveModel = if let Ok(Some(post)) = Post::find_by_id(id).one(db).await {
-            post.into()
-        } else {
-            return Err(DbErr::Custom("Cannot find post.".to_owned()));
-        };
+        let post: post::ActiveModel = Post::find_by_id(id)
+            .one(db)
+            .await?
+            .ok_or(DbErr::Custom("Cannot find post.".to_owned()))
+            .map(Into::into)?;
 
         post::ActiveModel {
             id: post.id,
@@ -38,11 +38,11 @@ impl Mutation {
     }
 
     pub async fn delete_post(db: &DbConn, id: i32) -> Result<DeleteResult, DbErr> {
-        let post: post::ActiveModel = if let Ok(Some(post)) = Post::find_by_id(id).one(db).await {
-            post.into()
-        } else {
-            return Err(DbErr::Custom("Cannot find post.".to_owned()));
-        };
+        let post: post::ActiveModel = Post::find_by_id(id)
+            .one(db)
+            .await?
+            .ok_or(DbErr::Custom("Cannot find post.".to_owned()))
+            .map(Into::into)?;
 
         post.delete(db).await
     }

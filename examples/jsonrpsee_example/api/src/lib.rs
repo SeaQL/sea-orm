@@ -60,7 +60,7 @@ impl PostRpcServer for PpcImpl {
     async fn insert(&self, p: post::Model) -> RpcResult<i32> {
         let new_post = Mutation::create_post(&self.conn, p)
             .await
-            .expect("could not insert post");
+            .internal_call_error()?;
 
         Ok(new_post.id.unwrap())
     }
