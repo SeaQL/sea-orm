@@ -3,7 +3,7 @@ use dotenv::dotenv;
 use std::{error::Error, fmt::Display, process::exit};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
-use sea_orm::{Database, DbConn};
+use sea_orm::{Database, DbConn, ConnectOptions};
 use sea_orm_cli::{run_migrate_generate, run_migrate_init, MigrateSubcommands};
 
 use super::MigratorTrait;
@@ -15,9 +15,15 @@ where
     M: MigratorTrait,
 {
     dotenv().ok();
-    let url = std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
-    let db = &Database::connect(&url).await.unwrap();
     let cli = Cli::parse();
+
+    let url = cli.database_url.expect("Environment variable 'DATABASE_URL' not set");
+    let schema = cli.database_schema.unwrap_or("public".to_owned());
+
+    let connect_options = ConnectOptions::new(url)
+        .set_schema_search_path(schema)
+        .to_owned();
+    let db = &Database::connect(connect_options).await.expect("Fail to acquire database connection");
 
     run_migrate(migrator, db, cli.command, cli.verbose)
         .await
@@ -79,6 +85,28 @@ where
 pub struct Cli {
     #[clap(action, short = 'v', long, global = true, help = "Show debug messages")]
     verbose: bool,
+
+    #[clap(
+        value_parser,
+        global = true,
+        short = 's',
+        long,
+        env = "DATABASE_SCHEMA",
+        long_help = "Database schema\n \
+                    - For MySQL, this argument is ignored.\n \
+                    - For PostgreSQL, this argument is optional with default value 'public'."
+    )]
+    database_schema: Option<String>,
+
+    #[clap(
+        value_parser,
+        global = true,
+        short = 'u',
+        long,
+        env = "DATABASE_URL",
+        help = "Database URL"
+    )]
+    database_url: Option<String>,
 
     #[clap(subcommand)]
     command: Option<MigrateSubcommands>,

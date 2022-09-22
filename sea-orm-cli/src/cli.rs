@@ -34,6 +34,28 @@ you should provide the directory of that submodule.",
         )]
         migration_dir: String,
 
+        #[clap(
+            value_parser,
+            global = true,
+            short = 's',
+            long,
+            env = "DATABASE_SCHEMA",
+            long_help = "Database schema\n \
+                        - For MySQL, this argument is ignored.\n \
+                        - For PostgreSQL, this argument is optional with default value 'public'."
+        )]
+        database_schema: Option<String>,
+
+        #[clap(
+            value_parser,
+            global = true,
+            short = 'u',
+            long,
+            env = "DATABASE_URL",
+            help = "Database URL"
+        )]
+        database_url: Option<String>,
+
         #[clap(subcommand)]
         command: Option<MigrateSubcommands>,
     },

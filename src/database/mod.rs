@@ -48,6 +48,8 @@ pub struct ConnectOptions {
     pub(crate) sqlx_logging_level: log::LevelFilter,
     /// set sqlcipher key
     pub(crate) sqlcipher_key: Option<Cow<'static, str>>,
+    /// Schema search path (PostgreSQL only)
+    pub(crate) schema_search_path: Option<String>,
 }
 
 impl Database {
@@ -114,6 +116,7 @@ impl ConnectOptions {
             sqlx_logging: true,
             sqlx_logging_level: log::LevelFilter::Info,
             sqlcipher_key: None,
+            schema_search_path: None,
         }
     }
 
@@ -249,6 +252,12 @@ impl ConnectOptions {
         T: Into<Cow<'static, str>>,
     {
         self.sqlcipher_key = Some(value.into());
+        self
+    }
+
+    /// Set schema search path (PostgreSQL only)
+    pub fn set_schema_search_path(&mut self, schema_search_path: String) -> &mut Self {
+        self.schema_search_path = Some(schema_search_path);
         self
     }
 }
