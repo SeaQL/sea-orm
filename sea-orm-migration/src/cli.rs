@@ -20,7 +20,7 @@ where
     let url = cli
         .database_url
         .expect("Environment variable 'DATABASE_URL' not set");
-    let schema = cli.database_schema.unwrap_or("public".to_owned());
+    let schema = cli.database_schema.unwrap_or_else(|| "public".to_owned());
 
     let connect_options = ConnectOptions::new(url)
         .set_schema_search_path(schema)
