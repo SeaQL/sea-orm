@@ -52,10 +52,10 @@ pub fn run_migrate_command(
                 args.extend(["-n", &num])
             }
             if let Some(database_url) = &database_url {
-                args.extend(["-u", &database_url]);
+                args.extend(["-u", database_url]);
             }
             if let Some(database_schema) = &database_schema {
-                args.extend(["-s", &database_schema]);
+                args.extend(["-s", database_schema]);
             }
             if verbose {
                 args.push("-v");

@@ -3,7 +3,7 @@ use dotenv::dotenv;
 use std::{error::Error, fmt::Display, process::exit};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
-use sea_orm::{Database, DbConn, ConnectOptions};
+use sea_orm::{ConnectOptions, Database, DbConn};
 use sea_orm_cli::{run_migrate_generate, run_migrate_init, MigrateSubcommands};
 
 use super::MigratorTrait;
@@ -17,13 +17,17 @@ where
     dotenv().ok();
     let cli = Cli::parse();
 
-    let url = cli.database_url.expect("Environment variable 'DATABASE_URL' not set");
+    let url = cli
+        .database_url
+        .expect("Environment variable 'DATABASE_URL' not set");
     let schema = cli.database_schema.unwrap_or("public".to_owned());
 
     let connect_options = ConnectOptions::new(url)
         .set_schema_search_path(schema)
         .to_owned();
-    let db = &Database::connect(connect_options).await.expect("Fail to acquire database connection");
+    let db = &Database::connect(connect_options)
+        .await
+        .expect("Fail to acquire database connection");
 
     run_migrate(migrator, db, cli.command, cli.verbose)
         .await

@@ -1,7 +1,7 @@
 mod migrator;
 use migrator::Migrator;
 
-use sea_orm::{ConnectionTrait, Database, DbBackend, DbErr, Statement, ConnectOptions};
+use sea_orm::{ConnectOptions, ConnectionTrait, Database, DbBackend, DbErr, Statement};
 use sea_orm_migration::prelude::*;
 
 #[async_std::test]
