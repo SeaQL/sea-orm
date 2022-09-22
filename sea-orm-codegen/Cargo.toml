@@ -17,7 +17,7 @@ name = "sea_orm_codegen"
 path = "src/lib.rs"
 
 [dependencies]
-sea-query = { version = "^0.27", features = ["thread-safe"] }
+sea-query = { version = "^0.27", git = "https://github.com/SeaQL/sea-query", features = ["thread-safe"] }
 syn = { version = "^1", default-features = false, features = [
     "derive",
     "parsing",
@@ -31,6 +31,3 @@ tracing = { version = "0.1", features = ["log"] }
 
 [dev-dependencies]
 pretty_assertions = { version = "^0.7" }
-
-[patch.crates-io]
-sea-query = { git = "https://github.com/SeaQL/sea-query" }

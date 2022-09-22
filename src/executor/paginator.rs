@@ -251,7 +251,7 @@ where
 {
     type Selector = S;
     fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, S> {
-        let sql = &self.stmt.sql[6..];
+        let sql = &self.stmt.sql[7..];
         let mut query = SelectStatement::new();
         query.expr(if let Some(values) = self.stmt.values {
             Expr::cust_with_values(sql, values.0)

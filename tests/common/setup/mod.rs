@@ -5,7 +5,7 @@ use sea_orm::{
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
-    Alias, Table, TableCreateStatement,
+    SeaRc, Table, TableCreateStatement,
 };
 
 pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
@@ -88,15 +88,15 @@ where
         for col in E::Column::iter() {
             let col_def = col.def();
             let col_type = col_def.get_column_type();
-            if !matches!(col_type, ColumnType::Enum(_, _)) {
+            if !matches!(col_type, ColumnType::Enum { .. }) {
                 continue;
             }
             let name = match col_type {
-                ColumnType::Enum(s, _) => s.as_str(),
+                ColumnType::Enum { name, .. } => name,
                 _ => unreachable!(),
             };
             let drop_type_stmt = Type::drop()
-                .name(Alias::new(name))
+                .name(SeaRc::clone(name))
                 .if_exists()
                 .cascade()
                 .to_owned();

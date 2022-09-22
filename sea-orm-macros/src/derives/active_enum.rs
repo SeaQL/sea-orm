@@ -1,6 +1,6 @@
 use heck::CamelCase;
 use proc_macro2::TokenStream;
-use quote::{quote, quote_spanned};
+use quote::{format_ident, quote, quote_spanned};
 use syn::{parse, punctuated::Punctuated, token::Comma, Expr, Lit, LitInt, LitStr, Meta, UnOp};
 
 enum Error {
@@ -59,7 +59,10 @@ impl ActiveEnum {
                                     match s.as_ref() {
                                         "Enum" => {
                                             db_type = Ok(quote! {
-                                                Enum(Self::name(), Self::values())
+                                                Enum {
+                                                    name: Self::name(),
+                                                    variants: Self::iden_values(),
+                                                }
                                             })
                                         }
                                         _ => {
@@ -227,13 +230,59 @@ impl ActiveEnum {
             quote! { v }
         };
 
+        let enum_name_iden = format_ident!("{}Enum", ident);
+
+        let str_variants: Vec<String> = variants
+            .iter()
+            .filter_map(|variant| {
+                variant
+                    .string_value
+                    .as_ref()
+                    .map(|string_value| string_value.value())
+            })
+            .collect();
+
+        let impl_enum_variant_iden = if !str_variants.is_empty() {
+            let enum_variant_iden = format_ident!("{}Variant", ident);
+            let enum_variants: Vec<syn::Ident> = str_variants
+                .iter()
+                .map(|v| format_ident!("{}", v.to_camel_case()))
+                .collect();
+
+            quote!(
+                #[derive(Debug, Clone, PartialEq, Eq, EnumIter, Iden)]
+                pub enum #enum_variant_iden {
+                    #(
+                        #[iden = #str_variants]
+                        #enum_variants,
+                    )*
+                }
+
+                impl #ident {
+                    pub fn iden_values() -> Vec<sea_orm::sea_query::DynIden> {
+                        <#enum_variant_iden as sea_orm::strum::IntoEnumIterator>::iter()
+                            .map(|v| sea_orm::sea_query::SeaRc::new(v) as sea_orm::sea_query::DynIden)
+                            .collect()
+                    }
+                }
+            )
+        } else {
+            quote!()
+        };
+
         quote!(
+            #[derive(Debug, Clone, PartialEq, Eq, Iden)]
+            #[iden = #enum_name]
+            pub struct #enum_name_iden;
+
+            #impl_enum_variant_iden
+
             #[automatically_derived]
             impl sea_orm::ActiveEnum for #ident {
                 type Value = #rs_type;
 
-                fn name() -> String {
-                    #enum_name.to_owned()
+                fn name() -> sea_orm::sea_query::DynIden {
+                    sea_orm::sea_query::SeaRc::new(#enum_name_iden) as sea_orm::sea_query::DynIden
                 }
 
                 fn to_value(&self) -> Self::Value {

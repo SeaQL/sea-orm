@@ -13,7 +13,7 @@ pub struct ColumnDef {
 }
 
 /// The type of column as defined in the SQL format
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum ColumnType {
     /// `CHAR` type of specified fixed length
     Char(Option<u32>),
@@ -78,7 +78,39 @@ pub enum ColumnType {
     /// A Universally Unique IDentifier that is specified in  RFC 4122
     Uuid,
     /// `ENUM` data type with name and variants
-    Enum(String, Vec<String>),
+    Enum {
+        /// Name of enum
+        name: DynIden,
+        /// Variants of enum
+        variants: Vec<DynIden>,
+    },
+}
+
+impl PartialEq for ColumnType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Char(l0), Self::Char(r0)) => l0 == r0,
+            (Self::String(l0), Self::String(r0)) => l0 == r0,
+            (Self::Decimal(l0), Self::Decimal(r0)) => l0 == r0,
+            (Self::Money(l0), Self::Money(r0)) => l0 == r0,
+            (Self::Custom(l0), Self::Custom(r0)) => l0 == r0,
+            (
+                Self::Enum {
+                    name: l_name,
+                    variants: l_variants,
+                },
+                Self::Enum {
+                    name: r_name,
+                    variants: r_variants,
+                },
+            ) => {
+                l_name.to_string() == r_name.to_string()
+                    && l_variants.iter().map(|v| v.to_string()).collect::<Vec<_>>()
+                        == r_variants.iter().map(|v| v.to_string()).collect::<Vec<_>>()
+            }
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
 }
 
 macro_rules! bind_oper {
@@ -318,9 +350,9 @@ impl ColumnType {
         }
     }
 
-    pub(crate) fn get_enum_name(&self) -> Option<&String> {
+    pub(crate) fn get_enum_name(&self) -> Option<&DynIden> {
         match self {
-            ColumnType::Enum(s, _) => Some(s),
+            ColumnType::Enum { name, .. } => Some(name),
             _ => None,
         }
     }
@@ -399,7 +431,7 @@ impl From<ColumnType> for sea_query::ColumnType {
                 sea_query::ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(&s)))
             }
             ColumnType::Uuid => sea_query::ColumnType::Uuid,
-            ColumnType::Enum(name, variants) => sea_query::ColumnType::Enum(name, variants),
+            ColumnType::Enum { name, variants } => sea_query::ColumnType::Enum { name, variants },
         }
     }
 }
@@ -437,7 +469,7 @@ impl From<sea_query::ColumnType> for ColumnType {
             sea_query::ColumnType::JsonBinary => Self::JsonBinary,
             sea_query::ColumnType::Custom(s) => Self::Custom(s.to_string()),
             sea_query::ColumnType::Uuid => Self::Uuid,
-            sea_query::ColumnType::Enum(name, variants) => Self::Enum(name, variants),
+            sea_query::ColumnType::Enum { name, variants } => Self::Enum { name, variants },
             _ => unimplemented!(),
         }
     }

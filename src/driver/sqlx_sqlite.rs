@@ -2,7 +2,7 @@ use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
-    sqlite::{SqliteArguments, SqliteConnectOptions, SqliteQueryResult, SqliteRow},
+    sqlite::{SqliteConnectOptions, SqliteQueryResult, SqliteRow},
     Sqlite, SqlitePool,
 };
 

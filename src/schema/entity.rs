@@ -1,11 +1,10 @@
 use crate::{
-    unpack_table_ref, ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, Identity,
-    Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
+    unpack_table_ref, ActiveEnum, ColumnDef, ColumnTrait, ColumnType, DbBackend, EntityTrait,
+    Identity, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
-    Alias, ColumnDef, ForeignKeyCreateStatement, Iden, Index, IndexCreateStatement,
-    TableCreateStatement,
+    ForeignKeyCreateStatement, Iden, Index, IndexCreateStatement, TableCreateStatement,
 };
 
 impl Schema {
@@ -57,13 +56,10 @@ where
 
 pub(crate) fn create_enum_from_column_type(col_type: &ColumnType) -> TypeCreateStatement {
     let (name, values) = match col_type {
-        ColumnType::Enum(s, v) => (s.as_str(), v),
+        ColumnType::Enum { name, variants } => (name.clone(), variants.clone()),
         _ => panic!("Should be ColumnType::Enum"),
     };
-    Type::create()
-        .as_enum(Alias::new(name))
-        .values(values.iter().map(|val| Alias::new(val.as_str())))
-        .to_owned()
+    Type::create().as_enum(name).values(values).to_owned()
 }
 
 #[allow(clippy::needless_borrow)]
@@ -78,7 +74,7 @@ where
     for col in E::Column::iter() {
         let col_def = col.def();
         let col_type = col_def.get_column_type();
-        if !matches!(col_type, ColumnType::Enum(_, _)) {
+        if !matches!(col_type, ColumnType::Enum { .. }) {
             continue;
         }
         let stmt = create_enum_from_column_type(&col_type);
@@ -123,11 +119,12 @@ where
     for column in E::Column::iter() {
         let orm_column_def = column.def();
         let types = match orm_column_def.col_type {
-            ColumnType::Enum(s, variants) => match backend {
+            ColumnType::Enum { name, variants } => match backend {
                 DbBackend::MySql => {
+                    let variants: Vec<String> = variants.iter().map(|v| v.to_string()).collect();
                     ColumnType::Custom(format!("ENUM('{}')", variants.join("', '")))
                 }
-                DbBackend::Postgres => ColumnType::Custom(s),
+                DbBackend::Postgres => ColumnType::Custom(name.to_string()),
                 DbBackend::Sqlite => ColumnType::Text,
             }
             .into(),
