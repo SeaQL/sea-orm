@@ -6,30 +6,7 @@ edition = "2021"
 publish = false
 
 [workspace]
-members = [".", "entity", "migration"]
+members = [".", "api", "core", "entity", "migration"]
 
 [dependencies]
-actix-http = "2"
-actix-web = "3"
-actix-flash = "0.2"
-actix-files = "0.5"
-futures = { version = "^0.3" }
-futures-util = { version = "^0.3" }
-tera = "1.8.0"
-dotenv = "0.15"
-listenfd = "0.3.3"
-serde = "1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-entity = { path = "entity" }
-migration = { path = "migration" }
-
-[dependencies.sea-orm]
-path = "../../" # remove this line in your own project
-version = "^0.10.0" # sea-orm version
-features = [
-  "debug-print",
-  "runtime-async-std-native-tls",
-  "sqlx-mysql",
-  # "sqlx-postgres",
-  # "sqlx-sqlite",
-]
+actix3-example-api = { path = "api" }

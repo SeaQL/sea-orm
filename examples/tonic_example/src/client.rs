@@ -1,7 +1,7 @@
 use tonic::transport::Endpoint;
 use tonic::Request;
 
-use sea_orm_tonic_example::post::{blogpost_client::BlogpostClient, PostPerPage};
+use tonic_example_api::post_mod::{blogpost_client::BlogpostClient, PostPerPage};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
