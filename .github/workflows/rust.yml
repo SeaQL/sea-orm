@@ -405,6 +405,15 @@ jobs:
           args: >
             --manifest-path ${{ matrix.path }}
 
+      - name: Run mock test if it is core crate
+        uses: actions-rs/cargo@v1
+        if: ${{ contains(matrix.path, 'core/Cargo.toml') }}
+        with:
+          command: test
+          args: >
+            --manifest-path ${{ matrix.path }}
+            --features mock
+
       - name: check rustfmt
         run: |
           rustup override set nightly
