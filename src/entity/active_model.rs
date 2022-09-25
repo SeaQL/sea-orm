@@ -682,6 +682,7 @@ impl_into_active_value!(f32);
 impl_into_active_value!(f64);
 impl_into_active_value!(&'static str);
 impl_into_active_value!(String);
+impl_into_active_value!(Vec<u8>);
 
 #[cfg(feature = "with-json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-json")))]
@@ -718,6 +719,22 @@ impl_into_active_value!(crate::prelude::Decimal);
 #[cfg(feature = "with-uuid")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-uuid")))]
 impl_into_active_value!(crate::prelude::Uuid);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::TimeDate);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::TimeTime);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::TimeDateTime);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::TimeDateTimeWithTimeZone);
 
 impl<V> Default for ActiveValue<V>
 where

@@ -8,6 +8,8 @@ use sea_query::{
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
+use sea_query::IntoColumnRef;
+
 // LINT: when the column does not appear in tables selected from
 // LINT: when there is a group by clause, but some columns don't have aggregate functions
 // LINT: when the join table or column does not exists
@@ -38,11 +40,34 @@ pub trait QuerySelect: Sized {
     ///     r#"SELECT "cake"."name" FROM "cake""#
     /// );
     /// ```
+    ///
+    /// Enum column will be casted into text (PostgreSQL only)
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::lunch_set, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     lunch_set::Entity::find()
+    ///         .select_only()
+    ///         .column(lunch_set::Column::Tea)
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    /// );
+    /// assert_eq!(
+    ///     lunch_set::Entity::find()
+    ///         .select_only()
+    ///         .column(lunch_set::Column::Tea)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     r#"SELECT `lunch_set`.`tea` FROM `lunch_set`"#
+    /// );
+    /// ```
     fn column<C>(mut self, col: C) -> Self
     where
         C: ColumnTrait,
     {
-        self.query().expr(col.into_simple_expr());
+        self.query().expr(cast_enum_as_text(col.into_expr(), &col));
         self
     }
 
@@ -146,6 +171,61 @@ pub trait QuerySelect: Sized {
         F: IntoCondition,
     {
         self.query().cond_having(filter.into_condition());
+        self
+    }
+
+    /// Add a DISTINCT expression
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// struct Input {
+    ///     name: Option<String>,
+    /// }
+    /// let input = Input {
+    ///     name: Some("cheese".to_owned()),
+    /// };
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(
+    ///             Condition::all().add_option(input.name.map(|n| cake::Column::Name.contains(&n)))
+    ///         )
+    ///         .distinct()
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT DISTINCT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese%'"
+    /// );
+    /// ```
+    fn distinct(mut self) -> Self {
+        self.query().distinct();
+        self
+    }
+
+    /// Add a DISTINCT ON expression
+    /// NOTE: this function is only supported by `sqlx-postgres`
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// struct Input {
+    ///     name: Option<String>,
+    /// }
+    /// let input = Input {
+    ///     name: Some("cheese".to_owned()),
+    /// };
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(
+    ///             Condition::all().add_option(input.name.map(|n| cake::Column::Name.contains(&n)))
+    ///         )
+    ///         .distinct_on([cake::Column::Name])
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     "SELECT DISTINCT ON (\"name\") \"cake\".\"id\", \"cake\".\"name\" FROM \"cake\" WHERE \"cake\".\"name\" LIKE '%cheese%'"
+    /// );
+    /// ```
+    fn distinct_on<T, I>(mut self, cols: I) -> Self
+    where
+        T: IntoColumnRef,
+        I: IntoIterator<Item = T>,
+    {
+        self.query().distinct_on(cols);
         self
     }
 
@@ -530,5 +610,35 @@ pub(crate) fn unpack_table_alias(table_ref: &TableRef) -> Option<DynIden> {
         TableRef::TableAlias(_, alias)
         | TableRef::SchemaTableAlias(_, _, alias)
         | TableRef::DatabaseSchemaTableAlias(_, _, _, alias) => Some(SeaRc::clone(alias)),
+    }
+}
+
+#[derive(Iden)]
+struct Text;
+
+pub(crate) fn cast_enum_as_text<C>(expr: Expr, col: &C) -> SimpleExpr
+where
+    C: ColumnTrait,
+{
+    cast_enum_text_inner(expr, col, |col, _| col.as_enum(Text))
+}
+
+pub(crate) fn cast_text_as_enum<C>(expr: Expr, col: &C) -> SimpleExpr
+where
+    C: ColumnTrait,
+{
+    cast_enum_text_inner(expr, col, |col, enum_name| col.as_enum(enum_name))
+}
+
+fn cast_enum_text_inner<C, F>(expr: Expr, col: &C, f: F) -> SimpleExpr
+where
+    C: ColumnTrait,
+    F: Fn(Expr, DynIden) -> SimpleExpr,
+{
+    let col_def = col.def();
+    let col_type = col_def.get_column_type();
+    match col_type.get_enum_name() {
+        Some(enum_name) => f(expr, SeaRc::new(Alias::new(enum_name))),
+        None => expr.into(),
     }
 }

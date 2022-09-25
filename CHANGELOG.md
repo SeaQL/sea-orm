@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Replaced `usize` with `u64` in `PaginatorTrait` https://github.com/SeaQL/sea-orm/pull/789
 
+### Enhancements
+
+* `fn column()` also handle enum type https://github.com/SeaQL/sea-orm/pull/973
+* Generate migration in modules https://github.com/SeaQL/sea-orm/pull/933
+* Added `acquire_timeout` on `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/897
+* Generate `DeriveRelation` on empty `Relation` enum https://github.com/SeaQL/sea-orm/pull/1019
+* Support `distinct` & `distinct_on` expression https://github.com/SeaQL/sea-orm/pull/902
+
 ## 0.9.2 - 2022-08-20
 
 ### Enhancements
