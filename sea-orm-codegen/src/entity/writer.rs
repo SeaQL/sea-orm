@@ -381,11 +381,11 @@ impl EntityWriter {
     ) -> TokenStream {
         let column_names_snake_case = entity.get_column_names_snake_case();
         let column_rs_types = entity.get_column_rs_types(date_time_crate);
-
+        let if_eq_needed = entity.get_eq_needed();
         let extra_derive = with_serde.extra_derive();
 
         quote! {
-            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel #extra_derive)]
+            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel #if_eq_needed #extra_derive)]
             pub struct Model {
                 #(pub #column_names_snake_case: #column_rs_types,)*
             }
@@ -567,6 +567,7 @@ impl EntityWriter {
         let table_name = entity.table_name.as_str();
         let column_names_snake_case = entity.get_column_names_snake_case();
         let column_rs_types = entity.get_column_rs_types(date_time_crate);
+        let if_eq_needed = entity.get_eq_needed();
         let primary_keys: Vec<String> = entity
             .primary_keys
             .iter()
@@ -621,7 +622,7 @@ impl EntityWriter {
         let extra_derive = with_serde.extra_derive();
 
         quote! {
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel #extra_derive)]
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel #if_eq_needed #extra_derive)]
             #[sea_orm(
                 #schema_name
                 table_name = #table_name
@@ -1033,6 +1034,92 @@ mod tests {
                     name: "id".to_owned(),
                 }],
             },
+            Entity {
+                table_name: "cake_with_float".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "id".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "name".to_owned(),
+                        col_type: ColumnType::Text,
+                        auto_increment: false,
+                        not_null: false,
+                        unique: false,
+                    },
+                    Column {
+                        name: "price".to_owned(),
+                        col_type: ColumnType::Float(Some(2)),
+                        auto_increment: false,
+                        not_null: false,
+                        unique: false,
+                    },
+                ],
+                relations: vec![Relation {
+                    ref_table: "fruit".to_owned(),
+                    columns: vec![],
+                    ref_columns: vec![],
+                    rel_type: RelationType::HasMany,
+                    on_delete: None,
+                    on_update: None,
+                    self_referencing: false,
+                    num_suffix: 0,
+                }],
+                conjunct_relations: vec![ConjunctRelation {
+                    via: "cake_filling".to_owned(),
+                    to: "filling".to_owned(),
+                }],
+                primary_keys: vec![PrimaryKey {
+                    name: "id".to_owned(),
+                }],
+            },
+            Entity {
+                table_name: "cake_with_double".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "id".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "name".to_owned(),
+                        col_type: ColumnType::Text,
+                        auto_increment: false,
+                        not_null: false,
+                        unique: false,
+                    },
+                    Column {
+                        name: "price".to_owned(),
+                        col_type: ColumnType::Double(Some(2)),
+                        auto_increment: false,
+                        not_null: false,
+                        unique: false,
+                    },
+                ],
+                relations: vec![Relation {
+                    ref_table: "fruit".to_owned(),
+                    columns: vec![],
+                    ref_columns: vec![],
+                    rel_type: RelationType::HasMany,
+                    on_delete: None,
+                    on_update: None,
+                    self_referencing: false,
+                    num_suffix: 0,
+                }],
+                conjunct_relations: vec![ConjunctRelation {
+                    via: "cake_filling".to_owned(),
+                    to: "filling".to_owned(),
+                }],
+                primary_keys: vec![PrimaryKey {
+                    name: "id".to_owned(),
+                }],
+            },
         ]
     }
 
@@ -1057,21 +1144,25 @@ mod tests {
     #[test]
     fn test_gen_expanded_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 6] = [
+        const ENTITY_FILES: [&str; 8] = [
             include_str!("../../tests/expanded/cake.rs"),
             include_str!("../../tests/expanded/cake_filling.rs"),
             include_str!("../../tests/expanded/filling.rs"),
             include_str!("../../tests/expanded/fruit.rs"),
             include_str!("../../tests/expanded/vendor.rs"),
             include_str!("../../tests/expanded/rust_keyword.rs"),
+            include_str!("../../tests/expanded/cake_with_float.rs"),
+            include_str!("../../tests/expanded/cake_with_double.rs"),
         ];
-        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 6] = [
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 8] = [
             include_str!("../../tests/expanded_with_schema_name/cake.rs"),
             include_str!("../../tests/expanded_with_schema_name/cake_filling.rs"),
             include_str!("../../tests/expanded_with_schema_name/filling.rs"),
             include_str!("../../tests/expanded_with_schema_name/fruit.rs"),
             include_str!("../../tests/expanded_with_schema_name/vendor.rs"),
             include_str!("../../tests/expanded_with_schema_name/rust_keyword.rs"),
+            include_str!("../../tests/expanded_with_schema_name/cake_with_float.rs"),
+            include_str!("../../tests/expanded_with_schema_name/cake_with_double.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
@@ -1133,21 +1224,25 @@ mod tests {
     #[test]
     fn test_gen_compact_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 6] = [
+        const ENTITY_FILES: [&str; 8] = [
             include_str!("../../tests/compact/cake.rs"),
             include_str!("../../tests/compact/cake_filling.rs"),
             include_str!("../../tests/compact/filling.rs"),
             include_str!("../../tests/compact/fruit.rs"),
             include_str!("../../tests/compact/vendor.rs"),
             include_str!("../../tests/compact/rust_keyword.rs"),
+            include_str!("../../tests/compact/cake_with_float.rs"),
+            include_str!("../../tests/compact/cake_with_double.rs"),
         ];
-        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 6] = [
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 8] = [
             include_str!("../../tests/compact_with_schema_name/cake.rs"),
             include_str!("../../tests/compact_with_schema_name/cake_filling.rs"),
             include_str!("../../tests/compact_with_schema_name/filling.rs"),
             include_str!("../../tests/compact_with_schema_name/fruit.rs"),
             include_str!("../../tests/compact_with_schema_name/vendor.rs"),
             include_str!("../../tests/compact_with_schema_name/rust_keyword.rs"),
+            include_str!("../../tests/compact_with_schema_name/cake_with_float.rs"),
+            include_str!("../../tests/compact_with_schema_name/cake_with_double.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());

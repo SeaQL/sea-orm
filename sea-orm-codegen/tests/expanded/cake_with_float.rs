@@ -6,53 +6,50 @@ use sea_orm::entity::prelude::*;
 pub struct Entity;
 
 impl EntityName for Entity {
-    fn schema_name(&self) -> Option< &str > {
-        Some("schema_name")
-    }
-
     fn table_name(&self) -> &str {
-        "_cake_filling_"
+        "cake_with_float"
     }
 }
 
-#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Eq)]
+#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
-    pub cake_id: i32,
-    pub filling_id: i32,
+    pub id: i32,
+    pub name: Option<String> ,
+    pub price: Option<f32> ,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
-    CakeId,
-    FillingId,
+    Id,
+    Name,
+    Price,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
 pub enum PrimaryKey {
-    CakeId,
-    FillingId,
+    Id,
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
-    type ValueType = (i32, i32);
+    type ValueType = i32;
 
     fn auto_increment() -> bool {
-        false
+        true
     }
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
-    Cake,
-    Filling,
+    Fruit,
 }
 
 impl ColumnTrait for Column {
     type EntityName = Entity;
     fn def(&self) -> ColumnDef {
         match self {
-            Self::CakeId => ColumnType::Integer.def(),
-            Self::FillingId => ColumnType::Integer.def(),
+            Self::Id => ColumnType::Integer.def(),
+            Self::Name => ColumnType::Text.def().null(),
+            Self::Price => ColumnType::Float.def().null(),
         }
     }
 }
@@ -60,27 +57,23 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Cake => Entity::belongs_to(super::cake::Entity)
-                .from(Column::CakeId)
-                .to(super::cake::Column::Id)
-                .into(),
-            Self::Filling => Entity::belongs_to(super::filling::Entity)
-                .from(Column::FillingId)
-                .to(super::filling::Column::Id)
-                .into(),
+            Self::Fruit => Entity::has_many(super::fruit::Entity).into(),
         }
     }
 }
 
-impl Related<super::cake::Entity> for Entity {
+impl Related<super::fruit::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Cake.def()
+        Relation::Fruit.def()
     }
 }
 
 impl Related<super::filling::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Filling.def()
+        super::cake_filling::Relation::Filling.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::cake_filling::Relation::CakeWithFloat.def().rev())
     }
 }
 
