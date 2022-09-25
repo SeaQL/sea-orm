@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.10.0 - Pending
 
+### New Features
+* Support `distinct` & `distinct_on` expression https://github.com/SeaQL/sea-orm/pull/902
+* Generate entity files as a library or module https://github.com/SeaQL/sea-orm/pull/953
+* Generate a new migration template with name prefix of unix timestamp https://github.com/SeaQL/sea-orm/pull/947
+
 ### Breaking changes
 
 * Replaced `usize` with `u64` in `PaginatorTrait` https://github.com/SeaQL/sea-orm/pull/789
@@ -17,7 +22,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Generate migration in modules https://github.com/SeaQL/sea-orm/pull/933
 * Added `acquire_timeout` on `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/897
 * Generate `DeriveRelation` on empty `Relation` enum https://github.com/SeaQL/sea-orm/pull/1019
-* Support `distinct` & `distinct_on` expression https://github.com/SeaQL/sea-orm/pull/902
+* `migrate fresh` command will drop all PostgreSQL types https://github.com/SeaQL/sea-orm/pull/864, https://github.com/SeaQL/sea-orm/pull/991
+* Generate entity derive `Eq` if possible https://github.com/SeaQL/sea-orm/pull/988
+
 
 ## 0.9.2 - 2022-08-20
 
