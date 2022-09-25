@@ -52,6 +52,14 @@ pub enum MigrateSubcommands {
             help = "Name of the new migration"
         )]
         migration_name: String,
+
+        #[clap(
+            action,
+            short,
+            long,
+            help = "Generate migration file based on Utc time instead of Local time"
+        )]
+        universal_time: bool,
     },
     #[clap(about = "Drop all tables from the database, then reapply all migrations")]
     Fresh,
