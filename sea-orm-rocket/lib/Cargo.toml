@@ -24,3 +24,7 @@ version = "0.5.0-rc.1"
 version = "0.5.0-rc.1"
 default-features = false
 features = ["json"]
+
+[dependencies.rocket_okapi]
+version = "0.8.0-rc.2"
+default-features = false
