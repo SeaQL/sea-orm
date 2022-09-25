@@ -166,7 +166,7 @@ impl Entity {
 
 #[cfg(test)]
 mod tests {
-    use quote::format_ident;
+    use quote::{format_ident, quote};
     use sea_query::{ColumnType, ForeignKeyAction};
 
     use crate::{Column, DateTimeCrate, Entity, PrimaryKey, Relation, RelationType};
@@ -438,7 +438,8 @@ mod tests {
     #[test]
     fn test_get_eq_needed() {
         let entity = setup();
+        let expected = quote! {, Eq};
 
-        println!("entity: {:?}", entity.get_eq_needed());
+        assert_eq!(entity.get_eq_needed().to_string(), expected.to_string());
     }
 }
