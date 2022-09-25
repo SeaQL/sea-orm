@@ -9,8 +9,8 @@ use rocket::{error, info_, Build, Ignite, Phase, Rocket, Sentinel};
 use rocket::figment::providers::Serialized;
 use rocket::yansi::Paint;
 
-use rocket_okapi::request::{OpenApiFromRequest,RequestHeaderInput};
 use rocket_okapi::gen::OpenApiGenerator;
+use rocket_okapi::request::{OpenApiFromRequest, RequestHeaderInput};
 
 use crate::Pool;
 
@@ -208,8 +208,12 @@ impl<'a, D: Database> Connection<'a, D> {
     }
 }
 
-impl <'r, D: Database> OpenApiFromRequest<'r> for Connection<'r, D> {
-    fn from_request_input(_gen: &mut OpenApiGenerator, _name: String, _required: bool) -> rocket_okapi::Result<RequestHeaderInput> {
+impl<'r, D: Database> OpenApiFromRequest<'r> for Connection<'r, D> {
+    fn from_request_input(
+        _gen: &mut OpenApiGenerator,
+        _name: String,
+        _required: bool,
+    ) -> rocket_okapi::Result<RequestHeaderInput> {
         Ok(RequestHeaderInput::None)
     }
 }
