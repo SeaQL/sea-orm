@@ -191,6 +191,15 @@ pub enum GenerateSubcommands {
             help = "The datetime crate to use for generating entities."
         )]
         date_time_crate: DateTimeCrate,
+
+        #[clap(
+            action,
+            long,
+            short = 'l',
+            default_value = "false",
+            help = "Generate index file as `lib.rs` instead of `mod.rs`."
+        )]
+        lib: bool,
     },
 }
 
