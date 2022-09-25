@@ -10,14 +10,8 @@ pub struct Model {
     pub name: String,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        panic!("No RelationDef")
-    }
-}
 
 impl Related<super::cake::Entity> for Entity {
     fn to() -> RelationDef {
