@@ -53,7 +53,7 @@ actix-rt = { version = "2.2.0" }
 maplit = { version = "^1" }
 rust_decimal_macros = { version = "^1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-sea-orm = { path = ".", features = ["mock", "debug-print"] }
+sea-orm = { path = ".", features = ["mock", "debug-print", "tests-cfg"] }
 pretty_assertions = { version = "^0.7" }
 time = { version = "^0.3", features = ["macros"] }
 
@@ -94,3 +94,4 @@ runtime-actix-rustls = ["sqlx/runtime-actix-rustls", "runtime-actix"]
 runtime-tokio = []
 runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls", "runtime-tokio"]
 runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls", "runtime-tokio"]
+tests-cfg = []
