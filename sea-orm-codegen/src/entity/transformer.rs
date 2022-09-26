@@ -136,8 +136,7 @@ impl EntityTransformer {
                     continue;
                 }
                 let is_conjunct_relation = entity.primary_keys.len() == entity.columns.len()
-                    && rel.columns.len() == 2
-                    && rel.ref_columns.len() == 2
+                    && entity.relations.len() == 2
                     && entity.primary_keys.len() == 2;
                 match is_conjunct_relation {
                     true => {
