@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * `migrate fresh` command will drop all PostgreSQL types https://github.com/SeaQL/sea-orm/pull/864, https://github.com/SeaQL/sea-orm/pull/991
 * Generate entity derive `Eq` if possible https://github.com/SeaQL/sea-orm/pull/988
 
+### House keeping
+
+* Documentation grammar fixes https://github.com/SeaQL/sea-orm/pull/1050
 
 ## 0.9.2 - 2022-08-20
 
