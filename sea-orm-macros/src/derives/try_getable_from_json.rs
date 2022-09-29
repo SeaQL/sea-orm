@@ -14,7 +14,7 @@ pub fn expand_derive_from_json_query_result(ident: Ident) -> syn::Result<TokenSt
         }
 
         #[automatically_derived]
-        impl sea_query::ValueType for #ident {
+        impl sea_orm::sea_query::ValueType for #ident {
             fn try_from(v: sea_orm::Value) -> Result<Self, sea_orm::sea_query::ValueTypeErr> {
                 match v {
                     sea_orm::Value::Json(Some(json)) => Ok(
