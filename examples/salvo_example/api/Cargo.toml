@@ -10,6 +10,6 @@ salvo = { version = "0.27", features = ["affix", "serve-static"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = { version = "1", features = ["derive"] }
 tera = "1.8.0"
-dotenv = "0.15"
+dotenvy = "0.15"
 entity = { path = "../entity" }
 migration = { path = "../migration" }

@@ -14,7 +14,7 @@ actix-files = "0.5"
 futures = { version = "^0.3" }
 futures-util = { version = "^0.3" }
 tera = "1.8.0"
-dotenv = "0.15"
+dotenvy = "0.15"
 listenfd = "0.3.3"
 serde = "1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

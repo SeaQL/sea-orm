@@ -1,5 +1,5 @@
 use clap::Parser;
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use std::{error::Error, fmt::Display, process::exit};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
