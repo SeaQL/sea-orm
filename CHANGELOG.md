@@ -5,11 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.9.3 - Pending
+## 0.9.3 - 2022-09-30
+
+### Enhancements
+
+* `fn column()` also handle enum type https://github.com/SeaQL/sea-orm/pull/973
+* Generate migration in modules https://github.com/SeaQL/sea-orm/pull/933
+* Generate `DeriveRelation` on empty `Relation` enum https://github.com/SeaQL/sea-orm/pull/1019
+* Documentation grammar fixes https://github.com/SeaQL/sea-orm/pull/1050
 
 ### Bug fixes
 
 * Implement `IntoActiveValue` for `time` types https://github.com/SeaQL/sea-orm/pull/1041
+* Fixed module import for `FromJsonQueryResult` derive macro https://github.com/SeaQL/sea-orm/pull/1081
 
 ## 0.9.2 - 2022-08-20
 
