@@ -16,3 +16,9 @@ Run mock test on the core logic crate:
 cd core
 cargo test --features mock
 ```
+
+# Rocket Okapi example (Api documentation with Okapi library)
+1. You can go to ```http://localhost:8000/swagger-ui/index.html``` to see the api documentation about this demo project.
+   ![swagger](swagger.png)
+2. You can navigate to ```http://localhost:8000/rapidoc/index.html``` to see the rapidoc format for api documentation 
+   ![rapidoc](rapidoc.png)
