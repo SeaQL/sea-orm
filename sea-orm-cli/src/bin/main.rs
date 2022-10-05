@@ -1,5 +1,5 @@
 use clap::StructOpt;
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use sea_orm_cli::{handle_error, run_generate_command, run_migrate_command, Cli, Commands};
 
 #[async_std::main]

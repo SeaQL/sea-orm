@@ -13,7 +13,7 @@ actix-rt = "2.7"
 actix-service = "2"
 actix-web = "4"
 tera = "1.15.0"
-dotenv = "0.15"
+dotenvy = "0.15"
 listenfd = "0.5"
 serde = "1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

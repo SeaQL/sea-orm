@@ -168,7 +168,7 @@ async fn start() -> std::io::Result<()> {
     tracing_subscriber::fmt::init();
 
     // get env vars
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().ok();
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
     let host = env::var("HOST").expect("HOST is not set in .env file");
     let port = env::var("PORT").expect("PORT is not set in .env file");
