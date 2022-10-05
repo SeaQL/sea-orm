@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### House keeping
 
 * Documentation grammar fixes https://github.com/SeaQL/sea-orm/pull/1050
+* Replace `dotenv` with `dotenvy` in examples https://github.com/SeaQL/sea-orm/pull/1085
 
 ## 0.9.2 - 2022-08-20
 
