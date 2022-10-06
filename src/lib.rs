@@ -323,7 +323,7 @@ pub mod query;
 /// Holds types that defines the schemas of an Entity
 pub mod schema;
 #[doc(hidden)]
-#[cfg(feature = "macros")]
+#[cfg(all(feature = "macros", feature = "tests-cfg"))]
 pub mod tests_cfg;
 mod util;
 
