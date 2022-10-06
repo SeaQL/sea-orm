@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## 0.10.0 - Pending
 
 ### New Features
+* Better error types (carrying SQLx Error) https://github.com/SeaQL/sea-orm/pull/1002
 * [sea-orm-cli] Generate entity files as a library or module https://github.com/SeaQL/sea-orm/pull/953
 * [sea-orm-cli] Generate a new migration template with name prefix of unix timestamp https://github.com/SeaQL/sea-orm/pull/947
 * [sea-orm-cli] Generate migration in modules https://github.com/SeaQL/sea-orm/pull/933
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Breaking changes
 
 * Replaced `usize` with `u64` in `PaginatorTrait` https://github.com/SeaQL/sea-orm/pull/789
+* Type signature of `DbErr` changed as a result of https://github.com/SeaQL/sea-orm/pull/1002
 
 ### House keeping
 
