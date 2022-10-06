@@ -8,18 +8,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## 0.10.0 - Pending
 
 ### New Features
-* Support `distinct` & `distinct_on` expression https://github.com/SeaQL/sea-orm/pull/902
-* Generate entity files as a library or module https://github.com/SeaQL/sea-orm/pull/953
-* Generate a new migration template with name prefix of unix timestamp https://github.com/SeaQL/sea-orm/pull/947
+* [sea-orm-cli] Generate entity files as a library or module https://github.com/SeaQL/sea-orm/pull/953
+* [sea-orm-cli] Generate a new migration template with name prefix of unix timestamp https://github.com/SeaQL/sea-orm/pull/947
+* [sea-orm-cli] Generate migration in modules https://github.com/SeaQL/sea-orm/pull/933
+* [sea-orm-cli] Generate `DeriveRelation` on empty `Relation` enum https://github.com/SeaQL/sea-orm/pull/1019
+* [sea-orm-cli] Generate entity derive `Eq` if possible https://github.com/SeaQL/sea-orm/pull/988
 
 ### Enhancements
 
+* Support `distinct` & `distinct_on` expression https://github.com/SeaQL/sea-orm/pull/902
 * `fn column()` also handle enum type https://github.com/SeaQL/sea-orm/pull/973
-* Generate migration in modules https://github.com/SeaQL/sea-orm/pull/933
 * Added `acquire_timeout` on `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/897
-* Generate `DeriveRelation` on empty `Relation` enum https://github.com/SeaQL/sea-orm/pull/1019
 * `migrate fresh` command will drop all PostgreSQL types https://github.com/SeaQL/sea-orm/pull/864, https://github.com/SeaQL/sea-orm/pull/991
-* Generate entity derive `Eq` if possible https://github.com/SeaQL/sea-orm/pull/988
 
 ### Bug fixes
 
