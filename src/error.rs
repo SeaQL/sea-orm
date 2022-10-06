@@ -18,6 +18,15 @@ pub enum DbErr {
         /// TryError
         source: Box<dyn std::error::Error + Send + Sync>,
     },
+    /// There was a problem with the database connection
+    #[error("Connection Error: {0}")]
+    Conn(#[source] RuntimeErr),
+    /// An operation did not execute successfully
+    #[error("Execution Error: {0}")]
+    Exec(#[source] RuntimeErr),
+    /// An error occurred while performing a query
+    #[error("Query Error: {0}")]
+    Query(#[source] RuntimeErr),
     /// Type error: the specified type cannot be converted from u64. This is not a runtime error.
     #[error("Type '{0}' cannot be converted from u64")]
     ConvertFromU64(&'static str),
@@ -28,15 +37,6 @@ pub enum DbErr {
     /// if the record has been correctly updated, otherwise this error will occur
     #[error("Failed to get primary key from model")]
     UpdateGetPrimeryKey,
-    /// There was a problem with the database connection
-    #[error("Connection Error: {0}")]
-    Conn(#[source] RuntimeErr),
-    /// An operation did not execute successfully
-    #[error("Execution Error: {0}")]
-    Exec(#[source] RuntimeErr),
-    /// An error occurred while performing a query
-    #[error("Query Error: {0}")]
-    Query(#[source] RuntimeErr),
     /// The record was not found in the database
     #[error("RecordNotFound Error: {0}")]
     RecordNotFound(String),
