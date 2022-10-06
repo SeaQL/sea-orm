@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Documentation grammar fixes https://github.com/SeaQL/sea-orm/pull/1050
 * Replace `dotenv` with `dotenvy` in examples https://github.com/SeaQL/sea-orm/pull/1085
+* Exclude test_cfg module from SeaORM https://github.com/SeaQL/sea-orm/pull/1077
 
 ## 0.9.3 - 2022-09-30
 
