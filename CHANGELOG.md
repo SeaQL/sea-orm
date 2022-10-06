@@ -12,10 +12,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Generate entity files as a library or module https://github.com/SeaQL/sea-orm/pull/953
 * Generate a new migration template with name prefix of unix timestamp https://github.com/SeaQL/sea-orm/pull/947
 
-### Breaking changes
-
-* Replaced `usize` with `u64` in `PaginatorTrait` https://github.com/SeaQL/sea-orm/pull/789
-
 ### Enhancements
 
 * `fn column()` also handle enum type https://github.com/SeaQL/sea-orm/pull/973
@@ -24,6 +20,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Generate `DeriveRelation` on empty `Relation` enum https://github.com/SeaQL/sea-orm/pull/1019
 * `migrate fresh` command will drop all PostgreSQL types https://github.com/SeaQL/sea-orm/pull/864, https://github.com/SeaQL/sea-orm/pull/991
 * Generate entity derive `Eq` if possible https://github.com/SeaQL/sea-orm/pull/988
+
+### Bug fixes
+
+* Trim spaces when paginating raw SQL https://github.com/SeaQL/sea-orm/pull/1094
+
+### Breaking changes
+
+* Replaced `usize` with `u64` in `PaginatorTrait` https://github.com/SeaQL/sea-orm/pull/789
 
 ### House keeping
 
