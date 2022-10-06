@@ -56,6 +56,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [MoonRamp](https://github.com/MoonRamp/MoonRamp) | A free and open source crypto payment gateway | DB: MySQL, Postgres, SQLite
 - [url_shortener](https://github.com/michidk/url_shortener) | A simple self-hosted URL shortener written in Rust | DB: MySQL, Postgres, SQLite
 - [RGB Lib](https://github.com/RGB-Tools/rgb-lib) | A library to manage wallets for RGB assets | DB: MySQL, Postgres, SQLite
+- [RCloud](https://github.com/p0rtL6/RCloud) | A self-hosted lightweight cloud drive alternative
 
 ## Learning Resources
 
