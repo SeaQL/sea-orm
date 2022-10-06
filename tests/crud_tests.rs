@@ -35,5 +35,6 @@ pub async fn create_entities(db: &DatabaseConnection) {
     test_update_deleted_customer(db).await;
 
     test_delete_cake(db).await;
+    test_cake_error_sqlx(db).await;
     test_delete_bakery(db).await;
 }
