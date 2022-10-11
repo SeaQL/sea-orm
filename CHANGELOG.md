@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Added `acquire_timeout` on `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/897
 * `migrate fresh` command will drop all PostgreSQL types https://github.com/SeaQL/sea-orm/pull/864, https://github.com/SeaQL/sea-orm/pull/991
 * Better compile error for entity without primary key https://github.com/SeaQL/sea-orm/pull/1020
+* Added blanket implementations of `IntoActiveValue` for `Option` values https://github.com/SeaQL/sea-orm/pull/833
 
 ### Bug fixes
 
