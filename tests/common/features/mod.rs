@@ -2,6 +2,7 @@ pub mod active_enum;
 pub mod active_enum_child;
 pub mod applog;
 pub mod byte_primary_key;
+pub mod custom_active_model;
 pub mod insert_default;
 pub mod json_struct;
 pub mod json_vec;

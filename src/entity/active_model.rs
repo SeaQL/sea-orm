@@ -641,29 +641,35 @@ where
     fn into_active_value(self) -> ActiveValue<V>;
 }
 
+impl<V> IntoActiveValue<Option<V>> for Option<V>
+where
+    V: IntoActiveValue<V> + Into<Value> + Nullable,
+{
+    fn into_active_value(self) -> ActiveValue<Option<V>> {
+        match self {
+            Some(value) => Set(Some(value)),
+            None => NotSet,
+        }
+    }
+}
+
+impl<V> IntoActiveValue<Option<V>> for Option<Option<V>>
+where
+    V: IntoActiveValue<V> + Into<Value> + Nullable,
+{
+    fn into_active_value(self) -> ActiveValue<Option<V>> {
+        match self {
+            Some(value) => Set(value),
+            None => NotSet,
+        }
+    }
+}
+
 macro_rules! impl_into_active_value {
     ($ty: ty) => {
         impl IntoActiveValue<$ty> for $ty {
             fn into_active_value(self) -> ActiveValue<$ty> {
                 Set(self)
-            }
-        }
-
-        impl IntoActiveValue<Option<$ty>> for Option<$ty> {
-            fn into_active_value(self) -> ActiveValue<Option<$ty>> {
-                match self {
-                    Some(value) => Set(Some(value)),
-                    None => NotSet,
-                }
-            }
-        }
-
-        impl IntoActiveValue<Option<$ty>> for Option<Option<$ty>> {
-            fn into_active_value(self) -> ActiveValue<Option<$ty>> {
-                match self {
-                    Some(value) => Set(value),
-                    None => NotSet,
-                }
             }
         }
     };
