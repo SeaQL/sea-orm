@@ -202,7 +202,7 @@ impl SqlxPostgresPoolConnection {
     }
 }
 
-impl SqlxPostgresConnector {
+impl SqlxPostgresPoolConnection {
     /// Retrieves the internal SQLx PostgreSQL connection pool.
     pub fn pool(&self) -> &PgPool {
         &self.pool
