@@ -202,6 +202,13 @@ impl SqlxPostgresPoolConnection {
     }
 }
 
+impl SqlxPostgresConnector {
+    /// Retrieves the internal SQLx PostgreSQL connection pool.
+    pub fn pool(&self) -> &PgPool {
+        &self.pool
+    }
+}
+
 impl From<PgRow> for QueryResult {
     fn from(row: PgRow) -> QueryResult {
         QueryResult {
