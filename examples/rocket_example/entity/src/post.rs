@@ -1,10 +1,7 @@
 use rocket::serde::{Deserialize, Serialize};
-use rocket_okapi::okapi::schemars::{self, JsonSchema};
 use sea_orm::entity::prelude::*;
 
-#[derive(
-    Clone, Debug, PartialEq, Eq, DeriveEntityModel, Deserialize, Serialize, FromForm, JsonSchema,
-)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Deserialize, Serialize, FromForm)]
 #[serde(crate = "rocket::serde")]
 #[sea_orm(table_name = "posts")]
 pub struct Model {

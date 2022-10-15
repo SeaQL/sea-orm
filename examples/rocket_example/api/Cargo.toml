@@ -21,18 +21,7 @@ serde_json = { version = "^1" }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
 tokio = "1.20.0"
-serde = "1.0"
-dto = { path = "../dto" }
 
 [dependencies.sea-orm-rocket]
 path = "../../../sea-orm-rocket/lib" # remove this line in your own project and use the git line
 # git = "https://github.com/SeaQL/sea-orm"
-
-[dependencies.rocket_okapi]
-version = "0.8.0-rc.2"
-features = ["swagger", "rapidoc","rocket_db_pools"]
-
-[dependencies.rocket_cors]
-git = "https://github.com/lawliet89/rocket_cors.git"
-rev = "54fae070"
-default-features = false
