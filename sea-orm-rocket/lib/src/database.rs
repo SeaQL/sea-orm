@@ -9,7 +9,9 @@ use rocket::{error, info_, Build, Ignite, Phase, Rocket, Sentinel};
 use rocket::figment::providers::Serialized;
 use rocket::yansi::Paint;
 
+#[cfg(feature = "rocket_okapi")]
 use rocket_okapi::gen::OpenApiGenerator;
+#[cfg(feature = "rocket_okapi")]
 use rocket_okapi::request::{OpenApiFromRequest, RequestHeaderInput};
 
 use crate::Pool;
@@ -208,6 +210,7 @@ impl<'a, D: Database> Connection<'a, D> {
     }
 }
 
+#[cfg(feature = "rocket_okapi")]
 impl<'r, D: Database> OpenApiFromRequest<'r> for Connection<'r, D> {
     fn from_request_input(
         _gen: &mut OpenApiGenerator,
