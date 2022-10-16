@@ -2,7 +2,8 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::entity::prelude::*;
+use sea_orm::{entity::prelude::*, FromQueryResult};
+use serde_json::json;
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -197,6 +198,39 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(
         cursor.last(3).all(db).await?,
         vec![Model { id: 6 }, Model { id: 7 }]
+    );
+
+    // Fetch custom struct
+
+    #[derive(FromQueryResult, Debug, PartialEq)]
+    struct Row {
+        id: i32,
+    }
+
+    let mut cursor = cursor.into_model::<Row>();
+
+    assert_eq!(
+        cursor.first(2).all(db).await?,
+        vec![Row { id: 6 }, Row { id: 7 }]
+    );
+
+    assert_eq!(
+        cursor.first(3).all(db).await?,
+        vec![Row { id: 6 }, Row { id: 7 }]
+    );
+
+    // Fetch JSON value
+
+    let mut cursor = cursor.into_json();
+
+    assert_eq!(
+        cursor.first(2).all(db).await?,
+        vec![json!({ "id": 6 }), json!({ "id": 7 })]
+    );
+
+    assert_eq!(
+        cursor.first(3).all(db).await?,
+        vec![json!({ "id": 6 }), json!({ "id": 7 })]
     );
 
     Ok(())
