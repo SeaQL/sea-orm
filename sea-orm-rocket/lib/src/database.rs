@@ -10,9 +10,10 @@ use rocket::figment::providers::Serialized;
 use rocket::yansi::Paint;
 
 #[cfg(feature = "rocket_okapi")]
-use rocket_okapi::gen::OpenApiGenerator;
-#[cfg(feature = "rocket_okapi")]
-use rocket_okapi::request::{OpenApiFromRequest, RequestHeaderInput};
+use rocket_okapi::{
+    gen::OpenApiGenerator,
+    request::{OpenApiFromRequest, RequestHeaderInput},
+};
 
 use crate::Pool;
 
