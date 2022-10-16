@@ -27,6 +27,8 @@ pub async fn run_generate_command(
             with_copy_enums,
             date_time_crate,
             lib,
+            derives,
+            attributes,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -169,6 +171,8 @@ pub async fn run_generate_command(
             let writer_context = EntityWriterContext::new(
                 expanded_format,
                 WithSerde::from_str(&with_serde).unwrap(),
+                derives,
+                attributes,
                 with_copy_enums,
                 date_time_crate.into(),
                 schema_name,
