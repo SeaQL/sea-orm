@@ -71,7 +71,7 @@ default = [
 ]
 macros = ["sea-orm-macros"]
 mock = []
-with-json = ["serde_json", "sea-query/with-json", "chrono/serde", "sea-query-binder?/with-json", "sqlx?/json"]
+with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "time?/serde", "sea-query-binder?/with-json", "sqlx?/json"]
 with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-binder?/with-chrono", "sqlx?/chrono"]
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-binder?/with-rust_decimal", "sqlx?/decimal"]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
