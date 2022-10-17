@@ -52,7 +52,22 @@ impl SqlxPostgresConnector {
         } else {
             opt.log_statements(options.sqlx_logging_level);
         }
-        match options.pool_options().connect_with(opt).await {
+        let set_search_path_sql = options
+            .schema_search_path
+            .as_ref()
+            .map(|schema| format!("SET search_path = '{}'", schema));
+        let mut pool_options = options.pool_options();
+        if let Some(sql) = set_search_path_sql {
+            pool_options = pool_options.after_connect(move |conn, _| {
+                let sql = sql.clone();
+                Box::pin(async move {
+                    sqlx::Executor::execute(conn, sql.as_str())
+                        .await
+                        .map(|_| ())
+                })
+            });
+        }
+        match pool_options.connect_with(opt).await {
             Ok(pool) => Ok(DatabaseConnection::SqlxPostgresPoolConnection(
                 SqlxPostgresPoolConnection {
                     pool,

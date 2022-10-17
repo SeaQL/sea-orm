@@ -13,6 +13,8 @@ use crate::MigrateSubcommands;
 pub fn run_migrate_command(
     command: Option<MigrateSubcommands>,
     migration_dir: &str,
+    database_schema: Option<String>,
+    database_url: Option<String>,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
     match command {
@@ -41,20 +43,20 @@ pub fn run_migrate_command(
                 format!("{}/Cargo.toml", migration_dir)
             };
             // Construct the arguments that will be supplied to `cargo` command
-            let mut args = vec![
-                "run",
-                "--manifest-path",
-                manifest_path.as_str(),
-                "--",
-                subcommand,
-            ];
+            let mut args = vec!["run", "--manifest-path", &manifest_path, "--", subcommand];
 
             let mut num: String = "".to_string();
             if let Some(steps) = steps {
                 num = steps.to_string();
             }
             if !num.is_empty() {
-                args.extend(["-n", num.as_str()])
+                args.extend(["-n", &num])
+            }
+            if let Some(database_url) = &database_url {
+                args.extend(["-u", database_url]);
+            }
+            if let Some(database_schema) = &database_schema {
+                args.extend(["-s", database_schema]);
             }
             if verbose {
                 args.push("-v");
