@@ -138,7 +138,7 @@ where
             }
         }
         self.query.columns(columns);
-        self.query.exprs_panic(values);
+        self.query.values_panic(values);
         self
     }
 

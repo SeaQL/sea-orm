@@ -73,6 +73,10 @@ impl<T> sea_orm::sea_query::ValueType for AccountId<T> {
         stringify!(AccountId).to_owned()
     }
 
+    fn array_type() -> sea_orm::sea_query::ArrayType {
+        sea_orm::sea_query::ArrayType::Uuid
+    }
+
     fn column_type() -> sea_orm::sea_query::ColumnType {
         sea_orm::sea_query::ColumnType::Uuid
     }

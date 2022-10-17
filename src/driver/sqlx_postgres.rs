@@ -1,5 +1,4 @@
 use sea_query::Values;
-use sea_query_binder::SqlxValues;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
@@ -7,6 +6,7 @@ use sqlx::{
     PgPool, Postgres,
 };
 
+use sea_query_binder::SqlxValues;
 use tracing::instrument;
 
 use crate::{

@@ -1,10 +1,10 @@
 use crate::{
-    unpack_table_ref, ActiveEnum, ColumnDef, ColumnTrait, ColumnType, DbBackend, EntityTrait,
-    Identity, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
+    unpack_table_ref, ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, Identity,
+    Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
-    ForeignKeyCreateStatement, Iden, Index, IndexCreateStatement, TableCreateStatement,
+    ColumnDef, ForeignKeyCreateStatement, Iden, Index, IndexCreateStatement, TableCreateStatement,
 };
 
 impl Schema {

@@ -72,6 +72,10 @@ macro_rules! into_sea_query_value {
                 stringify!($newtype).to_owned()
             }
 
+            fn array_type() -> sea_orm::sea_query::ArrayType {
+                sea_orm::sea_query::ArrayType::$name
+            }
+
             fn column_type() -> sea_orm::sea_query::ColumnType {
                 sea_orm::sea_query::ColumnType::$name
             }

@@ -335,6 +335,10 @@ impl ActiveEnum {
                     <<Self as sea_orm::ActiveEnum>::Value as sea_orm::sea_query::ValueType>::type_name()
                 }
 
+                fn array_type() -> sea_orm::sea_query::ArrayType {
+                    unimplemented!("Array of Enum is not supported")
+                }
+
                 fn column_type() -> sea_orm::sea_query::ColumnType {
                     <Self as sea_orm::ActiveEnum>::db_type()
                         .get_column_type()

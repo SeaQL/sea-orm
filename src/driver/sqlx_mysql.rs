@@ -2,11 +2,11 @@ use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
-    mysql::{MySqlArguments, MySqlConnectOptions, MySqlQueryResult, MySqlRow},
+    mysql::{MySqlConnectOptions, MySqlQueryResult, MySqlRow},
     MySql, MySqlPool,
 };
 
-use sea_query_binder::{SqlxBinder, SqlxValues};
+use sea_query_binder::SqlxValues;
 use tracing::instrument;
 
 use crate::{

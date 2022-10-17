@@ -14,7 +14,10 @@ use sea_query::{DynIden, Nullable, Value, ValueType};
 /// > See [DeriveActiveEnum](sea_orm_macros::DeriveActiveEnum) for the full specification of macro attributes.
 ///
 /// ```rust
-/// use sea_orm::entity::prelude::*;
+/// use sea_orm::{
+///     entity::prelude::*,
+///     sea_query::{DynIden, SeaRc},
+/// };
 ///
 /// // Using the derive macro
 /// #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
