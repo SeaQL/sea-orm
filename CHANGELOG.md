@@ -14,18 +14,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * [sea-orm-cli] Generate migration in modules https://github.com/SeaQL/sea-orm/pull/933
 * [sea-orm-cli] Generate `DeriveRelation` on empty `Relation` enum https://github.com/SeaQL/sea-orm/pull/1019
 * [sea-orm-cli] Generate entity derive `Eq` if possible https://github.com/SeaQL/sea-orm/pull/988
-* Run migration on any PostgreSQL schema https://github.com/SeaQL/sea-orm/pull/1056
+* [sea-orm-cli] Run migration on any PostgreSQL schema https://github.com/SeaQL/sea-orm/pull/1056
 
 ### Enhancements
 
 * Support `distinct` & `distinct_on` expression https://github.com/SeaQL/sea-orm/pull/902
 * `fn column()` also handle enum type https://github.com/SeaQL/sea-orm/pull/973
 * Added `acquire_timeout` on `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/897
-* `migrate fresh` command will drop all PostgreSQL types https://github.com/SeaQL/sea-orm/pull/864, https://github.com/SeaQL/sea-orm/pull/991
+* [sea-orm-cli] `migrate fresh` command will drop all PostgreSQL types https://github.com/SeaQL/sea-orm/pull/864, https://github.com/SeaQL/sea-orm/pull/991
 * Better compile error for entity without primary key https://github.com/SeaQL/sea-orm/pull/1020
 * Added blanket implementations of `IntoActiveValue` for `Option` values https://github.com/SeaQL/sea-orm/pull/833
 * Added `into_model` & `into_json` to `Cursor` https://github.com/SeaQL/sea-orm/pull/1112
 * Added `set_schema_search_path` method to `ConnectOptions` for setting schema search path of PostgreSQL connection https://github.com/SeaQL/sea-orm/pull/1056
+* Serialize `time` types as `serde_json::Value` https://github.com/SeaQL/sea-orm/pull/1042
 
 ### Bug fixes
 
