@@ -41,8 +41,8 @@ you should provide the directory of that submodule.",
             long,
             env = "DATABASE_SCHEMA",
             long_help = "Database schema\n \
-                        - For MySQL, this argument is ignored.\n \
-                        - For PostgreSQL, this argument is optional with default value 'public'."
+                        - For MySQL and SQLite, this argument is ignored.\n \
+                        - For PostgreSQL, this argument is optional with default value 'public'.\n"
         )]
         database_schema: Option<String>,
 
