@@ -57,6 +57,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [url_shortener](https://github.com/michidk/url_shortener) | A simple self-hosted URL shortener written in Rust | DB: MySQL, Postgres, SQLite
 - [RGB Lib](https://github.com/RGB-Tools/rgb-lib) | A library to manage wallets for RGB assets | DB: MySQL, Postgres, SQLite
 - [RCloud](https://github.com/p0rtL6/RCloud) | A self-hosted lightweight cloud drive alternative
+- [Music Player](https://github.com/tsirysndr/music-player) | An extensible music server written in Rust 🚀🎵✨ | DB: SQLite
 
 ## Learning Resources
 
