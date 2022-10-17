@@ -34,6 +34,7 @@
 //!
 //! + [Getting Started](https://www.sea-ql.org/SeaORM/docs/index)
 //! + [Step-by-step Tutorials](https://www.sea-ql.org/sea-orm-tutorial/)
+//! + [Cookbook](https://www.sea-ql.org/sea-orm-cookbook/)
 //! + [Usage Example](https://github.com/SeaQL/sea-orm/tree/master/examples/basic)
 //!
 //! Integration examples
@@ -259,7 +260,7 @@
 //! ## Learn More
 //!
 //! 1. [Design](https://github.com/SeaQL/sea-orm/tree/master/DESIGN.md)
-//! 1. [Architecture](https://github.com/SeaQL/sea-orm/tree/master/ARCHITECTURE.md)
+//! 1. [Architecture](https://www.sea-ql.org/SeaORM/docs/internal-design/architecture/)
 //! 1. [Release Model](https://www.sea-ql.org/SeaORM/blog/2021-08-30-release-model)
 //! 1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 //!
@@ -323,7 +324,7 @@ pub mod query;
 /// Holds types that defines the schemas of an Entity
 pub mod schema;
 #[doc(hidden)]
-#[cfg(feature = "macros")]
+#[cfg(all(feature = "macros", feature = "tests-cfg"))]
 pub mod tests_cfg;
 mod util;
 

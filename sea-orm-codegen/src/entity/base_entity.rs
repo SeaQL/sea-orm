@@ -1,7 +1,10 @@
-use crate::{Column, ConjunctRelation, DateTimeCrate, PrimaryKey, Relation};
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::format_ident;
+use quote::quote;
+use sea_query::ColumnType;
+
+use crate::{Column, ConjunctRelation, DateTimeCrate, PrimaryKey, Relation};
 
 #[derive(Clone, Debug)]
 pub struct Entity {
@@ -145,13 +148,28 @@ impl Entity {
             .map(|con_rel| con_rel.get_to_camel_case())
             .collect()
     }
+
+    pub fn get_eq_needed(&self) -> TokenStream {
+        self.columns
+            .iter()
+            .find(|column| {
+                matches!(
+                    column.col_type,
+                    ColumnType::Float(_) | ColumnType::Double(_)
+                )
+            })
+            // check if float or double exist.
+            // if exist, return nothing
+            .map_or(quote! {, Eq}, |_| quote! {})
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{Column, DateTimeCrate, Entity, PrimaryKey, Relation, RelationType};
-    use quote::format_ident;
+    use quote::{format_ident, quote};
     use sea_query::{ColumnType, ForeignKeyAction};
+
+    use crate::{Column, DateTimeCrate, Entity, PrimaryKey, Relation, RelationType};
 
     fn setup() -> Entity {
         Entity {
@@ -415,5 +433,13 @@ mod tests {
         {
             assert_eq!(elem, entity.conjunct_relations[i].get_to_camel_case());
         }
+    }
+
+    #[test]
+    fn test_get_eq_needed() {
+        let entity = setup();
+        let expected = quote! {, Eq};
+
+        assert_eq!(entity.get_eq_needed().to_string(), expected.to_string());
     }
 }

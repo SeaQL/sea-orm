@@ -7,13 +7,58 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.10.0 - Pending
 
+### New Features
+* Better error types (carrying SQLx Error) https://github.com/SeaQL/sea-orm/pull/1002
+* [sea-orm-cli] Generate entity files as a library or module https://github.com/SeaQL/sea-orm/pull/953
+* [sea-orm-cli] Generate a new migration template with name prefix of unix timestamp https://github.com/SeaQL/sea-orm/pull/947
+* [sea-orm-cli] Generate migration in modules https://github.com/SeaQL/sea-orm/pull/933
+* [sea-orm-cli] Generate `DeriveRelation` on empty `Relation` enum https://github.com/SeaQL/sea-orm/pull/1019
+* [sea-orm-cli] Generate entity derive `Eq` if possible https://github.com/SeaQL/sea-orm/pull/988
+* Run migration on any PostgreSQL schema https://github.com/SeaQL/sea-orm/pull/1056
+
+### Enhancements
+
+* Support `distinct` & `distinct_on` expression https://github.com/SeaQL/sea-orm/pull/902
+* `fn column()` also handle enum type https://github.com/SeaQL/sea-orm/pull/973
+* Added `acquire_timeout` on `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/897
+* `migrate fresh` command will drop all PostgreSQL types https://github.com/SeaQL/sea-orm/pull/864, https://github.com/SeaQL/sea-orm/pull/991
+* Better compile error for entity without primary key https://github.com/SeaQL/sea-orm/pull/1020
+* Added blanket implementations of `IntoActiveValue` for `Option` values https://github.com/SeaQL/sea-orm/pull/833
+* Added `into_model` & `into_json` to `Cursor` https://github.com/SeaQL/sea-orm/pull/1112
+* Added `set_schema_search_path` method to `ConnectOptions` for setting schema search path of PostgreSQL connection https://github.com/SeaQL/sea-orm/pull/1056
+
+### Bug fixes
+
+* Trim spaces when paginating raw SQL https://github.com/SeaQL/sea-orm/pull/1094
+
 ### Breaking changes
 
 * Replaced `usize` with `u64` in `PaginatorTrait` https://github.com/SeaQL/sea-orm/pull/789
+* Type signature of `DbErr` changed as a result of https://github.com/SeaQL/sea-orm/pull/1002
+
+### House keeping
+
+* Documentation grammar fixes https://github.com/SeaQL/sea-orm/pull/1050
+* Replace `dotenv` with `dotenvy` in examples https://github.com/SeaQL/sea-orm/pull/1085
+* Exclude test_cfg module from SeaORM https://github.com/SeaQL/sea-orm/pull/1077
+
+### Integration
+
+* Support `rocket_okapi` https://github.com/SeaQL/sea-orm/pull/1071
+
+## 0.9.3 - 2022-09-30
 
 ### Enhancements
 
 * `fn column()` also handle enum type https://github.com/SeaQL/sea-orm/pull/973
+* Generate migration in modules https://github.com/SeaQL/sea-orm/pull/933
+* Generate `DeriveRelation` on empty `Relation` enum https://github.com/SeaQL/sea-orm/pull/1019
+* Documentation grammar fixes https://github.com/SeaQL/sea-orm/pull/1050
+
+### Bug fixes
+
+* Implement `IntoActiveValue` for `time` types https://github.com/SeaQL/sea-orm/pull/1041
+* Fixed module import for `FromJsonQueryResult` derive macro https://github.com/SeaQL/sea-orm/pull/1081
 
 ## 0.9.2 - 2022-08-20
 
@@ -93,7 +138,7 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 
 * `SelectTwoMany::one()` has been dropped https://github.com/SeaQL/sea-orm/pull/813, you can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity, then use [`ModelTrait::find_related`] on the model.
 * #### Feature flag revamp
-    We now adopt the [weak dependency](https://blog.rust-lang.org/2022/04/07/Rust-1.60.0.html#new-syntax-for-cargo-features) syntax in Cargo. That means the flags `["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid", "sqlx-time"]` are not needed and now removed. Instead, `with-time` will enable `sqlx?/time` only if `sqlx` is already enabled. As a consequence, now the features `with-json`, `with-chrono`, `with-rust_decimal`, `with-uuid`, `with-time` will not be enabled as a side-effects of enabling `sqlx`.
+    We now adopt the [weak dependency](https://blog.rust-lang.org/2022/04/07/Rust-1.60.0.html#new-syntax-for-cargo-features) syntax in Cargo. That means the flags `["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid", "sqlx-time"]` are not needed and now removed. Instead, `with-time` will enable `sqlx?/time` only if `sqlx` is already enabled. As a consequence, now the features `with-json`, `with-chrono`, `with-rust_decimal`, `with-uuid`, `with-time` will not be enabled as a side-effect of enabling `sqlx`.
 
 ## sea-orm-migration 0.8.3
 
@@ -186,11 +231,11 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 
 ### Fixed Issues
 * orm-cli generated incorrect type for #[sea_orm(primary_key)]. Should be u64. Was i64. https://github.com/SeaQL/sea-orm/issues/295
-* how to update dynamicly from json value https://github.com/SeaQL/sea-orm/issues/346
+* how to update dynamically from json value https://github.com/SeaQL/sea-orm/issues/346
 * Make `DatabaseConnection` `Clone` with the default features enabled https://github.com/SeaQL/sea-orm/issues/438
-* Updating mutiple fields in a Model by passing a reference https://github.com/SeaQL/sea-orm/issues/460
+* Updating multiple fields in a Model by passing a reference https://github.com/SeaQL/sea-orm/issues/460
 * SeaORM CLI not adding serde derives to Enums https://github.com/SeaQL/sea-orm/issues/461
-* sea-orm-cli generates wrong datatype for nullable blob https://github.com/SeaQL/sea-orm/issues/490
+* sea-orm-cli generates wrong data type for nullable blob https://github.com/SeaQL/sea-orm/issues/490
 * Support the time crate in addition (instead of?) chrono https://github.com/SeaQL/sea-orm/issues/499
 * PaginatorTrait for SelectorRaw https://github.com/SeaQL/sea-orm/issues/500
 * sea_orm::DatabaseConnection should implement `Clone` by default https://github.com/SeaQL/sea-orm/issues/517
@@ -198,7 +243,7 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 * Datetime fields are not serialized by `.into_json()` on queries https://github.com/SeaQL/sea-orm/issues/530
 * Update / Delete by id https://github.com/SeaQL/sea-orm/issues/552
 * `#[sea_orm(indexed)]` only works for MySQL https://github.com/SeaQL/sea-orm/issues/554
-* `sea-orm-cli generate --with-serde` does not work on Postegresql custom type https://github.com/SeaQL/sea-orm/issues/581
+* `sea-orm-cli generate --with-serde` does not work on Postgresql custom type https://github.com/SeaQL/sea-orm/issues/581
 * `sea-orm-cli generate --expanded-format` panic when postgres table contains enum type https://github.com/SeaQL/sea-orm/issues/614
 * UUID fields are not serialized by `.into_json()` on queries https://github.com/SeaQL/sea-orm/issues/619
 
@@ -241,7 +286,7 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 ## 0.5.0 - 2022-01-01
 
 ### Fixed Issues
-* Why insert, update, etc return a ActiveModel instead of Model? https://github.com/SeaQL/sea-orm/issues/289
+* Why insert, update, etc return an ActiveModel instead of Model? https://github.com/SeaQL/sea-orm/issues/289
 * Rework `ActiveValue` https://github.com/SeaQL/sea-orm/issues/321
 * Some missing ActiveEnum utilities https://github.com/SeaQL/sea-orm/issues/338
 
@@ -257,7 +302,7 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 * Add docker create script for contributors to setup databases locally by @billy1624 in https://github.com/SeaQL/sea-orm/pull/378
 * Log with tracing-subscriber by @billy1624 in https://github.com/SeaQL/sea-orm/pull/399
 * Codegen SQLite by @billy1624 in https://github.com/SeaQL/sea-orm/pull/386
-* PR without clippy warmings in file changed tab by @billy1624 in https://github.com/SeaQL/sea-orm/pull/401
+* PR without clippy warnings in file changed tab by @billy1624 in https://github.com/SeaQL/sea-orm/pull/401
 * Rename `sea-strum` lib back to `strum` by @billy1624 in https://github.com/SeaQL/sea-orm/pull/361
 
 ### Breaking Changes
@@ -275,7 +320,7 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 ### Fixed Issues
 * Delete::many() doesn't work when schema_name is defined https://github.com/SeaQL/sea-orm/issues/362
 * find_with_related panic https://github.com/SeaQL/sea-orm/issues/374
-* How to define rust type of TIMESTAMP? https://github.com/SeaQL/sea-orm/issues/344
+* How to define the rust type of TIMESTAMP? https://github.com/SeaQL/sea-orm/issues/344
 * Add Table on the generated Column enum https://github.com/SeaQL/sea-orm/issues/356
 
 ### Merged PRs
@@ -317,7 +362,7 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 * Codegen fix clippy warnings by @billy1624 in https://github.com/SeaQL/sea-orm/pull/303
 * Add axum example by @YoshieraHuang in https://github.com/SeaQL/sea-orm/pull/297
 * Enumeration by @billy1624 in https://github.com/SeaQL/sea-orm/pull/258
-* Add `PaginatorTrait` and `CountTrait` for more constrains by @YoshieraHuang in https://github.com/SeaQL/sea-orm/pull/306
+* Add `PaginatorTrait` and `CountTrait` for more constraints by @YoshieraHuang in https://github.com/SeaQL/sea-orm/pull/306
 * Continue `PaginatorTrait` by @billy1624 in https://github.com/SeaQL/sea-orm/pull/307
 * Refactor `Schema` by @billy1624 in https://github.com/SeaQL/sea-orm/pull/309
 * Detailed connection errors by @billy1624 in https://github.com/SeaQL/sea-orm/pull/312
@@ -328,7 +373,7 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 * Returning by @billy1624 in https://github.com/SeaQL/sea-orm/pull/292
 
 ### Breaking Changes
-* Refactor `paginate()` & `count()` utilities into `PaginatorTrait`. You can use the paginator as usual but you might need to import `PaginatorTrait` manually when upgrading from previous version.
+* Refactor `paginate()` & `count()` utilities into `PaginatorTrait`. You can use the paginator as usual but you might need to import `PaginatorTrait` manually when upgrading from the previous version.
     ```rust
     use futures::TryStreamExt;
     use sea_orm::{entity::*, query::*, tests_cfg::cake};
@@ -342,7 +387,7 @@ In this minor release, we removed `time` v0.1 from the dependency graph
         // Do something on cakes: Vec<cake::Model>
     }
     ```
-* The helper struct `Schema` converting `EntityTrait` into different `sea-query` statement now has to be initialized with `DbBackend`.
+* The helper struct `Schema` converting `EntityTrait` into different `sea-query` statements now has to be initialized with `DbBackend`.
     ```rust
     use sea_orm::{tests_cfg::*, DbBackend, Schema};
     use sea_orm::sea_query::TableCreateStatement;
@@ -414,7 +459,7 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 (We are changing our Changelog format from now on)
 
 ### Fixed Issues
-* Align case trasforms across derive macros https://github.com/SeaQL/sea-orm/issues/262
+* Align case transforms across derive macros https://github.com/SeaQL/sea-orm/issues/262
 * Added `is_null` and `is_not_null` to `ColumnTrait` https://github.com/SeaQL/sea-orm/issues/267
 
 (The following is generated by GitHub)
@@ -512,7 +557,7 @@ https://www.sea-ql.org/SeaORM/blog/2021-10-01-whats-new-in-0.2.4
 - [[#191]] [sea-orm-cli] Unique key handling
 - [[#182]] `find_linked` join with alias
 - [[#202]] Accept both `postgres://` and `postgresql://`
-- [[#208]] Support feteching T, (T, U), (T, U, P) etc
+- [[#208]] Support fetching T, (T, U), (T, U, P) etc
 - [[#209]] Rename column name & column enum variant
 - [[#207]] Support `chrono::NaiveDate` & `chrono::NaiveTime`
 - Support `Condition::not` (from sea-query)
@@ -528,7 +573,7 @@ https://www.sea-ql.org/SeaORM/blog/2021-10-01-whats-new-in-0.2.4
 ## 0.2.3 - 2021-09-22
 
 - [[#152]] DatabaseConnection impl `Clone`
-- [[#175]] Impl `TryGetableMany` for diffrent types of generics
+- [[#175]] Impl `TryGetableMany` for different types of generics
 - Codegen `TimestampWithTimeZone` fixup
 
 [#152]: https://github.com/SeaQL/sea-orm/issues/152

@@ -41,7 +41,7 @@ impl From<TryGetError> for DbErr {
         match e {
             TryGetError::DbErr(e) => e,
             TryGetError::Null(s) => {
-                DbErr::Query(format!("error occurred while decoding {}: Null", s))
+                DbErr::Type(format!("A null value was encountered while decoding {}", s))
             }
         }
     }
@@ -376,12 +376,13 @@ impl TryGetable for Decimal {
                 let val: Option<f64> = row
                     .try_get(column.as_str())
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))?;
-                use rust_decimal::prelude::FromPrimitive;
                 match val {
-                    Some(v) => Decimal::from_f64(v).ok_or_else(|| {
-                        TryGetError::DbErr(DbErr::Query(
-                            "Failed to convert f64 into Decimal".to_owned(),
-                        ))
+                    Some(v) => Decimal::try_from(v).map_err(|e| {
+                        TryGetError::DbErr(DbErr::TryIntoErr {
+                            from: "f64",
+                            into: "Decimal",
+                            source: Box::new(e),
+                        })
                     }),
                     None => Err(TryGetError::Null(column)),
                 }
@@ -626,7 +627,7 @@ where
 
 fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), TryGetError> {
     if cols.len() < len {
-        Err(TryGetError::DbErr(DbErr::Query(format!(
+        Err(TryGetError::DbErr(DbErr::Type(format!(
             "Expect {} column names supplied but got slice of length {}",
             len,
             cols.len()
@@ -708,10 +709,7 @@ macro_rules! try_from_u64_err {
     ( $type: ty ) => {
         impl TryFromU64 for $type {
             fn try_from_u64(_: u64) -> Result<Self, DbErr> {
-                Err(DbErr::Exec(format!(
-                    "{} cannot be converted from u64",
-                    stringify!($type)
-                )))
+                Err(DbErr::ConvertFromU64(stringify!($type)))
             }
         }
     };
@@ -722,10 +720,7 @@ macro_rules! try_from_u64_err {
             $( $gen_type: TryFromU64, )*
         {
             fn try_from_u64(_: u64) -> Result<Self, DbErr> {
-                Err(DbErr::Exec(format!(
-                    "{} cannot be converted from u64",
-                    stringify!(($($gen_type,)*))
-                )))
+                Err(DbErr::ConvertFromU64(stringify!($($gen_type,)*)))
             }
         }
     };
@@ -743,12 +738,10 @@ macro_rules! try_from_u64_numeric {
         impl TryFromU64 for $type {
             fn try_from_u64(n: u64) -> Result<Self, DbErr> {
                 use std::convert::TryInto;
-                n.try_into().map_err(|_| {
-                    DbErr::Exec(format!(
-                        "fail to convert '{}' into '{}'",
-                        n,
-                        stringify!($type)
-                    ))
+                n.try_into().map_err(|e| DbErr::TryIntoErr {
+                    from: stringify!(u64),
+                    into: stringify!($type),
+                    source: Box::new(e),
                 })
             }
         }
@@ -823,18 +816,22 @@ try_from_u64_err!(uuid::Uuid);
 #[cfg(test)]
 mod tests {
     use super::TryGetError;
-    use crate::error::DbErr;
+    use crate::error::*;
 
     #[test]
     fn from_try_get_error() {
         // TryGetError::DbErr
-        let expected = DbErr::Query("expected error message".to_owned());
-        let try_get_error = TryGetError::DbErr(expected.clone());
-        assert_eq!(DbErr::from(try_get_error), expected);
+        let try_get_error = TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
+            "expected error message".to_owned(),
+        )));
+        assert_eq!(
+            DbErr::from(try_get_error),
+            DbErr::Query(RuntimeErr::Internal("expected error message".to_owned()))
+        );
 
         // TryGetError::Null
         let try_get_error = TryGetError::Null("column".to_owned());
-        let expected = "error occurred while decoding column: Null".to_owned();
-        assert_eq!(DbErr::from(try_get_error), DbErr::Query(expected));
+        let expected = "A null value was encountered while decoding column".to_owned();
+        assert_eq!(DbErr::from(try_get_error), DbErr::Type(expected));
     }
 }

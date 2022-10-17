@@ -1,0 +1,20 @@
+[package]
+name = "tonic-example-api"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+tonic-example-core = { path = "../core" }
+tonic = "0.7"
+tokio = { version = "1.17", features = ["macros", "rt-multi-thread", "full"] }
+entity = { path = "../entity" }
+migration = { path = "../migration" }
+prost = "0.10.0"
+serde = "1.0"
+
+[lib]
+path = "./src/lib.rs"
+
+[build-dependencies]
+tonic-build = "0.7"

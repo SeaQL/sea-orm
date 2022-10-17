@@ -8,6 +8,8 @@ use sea_query::{
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
+use sea_query::IntoColumnRef;
+
 // LINT: when the column does not appear in tables selected from
 // LINT: when there is a group by clause, but some columns don't have aggregate functions
 // LINT: when the join table or column does not exists
@@ -169,6 +171,61 @@ pub trait QuerySelect: Sized {
         F: IntoCondition,
     {
         self.query().cond_having(filter.into_condition());
+        self
+    }
+
+    /// Add a DISTINCT expression
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// struct Input {
+    ///     name: Option<String>,
+    /// }
+    /// let input = Input {
+    ///     name: Some("cheese".to_owned()),
+    /// };
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(
+    ///             Condition::all().add_option(input.name.map(|n| cake::Column::Name.contains(&n)))
+    ///         )
+    ///         .distinct()
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT DISTINCT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese%'"
+    /// );
+    /// ```
+    fn distinct(mut self) -> Self {
+        self.query().distinct();
+        self
+    }
+
+    /// Add a DISTINCT ON expression
+    /// NOTE: this function is only supported by `sqlx-postgres`
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// struct Input {
+    ///     name: Option<String>,
+    /// }
+    /// let input = Input {
+    ///     name: Some("cheese".to_owned()),
+    /// };
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(
+    ///             Condition::all().add_option(input.name.map(|n| cake::Column::Name.contains(&n)))
+    ///         )
+    ///         .distinct_on([cake::Column::Name])
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     "SELECT DISTINCT ON (\"name\") \"cake\".\"id\", \"cake\".\"name\" FROM \"cake\" WHERE \"cake\".\"name\" LIKE '%cheese%'"
+    /// );
+    /// ```
+    fn distinct_on<T, I>(mut self, cols: I) -> Self
+    where
+        T: IntoColumnRef,
+        I: IntoIterator<Item = T>,
+    {
+        self.query().distinct_on(cols);
         self
     }
 

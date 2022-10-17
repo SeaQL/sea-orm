@@ -3,6 +3,7 @@ pub mod create_cake;
 pub mod create_lineitem;
 pub mod create_order;
 pub mod deletes;
+pub mod error;
 pub mod updates;
 
 pub use create_baker::*;
@@ -10,6 +11,7 @@ pub use create_cake::*;
 pub use create_lineitem::*;
 pub use create_order::*;
 pub use deletes::*;
+pub use error::*;
 pub use updates::*;
 
 pub use super::common::bakery_chain::*;

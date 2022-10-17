@@ -55,10 +55,11 @@ on:
   push:
     branches:
       - master
-      - 0.2.x
+      - 0.*.x
+      - pr/**/ci
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref || github.run_id }}
   cancel-in-progress: true
 
 env:
@@ -393,6 +394,10 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: check rustfmt
+        run: |
+          cargo fmt --manifest-path ${{ matrix.path }} --all -- --check
+
       - uses: actions-rs/cargo@v1
         with:
           command: build
@@ -405,11 +410,14 @@ jobs:
           args: >
             --manifest-path ${{ matrix.path }}
 
-      - name: check rustfmt
-        run: |
-          rustup override set nightly
-          rustup component add rustfmt
-          cargo +nightly fmt --manifest-path ${{ matrix.path }} --all -- --check
+      - name: Run mock test if it is core crate
+        uses: actions-rs/cargo@v1
+        if: ${{ contains(matrix.path, 'core/Cargo.toml') }}
+        with:
+          command: test
+          args: >
+            --manifest-path ${{ matrix.path }}
+            --features mock
 
   issues-matrix:
     name: Issues Matrix

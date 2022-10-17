@@ -45,7 +45,7 @@ impl SqlxMySqlConnector {
         let mut opt = options
             .url
             .parse::<MySqlConnectOptions>()
-            .map_err(|e| DbErr::Conn(e.to_string()))?;
+            .map_err(sqlx_error_to_conn_err)?;
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
             opt.disable_statement_logging();
@@ -89,9 +89,7 @@ impl SqlxMySqlPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::Exec(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -107,14 +105,12 @@ impl SqlxMySqlPoolConnection {
                     Ok(row) => Ok(Some(row.into())),
                     Err(err) => match err {
                         sqlx::Error::RowNotFound => Ok(None),
-                        _ => Err(DbErr::Query(err.to_string())),
+                        _ => Err(sqlx_error_to_query_err(err)),
                     },
                 }
             })
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -132,9 +128,7 @@ impl SqlxMySqlPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -150,9 +144,7 @@ impl SqlxMySqlPoolConnection {
                 self.metric_callback.clone(),
             )))
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -162,9 +154,7 @@ impl SqlxMySqlPoolConnection {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_mysql(conn, self.metric_callback.clone()).await
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -185,9 +175,7 @@ impl SqlxMySqlPoolConnection {
                 .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
-            Err(TransactionError::Connection(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            )))
+            Err(TransactionError::Connection(DbErr::ConnectionAcquire))
         }
     }
 

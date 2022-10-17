@@ -251,7 +251,7 @@ where
 {
     type Selector = S;
     fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, S> {
-        let sql = &self.stmt.sql[7..];
+        let sql = &self.stmt.sql.trim()[7..];
         let mut query = SelectStatement::new();
         query.expr(if let Some(values) = self.stmt.values {
             Expr::cust_with_values(sql, values.0)
@@ -306,6 +306,7 @@ mod tests {
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
     use futures::TryStreamExt;
     use once_cell::sync::Lazy;
+    use pretty_assertions::assert_eq;
     use sea_query::{Alias, Expr, SelectStatement, Value};
 
     static RAW_STMT: Lazy<Statement> = Lazy::new(|| {
@@ -698,6 +699,47 @@ mod tests {
 
         let mut fruit_stream = fruit::Entity::find()
             .from_raw_sql(RAW_STMT.clone())
+            .paginate(&db, 2)
+            .into_stream();
+
+        assert_eq!(fruit_stream.try_next().await?, Some(pages[0].clone()));
+        assert_eq!(fruit_stream.try_next().await?, Some(pages[1].clone()));
+        assert_eq!(fruit_stream.try_next().await?, None);
+
+        drop(fruit_stream);
+
+        let mut select = SelectStatement::new()
+            .exprs(vec![
+                Expr::tbl(fruit::Entity, fruit::Column::Id),
+                Expr::tbl(fruit::Entity, fruit::Column::Name),
+                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            ])
+            .from(fruit::Entity)
+            .to_owned();
+
+        let query_builder = db.get_database_backend();
+        let stmts = vec![
+            query_builder.build(select.clone().offset(0).limit(2)),
+            query_builder.build(select.clone().offset(2).limit(2)),
+            query_builder.build(select.offset(4).limit(2)),
+        ];
+
+        assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn into_stream_raw_leading_spaces() -> Result<(), DbErr> {
+        let (db, pages) = setup();
+
+        let raw_stmt = Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            r#"  SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit"  "#,
+            vec![],
+        );
+
+        let mut fruit_stream = fruit::Entity::find()
+            .from_raw_sql(raw_stmt.clone())
             .paginate(&db, 2)
             .into_stream();
 

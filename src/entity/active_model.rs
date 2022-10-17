@@ -641,29 +641,35 @@ where
     fn into_active_value(self) -> ActiveValue<V>;
 }
 
+impl<V> IntoActiveValue<Option<V>> for Option<V>
+where
+    V: IntoActiveValue<V> + Into<Value> + Nullable,
+{
+    fn into_active_value(self) -> ActiveValue<Option<V>> {
+        match self {
+            Some(value) => Set(Some(value)),
+            None => NotSet,
+        }
+    }
+}
+
+impl<V> IntoActiveValue<Option<V>> for Option<Option<V>>
+where
+    V: IntoActiveValue<V> + Into<Value> + Nullable,
+{
+    fn into_active_value(self) -> ActiveValue<Option<V>> {
+        match self {
+            Some(value) => Set(value),
+            None => NotSet,
+        }
+    }
+}
+
 macro_rules! impl_into_active_value {
     ($ty: ty) => {
         impl IntoActiveValue<$ty> for $ty {
             fn into_active_value(self) -> ActiveValue<$ty> {
                 Set(self)
-            }
-        }
-
-        impl IntoActiveValue<Option<$ty>> for Option<$ty> {
-            fn into_active_value(self) -> ActiveValue<Option<$ty>> {
-                match self {
-                    Some(value) => Set(Some(value)),
-                    None => NotSet,
-                }
-            }
-        }
-
-        impl IntoActiveValue<Option<$ty>> for Option<Option<$ty>> {
-            fn into_active_value(self) -> ActiveValue<Option<$ty>> {
-                match self {
-                    Some(value) => Set(value),
-                    None => NotSet,
-                }
             }
         }
     };
@@ -682,6 +688,7 @@ impl_into_active_value!(f32);
 impl_into_active_value!(f64);
 impl_into_active_value!(&'static str);
 impl_into_active_value!(String);
+impl_into_active_value!(Vec<u8>);
 
 #[cfg(feature = "with-json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-json")))]
@@ -718,6 +725,22 @@ impl_into_active_value!(crate::prelude::Decimal);
 #[cfg(feature = "with-uuid")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-uuid")))]
 impl_into_active_value!(crate::prelude::Uuid);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::TimeDate);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::TimeTime);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::TimeDateTime);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::TimeDateTimeWithTimeZone);
 
 impl<V> Default for ActiveValue<V>
 where

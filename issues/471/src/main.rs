@@ -11,7 +11,7 @@ async fn main() -> anyhow::Result<()> {
     env::set_var("RUST_LOG", "debug");
     tracing_subscriber::fmt::init();
 
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().ok();
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
     let db = Database::connect(db_url)
         .await

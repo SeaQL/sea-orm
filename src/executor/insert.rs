@@ -128,7 +128,7 @@ where
         Some(value_tuple) => FromValueTuple::from_value_tuple(value_tuple),
         None => match last_insert_id_opt {
             Some(last_insert_id) => last_insert_id,
-            None => return Err(DbErr::Exec("Fail to unpack last_insert_id".to_owned())),
+            None => return Err(DbErr::UnpackInsertId),
         },
     };
     Ok(InsertResult { last_insert_id })
@@ -168,6 +168,8 @@ where
     };
     match found {
         Some(model) => Ok(model),
-        None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
+        None => Err(DbErr::RecordNotFound(
+            "Failed to find inserted item".to_owned(),
+        )),
     }
 }
