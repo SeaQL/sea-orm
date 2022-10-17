@@ -80,7 +80,7 @@ impl WithSerde {
 
 /// Converts derives argument to token stream
 fn bonus_derive(derives: Vec<String>) -> TokenStream {
-    let bonus_derive = derives
+    derives
         .into_iter()
         .fold(TokenStream::default(), |derives, derive| {
             if !derive.is_empty() {
@@ -89,14 +89,12 @@ fn bonus_derive(derives: Vec<String>) -> TokenStream {
             } else {
                 derives
             }
-        });
-
-    bonus_derive
+        })
 }
 
 /// convert attributes argument to token stream
 fn bonus_attributes(attributes: Vec<String>) -> TokenStream {
-    let attributes = attributes
+    attributes
         .into_iter()
         .filter(|attr| !attr.is_empty())
         .map(|attr| format!("#[{attr}]"))
@@ -106,9 +104,7 @@ fn bonus_attributes(attributes: Vec<String>) -> TokenStream {
                 #attributes
                 #tokens
             }
-        });
-
-    attributes
+        })
 }
 
 impl FromStr for WithSerde {
@@ -131,6 +127,7 @@ impl FromStr for WithSerde {
 }
 
 impl EntityWriterContext {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         expanded_format: bool,
         with_serde: WithSerde,
@@ -1401,7 +1398,9 @@ mod tests {
             ))
         );
         assert_eq!(
-            comparable_file_string(include_str!("../../tests/compact_with_serde/cake_serialize.rs"))?,
+            comparable_file_string(include_str!(
+                "../../tests/compact_with_serde/cake_serialize.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::Serialize,
@@ -1412,7 +1411,9 @@ mod tests {
             ))
         );
         assert_eq!(
-            comparable_file_string(include_str!("../../tests/compact_with_serde/cake_deserialize.rs"))?,
+            comparable_file_string(include_str!(
+                "../../tests/compact_with_serde/cake_deserialize.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::Deserialize,
@@ -1447,7 +1448,9 @@ mod tests {
             ))
         );
         assert_eq!(
-            comparable_file_string(include_str!("../../tests/expanded_with_serde/cake_serialize.rs"))?,
+            comparable_file_string(include_str!(
+                "../../tests/expanded_with_serde/cake_serialize.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::Serialize,
@@ -1458,7 +1461,9 @@ mod tests {
             ))
         );
         assert_eq!(
-            comparable_file_string(include_str!("../../tests/expanded_with_serde/cake_deserialize.rs"))?,
+            comparable_file_string(include_str!(
+                "../../tests/expanded_with_serde/cake_deserialize.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::Deserialize,
@@ -1490,8 +1495,10 @@ mod tests {
         assert_eq!(cake_entity.get_table_name_snake_case(), "cake");
 
         // Compact code blocks
-       assert_eq!(
-            comparable_file_string(include_str!("../../tests/compact_with_derives/cake_none.rs"))?,
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/compact_with_derives/cake_none.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
@@ -1513,7 +1520,9 @@ mod tests {
             ))
         );
         assert_eq!(
-            comparable_file_string(include_str!("../../tests/compact_with_derives/cake_multiple.rs"))?,
+            comparable_file_string(include_str!(
+                "../../tests/compact_with_derives/cake_multiple.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
@@ -1526,7 +1535,9 @@ mod tests {
 
         // Expanded code blocks
         assert_eq!(
-            comparable_file_string(include_str!("../../tests/expanded_with_derives/cake_none.rs"))?,
+            comparable_file_string(include_str!(
+                "../../tests/expanded_with_derives/cake_none.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
@@ -1537,7 +1548,9 @@ mod tests {
             ))
         );
         assert_eq!(
-            comparable_file_string(include_str!("../../tests/expanded_with_derives/cake_one.rs"))?,
+            comparable_file_string(include_str!(
+                "../../tests/expanded_with_derives/cake_one.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
@@ -1548,7 +1561,9 @@ mod tests {
             ))
         );
         assert_eq!(
-            comparable_file_string(include_str!("../../tests/expanded_with_derives/cake_multiple.rs"))?,
+            comparable_file_string(include_str!(
+                "../../tests/expanded_with_derives/cake_multiple.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
@@ -1569,8 +1584,10 @@ mod tests {
         assert_eq!(cake_entity.get_table_name_snake_case(), "cake");
 
         // Compact code blocks
-       assert_eq!(
-            comparable_file_string(include_str!("../../tests/compact_with_attributes/cake_none.rs"))?,
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/compact_with_attributes/cake_none.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
@@ -1581,7 +1598,9 @@ mod tests {
             ))
         );
         assert_eq!(
-            comparable_file_string(include_str!("../../tests/compact_with_attributes/cake_one.rs"))?,
+            comparable_file_string(include_str!(
+                "../../tests/compact_with_attributes/cake_one.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
@@ -1592,12 +1611,17 @@ mod tests {
             ))
         );
         assert_eq!(
-            comparable_file_string(include_str!("../../tests/compact_with_attributes/cake_multiple.rs"))?,
+            comparable_file_string(include_str!(
+                "../../tests/compact_with_attributes/cake_multiple.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
                 &TokenStream::new(),
-                &bonus_attributes(vec![r#"serde(rename_all = "camelCase")"#.into(), "ts(export)".into()]),
+                &bonus_attributes(vec![
+                    r#"serde(rename_all = "camelCase")"#.into(),
+                    "ts(export)".into()
+                ]),
                 &DateTimeCrate::Chrono,
                 &None
             ))
@@ -1605,7 +1629,9 @@ mod tests {
 
         // Expanded code blocks
         assert_eq!(
-            comparable_file_string(include_str!("../../tests/expanded_with_attributes/cake_none.rs"))?,
+            comparable_file_string(include_str!(
+                "../../tests/expanded_with_attributes/cake_none.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
@@ -1616,7 +1642,9 @@ mod tests {
             ))
         );
         assert_eq!(
-            comparable_file_string(include_str!("../../tests/expanded_with_attributes/cake_one.rs"))?,
+            comparable_file_string(include_str!(
+                "../../tests/expanded_with_attributes/cake_one.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
@@ -1627,12 +1655,17 @@ mod tests {
             ))
         );
         assert_eq!(
-            comparable_file_string(include_str!("../../tests/expanded_with_attributes/cake_multiple.rs"))?,
+            comparable_file_string(include_str!(
+                "../../tests/expanded_with_attributes/cake_multiple.rs"
+            ))?,
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
                 &TokenStream::new(),
-                &bonus_attributes(vec![r#"serde(rename_all = "camelCase")"#.into(), "ts(export)".into()]),
+                &bonus_attributes(vec![
+                    r#"serde(rename_all = "camelCase")"#.into(),
+                    "ts(export)".into()
+                ]),
                 &DateTimeCrate::Chrono,
                 &None
             ))
