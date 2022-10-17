@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Added blanket implementations of `IntoActiveValue` for `Option` values https://github.com/SeaQL/sea-orm/pull/833
 * Added `into_model` & `into_json` to `Cursor` https://github.com/SeaQL/sea-orm/pull/1112
 * Added `set_schema_search_path` method to `ConnectOptions` for setting schema search path of PostgreSQL connection https://github.com/SeaQL/sea-orm/pull/1056
+* Serialize `time` types as `serde_json::Value` https://github.com/SeaQL/sea-orm/pull/1042
 
 ### Bug fixes
 
