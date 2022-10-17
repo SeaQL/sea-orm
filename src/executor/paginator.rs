@@ -234,6 +234,7 @@ where
     type Selector = S;
 
     fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, S> {
+        assert!(page_size != 0, "page_size should not be zero");
         Paginator {
             query: self.query,
             page: 0,
@@ -251,6 +252,7 @@ where
 {
     type Selector = S;
     fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, S> {
+        assert!(page_size != 0, "page_size should not be zero");
         let sql = &self.stmt.sql.trim()[6..];
         let mut query = SelectStatement::new();
         query.expr(if let Some(values) = self.stmt.values {
@@ -767,5 +769,13 @@ mod tests {
 
         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
+    }
+
+    #[smol_potat::test]
+    #[should_panic]
+    async fn error() {
+        let (db, _pages) = setup();
+
+        fruit::Entity::find().paginate(&db, 0);
     }
 }
