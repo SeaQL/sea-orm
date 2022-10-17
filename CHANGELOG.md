@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * [sea-orm-cli] Generate migration in modules https://github.com/SeaQL/sea-orm/pull/933
 * [sea-orm-cli] Generate `DeriveRelation` on empty `Relation` enum https://github.com/SeaQL/sea-orm/pull/1019
 * [sea-orm-cli] Generate entity derive `Eq` if possible https://github.com/SeaQL/sea-orm/pull/988
-* Run migration on any PostgreSQL schema https://github.com/SeaQL/sea-orm/pull/1056
+* [sea-orm-cli] Run migration on any PostgreSQL schema https://github.com/SeaQL/sea-orm/pull/1056
 
 ### Enhancements
 
