@@ -47,6 +47,62 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Support `rocket_okapi` https://github.com/SeaQL/sea-orm/pull/1071
 
+### Upgrades
+
+* Upgrade `sea-query` to 0.26 https://github.com/SeaQL/sea-orm/pull/985
+
+### Migration Guide
+
+* A new method `array_type` was added to `ValueType`
+
+```rust
+impl sea_orm::sea_query::ValueType for MyType {
+    fn array_type() -> sea_orm::sea_query::ArrayType {
+        sea_orm::sea_query::ArrayType::TypeName
+    }
+    ...
+}
+```
+
+* `ActiveEnum::name()` changed return type to `DynIden`:
+
+```rust
+impl ActiveEnum for Category {
+    // then
+    fn name() -> String {
+        "category".to_owned()
+    }
+
+    // now
+    #[derive(Debug, Iden)]
+    #[iden = "category"]
+    pub struct CategoryEnum;
+
+    fn name() -> DynIden {
+        SeaRc::new(CategoryEnum)
+    }
+    ...
+}
+```
+
+* `ColumnType::Enum` structure change:
+
+```rust
+enum ColumnType {
+    // then
+    Enum(String, Vec<String>)
+
+    // now
+    Enum {
+        /// Name of enum
+        name: DynIden,
+        /// Variants of enum
+        variants: Vec<DynIden>,
+    }
+    ...
+}
+```
+
 ## 0.9.3 - 2022-09-30
 
 ### Enhancements
