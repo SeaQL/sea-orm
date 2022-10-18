@@ -253,7 +253,7 @@ where
     type Selector = S;
     fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, S> {
         assert!(page_size != 0, "page_size should not be zero");
-        let sql = &self.stmt.sql.trim()[6..];
+        let sql = &self.stmt.sql.trim()[6..].trim();
         let mut query = SelectStatement::new();
         query.expr(if let Some(values) = self.stmt.values {
             Expr::cust_with_values(sql, values.0)
