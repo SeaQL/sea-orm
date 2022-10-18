@@ -36,6 +36,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Replaced `usize` with `u64` in `PaginatorTrait` https://github.com/SeaQL/sea-orm/pull/789
 * Type signature of `DbErr` changed as a result of https://github.com/SeaQL/sea-orm/pull/1002
+* `ColumnType::Enum` structure changed:
+```rust
+enum ColumnType {
+    // then
+    Enum(String, Vec<String>)
+
+    // now
+    Enum {
+        /// Name of enum
+        name: DynIden,
+        /// Variants of enum
+        variants: Vec<DynIden>,
+    }
+    ...
+}
+```
 
 ### House keeping
 
@@ -54,7 +70,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Migration Guide
 
 * A new method `array_type` was added to `ValueType`
-
 ```rust
 impl sea_orm::sea_query::ValueType for MyType {
     fn array_type() -> sea_orm::sea_query::ArrayType {
@@ -65,7 +80,6 @@ impl sea_orm::sea_query::ValueType for MyType {
 ```
 
 * `ActiveEnum::name()` changed return type to `DynIden`:
-
 ```rust
 #[derive(Debug, Iden)]
 #[iden = "category"]
@@ -80,24 +94,6 @@ impl ActiveEnum for Category {
     // now
     fn name() -> DynIden {
         SeaRc::new(CategoryEnum)
-    }
-    ...
-}
-```
-
-* `ColumnType::Enum` structure change:
-
-```rust
-enum ColumnType {
-    // then
-    Enum(String, Vec<String>)
-
-    // now
-    Enum {
-        /// Name of enum
-        name: DynIden,
-        /// Variants of enum
-        variants: Vec<DynIden>,
     }
     ...
 }
