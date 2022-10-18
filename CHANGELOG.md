@@ -67,6 +67,10 @@ impl sea_orm::sea_query::ValueType for MyType {
 * `ActiveEnum::name()` changed return type to `DynIden`:
 
 ```rust
+#[derive(Debug, Iden)]
+#[iden = "category"]
+pub struct CategoryEnum;
+
 impl ActiveEnum for Category {
     // then
     fn name() -> String {
@@ -74,10 +78,6 @@ impl ActiveEnum for Category {
     }
 
     // now
-    #[derive(Debug, Iden)]
-    #[iden = "category"]
-    pub struct CategoryEnum;
-
     fn name() -> DynIden {
         SeaRc::new(CategoryEnum)
     }
