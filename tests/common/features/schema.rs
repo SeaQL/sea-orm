@@ -166,7 +166,7 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
         .col(ColumnDef::new(active_enum::Column::Color).integer())
         .col(
             ColumnDef::new(active_enum::Column::Tea)
-                .enumeration("tea", vec!["EverydayTea", "BreakfastTea"]),
+                .enumeration(TeaEnum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea]),
         )
         .to_owned();
 
@@ -192,7 +192,7 @@ pub async fn create_active_enum_child_table(db: &DbConn) -> Result<ExecResult, D
         .col(ColumnDef::new(active_enum_child::Column::Color).integer())
         .col(
             ColumnDef::new(active_enum_child::Column::Tea)
-                .enumeration("tea", vec!["EverydayTea", "BreakfastTea"]),
+                .enumeration(TeaEnum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea]),
         )
         .foreign_key(
             ForeignKeyCreateStatement::new()

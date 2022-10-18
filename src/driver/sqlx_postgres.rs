@@ -1,12 +1,12 @@
+use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
-    postgres::{PgArguments, PgConnectOptions, PgQueryResult, PgRow},
+    postgres::{PgConnectOptions, PgQueryResult, PgRow},
     PgPool, Postgres,
 };
 
-sea_query::sea_query_driver_postgres!();
-use sea_query_driver_postgres::bind_query;
+use sea_query_binder::SqlxValues;
 use tracing::instrument;
 
 use crate::{
@@ -218,10 +218,10 @@ impl From<PgQueryResult> for ExecResult {
     }
 }
 
-pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Postgres, PgArguments> {
-    let mut query = sqlx::query(&stmt.sql);
-    if let Some(values) = &stmt.values {
-        query = bind_query(query, values);
-    }
-    query
+pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Postgres, SqlxValues> {
+    let values = stmt
+        .values
+        .as_ref()
+        .map_or(Values(Vec::new()), |values| values.clone());
+    sqlx::query_with(&stmt.sql, SqlxValues(values))
 }

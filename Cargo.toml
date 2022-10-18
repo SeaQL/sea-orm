@@ -34,7 +34,8 @@ log = { version = "^0.4" }
 tracing = { version = "^0.1", features = ["log"] }
 rust_decimal = { version = "^1", optional = true }
 sea-orm-macros = { version = "^0.10.0", path = "sea-orm-macros", optional = true }
-sea-query = { version = "^0.26.3", features = ["thread-safe"] }
+sea-query = { version = "^0.27", git = "https://github.com/SeaQL/sea-query", features = ["thread-safe"] }
+sea-query-binder = { version = "^0.2", git = "https://github.com/SeaQL/sea-query", optional = true }
 sea-strum = { version = "^0.23", features = ["derive", "sea-orm"] }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = { version = "^1.0", optional = true }
@@ -70,19 +71,20 @@ default = [
 ]
 macros = ["sea-orm-macros"]
 mock = []
-with-json = ["serde_json", "sea-query/with-json", "chrono/serde", "time/serde", "sqlx?/json"]
-with-chrono = ["chrono", "sea-query/with-chrono", "sqlx?/chrono"]
-with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sqlx?/decimal"]
-with-uuid = ["uuid", "sea-query/with-uuid", "sqlx?/uuid"]
-with-time = ["time", "sea-query/with-time", "sqlx?/time"]
+with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "time?/serde", "sea-query-binder?/with-json", "sqlx?/json"]
+with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-binder?/with-chrono", "sqlx?/chrono"]
+with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-binder?/with-rust_decimal", "sqlx?/decimal"]
+with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
+with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
 sqlx-dep = []
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
-sqlx-mysql = ["sqlx-dep", "sea-query/sqlx-mysql", "sqlx/mysql"]
-sqlx-postgres = ["sqlx-dep", "sea-query/sqlx-postgres", "sqlx/postgres"]
-sqlx-sqlite = ["sqlx-dep", "sea-query/sqlx-sqlite", "sqlx/sqlite"]
+sqlx-mysql = ["sqlx-dep", "sea-query-binder/sqlx-mysql", "sqlx/mysql"]
+sqlx-postgres = ["sqlx-dep", "sea-query-binder/sqlx-postgres", "sqlx/postgres"]
+sqlx-sqlite = ["sqlx-dep", "sea-query-binder/sqlx-sqlite", "sqlx/sqlite"]
 runtime-async-std = []
 runtime-async-std-native-tls = [
     "sqlx/runtime-async-std-native-tls",
+    "sea-query-binder/runtime-async-std-native-tls",
     "runtime-async-std",
 ]
 runtime-async-std-rustls = [
@@ -90,9 +92,25 @@ runtime-async-std-rustls = [
     "runtime-async-std",
 ]
 runtime-actix = []
-runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls", "runtime-actix"]
-runtime-actix-rustls = ["sqlx/runtime-actix-rustls", "runtime-actix"]
+runtime-actix-native-tls = [
+    "sqlx/runtime-actix-native-tls",
+    "sea-query-binder/runtime-actix-native-tls",
+    "runtime-actix",
+]
+runtime-actix-rustls = [
+    "sqlx/runtime-actix-rustls",
+    "sea-query-binder/runtime-actix-rustls",
+    "runtime-actix",
+]
 runtime-tokio = []
-runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls", "runtime-tokio"]
-runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls", "runtime-tokio"]
+runtime-tokio-native-tls = [
+    "sqlx/runtime-tokio-native-tls",
+    "sea-query-binder/runtime-tokio-native-tls",
+    "runtime-tokio",
+]
+runtime-tokio-rustls = [
+    "sqlx/runtime-tokio-rustls",
+    "sea-query-binder/runtime-tokio-rustls",
+    "runtime-tokio",
+]
 tests-cfg = []

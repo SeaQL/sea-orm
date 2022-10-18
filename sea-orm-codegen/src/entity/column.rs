@@ -70,7 +70,7 @@ impl Column {
             ColumnType::Uuid => "Uuid".to_owned(),
             ColumnType::Binary(_) | ColumnType::VarBinary(_) => "Vec<u8>".to_owned(),
             ColumnType::Boolean => "bool".to_owned(),
-            ColumnType::Enum(name, _) => name.to_camel_case(),
+            ColumnType::Enum { name, .. } => name.to_string().to_camel_case(),
             _ => unimplemented!(),
         }
         .parse()
@@ -146,8 +146,8 @@ impl Column {
                 let s = s.to_string();
                 quote! { ColumnType::Custom(#s.to_owned()).def() }
             }
-            ColumnType::Enum(enum_name, _) => {
-                let enum_ident = format_ident!("{}", enum_name.to_camel_case());
+            ColumnType::Enum { name, .. } => {
+                let enum_ident = format_ident!("{}", name.to_string().to_camel_case());
                 quote! { #enum_ident::db_type() }
             }
             #[allow(unreachable_patterns)]

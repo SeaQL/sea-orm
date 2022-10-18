@@ -110,7 +110,7 @@ where
             let av = self.model.get(col);
             if av.is_set() {
                 let expr = cast_text_as_enum(Expr::val(av.into_value().unwrap()), &col);
-                self.query.value_expr(col, expr);
+                self.query.value(col, expr);
             }
         }
         self
@@ -200,7 +200,7 @@ where
     where
         T: IntoIden,
     {
-        self.query.col_expr(col, expr);
+        self.query.value(col, expr);
         self
     }
 }
