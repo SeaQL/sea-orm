@@ -69,7 +69,7 @@ enum ColumnType {
 
 ### Migration Guide
 
-* A new method `array_type` was added to `ValueType`
+* A new method `array_type` was added to `ValueType`:
 ```rust
 impl sea_orm::sea_query::ValueType for MyType {
     fn array_type() -> sea_orm::sea_query::ArrayType {
