@@ -444,6 +444,126 @@ impl TryGetable for u32 {
     }
 }
 
+#[allow(unused_macros)]
+macro_rules! try_getable_postgres_array {
+    ( $type: ty ) => {
+        impl TryGetable for Vec<$type> {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
+                let column = format!("{}{}", pre, col);
+                match &res.row {
+                    #[cfg(feature = "sqlx-mysql")]
+                    QueryResultRow::SqlxMySql(row) => {
+                        panic!("{} unsupported by sqlx-mysql", stringify!($type))
+                    }
+                    #[cfg(feature = "sqlx-postgres")]
+                    QueryResultRow::SqlxPostgres(row) => {
+                        use sqlx::Row;
+                        row.try_get::<Option<Vec<$type>>, _>(column.as_str())
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
+                    }
+                    #[cfg(feature = "sqlx-sqlite")]
+                    QueryResultRow::SqlxSqlite(_) => {
+                        panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+                    }
+                    #[cfg(feature = "mock")]
+                    #[allow(unused_variables)]
+                    QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        TryGetError::Null(column)
+                    }),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
+                }
+            }
+        }
+    };
+}
+
+try_getable_postgres_array!(bool);
+try_getable_postgres_array!(i8);
+try_getable_postgres_array!(i16);
+try_getable_postgres_array!(i32);
+try_getable_postgres_array!(i64);
+try_getable_postgres_array!(f32);
+try_getable_postgres_array!(f64);
+try_getable_postgres_array!(String);
+
+#[cfg(feature = "with-json")]
+try_getable_postgres_array!(serde_json::Value);
+
+#[cfg(feature = "with-chrono")]
+try_getable_postgres_array!(chrono::NaiveDate);
+
+#[cfg(feature = "with-chrono")]
+try_getable_postgres_array!(chrono::NaiveTime);
+
+#[cfg(feature = "with-chrono")]
+try_getable_postgres_array!(chrono::NaiveDateTime);
+
+#[cfg(feature = "with-chrono")]
+try_getable_postgres_array!(chrono::DateTime<chrono::FixedOffset>);
+
+#[cfg(feature = "with-chrono")]
+try_getable_postgres_array!(chrono::DateTime<chrono::Utc>);
+
+#[cfg(feature = "with-chrono")]
+try_getable_postgres_array!(chrono::DateTime<chrono::Local>);
+
+#[cfg(feature = "with-time")]
+try_getable_postgres_array!(time::Date);
+
+#[cfg(feature = "with-time")]
+try_getable_postgres_array!(time::Time);
+
+#[cfg(feature = "with-time")]
+try_getable_postgres_array!(time::PrimitiveDateTime);
+
+#[cfg(feature = "with-time")]
+try_getable_postgres_array!(time::OffsetDateTime);
+
+#[cfg(feature = "with-rust_decimal")]
+try_getable_postgres_array!(rust_decimal::Decimal);
+
+#[cfg(feature = "with-uuid")]
+try_getable_postgres_array!(uuid::Uuid);
+
+impl TryGetable for Vec<u32> {
+    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
+        #[allow(unused_variables)]
+        let column = format!("{}{}", pre, col);
+        match &res.row {
+            #[cfg(feature = "sqlx-mysql")]
+            QueryResultRow::SqlxMySql(row) => {
+                panic!("{} unsupported by sqlx-mysql", stringify!($type))
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => {
+                use sqlx::postgres::types::Oid;
+                // Since 0.6.0, SQLx has dropped direct mapping from PostgreSQL's OID to Rust's `u32`;
+                // Instead, `u32` was wrapped by a `sqlx::Oid`.
+                use sqlx::Row;
+                row.try_get::<Option<Vec<Oid>>, _>(column.as_str())
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
+                    .map(|oids| oids.into_iter().map(|oid| oid.0).collect())
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            QueryResultRow::SqlxSqlite(_) => {
+                panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+            }
+            #[cfg(feature = "mock")]
+            #[allow(unused_variables)]
+            QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
+                debug_print!("{:#?}", e.to_string());
+                TryGetError::Null(column)
+            }),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
+        }
+    }
+}
+
 // TryGetableMany //
 
 /// Perform a query on multiple columns
