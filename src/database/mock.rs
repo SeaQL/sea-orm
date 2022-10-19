@@ -715,8 +715,8 @@ mod tests {
     #[smol_potat::test]
     async fn test_postgres_array_1() -> Result<(), DbErr> {
         mod collection {
-            use crate::entity::prelude::*;
             use crate as sea_orm;
+            use crate::entity::prelude::*;
 
             #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "collection")]
