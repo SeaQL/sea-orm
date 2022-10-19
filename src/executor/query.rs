@@ -448,6 +448,7 @@ impl TryGetable for u32 {
 macro_rules! try_getable_postgres_array {
     ( $type: ty ) => {
         impl TryGetable for Vec<$type> {
+            #[allow(unused_variables)]
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
                 let column = format!("{}{}", pre, col);
                 match &res.row {
@@ -467,7 +468,6 @@ macro_rules! try_getable_postgres_array {
                         panic!("{} unsupported by sqlx-sqlite", stringify!($type))
                     }
                     #[cfg(feature = "mock")]
-                    #[allow(unused_variables)]
                     QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null(column)
@@ -529,8 +529,8 @@ try_getable_postgres_array!(rust_decimal::Decimal);
 try_getable_postgres_array!(uuid::Uuid);
 
 impl TryGetable for Vec<u32> {
+    #[allow(unused_variables)]
     fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
-        #[allow(unused_variables)]
         let column = format!("{}{}", pre, col);
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]

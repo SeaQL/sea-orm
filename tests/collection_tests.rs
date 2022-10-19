@@ -5,7 +5,7 @@ use pretty_assertions::assert_eq;
 use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 
 #[sea_orm_macros::test]
-#[cfg(feature = "sqlx-postgres")]
+#[cfg(all(feature = "sqlx-postgres", feature = "postgres-array"))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("collection_tests").await;
     create_tables(&ctx.db).await?;

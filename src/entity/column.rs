@@ -85,7 +85,7 @@ pub enum ColumnType {
         variants: Vec<DynIden>,
     },
     /// Array of a specific data type (PostgreSQL only)
-    Array(SeaRc<Box<ColumnType>>),
+    Array(SeaRc<ColumnType>),
 }
 
 impl PartialEq for ColumnType {
@@ -437,9 +437,9 @@ impl From<ColumnType> for sea_query::ColumnType {
             ColumnType::Array(column_type) => {
                 // Map the inner `ColumnType`
                 fn from_rc_box_column_type(
-                    column_type: SeaRc<Box<ColumnType>>,
+                    column_type: SeaRc<ColumnType>,
                 ) -> sea_query::ColumnType {
-                    match &**column_type {
+                    match &*column_type {
                         ColumnType::Char(s) => sea_query::ColumnType::Char(*s),
                         ColumnType::String(s) => sea_query::ColumnType::String(*s),
                         ColumnType::Text => sea_query::ColumnType::Text,
@@ -588,7 +588,7 @@ impl From<sea_query::ColumnType> for ColumnType {
                 }
                 // Reconstruct it as `ColumnType::Array`
                 let column_type = from_rc_box_column_type(column_type);
-                Self::Array(SeaRc::new(Box::new(column_type)))
+                Self::Array(SeaRc::new(column_type))
             }
             _ => unimplemented!(),
         }
