@@ -478,11 +478,11 @@ impl From<ColumnType> for sea_query::ColumnType {
                         ColumnType::Json => sea_query::ColumnType::Json,
                         ColumnType::JsonBinary => sea_query::ColumnType::JsonBinary,
                         ColumnType::Custom(s) => sea_query::ColumnType::Custom(
-                            sea_query::SeaRc::new(sea_query::Alias::new(&s)),
+                            sea_query::SeaRc::new(sea_query::Alias::new(s)),
                         ),
                         ColumnType::Uuid => sea_query::ColumnType::Uuid,
                         ColumnType::Enum { name, variants } => sea_query::ColumnType::Enum {
-                            name: SeaRc::clone(&name),
+                            name: SeaRc::clone(name),
                             variants: variants.clone(),
                         },
                         ColumnType::Array(column_type) => {
@@ -533,6 +533,7 @@ impl From<sea_query::ColumnType> for ColumnType {
             sea_query::ColumnType::Uuid => Self::Uuid,
             sea_query::ColumnType::Enum { name, variants } => Self::Enum { name, variants },
             sea_query::ColumnType::Array(column_type) => {
+                #[allow(clippy::redundant_allocation)]
                 fn from_rc_box_column_type(
                     column_type: SeaRc<Box<sea_query::ColumnType>>,
                 ) -> ColumnType {
@@ -577,7 +578,7 @@ impl From<sea_query::ColumnType> for ColumnType {
                         sea_query::ColumnType::Custom(s) => ColumnType::Custom(s.to_string()),
                         sea_query::ColumnType::Uuid => ColumnType::Uuid,
                         sea_query::ColumnType::Enum { name, variants } => ColumnType::Enum {
-                            name: SeaRc::clone(&name),
+                            name: SeaRc::clone(name),
                             variants: variants.clone(),
                         },
                         sea_query::ColumnType::Array(column_type) => {

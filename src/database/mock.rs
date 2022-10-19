@@ -712,6 +712,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "postgres-array")]
     #[smol_potat::test]
     async fn test_postgres_array_1() -> Result<(), DbErr> {
         mod collection {
