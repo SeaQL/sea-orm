@@ -34,6 +34,7 @@ impl Column {
             | ColumnType::String(_)
             | ColumnType::Text
             | ColumnType::Custom(_) => "String".to_owned(),
+            ColumnType::TinyInteger(Some(1)) => "bool".to_owned(),
             ColumnType::TinyInteger(_) => "i8".to_owned(),
             ColumnType::SmallInteger(_) => "i16".to_owned(),
             ColumnType::Integer(_) => "i32".to_owned(),
@@ -107,6 +108,7 @@ impl Column {
                 None => quote! { ColumnType::String(None).def() },
             },
             ColumnType::Text => quote! { ColumnType::Text.def() },
+            ColumnType::TinyInteger(Some(1)) => quote! { ColumnType::Boolean.def() },
             ColumnType::TinyInteger(_) => quote! { ColumnType::TinyInteger.def() },
             ColumnType::SmallInteger(_) => quote! { ColumnType::SmallInteger.def() },
             ColumnType::Integer(_) => quote! { ColumnType::Integer.def() },
