@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Added `into_model` & `into_json` to `Cursor` https://github.com/SeaQL/sea-orm/pull/1112
 * Added `set_schema_search_path` method to `ConnectOptions` for setting schema search path of PostgreSQL connection https://github.com/SeaQL/sea-orm/pull/1056
 * Serialize `time` types as `serde_json::Value` https://github.com/SeaQL/sea-orm/pull/1042
+* Implements `fmt::Display` for `ActiveEnum` https://github.com/SeaQL/sea-orm/pull/986
+* Implements `TryFrom<ActiveModel>` for `Model` https://github.com/SeaQL/sea-orm/pull/990
 
 ### Bug fixes
 
