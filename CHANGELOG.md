@@ -58,22 +58,6 @@ enum ColumnType {
 }
 ```
 
-### House keeping
-
-* Documentation grammar fixes https://github.com/SeaQL/sea-orm/pull/1050
-* Replace `dotenv` with `dotenvy` in examples https://github.com/SeaQL/sea-orm/pull/1085
-* Exclude test_cfg module from SeaORM https://github.com/SeaQL/sea-orm/pull/1077
-
-### Integration
-
-* Support `rocket_okapi` https://github.com/SeaQL/sea-orm/pull/1071
-
-### Upgrades
-
-* Upgrade `sea-query` to 0.26 https://github.com/SeaQL/sea-orm/pull/985
-
-### Migration Guide
-
 * A new method `array_type` was added to `ValueType`:
 ```rust
 impl sea_orm::sea_query::ValueType for MyType {
@@ -103,6 +87,20 @@ impl ActiveEnum for Category {
     ...
 }
 ```
+
+### House keeping
+
+* Documentation grammar fixes https://github.com/SeaQL/sea-orm/pull/1050
+* Replace `dotenv` with `dotenvy` in examples https://github.com/SeaQL/sea-orm/pull/1085
+* Exclude test_cfg module from SeaORM https://github.com/SeaQL/sea-orm/pull/1077
+
+### Integration
+
+* Support `rocket_okapi` https://github.com/SeaQL/sea-orm/pull/1071
+
+### Upgrades
+
+* Upgrade `sea-query` to 0.26 https://github.com/SeaQL/sea-orm/pull/985
 
 ## 0.9.3 - 2022-09-30
 
