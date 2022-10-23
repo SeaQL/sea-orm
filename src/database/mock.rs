@@ -711,4 +711,79 @@ mod tests {
 
         Ok(())
     }
+
+    #[cfg(feature = "postgres-array")]
+    #[smol_potat::test]
+    async fn test_postgres_array_1() -> Result<(), DbErr> {
+        mod collection {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "collection")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub integers: Vec<i32>,
+                pub integers_opt: Option<Vec<i32>>,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(vec![vec![
+                collection::Model {
+                    id: 1,
+                    integers: vec![1, 2, 3],
+                    integers_opt: Some(vec![1, 2, 3]),
+                },
+                collection::Model {
+                    id: 2,
+                    integers: vec![],
+                    integers_opt: Some(vec![]),
+                },
+                collection::Model {
+                    id: 3,
+                    integers: vec![3, 1, 4],
+                    integers_opt: None,
+                },
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            collection::Entity::find().all(&db).await?,
+            vec![
+                collection::Model {
+                    id: 1,
+                    integers: vec![1, 2, 3],
+                    integers_opt: Some(vec![1, 2, 3]),
+                },
+                collection::Model {
+                    id: 2,
+                    integers: vec![],
+                    integers_opt: Some(vec![]),
+                },
+                collection::Model {
+                    id: 3,
+                    integers: vec![3, 1, 4],
+                    integers_opt: None,
+                },
+            ]
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![Transaction::from_sql_and_values(
+                DbBackend::Postgres,
+                r#"SELECT "collection"."id", "collection"."integers", "collection"."integers_opt" FROM "collection""#,
+                vec![]
+            ),]
+        );
+
+        Ok(())
+    }
 }

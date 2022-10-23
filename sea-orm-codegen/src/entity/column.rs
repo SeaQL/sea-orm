@@ -28,53 +28,59 @@ impl Column {
     }
 
     pub fn get_rs_type(&self, date_time_crate: &DateTimeCrate) -> TokenStream {
-        #[allow(unreachable_patterns)]
-        let ident: TokenStream = match &self.col_type {
-            ColumnType::Char(_)
-            | ColumnType::String(_)
-            | ColumnType::Text
-            | ColumnType::Custom(_) => "String".to_owned(),
-            ColumnType::TinyInteger(_) => "i8".to_owned(),
-            ColumnType::SmallInteger(_) => "i16".to_owned(),
-            ColumnType::Integer(_) => "i32".to_owned(),
-            ColumnType::BigInteger(_) => "i64".to_owned(),
-            ColumnType::TinyUnsigned(_) => "u8".to_owned(),
-            ColumnType::SmallUnsigned(_) => "u16".to_owned(),
-            ColumnType::Unsigned(_) => "u32".to_owned(),
-            ColumnType::BigUnsigned(_) => "u64".to_owned(),
-            ColumnType::Float(_) => "f32".to_owned(),
-            ColumnType::Double(_) => "f64".to_owned(),
-            ColumnType::Json | ColumnType::JsonBinary => "Json".to_owned(),
-            ColumnType::Date => match date_time_crate {
-                DateTimeCrate::Chrono => "Date".to_owned(),
-                DateTimeCrate::Time => "TimeDate".to_owned(),
-            },
-            ColumnType::Time(_) => match date_time_crate {
-                DateTimeCrate::Chrono => "Time".to_owned(),
-                DateTimeCrate::Time => "TimeTime".to_owned(),
-            },
-            ColumnType::DateTime(_) => match date_time_crate {
-                DateTimeCrate::Chrono => "DateTime".to_owned(),
-                DateTimeCrate::Time => "TimeDateTime".to_owned(),
-            },
-            ColumnType::Timestamp(_) => match date_time_crate {
-                DateTimeCrate::Chrono => "DateTimeUtc".to_owned(),
-                // ColumnType::Timpestamp(_) => time::PrimitiveDateTime: https://docs.rs/sqlx/0.3.5/sqlx/postgres/types/index.html#time
-                DateTimeCrate::Time => "TimeDateTime".to_owned(),
-            },
-            ColumnType::TimestampWithTimeZone(_) => match date_time_crate {
-                DateTimeCrate::Chrono => "DateTimeWithTimeZone".to_owned(),
-                DateTimeCrate::Time => "TimeDateTimeWithTimeZone".to_owned(),
-            },
-            ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal".to_owned(),
-            ColumnType::Uuid => "Uuid".to_owned(),
-            ColumnType::Binary(_) | ColumnType::VarBinary(_) => "Vec<u8>".to_owned(),
-            ColumnType::Boolean => "bool".to_owned(),
-            ColumnType::Enum { name, .. } => name.to_string().to_camel_case(),
-            _ => unimplemented!(),
+        fn write_rs_type(col_type: &ColumnType, date_time_crate: &DateTimeCrate) -> String {
+            #[allow(unreachable_patterns)]
+            match col_type {
+                ColumnType::Char(_)
+                | ColumnType::String(_)
+                | ColumnType::Text
+                | ColumnType::Custom(_) => "String".to_owned(),
+                ColumnType::TinyInteger(_) => "i8".to_owned(),
+                ColumnType::SmallInteger(_) => "i16".to_owned(),
+                ColumnType::Integer(_) => "i32".to_owned(),
+                ColumnType::BigInteger(_) => "i64".to_owned(),
+                ColumnType::TinyUnsigned(_) => "u8".to_owned(),
+                ColumnType::SmallUnsigned(_) => "u16".to_owned(),
+                ColumnType::Unsigned(_) => "u32".to_owned(),
+                ColumnType::BigUnsigned(_) => "u64".to_owned(),
+                ColumnType::Float(_) => "f32".to_owned(),
+                ColumnType::Double(_) => "f64".to_owned(),
+                ColumnType::Json | ColumnType::JsonBinary => "Json".to_owned(),
+                ColumnType::Date => match date_time_crate {
+                    DateTimeCrate::Chrono => "Date".to_owned(),
+                    DateTimeCrate::Time => "TimeDate".to_owned(),
+                },
+                ColumnType::Time(_) => match date_time_crate {
+                    DateTimeCrate::Chrono => "Time".to_owned(),
+                    DateTimeCrate::Time => "TimeTime".to_owned(),
+                },
+                ColumnType::DateTime(_) => match date_time_crate {
+                    DateTimeCrate::Chrono => "DateTime".to_owned(),
+                    DateTimeCrate::Time => "TimeDateTime".to_owned(),
+                },
+                ColumnType::Timestamp(_) => match date_time_crate {
+                    DateTimeCrate::Chrono => "DateTimeUtc".to_owned(),
+                    // ColumnType::Timpestamp(_) => time::PrimitiveDateTime: https://docs.rs/sqlx/0.3.5/sqlx/postgres/types/index.html#time
+                    DateTimeCrate::Time => "TimeDateTime".to_owned(),
+                },
+                ColumnType::TimestampWithTimeZone(_) => match date_time_crate {
+                    DateTimeCrate::Chrono => "DateTimeWithTimeZone".to_owned(),
+                    DateTimeCrate::Time => "TimeDateTimeWithTimeZone".to_owned(),
+                },
+                ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal".to_owned(),
+                ColumnType::Uuid => "Uuid".to_owned(),
+                ColumnType::Binary(_) | ColumnType::VarBinary(_) => "Vec<u8>".to_owned(),
+                ColumnType::Boolean => "bool".to_owned(),
+                ColumnType::Enum { name, .. } => name.to_string().to_camel_case(),
+                ColumnType::Array(column_type) => {
+                    format!("Vec<{}>", write_rs_type(column_type, date_time_crate))
+                }
+                _ => unimplemented!(),
+            }
         }
-        .parse()
-        .unwrap();
+        let ident: TokenStream = write_rs_type(&self.col_type, date_time_crate)
+            .parse()
+            .unwrap();
         match self.not_null {
             true => quote! { #ident },
             false => quote! { Option<#ident> },
@@ -97,62 +103,72 @@ impl Column {
     }
 
     pub fn get_def(&self) -> TokenStream {
-        let mut col_def = match &self.col_type {
-            ColumnType::Char(s) => match s {
-                Some(s) => quote! { ColumnType::Char(Some(#s)).def() },
-                None => quote! { ColumnType::Char(None).def() },
-            },
-            ColumnType::String(s) => match s {
-                Some(s) => quote! { ColumnType::String(Some(#s)).def() },
-                None => quote! { ColumnType::String(None).def() },
-            },
-            ColumnType::Text => quote! { ColumnType::Text.def() },
-            ColumnType::TinyInteger(_) => quote! { ColumnType::TinyInteger.def() },
-            ColumnType::SmallInteger(_) => quote! { ColumnType::SmallInteger.def() },
-            ColumnType::Integer(_) => quote! { ColumnType::Integer.def() },
-            ColumnType::BigInteger(_) => quote! { ColumnType::BigInteger.def() },
-            ColumnType::TinyUnsigned(_) => quote! { ColumnType::TinyUnsigned.def() },
-            ColumnType::SmallUnsigned(_) => quote! { ColumnType::SmallUnsigned.def() },
-            ColumnType::Unsigned(_) => quote! { ColumnType::Unsigned.def() },
-            ColumnType::BigUnsigned(_) => quote! { ColumnType::BigUnsigned.def() },
-            ColumnType::Float(_) => quote! { ColumnType::Float.def() },
-            ColumnType::Double(_) => quote! { ColumnType::Double.def() },
-            ColumnType::Decimal(s) => match s {
-                Some((s1, s2)) => quote! { ColumnType::Decimal(Some((#s1, #s2))).def() },
-                None => quote! { ColumnType::Decimal(None).def() },
-            },
-            ColumnType::DateTime(_) => quote! { ColumnType::DateTime.def() },
-            ColumnType::Timestamp(_) => quote! { ColumnType::Timestamp.def() },
-            ColumnType::TimestampWithTimeZone(_) => {
-                quote! { ColumnType::TimestampWithTimeZone.def() }
+        fn write_col_def(col_type: &ColumnType) -> TokenStream {
+            match col_type {
+                ColumnType::Char(s) => match s {
+                    Some(s) => quote! { ColumnType::Char(Some(#s)) },
+                    None => quote! { ColumnType::Char(None) },
+                },
+                ColumnType::String(s) => match s {
+                    Some(s) => quote! { ColumnType::String(Some(#s)) },
+                    None => quote! { ColumnType::String(None) },
+                },
+                ColumnType::Text => quote! { ColumnType::Text },
+                ColumnType::TinyInteger(_) => quote! { ColumnType::TinyInteger },
+                ColumnType::SmallInteger(_) => quote! { ColumnType::SmallInteger },
+                ColumnType::Integer(_) => quote! { ColumnType::Integer },
+                ColumnType::BigInteger(_) => quote! { ColumnType::BigInteger },
+                ColumnType::TinyUnsigned(_) => quote! { ColumnType::TinyUnsigned },
+                ColumnType::SmallUnsigned(_) => quote! { ColumnType::SmallUnsigned },
+                ColumnType::Unsigned(_) => quote! { ColumnType::Unsigned },
+                ColumnType::BigUnsigned(_) => quote! { ColumnType::BigUnsigned },
+                ColumnType::Float(_) => quote! { ColumnType::Float },
+                ColumnType::Double(_) => quote! { ColumnType::Double },
+                ColumnType::Decimal(s) => match s {
+                    Some((s1, s2)) => quote! { ColumnType::Decimal(Some((#s1, #s2))) },
+                    None => quote! { ColumnType::Decimal(None) },
+                },
+                ColumnType::DateTime(_) => quote! { ColumnType::DateTime },
+                ColumnType::Timestamp(_) => quote! { ColumnType::Timestamp },
+                ColumnType::TimestampWithTimeZone(_) => {
+                    quote! { ColumnType::TimestampWithTimeZone }
+                }
+                ColumnType::Time(_) => quote! { ColumnType::Time },
+                ColumnType::Date => quote! { ColumnType::Date },
+                ColumnType::Binary(BlobSize::Blob(_)) | ColumnType::VarBinary(_) => {
+                    quote! { ColumnType::Binary }
+                }
+                ColumnType::Binary(BlobSize::Tiny) => quote! { ColumnType::TinyBinary },
+                ColumnType::Binary(BlobSize::Medium) => quote! { ColumnType::MediumBinary },
+                ColumnType::Binary(BlobSize::Long) => quote! { ColumnType::LongBinary },
+                ColumnType::Boolean => quote! { ColumnType::Boolean },
+                ColumnType::Money(s) => match s {
+                    Some((s1, s2)) => quote! { ColumnType::Money(Some((#s1, #s2))) },
+                    None => quote! { ColumnType::Money(None) },
+                },
+                ColumnType::Json => quote! { ColumnType::Json },
+                ColumnType::JsonBinary => quote! { ColumnType::JsonBinary },
+                ColumnType::Uuid => quote! { ColumnType::Uuid },
+                ColumnType::Custom(s) => {
+                    let s = s.to_string();
+                    quote! { ColumnType::Custom(#s.to_owned()) }
+                }
+                ColumnType::Enum { name, .. } => {
+                    let enum_ident = format_ident!("{}", name.to_string().to_camel_case());
+                    quote! { #enum_ident::db_type() }
+                }
+                ColumnType::Array(column_type) => {
+                    let column_type = write_col_def(column_type);
+                    quote! { ColumnType::Array(sea_orm::sea_query::SeaRc::new(#column_type)) }
+                }
+                #[allow(unreachable_patterns)]
+                _ => unimplemented!(),
             }
-            ColumnType::Time(_) => quote! { ColumnType::Time.def() },
-            ColumnType::Date => quote! { ColumnType::Date.def() },
-            ColumnType::Binary(BlobSize::Blob(_)) | ColumnType::VarBinary(_) => {
-                quote! { ColumnType::Binary.def() }
-            }
-            ColumnType::Binary(BlobSize::Tiny) => quote! { ColumnType::TinyBinary.def() },
-            ColumnType::Binary(BlobSize::Medium) => quote! { ColumnType::MediumBinary.def() },
-            ColumnType::Binary(BlobSize::Long) => quote! { ColumnType::LongBinary.def() },
-            ColumnType::Boolean => quote! { ColumnType::Boolean.def() },
-            ColumnType::Money(s) => match s {
-                Some((s1, s2)) => quote! { ColumnType::Money(Some((#s1, #s2))).def() },
-                None => quote! { ColumnType::Money(None).def() },
-            },
-            ColumnType::Json => quote! { ColumnType::Json.def() },
-            ColumnType::JsonBinary => quote! { ColumnType::JsonBinary.def() },
-            ColumnType::Uuid => quote! { ColumnType::Uuid.def() },
-            ColumnType::Custom(s) => {
-                let s = s.to_string();
-                quote! { ColumnType::Custom(#s.to_owned()).def() }
-            }
-            ColumnType::Enum { name, .. } => {
-                let enum_ident = format_ident!("{}", name.to_string().to_camel_case());
-                quote! { #enum_ident::db_type() }
-            }
-            #[allow(unreachable_patterns)]
-            _ => unimplemented!(),
-        };
+        }
+        let mut col_def = write_col_def(&self.col_type);
+        col_def.extend(quote! {
+            .def()
+        });
         if !self.not_null {
             col_def.extend(quote! {
                 .null()
