@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.10.0 - Pending
+## 0.10.0 - 2022-10-23
+
+> This is a release candidate. We are still updating the documentation and examples, as well as fixing critical bugs if there are any (in that case the current version might be yanked). Please check it out and provide feedback to us!
 
 ### New Features
 * Better error types (carrying SQLx Error) https://github.com/SeaQL/sea-orm/pull/1002
