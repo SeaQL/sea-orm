@@ -194,10 +194,10 @@ fn derive_into_model(model_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
     Ok(quote!(
         #[automatically_derived]
         impl std::convert::TryFrom<ActiveModel> for <Entity as EntityTrait>::Model {
-            type Error = DbErr;
-            fn try_from(a: ActiveModel) -> Result<Self, DbErr> {
+            type Error = sea_orm::DbErr;
+            fn try_from(a: ActiveModel) -> Result<Self, sea_orm::DbErr> {
                 #(if matches!(a.#active_model_field, sea_orm::ActiveValue::NotSet) {
-                    return Err(DbErr::AttrNotSet(stringify!(#active_model_field).to_owned()));
+                    return Err(sea_orm::DbErr::AttrNotSet(stringify!(#active_model_field).to_owned()));
                 })*
                 Ok(
                     Self {
@@ -209,7 +209,7 @@ fn derive_into_model(model_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
 
         #[automatically_derived]
         impl sea_orm::TryIntoModel<<Entity as EntityTrait>::Model> for ActiveModel {
-            fn try_into_model(self) -> Result<<Entity as EntityTrait>::Model, DbErr> {
+            fn try_into_model(self) -> Result<<Entity as EntityTrait>::Model, sea_orm::DbErr> {
                 self.try_into()
             }
         }
