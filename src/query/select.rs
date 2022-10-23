@@ -1,8 +1,11 @@
-use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySelect, QueryTrait};
+use crate::{
+    cast_enum_as_text, ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySelect,
+    QueryTrait,
+};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{Alias, DynIden, Expr, IntoColumnRef, SeaRc, SelectStatement, SimpleExpr};
+use sea_query::{IntoColumnRef, SelectStatement, SimpleExpr};
 
 /// Defines a structure to perform select operations
 #[derive(Clone, Debug)]
@@ -119,18 +122,8 @@ where
     }
 
     fn column_list(&self) -> Vec<SimpleExpr> {
-        let table = SeaRc::new(E::default()) as DynIden;
-        let text_type = SeaRc::new(Alias::new("text")) as DynIden;
         E::Column::iter()
-            .map(|col| {
-                let expr = Expr::tbl(table.clone(), col);
-                let col_def = col.def();
-                let col_type = col_def.get_column_type();
-                match col_type.get_enum_name() {
-                    Some(_) => expr.as_enum(text_type.clone()),
-                    None => expr.into(),
-                }
-            })
+            .map(|col| cast_enum_as_text(col.into_expr(), &col))
             .collect()
     }
 

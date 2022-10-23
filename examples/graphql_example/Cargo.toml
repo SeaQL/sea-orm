@@ -7,22 +7,7 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
-members = [".", "entity", "migration"]
+members = [".", "api", "core", "entity", "migration"]
 
 [dependencies]
-tokio = { version = "1.0", features = ["full"] }
-axum = "^0.5.1"
-dotenv = "0.15.0"
-async-graphql-axum = "^4.0.6"
-entity = { path = "entity" }
-migration = { path = "migration" }
-
-[dependencies.sea-orm]
-path = "../../" # remove this line in your own project
-version = "^0.10.0" # sea-orm version
-features = [
-  "runtime-tokio-native-tls",
-  # "sqlx-postgres",
-  # "sqlx-mysql",
-  "sqlx-sqlite"
-]
+graphql-example-api = { path = "api" }

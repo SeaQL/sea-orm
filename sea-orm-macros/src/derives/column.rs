@@ -71,7 +71,7 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
     ))
 }
 
-/// Implement a column using for an enum using [DeriveColumn](sea_orm::DeriveColumn)
+/// Implement a column for an enum using [DeriveColumn](sea_orm::DeriveColumn)
 pub fn impl_col_from_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
     let data_enum = match data {
         Data::Enum(data_enum) => data_enum,
@@ -99,7 +99,7 @@ pub fn impl_col_from_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream>
             fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
                 match s {
                     #(#columns),*,
-                    _ => Err(sea_orm::ColumnFromStrErr(format!("Failed to parse '{}' as `{}`", s, stringify!(#ident)))),
+                    _ => Err(sea_orm::ColumnFromStrErr(s.to_owned())),
                 }
             }
         }

@@ -26,6 +26,7 @@ Join our Discord server to chat with others in the SeaQL community!
 
 + [Getting Started](https://www.sea-ql.org/SeaORM/docs/index)
 + [Step-by-step Tutorials](https://www.sea-ql.org/sea-orm-tutorial/)
++ [Cookbook](https://www.sea-ql.org/sea-orm-cookbook/)
 + [Usage Example](https://github.com/SeaQL/sea-orm/tree/master/examples/basic)
 
 Integration examples
@@ -188,7 +189,7 @@ fruit::Entity::delete_many()
 ## Learn More
 
 1. [Design](https://github.com/SeaQL/sea-orm/tree/master/DESIGN.md)
-1. [Architecture](https://github.com/SeaQL/sea-orm/tree/master/ARCHITECTURE.md)
+1. [Architecture](https://www.sea-ql.org/SeaORM/docs/internal-design/architecture/)
 1. [Release Model](https://www.sea-ql.org/SeaORM/blog/2021-08-30-release-model)
 1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 
@@ -227,7 +228,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
 
-SeaORM is a community driven project. We welcome you to participate, contribute and together build for Rust's future.
+SeaORM is a community driven project. We welcome you to participate, contribute and together help build Rust's future.
 
 A big shout out to our contributors:
 

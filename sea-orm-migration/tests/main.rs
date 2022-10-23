@@ -1,14 +1,36 @@
 mod migrator;
 use migrator::Migrator;
 
-use sea_orm::{ConnectionTrait, Database, DbBackend, DbErr, Statement};
+use sea_orm::{ConnectOptions, ConnectionTrait, Database, DbBackend, DbErr, Statement};
 use sea_orm_migration::prelude::*;
 
 #[async_std::test]
 async fn main() -> Result<(), DbErr> {
-    let url = std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
-    let db_name = "sea_orm_migration";
-    let db = Database::connect(&url).await?;
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .with_test_writer()
+        .init();
+
+    let url = &std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
+
+    run_migration(url, "sea_orm_migration", "public").await?;
+
+    run_migration(url, "sea_orm_migration_schema", "my_schema").await?;
+
+    Ok(())
+}
+
+async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbErr> {
+    let db_connect = |url: String| async {
+        let connect_options = ConnectOptions::new(url)
+            .set_schema_search_path(schema.to_owned())
+            .to_owned();
+
+        Database::connect(connect_options).await
+    };
+
+    let db = db_connect(url.to_owned()).await?;
+
     let db = &match db.get_database_backend() {
         DbBackend::MySql => {
             db.execute(Statement::from_string(
@@ -18,7 +40,7 @@ async fn main() -> Result<(), DbErr> {
             .await?;
 
             let url = format!("{}/{}", url, db_name);
-            Database::connect(&url).await?
+            db_connect(url).await?
         }
         DbBackend::Postgres => {
             db.execute(Statement::from_string(
@@ -33,7 +55,15 @@ async fn main() -> Result<(), DbErr> {
             .await?;
 
             let url = format!("{}/{}", url, db_name);
-            Database::connect(&url).await?
+            let db = db_connect(url).await?;
+
+            db.execute(Statement::from_string(
+                db.get_database_backend(),
+                format!("CREATE SCHEMA IF NOT EXISTS \"{}\";", schema),
+            ))
+            .await?;
+
+            db
         }
         DbBackend::Sqlite => db,
     };

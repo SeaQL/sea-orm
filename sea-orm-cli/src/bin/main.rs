@@ -1,5 +1,5 @@
 use clap::StructOpt;
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use sea_orm_cli::{handle_error, run_generate_command, run_migrate_command, Cli, Commands};
 
 #[async_std::main]
@@ -17,8 +17,16 @@ async fn main() {
         }
         Commands::Migrate {
             migration_dir,
+            database_schema,
+            database_url,
             command,
-        } => run_migrate_command(command, migration_dir.as_str(), verbose)
-            .unwrap_or_else(handle_error),
+        } => run_migrate_command(
+            command,
+            &migration_dir,
+            database_schema,
+            database_url,
+            verbose,
+        )
+        .unwrap_or_else(handle_error),
     }
 }

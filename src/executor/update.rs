@@ -1,8 +1,8 @@
 use crate::{
-    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
+    cast_enum_as_text, error::*, ActiveModelTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
     Iterable, SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
 };
-use sea_query::{Alias, Expr, FromValueTuple, Query, UpdateStatement};
+use sea_query::{Expr, FromValueTuple, Query, UpdateStatement};
 use std::future::Future;
 
 /// Defines an update operation
@@ -64,7 +64,7 @@ impl Updater {
     }
 
     /// Execute an update operation
-    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_
+    pub fn exec<C>(self, db: &C) -> impl Future<Output = Result<UpdateResult, DbErr>> + '_
     where
         C: ConnectionTrait,
     {
@@ -91,16 +91,10 @@ where
 {
     match db.support_returning() {
         true => {
-            let returning =
-                Query::returning().exprs(<A::Entity as EntityTrait>::Column::iter().map(|c| {
-                    let col = Expr::col(c);
-                    let col_def = c.def();
-                    let col_type = col_def.get_column_type();
-                    match col_type.get_enum_name() {
-                        Some(_) => col.as_enum(Alias::new("text")),
-                        None => col.into(),
-                    }
-                }));
+            let returning = Query::returning().exprs(
+                <A::Entity as EntityTrait>::Column::iter()
+                    .map(|c| cast_enum_as_text(Expr::col(c), &c)),
+            );
             query.returning(returning);
             let db_backend = db.get_database_backend();
             let found: Option<<A::Entity as EntityTrait>::Model> =
@@ -122,7 +116,7 @@ where
             Updater::new(query).check_record_exists().exec(db).await?;
             let primary_key_value = match model.get_primary_key_value() {
                 Some(val) => FromValueTuple::from_value_tuple(val),
-                None => return Err(DbErr::Exec("Fail to get primary key from model".to_owned())),
+                None => return Err(DbErr::UpdateGetPrimeryKey),
             };
             let found = <A::Entity as EntityTrait>::find_by_id(primary_key_value)
                 .one(db)
@@ -130,7 +124,9 @@ where
             // If we cannot select the updated row from db by the cached primary key
             match found {
                 Some(model) => Ok(model),
-                None => Err(DbErr::Exec("Failed to find inserted item".to_owned())),
+                None => Err(DbErr::RecordNotFound(
+                    "Failed to find updated item".to_owned(),
+                )),
             }
         }
     }
