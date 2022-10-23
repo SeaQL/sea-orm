@@ -197,7 +197,7 @@ fn derive_into_model(model_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
             type Error = DbErr;
             fn try_from(a: ActiveModel) -> Result<Self, DbErr> {
                 #(if matches!(a.#active_model_field, sea_orm::ActiveValue::NotSet) {
-                    return Err(DbErr::Custom(format!("field {} is NotSet", stringify!(#active_model_field))));
+                    return Err(DbErr::AttrNotSet(stringify!(#active_model_field).to_owned()));
                 })*
                 Ok(
                     Self {

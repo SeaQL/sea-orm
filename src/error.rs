@@ -40,6 +40,9 @@ pub enum DbErr {
     /// The record was not found in the database
     #[error("RecordNotFound Error: {0}")]
     RecordNotFound(String),
+    /// Thrown by `TryFrom<ActiveModel>`, which assumes all attributes are set/unchanged
+    #[error("Attribute {0} is NotSet")]
+    AttrNotSet(String),
     /// A custom error
     #[error("Custom Error: {0}")]
     Custom(String),

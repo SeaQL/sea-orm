@@ -549,7 +549,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         Ok(am)
     }
 
-    /// Return `true` if any field of `ActiveModel` is `Set`
+    /// Return `true` if any attribute of `ActiveModel` is `Set`
     fn is_changed(&self) -> bool {
         <Self::Entity as EntityTrait>::Column::iter()
             .any(|col| self.get(col).is_set() && !self.get(col).is_unchanged())
@@ -1005,7 +1005,7 @@ mod tests {
                 cake_id: Set(None),
             }
             .try_into_model(),
-            Err(DbErr::Custom(String::from("field name is NotSet")))
+            Err(DbErr::AttrNotSet(String::from("name")))
         );
 
         assert_eq!(
@@ -1015,7 +1015,7 @@ mod tests {
                 cake_id: NotSet,
             }
             .try_into_model(),
-            Err(DbErr::Custom(String::from("field cake_id is NotSet")))
+            Err(DbErr::AttrNotSet(String::from("cake_id")))
         );
     }
 
