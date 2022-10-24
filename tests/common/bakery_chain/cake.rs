@@ -1,4 +1,4 @@
-use sea_orm::entity::prelude::*;
+use sea_orm::{entity::prelude::*, ConnectionTrait};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "cake")]
@@ -58,7 +58,7 @@ impl ActiveModelBehavior for ActiveModel {
         }
     }
 
-    fn before_save(self, insert: bool) -> Result<Self, DbErr> {
+    fn before_save(self, _db: &impl ConnectionTrait, insert: bool) -> Result<Self, DbErr> {
         use rust_decimal_macros::dec;
         if self.price.as_ref() == &dec!(0) {
             Err(DbErr::Custom(format!(
@@ -70,7 +70,7 @@ impl ActiveModelBehavior for ActiveModel {
         }
     }
 
-    fn after_save(model: Model, insert: bool) -> Result<Model, DbErr> {
+    fn after_save(model: Model, _db: &impl ConnectionTrait, insert: bool) -> Result<Model, DbErr> {
         use rust_decimal_macros::dec;
         if model.price < dec!(0) {
             Err(DbErr::Custom(format!(
@@ -82,7 +82,7 @@ impl ActiveModelBehavior for ActiveModel {
         }
     }
 
-    fn before_delete(self) -> Result<Self, DbErr> {
+    fn before_delete(self, _db: &impl ConnectionTrait) -> Result<Self, DbErr> {
         if self.name.as_ref().contains("(err_on_before_delete)") {
             Err(DbErr::Custom(
                 "[before_delete] Cannot be deleted".to_owned(),
@@ -92,7 +92,7 @@ impl ActiveModelBehavior for ActiveModel {
         }
     }
 
-    fn after_delete(self) -> Result<Self, DbErr> {
+    fn after_delete(self, _db: &impl ConnectionTrait) -> Result<Self, DbErr> {
         if self.name.as_ref().contains("(err_on_after_delete)") {
             Err(DbErr::Custom("[after_delete] Cannot be deleted".to_owned()))
         } else {

@@ -278,11 +278,11 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait,
     {
-        let am = ActiveModelBehavior::before_save(self, true)?;
+        let am = ActiveModelBehavior::before_save(self, db, true)?;
         let model = <Self::Entity as EntityTrait>::insert(am)
             .exec_with_returning(db)
             .await?;
-        Self::after_save(model, true)
+        Self::after_save(model, db, true)
     }
 
     /// Perform the `UPDATE` operation on an ActiveModel
@@ -400,9 +400,9 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait,
     {
-        let am = ActiveModelBehavior::before_save(self, false)?;
+        let am = ActiveModelBehavior::before_save(self, db, false)?;
         let model: <Self::Entity as EntityTrait>::Model = Self::Entity::update(am).exec(db).await?;
-        Self::after_save(model, false)
+        Self::after_save(model, db, false)
     }
 
     /// Insert the model if primary key is `NotSet`, update otherwise.
@@ -477,10 +477,10 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait,
     {
-        let am = ActiveModelBehavior::before_delete(self)?;
+        let am = ActiveModelBehavior::before_delete(self, db)?;
         let am_clone = am.clone();
         let delete_res = Self::Entity::delete(am).exec(db).await?;
-        ActiveModelBehavior::after_delete(am_clone)?;
+        ActiveModelBehavior::after_delete(am_clone, db)?;
         Ok(delete_res)
     }
 
@@ -591,25 +591,26 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
     }
 
     /// Will be called before saving
-    fn before_save(self, insert: bool) -> Result<Self, DbErr> {
+    fn before_save(self, db: &impl ConnectionTrait, insert: bool) -> Result<Self, DbErr> {
         Ok(self)
     }
 
     /// Will be called after saving
     fn after_save(
         model: <Self::Entity as EntityTrait>::Model,
+        db: &impl ConnectionTrait,
         insert: bool,
     ) -> Result<<Self::Entity as EntityTrait>::Model, DbErr> {
         Ok(model)
     }
 
     /// Will be called before deleting
-    fn before_delete(self) -> Result<Self, DbErr> {
+    fn before_delete(self, db: &impl ConnectionTrait) -> Result<Self, DbErr> {
         Ok(self)
     }
 
     /// Will be called after deleting
-    fn after_delete(self) -> Result<Self, DbErr> {
+    fn after_delete(self, db: &impl ConnectionTrait) -> Result<Self, DbErr> {
         Ok(self)
     }
 }
