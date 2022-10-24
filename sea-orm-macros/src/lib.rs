@@ -539,6 +539,19 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 ///         - For `string_value`, value should be passed as string, i.e. `string_value = "A"`
 ///         - For `num_value`, value should be passed as integer, i.e. `num_value = 1` or `num_value = 1i32`
 ///         - Note that only one of it can be specified, and all variants of an enum have to annotate with the same `*_value` macro attribute
+///
+/// # Usage
+///
+/// ```
+/// use sea_orm::{sea_query, EnumIter, DeriveActiveEnum};
+///
+/// #[derive(EnumIter, DeriveActiveEnum)]
+/// #[sea_orm(rs_type = "i32", db_type = "Integer")]
+/// pub enum Color {
+///     Black = 0,
+///     White = 1,
+/// }
+/// ```
 #[proc_macro_derive(DeriveActiveEnum, attributes(sea_orm))]
 pub fn derive_active_enum(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

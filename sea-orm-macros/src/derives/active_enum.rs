@@ -250,7 +250,7 @@ impl ActiveEnum {
                 .collect();
 
             quote!(
-                #[derive(Debug, Clone, PartialEq, Eq, EnumIter, Iden)]
+                #[derive(Debug, Clone, PartialEq, Eq, sea_orm::EnumIter, sea_orm::Iden)]
                 pub enum #enum_variant_iden {
                     #(
                         #[iden = #str_variants]
@@ -271,7 +271,7 @@ impl ActiveEnum {
         };
 
         quote!(
-            #[derive(Debug, Clone, PartialEq, Eq, Iden)]
+            #[derive(Debug, Clone, PartialEq, Eq, sea_orm::Iden)]
             #[iden = #enum_name]
             pub struct #enum_name_iden;
 
@@ -357,7 +357,7 @@ impl ActiveEnum {
             #[automatically_derived]
             impl std::fmt::Display for #ident {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    let v: sea_orm::sea_query::Value = self.to_value().into();
+                    let v: sea_orm::sea_query::Value = <Self as sea_orm::ActiveEnum>::to_value(&self).into();
                     write!(f, "{}", v)
                 }
             }
