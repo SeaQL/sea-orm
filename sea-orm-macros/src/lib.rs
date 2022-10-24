@@ -543,7 +543,7 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 /// # Usage
 ///
 /// ```
-/// use sea_orm::{sea_query, EnumIter, DeriveActiveEnum};
+/// use sea_orm::{sea_query, DeriveActiveEnum, EnumIter};
 ///
 /// #[derive(EnumIter, DeriveActiveEnum)]
 /// #[sea_orm(rs_type = "i32", db_type = "Integer")]
