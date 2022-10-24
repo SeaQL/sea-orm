@@ -275,7 +275,7 @@ where
         db: &'a C,
     ) -> Result<impl Stream<Item = Result<E::Model, DbErr>> + 'b + Send, DbErr>
     where
-        C: ConnectionTrait + StreamTrait<'a> + Send,
+        C: ConnectionTrait + StreamTrait + Send,
     {
         self.into_model().stream(db).await
     }
@@ -329,7 +329,7 @@ where
         db: &'a C,
     ) -> Result<impl Stream<Item = Result<(E::Model, Option<F::Model>), DbErr>> + 'b, DbErr>
     where
-        C: ConnectionTrait + StreamTrait<'a> + Send,
+        C: ConnectionTrait + StreamTrait + Send,
     {
         self.into_model().stream(db).await
     }
@@ -367,7 +367,7 @@ where
         db: &'a C,
     ) -> Result<impl Stream<Item = Result<(E::Model, Option<F::Model>), DbErr>> + 'b + Send, DbErr>
     where
-        C: ConnectionTrait + StreamTrait<'a> + Send,
+        C: ConnectionTrait + StreamTrait + Send,
     {
         self.into_model().stream(db).await
     }
@@ -453,7 +453,7 @@ where
         db: &'a C,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<S::Item, DbErr>> + 'b + Send>>, DbErr>
     where
-        C: ConnectionTrait + StreamTrait<'a> + Send,
+        C: ConnectionTrait + StreamTrait + Send,
         S: 'b,
         S::Item: Send,
     {
@@ -739,7 +739,7 @@ where
         db: &'a C,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<S::Item, DbErr>> + 'b + Send>>, DbErr>
     where
-        C: ConnectionTrait + StreamTrait<'a> + Send,
+        C: ConnectionTrait + StreamTrait + Send,
         S: 'b,
         S::Item: Send,
     {
