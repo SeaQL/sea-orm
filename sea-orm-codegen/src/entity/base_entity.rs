@@ -155,7 +155,7 @@ impl Entity {
         fn is_floats(col_type: &sea_query::ColumnType) -> bool {
             match col_type {
                 ColumnType::Float(_) | ColumnType::Double(_) => true,
-                ColumnType::Array(col_type) => is_floats(&col_type),
+                ColumnType::Array(col_type) => is_floats(col_type),
                 _ => false,
             }
         }
