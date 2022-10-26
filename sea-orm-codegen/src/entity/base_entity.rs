@@ -152,14 +152,16 @@ impl Entity {
     }
 
     pub fn get_eq_needed(&self) -> TokenStream {
+        fn is_floats(col_type: &sea_query::ColumnType) -> bool {
+            match col_type {
+                ColumnType::Float(_) | ColumnType::Double(_) => true,
+                ColumnType::Array(col_type) => is_floats(&col_type),
+                _ => false,
+            }
+        }
         self.columns
             .iter()
-            .find(|column| {
-                matches!(
-                    column.col_type,
-                    ColumnType::Float(_) | ColumnType::Double(_)
-                )
-            })
+            .find(|column| is_floats(&column.col_type))
             // check if float or double exist.
             // if exist, return nothing
             .map_or(quote! {, Eq}, |_| quote! {})
