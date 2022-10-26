@@ -72,7 +72,7 @@ where
         Some(MigrateSubcommands::Refresh) => M::refresh(db).await?,
         Some(MigrateSubcommands::Reset) => M::reset(db).await?,
         Some(MigrateSubcommands::Status) => M::status(db).await?,
-        Some(MigrateSubcommands::Up { num }) => M::up(db, Some(num)).await?,
+        Some(MigrateSubcommands::Up { num }) => M::up(db, num).await?,
         Some(MigrateSubcommands::Down { num }) => M::down(db, Some(num)).await?,
         Some(MigrateSubcommands::Init) => run_migrate_init(MIGRATION_DIR)?,
         Some(MigrateSubcommands::Generate {
