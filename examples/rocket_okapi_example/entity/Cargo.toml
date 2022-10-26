@@ -1,0 +1,21 @@
+[package]
+name = "entity"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "entity"
+path = "src/lib.rs"
+
+[dependencies]
+rocket = { version = "0.5.0-rc.1", features = [
+  "json",
+] }
+
+[dependencies.sea-orm]
+path = "../../../" # remove this line in your own project
+version = "^0.10.0" # sea-orm version
+
+[dependencies.rocket_okapi]
+version = "0.8.0-rc.2"

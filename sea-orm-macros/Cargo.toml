@@ -5,6 +5,7 @@ authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
 edition = "2021"
 description = "Derive macros for SeaORM"
 license = "MIT OR Apache-2.0"
+homepage = "https://www.sea-ql.org/SeaORM"
 documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
 categories = [ "database" ]

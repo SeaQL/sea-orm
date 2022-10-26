@@ -9,6 +9,12 @@ use rocket::{error, info_, Build, Ignite, Phase, Rocket, Sentinel};
 use rocket::figment::providers::Serialized;
 use rocket::yansi::Paint;
 
+#[cfg(feature = "rocket_okapi")]
+use rocket_okapi::{
+    gen::OpenApiGenerator,
+    request::{OpenApiFromRequest, RequestHeaderInput},
+};
+
 use crate::Pool;
 
 /// Derivable trait which ties a database [`Pool`] with a configuration name.
@@ -202,6 +208,17 @@ impl<'a, D: Database> Connection<'a, D> {
     /// column](crate#supported-drivers) for the expected type of this value.
     pub fn into_inner(self) -> &'a <D::Pool as Pool>::Connection {
         self.0
+    }
+}
+
+#[cfg(feature = "rocket_okapi")]
+impl<'r, D: Database> OpenApiFromRequest<'r> for Connection<'r, D> {
+    fn from_request_input(
+        _gen: &mut OpenApiGenerator,
+        _name: String,
+        _required: bool,
+    ) -> rocket_okapi::Result<RequestHeaderInput> {
+        Ok(RequestHeaderInput::None)
     }
 }
 

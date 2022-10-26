@@ -1,0 +1,39 @@
+[package]
+name = "rocket-example-api"
+version = "0.1.0"
+authors = ["Sam Samai <sam@studio2pi.com.au>"]
+edition = "2021"
+publish = false
+
+[dependencies]
+async-stream = { version = "^0.3" }
+async-trait = { version = "0.1" }
+rocket-example-core = { path = "../core" }
+futures = { version = "^0.3" }
+futures-util = { version = "^0.3" }
+rocket = { version = "0.5.0-rc.1", features = [
+  "json",
+] }
+rocket_dyn_templates = { version = "0.1.0-rc.1", features = [
+  "tera",
+] }
+serde_json = { version = "^1" }
+entity = { path = "../entity" }
+migration = { path = "../migration" }
+tokio = "1.20.0"
+serde = "1.0"
+dto = { path = "../dto" }
+
+[dependencies.sea-orm-rocket]
+path = "../../../sea-orm-rocket/lib" # remove this line in your own project and use the version line
+features = ["rocket_okapi"] # enables rocket_okapi so to have open api features enabled
+# version = "0.5.1"
+
+[dependencies.rocket_okapi]
+version = "0.8.0-rc.2"
+features = ["swagger", "rapidoc","rocket_db_pools"]
+
+[dependencies.rocket_cors]
+git = "https://github.com/lawliet89/rocket_cors.git"
+rev = "54fae070"
+default-features = false

@@ -108,6 +108,27 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
 /// #
 /// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
+///
+/// Entity should always have a primary key.
+/// Or, it will result in a compile error.
+/// See <https://github.com/SeaQL/sea-orm/issues/485> for details.
+///
+/// ```compile_fail
+/// use sea_orm::entity::prelude::*;
+///
+/// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+/// #[sea_orm(table_name = "posts")]
+/// pub struct Model {
+///     pub title: String,
+///     #[sea_orm(column_type = "Text")]
+///     pub text: String,
+/// }
+///
+/// # #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+/// # pub enum Relation {}
+/// #
+/// # impl ActiveModelBehavior for ActiveModel {}
+/// ```
 #[proc_macro_derive(DeriveEntityModel, attributes(sea_orm))]
 pub fn derive_entity_model(input: TokenStream) -> TokenStream {
     let input_ts = input.clone();

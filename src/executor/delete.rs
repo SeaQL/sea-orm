@@ -52,7 +52,7 @@ impl Deleter {
     }
 
     /// Execute a DELETE operation
-    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<DeleteResult, DbErr>> + '_
+    pub fn exec<C>(self, db: &C) -> impl Future<Output = Result<DeleteResult, DbErr>> + '_
     where
         C: ConnectionTrait,
     {

@@ -8,6 +8,7 @@ authors = ["Billy Chan <ccw.billy.123@gmail.com>"]
 edition = "2021"
 description = "Command line utility for SeaORM"
 license = "MIT OR Apache-2.0"
+homepage = "https://www.sea-ql.org/SeaORM"
 documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
 categories = ["database"]
@@ -31,17 +32,11 @@ required-features = ["cli", "codegen"]
 
 [dependencies]
 clap = { version = "^3.2", features = ["env", "derive"], optional = true }
-dotenv = { version = "^0.15", optional = true }
-async-std = { version = "^1.9", features = [
-    "attributes",
-    "tokio1",
-], optional = true }
+dotenvy = { version = "^0.15", optional = true }
+async-std = { version = "^1.9", features = ["attributes", "tokio1"], optional = true }
 sea-orm-codegen = { version = "^0.10.0", path = "../sea-orm-codegen", optional = true }
-sea-schema = { version = "^0.9.3" }
-sqlx = { version = "^0.6", default-features = false, features = [
-    "mysql",
-    "postgres",
-], optional = true }
+sea-schema = { version = "^0.10.1" }
+sqlx = { version = "^0.6", default-features = false, features = ["mysql", "postgres"], optional = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing = { version = "0.1" }
 url = "^2.2"
@@ -52,30 +47,12 @@ regex = "1"
 smol = "1.2.5"
 
 [features]
-default = ["codegen", "async-std", "cli", "runtime-async-std-native-tls"]
+default = ["codegen", "cli", "runtime-async-std-native-tls", "async-std"]
 codegen = ["sea-schema/sqlx-all", "sea-orm-codegen"]
-cli = ["clap", "dotenv"]
-runtime-actix-native-tls = [
-    "sqlx/runtime-actix-native-tls",
-    "sea-schema/runtime-actix-native-tls",
-]
-runtime-async-std-native-tls = [
-    "sqlx/runtime-async-std-native-tls",
-    "sea-schema/runtime-async-std-native-tls",
-]
-runtime-tokio-native-tls = [
-    "sqlx/runtime-tokio-native-tls",
-    "sea-schema/runtime-tokio-native-tls",
-]
-runtime-actix-rustls = [
-    "sqlx/runtime-actix-rustls",
-    "sea-schema/runtime-actix-rustls",
-]
-runtime-async-std-rustls = [
-    "sqlx/runtime-async-std-rustls",
-    "sea-schema/runtime-async-std-rustls",
-]
-runtime-tokio-rustls = [
-    "sqlx/runtime-tokio-rustls",
-    "sea-schema/runtime-tokio-rustls",
-]
+cli = ["clap", "dotenvy"]
+runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls", "sea-schema/runtime-actix-native-tls"]
+runtime-async-std-native-tls = ["sqlx/runtime-async-std-native-tls", "sea-schema/runtime-async-std-native-tls"]
+runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls", "sea-schema/runtime-tokio-native-tls"]
+runtime-actix-rustls = ["sqlx/runtime-actix-rustls", "sea-schema/runtime-actix-rustls"]
+runtime-async-std-rustls = ["sqlx/runtime-async-std-rustls", "sea-schema/runtime-async-std-rustls"]
+runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls", "sea-schema/runtime-tokio-rustls"]

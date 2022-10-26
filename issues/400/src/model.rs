@@ -1,5 +1,5 @@
-use std::marker::PhantomData;
 use sea_orm::entity::prelude::*;
+use std::marker::PhantomData;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 #[sea_orm(table_name = "model")]
@@ -31,10 +31,7 @@ impl<T> From<AccountId<T>> for Uuid {
 
 impl<T> sea_orm::TryFromU64 for AccountId<T> {
     fn try_from_u64(_n: u64) -> Result<Self, sea_orm::DbErr> {
-        Err(sea_orm::DbErr::Exec(format!(
-            "{} cannot be converted from u64",
-            stringify!(AccountId<T>)
-        )))
+        Err(sea_orm::DbErr::ConvertFromU64(stringify!(AccountId<T>)))
     }
 }
 
@@ -71,6 +68,10 @@ impl<T> sea_orm::sea_query::ValueType for AccountId<T> {
 
     fn type_name() -> String {
         stringify!(AccountId).to_owned()
+    }
+
+    fn array_type() -> sea_orm::sea_query::ArrayType {
+        sea_orm::sea_query::ArrayType::Uuid
     }
 
     fn column_type() -> sea_orm::sea_query::ColumnType {

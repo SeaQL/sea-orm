@@ -1,0 +1,15 @@
+[package]
+name = "poem-example-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+poem-example-core = { path = "../core" }
+tokio = { version = "1.15.0", features = ["macros", "rt-multi-thread"] }
+poem = { version = "1.2.33", features = ["static-files"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde = { version = "1", features = ["derive"] }
+tera = "1.8.0"
+dotenvy = "0.15"
+entity = { path = "../entity" }
+migration = { path = "../migration" }

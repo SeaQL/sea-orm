@@ -1,9 +1,9 @@
 use crate::{
-    ActiveModelTrait, ColumnTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
+    cast_text_as_enum, ActiveModelTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
     PrimaryKeyTrait, QueryTrait,
 };
 use core::marker::PhantomData;
-use sea_query::{Alias, Expr, InsertStatement, OnConflict, ValueTuple};
+use sea_query::{Expr, InsertStatement, OnConflict, ValueTuple};
 
 /// Performs INSERT operations on a ActiveModel
 #[derive(Debug)]
@@ -134,18 +134,11 @@ where
             }
             if av_has_val {
                 columns.push(col);
-                let val = Expr::val(av.into_value().unwrap());
-                let col_def = col.def();
-                let col_type = col_def.get_column_type();
-                let expr = match col_type.get_enum_name() {
-                    Some(enum_name) => val.as_enum(Alias::new(enum_name)),
-                    None => val.into(),
-                };
-                values.push(expr);
+                values.push(cast_text_as_enum(Expr::val(av.into_value().unwrap()), &col));
             }
         }
         self.query.columns(columns);
-        self.query.exprs_panic(values);
+        self.query.values_panic(values);
         self
     }
 

@@ -18,7 +18,7 @@ pub use stream::*;
 use tracing::instrument;
 pub use transaction::*;
 
-use crate::DbErr;
+use crate::{DbErr, RuntimeErr};
 
 /// Defines a database
 #[derive(Debug, Default)]
@@ -38,6 +38,8 @@ pub struct ConnectOptions {
     /// Maximum idle time for a particular connection to prevent
     /// network resource exhaustion
     pub(crate) idle_timeout: Option<Duration>,
+    /// Set the maximum amount of time to spend waiting for acquiring a connection
+    pub(crate) acquire_timeout: Option<Duration>,
     /// Set the maximum lifetime of individual connections
     pub(crate) max_lifetime: Option<Duration>,
     /// Enable SQLx statement logging
@@ -46,6 +48,8 @@ pub struct ConnectOptions {
     pub(crate) sqlx_logging_level: log::LevelFilter,
     /// set sqlcipher key
     pub(crate) sqlcipher_key: Option<Cow<'static, str>>,
+    /// Schema search path (PostgreSQL only)
+    pub(crate) schema_search_path: Option<String>,
 }
 
 impl Database {
@@ -73,10 +77,10 @@ impl Database {
         if crate::MockDatabaseConnector::accepts(&opt.url) {
             return crate::MockDatabaseConnector::connect(&opt.url).await;
         }
-        Err(DbErr::Conn(format!(
+        Err(DbErr::Conn(RuntimeErr::Internal(format!(
             "The connection string '{}' has no supporting driver.",
             opt.url
-        )))
+        ))))
     }
 }
 
@@ -107,10 +111,12 @@ impl ConnectOptions {
             min_connections: None,
             connect_timeout: None,
             idle_timeout: None,
+            acquire_timeout: None,
             max_lifetime: None,
             sqlx_logging: true,
             sqlx_logging_level: log::LevelFilter::Info,
             sqlcipher_key: None,
+            schema_search_path: None,
         }
     }
 
@@ -136,6 +142,9 @@ impl ConnectOptions {
         }
         if let Some(idle_timeout) = self.idle_timeout {
             opt = opt.idle_timeout(Some(idle_timeout));
+        }
+        if let Some(acquire_timeout) = self.acquire_timeout {
+            opt = opt.acquire_timeout(acquire_timeout);
         }
         if let Some(max_lifetime) = self.max_lifetime {
             opt = opt.max_lifetime(Some(max_lifetime));
@@ -192,6 +201,17 @@ impl ConnectOptions {
         self.idle_timeout
     }
 
+    /// Set the maximum amount of time to spend waiting for acquiring a connection
+    pub fn acquire_timeout(&mut self, value: Duration) -> &mut Self {
+        self.acquire_timeout = Some(value);
+        self
+    }
+
+    /// Get the maximum amount of time to spend waiting for acquiring a connection
+    pub fn get_acquire_timeout(&self) -> Option<Duration> {
+        self.acquire_timeout
+    }
+
     /// Set the maximum lifetime of individual connections
     pub fn max_lifetime(&mut self, lifetime: Duration) -> &mut Self {
         self.max_lifetime = Some(lifetime);
@@ -232,6 +252,12 @@ impl ConnectOptions {
         T: Into<Cow<'static, str>>,
     {
         self.sqlcipher_key = Some(value.into());
+        self
+    }
+
+    /// Set schema search path (PostgreSQL only)
+    pub fn set_schema_search_path(&mut self, schema_search_path: String) -> &mut Self {
+        self.schema_search_path = Some(schema_search_path);
         self
     }
 }
