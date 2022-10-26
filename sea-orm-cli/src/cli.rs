@@ -244,9 +244,8 @@ pub enum GenerateSubcommands {
             value_parser,
             long,
             use_value_delimiter = true,
-            value_delimiter = ';',
             takes_value = true,
-            help = r#"Add extra attributes to generated model struct, no need for `#[]` (semicolon separated), ex. `serde(rename_all = "camelCase")`"#
+            help = r#"Add extra attributes to generated model struct, no need for `#[]` (comma separated), ex. `-- attributes "serde(rename_all = \"camelCase\")","ts(export)"`"#
         )]
         attributes: Vec<String>,
     },

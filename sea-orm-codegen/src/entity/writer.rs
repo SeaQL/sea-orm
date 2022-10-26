@@ -94,6 +94,7 @@ fn bonus_derive(derives: Vec<String>) -> TokenStream {
 
 /// convert attributes argument to token stream
 fn bonus_attributes(attributes: Vec<String>) -> TokenStream {
+    println!("{:?}", attributes);
     attributes
         .into_iter()
         .filter(|attr| !attr.is_empty())
