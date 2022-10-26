@@ -59,12 +59,13 @@ enum ColumnType {
 
 // example
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "tea")]
-pub enum Tea {
-    #[sea_orm(string_value = "EverydayTea")]
+#[derive(Iden)]
+enum TeaEnum {
+    #[iden = "tea"]
+    Enum,
+    #[iden = "EverydayTea"]
     EverydayTea,
-    #[sea_orm(string_value = "BreakfastTea")]
+    #[iden = "BreakfastTea"]
     BreakfastTea,
 }
 
@@ -74,7 +75,7 @@ ColumnDef::new(active_enum_child::Column::Tea)
 
 // now
 ColumnDef::new(active_enum_child::Column::Tea)
-    .enumeration(TeaEnum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea])
+    .enumeration(TeaEnum::Enum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea])
 ```
 
 * A new method `array_type` was added to `ValueType`:
