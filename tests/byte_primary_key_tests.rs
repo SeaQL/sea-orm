@@ -41,7 +41,7 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
     };
 
     let update_res = Entity::update(updated_active_model.clone())
-        .filter(Column::Id.eq(vec![1, 2, 4]))
+        .filter(Column::Id.eq(vec![1_u8, 2_u8, 4_u8])) // annotate it as Vec<u8> explicitly
         .exec(db)
         .await;
 
@@ -53,7 +53,7 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
     );
 
     let update_res = Entity::update(updated_active_model)
-        .filter(Column::Id.eq(vec![1, 2, 3]))
+        .filter(Column::Id.eq(vec![1_u8, 2_u8, 3_u8])) // annotate it as Vec<u8> explicitly
         .exec(db)
         .await?;
 
@@ -67,7 +67,7 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     assert_eq!(
         Entity::find()
-            .filter(Column::Id.eq(vec![1, 2, 3]))
+            .filter(Column::Id.eq(vec![1_u8, 2_u8, 3_u8])) // annotate it as Vec<u8> explicitly
             .one(db)
             .await?,
         Some(Model {

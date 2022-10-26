@@ -638,7 +638,7 @@ where
     let col_def = col.def();
     let col_type = col_def.get_column_type();
     match col_type.get_enum_name() {
-        Some(enum_name) => f(expr, SeaRc::new(Alias::new(enum_name))),
+        Some(enum_name) => f(expr, SeaRc::clone(enum_name)),
         None => expr.into(),
     }
 }

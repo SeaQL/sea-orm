@@ -45,6 +45,10 @@ impl sea_query::ValueType for StringVec {
         stringify!(StringVec).to_owned()
     }
 
+    fn array_type() -> sea_orm::sea_query::ArrayType {
+        sea_orm::sea_query::ArrayType::String
+    }
+
     fn column_type() -> sea_query::ColumnType {
         sea_query::ColumnType::String(None)
     }

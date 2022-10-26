@@ -1,3 +1,4 @@
+use crate::util::unpack_table_ref;
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
@@ -155,7 +156,7 @@ impl Relation {
 impl From<&TableForeignKey> for Relation {
     fn from(tbl_fk: &TableForeignKey) -> Self {
         let ref_table = match tbl_fk.get_ref_table() {
-            Some(s) => s,
+            Some(s) => unpack_table_ref(s),
             None => panic!("RefTable should not be empty"),
         };
         let columns = tbl_fk.get_columns();

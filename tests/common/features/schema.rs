@@ -42,6 +42,10 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_active_enum_child_table(db).await?;
     create_insert_default_table(db).await?;
 
+    if DbBackend::Postgres == db_backend {
+        create_collection_table(db).await?;
+    }
+
     Ok(())
 }
 
@@ -166,7 +170,7 @@ pub async fn create_active_enum_table(db: &DbConn) -> Result<ExecResult, DbErr> 
         .col(ColumnDef::new(active_enum::Column::Color).integer())
         .col(
             ColumnDef::new(active_enum::Column::Tea)
-                .enumeration("tea", vec!["EverydayTea", "BreakfastTea"]),
+                .enumeration(TeaEnum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea]),
         )
         .to_owned();
 
@@ -192,7 +196,7 @@ pub async fn create_active_enum_child_table(db: &DbConn) -> Result<ExecResult, D
         .col(ColumnDef::new(active_enum_child::Column::Color).integer())
         .col(
             ColumnDef::new(active_enum_child::Column::Tea)
-                .enumeration("tea", vec!["EverydayTea", "BreakfastTea"]),
+                .enumeration(TeaEnum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea]),
         )
         .foreign_key(
             ForeignKeyCreateStatement::new()
@@ -325,4 +329,28 @@ pub async fn create_json_struct_table(db: &DbConn) -> Result<ExecResult, DbErr> 
         .to_owned();
 
     create_table(db, &stmt, JsonStruct).await
+}
+
+pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(collection::Entity)
+        .col(
+            ColumnDef::new(collection::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(collection::Column::Integers)
+                .array(sea_query::ColumnType::Integer(None))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(collection::Column::IntegersOpt)
+                .array(sea_query::ColumnType::Integer(None)),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, Collection).await
 }

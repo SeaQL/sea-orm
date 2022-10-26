@@ -5,24 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.10.0 - Pending
+## 0.10.0 - 2022-10-23
+
+> This is a release candidate. We are still updating the documentation and examples, as well as fixing critical bugs if there are any (in that case the current version might be yanked). Please check it out and provide feedback to us!
 
 ### New Features
 * Better error types (carrying SQLx Error) https://github.com/SeaQL/sea-orm/pull/1002
+* Support array datatype in PostgreSQL https://github.com/SeaQL/sea-orm/pull/1132
 * [sea-orm-cli] Generate entity files as a library or module https://github.com/SeaQL/sea-orm/pull/953
 * [sea-orm-cli] Generate a new migration template with name prefix of unix timestamp https://github.com/SeaQL/sea-orm/pull/947
 * [sea-orm-cli] Generate migration in modules https://github.com/SeaQL/sea-orm/pull/933
 * [sea-orm-cli] Generate `DeriveRelation` on empty `Relation` enum https://github.com/SeaQL/sea-orm/pull/1019
 * [sea-orm-cli] Generate entity derive `Eq` if possible https://github.com/SeaQL/sea-orm/pull/988
+* [sea-orm-cli] Run migration on any PostgreSQL schema https://github.com/SeaQL/sea-orm/pull/1056
 
 ### Enhancements
 
 * Support `distinct` & `distinct_on` expression https://github.com/SeaQL/sea-orm/pull/902
 * `fn column()` also handle enum type https://github.com/SeaQL/sea-orm/pull/973
 * Added `acquire_timeout` on `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/897
-* `migrate fresh` command will drop all PostgreSQL types https://github.com/SeaQL/sea-orm/pull/864, https://github.com/SeaQL/sea-orm/pull/991
+* [sea-orm-cli] `migrate fresh` command will drop all PostgreSQL types https://github.com/SeaQL/sea-orm/pull/864, https://github.com/SeaQL/sea-orm/pull/991
 * Better compile error for entity without primary key https://github.com/SeaQL/sea-orm/pull/1020
 * Added blanket implementations of `IntoActiveValue` for `Option` values https://github.com/SeaQL/sea-orm/pull/833
+* Added `into_model` & `into_json` to `Cursor` https://github.com/SeaQL/sea-orm/pull/1112
+* Added `set_schema_search_path` method to `ConnectOptions` for setting schema search path of PostgreSQL connection https://github.com/SeaQL/sea-orm/pull/1056
+* Serialize `time` types as `serde_json::Value` https://github.com/SeaQL/sea-orm/pull/1042
+* Implements `fmt::Display` for `ActiveEnum` https://github.com/SeaQL/sea-orm/pull/986
+* Implements `TryFrom<ActiveModel>` for `Model` https://github.com/SeaQL/sea-orm/pull/990
 
 ### Bug fixes
 
@@ -32,12 +41,66 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Replaced `usize` with `u64` in `PaginatorTrait` https://github.com/SeaQL/sea-orm/pull/789
 * Type signature of `DbErr` changed as a result of https://github.com/SeaQL/sea-orm/pull/1002
+* `ColumnType::Enum` structure changed:
+```rust
+enum ColumnType {
+    // then
+    Enum(String, Vec<String>)
+
+    // now
+    Enum {
+        /// Name of enum
+        name: DynIden,
+        /// Variants of enum
+        variants: Vec<DynIden>,
+    }
+    ...
+}
+```
+
+* A new method `array_type` was added to `ValueType`:
+```rust
+impl sea_orm::sea_query::ValueType for MyType {
+    fn array_type() -> sea_orm::sea_query::ArrayType {
+        sea_orm::sea_query::ArrayType::TypeName
+    }
+    ...
+}
+```
+
+* `ActiveEnum::name()` changed return type to `DynIden`:
+```rust
+#[derive(Debug, Iden)]
+#[iden = "category"]
+pub struct CategoryEnum;
+
+impl ActiveEnum for Category {
+    // then
+    fn name() -> String {
+        "category".to_owned()
+    }
+
+    // now
+    fn name() -> DynIden {
+        SeaRc::new(CategoryEnum)
+    }
+    ...
+}
+```
 
 ### House keeping
 
 * Documentation grammar fixes https://github.com/SeaQL/sea-orm/pull/1050
 * Replace `dotenv` with `dotenvy` in examples https://github.com/SeaQL/sea-orm/pull/1085
 * Exclude test_cfg module from SeaORM https://github.com/SeaQL/sea-orm/pull/1077
+
+### Integration
+
+* Support `rocket_okapi` https://github.com/SeaQL/sea-orm/pull/1071
+
+### Upgrades
+
+* Upgrade `sea-query` to 0.26 https://github.com/SeaQL/sea-orm/pull/985
 
 ## 0.9.3 - 2022-09-30
 

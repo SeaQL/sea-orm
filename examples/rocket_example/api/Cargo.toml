@@ -23,5 +23,5 @@ migration = { path = "../migration" }
 tokio = "1.20.0"
 
 [dependencies.sea-orm-rocket]
-path = "../../../sea-orm-rocket/lib" # remove this line in your own project and use the git line
-# git = "https://github.com/SeaQL/sea-orm"
+path = "../../../sea-orm-rocket/lib" # remove this line in your own project and uncomment the following line
+# version = "0.5.0"

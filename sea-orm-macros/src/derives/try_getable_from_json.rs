@@ -28,6 +28,10 @@ pub fn expand_derive_from_json_query_result(ident: Ident) -> syn::Result<TokenSt
                 stringify!(#ident).to_owned()
             }
 
+            fn array_type() -> sea_orm::sea_query::ArrayType {
+                sea_orm::sea_query::ArrayType::Json
+            }
+
             fn column_type() -> sea_orm::sea_query::ColumnType {
                 sea_orm::sea_query::ColumnType::Json
             }

@@ -1,4 +1,5 @@
-use syn::{punctuated::Punctuated, token::Comma, Field, Meta};
+use quote::format_ident;
+use syn::{punctuated::Punctuated, token::Comma, Field, Ident, Meta};
 
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
     for attr in field.attrs.iter() {
@@ -23,6 +24,10 @@ pub(crate) fn field_not_ignored(field: &Field) -> bool {
         }
     }
     true
+}
+
+pub(crate) fn format_field_ident(field: Field) -> Ident {
+    format_ident!("{}", field.ident.unwrap().to_string())
 }
 
 pub(crate) fn trim_starting_raw_identifier<T>(string: T) -> String
