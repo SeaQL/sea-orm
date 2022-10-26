@@ -75,7 +75,7 @@ ColumnDef::new(active_enum_child::Column::Tea)
 
 // now
 ColumnDef::new(active_enum_child::Column::Tea)
-    .enumeration(TeaEnum::Enum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea])
+    .enumeration(TeaEnum::Enum, [TeaEnum::EverydayTea, TeaEnum::BreakfastTea])
 ```
 
 * A new method `array_type` was added to `ValueType`:
