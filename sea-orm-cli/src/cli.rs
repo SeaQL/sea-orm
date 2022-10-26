@@ -77,7 +77,6 @@ pub enum MigrateSubcommands {
 
         #[clap(
             action,
-            short,
             long,
             help = "Generate migration file based on Utc time instead of Local time"
         )]
