@@ -250,14 +250,25 @@ impl ActiveEnum {
                 .collect();
 
             quote!(
-                #[derive(Debug, Clone, PartialEq, Eq, EnumIter, Iden)]
+                #[derive(Debug, Clone, PartialEq, Eq, sea_orm::EnumIter)]
                 pub enum #enum_variant_iden {
                     #(
-                        #[iden = #str_variants]
                         #enum_variants,
                     )*
                 }
 
+                #[automatically_derived]
+                impl sea_orm::sea_query::Iden for #enum_variant_iden {
+                    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+                        write!(s, "{}", match self {
+                            #(
+                                Self::#enum_variants => #str_variants,
+                            )*
+                        }).unwrap();
+                    }
+                }
+
+                #[automatically_derived]
                 impl #ident {
                     pub fn iden_values() -> Vec<sea_orm::sea_query::DynIden> {
                         <#enum_variant_iden as sea_orm::strum::IntoEnumIterator>::iter()
@@ -271,9 +282,15 @@ impl ActiveEnum {
         };
 
         quote!(
-            #[derive(Debug, Clone, PartialEq, Eq, Iden)]
-            #[iden = #enum_name]
+            #[derive(Debug, Clone, PartialEq, Eq)]
             pub struct #enum_name_iden;
+
+            #[automatically_derived]
+            impl sea_orm::sea_query::Iden for #enum_name_iden {
+                fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+                    write!(s, "{}", #enum_name).unwrap();
+                }
+            }
 
             #impl_enum_variant_iden
 
@@ -357,7 +374,7 @@ impl ActiveEnum {
             #[automatically_derived]
             impl std::fmt::Display for #ident {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    let v: sea_orm::sea_query::Value = self.to_value().into();
+                    let v: sea_orm::sea_query::Value = <Self as sea_orm::ActiveEnum>::to_value(&self).into();
                     write!(f, "{}", v)
                 }
             }
