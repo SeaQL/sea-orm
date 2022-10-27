@@ -5,11 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.10.0 - 2022-10-23
+## 0.10.1 - 2022-10-27
 
 > This is a release candidate. We are still updating the documentation and examples, as well as fixing critical bugs if there are any (in that case the current version might be yanked). Please check it out and provide feedback to us!
 
+### Enhancements
+
+* [sea-orm-cli] Escape module name defined with Rust keywords https://github.com/SeaQL/sea-orm/pull/1052
+* [sea-orm-cli] Check to make sure migration name doesn't contain hyphen `-` in it https://github.com/SeaQL/sea-orm/pull/879, https://github.com/SeaQL/sea-orm/pull/1155
+* Support `time` crate for SQLite https://github.com/SeaQL/sea-orm/pull/995
+
+### Bug fixes
+
+* [sea-orm-cli] Generate `Related` for m-to-n relation https://github.com/SeaQL/sea-orm/pull/1075
+* [sea-orm-cli] Generate model entity with Postgres Enum field https://github.com/SeaQL/sea-orm/pull/1153
+* [sea-orm-cli] Migrate up command apply all pending migrations https://github.com/SeaQL/sea-orm/pull/1010
+* [sea-orm-cli] Conflicting short flag `-u` when executing `migrate generate` command https://github.com/SeaQL/sea-orm/pull/1157
+* Prefix the usage of types with `sea_orm::` inside `DeriveActiveEnum` derive macros https://github.com/SeaQL/sea-orm/pull/1146, https://github.com/SeaQL/sea-orm/pull/1154
+* [sea-orm-cli] Generate model with `Vec<f32>` or `Vec<f64>` should not derive `Eq` on the model struct https://github.com/SeaQL/sea-orm/pull/1158
+
+### House keeping
+
+* [sea-orm-cli] [sea-orm-migration] Add `cli` feature to optionally include dependencies that are required by the CLI https://github.com/SeaQL/sea-orm/pull/978
+
+### Upgrades
+
+* Upgrade `sea-schema` to 0.10.2 https://github.com/SeaQL/sea-orm/pull/1153
+
+## 0.10.0 - 2022-10-23
+
 ### New Features
+
 * Better error types (carrying SQLx Error) https://github.com/SeaQL/sea-orm/pull/1002
 * Support array datatype in PostgreSQL https://github.com/SeaQL/sea-orm/pull/1132
 * [sea-orm-cli] Generate entity files as a library or module https://github.com/SeaQL/sea-orm/pull/953
