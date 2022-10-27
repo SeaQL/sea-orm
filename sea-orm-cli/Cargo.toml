@@ -3,7 +3,7 @@
 
 [package]
 name = "sea-orm-cli"
-version = "0.10.0"
+version = "0.10.1"
 authors = ["Billy Chan <ccw.billy.123@gmail.com>"]
 edition = "2021"
 description = "Command line utility for SeaORM"
@@ -34,7 +34,7 @@ required-features = ["cli", "codegen"]
 clap = { version = "^3.2", features = ["env", "derive"], optional = true }
 dotenvy = { version = "^0.15", optional = true }
 async-std = { version = "^1.9", features = ["attributes", "tokio1"], optional = true }
-sea-orm-codegen = { version = "^0.10.0", path = "../sea-orm-codegen", optional = true }
+sea-orm-codegen = { version = "^0.10.1", path = "../sea-orm-codegen", optional = true }
 sea-schema = { version = "^0.10.2" }
 sqlx = { version = "^0.6", default-features = false, features = ["mysql", "postgres"], optional = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
