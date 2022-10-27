@@ -5,32 +5,8 @@ authors = ["Yoshiera Huang <huangjasper@126.com>"]
 edition = "2021"
 publish = false
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
-members = [".", "entity", "migration"]
+members = [".", "api", "core", "entity", "migration"]
 
 [dependencies]
-tokio = { version = "1.18.1", features = ["full"] }
-axum = "0.5.4"
-tower = "0.4.12"
-tower-http = { version = "0.3.3", features = ["fs"] }
-tower-cookies = "0.6.0"
-anyhow = "1.0.57"
-dotenv = "0.15.0"
-serde = "1.0.137"
-serde_json = "1.0.81"
-tera = "1.15.0"
-tracing-subscriber = { version = "0.3.11", features = ["env-filter"] }
-entity = { path = "entity" }
-migration = { path = "migration" }
-
-[dependencies.sea-orm]
-path = "../../" # remove this line in your own project
-version = "^0.10.0" # sea-orm version
-features = [
-  "debug-print",
-  "runtime-tokio-native-tls",
-  "sqlx-postgres",
-  # "sqlx-mysql",
-  # "sqlx-sqlite",
-]
+axum-example-api = { path = "api" }

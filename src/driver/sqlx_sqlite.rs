@@ -1,12 +1,12 @@
+use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
-    sqlite::{SqliteArguments, SqliteConnectOptions, SqliteQueryResult, SqliteRow},
+    sqlite::{SqliteConnectOptions, SqliteQueryResult, SqliteRow},
     Sqlite, SqlitePool,
 };
 
-sea_query::sea_query_driver_sqlite!();
-use sea_query_driver_sqlite::bind_query;
+use sea_query_binder::SqlxValues;
 use tracing::instrument;
 
 use crate::{
@@ -46,7 +46,7 @@ impl SqlxSqliteConnector {
         let mut opt = options
             .url
             .parse::<SqliteConnectOptions>()
-            .map_err(|e| DbErr::Conn(e.to_string()))?;
+            .map_err(sqlx_error_to_conn_err)?;
         if options.sqlcipher_key.is_some() {
             opt = opt.pragma("key", options.sqlcipher_key.clone().unwrap());
         }
@@ -96,9 +96,7 @@ impl SqlxSqlitePoolConnection {
                 }
             })
         } else {
-            Err(DbErr::Exec(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -114,14 +112,12 @@ impl SqlxSqlitePoolConnection {
                     Ok(row) => Ok(Some(row.into())),
                     Err(err) => match err {
                         sqlx::Error::RowNotFound => Ok(None),
-                        _ => Err(DbErr::Query(err.to_string())),
+                        _ => Err(sqlx_error_to_query_err(err)),
                     },
                 }
             })
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -139,9 +135,7 @@ impl SqlxSqlitePoolConnection {
                 }
             })
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -157,9 +151,7 @@ impl SqlxSqlitePoolConnection {
                 self.metric_callback.clone(),
             )))
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -169,9 +161,7 @@ impl SqlxSqlitePoolConnection {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_sqlite(conn, self.metric_callback.clone()).await
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -192,9 +182,7 @@ impl SqlxSqlitePoolConnection {
                 .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
-            Err(TransactionError::Connection(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            )))
+            Err(TransactionError::Connection(DbErr::ConnectionAcquire))
         }
     }
 
@@ -222,10 +210,10 @@ impl From<SqliteQueryResult> for ExecResult {
     }
 }
 
-pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, SqliteArguments> {
-    let mut query = sqlx::query(&stmt.sql);
-    if let Some(values) = &stmt.values {
-        query = bind_query(query, values);
-    }
-    query
+pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, SqlxValues> {
+    let values = stmt
+        .values
+        .as_ref()
+        .map_or(Values(Vec::new()), |values| values.clone());
+    sqlx::query_with(&stmt.sql, SqlxValues(values))
 }

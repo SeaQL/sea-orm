@@ -549,7 +549,7 @@ pub trait ActiveModelTrait: Clone + Debug {
         Ok(am)
     }
 
-    /// Return `true` if any field of `ActiveModel` is `Set`
+    /// Return `true` if any attribute of `ActiveModel` is `Set`
     fn is_changed(&self) -> bool {
         <Self::Entity as EntityTrait>::Column::iter()
             .any(|col| self.get(col).is_set() && !self.get(col).is_unchanged())
@@ -641,29 +641,35 @@ where
     fn into_active_value(self) -> ActiveValue<V>;
 }
 
+impl<V> IntoActiveValue<Option<V>> for Option<V>
+where
+    V: IntoActiveValue<V> + Into<Value> + Nullable,
+{
+    fn into_active_value(self) -> ActiveValue<Option<V>> {
+        match self {
+            Some(value) => Set(Some(value)),
+            None => NotSet,
+        }
+    }
+}
+
+impl<V> IntoActiveValue<Option<V>> for Option<Option<V>>
+where
+    V: IntoActiveValue<V> + Into<Value> + Nullable,
+{
+    fn into_active_value(self) -> ActiveValue<Option<V>> {
+        match self {
+            Some(value) => Set(value),
+            None => NotSet,
+        }
+    }
+}
+
 macro_rules! impl_into_active_value {
     ($ty: ty) => {
         impl IntoActiveValue<$ty> for $ty {
             fn into_active_value(self) -> ActiveValue<$ty> {
                 Set(self)
-            }
-        }
-
-        impl IntoActiveValue<Option<$ty>> for Option<$ty> {
-            fn into_active_value(self) -> ActiveValue<Option<$ty>> {
-                match self {
-                    Some(value) => Set(Some(value)),
-                    None => NotSet,
-                }
-            }
-        }
-
-        impl IntoActiveValue<Option<$ty>> for Option<Option<$ty>> {
-            fn into_active_value(self) -> ActiveValue<Option<$ty>> {
-                match self {
-                    Some(value) => Set(value),
-                    None => NotSet,
-                }
             }
         }
     };
@@ -682,6 +688,7 @@ impl_into_active_value!(f32);
 impl_into_active_value!(f64);
 impl_into_active_value!(&'static str);
 impl_into_active_value!(String);
+impl_into_active_value!(Vec<u8>);
 
 #[cfg(feature = "with-json")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-json")))]
@@ -718,6 +725,22 @@ impl_into_active_value!(crate::prelude::Decimal);
 #[cfg(feature = "with-uuid")]
 #[cfg_attr(docsrs, doc(cfg(feature = "with-uuid")))]
 impl_into_active_value!(crate::prelude::Uuid);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::TimeDate);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::TimeTime);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::TimeDateTime);
+
+#[cfg(feature = "with-time")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
+impl_into_active_value!(crate::prelude::TimeDateTimeWithTimeZone);
 
 impl<V> Default for ActiveValue<V>
 where
@@ -925,6 +948,152 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_try_into_model_1() {
+        mod my_fruit {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "fruit")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub name: String,
+                pub cake_id: Option<i32>,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Pineapple".to_owned()),
+                cake_id: Set(None),
+            }
+            .try_into_model()
+            .unwrap(),
+            my_fruit::Model {
+                id: 1,
+                name: "Pineapple".to_owned(),
+                cake_id: None,
+            }
+        );
+
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(2),
+                name: Set("Apple".to_owned()),
+                cake_id: Set(Some(1)),
+            }
+            .try_into_model()
+            .unwrap(),
+            my_fruit::Model {
+                id: 2,
+                name: "Apple".to_owned(),
+                cake_id: Some(1),
+            }
+        );
+
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                name: NotSet,
+                cake_id: Set(None),
+            }
+            .try_into_model(),
+            Err(DbErr::AttrNotSet(String::from("name")))
+        );
+
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Pineapple".to_owned()),
+                cake_id: NotSet,
+            }
+            .try_into_model(),
+            Err(DbErr::AttrNotSet(String::from("cake_id")))
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_try_into_model_2() {
+        mod my_fruit {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "fruit")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                pub name: String,
+                #[sea_orm(ignore)]
+                pub cake_id: Option<i32>,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Pineapple".to_owned()),
+            }
+            .try_into_model()
+            .unwrap(),
+            my_fruit::Model {
+                id: 1,
+                name: "Pineapple".to_owned(),
+                cake_id: None,
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn test_derive_try_into_model_3() {
+        mod my_fruit {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+            #[sea_orm(table_name = "fruit")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                #[sea_orm(ignore)]
+                pub name: String,
+                pub cake_id: Option<i32>,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+        assert_eq!(
+            my_fruit::ActiveModel {
+                id: Set(1),
+                cake_id: Set(Some(1)),
+            }
+            .try_into_model()
+            .unwrap(),
+            my_fruit::Model {
+                id: 1,
+                name: "".to_owned(),
+                cake_id: Some(1),
+            }
+        );
+    }
+
+    #[test]
     #[cfg(feature = "with-json")]
     #[should_panic(
         expected = r#"called `Result::unwrap()` on an `Err` value: Json("missing field `id`")"#
@@ -1082,12 +1251,12 @@ mod tests {
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"INSERT INTO "fruit" ("name") VALUES ($1) RETURNING "id", "name", "cake_id""#,
-                    vec!["Apple".into()]
+                    vec!["Apple".into()],
                 ),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"UPDATE "fruit" SET "name" = $1, "cake_id" = $2 WHERE "fruit"."id" = $3 RETURNING "id", "name", "cake_id""#,
-                    vec!["Orange".into(), 1i32.into(), 2i32.into()]
+                    vec!["Orange".into(), 1i32.into(), 2i32.into()],
                 ),
             ]
         );

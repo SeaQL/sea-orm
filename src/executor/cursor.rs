@@ -8,6 +8,9 @@ use sea_query::{
 };
 use std::marker::PhantomData;
 
+#[cfg(feature = "with-json")]
+use crate::JsonValue;
+
 /// Cursor pagination
 #[derive(Debug, Clone)]
 pub struct Cursor<S>
@@ -139,6 +142,32 @@ where
             buffer.reverse()
         }
         Ok(buffer)
+    }
+
+    /// Construct a [Cursor] that fetch any custom struct
+    pub fn into_model<M>(self) -> Cursor<SelectModel<M>>
+    where
+        M: FromQueryResult,
+    {
+        Cursor {
+            query: self.query,
+            table: self.table,
+            order_columns: self.order_columns,
+            last: self.last,
+            phantom: PhantomData,
+        }
+    }
+
+    /// Construct a [Cursor] that fetch JSON value
+    #[cfg(feature = "with-json")]
+    pub fn into_json(self) -> Cursor<SelectModel<JsonValue>> {
+        Cursor {
+            query: self.query,
+            table: self.table,
+            order_columns: self.order_columns,
+            last: self.last,
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -415,8 +444,8 @@ mod tests {
                     r#"FROM "cake_filling""#,
                     r#"WHERE "cake_filling"."cake_id" > $1"#,
                     r#"AND "cake_filling"."filling_id" > $2"#,
-                    r#"AND ("cake_filling"."cake_id" < $3"#,
-                    r#"AND "cake_filling"."filling_id" < $4)"#,
+                    r#"AND "cake_filling"."cake_id" < $3"#,
+                    r#"AND "cake_filling"."filling_id" < $4"#,
                     r#"ORDER BY "cake_filling"."cake_id" ASC, "cake_filling"."filling_id" ASC"#,
                     r#"LIMIT $5"#,
                 ]

@@ -1,12 +1,12 @@
+use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
-    mysql::{MySqlArguments, MySqlConnectOptions, MySqlQueryResult, MySqlRow},
+    mysql::{MySqlConnectOptions, MySqlQueryResult, MySqlRow},
     MySql, MySqlPool,
 };
 
-sea_query::sea_query_driver_mysql!();
-use sea_query_driver_mysql::bind_query;
+use sea_query_binder::SqlxValues;
 use tracing::instrument;
 
 use crate::{
@@ -45,7 +45,7 @@ impl SqlxMySqlConnector {
         let mut opt = options
             .url
             .parse::<MySqlConnectOptions>()
-            .map_err(|e| DbErr::Conn(e.to_string()))?;
+            .map_err(sqlx_error_to_conn_err)?;
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
             opt.disable_statement_logging();
@@ -89,9 +89,7 @@ impl SqlxMySqlPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::Exec(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -107,14 +105,12 @@ impl SqlxMySqlPoolConnection {
                     Ok(row) => Ok(Some(row.into())),
                     Err(err) => match err {
                         sqlx::Error::RowNotFound => Ok(None),
-                        _ => Err(DbErr::Query(err.to_string())),
+                        _ => Err(sqlx_error_to_query_err(err)),
                     },
                 }
             })
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -132,9 +128,7 @@ impl SqlxMySqlPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -150,9 +144,7 @@ impl SqlxMySqlPoolConnection {
                 self.metric_callback.clone(),
             )))
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -162,9 +154,7 @@ impl SqlxMySqlPoolConnection {
         if let Ok(conn) = self.pool.acquire().await {
             DatabaseTransaction::new_mysql(conn, self.metric_callback.clone()).await
         } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+            Err(DbErr::ConnectionAcquire)
         }
     }
 
@@ -185,9 +175,7 @@ impl SqlxMySqlPoolConnection {
                 .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
-            Err(TransactionError::Connection(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            )))
+            Err(TransactionError::Connection(DbErr::ConnectionAcquire))
         }
     }
 
@@ -215,10 +203,10 @@ impl From<MySqlQueryResult> for ExecResult {
     }
 }
 
-pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, MySqlArguments> {
-    let mut query = sqlx::query(&stmt.sql);
-    if let Some(values) = &stmt.values {
-        query = bind_query(query, values);
-    }
-    query
+pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, SqlxValues> {
+    let values = stmt
+        .values
+        .as_ref()
+        .map_or(Values(Vec::new()), |values| values.clone());
+    sqlx::query_with(&stmt.sql, SqlxValues(values))
 }

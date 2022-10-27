@@ -25,10 +25,36 @@ pub enum Commands {
             global = true,
             short = 'd',
             long,
-            help = "Migration script directory",
+            help = "Migration script directory.
+If your migrations are in their own crate,
+you can provide the root of that crate.
+If your migrations are in a submodule of your app,
+you should provide the directory of that submodule.",
             default_value = "./migration"
         )]
         migration_dir: String,
+
+        #[clap(
+            value_parser,
+            global = true,
+            short = 's',
+            long,
+            env = "DATABASE_SCHEMA",
+            long_help = "Database schema\n \
+                        - For MySQL and SQLite, this argument is ignored.\n \
+                        - For PostgreSQL, this argument is optional with default value 'public'.\n"
+        )]
+        database_schema: Option<String>,
+
+        #[clap(
+            value_parser,
+            global = true,
+            short = 'u',
+            long,
+            env = "DATABASE_URL",
+            help = "Database URL"
+        )]
+        database_url: Option<String>,
 
         #[clap(subcommand)]
         command: Option<MigrateSubcommands>,
@@ -48,6 +74,13 @@ pub enum MigrateSubcommands {
             help = "Name of the new migration"
         )]
         migration_name: String,
+
+        #[clap(
+            action,
+            long,
+            help = "Generate migration file based on Utc time instead of Local time"
+        )]
+        universal_time: bool,
     },
     #[clap(about = "Drop all tables from the database, then reapply all migrations")]
     Fresh,
@@ -63,10 +96,9 @@ pub enum MigrateSubcommands {
             value_parser,
             short,
             long,
-            default_value = "1",
             help = "Number of pending migrations to apply"
         )]
-        num: u32,
+        num: Option<u32>,
     },
     #[clap(value_parser, about = "Rollback applied migrations")]
     Down {
@@ -163,7 +195,7 @@ pub enum GenerateSubcommands {
             value_parser,
             long,
             default_value = "none",
-            help = "Automatically derive serde Serialize / Deserialize traits for the entity (none,\
+            help = "Automatically derive serde Serialize / Deserialize traits for the entity (none, \
                 serialize, deserialize, both)"
         )]
         with_serde: String,
@@ -173,7 +205,7 @@ pub enum GenerateSubcommands {
             long,
             default_value = "false",
             long_help = "Automatically derive the Copy trait on generated enums.\n\
-            Enums generated from a database don't have associated data by default, and as such can\
+            Enums generated from a database don't have associated data by default, and as such can \
             derive Copy.
             "
         )]
@@ -187,6 +219,15 @@ pub enum GenerateSubcommands {
             help = "The datetime crate to use for generating entities."
         )]
         date_time_crate: DateTimeCrate,
+
+        #[clap(
+            action,
+            long,
+            short = 'l',
+            default_value = "false",
+            help = "Generate index file as `lib.rs` instead of `mod.rs`."
+        )]
+        lib: bool,
     },
 }
 

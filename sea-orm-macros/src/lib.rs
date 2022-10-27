@@ -108,6 +108,27 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
 /// #
 /// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
+///
+/// Entity should always have a primary key.
+/// Or, it will result in a compile error.
+/// See <https://github.com/SeaQL/sea-orm/issues/485> for details.
+///
+/// ```compile_fail
+/// use sea_orm::entity::prelude::*;
+///
+/// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+/// #[sea_orm(table_name = "posts")]
+/// pub struct Model {
+///     pub title: String,
+///     #[sea_orm(column_type = "Text")]
+///     pub text: String,
+/// }
+///
+/// # #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+/// # pub enum Relation {}
+/// #
+/// # impl ActiveModelBehavior for ActiveModel {}
+/// ```
 #[proc_macro_derive(DeriveEntityModel, attributes(sea_orm))]
 pub fn derive_entity_model(input: TokenStream) -> TokenStream {
     let input_ts = input.clone();
@@ -518,6 +539,19 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 ///         - For `string_value`, value should be passed as string, i.e. `string_value = "A"`
 ///         - For `num_value`, value should be passed as integer, i.e. `num_value = 1` or `num_value = 1i32`
 ///         - Note that only one of it can be specified, and all variants of an enum have to annotate with the same `*_value` macro attribute
+///
+/// # Usage
+///
+/// ```
+/// use sea_orm::{entity::prelude::*, DeriveActiveEnum};
+///
+/// #[derive(EnumIter, DeriveActiveEnum)]
+/// #[sea_orm(rs_type = "i32", db_type = "Integer")]
+/// pub enum Color {
+///     Black = 0,
+///     White = 1,
+/// }
+/// ```
 #[proc_macro_derive(DeriveActiveEnum, attributes(sea_orm))]
 pub fn derive_active_enum(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

@@ -1,7 +1,12 @@
-use crate::{Column, ConjunctRelation, DateTimeCrate, PrimaryKey, Relation};
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::format_ident;
+use quote::quote;
+use sea_query::ColumnType;
+
+use crate::{
+    util::escape_rust_keyword, Column, ConjunctRelation, DateTimeCrate, PrimaryKey, Relation,
+};
 
 #[derive(Clone, Debug)]
 pub struct Entity {
@@ -22,11 +27,11 @@ impl Entity {
     }
 
     pub fn get_table_name_snake_case_ident(&self) -> Ident {
-        format_ident!("{}", self.get_table_name_snake_case())
+        format_ident!("{}", escape_rust_keyword(self.get_table_name_snake_case()))
     }
 
     pub fn get_table_name_camel_case_ident(&self) -> Ident {
-        format_ident!("{}", self.get_table_name_camel_case())
+        format_ident!("{}", escape_rust_keyword(self.get_table_name_camel_case()))
     }
 
     pub fn get_column_names_snake_case(&self) -> Vec<Ident> {
@@ -145,13 +150,30 @@ impl Entity {
             .map(|con_rel| con_rel.get_to_camel_case())
             .collect()
     }
+
+    pub fn get_eq_needed(&self) -> TokenStream {
+        fn is_floats(col_type: &sea_query::ColumnType) -> bool {
+            match col_type {
+                ColumnType::Float(_) | ColumnType::Double(_) => true,
+                ColumnType::Array(col_type) => is_floats(col_type),
+                _ => false,
+            }
+        }
+        self.columns
+            .iter()
+            .find(|column| is_floats(&column.col_type))
+            // check if float or double exist.
+            // if exist, return nothing
+            .map_or(quote! {, Eq}, |_| quote! {})
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{Column, DateTimeCrate, Entity, PrimaryKey, Relation, RelationType};
-    use quote::format_ident;
+    use quote::{format_ident, quote};
     use sea_query::{ColumnType, ForeignKeyAction};
+
+    use crate::{Column, DateTimeCrate, Entity, PrimaryKey, Relation, RelationType};
 
     fn setup() -> Entity {
         Entity {
@@ -415,5 +437,13 @@ mod tests {
         {
             assert_eq!(elem, entity.conjunct_relations[i].get_to_camel_case());
         }
+    }
+
+    #[test]
+    fn test_get_eq_needed() {
+        let entity = setup();
+        let expected = quote! {, Eq};
+
+        assert_eq!(entity.get_eq_needed().to_string(), expected.to_string());
     }
 }

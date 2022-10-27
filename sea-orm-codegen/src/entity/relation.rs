@@ -1,7 +1,10 @@
+use crate::util::unpack_table_ref;
 use heck::{CamelCase, SnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{ForeignKeyAction, TableForeignKey};
+
+use crate::util::escape_rust_keyword;
 
 #[derive(Clone, Debug)]
 pub enum RelationType {
@@ -40,7 +43,10 @@ impl Relation {
         if self.self_referencing {
             None
         } else {
-            Some(format_ident!("{}", self.ref_table.to_snake_case()))
+            Some(format_ident!(
+                "{}",
+                escape_rust_keyword(self.ref_table.to_snake_case())
+            ))
         }
     }
 
@@ -155,7 +161,7 @@ impl Relation {
 impl From<&TableForeignKey> for Relation {
     fn from(tbl_fk: &TableForeignKey) -> Self {
         let ref_table = match tbl_fk.get_ref_table() {
-            Some(s) => s,
+            Some(s) => unpack_table_ref(s),
             None => panic!("RefTable should not be empty"),
         };
         let columns = tbl_fk.get_columns();

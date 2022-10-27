@@ -26,10 +26,7 @@ macro_rules! impl_try_from_u64_err {
     ($newtype: ident) => {
         impl sea_orm::TryFromU64 for $newtype {
             fn try_from_u64(_n: u64) -> Result<Self, sea_orm::DbErr> {
-                Err(sea_orm::DbErr::Exec(format!(
-                    "{} cannot be converted from u64",
-                    stringify!($newtype)
-                )))
+                Err(sea_orm::DbErr::ConvertFromU64(stringify!($newtype)))
             }
         }
     };
@@ -70,6 +67,10 @@ macro_rules! into_sea_query_value {
 
             fn type_name() -> String {
                 stringify!($newtype).to_owned()
+            }
+
+            fn array_type() -> sea_orm::sea_query::ArrayType {
+                sea_orm::sea_query::ArrayType::$name
             }
 
             fn column_type() -> sea_orm::sea_query::ColumnType {

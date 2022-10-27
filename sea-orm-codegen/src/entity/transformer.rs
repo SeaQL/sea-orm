@@ -1,6 +1,6 @@
 use crate::{
-    ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error, PrimaryKey, Relation,
-    RelationType,
+    util::unpack_table_ref, ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error,
+    PrimaryKey, Relation, RelationType,
 };
 use sea_query::{ColumnSpec, TableCreateStatement};
 use std::collections::HashMap;
@@ -59,12 +59,12 @@ impl EntityTransformer {
                     col
                 })
                 .map(|col| {
-                    if let sea_query::ColumnType::Enum(enum_name, values) = &col.col_type {
+                    if let sea_query::ColumnType::Enum { name, variants } = &col.col_type {
                         enums.insert(
-                            enum_name.clone(),
+                            name.to_string(),
                             ActiveEnum {
-                                enum_name: enum_name.clone(),
-                                values: values.clone(),
+                                enum_name: name.clone(),
+                                values: variants.clone(),
                             },
                         );
                     }
@@ -77,7 +77,7 @@ impl EntityTransformer {
                 .iter()
                 .map(|fk_create_stmt| fk_create_stmt.get_foreign_key())
                 .map(|tbl_fk| {
-                    let ref_tbl = tbl_fk.get_ref_table().unwrap();
+                    let ref_tbl = unpack_table_ref(tbl_fk.get_ref_table().unwrap());
                     if let Some(count) = ref_table_counts.get_mut(&ref_tbl) {
                         if *count == 0 {
                             *count = 1;
@@ -136,8 +136,7 @@ impl EntityTransformer {
                     continue;
                 }
                 let is_conjunct_relation = entity.primary_keys.len() == entity.columns.len()
-                    && rel.columns.len() == 2
-                    && rel.ref_columns.len() == 2
+                    && entity.relations.len() == 2
                     && entity.primary_keys.len() == 2;
                 match is_conjunct_relation {
                     true => {

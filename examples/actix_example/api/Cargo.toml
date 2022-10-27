@@ -1,0 +1,21 @@
+[package]
+name = "actix-example-api"
+version = "0.1.0"
+authors = ["Sam Samai <sam@studio2pi.com.au>"]
+edition = "2021"
+publish = false
+
+[dependencies]
+actix-example-core = { path = "../core" }
+actix-files = "0.6"
+actix-http = "3"
+actix-rt = "2.7"
+actix-service = "2"
+actix-web = "4"
+tera = "1.15.0"
+dotenvy = "0.15"
+listenfd = "0.5"
+serde = "1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+entity = { path = "../entity" }
+migration = { path = "../migration" }
