@@ -310,23 +310,29 @@ impl ConnectionTrait for DatabaseTransaction {
             #[cfg(feature = "sqlx-mysql")]
             InnerConnection::MySql(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
-                Self::map_err_ignore_not_found(
-                    query.fetch_one(conn).await.map(|row| Some(row.into())),
-                )
+                crate::metric::metric!(self.metric_callback, &stmt, {
+                    Self::map_err_ignore_not_found(
+                        query.fetch_one(conn).await.map(|row| Some(row.into())),
+                    )
+                })
             }
             #[cfg(feature = "sqlx-postgres")]
             InnerConnection::Postgres(conn) => {
                 let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
-                Self::map_err_ignore_not_found(
-                    query.fetch_one(conn).await.map(|row| Some(row.into())),
-                )
+                crate::metric::metric!(self.metric_callback, &stmt, {
+                    Self::map_err_ignore_not_found(
+                        query.fetch_one(conn).await.map(|row| Some(row.into())),
+                    )
+                })
             }
             #[cfg(feature = "sqlx-sqlite")]
             InnerConnection::Sqlite(conn) => {
                 let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
-                Self::map_err_ignore_not_found(
-                    query.fetch_one(conn).await.map(|row| Some(row.into())),
-                )
+                crate::metric::metric!(self.metric_callback, &stmt, {
+                    Self::map_err_ignore_not_found(
+                        query.fetch_one(conn).await.map(|row| Some(row.into())),
+                    )
+                })
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_one(stmt),
@@ -344,29 +350,35 @@ impl ConnectionTrait for DatabaseTransaction {
             #[cfg(feature = "sqlx-mysql")]
             InnerConnection::MySql(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
-                query
-                    .fetch_all(conn)
-                    .await
-                    .map(|rows| rows.into_iter().map(|r| r.into()).collect())
-                    .map_err(sqlx_error_to_query_err)
+                crate::metric::metric!(self.metric_callback, &stmt, {
+                    query
+                        .fetch_all(conn)
+                        .await
+                        .map(|rows| rows.into_iter().map(|r| r.into()).collect())
+                        .map_err(sqlx_error_to_query_err)
+                })
             }
             #[cfg(feature = "sqlx-postgres")]
             InnerConnection::Postgres(conn) => {
                 let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
-                query
-                    .fetch_all(conn)
-                    .await
-                    .map(|rows| rows.into_iter().map(|r| r.into()).collect())
-                    .map_err(sqlx_error_to_query_err)
+                crate::metric::metric!(self.metric_callback, &stmt, {
+                    query
+                        .fetch_all(conn)
+                        .await
+                        .map(|rows| rows.into_iter().map(|r| r.into()).collect())
+                        .map_err(sqlx_error_to_query_err)
+                })
             }
             #[cfg(feature = "sqlx-sqlite")]
             InnerConnection::Sqlite(conn) => {
                 let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
-                query
-                    .fetch_all(conn)
-                    .await
-                    .map(|rows| rows.into_iter().map(|r| r.into()).collect())
-                    .map_err(sqlx_error_to_query_err)
+                crate::metric::metric!(self.metric_callback, &stmt, {
+                    query
+                        .fetch_all(conn)
+                        .await
+                        .map(|rows| rows.into_iter().map(|r| r.into()).collect())
+                        .map_err(sqlx_error_to_query_err)
+                })
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_all(stmt),
