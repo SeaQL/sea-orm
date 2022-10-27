@@ -13,5 +13,5 @@ tokio = { version = "1.20.0", features = ["rt-multi-thread", "macros"] }
 
 [dependencies.sea-orm]
 path = "../../" # remove this line in your own project
-features = ["runtime-tokio-rustls", "sqlx-sqlite", "macros"]
+features = ["runtime-tokio-rustls", "tests-cfg", "sqlx-sqlite", "macros"]
 default-features = false

@@ -1,4 +1,4 @@
-use crate::{ActiveEnum, Entity};
+use crate::{util::escape_rust_keyword, ActiveEnum, Entity};
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -544,7 +544,10 @@ impl EntityWriter {
     }
 
     pub fn gen_mod(entity: &Entity) -> TokenStream {
-        let table_name_snake_case_ident = entity.get_table_name_snake_case_ident();
+        let table_name_snake_case_ident = format_ident!(
+            "{}",
+            escape_rust_keyword(entity.get_table_name_snake_case_ident())
+        );
         quote! {
             pub mod #table_name_snake_case_ident;
         }
@@ -1155,6 +1158,37 @@ mod tests {
                     name: "id".to_owned(),
                 }],
             },
+            Entity {
+                table_name: "collection_float".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "id".to_owned(),
+                        col_type: ColumnType::Integer(Some(11)),
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "floats".to_owned(),
+                        col_type: ColumnType::Array(SeaRc::new(Box::new(ColumnType::Float(None)))),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "doubles".to_owned(),
+                        col_type: ColumnType::Array(SeaRc::new(Box::new(ColumnType::Double(None)))),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                ],
+                relations: vec![],
+                conjunct_relations: vec![],
+                primary_keys: vec![PrimaryKey {
+                    name: "id".to_owned(),
+                }],
+            },
         ]
     }
 
@@ -1179,7 +1213,7 @@ mod tests {
     #[test]
     fn test_gen_expanded_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 9] = [
+        const ENTITY_FILES: [&str; 10] = [
             include_str!("../../tests/expanded/cake.rs"),
             include_str!("../../tests/expanded/cake_filling.rs"),
             include_str!("../../tests/expanded/filling.rs"),
@@ -1189,8 +1223,9 @@ mod tests {
             include_str!("../../tests/expanded/cake_with_float.rs"),
             include_str!("../../tests/expanded/cake_with_double.rs"),
             include_str!("../../tests/expanded/collection.rs"),
+            include_str!("../../tests/expanded/collection_float.rs"),
         ];
-        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 9] = [
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 10] = [
             include_str!("../../tests/expanded_with_schema_name/cake.rs"),
             include_str!("../../tests/expanded_with_schema_name/cake_filling.rs"),
             include_str!("../../tests/expanded_with_schema_name/filling.rs"),
@@ -1200,6 +1235,7 @@ mod tests {
             include_str!("../../tests/expanded_with_schema_name/cake_with_float.rs"),
             include_str!("../../tests/expanded_with_schema_name/cake_with_double.rs"),
             include_str!("../../tests/expanded_with_schema_name/collection.rs"),
+            include_str!("../../tests/expanded_with_schema_name/collection_float.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
@@ -1261,7 +1297,7 @@ mod tests {
     #[test]
     fn test_gen_compact_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 9] = [
+        const ENTITY_FILES: [&str; 10] = [
             include_str!("../../tests/compact/cake.rs"),
             include_str!("../../tests/compact/cake_filling.rs"),
             include_str!("../../tests/compact/filling.rs"),
@@ -1271,8 +1307,9 @@ mod tests {
             include_str!("../../tests/compact/cake_with_float.rs"),
             include_str!("../../tests/compact/cake_with_double.rs"),
             include_str!("../../tests/compact/collection.rs"),
+            include_str!("../../tests/compact/collection_float.rs"),
         ];
-        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 9] = [
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 10] = [
             include_str!("../../tests/compact_with_schema_name/cake.rs"),
             include_str!("../../tests/compact_with_schema_name/cake_filling.rs"),
             include_str!("../../tests/compact_with_schema_name/filling.rs"),
@@ -1282,6 +1319,7 @@ mod tests {
             include_str!("../../tests/compact_with_schema_name/cake_with_float.rs"),
             include_str!("../../tests/compact_with_schema_name/cake_with_double.rs"),
             include_str!("../../tests/compact_with_schema_name/collection.rs"),
+            include_str!("../../tests/compact_with_schema_name/collection_float.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());

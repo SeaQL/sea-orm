@@ -4,7 +4,9 @@ use quote::format_ident;
 use quote::quote;
 use sea_query::ColumnType;
 
-use crate::{Column, ConjunctRelation, DateTimeCrate, PrimaryKey, Relation};
+use crate::{
+    util::escape_rust_keyword, Column, ConjunctRelation, DateTimeCrate, PrimaryKey, Relation,
+};
 
 #[derive(Clone, Debug)]
 pub struct Entity {
@@ -25,11 +27,11 @@ impl Entity {
     }
 
     pub fn get_table_name_snake_case_ident(&self) -> Ident {
-        format_ident!("{}", self.get_table_name_snake_case())
+        format_ident!("{}", escape_rust_keyword(self.get_table_name_snake_case()))
     }
 
     pub fn get_table_name_camel_case_ident(&self) -> Ident {
-        format_ident!("{}", self.get_table_name_camel_case())
+        format_ident!("{}", escape_rust_keyword(self.get_table_name_camel_case()))
     }
 
     pub fn get_column_names_snake_case(&self) -> Vec<Ident> {
@@ -150,14 +152,16 @@ impl Entity {
     }
 
     pub fn get_eq_needed(&self) -> TokenStream {
+        fn is_floats(col_type: &sea_query::ColumnType) -> bool {
+            match col_type {
+                ColumnType::Float(_) | ColumnType::Double(_) => true,
+                ColumnType::Array(col_type) => is_floats(col_type),
+                _ => false,
+            }
+        }
         self.columns
             .iter()
-            .find(|column| {
-                matches!(
-                    column.col_type,
-                    ColumnType::Float(_) | ColumnType::Double(_)
-                )
-            })
+            .find(|column| is_floats(&column.col_type))
             // check if float or double exist.
             // if exist, return nothing
             .map_or(quote! {, Eq}, |_| quote! {})

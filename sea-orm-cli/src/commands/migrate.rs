@@ -2,14 +2,17 @@ use chrono::{Local, Utc};
 use regex::Regex;
 use std::{
     error::Error,
+    fmt::Display,
     fs,
     io::Write,
     path::{Path, PathBuf},
     process::Command,
 };
 
+#[cfg(feature = "cli")]
 use crate::MigrateSubcommands;
 
+#[cfg(feature = "cli")]
 pub fn run_migrate_command(
     command: Option<MigrateSubcommands>,
     migration_dir: &str,
@@ -29,7 +32,7 @@ pub fn run_migrate_command(
                 Some(MigrateSubcommands::Refresh) => ("refresh", migration_dir, None, verbose),
                 Some(MigrateSubcommands::Reset) => ("reset", migration_dir, None, verbose),
                 Some(MigrateSubcommands::Status) => ("status", migration_dir, None, verbose),
-                Some(MigrateSubcommands::Up { num }) => ("up", migration_dir, Some(num), verbose),
+                Some(MigrateSubcommands::Up { num }) => ("up", migration_dir, num, verbose),
                 Some(MigrateSubcommands::Down { num }) => {
                     ("down", migration_dir, Some(num), verbose)
                 }
@@ -115,6 +118,14 @@ pub fn run_migrate_generate(
     migration_name: &str,
     universal_time: bool,
 ) -> Result<(), Box<dyn Error>> {
+    // Make sure the migration name doesn't contain any characters that
+    // are invalid module names in Rust.
+    if migration_name.contains('-') {
+        return Err(Box::new(MigrationCommandError::InvalidName(
+            "Hyphen `-` cannot be used in migration name".to_string(),
+        )));
+    }
+
     println!("Generating new migration...");
 
     // build new migration filename
@@ -224,6 +235,23 @@ fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<
     fs::remove_file(&migrator_backup_filepath)?;
     Ok(())
 }
+
+#[derive(Debug)]
+enum MigrationCommandError {
+    InvalidName(String),
+}
+
+impl Display for MigrationCommandError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MigrationCommandError::InvalidName(name) => {
+                write!(f, "Invalid migration name: {}", name)
+            }
+        }
+    }
+}
+
+impl Error for MigrationCommandError {}
 
 #[cfg(test)]
 mod tests {
