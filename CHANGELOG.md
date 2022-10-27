@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * [sea-orm-cli] Check to make sure migration name doesn't contain hyphen `-` in it https://github.com/SeaQL/sea-orm/pull/879, https://github.com/SeaQL/sea-orm/pull/1155
 * Support `time` crate for SQLite https://github.com/SeaQL/sea-orm/pull/995
 
-### Bug fixes
+### Bug Fixes
 
 * [sea-orm-cli] Generate `Related` for m-to-n relation https://github.com/SeaQL/sea-orm/pull/1075
 * [sea-orm-cli] Generate model entity with Postgres Enum field https://github.com/SeaQL/sea-orm/pull/1153
@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Prefix the usage of types with `sea_orm::` inside `DeriveActiveEnum` derive macros https://github.com/SeaQL/sea-orm/pull/1146, https://github.com/SeaQL/sea-orm/pull/1154
 * [sea-orm-cli] Generate model with `Vec<f32>` or `Vec<f64>` should not derive `Eq` on the model struct https://github.com/SeaQL/sea-orm/pull/1158
 
-### House keeping
+### House Keeping
 
 * [sea-orm-cli] [sea-orm-migration] Add `cli` feature to optionally include dependencies that are required by the CLI https://github.com/SeaQL/sea-orm/pull/978
 
@@ -59,7 +59,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Implements `fmt::Display` for `ActiveEnum` https://github.com/SeaQL/sea-orm/pull/986
 * Implements `TryFrom<ActiveModel>` for `Model` https://github.com/SeaQL/sea-orm/pull/990
 
-### Bug fixes
+### Bug Fixes
 
 * Trim spaces when paginating raw SQL https://github.com/SeaQL/sea-orm/pull/1094
 
@@ -134,7 +134,7 @@ impl ActiveEnum for Category {
 }
 ```
 
-### House keeping
+### House Keeping
 
 * Documentation grammar fixes https://github.com/SeaQL/sea-orm/pull/1050
 * Replace `dotenv` with `dotenvy` in examples https://github.com/SeaQL/sea-orm/pull/1085
@@ -157,7 +157,7 @@ impl ActiveEnum for Category {
 * Generate `DeriveRelation` on empty `Relation` enum https://github.com/SeaQL/sea-orm/pull/1019
 * Documentation grammar fixes https://github.com/SeaQL/sea-orm/pull/1050
 
-### Bug fixes
+### Bug Fixes
 
 * Implement `IntoActiveValue` for `time` types https://github.com/SeaQL/sea-orm/pull/1041
 * Fixed module import for `FromJsonQueryResult` derive macro https://github.com/SeaQL/sea-orm/pull/1081
@@ -169,7 +169,7 @@ impl ActiveEnum for Category {
 * [sea-orm-cli] Migrator CLI handles init and generate commands https://github.com/SeaQL/sea-orm/pull/931
 * [sea-orm-cli] added `with-copy-enums` flag to conditional derive `Copy` on `ActiveEnum` https://github.com/SeaQL/sea-orm/pull/936
 
-### House keeping
+### House Keeping
 
 * Exclude `chrono` default features https://github.com/SeaQL/sea-orm/pull/950
 * Set minimal rustc version to `1.60` https://github.com/SeaQL/sea-orm/pull/938
@@ -190,7 +190,7 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 
 * `RelationDef` & `RelationBuilder` should be `Send` & `Sync` https://github.com/SeaQL/sea-orm/pull/898
 
-### House keeping
+### House Keeping
 
 * Remove unnecessary `async_trait` https://github.com/SeaQL/sea-orm/pull/737
 
@@ -228,7 +228,7 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 * Upgrade `sea-query` to 0.26 https://github.com/SeaQL/sea-orm/pull/834
 * Upgrade `sea-schema` to 0.9 https://github.com/SeaQL/sea-orm/pull/834
 
-### House keeping
+### House Keeping
 
 * Refactor stream metrics https://github.com/SeaQL/sea-orm/pull/778
 
