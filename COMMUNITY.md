@@ -55,7 +55,8 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [RCloud](https://github.com/p0rtL6/RCloud) | A self-hosted lightweight cloud drive alternative
 - [Music Player](https://github.com/tsirysndr/music-player) | An extensible music server written in Rust 🚀🎵✨ | DB: SQLite
 - [Linx](https://github.com/whizzes/linx) | Headless URL Shortener written in Rust 🦀
-- [Ceobe Canteen Serve](https://github.com/Enraged-Dun-Cookie-Development-Team/Ceobe-Canteen-Serve) |  A tool based on Arknights mobile game, using axum as web framework | DB: MySQL
+- [Ceobe Canteen Serve](https://github.com/Enraged-Dun-Cookie-Development-Team/Ceobe-Canteen-Serve) | A tool based on Arknights mobile game, using axum as web framework | DB: MySQL
+- [Fikabot](https://github.com/sousandrei/fikabot) | A slack bot to schedule coffee breaks (Fika in swedish) in slack channels | DB: MySQL
 
 #### Frontend (desktop / cli)
 
