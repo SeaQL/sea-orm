@@ -105,6 +105,17 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// The default implementation of the ActiveModel
     fn default() -> Self;
 
+    /// Set fields of value [ActiveValue::Unchanged] as [ActiveValue::Set]
+    fn val_as_set(&mut self, c: <Self::Entity as EntityTrait>::Column);
+
+    /// Set all fields of value [ActiveValue::Unchanged] as [ActiveValue::Set]
+    fn all_val_as_set(mut self) -> Self {
+        for col in <Self::Entity as EntityTrait>::Column::iter() {
+            self.val_as_set(col);
+        }
+        self
+    }
+
     /// Get the primary key of the ActiveModel
     #[allow(clippy::question_mark)]
     fn get_primary_key_value(&self) -> Option<ValueTuple> {
@@ -819,6 +830,14 @@ where
             Self::NotSet => ActiveValue::not_set(),
         }
     }
+
+    /// Convert [ActiveValue::Unchanged] into [ActiveValue::Set]
+    pub fn val_as_set(&mut self) {
+        *self = match self.take() {
+            Some(value) => ActiveValue::Set(value),
+            None => ActiveValue::NotSet,
+        };
+    }
 }
 
 impl<V> std::convert::AsRef<V> for ActiveValue<V>
@@ -1271,5 +1290,133 @@ mod tests {
 
         fruit.set(fruit::Column::Name, "apple".into());
         assert!(fruit.is_changed());
+    }
+
+    #[test]
+    fn test_val_as_set_1() {
+        assert_eq!(
+            fruit::Model {
+                id: 1,
+                name: "Apple".into(),
+                cake_id: None,
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Unchanged(1),
+                name: Unchanged("Apple".into()),
+                cake_id: Unchanged(None)
+            },
+        );
+
+        assert_eq!(
+            fruit::Model {
+                id: 1,
+                name: "Apple".into(),
+                cake_id: None,
+            }
+            .into_active_model()
+            .all_val_as_set(),
+            fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Apple".into()),
+                cake_id: Set(None)
+            },
+        );
+
+        assert_eq!(
+            fruit::Model {
+                id: 1,
+                name: "Apple".into(),
+                cake_id: Some(2),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Unchanged(1),
+                name: Unchanged("Apple".into()),
+                cake_id: Unchanged(Some(2)),
+            },
+        );
+
+        assert_eq!(
+            fruit::Model {
+                id: 1,
+                name: "Apple".into(),
+                cake_id: Some(2),
+            }
+            .into_active_model()
+            .all_val_as_set(),
+            fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Apple".into()),
+                cake_id: Set(Some(2)),
+            },
+        );
+    }
+
+    #[smol_potat::test]
+    async fn test_val_as_set_2() -> Result<(), DbErr> {
+        use crate::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_exec_results(vec![
+                MockExecResult {
+                    last_insert_id: 1,
+                    rows_affected: 1,
+                },
+                MockExecResult {
+                    last_insert_id: 1,
+                    rows_affected: 1,
+                },
+            ])
+            .append_query_results(vec![
+                vec![fruit::Model {
+                    id: 1,
+                    name: "Apple".to_owned(),
+                    cake_id: None,
+                }],
+                vec![fruit::Model {
+                    id: 1,
+                    name: "Apple".to_owned(),
+                    cake_id: None,
+                }],
+            ])
+            .into_connection();
+
+        fruit::Model {
+            id: 1,
+            name: "Apple".into(),
+            cake_id: None,
+        }
+        .into_active_model()
+        .update(&db)
+        .await?;
+
+        fruit::Model {
+            id: 1,
+            name: "Apple".into(),
+            cake_id: None,
+        }
+        .into_active_model()
+        .all_val_as_set()
+        .update(&db)
+        .await?;
+
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![
+                Transaction::from_sql_and_values(
+                    DbBackend::Postgres,
+                    r#"UPDATE "fruit" SET  WHERE "fruit"."id" = $1 RETURNING "id", "name", "cake_id""#,
+                    vec![1i32.into()],
+                ),
+                Transaction::from_sql_and_values(
+                    DbBackend::Postgres,
+                    r#"UPDATE "fruit" SET "name" = $1, "cake_id" = $2 WHERE "fruit"."id" = $3 RETURNING "id", "name", "cake_id""#,
+                    vec!["Apple".into(), Option::<i32>::None.into(), 1i32.into()],
+                ),
+            ]
+        );
+
+        Ok(())
     }
 }
