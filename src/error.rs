@@ -36,7 +36,7 @@ pub enum DbErr {
     /// When updating, a model should know it's primary key to check
     /// if the record has been correctly updated, otherwise this error will occur
     #[error("Failed to get primary key from model")]
-    UpdateGetPrimeryKey,
+    UpdateGetPrimaryKey,
     /// The record was not found in the database
     #[error("RecordNotFound Error: {0}")]
     RecordNotFound(String),
