@@ -4,7 +4,12 @@ use active_enum::Entity as ActiveEnum;
 use active_enum_child::Entity as ActiveEnumChild;
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{
+    entity::prelude::*,
+    entity::*,
+    sea_query::{BinOper, Expr},
+    ActiveEnum as ActiveEnumTrait, DatabaseConnection,
+};
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -84,6 +89,29 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             .filter(Column::Category.eq(Category::Big))
             .filter(Column::Color.eq(Color::Black))
             .filter(Column::Tea.eq(Tea::EverydayTea))
+            .one(db)
+            .await?
+            .unwrap()
+    );
+    assert_eq!(
+        model,
+        Entity::find()
+            .filter(
+                Expr::col(Column::Tea)
+                    .binary(BinOper::In, Expr::tuple([Tea::EverydayTea.as_enum()]))
+            )
+            .one(db)
+            .await?
+            .unwrap()
+    );
+    assert_eq!(
+        model,
+        Entity::find()
+            .filter(Column::Tea.is_not_null())
+            .filter(
+                Expr::col(Column::Tea)
+                    .binary(BinOper::NotIn, Expr::tuple([Tea::BreakfastTea.as_enum()]))
+            )
             .one(db)
             .await?
             .unwrap()
