@@ -133,7 +133,7 @@ pub trait ActiveEnum: Sized + Iterable {
 
     /// Construct a enum expression with casting
     fn as_enum(&self) -> SimpleExpr {
-        Expr::val(Self::to_value(&self)).as_enum(Self::name())
+        Expr::val(Self::to_value(self)).as_enum(Self::name())
     }
 
     /// Get the name of all enum variants
