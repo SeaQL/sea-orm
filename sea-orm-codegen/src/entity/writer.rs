@@ -83,27 +83,20 @@ fn bonus_derive(derives: Vec<String>) -> TokenStream {
     derives
         .into_iter()
         .fold(TokenStream::default(), |derives, derive| {
-            if !derive.is_empty() {
-                let tokens: TokenStream = derive.parse().unwrap();
-                quote! { #derives, #tokens }
-            } else {
-                derives
-            }
+            let tokens: TokenStream = derive.parse().unwrap();
+            quote! { #derives, #tokens }
         })
 }
 
 /// convert attributes argument to token stream
 fn bonus_attributes(attributes: Vec<String>) -> TokenStream {
-    println!("{:?}", attributes);
     attributes
         .into_iter()
-        .filter(|attr| !attr.is_empty())
-        .map(|attr| format!("#[{attr}]"))
         .fold(TokenStream::default(), |attributes, attribute| {
             let tokens: TokenStream = attribute.parse().unwrap();
             quote! {
                 #attributes
-                #tokens
+                #[#tokens]
             }
         })
 }
