@@ -55,12 +55,12 @@ on:
     paths-ignore:
       - '**.md'
   push:
+    paths-ignore:
+      - '**.md'
     branches:
       - master
       - 0.*.x
       - pr/**/ci
-    paths-ignore:
-      - '**.md'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref || github.run_id }}
