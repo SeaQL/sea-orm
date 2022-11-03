@@ -430,14 +430,10 @@ impl EntityWriter {
         let column_rs_types = entity.get_column_rs_types(date_time_crate);
         let if_eq_needed = entity.get_eq_needed();
         let extra_derive = with_serde.extra_derive();
-        // derives from --derives option
-        let bonus_derive = derives.clone();
-        // attributes from --attributes option
-        let bonus_attributes = attributes.clone();
 
         quote! {
-            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel #if_eq_needed #extra_derive #bonus_derive)]
-            #bonus_attributes
+            #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel #if_eq_needed #extra_derive #derives)]
+            #attributes
             pub struct Model {
                 #(pub #column_names_snake_case: #column_rs_types,)*
             }
@@ -674,18 +670,14 @@ impl EntityWriter {
             None => quote! {},
         };
         let extra_derive = with_serde.extra_derive();
-        // derives from --derives option
-        let bonus_derive = derives.clone();
-        // attributes from --attributes option
-        let bonus_attributes = attributes.clone();
 
         quote! {
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel #if_eq_needed #extra_derive #bonus_derive)]
+            #[derive(Clone, Debug, PartialEq, DeriveEntityModel #if_eq_needed #extra_derive #derives)]
             #[sea_orm(
                 #schema_name
                 table_name = #table_name
             )]
-            #bonus_attributes
+            #attributes
             pub struct Model {
                 #(
                     #attrs
