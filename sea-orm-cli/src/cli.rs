@@ -77,7 +77,6 @@ pub enum MigrateSubcommands {
 
         #[clap(
             action,
-            short,
             long,
             help = "Generate migration file based on Utc time instead of Local time"
         )]
@@ -97,10 +96,9 @@ pub enum MigrateSubcommands {
             value_parser,
             short,
             long,
-            default_value = "1",
             help = "Number of pending migrations to apply"
         )]
-        num: u32,
+        num: Option<u32>,
     },
     #[clap(value_parser, about = "Rollback applied migrations")]
     Down {

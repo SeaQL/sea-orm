@@ -52,7 +52,11 @@ name: tests
 
 on:
   pull_request:
+    paths-ignore:
+      - '**.md'
   push:
+    paths-ignore:
+      - '**.md'
     branches:
       - master
       - 0.*.x

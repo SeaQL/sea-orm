@@ -168,6 +168,14 @@ impl FromQueryResult for JsonValue {
                     match_sqlite_type!(chrono::NaiveTime);
                     #[cfg(feature = "with-chrono")]
                     match_sqlite_type!(chrono::NaiveDateTime);
+                    #[cfg(feature = "with-time")]
+                    match_sqlite_type!(time::Date);
+                    #[cfg(feature = "with-time")]
+                    match_sqlite_type!(time::Time);
+                    #[cfg(feature = "with-time")]
+                    match_sqlite_type!(time::PrimitiveDateTime);
+                    #[cfg(feature = "with-time")]
+                    match_sqlite_type!(time::OffsetDateTime);
                     try_get_type!(String, col);
                     #[cfg(feature = "with-uuid")]
                     try_get_type!(uuid::Uuid, col);

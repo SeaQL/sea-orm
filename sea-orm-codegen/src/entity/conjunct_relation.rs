@@ -2,6 +2,8 @@ use heck::{CamelCase, SnakeCase};
 use proc_macro2::Ident;
 use quote::format_ident;
 
+use crate::util::escape_rust_keyword;
+
 #[derive(Clone, Debug)]
 pub struct ConjunctRelation {
     pub(crate) via: String,
@@ -10,11 +12,11 @@ pub struct ConjunctRelation {
 
 impl ConjunctRelation {
     pub fn get_via_snake_case(&self) -> Ident {
-        format_ident!("{}", self.via.to_snake_case())
+        format_ident!("{}", escape_rust_keyword(self.via.to_snake_case()))
     }
 
     pub fn get_to_snake_case(&self) -> Ident {
-        format_ident!("{}", self.to.to_snake_case())
+        format_ident!("{}", escape_rust_keyword(self.to.to_snake_case()))
     }
 
     pub fn get_to_camel_case(&self) -> Ident {
