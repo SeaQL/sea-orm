@@ -27,6 +27,7 @@ pub async fn run_generate_command(
             with_copy_enums,
             date_time_crate,
             lib,
+            skip_primary_key_deserialization,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -173,6 +174,7 @@ pub async fn run_generate_command(
                 date_time_crate.into(),
                 schema_name,
                 lib,
+                skip_primary_key_deserialization,
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 

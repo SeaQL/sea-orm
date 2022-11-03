@@ -228,6 +228,13 @@ pub enum GenerateSubcommands {
             help = "Generate index file as `lib.rs` instead of `mod.rs`."
         )]
         lib: bool,
+
+        #[clap(
+            action,
+            long,
+            help = "Generate a serde field attribute for the primary keys to skip them during deserialization if they're not present, must also use '--with-serde' 'both' or 'deserialize'"
+        )]
+        skip_primary_key_deserialization: bool,
     },
 }
 
