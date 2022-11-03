@@ -134,6 +134,8 @@ impl EntityWriter {
                     .iter()
                     .map(|column| column.get_info(&context.date_time_crate))
                     .collect::<Vec<String>>();
+                // use must have serde enabled to use this
+                let skip_primary_key_deserialization = context.skip_primary_key_deserialization && (context.with_serde == WithSerde::Both || context.with_serde == WithSerde::Deserialize);
 
                 info!("Generating {}", entity_file);
                 for info in column_info.iter() {
@@ -148,7 +150,7 @@ impl EntityWriter {
                         &context.with_serde,
                         &context.date_time_crate,
                         &context.schema_name,
-                        context.skip_primary_key_deserialization,
+                        skip_primary_key_deserialization,
                     )
                 } else {
                     Self::gen_compact_code_blocks(
@@ -156,7 +158,7 @@ impl EntityWriter {
                         &context.with_serde,
                         &context.date_time_crate,
                         &context.schema_name,
-                        context.skip_primary_key_deserialization,
+                        skip_primary_key_deserialization,
                     )
                 };
                 Self::write(&mut lines, code_blocks);
@@ -246,7 +248,7 @@ impl EntityWriter {
         with_serde: &WithSerde,
         date_time_crate: &DateTimeCrate,
         schema_name: &Option<String>,
-        _skip_primary_key_deserialization: bool,
+        skip_primary_key_deserialization: bool,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
@@ -254,7 +256,12 @@ impl EntityWriter {
             imports,
             Self::gen_entity_struct(),
             Self::gen_impl_entity_name(entity, schema_name),
-            Self::gen_model_struct(entity, with_serde, date_time_crate),
+            Self::gen_model_struct(
+                entity,
+                with_serde,
+                date_time_crate,
+                skip_primary_key_deserialization,
+            ),
             Self::gen_column_enum(entity),
             Self::gen_primary_key_enum(entity),
             Self::gen_impl_primary_key(entity, date_time_crate),
@@ -381,16 +388,41 @@ impl EntityWriter {
         entity: &Entity,
         with_serde: &WithSerde,
         date_time_crate: &DateTimeCrate,
+        skip_primary_key_deserialization: bool,
     ) -> TokenStream {
         let column_names_snake_case = entity.get_column_names_snake_case();
         let column_rs_types = entity.get_column_rs_types(date_time_crate);
+        let primary_keys: Vec<String> = entity
+            .primary_keys
+            .iter()
+            .map(|pk| pk.name.clone())
+            .collect();
+        let fields = column_names_snake_case
+            .into_iter()
+            .enumerate()
+            .fold(TokenStream::new(), |tokens, (i, field_name)| {
+                let field_type = column_rs_types.get(i).unwrap();
+                let is_primary_key = primary_keys.contains(&field_name.to_string());
+                if is_primary_key && skip_primary_key_deserialization {
+                    quote! {
+                        #tokens
+                        pub #field_name: #field_type
+                    }
+                } else {
+                    quote! {
+                        #tokens
+                        #[serde(skip_deserialization)]
+                        pub #field_name: #field_type
+                    }
+                }
+            });
 
         let extra_derive = with_serde.extra_derive();
 
         quote! {
             #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel #extra_derive)]
             pub struct Model {
-                #(pub #column_names_snake_case: #column_rs_types,)*
+                #fields
             }
         }
     }
@@ -581,12 +613,13 @@ impl EntityWriter {
             .iter()
             .map(|col| {
                 let mut attrs: Punctuated<_, Comma> = Punctuated::new();
+                let is_primary_key = primary_keys.contains(&col.name);
                 let mut skip_pk_deserialization = false;
                 if !col.is_snake_case_name() {
                     let column_name = &col.name;
                     attrs.push(quote! { column_name = #column_name });
                 }
-                if primary_keys.contains(&col.name) {
+                if is_primary_key {
                     attrs.push(quote! { primary_key });
                     if !col.auto_increment {
                         attrs.push(quote! { auto_increment = false });
@@ -615,7 +648,7 @@ impl EntityWriter {
                         }
                         ts = quote! { #ts #attr };
                     }
-                    if skip_pk_deserialization {
+                    if is_primary_key && skip_pk_deserialization {
                         quote! {
                             #[sea_orm(#ts)]
                             #[serde(skip_deserialization)]
@@ -1349,7 +1382,7 @@ mod tests {
             &entity_serde_variant.1,
             &DateTimeCrate::Chrono,
             &entity_serde_variant.2,
-            false,
+            true,
         )
         .into_iter()
         .fold(TokenStream::new(), |mut acc, tok| {
