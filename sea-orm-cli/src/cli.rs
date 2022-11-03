@@ -236,7 +236,7 @@ pub enum GenerateSubcommands {
             long,
             use_value_delimiter = true,
             takes_value = true,
-            help = "Add extra derive macros to generated model structs (comma separated), ex. `ts_rs::Ts`"
+            help = "Add extra derive macros to generated model structs (comma separated), ex. `--derives 'ts_rs::Ts'`"
         )]
         derives: Vec<String>,
 
@@ -245,7 +245,7 @@ pub enum GenerateSubcommands {
             long,
             use_value_delimiter = true,
             takes_value = true,
-            help = r#"Add extra attributes to generated model struct, no need for `#[]` (comma separated), ex. `-- attributes "serde(rename_all = \"camelCase\")","ts(export)"`"#
+            help = r#"Add extra attributes to generated model struct, no need for `#[]` (comma separated), ex. `--attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
         )]
         attributes: Vec<String>,
     },
