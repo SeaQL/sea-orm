@@ -143,7 +143,9 @@ impl EntityWriter {
                     .map(|column| column.get_info(&context.date_time_crate))
                     .collect::<Vec<String>>();
                 // use must have serde enabled to use this
-                let skip_primary_key_deserialization = context.skip_primary_key_deserialization && (context.with_serde == WithSerde::Both || context.with_serde == WithSerde::Deserialize);
+                let skip_primary_key_deserialization = context.skip_primary_key_deserialization
+                    && (context.with_serde == WithSerde::Both
+                        || context.with_serde == WithSerde::Deserialize);
 
                 info!("Generating {}", entity_file);
                 for info in column_info.iter() {
@@ -408,10 +410,9 @@ impl EntityWriter {
             .iter()
             .map(|pk| pk.name.clone())
             .collect();
-        let fields = column_names_snake_case
-            .into_iter()
-            .enumerate()
-            .fold(TokenStream::new(), |tokens, (i, field_name)| {
+        let fields = column_names_snake_case.into_iter().enumerate().fold(
+            TokenStream::new(),
+            |tokens, (i, field_name)| {
                 let field_type = column_rs_types.get(i).unwrap();
                 let is_primary_key = primary_keys.contains(&field_name.to_string());
                 if is_primary_key && skip_primary_key_deserialization {
@@ -426,7 +427,8 @@ impl EntityWriter {
                         pub #field_name: #field_type
                     }
                 }
-            });
+            },
+        );
 
         let extra_derive = with_serde.extra_derive();
 
