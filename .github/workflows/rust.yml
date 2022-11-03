@@ -52,11 +52,15 @@ name: tests
 
 on:
   pull_request:
+    paths-ignore:
+      - '**.md'
   push:
     branches:
       - master
       - 0.*.x
       - pr/**/ci
+    paths-ignore:
+      - '**.md'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref || github.run_id }}
