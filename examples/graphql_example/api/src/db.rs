@@ -15,7 +15,7 @@ impl Database {
         Database { connection }
     }
 
-    pub fn get_connection(&self) -> &DatabaseConnection {
+    pub async fn get_connection(&self) -> &DatabaseConnection {
         &self.connection
     }
 }
