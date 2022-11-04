@@ -13,8 +13,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.10.1 - 2022-10-27
 
-> This is a release candidate. We are still updating the documentation and examples, as well as fixing critical bugs if there are any (in that case the current version might be yanked). Please check it out and provide feedback to us!
-
 ### Enhancements
 
 * [sea-orm-cli] Escape module name defined with Rust keywords https://github.com/SeaQL/sea-orm/pull/1052
