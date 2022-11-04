@@ -418,13 +418,13 @@ impl EntityWriter {
                 if is_primary_key && skip_primary_key_deserialization {
                     quote! {
                         #tokens
-                        pub #field_name: #field_type
+                        #[serde(skip_deserialization)]
+                        pub #field_name: #field_type,
                     }
                 } else {
                     quote! {
                         #tokens
-                        #[serde(skip_deserialization)]
-                        pub #field_name: #field_type
+                        pub #field_name: #field_type,
                     }
                 }
             },
@@ -631,7 +631,6 @@ impl EntityWriter {
             .map(|col| {
                 let mut attrs: Punctuated<_, Comma> = Punctuated::new();
                 let is_primary_key = primary_keys.contains(&col.name);
-                let mut skip_pk_deserialization = false;
                 if !col.is_snake_case_name() {
                     let column_name = &col.name;
                     attrs.push(quote! { column_name = #column_name });
@@ -640,12 +639,6 @@ impl EntityWriter {
                     attrs.push(quote! { primary_key });
                     if !col.auto_increment {
                         attrs.push(quote! { auto_increment = false });
-                    }
-
-                    // if deserialization with serde is even desired, set it to what the user
-                    // wants
-                    if with_serde == &WithSerde::Deserialize || with_serde == &WithSerde::Both {
-                        skip_pk_deserialization = skip_primary_key_deserialization;
                     }
                 }
                 if let Some(ts) = col.get_col_type_attrs() {
@@ -665,7 +658,7 @@ impl EntityWriter {
                         }
                         ts = quote! { #ts #attr };
                     }
-                    if is_primary_key && skip_pk_deserialization {
+                    if is_primary_key && skip_primary_key_deserialization {
                         quote! {
                             #[sea_orm(#ts)]
                             #[serde(skip_deserialization)]
@@ -1552,6 +1545,8 @@ mod tests {
     ) -> io::Result<()> {
         let mut reader = BufReader::new(entity_serde_variant.0.as_bytes());
         let mut lines: Vec<String> = Vec::new();
+        let skip_primary_key_deserialization = entity_serde_variant.1 == WithSerde::Both
+            || entity_serde_variant.1 == WithSerde::Deserialize;
 
         reader.read_until(b'\n', &mut Vec::new())?;
 
@@ -1562,12 +1557,13 @@ mod tests {
         }
         let content = lines.join("");
         let expected: TokenStream = content.parse().unwrap();
+        println!("{:?}", entity_serde_variant.1);
         let generated = generator(
             cake_entity,
             &entity_serde_variant.1,
             &DateTimeCrate::Chrono,
             &entity_serde_variant.2,
-            true,
+            skip_primary_key_deserialization,
         )
         .into_iter()
         .fold(TokenStream::new(), |mut acc, tok| {
