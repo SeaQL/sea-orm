@@ -64,7 +64,7 @@ pub async fn run_generate_command(
             // Closures for filtering tables
             let filter_tables = |table: &str| -> bool {
                 if !tables.is_empty() {
-                    return tables.contains(&table);
+                    return tables.contains(table);
                 }
 
                 true
