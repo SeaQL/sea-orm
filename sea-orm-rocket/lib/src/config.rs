@@ -37,6 +37,7 @@ use rocket::serde::{Deserialize, Serialize};
 ///             max_connections: 1024,
 ///             connect_timeout: 3,
 ///             idle_timeout: None,
+///             sqlx_logging: true,
 ///         },
 ///     ));
 ///
@@ -82,4 +83,7 @@ pub struct Config {
     ///
     /// _Default:_ `None`.
     pub idle_timeout: Option<u64>,
+
+    /// Enable SQLx statement logging (default true)
+    pub sqlx_logging: bool,
 }
