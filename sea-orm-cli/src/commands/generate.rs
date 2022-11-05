@@ -170,7 +170,8 @@ pub async fn run_generate_command(
 
             let writer_context = EntityWriterContext::new(
                 expanded_format,
-                SerdeDeriveOptions::from_options(&with_serde, serde_skip_hidden_columns).expect("Serde derive options must be valid"),
+                SerdeDeriveOptions::from_options(&with_serde, serde_skip_hidden_columns)
+                    .expect("Serde derive options must be valid"),
                 with_copy_enums,
                 date_time_crate.into(),
                 schema_name,

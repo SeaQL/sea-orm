@@ -645,12 +645,12 @@ impl EntityWriter {
                     TokenStream::new()
                 };
 
-                let attrs = match serde_options {
+                match serde_options {
                     SerdeDeriveOptions::Serialize(serde_hidden)
                     | SerdeDeriveOptions::Deserialize(serde_hidden)
                     | SerdeDeriveOptions::Both(serde_hidden) => match serde_hidden {
                         SerdeHiddenColumns::Yes => {
-                            if col.name.starts_with("_") {
+                            if col.name.starts_with('_') {
                                 quote! {
                                     #[serde(skip)]
                                     #sea_orm_attrs
@@ -662,9 +662,7 @@ impl EntityWriter {
                         SerdeHiddenColumns::No => sea_orm_attrs,
                     },
                     SerdeDeriveOptions::None => sea_orm_attrs,
-                };
-
-                attrs
+                }
             })
             .collect();
         let schema_name = match Self::gen_schema_name(schema_name) {
