@@ -241,7 +241,8 @@ impl<D: Database> Fairing for Initializer<D> {
             .figment()
             .focus(&format!("databases.{}", D::NAME))
             .merge(Serialized::default("max_connections", workers * 4))
-            .merge(Serialized::default("connect_timeout", 5));
+            .merge(Serialized::default("connect_timeout", 5))
+            .merge(Serialized::default("sqlx_logging", true));
 
         match <D::Pool>::init(&figment).await {
             Ok(pool) => Ok(rocket.manage(D::from(pool))),
