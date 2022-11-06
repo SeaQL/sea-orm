@@ -13,7 +13,7 @@ documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
 categories = ["database"]
 keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
-rust-version = "1.60"
+rust-version = "1.65"
 
 [lib]
 name = "sea_orm_migration"
