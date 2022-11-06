@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Enhancements
 
 * Collecting metrics for `query_one/all` https://github.com/SeaQL/sea-orm/pull/1165
+* [sea-orm-rocket] added `sqlx_logging` to `Config`
 
 ## 0.10.1 - 2022-10-27
 
