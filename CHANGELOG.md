@@ -5,22 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.11.0 - Pending
+## 0.10.2 - 2022-11-06
 
 ### Enhancements
 
+* [sea-orm-rocket] added `sqlx_logging` to `Config` https://github.com/SeaQL/sea-orm/pull/1192
+* Collecting metrics for `query_one/all` https://github.com/SeaQL/sea-orm/pull/1165
 * use GAT to elide `StreamTrait` lifetime https://github.com/SeaQL/sea-orm/pull/1161
 
-### Breaking changes
+### Bug Fixes
 
 * corrected the error name `UpdateGetPrimaryKey` https://github.com/SeaQL/sea-orm/pull/1180
 
-## 0.10.2 - Pending
+### Upgrades
 
-### Enhancements
-
-* Collecting metrics for `query_one/all` https://github.com/SeaQL/sea-orm/pull/1165
-* [sea-orm-rocket] added `sqlx_logging` to `Config`
+* Update MSRV to 1.65
 
 ## 0.10.1 - 2022-10-27
 
