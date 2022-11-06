@@ -116,7 +116,7 @@ where
             Updater::new(query).check_record_exists().exec(db).await?;
             let primary_key_value = match model.get_primary_key_value() {
                 Some(val) => FromValueTuple::from_value_tuple(val),
-                None => return Err(DbErr::UpdateGetPrimeryKey),
+                None => return Err(DbErr::UpdateGetPrimaryKey),
             };
             let found = <A::Entity as EntityTrait>::find_by_id(primary_key_value)
                 .one(db)

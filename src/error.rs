@@ -33,10 +33,10 @@ pub enum DbErr {
     /// After an insert statement it was impossible to retrieve the last_insert_id
     #[error("Failed to unpack last_insert_id")]
     UnpackInsertId,
-    /// When updating, a model should know it's primary key to check
+    /// When updating, a model should know its primary key to check
     /// if the record has been correctly updated, otherwise this error will occur
     #[error("Failed to get primary key from model")]
-    UpdateGetPrimeryKey,
+    UpdateGetPrimaryKey,
     /// The record was not found in the database
     #[error("RecordNotFound Error: {0}")]
     RecordNotFound(String),
