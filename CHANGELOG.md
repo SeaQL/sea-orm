@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.11.0 - Pending
+
+* use GAT to elide `StreamTrait` lifetime https://github.com/SeaQL/sea-orm/pull/1161
+
 ## 0.10.2 - Pending
 
 ### Enhancements
