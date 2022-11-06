@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.11.0 - Pending
 
+### Enhancements
+
 * use GAT to elide `StreamTrait` lifetime https://github.com/SeaQL/sea-orm/pull/1161
+
+### Breaking changes
+
+* corrected the error name `UpdateGetPrimaryKey` https://github.com/SeaQL/sea-orm/pull/1180
 
 ## 0.10.2 - Pending
 
