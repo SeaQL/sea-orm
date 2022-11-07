@@ -43,7 +43,6 @@ sqlx = { version = "^0.6", optional = true }
 uuid = { version = "^1", features = ["serde", "v4"], optional = true }
 ouroboros = "0.15"
 url = "^2.2"
-once_cell = "1.8"
 thiserror = "^1"
 
 [dev-dependencies]
@@ -58,6 +57,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 sea-orm = { path = ".", features = ["mock", "debug-print", "tests-cfg", "postgres-array"] }
 pretty_assertions = { version = "^0.7" }
 time = { version = "^0.3", features = ["macros"] }
+once_cell = "1.8"
 
 [features]
 debug-print = []
