@@ -48,6 +48,20 @@ where
         Inserter::<A>::new(self.primary_key, query).exec(db)
     }
 
+    /// Execute an insert operation without returning (don't use `RETURNING` syntax)
+    /// Number of rows affected is returned
+    pub fn exec_without_returning<'a, C>(
+        self,
+        db: &'a C,
+    ) -> impl Future<Output = Result<u64, DbErr>> + '_
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: 'a,
+    {
+        Inserter::<A>::new(self.primary_key, self.query).exec_without_returning(db)
+    }
+
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
     pub fn exec_with_returning<'a, C>(
         self,
@@ -75,7 +89,7 @@ where
         }
     }
 
-    /// Execute an insert operation
+    /// Execute an insert operation, returning the last inserted id
     pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + '_
     where
         C: ConnectionTrait,
@@ -83,6 +97,18 @@ where
     {
         let builder = db.get_database_backend();
         exec_insert(self.primary_key, builder.build(&self.query), db)
+    }
+
+    /// Execute an insert operation
+    pub fn exec_without_returning<'a, C>(
+        self,
+        db: &'a C,
+    ) -> impl Future<Output = Result<u64, DbErr>> + '_
+    where
+        C: ConnectionTrait,
+        A: 'a,
+    {
+        exec_insert_without_returning(self.query, db)
     }
 
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
@@ -132,6 +158,18 @@ where
         },
     };
     Ok(InsertResult { last_insert_id })
+}
+
+async fn exec_insert_without_returning<C>(
+    insert_statement: InsertStatement,
+    db: &C,
+) -> Result<u64, DbErr>
+where
+    C: ConnectionTrait,
+{
+    let db_backend = db.get_database_backend();
+    let exec_result = db.execute(db_backend.build(&insert_statement)).await?;
+    Ok(exec_result.rows_affected())
 }
 
 async fn exec_insert_with_returning<A, C>(
