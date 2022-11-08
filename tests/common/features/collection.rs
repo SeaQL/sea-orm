@@ -1,3 +1,4 @@
+use super::sea_orm_active_enums::*;
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -7,6 +8,8 @@ pub struct Model {
     pub id: i32,
     pub integers: Vec<i32>,
     pub integers_opt: Option<Vec<i32>>,
+    pub teas: Vec<Tea>,
+    pub teas_opt: Option<Vec<Tea>>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -6,7 +6,7 @@ use sea_orm::{
     error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName,
     ExecResult, Schema,
 };
-use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement};
+use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement, IntoIden};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     let db_backend = db.get_database_backend();
@@ -349,6 +349,26 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(
             ColumnDef::new(collection::Column::IntegersOpt)
                 .array(sea_query::ColumnType::Integer(None)),
+        )
+        .col(
+            ColumnDef::new(collection::Column::Teas)
+                .array(sea_query::ColumnType::Enum {
+                    name: TeaEnum.into_iden(),
+                    variants: vec![
+                        TeaVariant::EverydayTea.into_iden(),
+                        TeaVariant::BreakfastTea.into_iden(),
+                    ],
+                })
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(collection::Column::TeasOpt).array(sea_query::ColumnType::Enum {
+                name: TeaEnum.into_iden(),
+                variants: vec![
+                    TeaVariant::EverydayTea.into_iden(),
+                    TeaVariant::BreakfastTea.into_iden(),
+                ],
+            }),
         )
         .to_owned();
 

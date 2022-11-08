@@ -281,6 +281,15 @@ impl ActiveEnum {
             quote!()
         };
 
+        let impl_not_u8 = if cfg!(feature = "postgres-array") {
+            quote!(
+                #[automatically_derived]
+                impl sea_orm::sea_query::value::with_array::NotU8 for #ident {}
+            )
+        } else {
+            quote!()
+        };
+
         quote!(
             #[derive(Debug, Clone, PartialEq, Eq)]
             pub struct #enum_name_iden;
@@ -297,6 +306,8 @@ impl ActiveEnum {
             #[automatically_derived]
             impl sea_orm::ActiveEnum for #ident {
                 type Value = #rs_type;
+
+                type ValueVec = Vec<#rs_type>;
 
                 fn name() -> sea_orm::sea_query::DynIden {
                     sea_orm::sea_query::SeaRc::new(#enum_name_iden) as sea_orm::sea_query::DynIden
@@ -353,7 +364,7 @@ impl ActiveEnum {
                 }
 
                 fn array_type() -> sea_orm::sea_query::ArrayType {
-                    unimplemented!("Array of Enum is not supported")
+                    <<Self as sea_orm::ActiveEnum>::Value as sea_orm::sea_query::ValueType>::array_type()
                 }
 
                 fn column_type() -> sea_orm::sea_query::ColumnType {
@@ -378,6 +389,8 @@ impl ActiveEnum {
                     write!(f, "{}", v)
                 }
             }
+
+            #impl_not_u8
         )
     }
 }
