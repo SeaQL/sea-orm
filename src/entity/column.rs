@@ -355,8 +355,8 @@ impl ColumnType {
     pub(crate) fn get_enum_name(&self) -> Option<&DynIden> {
         fn enum_name(col_type: &ColumnType) -> Option<&DynIden> {
             match col_type {
-                ColumnType::Enum { name, .. } => Some(&name),
-                ColumnType::Array(col_type) => enum_name(&col_type),
+                ColumnType::Enum { name, .. } => Some(name),
+                ColumnType::Array(col_type) => enum_name(col_type),
                 _ => None,
             }
         }
