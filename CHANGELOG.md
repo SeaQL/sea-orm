@@ -5,13 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.10.3 - Pending
+
+### Bug Fixes
+
+* [sea-orm-cli] Set search path when initializing Postgres connection for CLI generate entity https://github.com/SeaQL/sea-orm/pull/1212
+* [sea-orm-cli] Generate `_` prefix to enum variant starts with number https://github.com/SeaQL/sea-orm/pull/1211
+
 ## 0.10.2 - 2022-11-06
 
 ### Enhancements
 
 * [sea-orm-rocket] added `sqlx_logging` to `Config` https://github.com/SeaQL/sea-orm/pull/1192
 * Collecting metrics for `query_one/all` https://github.com/SeaQL/sea-orm/pull/1165
-* use GAT to elide `StreamTrait` lifetime https://github.com/SeaQL/sea-orm/pull/1161
+* Use GAT to elide `StreamTrait` lifetime https://github.com/SeaQL/sea-orm/pull/1161
 
 ### Bug Fixes
 
