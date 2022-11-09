@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * [sea-orm-cli] Set search path when initializing Postgres connection for CLI generate entity https://github.com/SeaQL/sea-orm/pull/1212
 * [sea-orm-cli] Generate `_` prefix to enum variant starts with number https://github.com/SeaQL/sea-orm/pull/1211
 
+### House Keeping
+
+* Remove dependency when not needed https://github.com/SeaQL/sea-orm/pull/1207
+
 ## 0.10.2 - 2022-11-06
 
 ### Enhancements
