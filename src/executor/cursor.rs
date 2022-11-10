@@ -80,10 +80,19 @@ where
                         .add(f(c2, v2)),
                 )
                 .add(f(c1, v1)),
-            (Identity::Ternary(c1, c2, c3), ValueTuple::Three(v1, v2, v3)) => Condition::all()
-                .add(f(c1, v1))
-                .add(f(c2, v2))
-                .add(f(c3, v3)),
+            (Identity::Ternary(c1, c2, c3), ValueTuple::Three(v1, v2, v3)) => Condition::any()
+                .add(
+                    Condition::all()
+                        .add(Expr::tbl(SeaRc::clone(&self.table), SeaRc::clone(c1)).eq(v1.clone()))
+                        .add(Expr::tbl(SeaRc::clone(&self.table), SeaRc::clone(c2)).eq(v2.clone()))
+                        .add(f(c3, v3)),
+                )
+                .add(
+                    Condition::all()
+                        .add(Expr::tbl(SeaRc::clone(&self.table), SeaRc::clone(c1)).eq(v1.clone()))
+                        .add(f(c2, v2)),
+                )
+                .add(f(c1, v1)),
             _ => panic!("column arity mismatch"),
         }
     }
@@ -413,6 +422,27 @@ mod tests {
         impl ActiveModelBehavior for ActiveModel {}
     }
 
+    mod xyz_entity {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "m")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub x: i32,
+            #[sea_orm(primary_key)]
+            pub y: String,
+            #[sea_orm(primary_key)]
+            pub z: i64,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
     #[smol_potat::test]
     async fn composite_keys_1() -> Result<(), DbErr> {
         use test_entity::*;
@@ -535,6 +565,94 @@ mod tests {
                     3_u64.into(),
                 ]
             )])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn composite_keys_4() -> Result<(), DbErr> {
+        use xyz_entity::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(vec![vec![Model {
+                x: 'x' as i32,
+                y: "y".into(),
+                z: 'z' as i64,
+            }]])
+            .into_connection();
+
+        assert!(!Entity::find()
+            .cursor_by((Column::X, Column::Y, Column::Z))
+            .first(4)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![Transaction::many(vec![Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "m"."x", "m"."y", "m"."z""#,
+                    r#"FROM "m""#,
+                    r#"ORDER BY "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
+                    r#"LIMIT $1"#,
+                ]
+                .join(" ")
+                .as_str(),
+                vec![4_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn composite_keys_5() -> Result<(), DbErr> {
+        use xyz_entity::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(vec![vec![Model {
+                x: 'x' as i32,
+                y: "y".into(),
+                z: 'z' as i64,
+            }]])
+            .into_connection();
+
+        assert!(!Entity::find()
+            .cursor_by((Column::X, Column::Y, Column::Z))
+            .after(('x' as i32, "y".to_owned(), 'z' as i64))
+            .first(4)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![Transaction::many(vec![Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "m"."x", "m"."y", "m"."z""#,
+                    r#"FROM "m""#,
+                    r#"WHERE ("m"."x" = $1 AND "m"."y" = $2 AND "m"."z" > $3)"#,
+                    r#"OR ("m"."x" = $4 AND "m"."y" > $5)"#,
+                    r#"OR "m"."x" > $6"#,
+                    r#"ORDER BY "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
+                    r#"LIMIT $7"#,
+                ]
+                .join(" ")
+                .as_str(),
+                vec![
+                    ('x' as i32).into(),
+                    "y".into(),
+                    ('z' as i64).into(),
+                    ('x' as i32).into(),
+                    "y".into(),
+                    ('x' as i32).into(),
+                    4_u64.into(),
+                ]
+            ),])]
         );
 
         Ok(())
