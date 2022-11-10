@@ -73,9 +73,13 @@ where
     {
         match (&self.order_columns, values.into_value_tuple()) {
             (Identity::Unary(c1), ValueTuple::One(v1)) => Condition::all().add(f(c1, v1)),
-            (Identity::Binary(c1, c2), ValueTuple::Two(v1, v2)) => {
-                Condition::all().add(f(c1, v1)).add(f(c2, v2))
-            }
+            (Identity::Binary(c1, c2), ValueTuple::Two(v1, v2)) => Condition::any()
+                .add(
+                    Condition::all()
+                        .add(Expr::tbl(SeaRc::clone(&self.table), SeaRc::clone(c1)).eq(v1.clone()))
+                        .add(f(c2, v2)),
+                )
+                .add(f(c1, v1)),
             (Identity::Ternary(c1, c2, c3), ValueTuple::Three(v1, v2, v3)) => Condition::all()
                 .add(f(c1, v1))
                 .add(f(c2, v2))
@@ -390,75 +394,147 @@ mod tests {
         Ok(())
     }
 
+    mod test_entity {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "example")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            #[sea_orm(primary_key)]
+            pub category: String,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
     #[smol_potat::test]
-    async fn composite_keys() -> Result<(), DbErr> {
-        use cake_filling::*;
+    async fn composite_keys_1() -> Result<(), DbErr> {
+        use test_entity::*;
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![
-                Model {
-                    cake_id: 1,
-                    filling_id: 2,
-                },
-                Model {
-                    cake_id: 1,
-                    filling_id: 3,
-                },
-                Model {
-                    cake_id: 2,
-                    filling_id: 3,
-                },
-            ]])
+            .append_query_results(vec![vec![Model {
+                id: 1,
+                category: "CAT".into(),
+            }]])
             .into_connection();
 
-        assert_eq!(
-            Entity::find()
-                .cursor_by((Column::CakeId, Column::FillingId))
-                .after((0, 1))
-                .before((10, 11))
-                .first(3)
-                .all(&db)
-                .await?,
-            vec![
-                Model {
-                    cake_id: 1,
-                    filling_id: 2,
-                },
-                Model {
-                    cake_id: 1,
-                    filling_id: 3,
-                },
-                Model {
-                    cake_id: 2,
-                    filling_id: 3,
-                },
-            ]
-        );
+        assert!(!Entity::find()
+            .cursor_by((Column::Category, Column::Id))
+            .first(3)
+            .all(&db)
+            .await?
+            .is_empty());
 
         assert_eq!(
             db.into_transaction_log(),
             vec![Transaction::many(vec![Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
-                    r#"SELECT "cake_filling"."cake_id", "cake_filling"."filling_id""#,
-                    r#"FROM "cake_filling""#,
-                    r#"WHERE "cake_filling"."cake_id" > $1"#,
-                    r#"AND "cake_filling"."filling_id" > $2"#,
-                    r#"AND "cake_filling"."cake_id" < $3"#,
-                    r#"AND "cake_filling"."filling_id" < $4"#,
-                    r#"ORDER BY "cake_filling"."cake_id" ASC, "cake_filling"."filling_id" ASC"#,
-                    r#"LIMIT $5"#,
+                    r#"SELECT "example"."id", "example"."category""#,
+                    r#"FROM "example""#,
+                    r#"ORDER BY "example"."category" ASC, "example"."id" ASC"#,
+                    r#"LIMIT $1"#,
+                ]
+                .join(" ")
+                .as_str(),
+                vec![3_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn composite_keys_2() -> Result<(), DbErr> {
+        use test_entity::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(vec![vec![Model {
+                id: 1,
+                category: "CAT".into(),
+            }]])
+            .into_connection();
+
+        assert!(!Entity::find()
+            .cursor_by((Column::Category, Column::Id))
+            .after(("A".to_owned(), 2))
+            .first(3)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![Transaction::many(vec![Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "example"."id", "example"."category""#,
+                    r#"FROM "example""#,
+                    r#"WHERE ("example"."category" = $1 AND "example"."id" > $2)"#,
+                    r#"OR "example"."category" > $3"#,
+                    r#"ORDER BY "example"."category" ASC, "example"."id" ASC"#,
+                    r#"LIMIT $4"#,
                 ]
                 .join(" ")
                 .as_str(),
                 vec![
-                    0_i32.into(),
-                    1_i32.into(),
-                    10_i32.into(),
-                    11_i32.into(),
-                    3_u64.into()
+                    "A".to_string().into(),
+                    2i32.into(),
+                    "A".to_string().into(),
+                    3_u64.into(),
                 ]
-            ),])]
+            )])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn composite_keys_3() -> Result<(), DbErr> {
+        use test_entity::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(vec![vec![Model {
+                id: 1,
+                category: "CAT".into(),
+            }]])
+            .into_connection();
+
+        assert!(!Entity::find()
+            .cursor_by((Column::Category, Column::Id))
+            .before(("A".to_owned(), 2))
+            .last(3)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![Transaction::many(vec![Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "example"."id", "example"."category""#,
+                    r#"FROM "example""#,
+                    r#"WHERE ("example"."category" = $1 AND "example"."id" < $2)"#,
+                    r#"OR "example"."category" < $3"#,
+                    r#"ORDER BY "example"."category" DESC, "example"."id" DESC"#,
+                    r#"LIMIT $4"#,
+                ]
+                .join(" ")
+                .as_str(),
+                vec![
+                    "A".to_string().into(),
+                    2i32.into(),
+                    "A".to_string().into(),
+                    3_u64.into(),
+                ]
+            )])]
         );
 
         Ok(())
