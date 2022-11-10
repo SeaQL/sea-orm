@@ -14,7 +14,7 @@ Welcome! Thanks for suggesting features!
 Do you want to ask a question? Are you looking for support?
 Please ask us on
 - Discord: https://discord.com/invite/uCPdDXzbdv
-- GitHub Discussions: https://github.com/SeaQL/.github/discussions/new
+- GitHub Discussions: https://github.com/SeaQL/sea-orm/discussions/new
 
 Make sure you have a clear feature specification before open an issue. Alternatively, please start an "Idea" thread on GitHub Discussions and let's formulate the solution together.
 
