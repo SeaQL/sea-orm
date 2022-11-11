@@ -76,7 +76,7 @@ mod tests {
                 .map(|variant| Alias::new(variant).into_iden())
                 .collect(),
             }
-            .impl_active_enum(&WithSerde::None, true)
+            .impl_active_enum(&SerdeDeriveOptions::None, true)
             .to_string(),
             quote!(
                 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
