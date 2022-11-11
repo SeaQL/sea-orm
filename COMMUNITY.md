@@ -19,7 +19,6 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [tardis](https://github.com/ideal-world/tardis) | Elegant, Clean Rust development framework🛸 | DB: MySQL, Postgres, SQLite
 - [Quasar](https://github.com/Technik97/Quasar) | Rust REST API using Actix-Web, SeaORM and Postgres with Svelte Typescript Frontend | DB: Postgres
 - [ZAPP](https://zapp.epics.dev) ([repository](https://github.com/EpicsDAO/zapp)) | ZAPP is a serverless framework made by Rust. Quickly build a scalable GraphQL API web server.
-- [crud-rs](https://github.com/onichandame/crud-rs) | A framework combining async-graphql and SeaORM
 - [poem_admin](https://github.com/lingdu1234/poem_admin) | An admin panel built with poems, **SeaORM** and Vue 3. | DB: MySQL, Postgres, SQLite
 
 ### Open Source Projects
@@ -77,6 +76,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [actix-react-starter-template](https://github.com/aslamplr/actix-react-starter-template) | Actix web + SeaORM + React + Redux + Redux Saga project starter template | DB: Postgres
 - [Rust Async-GraphQL Example: Caster API](https://github.com/bkonkle/rust-example-caster-api) | A demo GraphQL API using Tokio, Warp, async-graphql, and SeaORM | DB: Postgres
 - [rust-juniper-playground](https://github.com/Yama-Tomo/rust-juniper-playground) | juniper with SeaORM example | DB: MySQL
+- [crud-rs](https://github.com/onichandame/crud-rs) | A framework combining async-graphql and SeaORM
 
 ## Learning Resources
 
