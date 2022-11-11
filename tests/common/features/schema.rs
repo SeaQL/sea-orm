@@ -370,6 +370,15 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 ],
             }),
         )
+        .col(
+            ColumnDef::new(collection::Column::Colors)
+                .array(sea_query::ColumnType::Integer(None))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(collection::Column::ColorsOpt)
+                .array(sea_query::ColumnType::Integer(None)),
+        )
         .to_owned();
 
     create_table(db, &stmt, Collection).await
