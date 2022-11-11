@@ -246,7 +246,13 @@ impl ActiveEnum {
             let enum_variant_iden = format_ident!("{}Variant", ident);
             let enum_variants: Vec<syn::Ident> = str_variants
                 .iter()
-                .map(|v| format_ident!("{}", v.to_camel_case()))
+                .map(|v| {
+                    if v.chars().next().map(char::is_numeric).unwrap_or(false) {
+                        format_ident!("_{}", v)
+                    } else {
+                        format_ident!("{}", v.to_camel_case())
+                    }
+                })
                 .collect();
 
             quote!(
