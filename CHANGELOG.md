@@ -5,12 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
+
 ## 0.10.3 - Pending
 
 ### Bug Fixes
 
 * [sea-orm-cli] Set search path when initializing Postgres connection for CLI generate entity https://github.com/SeaQL/sea-orm/pull/1212
 * [sea-orm-cli] Generate `_` prefix to enum variant starts with number https://github.com/SeaQL/sea-orm/pull/1211
+
+### Enhancements
+
+* Added `Insert::exec_without_returning` https://github.com/SeaQL/sea-orm/pull/1208
 
 ### House Keeping
 
