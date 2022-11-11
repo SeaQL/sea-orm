@@ -69,10 +69,6 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 - [rj45less-server](https://github.com/pmnxis/rj45less-server) | A simple unique number allocator for custom router | DB: SQLite
 
-## Learning Resources
-
-If you have an article, tutorial, podcast or video related to SeaORM and want to share it with the community, feel free to submit a PR and add it to the list below!
-
 ### Dev tools
 
 - [symbols](https://github.com/nappa85/symbols) | A proc-macro utility to populates enum variants with primary keys values
@@ -81,6 +77,10 @@ If you have an article, tutorial, podcast or video related to SeaORM and want to
 
 - [Adta](https://github.com/aaronleopold/adta) | Adta is **A**nother **D**amn **T**odo **A**pp, fun little side project | DB: MySQL, Postgres, SQLite
 - [rust-juniper-playground](https://github.com/Yama-Tomo/rust-juniper-playground) | juniper with SeaORM example | DB: MySQL
+
+## Learning Resources
+
+If you have an article, tutorial, podcast or video related to SeaORM and want to share it with the community, feel free to submit a PR and add it to the list below!
 
 ### Tutorials
 
