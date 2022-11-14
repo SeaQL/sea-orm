@@ -272,8 +272,8 @@
 //!   <tbody>
 //!     <tr>
 //!       <td><br><a href="https://caido.io/"><img src="https://www.sea-ql.org/SeaORM/img/other/caido-logo.png" width="250"/></a><br>A lightweight web security auditing toolkit</td>
-//!       <td><a href="https://l2.technology/sensei"><img src="https://www.sea-ql.org/SeaORM/img/other/sensei-logo.svg" width="250"/></a><br>A Bitcoin lightning node implementation</td>
 //!       <td><a href="https://www.svix.com/"><img src="https://www.sea-ql.org/SeaORM/img/other/svix-logo.svg" width="250"/></a><br>The enterprise ready webhooks service</td>
+//!       <td><a href="https://docs.spyglass.fyi/"><img src="https://www.sea-ql.org/SeaORM/img/other/spyglass-logo.svg" width="250"/></a><br/>A personal search engine</td>
 //!     </tr>
 //!   </tbody>
 //! </table>
@@ -299,7 +299,7 @@
 //! for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 //! dual licensed as above, without any additional terms or conditions.
 //!
-//! SeaORM is a community driven project. We welcome you to participate, contribute and together build for Rust's future.
+//! SeaORM is a community driven project. We welcome you to participate, contribute and together help build Rust's future.
 //!
 //! A big shout out to our contributors:
 //!
