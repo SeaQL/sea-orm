@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
 
-## 0.10.3 - Pending
+## 0.10.3 - 2022-11-14
 
 ### Bug Fixes
 
