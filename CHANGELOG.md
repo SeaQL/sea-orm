@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * [sea-orm-cli] Set search path when initializing Postgres connection for CLI generate entity https://github.com/SeaQL/sea-orm/pull/1212
 * [sea-orm-cli] Generate `_` prefix to enum variant starts with number https://github.com/SeaQL/sea-orm/pull/1211
+* Fix composite key cursor pagination https://github.com/SeaQL/sea-orm/pull/1216
+    + The logic for single-column primary key was correct, but for composite keys the logic was incorrect
 
 ### Enhancements
 
