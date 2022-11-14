@@ -54,9 +54,11 @@ on:
   pull_request:
     paths-ignore:
       - '**.md'
+      - '.github/ISSUE_TEMPLATE/**'
   push:
     paths-ignore:
       - '**.md'
+      - '.github/ISSUE_TEMPLATE/**'
     branches:
       - master
       - 0.*.x

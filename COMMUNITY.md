@@ -17,11 +17,8 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 - [awto](https://github.com/awto-rs/awto) | Awtomate your 🦀 microservices with awto | DB: Postgres
 - [tardis](https://github.com/ideal-world/tardis) | Elegant, Clean Rust development framework🛸 | DB: MySQL, Postgres, SQLite
-- [Rust Async-GraphQL Example: Caster API](https://github.com/bkonkle/rust-example-caster-api) | A demo GraphQL API using Tokio, Warp, async-graphql, and SeaORM | DB: Postgres
 - [Quasar](https://github.com/Technik97/Quasar) | Rust REST API using Actix-Web, SeaORM and Postgres with Svelte Typescript Frontend | DB: Postgres
-- [actix-react-starter-template](https://github.com/aslamplr/actix-react-starter-template) | Actix web + SeaORM + React + Redux + Redux Saga project starter template | DB: Postgres
 - [ZAPP](https://zapp.epics.dev) ([repository](https://github.com/EpicsDAO/zapp)) | ZAPP is a serverless framework made by Rust. Quickly build a scalable GraphQL API web server.
-- [crud-rs](https://github.com/onichandame/crud-rs) | A framework combining async-graphql and SeaORM
 - [poem_admin](https://github.com/lingdu1234/poem_admin) | An admin panel built with poems, **SeaORM** and Vue 3. | DB: MySQL, Postgres, SQLite
 
 ### Open Source Projects
@@ -69,14 +66,21 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 - [rj45less-server](https://github.com/pmnxis/rj45less-server) | A simple unique number allocator for custom router | DB: SQLite
 
-## Learning Resources
+### Dev tools
 
-If you have an article, tutorial, podcast or video related to SeaORM and want to share it with the community, feel free to submit a PR and add it to the list below!
+- [symbols](https://github.com/nappa85/symbols) | A proc-macro utility to populates enum variants with primary keys values
 
 ### Scaffolding
 
 - [Adta](https://github.com/aaronleopold/adta) | Adta is **A**nother **D**amn **T**odo **A**pp, fun little side project | DB: MySQL, Postgres, SQLite
+- [actix-react-starter-template](https://github.com/aslamplr/actix-react-starter-template) | Actix web + SeaORM + React + Redux + Redux Saga project starter template | DB: Postgres
+- [Rust Async-GraphQL Example: Caster API](https://github.com/bkonkle/rust-example-caster-api) | A demo GraphQL API using Tokio, Warp, async-graphql, and SeaORM | DB: Postgres
 - [rust-juniper-playground](https://github.com/Yama-Tomo/rust-juniper-playground) | juniper with SeaORM example | DB: MySQL
+- [crud-rs](https://github.com/onichandame/crud-rs) | A framework combining async-graphql and SeaORM
+
+## Learning Resources
+
+If you have an article, tutorial, podcast or video related to SeaORM and want to share it with the community, feel free to submit a PR and add it to the list below!
 
 ### Tutorials
 
