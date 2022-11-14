@@ -13,7 +13,7 @@ async-std = { version = "^1", features = ["attributes", "tokio1"] }
 
 [dependencies.sea-orm-migration]
 path = "../../../sea-orm-migration" # remove this line in your own project
-version = "^0.10.2" # sea-orm-migration version
+version = "^0.10.3" # sea-orm-migration version
 features = [
   # Enable following runtime and db backend features if you want to run migration via CLI
   # "runtime-tokio-native-tls",
