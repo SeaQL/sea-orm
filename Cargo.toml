@@ -34,8 +34,8 @@ log = { version = "^0.4" }
 tracing = { version = "^0.1", features = ["log"] }
 rust_decimal = { version = "^1", optional = true }
 sea-orm-macros = { version = "^0.10.3", path = "sea-orm-macros", optional = true }
-sea-query = { version = "^0.27.1", features = ["thread-safe"] }
-sea-query-binder = { version = "^0.2.1", optional = true }
+sea-query = { version = "^0.27.2", features = ["thread-safe"] }
+sea-query-binder = { version = "^0.2.2", optional = true }
 sea-strum = { version = "^0.23", features = ["derive", "sea-orm"] }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = { version = "^1.0", optional = true }
@@ -76,7 +76,7 @@ with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-binder?/with-chrono
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-binder?/with-rust_decimal", "sqlx?/decimal"]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
 with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
-postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array"]
+postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array", "sea-orm-macros?/postgres-array"]
 sqlx-dep = []
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-mysql = ["sqlx-dep", "sea-query-binder/sqlx-mysql", "sqlx/mysql"]
