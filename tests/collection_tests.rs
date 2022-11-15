@@ -24,6 +24,10 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             id: 1,
             integers: vec![1, 2, 3],
             integers_opt: Some(vec![1, 2, 3]),
+            teas: vec![Tea::BreakfastTea],
+            teas_opt: Some(vec![Tea::BreakfastTea]),
+            colors: vec![Color::Black],
+            colors_opt: Some(vec![Color::Black]),
         }
         .into_active_model()
         .insert(db)
@@ -32,6 +36,10 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             id: 1,
             integers: vec![1, 2, 3],
             integers_opt: Some(vec![1, 2, 3]),
+            teas: vec![Tea::BreakfastTea],
+            teas_opt: Some(vec![Tea::BreakfastTea]),
+            colors: vec![Color::Black],
+            colors_opt: Some(vec![Color::Black]),
         }
     );
 
@@ -40,6 +48,10 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             id: 2,
             integers: vec![10, 9],
             integers_opt: None,
+            teas: vec![Tea::BreakfastTea],
+            teas_opt: None,
+            colors: vec![Color::Black],
+            colors_opt: None,
         }
         .into_active_model()
         .insert(db)
@@ -48,6 +60,10 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             id: 2,
             integers: vec![10, 9],
             integers_opt: None,
+            teas: vec![Tea::BreakfastTea],
+            teas_opt: None,
+            colors: vec![Color::Black],
+            colors_opt: None,
         }
     );
 
@@ -56,6 +72,10 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             id: 3,
             integers: vec![],
             integers_opt: Some(vec![]),
+            teas: vec![],
+            teas_opt: Some(vec![]),
+            colors: vec![],
+            colors_opt: Some(vec![]),
         }
         .into_active_model()
         .insert(db)
@@ -64,6 +84,10 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             id: 3,
             integers: vec![],
             integers_opt: Some(vec![]),
+            teas: vec![],
+            teas_opt: Some(vec![]),
+            colors: vec![],
+            colors_opt: Some(vec![]),
         }
     );
 
@@ -78,6 +102,10 @@ pub async fn update_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
     ActiveModel {
         integers: Set(vec![4, 5, 6]),
         integers_opt: Set(Some(vec![4, 5, 6])),
+        teas: Set(vec![Tea::EverydayTea]),
+        teas_opt: Set(Some(vec![Tea::EverydayTea])),
+        colors: Set(vec![Color::White]),
+        colors_opt: Set(Some(vec![Color::White])),
         ..model.into_active_model()
     }
     .update(db)
@@ -87,6 +115,10 @@ pub async fn update_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
         id: Unchanged(3),
         integers: Set(vec![3, 1, 4]),
         integers_opt: Set(None),
+        teas: Set(vec![Tea::EverydayTea]),
+        teas_opt: Set(None),
+        colors: Set(vec![Color::White]),
+        colors_opt: Set(None),
     }
     .update(db)
     .await?;
