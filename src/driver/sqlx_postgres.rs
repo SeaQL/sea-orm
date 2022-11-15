@@ -265,7 +265,7 @@ pub(crate) async fn set_transaction_config(
         let stmt = Statement {
             sql: format!("SET TRANSACTION {access_mode}"),
             values: None,
-            db_backend: DbBackend::MySql,
+            db_backend: DbBackend::Postgres,
         };
         let query = sqlx_query(&stmt);
         conn.execute(query).await.map_err(sqlx_error_to_exec_err)?;
