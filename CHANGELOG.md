@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Fix DeriveActiveEnum expand enum variant starts with number https://github.com/SeaQL/sea-orm/pull/1219
 
+### Enhancements
+
+* Filter rows with `IS IN` enum values expression https://github.com/SeaQL/sea-orm/pull/1183
+
 ## 0.10.3 - 2022-11-14
 
 ### Bug Fixes
