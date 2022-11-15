@@ -3,17 +3,17 @@ use crate::{
     PrimaryKey, Relation, RelationType,
 };
 use sea_query::{ColumnSpec, TableCreateStatement};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 #[derive(Clone, Debug)]
 pub struct EntityTransformer;
 
 impl EntityTransformer {
     pub fn transform(table_create_stmts: Vec<TableCreateStatement>) -> Result<EntityWriter, Error> {
-        let mut enums: HashMap<String, ActiveEnum> = HashMap::new();
-        let mut inverse_relations: HashMap<String, Vec<Relation>> = HashMap::new();
-        let mut conjunct_relations: HashMap<String, Vec<ConjunctRelation>> = HashMap::new();
-        let mut entities = HashMap::new();
+        let mut enums: BTreeMap<String, ActiveEnum> = BTreeMap::new();
+        let mut inverse_relations: BTreeMap<String, Vec<Relation>> = BTreeMap::new();
+        let mut conjunct_relations: BTreeMap<String, Vec<ConjunctRelation>> = BTreeMap::new();
+        let mut entities = BTreeMap::new();
         for table_create in table_create_stmts.into_iter() {
             let table_name = match table_create.get_table_name() {
                 Some(table_ref) => match table_ref {
@@ -71,7 +71,7 @@ impl EntityTransformer {
                     col
                 })
                 .collect();
-            let mut ref_table_counts: HashMap<String, usize> = HashMap::new();
+            let mut ref_table_counts: BTreeMap<String, usize> = BTreeMap::new();
             let relations: Vec<Relation> = table_create
                 .get_foreign_key_create_stmts()
                 .iter()
@@ -202,7 +202,13 @@ impl EntityTransformer {
             }
         }
         Ok(EntityWriter {
-            entities: entities.into_iter().map(|(_, v)| v).collect(),
+            entities: entities
+                .into_iter()
+                .map(|(_, mut v)| {
+                    v.relations.sort_by(|a, b| a.ref_table.cmp(&b.ref_table));
+                    v
+                })
+                .collect(),
             enums,
         })
     }
