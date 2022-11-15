@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.10.4 - Pending
 
+### Bug Fixes
+
+* Fix DeriveActiveEnum expand enum variant starts with number https://github.com/SeaQL/sea-orm/pull/1219
 
 ## 0.10.3 - 2022-11-14
 
