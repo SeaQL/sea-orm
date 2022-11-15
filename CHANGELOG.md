@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## 0.11.0 - Pending
 
 * Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
+* Dependency cleanup https://github.com/SeaQL/sea-orm/pull/1213
 
 ## 0.10.4 - Pending
 
