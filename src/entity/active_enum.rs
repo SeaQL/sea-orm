@@ -1,5 +1,5 @@
 use crate::{ColumnDef, DbErr, Iterable, TryGetable};
-use sea_query::{DynIden, Nullable, Value, ValueType};
+use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 
 /// A Rust representation of enum defined in database.
 ///
@@ -129,6 +129,11 @@ pub trait ActiveEnum: Sized + Iterable {
     /// Convert an owned enum variant into the corresponding value.
     fn into_value(self) -> Self::Value {
         Self::to_value(&self)
+    }
+
+    /// Construct a enum expression with casting
+    fn as_enum(&self) -> SimpleExpr {
+        Expr::val(Self::to_value(self)).as_enum(Self::name())
     }
 
     /// Get the name of all enum variants
