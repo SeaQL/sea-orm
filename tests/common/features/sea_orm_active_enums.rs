@@ -26,3 +26,30 @@ pub enum Tea {
     #[sea_orm(string_value = "BreakfastTea")]
     BreakfastTea,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "media_type")]
+pub enum MediaType {
+    #[sea_orm(string_value = "UNKNOWN")]
+    Unknown,
+    #[sea_orm(string_value = "BITMAP")]
+    Bitmap,
+    #[sea_orm(string_value = "DRAWING")]
+    Drawing,
+    #[sea_orm(string_value = "AUDIO")]
+    Audio,
+    #[sea_orm(string_value = "VIDEO")]
+    Video,
+    #[sea_orm(string_value = "MULTIMEDIA")]
+    Multimedia,
+    #[sea_orm(string_value = "OFFICE")]
+    Office,
+    #[sea_orm(string_value = "TEXT")]
+    Text,
+    #[sea_orm(string_value = "EXECUTABLE")]
+    Executable,
+    #[sea_orm(string_value = "ARCHIVE")]
+    Archive,
+    #[sea_orm(string_value = "3D")]
+    _3D,
+}
