@@ -113,9 +113,7 @@ impl DatabaseTransaction {
                     .map_err(sqlx_error_to_query_err)?
             }
             #[cfg(feature = "mock")]
-            InnerConnection::Mock(ref mut c) => {
-                c.begin();
-            }
+            InnerConnection::Mock(ref mut c) => c.begin()?,
         }
         Ok(res)
     }
@@ -168,9 +166,7 @@ impl DatabaseTransaction {
                     .map_err(sqlx_error_to_query_err)?
             }
             #[cfg(feature = "mock")]
-            InnerConnection::Mock(ref mut c) => {
-                c.commit();
-            }
+            InnerConnection::Mock(ref mut c) => c.commit()?,
         }
         Ok(())
     }
@@ -200,9 +196,7 @@ impl DatabaseTransaction {
                     .map_err(sqlx_error_to_query_err)?
             }
             #[cfg(feature = "mock")]
-            InnerConnection::Mock(ref mut c) => {
-                c.rollback();
-            }
+            InnerConnection::Mock(ref mut c) => c.rollback()?,
         }
         Ok(())
     }
@@ -227,7 +221,7 @@ impl DatabaseTransaction {
                     }
                     #[cfg(feature = "mock")]
                     InnerConnection::Mock(c) => {
-                        c.rollback();
+                        c.rollback().unwrap();
                     }
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),

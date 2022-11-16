@@ -130,7 +130,7 @@ impl MockDatabaseTrait for MockDatabase {
     }
 
     #[instrument(level = "trace")]
-    fn begin(&mut self) {
+    fn begin(&mut self) -> Result<(), DbErr> {
         if self.transaction.is_some() {
             self.transaction
                 .as_mut()
@@ -139,29 +139,36 @@ impl MockDatabaseTrait for MockDatabase {
         } else {
             self.transaction = Some(OpenTransaction::init());
         }
+        Ok(())
     }
 
     #[instrument(level = "trace")]
-    fn commit(&mut self) {
+    fn commit(&mut self) -> Result<(), DbErr> {
         if self.transaction.is_some() {
             if self.transaction.as_mut().unwrap().commit(self.db_backend) {
                 let transaction = self.transaction.take().unwrap();
                 self.transaction_log.push(transaction.into_transaction());
             }
+            Ok(())
         } else {
-            panic!("There is no open transaction to commit");
+            Err(DbErr::Exec(RuntimeErr::Internal(
+                "There is no open transaction to commit".to_owned(),
+            )))
         }
     }
 
     #[instrument(level = "trace")]
-    fn rollback(&mut self) {
+    fn rollback(&mut self) -> Result<(), DbErr> {
         if self.transaction.is_some() {
             if self.transaction.as_mut().unwrap().rollback(self.db_backend) {
                 let transaction = self.transaction.take().unwrap();
                 self.transaction_log.push(transaction.into_transaction());
             }
+            Ok(())
         } else {
-            panic!("There is no open transaction to rollback");
+            Err(DbErr::Exec(RuntimeErr::Internal(
+                "There is no open transaction to rollback".to_owned(),
+            )))
         }
     }
 
