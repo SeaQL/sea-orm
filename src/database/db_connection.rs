@@ -217,7 +217,9 @@ impl TransactionTrait for DatabaseConnection {
             DatabaseConnection::MockDatabaseConnection(conn) => {
                 DatabaseTransaction::new_mock(Arc::clone(conn), None).await
             }
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
+            DatabaseConnection::Disconnected => {
+                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
+            }
         }
     }
 
@@ -249,7 +251,9 @@ impl TransactionTrait for DatabaseConnection {
                     .map_err(TransactionError::Connection)?;
                 transaction.run(_callback).await
             }
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
+            DatabaseConnection::Disconnected => Err(TransactionError::Connection(DbErr::Conn(
+                RuntimeErr::Internal("Disconnected".to_owned()),
+            ))),
         }
     }
 }

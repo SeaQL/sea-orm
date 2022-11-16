@@ -109,6 +109,7 @@ where
     }
 
     /// Add a Model to Self
+    #[allow(clippy::should_implement_trait)]
     pub fn add<M>(mut self, m: M) -> Self
     where
         M: IntoActiveModel<A>,

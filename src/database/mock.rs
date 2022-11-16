@@ -431,7 +431,7 @@ mod tests {
             Err(TransactionError::Transaction(err)) => {
                 assert_eq!(err, MyErr("test".to_owned()))
             }
-            _ => panic!(),
+            _ => assert!(false),
         }
 
         assert_eq!(

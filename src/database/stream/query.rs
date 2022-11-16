@@ -14,7 +14,7 @@ use sqlx::{pool::PoolConnection, Executor};
 
 use tracing::instrument;
 
-use crate::{DbErr, InnerConnection, QueryResult, Statement};
+use crate::{DbErr, InnerConnection, QueryResult, RuntimeErr, Statement};
 
 use super::metric::MetricStream;
 
@@ -163,7 +163,17 @@ impl QueryStream {
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
-                InnerConnection::Disconnected => panic!("Disconnected"),
+                InnerConnection::Disconnected => {
+                    let _start = _metric_callback.is_some().then(std::time::SystemTime::now);
+                    let stream = Box::pin(futures::stream::iter(
+                        Some(Err(DbErr::Conn(RuntimeErr::Internal(
+                            "Disconnected".to_owned(),
+                        ))))
+                        .into_iter(),
+                    ));
+                    let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
+                    MetricStream::new(_metric_callback, stmt, elapsed, stream)
+                }
             },
         }
         .build()
