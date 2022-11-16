@@ -147,7 +147,7 @@ impl MockDatabaseTrait for MockDatabase {
         if self.transaction.is_some() {
             if self.transaction.as_mut().unwrap().commit(self.db_backend) {
                 let transaction = self.transaction.take().unwrap();
-                self.transaction_log.push(transaction.into_transaction());
+                self.transaction_log.push(transaction.into_transaction()?);
             }
             Ok(())
         } else {
@@ -162,7 +162,7 @@ impl MockDatabaseTrait for MockDatabase {
         if self.transaction.is_some() {
             if self.transaction.as_mut().unwrap().rollback(self.db_backend) {
                 let transaction = self.transaction.take().unwrap();
-                self.transaction_log.push(transaction.into_transaction());
+                self.transaction_log.push(transaction.into_transaction()?);
             }
             Ok(())
         } else {
@@ -343,11 +343,14 @@ impl OpenTransaction {
         self.stmts.push(stmt);
     }
 
-    fn into_transaction(self) -> Transaction {
+    fn into_transaction(self) -> Result<Transaction, DbErr> {
         if self.transaction_depth != 0 {
-            panic!("There is uncommitted nested transaction.");
+            Err(DbErr::Mock(
+                "There is uncommitted nested transaction".into(),
+            ))
+        } else {
+            Ok(Transaction { stmts: self.stmts })
         }
-        Transaction { stmts: self.stmts }
     }
 }
 

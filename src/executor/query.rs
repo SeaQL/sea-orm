@@ -162,7 +162,9 @@ macro_rules! try_getable_unsigned {
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(_) => {
-                        panic!("{} unsupported by sqlx-postgres", stringify!($type))
+                        Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
+                            format!("{} unsupported by sqlx-postgres", stringify!($type)),
+                        ))))
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => {
@@ -202,11 +204,15 @@ macro_rules! try_getable_mysql {
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(_) => {
-                        panic!("{} unsupported by sqlx-postgres", stringify!($type))
+                        Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
+                            format!("{} unsupported by sqlx-postgres", stringify!($type)),
+                        ))))
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(_) => {
-                        panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+                        Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
+                            format!("{} unsupported by sqlx-sqlite", stringify!($type)),
+                        ))))
                     }
                     #[cfg(feature = "mock")]
                     #[allow(unused_variables)]
@@ -430,7 +436,9 @@ mod postgres_array {
                     match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
                         QueryResultRow::SqlxMySql(row) => {
-                            panic!("{} unsupported by sqlx-mysql", stringify!($type))
+                            Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
+                                format!("{} unsupported by sqlx-mysql", stringify!($type)),
+                            ))))
                         }
                         #[cfg(feature = "sqlx-postgres")]
                         QueryResultRow::SqlxPostgres(row) => {
@@ -441,7 +449,9 @@ mod postgres_array {
                         }
                         #[cfg(feature = "sqlx-sqlite")]
                         QueryResultRow::SqlxSqlite(_) => {
-                            panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+                            Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
+                                format!("{} unsupported by sqlx-sqlite", stringify!($type)),
+                            ))))
                         }
                         #[cfg(feature = "mock")]
                         QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
@@ -512,7 +522,9 @@ mod postgres_array {
             match &res.row {
                 #[cfg(feature = "sqlx-mysql")]
                 QueryResultRow::SqlxMySql(row) => {
-                    panic!("{} unsupported by sqlx-mysql", stringify!($type))
+                    Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
+                        format!("{} unsupported by sqlx-mysql", stringify!($type)),
+                    ))))
                 }
                 #[cfg(feature = "sqlx-postgres")]
                 QueryResultRow::SqlxPostgres(row) => {
@@ -527,7 +539,9 @@ mod postgres_array {
                 }
                 #[cfg(feature = "sqlx-sqlite")]
                 QueryResultRow::SqlxSqlite(_) => {
-                    panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+                    Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
+                        format!("{} unsupported by sqlx-sqlite", stringify!($type)),
+                    ))))
                 }
                 #[cfg(feature = "mock")]
                 QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {

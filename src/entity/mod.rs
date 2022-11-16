@@ -88,7 +88,7 @@
 /// // Create a Relation for the Entity
 /// impl RelationTrait for Relation {
 ///     fn def(&self) -> RelationDef {
-///         panic!()
+///         unimplemented!()
 ///     }
 /// }
 /// // Implement user defined operations for CREATE, UPDATE and DELETE operations

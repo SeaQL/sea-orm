@@ -207,7 +207,7 @@ impl DatabaseTransaction {
 
     // the rollback is queued and will be performed on next async operation, like returning the connection to the pool
     #[instrument(level = "trace")]
-    fn start_rollback(&mut self) {
+    fn start_rollback(&mut self) -> Result<(), DbErr> {
         if self.open {
             if let Some(mut conn) = self.conn.try_lock() {
                 match &mut *conn {
@@ -225,15 +225,18 @@ impl DatabaseTransaction {
                     }
                     #[cfg(feature = "mock")]
                     InnerConnection::Mock(c) => {
-                        c.rollback().unwrap();
+                        c.rollback()?;
                     }
-                    InnerConnection::Disconnected => panic!("Disconnected"),
+                    InnerConnection::Disconnected => {
+                        Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))?
+                    }
                 }
             } else {
                 //this should never happen
-                panic!("Dropping a locked Transaction");
+                unreachable!("Dropping a locked Transaction");
             }
         }
+        Ok(())
     }
 
     #[cfg(feature = "sqlx-dep")]
@@ -250,7 +253,7 @@ impl DatabaseTransaction {
 
 impl Drop for DatabaseTransaction {
     fn drop(&mut self) {
-        self.start_rollback();
+        self.start_rollback().expect("Fail to rollback transaction");
     }
 }
 

@@ -9,14 +9,8 @@ pub struct Model {
     pub name: String,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        panic!()
-    }
-}
 
 impl Related<super::filling::Entity> for Entity {
     fn to() -> RelationDef {

@@ -55,6 +55,9 @@ pub enum DbErr {
     /// A migration error
     #[error("Migration Error: {0}")]
     Migration(String),
+    /// A mock error
+    #[error("Mock Error: {0}")]
+    Mock(String),
 }
 
 /// Runtime error

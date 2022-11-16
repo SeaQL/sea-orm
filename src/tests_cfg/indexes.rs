@@ -62,7 +62,7 @@ impl ColumnTrait for Column {
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
-        panic!()
+        unimplemented!()
     }
 }
 

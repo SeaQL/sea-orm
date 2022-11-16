@@ -108,7 +108,7 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(_) => DbBackend::Sqlite,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.get_database_backend(),
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
+            DatabaseConnection::Disconnected => unimplemented!("Disconnected"),
         }
     }
 
@@ -261,17 +261,27 @@ impl TransactionTrait for DatabaseConnection {
 #[cfg(feature = "mock")]
 impl DatabaseConnection {
     /// Generate a database connection for testing the Mock database
-    pub fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
+    pub fn as_mock_connection(&self) -> Result<&crate::MockDatabaseConnection, DbErr> {
         match self {
-            DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
-            _ => panic!("not mock connection"),
+            DatabaseConnection::MockDatabaseConnection(mock_conn) => Ok(mock_conn),
+            _ => Err(DbErr::Mock("Not a mock connection".into())),
         }
     }
 
-    /// Get the transaction log as a collection  Vec<[crate::Transaction]>
+    /// Get the transaction log as a collection Vec<[crate::Transaction]>, returning an error if it fails
+    pub fn try_into_transaction_log(self) -> Result<Vec<crate::Transaction>, DbErr> {
+        let mut mocker = self
+            .as_mock_connection()?
+            .get_mocker_mutex()
+            .lock()
+            .map_err(|e| DbErr::Mock(e.to_string()))?;
+        Ok(mocker.drain_transaction_log())
+    }
+
+    /// Get the transaction log as a collection Vec<[crate::Transaction]>
     pub fn into_transaction_log(self) -> Vec<crate::Transaction> {
-        let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
-        mocker.drain_transaction_log()
+        self.try_into_transaction_log()
+            .expect("Fail to acquire transaction log")
     }
 }
 
