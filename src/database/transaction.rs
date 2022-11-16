@@ -1,6 +1,6 @@
 use crate::{
     debug_print, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, QueryResult,
-    Statement, StreamTrait, TransactionStream, TransactionTrait,
+    RuntimeErr, Statement, StreamTrait, TransactionStream, TransactionTrait,
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
@@ -81,7 +81,6 @@ impl DatabaseTransaction {
     }
 
     #[instrument(level = "trace", skip(metric_callback))]
-    #[allow(unreachable_code)]
     async fn begin(
         conn: Arc<Mutex<InnerConnection>>,
         backend: DbBackend,
@@ -98,23 +97,26 @@ impl DatabaseTransaction {
             InnerConnection::MySql(ref mut c) => {
                 <sqlx::MySql as sqlx::Database>::TransactionManager::begin(c)
                     .await
-                    .map_err(sqlx_error_to_query_err)?
+                    .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "sqlx-postgres")]
             InnerConnection::Postgres(ref mut c) => {
                 <sqlx::Postgres as sqlx::Database>::TransactionManager::begin(c)
                     .await
-                    .map_err(sqlx_error_to_query_err)?
+                    .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "sqlx-sqlite")]
             InnerConnection::Sqlite(ref mut c) => {
                 <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c)
                     .await
-                    .map_err(sqlx_error_to_query_err)?
+                    .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "mock")]
-            InnerConnection::Mock(ref mut c) => c.begin()?,
-        }
+            InnerConnection::Mock(ref mut c) => c.begin(),
+            InnerConnection::Disconnected => {
+                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
+            }
+        }?;
         Ok(res)
     }
 
@@ -143,7 +145,6 @@ impl DatabaseTransaction {
 
     /// Commit a transaction atomically
     #[instrument(level = "trace")]
-    #[allow(unreachable_code)]
     pub async fn commit(mut self) -> Result<(), DbErr> {
         self.open = false;
         match *self.conn.lock().await {
@@ -151,29 +152,30 @@ impl DatabaseTransaction {
             InnerConnection::MySql(ref mut c) => {
                 <sqlx::MySql as sqlx::Database>::TransactionManager::commit(c)
                     .await
-                    .map_err(sqlx_error_to_query_err)?
+                    .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "sqlx-postgres")]
             InnerConnection::Postgres(ref mut c) => {
                 <sqlx::Postgres as sqlx::Database>::TransactionManager::commit(c)
                     .await
-                    .map_err(sqlx_error_to_query_err)?
+                    .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "sqlx-sqlite")]
             InnerConnection::Sqlite(ref mut c) => {
                 <sqlx::Sqlite as sqlx::Database>::TransactionManager::commit(c)
                     .await
-                    .map_err(sqlx_error_to_query_err)?
+                    .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "mock")]
-            InnerConnection::Mock(ref mut c) => c.commit()?,
+            InnerConnection::Mock(ref mut c) => c.commit(),
+            InnerConnection::Disconnected => {
+                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
+            }
         }
-        Ok(())
     }
 
     /// rolls back a transaction in case error are encountered during the operation
     #[instrument(level = "trace")]
-    #[allow(unreachable_code)]
     pub async fn rollback(mut self) -> Result<(), DbErr> {
         self.open = false;
         match *self.conn.lock().await {
@@ -181,24 +183,26 @@ impl DatabaseTransaction {
             InnerConnection::MySql(ref mut c) => {
                 <sqlx::MySql as sqlx::Database>::TransactionManager::rollback(c)
                     .await
-                    .map_err(sqlx_error_to_query_err)?
+                    .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "sqlx-postgres")]
             InnerConnection::Postgres(ref mut c) => {
                 <sqlx::Postgres as sqlx::Database>::TransactionManager::rollback(c)
                     .await
-                    .map_err(sqlx_error_to_query_err)?
+                    .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "sqlx-sqlite")]
             InnerConnection::Sqlite(ref mut c) => {
                 <sqlx::Sqlite as sqlx::Database>::TransactionManager::rollback(c)
                     .await
-                    .map_err(sqlx_error_to_query_err)?
+                    .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "mock")]
-            InnerConnection::Mock(ref mut c) => c.rollback()?,
+            InnerConnection::Mock(ref mut c) => c.rollback(),
+            InnerConnection::Disconnected => {
+                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
+            }
         }
-        Ok(())
     }
 
     // the rollback is queued and will be performed on next async operation, like returning the connection to the pool
@@ -223,8 +227,7 @@ impl DatabaseTransaction {
                     InnerConnection::Mock(c) => {
                         c.rollback().unwrap();
                     }
-                    #[allow(unreachable_patterns)]
-                    _ => unreachable!(),
+                    InnerConnection::Disconnected => panic!("Disconnected"),
                 }
             } else {
                 //this should never happen
@@ -290,8 +293,9 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.execute(stmt),
-            #[allow(unreachable_patterns)]
-            _ => unreachable!(),
+            InnerConnection::Disconnected => {
+                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
+            }
         }
     }
 
@@ -330,8 +334,9 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_one(stmt),
-            #[allow(unreachable_patterns)]
-            _ => unreachable!(),
+            InnerConnection::Disconnected => {
+                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
+            }
         }
     }
 
@@ -376,8 +381,9 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_all(stmt),
-            #[allow(unreachable_patterns)]
-            _ => unreachable!(),
+            InnerConnection::Disconnected => {
+                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
+            }
         }
     }
 }

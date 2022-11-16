@@ -36,6 +36,12 @@ pub enum DatabaseConnection {
 /// The same as a [DatabaseConnection]
 pub type DbConn = DatabaseConnection;
 
+impl Default for DatabaseConnection {
+    fn default() -> Self {
+        Self::Disconnected
+    }
+}
+
 /// The type of database backend for real world databases.
 /// This is enabled by feature flags as specified in the crate documentation
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -50,6 +56,7 @@ pub enum DatabaseBackend {
 
 /// The same as [DatabaseBackend] just shorter :)
 pub type DbBackend = DatabaseBackend;
+
 #[derive(Debug)]
 pub(crate) enum InnerConnection {
     #[cfg(feature = "sqlx-mysql")]
@@ -60,9 +67,10 @@ pub(crate) enum InnerConnection {
     Sqlite(PoolConnection<sqlx::Sqlite>),
     #[cfg(feature = "mock")]
     Mock(std::sync::Arc<crate::MockDatabaseConnection>),
+    Disconnected,
 }
 
-impl Default for DatabaseConnection {
+impl Default for InnerConnection {
     fn default() -> Self {
         Self::Disconnected
     }
