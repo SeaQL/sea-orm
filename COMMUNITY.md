@@ -9,7 +9,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Caido](https://caido.io/) | A lightweight web security auditing toolkit
 - [Svix](https://www.svix.com/) ([repository](https://github.com/svix/svix-webhooks)) ![GitHub stars](https://img.shields.io/github/stars/svix/svix-webhooks.svg?style=social) | The enterprise ready webhooks service | DB: Postgres
 - [Sensei](https://l2.technology/sensei) ([repository](https://github.com/L2-Technology/sensei)) ![GitHub stars](https://img.shields.io/github/stars/L2-Technology/sensei.svg?style=social) | A Bitcoin lightning node implementation | DB: MySQL, Postgres, SQLite
-- [Spyglass](https://docs.spyglass.fyi/) ([repository](https://github.com/a5huynh/spyglass)) ![GitHub stars](https://img.shields.io/github/stars/a5huynh/spyglass.svg?style=social) | 🔭 A personal search engine that indexes what you want w/ a simple set of rules. | DB: SQLite
+- [Spyglass](https://www.spyglass.fyi/) ([repository](https://github.com/a5huynh/spyglass)) ![GitHub stars](https://img.shields.io/github/stars/a5huynh/spyglass.svg?style=social) | 🔭 A personal search engine that indexes what you want w/ a simple set of rules. | DB: SQLite
 - [My Data My Consent](https://mydatamyconsent.com/) | Online data sharing for people and businesses simplified
 - [CodeCTRL](https://codectrl.authentura.com) ([repository](https://github.com/Authentura/codectrl)) | A self-hostable code logging platform | DB: SQLite
 
