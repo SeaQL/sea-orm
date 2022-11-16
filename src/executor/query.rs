@@ -1,6 +1,6 @@
 #[cfg(feature = "mock")]
 use crate::debug_print;
-use crate::{DbErr, SelectGetableValue, SelectorRaw, Statement};
+use crate::{DbErr, RuntimeErr, SelectGetableValue, SelectorRaw, Statement};
 use std::fmt;
 
 /// Defines the result of a query operation on a Model
@@ -19,6 +19,13 @@ pub(crate) enum QueryResultRow {
     SqlxSqlite(sqlx::sqlite::SqliteRow),
     #[cfg(feature = "mock")]
     Mock(crate::MockRow),
+    Disconnected,
+}
+
+impl Default for QueryResultRow {
+    fn default() -> Self {
+        Self::Disconnected
+    }
 }
 
 /// Constrain any type trying to get a Row in a database
@@ -79,8 +86,7 @@ impl fmt::Debug for QueryResultRow {
             Self::SqlxSqlite(_) => write!(f, "QueryResultRow::SqlxSqlite cannot be inspected"),
             #[cfg(feature = "mock")]
             Self::Mock(row) => write!(f, "{:?}", row),
-            #[allow(unreachable_patterns)]
-            _ => unreachable!(),
+            Self::Disconnected => write!(f, "Disconnected"),
         }
     }
 }
@@ -131,8 +137,9 @@ macro_rules! try_getable_all {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null(column)
                     }),
-                    #[allow(unreachable_patterns)]
-                    _ => unreachable!(),
+                    QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
+                        RuntimeErr::Internal("Disconnected".to_owned()),
+                    ))),
                 }
             }
         }
@@ -170,8 +177,9 @@ macro_rules! try_getable_unsigned {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null(column)
                     }),
-                    #[allow(unreachable_patterns)]
-                    _ => unreachable!(),
+                    QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
+                        RuntimeErr::Internal("Disconnected".to_owned()),
+                    ))),
                 }
             }
         }
@@ -206,8 +214,9 @@ macro_rules! try_getable_mysql {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null(column)
                     }),
-                    #[allow(unreachable_patterns)]
-                    _ => unreachable!(),
+                    QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
+                        RuntimeErr::Internal("Disconnected".to_owned()),
+                    ))),
                 }
             }
         }
@@ -253,8 +262,9 @@ macro_rules! try_getable_date_time {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null(column)
                     }),
-                    #[allow(unreachable_patterns)]
-                    _ => unreachable!(),
+                    QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
+                        RuntimeErr::Internal("Disconnected".to_owned()),
+                    ))),
                 }
             }
         }
@@ -353,8 +363,9 @@ impl TryGetable for Decimal {
                 debug_print!("{:#?}", e.to_string());
                 TryGetError::Null(column)
             }),
-            #[allow(unreachable_patterns)]
-            _ => unreachable!(),
+            QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
+                RuntimeErr::Internal("Disconnected".to_owned()),
+            ))),
         }
     }
 }
@@ -398,8 +409,9 @@ impl TryGetable for u32 {
                 debug_print!("{:#?}", e.to_string());
                 TryGetError::Null(column)
             }),
-            #[allow(unreachable_patterns)]
-            _ => unreachable!(),
+            QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
+                RuntimeErr::Internal("Disconnected".to_owned()),
+            ))),
         }
     }
 }
@@ -436,8 +448,9 @@ mod postgres_array {
                             debug_print!("{:#?}", e.to_string());
                             TryGetError::Null(column)
                         }),
-                        #[allow(unreachable_patterns)]
-                        _ => unreachable!(),
+                        QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
+                            RuntimeErr::Internal("Disconnected".to_owned()),
+                        ))),
                     }
                 }
             }
@@ -521,8 +534,9 @@ mod postgres_array {
                     debug_print!("{:#?}", e.to_string());
                     TryGetError::Null(column)
                 }),
-                #[allow(unreachable_patterns)]
-                _ => unreachable!(),
+                QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
+                    RuntimeErr::Internal("Disconnected".to_owned()),
+                ))),
             }
         }
     }
@@ -730,7 +744,7 @@ where
     for<'de> Self: serde::Deserialize<'de>,
 {
     /// Ensure the type implements this method
-    #[allow(unused_variables, unreachable_code)]
+    #[allow(unused_variables)]
     fn try_get_from_json(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
         let column = format!("{}{}", pre, col);
         let res: Result<_, _> = match &res.row {
@@ -763,8 +777,9 @@ where
                         TryGetError::Null(column)
                     })
             }
-            #[allow(unreachable_patterns)]
-            _ => unreachable!(),
+            QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
+                RuntimeErr::Internal("Disconnected".to_owned()),
+            ))),
         };
         res.and_then(|json| {
             serde_json::from_value(json).map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))

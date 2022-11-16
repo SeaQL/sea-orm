@@ -88,8 +88,7 @@ impl<'a> TransactionStream<'a> {
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
-                #[allow(unreachable_patterns)]
-                _ => unreachable!(),
+                InnerConnection::Disconnected => panic!("Disconnected"),
             },
         }
         .build()

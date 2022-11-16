@@ -1,4 +1,4 @@
-use crate::{DbErr, FromQueryResult, QueryResult};
+use crate::{DbErr, FromQueryResult, QueryResult, RuntimeErr};
 use serde_json::Map;
 pub use serde_json::Value as JsonValue;
 
@@ -195,8 +195,9 @@ impl FromQueryResult for JsonValue {
                 }
                 Ok(JsonValue::Object(map))
             }
-            #[allow(unreachable_patterns)]
-            _ => unreachable!(),
+            crate::QueryResultRow::Disconnected => {
+                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
+            }
         }
     }
 }

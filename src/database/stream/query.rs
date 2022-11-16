@@ -1,4 +1,4 @@
-#![allow(missing_docs, unreachable_code, unused_variables)]
+#![allow(missing_docs, unused_variables)]
 
 use std::{pin::Pin, task::Poll};
 
@@ -163,8 +163,7 @@ impl QueryStream {
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
-                #[allow(unreachable_patterns)]
-                _ => unreachable!(),
+                InnerConnection::Disconnected => panic!("Disconnected"),
             },
         }
         .build()

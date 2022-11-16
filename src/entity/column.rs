@@ -462,7 +462,6 @@ impl From<sea_query::ColumnType> for ColumnType {
     fn from(column_type: sea_query::ColumnType) -> Self {
         #[allow(clippy::redundant_allocation)]
         fn convert_column_type(column_type: &sea_query::ColumnType) -> ColumnType {
-            #[allow(unreachable_patterns)]
             match column_type {
                 sea_query::ColumnType::Char(s) => ColumnType::Char(*s),
                 sea_query::ColumnType::String(s) => ColumnType::String(*s),

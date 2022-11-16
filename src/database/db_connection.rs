@@ -177,25 +177,27 @@ impl StreamTrait for DatabaseConnection {
     type Stream<'a> = crate::QueryStream;
 
     #[instrument(level = "trace")]
-    #[allow(unused_variables, unreachable_code)]
+    #[allow(unused_variables)]
     fn stream<'a>(
         &'a self,
         stmt: Statement,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Stream<'a>, DbErr>> + 'a + Send>> {
         Box::pin(async move {
-            Ok(match self {
+            match self {
                 #[cfg(feature = "sqlx-mysql")]
-                DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.stream(stmt).await?,
+                DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.stream(stmt).await,
                 #[cfg(feature = "sqlx-postgres")]
-                DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.stream(stmt).await?,
+                DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.stream(stmt).await,
                 #[cfg(feature = "sqlx-sqlite")]
-                DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.stream(stmt).await?,
+                DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.stream(stmt).await,
                 #[cfg(feature = "mock")]
                 DatabaseConnection::MockDatabaseConnection(conn) => {
-                    crate::QueryStream::from((Arc::clone(conn), stmt, None))
+                    Ok(crate::QueryStream::from((Arc::clone(conn), stmt, None)))
                 }
-                DatabaseConnection::Disconnected => panic!("Disconnected"),
-            })
+                DatabaseConnection::Disconnected => {
+                    Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
+                }
+            }
         })
     }
 }
