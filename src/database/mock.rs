@@ -141,10 +141,12 @@ impl MockDatabaseTrait for MockDatabase {
         match self.transaction.as_mut() {
             Some(transaction) => {
                 if transaction.commit(self.db_backend) {
-                    let transaction = self
-                        .transaction
-                        .take()
-                        .expect("No open transaction to commit");
+                    let transaction =
+                        self.transaction
+                            .take()
+                            .ok_or(DbErr::Exec(RuntimeErr::Internal(
+                                "There is no open transaction to commit".to_owned(),
+                            )))?;
                     self.transaction_log.push(transaction.into_transaction()?);
                 }
                 Ok(())
@@ -160,10 +162,12 @@ impl MockDatabaseTrait for MockDatabase {
         match self.transaction.as_mut() {
             Some(transaction) => {
                 if transaction.rollback(self.db_backend) {
-                    let transaction = self
-                        .transaction
-                        .take()
-                        .expect("No open transaction to rollback");
+                    let transaction =
+                        self.transaction
+                            .take()
+                            .ok_or(DbErr::Exec(RuntimeErr::Internal(
+                                "There is no open transaction to commit".to_owned(),
+                            )))?;
                     self.transaction_log.push(transaction.into_transaction()?);
                 }
                 Ok(())
