@@ -82,6 +82,7 @@ impl Eq for DbErr {}
 #[error("Failed to match \"{0}\" as Column")]
 pub struct ColumnFromStrErr(pub String);
 
+#[allow(dead_code)]
 pub(crate) fn conn_err<T>(s: T) -> DbErr
 where
     T: Into<String>,
@@ -89,6 +90,7 @@ where
     DbErr::Conn(RuntimeErr::Internal(s.into()))
 }
 
+#[allow(dead_code)]
 pub(crate) fn exec_err<T>(s: T) -> DbErr
 where
     T: Into<String>,
@@ -96,6 +98,7 @@ where
     DbErr::Exec(RuntimeErr::Internal(s.into()))
 }
 
+#[allow(dead_code)]
 pub(crate) fn query_err<T>(s: T) -> DbErr
 where
     T: Into<String>,

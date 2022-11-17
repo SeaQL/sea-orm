@@ -195,7 +195,7 @@ impl FromQueryResult for JsonValue {
                 }
                 Ok(JsonValue::Object(map))
             }
-            crate::QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
+            crate::QueryResultRow::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 }
