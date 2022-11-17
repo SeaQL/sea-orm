@@ -264,7 +264,7 @@ impl DatabaseConnection {
     pub fn as_mock_connection(&self) -> Result<&crate::MockDatabaseConnection, DbErr> {
         match self {
             DatabaseConnection::MockDatabaseConnection(mock_conn) => Ok(mock_conn),
-            _ => Err(DbErr::Mock("Not a mock connection".into())),
+            _ => Err(DbErr::Mock("Not a mock connection".to_owned())),
         }
     }
 
