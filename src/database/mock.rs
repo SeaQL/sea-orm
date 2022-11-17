@@ -96,13 +96,14 @@ impl MockDatabaseTrait for MockDatabase {
             Some(transaction) => transaction.push(statement),
             None => self.transaction_log.push(Transaction::one(statement)),
         }
-        match self.exec_results.len() {
-            len if counter < len => Ok(ExecResult {
+        if counter < self.exec_results.len() {
+            Ok(ExecResult {
                 result: ExecResultHolder::Mock(std::mem::take(&mut self.exec_results[counter])),
-            }),
-            _ => Err(DbErr::Exec(RuntimeErr::Internal(
+            })
+        } else {
+            Err(DbErr::Exec(RuntimeErr::Internal(
                 "`exec_results` buffer is empty.".to_owned(),
-            ))),
+            )))
         }
     }
 
@@ -112,16 +113,17 @@ impl MockDatabaseTrait for MockDatabase {
             Some(transaction) => transaction.push(statement),
             None => self.transaction_log.push(Transaction::one(statement)),
         }
-        match self.query_results.len() {
-            len if counter < len => Ok(std::mem::take(&mut self.query_results[counter])
+        if counter < self.query_results.len() {
+            Ok(std::mem::take(&mut self.query_results[counter])
                 .into_iter()
                 .map(|row| QueryResult {
                     row: QueryResultRow::Mock(row),
                 })
-                .collect()),
-            _ => Err(DbErr::Query(RuntimeErr::Internal(
+                .collect())
+        } else {
+            Err(DbErr::Query(RuntimeErr::Internal(
                 "`query_results` buffer is empty.".to_owned(),
-            ))),
+            )))
         }
     }
 
