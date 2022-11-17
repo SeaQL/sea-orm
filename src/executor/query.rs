@@ -1,6 +1,6 @@
 #[cfg(feature = "mock")]
 use crate::debug_print;
-use crate::{DbErr, RuntimeErr, SelectGetableValue, SelectorRaw, Statement};
+use crate::{error::*, SelectGetableValue, SelectorRaw, Statement};
 use std::fmt;
 
 /// Defines the result of a query operation on a Model
@@ -51,6 +51,12 @@ impl From<TryGetError> for DbErr {
                 DbErr::Type(format!("A null value was encountered while decoding {}", s))
             }
         }
+    }
+}
+
+impl From<DbErr> for TryGetError {
+    fn from(e: DbErr) -> TryGetError {
+        Self::DbErr(e)
     }
 }
 
@@ -137,9 +143,7 @@ macro_rules! try_getable_all {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null(column)
                     }),
-                    QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
-                        RuntimeErr::Internal("Disconnected".to_owned()),
-                    ))),
+                    QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
                 }
             }
         }
@@ -161,11 +165,11 @@ macro_rules! try_getable_unsigned {
                             .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
                     }
                     #[cfg(feature = "sqlx-postgres")]
-                    QueryResultRow::SqlxPostgres(_) => {
-                        Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
-                            format!("{} unsupported by sqlx-postgres", stringify!($type)),
-                        ))))
-                    }
+                    QueryResultRow::SqlxPostgres(_) => Err(query_err(format!(
+                        "{} unsupported by sqlx-postgres",
+                        stringify!($type)
+                    ))
+                    .into()),
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => {
                         use sqlx::Row;
@@ -179,9 +183,7 @@ macro_rules! try_getable_unsigned {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null(column)
                     }),
-                    QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
-                        RuntimeErr::Internal("Disconnected".to_owned()),
-                    ))),
+                    QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
                 }
             }
         }
@@ -203,26 +205,24 @@ macro_rules! try_getable_mysql {
                             .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
                     }
                     #[cfg(feature = "sqlx-postgres")]
-                    QueryResultRow::SqlxPostgres(_) => {
-                        Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
-                            format!("{} unsupported by sqlx-postgres", stringify!($type)),
-                        ))))
-                    }
+                    QueryResultRow::SqlxPostgres(_) => Err(query_err(format!(
+                        "{} unsupported by sqlx-postgres",
+                        stringify!($type)
+                    ))
+                    .into()),
                     #[cfg(feature = "sqlx-sqlite")]
-                    QueryResultRow::SqlxSqlite(_) => {
-                        Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
-                            format!("{} unsupported by sqlx-sqlite", stringify!($type)),
-                        ))))
-                    }
+                    QueryResultRow::SqlxSqlite(_) => Err(query_err(format!(
+                        "{} unsupported by sqlx-sqlite",
+                        stringify!($type)
+                    ))
+                    .into()),
                     #[cfg(feature = "mock")]
                     #[allow(unused_variables)]
                     QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null(column)
                     }),
-                    QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
-                        RuntimeErr::Internal("Disconnected".to_owned()),
-                    ))),
+                    QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
                 }
             }
         }
@@ -268,9 +268,7 @@ macro_rules! try_getable_date_time {
                         debug_print!("{:#?}", e.to_string());
                         TryGetError::Null(column)
                     }),
-                    QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
-                        RuntimeErr::Internal("Disconnected".to_owned()),
-                    ))),
+                    QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
                 }
             }
         }
@@ -369,9 +367,7 @@ impl TryGetable for Decimal {
                 debug_print!("{:#?}", e.to_string());
                 TryGetError::Null(column)
             }),
-            QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
-                RuntimeErr::Internal("Disconnected".to_owned()),
-            ))),
+            QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
         }
     }
 }
@@ -415,9 +411,7 @@ impl TryGetable for u32 {
                 debug_print!("{:#?}", e.to_string());
                 TryGetError::Null(column)
             }),
-            QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
-                RuntimeErr::Internal("Disconnected".to_owned()),
-            ))),
+            QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
         }
     }
 }
@@ -435,11 +429,11 @@ mod postgres_array {
                     let column = format!("{}{}", pre, col);
                     match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
-                        QueryResultRow::SqlxMySql(row) => {
-                            Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
-                                format!("{} unsupported by sqlx-mysql", stringify!($type)),
-                            ))))
-                        }
+                        QueryResultRow::SqlxMySql(row) => Err(query_err(format!(
+                            "{} unsupported by sqlx-mysql",
+                            stringify!($type)
+                        ))
+                        .into()),
                         #[cfg(feature = "sqlx-postgres")]
                         QueryResultRow::SqlxPostgres(row) => {
                             use sqlx::Row;
@@ -448,19 +442,17 @@ mod postgres_array {
                                 .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
                         }
                         #[cfg(feature = "sqlx-sqlite")]
-                        QueryResultRow::SqlxSqlite(_) => {
-                            Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
-                                format!("{} unsupported by sqlx-sqlite", stringify!($type)),
-                            ))))
-                        }
+                        QueryResultRow::SqlxSqlite(_) => Err(query_err(format!(
+                            "{} unsupported by sqlx-sqlite",
+                            stringify!($type)
+                        ))
+                        .into()),
                         #[cfg(feature = "mock")]
                         QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
                             debug_print!("{:#?}", e.to_string());
                             TryGetError::Null(column)
                         }),
-                        QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
-                            RuntimeErr::Internal("Disconnected".to_owned()),
-                        ))),
+                        QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
                     }
                 }
             }
@@ -521,11 +513,11 @@ mod postgres_array {
             let column = format!("{}{}", pre, col);
             match &res.row {
                 #[cfg(feature = "sqlx-mysql")]
-                QueryResultRow::SqlxMySql(row) => {
-                    Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
-                        format!("{} unsupported by sqlx-mysql", stringify!($type)),
-                    ))))
-                }
+                QueryResultRow::SqlxMySql(row) => Err(query_err(format!(
+                    "{} unsupported by sqlx-mysql",
+                    stringify!($type)
+                ))
+                .into()),
                 #[cfg(feature = "sqlx-postgres")]
                 QueryResultRow::SqlxPostgres(row) => {
                     use sqlx::postgres::types::Oid;
@@ -538,19 +530,17 @@ mod postgres_array {
                         .map(|oids| oids.into_iter().map(|oid| oid.0).collect())
                 }
                 #[cfg(feature = "sqlx-sqlite")]
-                QueryResultRow::SqlxSqlite(_) => {
-                    Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::Internal(
-                        format!("{} unsupported by sqlx-sqlite", stringify!($type)),
-                    ))))
-                }
+                QueryResultRow::SqlxSqlite(_) => Err(query_err(format!(
+                    "{} unsupported by sqlx-sqlite",
+                    stringify!($type)
+                ))
+                .into()),
                 #[cfg(feature = "mock")]
                 QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
                     debug_print!("{:#?}", e.to_string());
                     TryGetError::Null(column)
                 }),
-                QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
-                    RuntimeErr::Internal("Disconnected".to_owned()),
-                ))),
+                QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
             }
         }
     }
@@ -739,11 +729,12 @@ where
 
 fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), TryGetError> {
     if cols.len() < len {
-        Err(TryGetError::DbErr(DbErr::Type(format!(
+        Err(DbErr::Type(format!(
             "Expect {} column names supplied but got slice of length {}",
             len,
             cols.len()
-        ))))
+        ))
+        .into())
     } else {
         Ok(())
     }
@@ -791,9 +782,7 @@ where
                         TryGetError::Null(column)
                     })
             }
-            QueryResultRow::Disconnected => Err(TryGetError::DbErr(DbErr::Conn(
-                RuntimeErr::Internal("Disconnected".to_owned()),
-            ))),
+            QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
         };
         res.and_then(|json| {
             serde_json::from_value(json).map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))

@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, ConnectionTrait, DbBackend, DbErr, ExecResult, InnerConnection, QueryResult,
-    RuntimeErr, Statement, StreamTrait, TransactionStream, TransactionTrait,
+    debug_print, error::*, ConnectionTrait, DbBackend, ExecResult, InnerConnection, QueryResult,
+    Statement, StreamTrait, TransactionStream, TransactionTrait,
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
@@ -113,9 +113,7 @@ impl DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(ref mut c) => c.begin(),
-            InnerConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            InnerConnection::Disconnected => Err(conn_err("Disconnected")),
         }?;
         Ok(res)
     }
@@ -168,9 +166,7 @@ impl DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(ref mut c) => c.commit(),
-            InnerConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            InnerConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -199,9 +195,7 @@ impl DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(ref mut c) => c.rollback(),
-            InnerConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            InnerConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -227,9 +221,7 @@ impl DatabaseTransaction {
                     InnerConnection::Mock(c) => {
                         c.rollback()?;
                     }
-                    InnerConnection::Disconnected => {
-                        Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))?
-                    }
+                    InnerConnection::Disconnected => Err(conn_err("Disconnected"))?,
                 }
             } else {
                 //this should never happen
@@ -296,9 +288,7 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.execute(stmt),
-            InnerConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            InnerConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -337,9 +327,7 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_one(stmt),
-            InnerConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            InnerConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -384,9 +372,7 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_all(stmt),
-            InnerConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            InnerConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 }
@@ -464,3 +450,12 @@ where
 }
 
 impl<E> std::error::Error for TransactionError<E> where E: std::error::Error {}
+
+impl<E> From<DbErr> for TransactionError<E>
+where
+    E: std::error::Error,
+{
+    fn from(e: DbErr) -> Self {
+        Self::Connection(e)
+    }
+}

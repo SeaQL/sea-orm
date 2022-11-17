@@ -101,9 +101,7 @@ impl MockDatabaseTrait for MockDatabase {
                 result: ExecResultHolder::Mock(std::mem::take(&mut self.exec_results[counter])),
             })
         } else {
-            Err(DbErr::Exec(RuntimeErr::Internal(
-                "`exec_results` buffer is empty.".to_owned(),
-            )))
+            Err(exec_err("`exec_results` buffer is empty."))
         }
     }
 
@@ -121,9 +119,7 @@ impl MockDatabaseTrait for MockDatabase {
                 })
                 .collect())
         } else {
-            Err(DbErr::Query(RuntimeErr::Internal(
-                "`query_results` buffer is empty.".to_owned(),
-            )))
+            Err(query_err("`query_results` buffer is empty."))
         }
     }
 
@@ -141,19 +137,14 @@ impl MockDatabaseTrait for MockDatabase {
         match self.transaction.as_mut() {
             Some(transaction) => {
                 if transaction.commit(self.db_backend) {
-                    let transaction =
-                        self.transaction
-                            .take()
-                            .ok_or(DbErr::Exec(RuntimeErr::Internal(
-                                "There is no open transaction to commit".to_owned(),
-                            )))?;
+                    let transaction = self.transaction.take().ok_or(exec_err(
+                        "There is no open transaction to commit".to_owned(),
+                    ))?;
                     self.transaction_log.push(transaction.into_transaction()?);
                 }
                 Ok(())
             }
-            None => Err(DbErr::Exec(RuntimeErr::Internal(
-                "There is no open transaction to commit".to_owned(),
-            ))),
+            None => Err(exec_err("There is no open transaction to commit")),
         }
     }
 
@@ -162,19 +153,15 @@ impl MockDatabaseTrait for MockDatabase {
         match self.transaction.as_mut() {
             Some(transaction) => {
                 if transaction.rollback(self.db_backend) {
-                    let transaction =
-                        self.transaction
-                            .take()
-                            .ok_or(DbErr::Exec(RuntimeErr::Internal(
-                                "There is no open transaction to commit".to_owned(),
-                            )))?;
+                    let transaction = self
+                        .transaction
+                        .take()
+                        .ok_or(exec_err("There is no open transaction to commit"))?;
                     self.transaction_log.push(transaction.into_transaction()?);
                 }
                 Ok(())
             }
-            None => Err(DbErr::Exec(RuntimeErr::Internal(
-                "There is no open transaction to rollback".to_owned(),
-            ))),
+            None => Err(exec_err("There is no open transaction to rollback")),
         }
     }
 
@@ -196,10 +183,10 @@ impl MockRow {
         T::try_from(
             self.values
                 .get(col)
-                .ok_or(DbErr::Query(RuntimeErr::Internal(format!(
+                .ok_or(query_err(format!(
                     "Getting unknown column `{}` from MockRow",
                     col
-                ))))?
+                )))?
                 .clone(),
         )
         .map_err(|e| DbErr::Type(e.to_string()))
@@ -367,9 +354,7 @@ impl OpenTransaction {
     fn into_transaction(self) -> Result<Transaction, DbErr> {
         match self.transaction_depth {
             0 => Ok(Transaction { stmts: self.stmts }),
-            _ => Err(DbErr::Exec(RuntimeErr::Internal(
-                "There is uncommitted nested transaction".into(),
-            ))),
+            _ => Err(exec_err("There is uncommitted nested transaction")),
         }
     }
 }

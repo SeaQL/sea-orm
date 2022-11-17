@@ -175,7 +175,7 @@ impl SqlxMySqlPoolConnection {
                 .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
-            Err(TransactionError::Connection(DbErr::ConnectionAcquire))
+            Err(DbErr::ConnectionAcquire.into())
         }
     }
 

@@ -124,9 +124,7 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.execute(stmt).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.execute(stmt),
-            DatabaseConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -142,9 +140,7 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.query_one(stmt).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.query_one(stmt),
-            DatabaseConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -160,9 +156,7 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.query_all(stmt).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.query_all(stmt),
-            DatabaseConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -194,9 +188,7 @@ impl StreamTrait for DatabaseConnection {
                 DatabaseConnection::MockDatabaseConnection(conn) => {
                     Ok(crate::QueryStream::from((Arc::clone(conn), stmt, None)))
                 }
-                DatabaseConnection::Disconnected => {
-                    Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-                }
+                DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
             }
         })
     }
@@ -217,9 +209,7 @@ impl TransactionTrait for DatabaseConnection {
             DatabaseConnection::MockDatabaseConnection(conn) => {
                 DatabaseTransaction::new_mock(Arc::clone(conn), None).await
             }
-            DatabaseConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -251,9 +241,7 @@ impl TransactionTrait for DatabaseConnection {
                     .map_err(TransactionError::Connection)?;
                 transaction.run(_callback).await
             }
-            DatabaseConnection::Disconnected => Err(TransactionError::Connection(DbErr::Conn(
-                RuntimeErr::Internal("Disconnected".to_owned()),
-            ))),
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected").into()),
         }
     }
 }
@@ -264,9 +252,7 @@ impl DatabaseConnection {
     pub fn as_mock_connection(&self) -> Result<&crate::MockDatabaseConnection, DbErr> {
         match self {
             DatabaseConnection::MockDatabaseConnection(mock_conn) => Ok(mock_conn),
-            _ => Err(DbErr::Exec(RuntimeErr::Internal(
-                "Not a mock connection".to_owned(),
-            ))),
+            _ => Err(exec_err("Not a mock connection")),
         }
     }
 
@@ -276,7 +262,7 @@ impl DatabaseConnection {
             .as_mock_connection()?
             .get_mocker_mutex()
             .lock()
-            .map_err(|e| DbErr::Exec(RuntimeErr::Internal(e.to_string())))?;
+            .map_err(|e| exec_err(e.to_string()))?;
         Ok(mocker.drain_transaction_log())
     }
 
