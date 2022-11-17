@@ -141,7 +141,10 @@ where
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
                 .collect::<Vec<_>>();
-            let res = db.query_one(statement).await?.unwrap();
+            let res = db
+                .query_one(statement)
+                .await?
+                .ok_or(DbErr::UnpackInsertId)?;
             res.try_get_many("", cols.as_ref()).ok()
         }
         false => {

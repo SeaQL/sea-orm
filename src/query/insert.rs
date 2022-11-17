@@ -1,6 +1,6 @@
 use crate::{
-    cast_text_as_enum, ActiveModelTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
-    PrimaryKeyTrait, QueryTrait,
+    cast_text_as_enum, ActiveModelTrait, ActiveValue, EntityName, EntityTrait, IntoActiveModel,
+    Iterable, PrimaryKeyTrait, QueryTrait,
 };
 use core::marker::PhantomData;
 use sea_query::{Expr, InsertStatement, OnConflict, ValueTuple};
@@ -132,9 +132,12 @@ where
             } else if self.columns[idx] != av_has_val {
                 panic!("columns mismatch");
             }
-            if av_has_val {
-                columns.push(col);
-                values.push(cast_text_as_enum(Expr::val(av.into_value().unwrap()), &col));
+            match av {
+                ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
+                    columns.push(col);
+                    values.push(cast_text_as_enum(Expr::val(value), &col));
+                }
+                ActiveValue::NotSet => {}
             }
         }
         self.query.columns(columns);

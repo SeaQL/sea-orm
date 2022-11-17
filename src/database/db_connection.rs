@@ -313,7 +313,7 @@ impl DbBackend {
     /// Check if the URI is the same as the specified database backend.
     /// Returns true if they match.
     pub fn is_prefix_of(self, base_url: &str) -> bool {
-        let base_url_parsed = Url::parse(base_url).unwrap();
+        let base_url_parsed = Url::parse(base_url).expect("Fail to parse database URL");
         match self {
             Self::Postgres => {
                 base_url_parsed.scheme() == "postgres" || base_url_parsed.scheme() == "postgresql"

@@ -92,83 +92,83 @@ impl MockDatabase {
 impl MockDatabaseTrait for MockDatabase {
     #[instrument(level = "trace")]
     fn execute(&mut self, counter: usize, statement: Statement) -> Result<ExecResult, DbErr> {
-        if let Some(transaction) = &mut self.transaction {
-            transaction.push(statement);
-        } else {
-            self.transaction_log.push(Transaction::one(statement));
+        match self.transaction.as_mut() {
+            Some(transaction) => transaction.push(statement),
+            None => self.transaction_log.push(Transaction::one(statement)),
         }
-        if counter < self.exec_results.len() {
-            Ok(ExecResult {
+        match self.exec_results.len() {
+            len if counter < len => Ok(ExecResult {
                 result: ExecResultHolder::Mock(std::mem::take(&mut self.exec_results[counter])),
-            })
-        } else {
-            Err(DbErr::Exec(RuntimeErr::Internal(
+            }),
+            _ => Err(DbErr::Exec(RuntimeErr::Internal(
                 "`exec_results` buffer is empty.".to_owned(),
-            )))
+            ))),
         }
     }
 
     #[instrument(level = "trace")]
     fn query(&mut self, counter: usize, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
-        if let Some(transaction) = &mut self.transaction {
-            transaction.push(statement);
-        } else {
-            self.transaction_log.push(Transaction::one(statement));
+        match self.transaction.as_mut() {
+            Some(transaction) => transaction.push(statement),
+            None => self.transaction_log.push(Transaction::one(statement)),
         }
-        if counter < self.query_results.len() {
-            Ok(std::mem::take(&mut self.query_results[counter])
+        match self.query_results.len() {
+            len if counter < len => Ok(std::mem::take(&mut self.query_results[counter])
                 .into_iter()
                 .map(|row| QueryResult {
                     row: QueryResultRow::Mock(row),
                 })
-                .collect())
-        } else {
-            Err(DbErr::Query(RuntimeErr::Internal(
+                .collect()),
+            _ => Err(DbErr::Query(RuntimeErr::Internal(
                 "`query_results` buffer is empty.".to_owned(),
-            )))
+            ))),
         }
     }
 
     #[instrument(level = "trace")]
     fn begin(&mut self) -> Result<(), DbErr> {
-        if self.transaction.is_some() {
-            self.transaction
-                .as_mut()
-                .unwrap()
-                .begin_nested(self.db_backend);
-        } else {
-            self.transaction = Some(OpenTransaction::init());
-        }
+        match self.transaction.as_mut() {
+            Some(transaction) => transaction.begin_nested(self.db_backend),
+            None => self.transaction = Some(OpenTransaction::init()),
+        };
         Ok(())
     }
 
     #[instrument(level = "trace")]
     fn commit(&mut self) -> Result<(), DbErr> {
-        if self.transaction.is_some() {
-            if self.transaction.as_mut().unwrap().commit(self.db_backend) {
-                let transaction = self.transaction.take().unwrap();
-                self.transaction_log.push(transaction.into_transaction()?);
+        match self.transaction.as_mut() {
+            Some(transaction) => {
+                if transaction.commit(self.db_backend) {
+                    let transaction = self
+                        .transaction
+                        .take()
+                        .expect("No open transaction to commit");
+                    self.transaction_log.push(transaction.into_transaction()?);
+                }
+                Ok(())
             }
-            Ok(())
-        } else {
-            Err(DbErr::Exec(RuntimeErr::Internal(
+            None => Err(DbErr::Exec(RuntimeErr::Internal(
                 "There is no open transaction to commit".to_owned(),
-            )))
+            ))),
         }
     }
 
     #[instrument(level = "trace")]
     fn rollback(&mut self) -> Result<(), DbErr> {
-        if self.transaction.is_some() {
-            if self.transaction.as_mut().unwrap().rollback(self.db_backend) {
-                let transaction = self.transaction.take().unwrap();
-                self.transaction_log.push(transaction.into_transaction()?);
+        match self.transaction.as_mut() {
+            Some(transaction) => {
+                if transaction.rollback(self.db_backend) {
+                    let transaction = self
+                        .transaction
+                        .take()
+                        .expect("No open transaction to rollback");
+                    self.transaction_log.push(transaction.into_transaction()?);
+                }
+                Ok(())
             }
-            Ok(())
-        } else {
-            Err(DbErr::Exec(RuntimeErr::Internal(
+            None => Err(DbErr::Exec(RuntimeErr::Internal(
                 "There is no open transaction to rollback".to_owned(),
-            )))
+            ))),
         }
     }
 
@@ -187,7 +187,16 @@ impl MockRow {
     where
         T: ValueType,
     {
-        T::try_from(self.values.get(col).unwrap().clone()).map_err(|e| DbErr::Type(e.to_string()))
+        T::try_from(
+            self.values
+                .get(col)
+                .ok_or(DbErr::Query(RuntimeErr::Internal(format!(
+                    "Getting unknown column `{}` from MockRow",
+                    col
+                ))))?
+                .clone(),
+        )
+        .map_err(|e| DbErr::Type(e.to_string()))
     }
 
     /// An iterator over the keys and values of a mock row
@@ -312,30 +321,36 @@ impl OpenTransaction {
     }
 
     fn commit(&mut self, db_backend: DbBackend) -> bool {
-        if self.transaction_depth == 0 {
-            self.push(Statement::from_string(db_backend, "COMMIT".to_owned()));
-            true
-        } else {
-            self.push(Statement::from_string(
-                db_backend,
-                format!("RELEASE SAVEPOINT savepoint_{}", self.transaction_depth),
-            ));
-            self.transaction_depth -= 1;
-            false
+        match self.transaction_depth {
+            0 => {
+                self.push(Statement::from_string(db_backend, "COMMIT".to_owned()));
+                true
+            }
+            _ => {
+                self.push(Statement::from_string(
+                    db_backend,
+                    format!("RELEASE SAVEPOINT savepoint_{}", self.transaction_depth),
+                ));
+                self.transaction_depth -= 1;
+                false
+            }
         }
     }
 
     fn rollback(&mut self, db_backend: DbBackend) -> bool {
-        if self.transaction_depth == 0 {
-            self.push(Statement::from_string(db_backend, "ROLLBACK".to_owned()));
-            true
-        } else {
-            self.push(Statement::from_string(
-                db_backend,
-                format!("ROLLBACK TO SAVEPOINT savepoint_{}", self.transaction_depth),
-            ));
-            self.transaction_depth -= 1;
-            false
+        match self.transaction_depth {
+            0 => {
+                self.push(Statement::from_string(db_backend, "ROLLBACK".to_owned()));
+                true
+            }
+            _ => {
+                self.push(Statement::from_string(
+                    db_backend,
+                    format!("ROLLBACK TO SAVEPOINT savepoint_{}", self.transaction_depth),
+                ));
+                self.transaction_depth -= 1;
+                false
+            }
         }
     }
 
@@ -344,12 +359,11 @@ impl OpenTransaction {
     }
 
     fn into_transaction(self) -> Result<Transaction, DbErr> {
-        if self.transaction_depth != 0 {
-            Err(DbErr::Mock(
+        match self.transaction_depth {
+            0 => Ok(Transaction { stmts: self.stmts }),
+            _ => Err(DbErr::Mock(
                 "There is uncommitted nested transaction".into(),
-            ))
-        } else {
-            Ok(Transaction { stmts: self.stmts })
+            )),
         }
     }
 }

@@ -777,11 +777,11 @@ where
                 }
             }
         }
-        if r.is_some() {
-            acc.push((l, vec![r.unwrap()]));
-        } else {
-            acc.push((l, vec![]));
-        }
+        let rows = match r {
+            Some(r) => vec![r],
+            None => vec![],
+        };
+        acc.push((l, rows));
     }
     acc
 }

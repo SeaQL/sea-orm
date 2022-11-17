@@ -47,8 +47,11 @@ impl SqlxSqliteConnector {
             .url
             .parse::<SqliteConnectOptions>()
             .map_err(sqlx_error_to_conn_err)?;
-        if options.sqlcipher_key.is_some() {
-            opt = opt.pragma("key", options.sqlcipher_key.clone().unwrap());
+        match options.sqlcipher_key {
+            Some(ref sqlcipher_key) => {
+                opt = opt.pragma("key", sqlcipher_key.clone());
+            }
+            None => {}
         }
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {

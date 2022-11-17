@@ -539,10 +539,13 @@ pub trait ActiveModelTrait: Clone + Debug {
 
         // Transform attribute that exists in JSON object into ActiveValue::Set, otherwise ActiveValue::NotSet
         for (col, json_key_exists) in json_keys {
-            if json_key_exists && !am.is_not_set(col) {
-                am.set(col, am.get(col).unwrap());
-            } else {
-                am.not_set(col);
+            match (json_key_exists, am.get(col)) {
+                (true, ActiveValue::Set(value) | ActiveValue::Unchanged(value)) => {
+                    am.set(col, value);
+                }
+                _ => {
+                    am.not_set(col);
+                }
             }
         }
 

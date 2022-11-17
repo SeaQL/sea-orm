@@ -1,6 +1,6 @@
 use crate::{
-    cast_text_as_enum, ActiveModelTrait, ColumnTrait, EntityTrait, Iterable, PrimaryKeyToColumn,
-    QueryFilter, QueryTrait,
+    cast_text_as_enum, ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, Iterable,
+    PrimaryKeyToColumn, QueryFilter, QueryTrait,
 };
 use core::marker::PhantomData;
 use sea_query::{Expr, IntoIden, SimpleExpr, UpdateStatement};
@@ -93,10 +93,11 @@ where
         for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
             let av = self.model.get(col);
-            if av.is_set() || av.is_unchanged() {
-                self = self.filter(col.eq(av.unwrap()));
-            } else {
-                panic!("PrimaryKey is not set");
+            match av {
+                ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
+                    self = self.filter(col.eq(value));
+                }
+                ActiveValue::NotSet => panic!("PrimaryKey is not set"),
             }
         }
         self
@@ -108,9 +109,12 @@ where
                 continue;
             }
             let av = self.model.get(col);
-            if av.is_set() {
-                let expr = cast_text_as_enum(Expr::val(av.into_value().unwrap()), &col);
-                self.query.value(col, expr);
+            match av {
+                ActiveValue::Set(value) => {
+                    let expr = cast_text_as_enum(Expr::val(value), &col);
+                    self.query.value(col, expr);
+                }
+                ActiveValue::Unchanged(_) | ActiveValue::NotSet => {}
             }
         }
         self
@@ -188,8 +192,11 @@ where
     {
         for col in E::Column::iter() {
             let av = model.get(col);
-            if av.is_set() {
-                self.query.value(col, av.unwrap());
+            match av {
+                ActiveValue::Set(value) => {
+                    self.query.value(col, value);
+                }
+                ActiveValue::Unchanged(_) | ActiveValue::NotSet => {}
             }
         }
         self
