@@ -109,6 +109,10 @@ where
     }
 
     /// Add a Model to Self
+    ///
+    /// # Panics
+    ///
+    /// Panics if the column value has discrepancy across rows
     #[allow(clippy::should_implement_trait)]
     pub fn add<M>(mut self, m: M) -> Self
     where

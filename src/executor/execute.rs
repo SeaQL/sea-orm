@@ -35,6 +35,11 @@ impl Default for ExecResultHolder {
 
 impl ExecResult {
     /// Get the last id after `AUTOINCREMENT` is done on the primary key
+    ///
+    /// # Panics
+    ///
+    /// - Postgres does not support retrieving last insert id this way except through `RETURNING` clause
+    /// - SQLite last insert row id might be negative integer, in this case it will panic
     pub fn last_insert_id(&self) -> u64 {
         match &self.result {
             #[cfg(feature = "sqlx-mysql")]
@@ -54,7 +59,7 @@ impl ExecResult {
             }
             #[cfg(feature = "mock")]
             ExecResultHolder::Mock(result) => result.last_insert_id,
-            ExecResultHolder::Disconnected => panic!("Disconnected"),
+            ExecResultHolder::Disconnected => unimplemented!("Disconnected"),
         }
     }
 
@@ -69,7 +74,7 @@ impl ExecResult {
             ExecResultHolder::SqlxSqlite(result) => result.rows_affected(),
             #[cfg(feature = "mock")]
             ExecResultHolder::Mock(result) => result.rows_affected,
-            ExecResultHolder::Disconnected => panic!("Disconnected"),
+            ExecResultHolder::Disconnected => unimplemented!("Disconnected"),
         }
     }
 }
