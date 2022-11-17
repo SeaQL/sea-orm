@@ -128,7 +128,7 @@ impl MockDatabaseConnection {
         let counter = self.execute_counter.fetch_add(1, Ordering::SeqCst);
         self.mocker
             .lock()
-            .map_err(|e| DbErr::Mock(e.to_string()))?
+            .map_err(|e| DbErr::Exec(RuntimeErr::Internal(e.to_string())))?
             .execute(counter, statement)
     }
 
@@ -140,7 +140,7 @@ impl MockDatabaseConnection {
         let result = self
             .mocker
             .lock()
-            .map_err(|e| DbErr::Mock(e.to_string()))?
+            .map_err(|e| DbErr::Query(RuntimeErr::Internal(e.to_string())))?
             .query(counter, statement)?;
         Ok(result.into_iter().next())
     }
@@ -152,7 +152,7 @@ impl MockDatabaseConnection {
         let counter = self.query_counter.fetch_add(1, Ordering::SeqCst);
         self.mocker
             .lock()
-            .map_err(|e| DbErr::Mock(e.to_string()))?
+            .map_err(|e| DbErr::Query(RuntimeErr::Internal(e.to_string())))?
             .query(counter, statement)
     }
 
@@ -173,7 +173,7 @@ impl MockDatabaseConnection {
     pub fn begin(&self) -> Result<(), DbErr> {
         self.mocker
             .lock()
-            .map_err(|e| DbErr::Mock(e.to_string()))?
+            .map_err(|e| DbErr::Exec(RuntimeErr::Internal(e.to_string())))?
             .begin()
     }
 
@@ -182,7 +182,7 @@ impl MockDatabaseConnection {
     pub fn commit(&self) -> Result<(), DbErr> {
         self.mocker
             .lock()
-            .map_err(|e| DbErr::Mock(e.to_string()))?
+            .map_err(|e| DbErr::Exec(RuntimeErr::Internal(e.to_string())))?
             .commit()
     }
 
@@ -191,7 +191,7 @@ impl MockDatabaseConnection {
     pub fn rollback(&self) -> Result<(), DbErr> {
         self.mocker
             .lock()
-            .map_err(|e| DbErr::Mock(e.to_string()))?
+            .map_err(|e| DbErr::Exec(RuntimeErr::Internal(e.to_string())))?
             .rollback()
     }
 }

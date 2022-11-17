@@ -361,9 +361,9 @@ impl OpenTransaction {
     fn into_transaction(self) -> Result<Transaction, DbErr> {
         match self.transaction_depth {
             0 => Ok(Transaction { stmts: self.stmts }),
-            _ => Err(DbErr::Mock(
+            _ => Err(DbErr::Exec(RuntimeErr::Internal(
                 "There is uncommitted nested transaction".into(),
-            )),
+            ))),
         }
     }
 }
