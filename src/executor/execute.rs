@@ -38,8 +38,7 @@ impl ExecResult {
     ///
     /// # Panics
     ///
-    /// - Postgres does not support retrieving last insert id this way except through `RETURNING` clause
-    /// - SQLite last insert row id might be negative integer, in this case it will panic
+    /// Postgres does not support retrieving last insert id this way except through `RETURNING` clause
     pub fn last_insert_id(&self) -> u64 {
         match &self.result {
             #[cfg(feature = "sqlx-mysql")]
