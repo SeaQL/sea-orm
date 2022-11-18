@@ -55,6 +55,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Ceobe Canteen Serve](https://github.com/Enraged-Dun-Cookie-Development-Team/Ceobe-Canteen-Serve) | A tool based on Arknights mobile game, using axum as web framework | DB: MySQL
 - [Fikabot](https://github.com/sousandrei/fikabot) | A slack bot to schedule coffee breaks (Fika in swedish) in slack channels | DB: MySQL
 - [RSS aggregator](https://github.com/fistons/rss-aggregator)| A small RSS aggregator and API using actix and SeaORM | DB: Postgres
+- [Dev Board](https://github.com/goto-eof/dev_board_api_rust)| A dashboard for organizing software development tasks implemented in Rust
 
 #### Frontend (desktop / cli)
 
