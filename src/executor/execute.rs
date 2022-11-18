@@ -52,7 +52,7 @@ impl ExecResult {
             ExecResultHolder::SqlxSqlite(result) => {
                 let last_insert_rowid = result.last_insert_rowid();
                 if last_insert_rowid < 0 {
-                    panic!("negative last_insert_rowid")
+                    unreachable!("negative last_insert_rowid")
                 } else {
                     last_insert_rowid as u64
                 }
