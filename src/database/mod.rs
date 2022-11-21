@@ -2,6 +2,7 @@ use std::time::Duration;
 
 mod connection;
 mod db_connection;
+mod event;
 #[cfg(feature = "mock")]
 mod mock;
 mod statement;
@@ -10,6 +11,7 @@ mod transaction;
 
 pub use connection::*;
 pub use db_connection::*;
+pub use event::*;
 #[cfg(feature = "mock")]
 pub use mock::*;
 pub use statement::*;
