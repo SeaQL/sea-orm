@@ -4,7 +4,7 @@ members = [".", "sea-orm-macros", "sea-orm-codegen"]
 [package]
 name = "sea-orm"
 version = "0.10.3"
-authors = ["Chris Tsang <tyt2y7@gmail.com>"]
+authors = ["Chris Tsang <chris.2y3@outlook.com>"]
 edition = "2021"
 description = "🐚 An async & dynamic ORM for Rust"
 license = "MIT OR Apache-2.0"
