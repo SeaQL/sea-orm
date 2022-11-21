@@ -162,25 +162,6 @@ impl ConnectionTrait for DatabaseConnection {
     fn is_mock_connection(&self) -> bool {
         matches!(self, DatabaseConnection::MockDatabaseConnection(_))
     }
-
-    async fn close(self) -> Result<(), DbErr> {
-        match self {
-            #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.close().await,
-            #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.close().await,
-            #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.close().await,
-            #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn) => {
-                // Nothing to cleanup, we just consume the `DatabaseConnection`
-                Ok(())
-            }
-            DatabaseConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
-        }
-    }
 }
 
 #[async_trait::async_trait]
@@ -300,6 +281,26 @@ impl DatabaseConnection {
                 conn.set_metric_callback(_callback)
             }
             _ => {}
+        }
+    }
+
+    /// Explicitly close the database connection
+    pub async fn close(self) -> Result<(), DbErr> {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.close().await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.close().await,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.close().await,
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(_) => {
+                // Nothing to cleanup, we just consume the `DatabaseConnection`
+                Ok(())
+            }
+            DatabaseConnection::Disconnected => {
+                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
+            }
         }
     }
 }
