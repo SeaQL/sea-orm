@@ -53,7 +53,7 @@ pub trait LoaderTrait {
     ///
     /// let fruits = cakes.load_many(fruit::Entity::find(), &db);
     ///
-    /// assert_eq!(fruits, vec![fruit::Model { id: 1, name: "Apple".to_owned(), cake_id: Some(1), }]);
+    /// assert_eq!(fruits, vec![[fruit::Model { id: 1, name: "Apple".to_owned(), cake_id: Some(1), }]]);
     /// ```
     async fn load_many<R, C>(&self, stmt: Select<R>, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
     where
