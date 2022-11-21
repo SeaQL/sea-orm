@@ -12,6 +12,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Spyglass](https://www.spyglass.fyi/) ([repository](https://github.com/a5huynh/spyglass)) ![GitHub stars](https://img.shields.io/github/stars/a5huynh/spyglass.svg?style=social) | 🔭 A personal search engine that indexes what you want w/ a simple set of rules. | DB: SQLite
 - [My Data My Consent](https://mydatamyconsent.com/) | Online data sharing for people and businesses simplified
 - [CodeCTRL](https://codectrl.authentura.com) ([repository](https://github.com/Authentura/codectrl)) | A self-hostable code logging platform | DB: SQLite
+- [Prefix.dev](https://prefix.dev/) | Conda Package Search, Environment Management and Deployment built for [mamba](https://github.com/mamba-org/mamba)  | DB: Postgres, SQLite
 
 ### Frameworks
 
