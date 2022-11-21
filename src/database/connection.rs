@@ -31,6 +31,9 @@ pub trait ConnectionTrait: Sync {
     fn is_mock_connection(&self) -> bool {
         false
     }
+
+    /// Explicitly close the database connection
+    async fn close(self) -> Result<(), DbErr>;
 }
 
 /// Stream query results

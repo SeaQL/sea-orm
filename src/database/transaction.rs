@@ -386,6 +386,10 @@ impl ConnectionTrait for DatabaseTransaction {
             _ => unreachable!(),
         }
     }
+
+    async fn close(self) -> Result<(), DbErr> {
+        self.rollback().await
+    }
 }
 
 impl StreamTrait for DatabaseTransaction {
