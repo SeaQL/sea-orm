@@ -70,13 +70,13 @@ impl MockDatabase {
         DatabaseConnection::MockDatabaseConnection(Arc::new(MockDatabaseConnection::new(self)))
     }
 
-    /// Add the [MockExecResult]s to the `exec_results` field for `Self`
+    /// Add some [MockExecResult]s to `exec_results`
     pub fn append_exec_results(mut self, vec: Vec<MockExecResult>) -> Self {
         self.exec_results.extend(vec.into_iter().map(Result::Ok));
         self
     }
 
-    /// Add the [MockExecResult]s to the `exec_results` field for `Self`
+    /// Add some Values to `query_results`
     pub fn append_query_results<T>(mut self, vec: Vec<Vec<T>>) -> Self
     where
         T: IntoMockRow,
@@ -85,6 +85,18 @@ impl MockDatabase {
             let row = row.into_iter().map(|vec| Ok(vec.into_mock_row())).collect();
             self.query_results.push(row);
         }
+        self
+    }
+
+    /// Add some [DbErr]s to `exec_results`
+    pub fn append_exec_errors(mut self, vec: Vec<DbErr>) -> Self {
+        self.exec_results.extend(vec.into_iter().map(Result::Err));
+        self
+    }
+
+    /// Add some [DbErr]s to `query_results`
+    pub fn append_query_errors(mut self, vec: Vec<DbErr>) -> Self {
+        self.query_results.extend(vec.into_iter().map(Result::Err));
         self
     }
 }
@@ -364,8 +376,8 @@ impl OpenTransaction {
 #[cfg(feature = "mock")]
 mod tests {
     use crate::{
-        entity::*, tests_cfg::*, DbBackend, DbErr, IntoMockRow, MockDatabase, Statement,
-        Transaction, TransactionError, TransactionTrait,
+        entity::*, tests_cfg::*, DbBackend, DbErr, IntoMockRow, MockDatabase, RuntimeErr,
+        Statement, Transaction, TransactionError, TransactionTrait,
     };
     use pretty_assertions::assert_eq;
 
@@ -801,5 +813,39 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn test_query_err() {
+        let db = MockDatabase::new(DbBackend::MySql)
+            .append_query_errors(vec![DbErr::Query(RuntimeErr::Internal(
+                "this is a mock query error".to_owned(),
+            ))])
+            .into_connection();
+
+        assert_eq!(
+            cake::Entity::find().all(&db).await,
+            Err(DbErr::Query(RuntimeErr::Internal(
+                "this is a mock query error".to_owned()
+            )))
+        );
+    }
+
+    #[smol_potat::test]
+    async fn test_exec_err() {
+        let db = MockDatabase::new(DbBackend::MySql)
+            .append_exec_errors(vec![DbErr::Exec(RuntimeErr::Internal(
+                "this is a mock exec error".to_owned(),
+            ))])
+            .into_connection();
+
+        let model = cake::ActiveModel::new();
+
+        assert_eq!(
+            model.save(&db).await,
+            Err(DbErr::Exec(RuntimeErr::Internal(
+                "this is a mock exec error".to_owned()
+            )))
+        );
     }
 }
