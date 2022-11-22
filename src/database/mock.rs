@@ -13,8 +13,8 @@ pub struct MockDatabase {
     db_backend: DbBackend,
     transaction: Option<OpenTransaction>,
     transaction_log: Vec<Transaction>,
-    exec_results: Vec<MockExecResult>,
-    query_results: Vec<Vec<MockRow>>,
+    exec_results: Vec<Result<MockExecResult, DbErr>>,
+    query_results: Vec<Result<Vec<MockRow>, DbErr>>,
 }
 
 /// Defines the results obtained from a [MockDatabase]
@@ -71,8 +71,8 @@ impl MockDatabase {
     }
 
     /// Add the [MockExecResult]s to the `exec_results` field for `Self`
-    pub fn append_exec_results(mut self, mut vec: Vec<MockExecResult>) -> Self {
-        self.exec_results.append(&mut vec);
+    pub fn append_exec_results(mut self, vec: Vec<MockExecResult>) -> Self {
+        self.exec_results.extend(vec.into_iter().map(Result::Ok));
         self
     }
 
@@ -82,7 +82,7 @@ impl MockDatabase {
         T: IntoMockRow,
     {
         for row in vec.into_iter() {
-            let row = row.into_iter().map(|vec| vec.into_mock_row()).collect();
+            let row = row.into_iter().map(|vec| Ok(vec.into_mock_row())).collect();
             self.query_results.push(row);
         }
         self
@@ -98,12 +98,20 @@ impl MockDatabaseTrait for MockDatabase {
             self.transaction_log.push(Transaction::one(statement));
         }
         if counter < self.exec_results.len() {
-            Ok(ExecResult {
-                result: ExecResultHolder::Mock(std::mem::take(&mut self.exec_results[counter])),
-            })
+            match std::mem::replace(
+                &mut self.exec_results[counter],
+                Err(DbErr::Exec(RuntimeErr::Internal(
+                    "this value has been consumed already".to_owned(),
+                ))),
+            ) {
+                Ok(result) => Ok(ExecResult {
+                    result: ExecResultHolder::Mock(result),
+                }),
+                Err(err) => Err(err),
+            }
         } else {
             Err(DbErr::Exec(RuntimeErr::Internal(
-                "`exec_results` buffer is empty.".to_owned(),
+                "`exec_results` buffer is empty".to_owned(),
             )))
         }
     }
@@ -116,12 +124,20 @@ impl MockDatabaseTrait for MockDatabase {
             self.transaction_log.push(Transaction::one(statement));
         }
         if counter < self.query_results.len() {
-            Ok(std::mem::take(&mut self.query_results[counter])
-                .into_iter()
-                .map(|row| QueryResult {
-                    row: QueryResultRow::Mock(row),
-                })
-                .collect())
+            match std::mem::replace(
+                &mut self.query_results[counter],
+                Err(DbErr::Query(RuntimeErr::Internal(
+                    "this value has been consumed already".to_owned(),
+                ))),
+            ) {
+                Ok(result) => Ok(result
+                    .into_iter()
+                    .map(|row| QueryResult {
+                        row: QueryResultRow::Mock(row),
+                    })
+                    .collect()),
+                Err(err) => Err(err),
+            }
         } else {
             Err(DbErr::Query(RuntimeErr::Internal(
                 "`query_results` buffer is empty.".to_owned(),

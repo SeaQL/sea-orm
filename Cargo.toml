@@ -116,4 +116,4 @@ runtime-tokio-rustls = [
     "sea-query-binder?/runtime-tokio-rustls",
     "runtime-tokio",
 ]
-tests-cfg = []
+tests-cfg = ["serde/derive"]
