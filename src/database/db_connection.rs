@@ -283,6 +283,26 @@ impl DatabaseConnection {
             _ => {}
         }
     }
+
+    /// Explicitly close the database connection
+    pub async fn close(self) -> Result<(), DbErr> {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.close().await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.close().await,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.close().await,
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(_) => {
+                // Nothing to cleanup, we just consume the `DatabaseConnection`
+                Ok(())
+            }
+            DatabaseConnection::Disconnected => {
+                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
+            }
+        }
+    }
 }
 
 impl DbBackend {

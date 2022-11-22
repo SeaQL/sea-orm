@@ -200,6 +200,11 @@ impl SqlxPostgresPoolConnection {
     {
         self.metric_callback = Some(Arc::new(callback));
     }
+
+    /// Explicitly close the Postgres connection
+    pub async fn close(self) -> Result<(), DbErr> {
+        Ok(self.pool.close().await)
+    }
 }
 
 impl From<PgRow> for QueryResult {

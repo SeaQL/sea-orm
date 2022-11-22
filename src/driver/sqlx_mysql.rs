@@ -185,6 +185,11 @@ impl SqlxMySqlPoolConnection {
     {
         self.metric_callback = Some(Arc::new(callback));
     }
+
+    /// Explicitly close the MySQL connection
+    pub async fn close(self) -> Result<(), DbErr> {
+        Ok(self.pool.close().await)
+    }
 }
 
 impl From<MySqlRow> for QueryResult {

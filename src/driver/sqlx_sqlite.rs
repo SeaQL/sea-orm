@@ -192,6 +192,11 @@ impl SqlxSqlitePoolConnection {
     {
         self.metric_callback = Some(Arc::new(callback));
     }
+
+    /// Explicitly close the SQLite connection
+    pub async fn close(self) -> Result<(), DbErr> {
+        Ok(self.pool.close().await)
+    }
 }
 
 impl From<SqliteRow> for QueryResult {
