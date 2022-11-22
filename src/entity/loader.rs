@@ -12,10 +12,8 @@ pub trait LoaderTrait {
     /// Source model
     type Model: ModelTrait;
 
+    ///
     /// Used to eager load has_one relations
-    ///
-    ///
-    ///
     ///
     async fn load_one<R, C>(&self, stmt: Select<R>, db: &C) -> Result<Vec<Option<R::Model>>, DbErr>
     where
@@ -26,35 +24,9 @@ pub trait LoaderTrait {
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
         <<<<Self as LoaderTrait>::Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::Err: Debug;
 
-    /// Used to eager load has_many relations
     ///
-    /// # Example
+    ///  Used to eager load has_many relations
     ///
-    /// ```
-    /// use sea_orm::{tests_cfg::*, entity::loader::*};
-    ///
-    /// let db = MockDatabase::new(DbBackend::Postgres)
-    ///     .append_query_results(vec![
-    ///         vec![cake::Model {
-    ///             id: 1,
-    ///             name: "New York Cheese".to_owned(),
-    ///         }
-    ///         .into_mock_row()],
-    ///         vec![fruit::Model {
-    ///             id: 1,
-    ///             name: "Apple".to_owned(),
-    ///             cake_id: Some(1),
-    ///         }
-    ///         .into_mock_row()],
-    ///     ])
-    ///     .into_connection();
-    ///
-    /// let cakes = vec![cake::Model { id: 1, name: "New York Cheese".to_owned(), }];
-    ///
-    /// let fruits = cakes.load_many(fruit::Entity::find(), &db);
-    ///
-    /// assert_eq!(fruits, vec![[fruit::Model { id: 1, name: "Apple".to_owned(), cake_id: Some(1), }]]);
-    /// ```
     async fn load_many<R, C>(&self, stmt: Select<R>, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
     where
         C: ConnectionTrait,
@@ -97,7 +69,7 @@ where
             .map(|model: &M| extract_key(&rel_def.from_col, model))
             .collect();
 
-        let condition = prepare_condition::<M>(&rel_def.to_col, &keys);
+        let condition = prepare_condition::<<R as EntityTrait>::Model>(&rel_def.to_col, &keys);
 
         let stmt = <Select<R> as QueryFilter>::filter(stmt, condition);
 
@@ -153,7 +125,7 @@ where
             .map(|model: &M| extract_key(&rel_def.from_col, model))
             .collect();
 
-        let condition = prepare_condition::<M>(&rel_def.to_col, &keys);
+        let condition = prepare_condition::<<R as EntityTrait>::Model>(&rel_def.to_col, &keys);
 
         let stmt = <Select<R> as QueryFilter>::filter(stmt, condition);
 
@@ -171,14 +143,21 @@ where
             .for_each(|value: <R as EntityTrait>::Model| {
                 let key = extract_key(&rel_def.to_col, &value);
 
-                let vec = hashmap.get_mut(&format!("{:?}", key)).unwrap();
+                let vec = hashmap
+                    .get_mut(&format!("{:?}", key))
+                    .expect("Failed at finding key on hashmap");
 
                 vec.push(value);
             });
 
         let result: Vec<Vec<R::Model>> = keys
             .iter()
-            .map(|key: &Vec<Value>| hashmap.remove(&format!("{:?}", key)).to_owned().unwrap())
+            .map(|key: &Vec<Value>| {
+                hashmap
+                    .remove(&format!("{:?}", key))
+                    .to_owned()
+                    .expect("Failed to convert key to owned")
+            })
             .collect();
 
         Ok(result)
@@ -196,7 +175,7 @@ where
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &a.to_string(),
                 )
-                .unwrap();
+                .expect("Failed at mapping string to column A:1");
             vec![model.get(column_a)]
         }
         Identity::Binary(a, b) => {
@@ -204,12 +183,12 @@ where
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &a.to_string(),
                 )
-                .unwrap();
+                .expect("Failed at mapping string to column A:2");
             let column_b =
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &b.to_string(),
                 )
-                .unwrap();
+                .expect("Failed at mapping string to column B:2");
             vec![model.get(column_a), model.get(column_b)]
         }
         Identity::Ternary(a, b, c) => {
@@ -217,17 +196,17 @@ where
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &a.to_string(),
                 )
-                .unwrap();
+                .expect("Failed at mapping string to column A:3");
             let column_b =
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &b.to_string(),
                 )
-                .unwrap();
+                .expect("Failed at mapping string to column B:3");
             let column_c =
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &c.to_string(),
                 )
-                .unwrap();
+                .expect("Failed at mapping string to column C:3");
             vec![
                 model.get(column_a),
                 model.get(column_b),
@@ -246,7 +225,7 @@ where
         Identity::Unary(column_a) => {
             let column_a: <M::Entity as EntityTrait>::Column =
                 <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_a.to_string())
-                    .unwrap();
+                    .expect("Failed at mapping string to column *A:1");
             Condition::all().add(ColumnTrait::is_in(
                 &column_a,
                 keys.iter()
@@ -257,10 +236,10 @@ where
         Identity::Binary(column_a, column_b) => {
             let column_a: <M::Entity as EntityTrait>::Column =
                 <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_a.to_string())
-                    .unwrap();
+                    .expect("Failed at mapping string to column *A:2");
             let column_b: <M::Entity as EntityTrait>::Column =
                 <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_b.to_string())
-                    .unwrap();
+                    .expect("Failed at mapping string to column *B:2");
             Condition::all().add(
                 Expr::tuple([
                     SimpleExpr::Column(column_a.into_column_ref()),
@@ -276,13 +255,13 @@ where
         Identity::Ternary(column_a, column_b, column_c) => {
             let column_a: <M::Entity as EntityTrait>::Column =
                 <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_a.to_string())
-                    .unwrap();
+                    .expect("Failed at mapping string to column *A:3");
             let column_b: <M::Entity as EntityTrait>::Column =
                 <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_b.to_string())
-                    .unwrap();
+                    .expect("Failed at mapping string to column *B:3");
             let column_c: <M::Entity as EntityTrait>::Column =
                 <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_c.to_string())
-                    .unwrap();
+                    .expect("Failed at mapping string to column *C:3");
             Condition::all().add(
                 Expr::tuple([
                     SimpleExpr::Column(column_a.into_column_ref()),
@@ -298,5 +277,55 @@ where
                 ),
             )
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[tokio::test]
+
+    async fn test_load_many() {
+        use crate::{
+            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
+        };
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results(vec![
+                vec![fruit::Model {
+                    id: 1,
+                    name: "Apple".to_owned(),
+                    cake_id: Some(1),
+                }
+                .into_mock_row()],
+            ])
+            .into_connection();
+
+        let cakes = vec![
+            cake::Model {
+                id: 1,
+                name: "New York Cheese".to_owned(),
+            },
+            cake::Model {
+                id: 2,
+                name: "London Cheese".to_owned(),
+            },
+        ];
+
+        let fruits = cakes
+            .load_many(fruit::Entity::find(), &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(
+            fruits,
+            vec![
+                vec![fruit::Model {
+                    id: 1,
+                    name: "Apple".to_owned(),
+                    cake_id: Some(1),
+                }],
+                vec![]
+            ]
+        );
     }
 }
