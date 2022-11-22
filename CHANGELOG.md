@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Enhancements
 
 * Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
+* Added `DatabaseConnection::close` https://github.com/SeaQL/sea-orm/pull/1236
 
 ### House Keeping
 
