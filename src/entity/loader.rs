@@ -4,7 +4,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use sea_query::{Expr, IntoColumnRef, SimpleExpr, ValueTuple};
-use std::{collections::BTreeMap, fmt::Debug, str::FromStr};
+use std::{collections::HashMap, str::FromStr};
 
 /// A trait for basic Dataloader
 #[async_trait]
@@ -20,9 +20,7 @@ pub trait LoaderTrait {
         C: ConnectionTrait,
         R: EntityTrait,
         R::Model: Send + Sync,
-        <<R as EntityTrait>::Column as FromStr>::Err: Debug,
-        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
-        <<<<Self as LoaderTrait>::Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::Err: Debug;
+        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>;
 
     ///
     ///  Used to eager load has_many relations
@@ -32,9 +30,7 @@ pub trait LoaderTrait {
         C: ConnectionTrait,
         R: EntityTrait,
         R::Model: Send + Sync,
-        <<R as EntityTrait>::Column as FromStr>::Err: Debug,
-        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
-        <<<<Self as LoaderTrait>::Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::Err: Debug;
+        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>;
 }
 
 #[async_trait::async_trait]
@@ -50,9 +46,7 @@ where
         C: ConnectionTrait,
         R: EntityTrait,
         R::Model: Send + Sync,
-        <<R as EntityTrait>::Column as FromStr>::Err: Debug,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
-        <<<M as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::Err: Debug,
     {
         let rel_def = <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
 
@@ -75,9 +69,9 @@ where
 
         let data = stmt.all(db).await?;
 
-        let mut hashmap: BTreeMap<String, <R as EntityTrait>::Model> = data.into_iter().fold(
-            BTreeMap::<String, <R as EntityTrait>::Model>::new(),
-            |mut acc: BTreeMap<String, <R as EntityTrait>::Model>,
+        let mut hashmap: HashMap<String, <R as EntityTrait>::Model> = data.into_iter().fold(
+            HashMap::<String, <R as EntityTrait>::Model>::new(),
+            |mut acc: HashMap<String, <R as EntityTrait>::Model>,
              value: <R as EntityTrait>::Model| {
                 {
                     let key = extract_key(&rel_def.to_col, &value);
@@ -102,9 +96,7 @@ where
         C: ConnectionTrait,
         R: EntityTrait,
         R::Model: Send + Sync,
-        <<R as EntityTrait>::Column as FromStr>::Err: Debug,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
-        <<<M as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::Err: Debug,
     {
         let rel_def = <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
 
@@ -127,9 +119,9 @@ where
 
         let data = stmt.all(db).await?;
 
-        let mut hashmap: BTreeMap<String, Vec<<R as EntityTrait>::Model>> =
+        let mut hashmap: HashMap<String, Vec<<R as EntityTrait>::Model>> =
             keys.iter()
-                .fold(BTreeMap::new(), |mut acc, key: &ValueTuple| {
+                .fold(HashMap::new(), |mut acc, key: &ValueTuple| {
                     acc.insert(format!("{:?}", key), Vec::new());
 
                     acc
@@ -162,7 +154,6 @@ where
 fn extract_key<Model>(target_col: &Identity, model: &Model) -> ValueTuple
 where
     Model: ModelTrait,
-    <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::Err: Debug,
 {
     match target_col {
         Identity::Unary(a) => {
@@ -170,7 +161,7 @@ where
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &a.to_string(),
                 )
-                .expect("Failed at mapping string to column A:1");
+                .unwrap_or_else(|_| panic!("Failed at mapping string to column A:1"));
             ValueTuple::One(model.get(column_a))
         }
         Identity::Binary(a, b) => {
@@ -178,12 +169,12 @@ where
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &a.to_string(),
                 )
-                .expect("Failed at mapping string to column A:2");
+                .unwrap_or_else(|_| panic!("Failed at mapping string to column A:2"));
             let column_b =
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &b.to_string(),
                 )
-                .expect("Failed at mapping string to column B:2");
+                .unwrap_or_else(|_| panic!("Failed at mapping string to column B:2"));
             ValueTuple::Two(model.get(column_a), model.get(column_b))
         }
         Identity::Ternary(a, b, c) => {
@@ -191,17 +182,17 @@ where
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &a.to_string(),
                 )
-                .expect("Failed at mapping string to column A:3");
+                .unwrap_or_else(|_| panic!("Failed at mapping string to column A:3"));
             let column_b =
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &b.to_string(),
                 )
-                .expect("Failed at mapping string to column B:3");
+                .unwrap_or_else(|_| panic!("Failed at mapping string to column B:3"));
             let column_c =
                 <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
                     &c.to_string(),
                 )
-                .expect("Failed at mapping string to column C:3");
+                .unwrap_or_else(|_| panic!("Failed at mapping string to column C:3"));
             ValueTuple::Three(
                 model.get(column_a),
                 model.get(column_b),
@@ -214,13 +205,12 @@ where
 fn prepare_condition<M>(col: &Identity, keys: &[ValueTuple]) -> Condition
 where
     M: ModelTrait,
-    <<<M as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::Err: Debug,
 {
     match col {
         Identity::Unary(column_a) => {
             let column_a: <M::Entity as EntityTrait>::Column =
                 <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_a.to_string())
-                    .expect("Failed at mapping string to column *A:1");
+                    .unwrap_or_else(|_| panic!("Failed at mapping string to column *A:1"));
             Condition::all().add(ColumnTrait::is_in(
                 &column_a,
                 keys.iter().cloned().flatten(),
@@ -229,10 +219,10 @@ where
         Identity::Binary(column_a, column_b) => {
             let column_a: <M::Entity as EntityTrait>::Column =
                 <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_a.to_string())
-                    .expect("Failed at mapping string to column *A:2");
+                    .unwrap_or_else(|_| panic!("Failed at mapping string to column *A:2"));
             let column_b: <M::Entity as EntityTrait>::Column =
                 <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_b.to_string())
-                    .expect("Failed at mapping string to column *B:2");
+                    .unwrap_or_else(|_| panic!("Failed at mapping string to column *B:2"));
             Condition::all().add(
                 Expr::tuple([
                     SimpleExpr::Column(column_a.into_column_ref()),
@@ -244,13 +234,13 @@ where
         Identity::Ternary(column_a, column_b, column_c) => {
             let column_a: <M::Entity as EntityTrait>::Column =
                 <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_a.to_string())
-                    .expect("Failed at mapping string to column *A:3");
+                    .unwrap_or_else(|_| panic!("Failed at mapping string to column *A:3"));
             let column_b: <M::Entity as EntityTrait>::Column =
                 <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_b.to_string())
-                    .expect("Failed at mapping string to column *B:3");
+                    .unwrap_or_else(|_| panic!("Failed at mapping string to column *B:3"));
             let column_c: <M::Entity as EntityTrait>::Column =
                 <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_c.to_string())
-                    .expect("Failed at mapping string to column *C:3");
+                    .unwrap_or_else(|_| panic!("Failed at mapping string to column *C:3"));
             Condition::all().add(
                 Expr::tuple([
                     SimpleExpr::Column(column_a.into_column_ref()),
