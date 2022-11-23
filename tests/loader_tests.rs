@@ -115,20 +115,20 @@ async fn loader_load_many() -> Result<(), DbErr> {
     .await
     .expect("could not insert baker");
 
-    let _baker_3 = baker::ActiveModel {
+    let baker_3 = baker::ActiveModel {
         name: Set("John".to_owned()),
         contact_details: Set(serde_json::json!({})),
-        bakery_id: Set(Some(bakery_1.id)),
+        bakery_id: Set(Some(bakery_2.id)),
         ..Default::default()
     }
     .insert(&ctx.db)
     .await
     .expect("could not insert baker");
 
-    let _baker_4 = baker::ActiveModel {
+    let baker_4 = baker::ActiveModel {
         name: Set("Baker 4".to_owned()),
         contact_details: Set(serde_json::json!({})),
-        bakery_id: Set(None),
+        bakery_id: Set(Some(bakery_2.id)),
         ..Default::default()
     }
     .insert(&ctx.db)
@@ -153,7 +153,20 @@ async fn loader_load_many() -> Result<(), DbErr> {
 
     assert_eq!(bakeries, vec![bakery_1, bakery_2]);
 
-    assert_eq!(bakers, vec![vec![baker_1, baker_2], vec![]]);
+    assert_eq!(
+        bakers,
+        vec![
+            vec![baker_1.clone(), baker_2.clone()],
+            vec![baker_4.clone()]
+        ]
+    );
+
+    let bakers = bakeries
+        .load_many(baker::Entity::find(), &ctx.db)
+        .await
+        .expect("Should load bakers");
+
+    assert_eq!(bakers, vec![vec![baker_1, baker_2], vec![baker_3, baker_4]]);
 
     Ok(())
 }
