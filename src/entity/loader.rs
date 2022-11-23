@@ -12,9 +12,7 @@ pub trait LoaderTrait {
     /// Source model
     type Model: ModelTrait;
 
-    ///
     /// Used to eager load has_one relations
-    ///
     async fn load_one<R, C>(&self, stmt: Select<R>, db: &C) -> Result<Vec<Option<R::Model>>, DbErr>
     where
         C: ConnectionTrait,
@@ -22,9 +20,7 @@ pub trait LoaderTrait {
         R::Model: Send + Sync,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>;
 
-    ///
     ///  Used to eager load has_many relations
-    ///
     async fn load_many<R, C>(&self, stmt: Select<R>, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
     where
         C: ConnectionTrait,
