@@ -1,6 +1,6 @@
 use crate::{
     ColumnTrait, Condition, ConnectionTrait, DbErr, EntityTrait, Identity, ModelTrait, QueryFilter,
-    Related, RelationType, Select, Value,
+    Related, RelationType, Select,
 };
 use async_trait::async_trait;
 use sea_query::{Expr, IntoColumnRef, SimpleExpr, ValueTuple};
@@ -57,14 +57,14 @@ where
         let rel_def = <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
 
         // we verify that is has_one relation
-        match (&rel_def).rel_type {
+        match (rel_def).rel_type {
             RelationType::HasOne => (),
             RelationType::HasMany => {
                 return Err(DbErr::Type("Relation is HasMany instead of HasOne".into()))
             }
         }
 
-        let keys: Vec<Vec<Value>> = self
+        let keys: Vec<ValueTuple> = self
             .iter()
             .map(|model: &M| extract_key(&rel_def.from_col, model))
             .collect();
@@ -91,11 +91,7 @@ where
 
         let result: Vec<Option<<R as EntityTrait>::Model>> = keys
             .iter()
-            .map(|key| {
-                let model = hashmap.remove(&format!("{:?}", key));
-
-                model
-            })
+            .map(|key| hashmap.remove(&format!("{:?}", key)))
             .collect();
 
         Ok(result)
@@ -113,14 +109,14 @@ where
         let rel_def = <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
 
         // we verify that is has_many relation
-        match (&rel_def).rel_type {
+        match (rel_def).rel_type {
             RelationType::HasMany => (),
             RelationType::HasOne => {
                 return Err(DbErr::Type("Relation is HasOne instead of HasMany".into()))
             }
         }
 
-        let keys: Vec<Vec<Value>> = self
+        let keys: Vec<ValueTuple> = self
             .iter()
             .map(|model: &M| extract_key(&rel_def.from_col, model))
             .collect();
@@ -133,7 +129,7 @@ where
 
         let mut hashmap: BTreeMap<String, Vec<<R as EntityTrait>::Model>> =
             keys.iter()
-                .fold(BTreeMap::new(), |mut acc, key: &Vec<Value>| {
+                .fold(BTreeMap::new(), |mut acc, key: &ValueTuple| {
                     acc.insert(format!("{:?}", key), Vec::new());
 
                     acc
@@ -152,10 +148,9 @@ where
 
         let result: Vec<Vec<R::Model>> = keys
             .iter()
-            .map(|key: &Vec<Value>| {
+            .map(|key: &ValueTuple| {
                 hashmap
                     .remove(&format!("{:?}", key))
-                    .to_owned()
                     .expect("Failed to convert key to owned")
             })
             .collect();
@@ -164,7 +159,7 @@ where
     }
 }
 
-fn extract_key<Model>(target_col: &Identity, model: &Model) -> Vec<Value>
+fn extract_key<Model>(target_col: &Identity, model: &Model) -> ValueTuple
 where
     Model: ModelTrait,
     <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::Err: Debug,
@@ -176,7 +171,7 @@ where
                     &a.to_string(),
                 )
                 .expect("Failed at mapping string to column A:1");
-            vec![model.get(column_a)]
+            ValueTuple::One(model.get(column_a))
         }
         Identity::Binary(a, b) => {
             let column_a =
@@ -189,7 +184,7 @@ where
                     &b.to_string(),
                 )
                 .expect("Failed at mapping string to column B:2");
-            vec![model.get(column_a), model.get(column_b)]
+            ValueTuple::Two(model.get(column_a), model.get(column_b))
         }
         Identity::Ternary(a, b, c) => {
             let column_a =
@@ -207,16 +202,16 @@ where
                     &c.to_string(),
                 )
                 .expect("Failed at mapping string to column C:3");
-            vec![
+            ValueTuple::Three(
                 model.get(column_a),
                 model.get(column_b),
                 model.get(column_c),
-            ]
+            )
         }
     }
 }
 
-fn prepare_condition<M>(col: &Identity, keys: &Vec<Vec<Value>>) -> Condition
+fn prepare_condition<M>(col: &Identity, keys: &[ValueTuple]) -> Condition
 where
     M: ModelTrait,
     <<<M as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::Err: Debug,
@@ -228,9 +223,7 @@ where
                     .expect("Failed at mapping string to column *A:1");
             Condition::all().add(ColumnTrait::is_in(
                 &column_a,
-                keys.iter()
-                    .map(|key| key[0].clone())
-                    .collect::<Vec<Value>>(),
+                keys.iter().cloned().flatten(),
             ))
         }
         Identity::Binary(column_a, column_b) => {
@@ -245,11 +238,7 @@ where
                     SimpleExpr::Column(column_a.into_column_ref()),
                     SimpleExpr::Column(column_b.into_column_ref()),
                 ])
-                .in_tuples(
-                    keys.iter()
-                        .map(|key| ValueTuple::Two(key[0].clone(), key[1].clone()))
-                        .collect::<Vec<ValueTuple>>(),
-                ),
+                .in_tuples(keys.iter().cloned()),
             )
         }
         Identity::Ternary(column_a, column_b, column_c) => {
@@ -268,13 +257,7 @@ where
                     SimpleExpr::Column(column_b.into_column_ref()),
                     SimpleExpr::Column(column_c.into_column_ref()),
                 ])
-                .in_tuples(
-                    keys.iter()
-                        .map(|key| {
-                            ValueTuple::Three(key[0].clone(), key[1].clone(), key[2].clone())
-                        })
-                        .collect::<Vec<ValueTuple>>(),
-                ),
+                .in_tuples(keys.iter().cloned()),
             )
         }
     }
