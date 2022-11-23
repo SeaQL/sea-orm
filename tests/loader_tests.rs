@@ -141,7 +141,10 @@ async fn loader_load_many() -> Result<(), DbErr> {
         .expect("Should load bakeries");
 
     let bakers = bakeries
-        .load_many(baker::Entity::find().filter(baker::Column::Name.like("Baker%")), &ctx.db)
+        .load_many(
+            baker::Entity::find().filter(baker::Column::Name.like("Baker%")),
+            &ctx.db,
+        )
         .await
         .expect("Should load bakers");
 

@@ -290,27 +290,25 @@ mod tests {
         };
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![
-                vec![
-                    cake::Model {
-                        id: 1,
-                        name: "New York Cheese".to_owned(),
-                    }.into_mock_row(),
-                    cake::Model {
-                        id: 2,
-                        name: "London Cheese".to_owned(),
-                    }.into_mock_row()
-                ],
-            ])
+            .append_query_results(vec![vec![
+                cake::Model {
+                    id: 1,
+                    name: "New York Cheese".to_owned(),
+                }
+                .into_mock_row(),
+                cake::Model {
+                    id: 2,
+                    name: "London Cheese".to_owned(),
+                }
+                .into_mock_row(),
+            ]])
             .into_connection();
 
-        let fruits = vec![
-            fruit::Model {
-                id: 1,
-                name: "Apple".to_owned(),
-                cake_id: Some(1),
-            }
-        ];
+        let fruits = vec![fruit::Model {
+            id: 1,
+            name: "Apple".to_owned(),
+            cake_id: Some(1),
+        }];
 
         let cakes = fruits
             .load_one(cake::Entity::find(), &db)
@@ -319,14 +317,10 @@ mod tests {
 
         assert_eq!(
             cakes,
-            vec![
-                Some(
-                    cake::Model {
-                        id: 1,
-                        name: "New York Cheese".to_owned(),
-                    }
-                )
-            ]
+            vec![Some(cake::Model {
+                id: 1,
+                name: "New York Cheese".to_owned(),
+            })]
         );
     }
 
@@ -338,14 +332,12 @@ mod tests {
         };
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![
-                vec![fruit::Model {
-                    id: 1,
-                    name: "Apple".to_owned(),
-                    cake_id: Some(1),
-                }
-                .into_mock_row()],
-            ])
+            .append_query_results(vec![vec![fruit::Model {
+                id: 1,
+                name: "Apple".to_owned(),
+                cake_id: Some(1),
+            }
+            .into_mock_row()]])
             .into_connection();
 
         let cakes = vec![
