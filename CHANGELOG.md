@@ -17,12 +17,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Remove dependency when not needed https://github.com/SeaQL/sea-orm/pull/1213
 
-## 0.10.4 - Pending
+## 0.10.4 - 2022-11-24
 
 ### Bug Fixes
 
 * Fix DeriveActiveEnum expand enum variant starts with number https://github.com/SeaQL/sea-orm/pull/1219
 * [sea-orm-cli] Generate entity file for specified tables only https://github.com/SeaQL/sea-orm/pull/1245
+* Support appending `DbErr` to `MockDatabase` https://github.com/SeaQL/sea-orm/pull/1241
 
 ### Enhancements
 
