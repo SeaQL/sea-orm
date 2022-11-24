@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
 * Added `DatabaseConnection::close` https://github.com/SeaQL/sea-orm/pull/1236
+* Support appending `DbErr` to `MockDatabase` https://github.com/SeaQL/sea-orm/pull/1241
 
 ### House Keeping
 
