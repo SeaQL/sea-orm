@@ -15,7 +15,7 @@ rocket = { version = "0.5.0-rc.1", features = [
 
 [dependencies.sea-orm]
 path = "../../../" # remove this line in your own project
-version = "^0.10.3" # sea-orm version
+version = "^0.10.4" # sea-orm version
 
 [dependencies.rocket_okapi]
 version = "0.8.0-rc.2"
