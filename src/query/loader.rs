@@ -252,7 +252,6 @@ where
 #[cfg(test)]
 mod tests {
     #[tokio::test]
-
     async fn test_load_one() {
         use crate::{
             entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
@@ -294,7 +293,6 @@ mod tests {
     }
 
     #[tokio::test]
-
     async fn test_load_many() {
         use crate::{
             entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
