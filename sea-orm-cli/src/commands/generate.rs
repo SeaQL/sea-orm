@@ -57,7 +57,8 @@ pub async fn run_generate_command(
             let is_sqlite = url.scheme() == "sqlite";
 
             // Closures for filtering tables
-            let filter_tables = |table: &String| -> bool { tables.contains(table) };
+            let filter_tables =
+                |table: &String| -> bool { tables.is_empty() || tables.contains(table) };
 
             let filter_hidden_tables = |table: &str| -> bool {
                 if include_hidden_tables {
