@@ -10,10 +10,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Bug Fixes
 
 * Fix DeriveActiveEnum expand enum variant starts with number https://github.com/SeaQL/sea-orm/pull/1219
+* [sea-orm-cli] Generate entity file for specified tables only https://github.com/SeaQL/sea-orm/pull/1245
+* Support appending `DbErr` to `MockDatabase` https://github.com/SeaQL/sea-orm/pull/1241
 
 ### Enhancements
 
 * Filter rows with `IS IN` enum values expression https://github.com/SeaQL/sea-orm/pull/1183
+* [sea-orm-cli] Generate entity with relation variant order by name of reference table https://github.com/SeaQL/sea-orm/pull/1229
 
 ## 0.10.3 - 2022-11-14
 
