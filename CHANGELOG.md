@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Bug Fixes
 
 * Fix DeriveActiveEnum expand enum variant starts with number https://github.com/SeaQL/sea-orm/pull/1219
+* [sea-orm-cli] Generate entity file for specified tables only https://github.com/SeaQL/sea-orm/pull/1245
 
 ### Enhancements
 
