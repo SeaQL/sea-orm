@@ -2,14 +2,14 @@ use crate::{util::escape_rust_keyword, ActiveEnum, Entity};
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::BTreeMap, str::FromStr};
 use syn::{punctuated::Punctuated, token::Comma};
 use tracing::info;
 
 #[derive(Clone, Debug)]
 pub struct EntityWriter {
     pub(crate) entities: Vec<Entity>,
-    pub(crate) enums: HashMap<String, ActiveEnum>,
+    pub(crate) enums: BTreeMap<String, ActiveEnum>,
 }
 
 pub struct WriterOutput {
