@@ -69,6 +69,66 @@ async fn loader_load_one() -> Result<(), DbErr> {
     feature = "sqlx-sqlite",
     feature = "sqlx-postgres"
 ))]
+async fn loader_load_one_complex() -> Result<(), DbErr> {
+    let ctx = TestContext::new("loader_test_load_one").await;
+    create_tables(&ctx.db).await?;
+
+    let bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await
+    .expect("could not insert bakery");
+
+    let baker_1 = baker::ActiveModel {
+        name: Set("Baker 1".to_owned()),
+        contact_details: Set(serde_json::json!({
+            "mobile": "+61424000000",
+            "home": "0395555555",
+            "address": "12 Test St, Testville, Vic, Australia"
+        })),
+        bakery_id: Set(Some(bakery.id)),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await
+    .expect("could not insert baker");
+
+    let baker_2 = baker::ActiveModel {
+        name: Set("Baker 2".to_owned()),
+        contact_details: Set(serde_json::json!({})),
+        bakery_id: Set(Some(bakery.id)),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await
+    .expect("could not insert baker");
+
+    let bakers = baker::Entity::find()
+        .all(&ctx.db)
+        .await
+        .expect("Should load bakers");
+
+    let bakeries = bakers
+        .load_one(bakery::Entity::find(), &ctx.db)
+        .await
+        .expect("Should load bakeries");
+
+    assert_eq!(bakers, vec![baker_1, baker_2]);
+
+    assert_eq!(bakeries, vec![Some(bakery.clone()), Some(bakery.clone())]);
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 async fn loader_load_many() -> Result<(), DbErr> {
     let ctx = TestContext::new("loader_test_load_many").await;
     create_tables(&ctx.db).await?;

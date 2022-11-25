@@ -65,7 +65,7 @@ where
 
         let data = stmt.all(db).await?;
 
-        let mut hashmap: HashMap<String, <R as EntityTrait>::Model> = data.into_iter().fold(
+        let hashmap: HashMap<String, <R as EntityTrait>::Model> = data.into_iter().fold(
             HashMap::<String, <R as EntityTrait>::Model>::new(),
             |mut acc: HashMap<String, <R as EntityTrait>::Model>,
              value: <R as EntityTrait>::Model| {
@@ -81,7 +81,11 @@ where
 
         let result: Vec<Option<<R as EntityTrait>::Model>> = keys
             .iter()
-            .map(|key| hashmap.remove(&format!("{:?}", key)))
+            .map(|key| {
+                hashmap
+                    .get(&format!("{:?}", key))
+                    .and_then(|val| Some(val.clone()))
+            })
             .collect();
 
         Ok(result)
@@ -138,8 +142,9 @@ where
             .iter()
             .map(|key: &ValueTuple| {
                 hashmap
-                    .remove(&format!("{:?}", key))
-                    .expect("Failed to convert key to owned")
+                    .get(&format!("{:?}", key))
+                    .and_then(|val| Some(val.clone()))
+                    .unwrap_or_else(|| vec![])
             })
             .collect();
 
