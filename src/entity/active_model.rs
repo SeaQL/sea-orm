@@ -106,12 +106,12 @@ pub trait ActiveModelTrait: Clone + Debug {
     fn default() -> Self;
 
     /// Set fields of value [ActiveValue::Unchanged] as [ActiveValue::Set]
-    fn unchanged_value_into_set(&mut self, c: <Self::Entity as EntityTrait>::Column);
+    fn set_dirty(&mut self, c: <Self::Entity as EntityTrait>::Column);
 
     /// Set all fields of value [ActiveValue::Unchanged] as [ActiveValue::Set]
-    fn all_unchanged_value_into_set(mut self) -> Self {
+    fn set_all_dirty(mut self) -> Self {
         for col in <Self::Entity as EntityTrait>::Column::iter() {
-            self.unchanged_value_into_set(col);
+            self.set_dirty(col);
         }
         self
     }
@@ -832,7 +832,7 @@ where
     }
 
     /// Convert [ActiveValue::Unchanged] into [ActiveValue::Set]
-    pub fn unchanged_value_into_set(&mut self) {
+    pub fn set_dirty(&mut self) {
         *self = match self.take() {
             Some(value) => ActiveValue::Set(value),
             None => ActiveValue::NotSet,
@@ -1293,7 +1293,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unchanged_value_into_set_1() {
+    fn test_set_dirty_1() {
         assert_eq!(
             fruit::Model {
                 id: 1,
@@ -1315,7 +1315,7 @@ mod tests {
                 cake_id: None,
             }
             .into_active_model()
-            .all_unchanged_value_into_set(),
+            .set_all_dirty(),
             fruit::ActiveModel {
                 id: Set(1),
                 name: Set("Apple".into()),
@@ -1344,7 +1344,7 @@ mod tests {
                 cake_id: Some(2),
             }
             .into_active_model()
-            .all_unchanged_value_into_set(),
+            .set_all_dirty(),
             fruit::ActiveModel {
                 id: Set(1),
                 name: Set("Apple".into()),
@@ -1354,7 +1354,7 @@ mod tests {
     }
 
     #[smol_potat::test]
-    async fn test_unchanged_value_into_set_2() -> Result<(), DbErr> {
+    async fn test_set_dirty_2() -> Result<(), DbErr> {
         use crate::*;
 
         let db = MockDatabase::new(DbBackend::Postgres)
@@ -1397,7 +1397,7 @@ mod tests {
             cake_id: None,
         }
         .into_active_model()
-        .all_unchanged_value_into_set()
+        .set_all_dirty()
         .update(&db)
         .await?;
 
