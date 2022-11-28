@@ -135,9 +135,8 @@ impl EntityTransformer {
                 if rel.num_suffix > 0 {
                     continue;
                 }
-                let is_conjunct_relation = entity.primary_keys.len() == entity.columns.len()
-                    && entity.relations.len() == 2
-                    && entity.primary_keys.len() == 2;
+                let is_conjunct_relation =
+                    entity.relations.len() == 2 && entity.primary_keys.len() == 2;
                 match is_conjunct_relation {
                     true => {
                         let another_rel = entity.relations.get((i == 0) as usize).unwrap();
