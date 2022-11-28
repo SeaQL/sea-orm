@@ -32,6 +32,7 @@ futures = { version = "^0.3", default-features = false, features = ["std"] }
 log = { version = "^0.4", default-features = false }
 tracing = { version = "^0.1", default-features = false, features = ["attributes", "log"] }
 rust_decimal = { version = "^1", default-features = false, optional = true }
+bigdecimal = { version = "^0.3", default-features = false, optional = true }
 sea-orm-macros = { version = "^0.10.3", path = "sea-orm-macros", default-features = false, optional = true }
 sea-query = { version = "^0.27.2", features = ["thread-safe"] }
 sea-query-binder = { version = "^0.2.2", default-features = false, optional = true }
@@ -67,6 +68,7 @@ default = [
     "with-json",
     "with-chrono",
     "with-rust_decimal",
+    "with-bigdecimal",
     "with-uuid",
     "with-time",
 ]
@@ -75,6 +77,7 @@ mock = []
 with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "time?/serde", "uuid?/serde", "sea-query-binder?/with-json", "sqlx?/json"]
 with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-binder?/with-chrono", "sqlx?/chrono"]
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-binder?/with-rust_decimal", "sqlx?/decimal"]
+with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-binder?/with-bigdecimal", "sqlx?/bigdecimal"]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
 with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
 postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array", "sea-orm-macros?/postgres-array"]

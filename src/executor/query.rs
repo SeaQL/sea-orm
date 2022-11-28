@@ -359,6 +359,58 @@ impl TryGetable for Decimal {
     }
 }
 
+#[cfg(feature = "with-bigdecimal")]
+use bigdecimal::BigDecimal;
+
+#[cfg(feature = "with-bigdecimal")]
+impl TryGetable for BigDecimal {
+    #[allow(unused_variables)]
+    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
+        let column = format!("{}{}", pre, col);
+        match &res.row {
+            #[cfg(feature = "sqlx-mysql")]
+            QueryResultRow::SqlxMySql(row) => {
+                use sqlx::Row;
+                row.try_get::<Option<BigDecimal>, _>(column.as_str())
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => {
+                use sqlx::Row;
+                row.try_get::<Option<BigDecimal>, _>(column.as_str())
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            QueryResultRow::SqlxSqlite(row) => {
+                use sqlx::Row;
+                let val: Option<f64> = row
+                    .try_get(column.as_str())
+                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))?;
+                match val {
+                    Some(v) => BigDecimal::try_from(v).map_err(|e| {
+                        TryGetError::DbErr(DbErr::TryIntoErr {
+                            from: "f64",
+                            into: "BigDecimal",
+                            source: Box::new(e),
+                        })
+                    }),
+                    None => Err(TryGetError::Null(column)),
+                }
+            }
+            #[cfg(feature = "mock")]
+            #[allow(unused_variables)]
+            QueryResultRow::Mock(row) => row.try_get(column.as_str()).map_err(|e| {
+                debug_print!("{:#?}", e.to_string());
+                TryGetError::Null(column)
+            }),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[cfg(feature = "with-uuid")]
 try_getable_all!(uuid::Uuid);
 
@@ -488,6 +540,9 @@ mod postgres_array {
 
     #[cfg(feature = "with-rust_decimal")]
     try_getable_postgres_array!(rust_decimal::Decimal);
+
+    #[cfg(feature = "with-bigdecimal")]
+    try_getable_postgres_array!(bigdecimal::BigDecimal);
 
     #[cfg(feature = "with-uuid")]
     try_getable_postgres_array!(uuid::Uuid);

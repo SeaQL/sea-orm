@@ -41,6 +41,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_active_enum_table(db).await?;
     create_active_enum_child_table(db).await?;
     create_insert_default_table(db).await?;
+    create_pi_table(db).await?;
 
     if DbBackend::Postgres == db_backend {
         create_collection_table(db).await?;
@@ -382,4 +383,31 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &stmt, Collection).await
+}
+
+pub async fn create_pi_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(pi::Entity)
+        .col(
+            ColumnDef::new(pi::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(pi::Column::Decimal)
+                .decimal_len(11, 10)
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(pi::Column::BigDecimal)
+                .decimal_len(11, 10)
+                .not_null(),
+        )
+        .col(ColumnDef::new(pi::Column::DecimalOpt).decimal_len(11, 10))
+        .col(ColumnDef::new(pi::Column::BigDecimalOpt).decimal_len(11, 10))
+        .to_owned();
+
+    create_table(db, &stmt, Pi).await
 }
