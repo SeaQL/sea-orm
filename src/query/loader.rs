@@ -81,11 +81,7 @@ where
 
         let result: Vec<Option<<R as EntityTrait>::Model>> = keys
             .iter()
-            .map(|key| {
-                hashmap
-                    .get(&format!("{:?}", key))
-                    .and_then(|val| Some(val.clone()))
-            })
+            .map(|key| hashmap.get(&format!("{:?}", key)).cloned())
             .collect();
 
         Ok(result)
@@ -143,8 +139,8 @@ where
             .map(|key: &ValueTuple| {
                 hashmap
                     .get(&format!("{:?}", key))
-                    .and_then(|val| Some(val.clone()))
-                    .unwrap_or_else(|| vec![])
+                    .cloned()
+                    .unwrap_or_default()
             })
             .collect();
 
