@@ -43,11 +43,13 @@ impl Schema {
 
     /// Creates a column definition for example to update a table.
     /// ```
-    /// use sea_query::{MysqlQueryBuilder, TableAlterStatement};
-    /// use sea_orm::{ActiveModelBehavior, ColumnDef, ColumnTrait, ColumnType, DbBackend,     
-    ///  EntityName, EntityTrait, EnumIter, PrimaryKeyTrait, RelationDef, RelationTrait, Schema};
-    /// use sea_orm_macros::{DeriveEntityModel, DerivePrimaryKey};
     /// use crate::sea_orm::IdenStatic;
+    /// use sea_orm::{
+    ///     ActiveModelBehavior, ColumnDef, ColumnTrait, ColumnType, DbBackend, EntityName,
+    ///     EntityTrait, EnumIter, PrimaryKeyTrait, RelationDef, RelationTrait, Schema,
+    /// };
+    /// use sea_orm_macros::{DeriveEntityModel, DerivePrimaryKey};
+    /// use sea_query::{MysqlQueryBuilder, TableAlterStatement};
     ///
     /// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
     /// #[sea_orm(table_name = "posts")]
@@ -70,7 +72,8 @@ impl Schema {
     ///
     /// let mut alter_table = TableAlterStatement::new()
     ///     .table(Entity)
-    ///     .add_column(&mut schema.get_column_def::<Entity>(Column::Title)).take();
+    ///     .add_column(&mut schema.get_column_def::<Entity>(Column::Title))
+    ///     .take();
     /// assert_eq!(
     ///     alter_table.to_string(MysqlQueryBuilder::default()),
     ///     "ALTER TABLE `posts` ADD COLUMN `title` varchar(255) NOT NULL"
