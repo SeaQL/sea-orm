@@ -214,21 +214,21 @@ impl TransactionTrait for DatabaseConnection {
     #[instrument(level = "trace")]
     async fn begin_with_config(
         &self,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        _isolation_level: Option<IsolationLevel>,
+        _access_mode: Option<AccessMode>,
     ) -> Result<DatabaseTransaction, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => {
-                conn.begin(isolation_level, access_mode).await
+                conn.begin(_isolation_level, _access_mode).await
             }
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
-                conn.begin(isolation_level, access_mode).await
+                conn.begin(_isolation_level, _access_mode).await
             }
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => {
-                conn.begin(isolation_level, access_mode).await
+                conn.begin(_isolation_level, _access_mode).await
             }
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => {
@@ -280,8 +280,8 @@ impl TransactionTrait for DatabaseConnection {
     async fn transaction_with_config<F, T, E>(
         &self,
         _callback: F,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
+        _isolation_level: Option<IsolationLevel>,
+        _access_mode: Option<AccessMode>,
     ) -> Result<T, TransactionError<E>>
     where
         F: for<'c> FnOnce(
@@ -294,17 +294,17 @@ impl TransactionTrait for DatabaseConnection {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => {
-                conn.transaction(_callback, isolation_level, access_mode)
+                conn.transaction(_callback, _isolation_level, _access_mode)
                     .await
             }
             #[cfg(feature = "sqlx-postgres")]
             DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
-                conn.transaction(_callback, isolation_level, access_mode)
+                conn.transaction(_callback, _isolation_level, _access_mode)
                     .await
             }
             #[cfg(feature = "sqlx-sqlite")]
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => {
-                conn.transaction(_callback, isolation_level, access_mode)
+                conn.transaction(_callback, _isolation_level, _access_mode)
                     .await
             }
             #[cfg(feature = "mock")]
