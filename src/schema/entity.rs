@@ -1,10 +1,10 @@
 use crate::{
-    unpack_table_ref, ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, Identity,
-    Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
+    ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, Iterable, PrimaryKeyToColumn,
+    PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
-    ColumnDef, ForeignKeyCreateStatement, Iden, Index, IndexCreateStatement, TableCreateStatement,
+    ColumnDef, Iden, Index, IndexCreateStatement, TableCreateStatement,
 };
 
 impl Schema {
@@ -179,52 +179,7 @@ where
         if relation.is_owner {
             continue;
         }
-        let mut foreign_key_stmt = ForeignKeyCreateStatement::new();
-        let from_tbl = unpack_table_ref(&relation.from_tbl);
-        let to_tbl = unpack_table_ref(&relation.to_tbl);
-        let from_cols: Vec<String> = match relation.from_col {
-            Identity::Unary(o1) => vec![o1],
-            Identity::Binary(o1, o2) => vec![o1, o2],
-            Identity::Ternary(o1, o2, o3) => vec![o1, o2, o3],
-        }
-        .into_iter()
-        .map(|col| {
-            let col_name = col.to_string();
-            foreign_key_stmt.from_col(col);
-            col_name
-        })
-        .collect();
-        match relation.to_col {
-            Identity::Unary(o1) => {
-                foreign_key_stmt.to_col(o1);
-            }
-            Identity::Binary(o1, o2) => {
-                foreign_key_stmt.to_col(o1);
-                foreign_key_stmt.to_col(o2);
-            }
-            Identity::Ternary(o1, o2, o3) => {
-                foreign_key_stmt.to_col(o1);
-                foreign_key_stmt.to_col(o2);
-                foreign_key_stmt.to_col(o3);
-            }
-        }
-        if let Some(action) = relation.on_delete {
-            foreign_key_stmt.on_delete(action);
-        }
-        if let Some(action) = relation.on_update {
-            foreign_key_stmt.on_update(action);
-        }
-        let name = if let Some(name) = relation.fk_name {
-            name
-        } else {
-            format!("fk-{}-{}", from_tbl.to_string(), from_cols.join("-"))
-        };
-        stmt.foreign_key(
-            foreign_key_stmt
-                .name(&name)
-                .from_tbl(from_tbl)
-                .to_tbl(to_tbl),
-        );
+        stmt.foreign_key(&mut relation.into());
     }
 
     stmt.table(entity.table_ref()).take()
