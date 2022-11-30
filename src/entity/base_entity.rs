@@ -4,11 +4,10 @@ use crate::{
     RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
 };
 use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
-use std::fmt::Debug;
 pub use strum::IntoEnumIterator as Iterable;
 
 /// Ensure the identifier for an Entity can be converted to a static str
-pub trait IdenStatic: Iden + Copy + Debug + 'static {
+pub trait IdenStatic: Iden + Copy + 'static {
     /// Method to call to get the static string identity
     fn as_str(&self) -> &str;
 }
