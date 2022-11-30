@@ -347,7 +347,7 @@ impl EntityWriter {
         };
         let table_name = entity.table_name.as_str();
         let table_name = quote! {
-            fn table_name(&self) -> &str {
+            fn table_name(&self) -> &'static str {
                 #table_name
             }
         };

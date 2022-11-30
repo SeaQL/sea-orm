@@ -24,7 +24,7 @@ pub enum Column {
 
 // Then, customize each column names here.
 impl IdenStatic for Column {
-    fn as_str(&self) -> &str {
+    fn as_str(&self) -> &'static str {
         match self {
             // Override column names
             Self::Id => "id",
