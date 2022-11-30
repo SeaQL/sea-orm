@@ -76,7 +76,7 @@ impl DeriveEntity {
                     #expanded_schema_name
                 }
 
-                fn table_name(&self) -> &str {
+                fn table_name(&self) -> &'static str {
                     #table_name
                 }
             }
@@ -126,7 +126,7 @@ impl DeriveEntity {
         quote!(
             #[automatically_derived]
             impl sea_orm::IdenStatic for #ident {
-                fn as_str(&self) -> &str {
+                fn as_str(&self) -> &'static str {
                     <Self as sea_orm::EntityName>::table_name(self)
                 }
             }

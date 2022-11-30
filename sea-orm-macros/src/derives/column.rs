@@ -62,7 +62,7 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
     Ok(quote!(
         #[automatically_derived]
         impl #ident {
-            fn default_as_str(&self) -> &str {
+            fn default_as_str(&self) -> &'static str {
                 match self {
                     #(Self::#variant => #name),*
                 }
@@ -114,7 +114,7 @@ pub fn expand_derive_column(ident: &Ident, data: &Data) -> syn::Result<TokenStre
 
         #[automatically_derived]
         impl sea_orm::IdenStatic for #ident {
-            fn as_str(&self) -> &str {
+            fn as_str(&self) -> &'static str {
                 self.default_as_str()
             }
         }

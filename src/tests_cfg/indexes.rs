@@ -10,7 +10,7 @@ impl EntityName for Entity {
         Some("public")
     }
 
-    fn table_name(&self) -> &str {
+    fn table_name(&self) -> &'static str {
         "indexes"
     }
 }

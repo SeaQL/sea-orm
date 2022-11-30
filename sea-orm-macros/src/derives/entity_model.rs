@@ -52,7 +52,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         #schema_name
                     }
 
-                    fn table_name(&self) -> &str {
+                    fn table_name(&self) -> &'static str {
                         #table_name
                     }
                 }

@@ -18,7 +18,7 @@ mod util;
 /// pub struct Entity;
 ///
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }
@@ -169,7 +169,7 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
 /// # pub struct Entity;
 /// #
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }
@@ -266,7 +266,7 @@ pub fn derive_column(input: TokenStream) -> TokenStream {
 /// }
 ///
 /// impl IdenStatic for Column {
-///     fn as_str(&self) -> &str {
+///     fn as_str(&self) -> &'static str {
 ///         match self {
 ///             Self::Id => "id",
 ///             _ => self.default_as_str(),
@@ -303,7 +303,7 @@ pub fn derive_custom_column(input: TokenStream) -> TokenStream {
 /// # pub struct Entity;
 /// #
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }
@@ -375,7 +375,7 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 /// # pub struct Entity;
 /// #
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }
@@ -459,7 +459,7 @@ pub fn derive_into_active_model(input: TokenStream) -> TokenStream {
 /// # pub struct Entity;
 /// #
 /// # impl EntityName for Entity {
-/// #     fn table_name(&self) -> &str {
+/// #     fn table_name(&self) -> &'static str {
 /// #         "cake"
 /// #     }
 /// # }

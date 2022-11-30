@@ -7,7 +7,7 @@ use serde::Deserialize;
 pub struct Entity;
 
 impl EntityName for Entity {
-    fn table_name(&self) -> &str {
+    fn table_name(&self) -> &'static str {
         "cake"
     }
 }

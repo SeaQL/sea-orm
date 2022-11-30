@@ -70,7 +70,7 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
 
         #[automatically_derived]
         impl sea_orm::IdenStatic for #ident {
-            fn as_str(&self) -> &str {
+            fn as_str(&self) -> &'static str {
                 match self {
                     #(Self::#variant => #name),*
                 }
