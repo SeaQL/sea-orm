@@ -224,20 +224,21 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         });
                     }
 
+                    let field_type = &field.ty;
+                    let field_type = quote! { #field_type }
+                        .to_string() //E.g.: "Option < String >"
+                        .replace(' ', ""); // Remove spaces
+                    let field_type = if field_type.starts_with("Option<") {
+                        nullable = true;
+                        &field_type[7..(field_type.len() - 1)] // Extract `T` out of `Option<T>`
+                    } else {
+                        field_type.as_str()
+                    };
+
                     let col_type = match sql_type {
                         Some(t) => quote! { sea_orm::prelude::ColumnType::#t.def() },
                         None => {
-                            let field_type = &field.ty;
-                            let temp = quote! { #field_type }
-                                .to_string() //E.g.: "Option < String >"
-                                .replace(' ', "");
-                            let temp = if temp.starts_with("Option<") {
-                                nullable = true;
-                                &temp[7..(temp.len() - 1)]
-                            } else {
-                                temp.as_str()
-                            };
-                            let col_type = match temp {
+                            let col_type = match field_type {
                                 "char" => quote! { Char(None) },
                                 "String" | "&str" => quote! { String(None) },
                                 "i8" => quote! { TinyInteger },
@@ -270,7 +271,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             };
                             if col_type.is_empty() {
                                 let field_span = field.span();
-                                let ty: Type = LitStr::new(temp, field_span).parse()?;
+                                let ty: Type = LitStr::new(field_type, field_span).parse()?;
                                 let def = quote_spanned! { field_span => {
                                     std::convert::Into::<sea_orm::ColumnType>::into(
                                         <#ty as sea_orm::sea_query::ValueType>::column_type()
