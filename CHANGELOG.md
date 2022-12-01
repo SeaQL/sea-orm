@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * `DeriveEnriryModel` derive macro: when parsing field type, always treat field with `Option<T>` as nullable column https://github.com/SeaQL/sea-orm/pull/1257
 
+### Enhancements
+
+*  [sea-orm-cli] Generate `Related` implementation for many-to-many relation with extra columns https://github.com/SeaQL/sea-orm/pull/1260
+
 ## 0.10.4 - 2022-11-24
 
 ### Bug Fixes
