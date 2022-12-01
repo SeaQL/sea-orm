@@ -733,42 +733,42 @@ where
     #[allow(unused_variables, unreachable_code)]
     fn try_get_from_json(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
         let column = format!("{}{}", pre, col);
-        let res: Result<_, _> = match &res.row {
+        match &res.row {
             #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(row) => {
                 use sqlx::Row;
-                row.try_get::<Option<serde_json::Value>, _>(column.as_str())
+                row.try_get::<Option<sqlx::types::Json<Self>>, _>(column.as_str())
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
-                    .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null(column)).map(|json| json.0))
             }
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => {
                 use sqlx::Row;
-                row.try_get::<Option<serde_json::Value>, _>(column.as_str())
+                row.try_get::<Option<sqlx::types::Json<Self>>, _>(column.as_str())
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
-                    .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null(column)).map(|json| json.0))
             }
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => {
                 use sqlx::Row;
-                row.try_get::<Option<serde_json::Value>, _>(column.as_str())
+                row.try_get::<Option<sqlx::types::Json<Self>>, _>(column.as_str())
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
-                    .and_then(|opt| opt.ok_or(TryGetError::Null(column)))
+                    .and_then(|opt| opt.ok_or(TryGetError::Null(column)).map(|json| json.0))
             }
             #[cfg(feature = "mock")]
-            QueryResultRow::Mock(row) => {
-                row.try_get::<serde_json::Value>(column.as_str())
-                    .map_err(|e| {
-                        debug_print!("{:#?}", e.to_string());
-                        TryGetError::Null(column)
-                    })
-            }
+            QueryResultRow::Mock(row) => row
+                .try_get::<serde_json::Value>(column.as_str())
+                .map_err(|e| {
+                    debug_print!("{:#?}", e.to_string());
+                    TryGetError::Null(column)
+                })
+                .and_then(|json| {
+                    serde_json::from_value(json)
+                        .map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))
+                }),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
-        };
-        res.and_then(|json| {
-            serde_json::from_value(json).map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))
-        })
+        }
     }
 }
 
