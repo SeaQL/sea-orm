@@ -97,6 +97,72 @@ pub trait QuerySelect: Sized {
         self
     }
 
+    /// Select columns
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .columns([cake::Column::Id, cake::Column::Name])
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake""#
+    /// );
+    /// ```
+    ///
+    /// Conditionally select all columns expect a specific column
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .columns(cake::Column::iter().filter(|col| match col {
+    ///             cake::Column::Id => false,
+    ///             _ => true,
+    ///         }))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."name" FROM "cake""#
+    /// );
+    /// ```
+    ///
+    /// Enum column will be casted into text (PostgreSQL only)
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::lunch_set, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     lunch_set::Entity::find()
+    ///         .select_only()
+    ///         .columns([lunch_set::Column::Name, lunch_set::Column::Tea])
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "lunch_set"."name", CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    /// );
+    /// assert_eq!(
+    ///     lunch_set::Entity::find()
+    ///         .select_only()
+    ///         .columns([lunch_set::Column::Name, lunch_set::Column::Tea])
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     r#"SELECT `lunch_set`.`name`, `lunch_set`.`tea` FROM `lunch_set`"#
+    /// );
+    /// ```
+    fn columns<C, I>(mut self, cols: I) -> Self
+    where
+        C: ColumnTrait,
+        I: IntoIterator<Item = C>,
+    {
+        for col in cols.into_iter() {
+            self = self.column(col);
+        }
+        self
+    }
+
     /// Add an offset expression
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
