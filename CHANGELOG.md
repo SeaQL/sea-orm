@@ -18,9 +18,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.10.5 - Pending
 
+### New Features
+
+* Supports `bigdecimal::BigDecimal` https://github.com/SeaQL/sea-orm/pull/1258
+
 ### Bug Fixes
 
-* `DeriveEnriryModel` derive macro: when parsing field type, always treat field with `Option<T>` as nullable column
+* `DeriveEnriryModel` derive macro: when parsing field type, always treat field with `Option<T>` as nullable column https://github.com/SeaQL/sea-orm/pull/1257
 
 ## 0.10.4 - 2022-11-24
 
