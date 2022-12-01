@@ -45,6 +45,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     if DbBackend::Postgres == db_backend {
         create_collection_table(db).await?;
+        create_event_trigger_table(db).await?;
     }
 
     Ok(())
@@ -410,4 +411,24 @@ pub async fn create_pi_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &stmt, Pi).await
+}
+
+pub async fn create_event_trigger_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(event_trigger::Entity)
+        .col(
+            ColumnDef::new(event_trigger::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(event_trigger::Column::Events)
+                .array(sea_query::ColumnType::String(None))
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, EventTrigger).await
 }
