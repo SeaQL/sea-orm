@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.10.5 - 2022-12-02
+
+### New Features
+
+* Add `QuerySelect::columns` method - select multiple columns https://github.com/SeaQL/sea-orm/pull/1264
+* Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
+
+### Bug Fixes
+
+* `DeriveEnriryModel` derive macro: when parsing field type, always treat field with `Option<T>` as nullable column https://github.com/SeaQL/sea-orm/pull/1257
+
+### Enhancements
+
+* [sea-orm-cli] Generate `Related` implementation for many-to-many relation with extra columns https://github.com/SeaQL/sea-orm/pull/1260
+* Optimize the default implementation of `TryGetableFromJson::try_get_from_json()` - deserializing into `Self` directly without the need of a intermediate `serde_json::Value` https://github.com/SeaQL/sea-orm/pull/1249
+
 ## 0.10.4 - 2022-11-24
 
 ### Bug Fixes
