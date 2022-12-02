@@ -2,16 +2,17 @@ use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
+    pool::PoolConnection,
     sqlite::{SqliteConnectOptions, SqliteQueryResult, SqliteRow},
     Sqlite, SqlitePool,
 };
 
 use sea_query_binder::SqlxValues;
-use tracing::instrument;
+use tracing::{instrument, warn};
 
 use crate::{
-    debug_print, error::*, executor::*, ConnectOptions, DatabaseConnection, DatabaseTransaction,
-    QueryStream, Statement, TransactionError,
+    debug_print, error::*, executor::*, AccessMode, ConnectOptions, DatabaseConnection,
+    DatabaseTransaction, IsolationLevel, QueryStream, Statement, TransactionError,
 };
 
 use super::sqlx_common::*;
@@ -157,9 +158,19 @@ impl SqlxSqlitePoolConnection {
 
     /// Bundle a set of SQL statements that execute together.
     #[instrument(level = "trace")]
-    pub async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
+    pub async fn begin(
+        &self,
+        isolation_level: Option<IsolationLevel>,
+        access_mode: Option<AccessMode>,
+    ) -> Result<DatabaseTransaction, DbErr> {
         if let Ok(conn) = self.pool.acquire().await {
-            DatabaseTransaction::new_sqlite(conn, self.metric_callback.clone()).await
+            DatabaseTransaction::new_sqlite(
+                conn,
+                self.metric_callback.clone(),
+                isolation_level,
+                access_mode,
+            )
+            .await
         } else {
             Err(DbErr::ConnectionAcquire)
         }
@@ -167,7 +178,12 @@ impl SqlxSqlitePoolConnection {
 
     /// Create a MySQL transaction
     #[instrument(level = "trace", skip(callback))]
-    pub async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
+    pub async fn transaction<F, T, E>(
+        &self,
+        callback: F,
+        isolation_level: Option<IsolationLevel>,
+        access_mode: Option<AccessMode>,
+    ) -> Result<T, TransactionError<E>>
     where
         F: for<'b> FnOnce(
                 &'b DatabaseTransaction,
@@ -177,9 +193,14 @@ impl SqlxSqlitePoolConnection {
         E: std::error::Error + Send,
     {
         if let Ok(conn) = self.pool.acquire().await {
-            let transaction = DatabaseTransaction::new_sqlite(conn, self.metric_callback.clone())
-                .await
-                .map_err(|e| TransactionError::Connection(e))?;
+            let transaction = DatabaseTransaction::new_sqlite(
+                conn,
+                self.metric_callback.clone(),
+                isolation_level,
+                access_mode,
+            )
+            .await
+            .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
             Err(TransactionError::Connection(DbErr::ConnectionAcquire))
@@ -221,4 +242,18 @@ pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, Sqlite, Sql
         .as_ref()
         .map_or(Values(Vec::new()), |values| values.clone());
     sqlx::query_with(&stmt.sql, SqlxValues(values))
+}
+
+pub(crate) async fn set_transaction_config(
+    _conn: &mut PoolConnection<Sqlite>,
+    isolation_level: Option<IsolationLevel>,
+    access_mode: Option<AccessMode>,
+) -> Result<(), DbErr> {
+    if isolation_level.is_some() {
+        warn!("Setting isolation level in a SQLite transaction isn't supported");
+    }
+    if access_mode.is_some() {
+        warn!("Setting access mode in a SQLite transaction isn't supported");
+    }
+    Ok(())
 }
