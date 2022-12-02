@@ -24,7 +24,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
-* Supports `bigdecimal::BigDecimal` https://github.com/SeaQL/sea-orm/pull/1258
 * Add `QuerySelect::columns` method - select multiple columns https://github.com/SeaQL/sea-orm/pull/1264
 * Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
 
