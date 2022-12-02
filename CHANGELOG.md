@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.11.0 - Pending
 
+### New Features
+
+* Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
+
 ### Enhancements
 
 * Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
@@ -16,12 +20,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Remove dependency when not needed https://github.com/SeaQL/sea-orm/pull/1213
 
-## 0.10.5 - Pending
+## 0.10.5 - 2022-12-02
 
 ### New Features
 
 * Supports `bigdecimal::BigDecimal` https://github.com/SeaQL/sea-orm/pull/1258
 * Add `QuerySelect::columns` method - select multiple columns https://github.com/SeaQL/sea-orm/pull/1264
+* Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
 
 ### Bug Fixes
 
