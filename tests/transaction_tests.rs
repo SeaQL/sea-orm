@@ -692,3 +692,92 @@ pub async fn transaction_nested() {
 
     ctx.delete().await;
 }
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
+pub async fn transaction_with_config() {
+    let ctx = TestContext::new("transaction_with_config").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    for (i, (isolation_level, access_mode)) in [
+        (IsolationLevel::RepeatableRead, None),
+        (IsolationLevel::ReadCommitted, None),
+        (IsolationLevel::ReadUncommitted, Some(AccessMode::ReadWrite)),
+        (IsolationLevel::Serializable, Some(AccessMode::ReadWrite)),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let name1 = format!("SeaSide Bakery {}", i);
+        let name2 = format!("Top Bakery {}", i);
+        let search_name = format!("Bakery {}", i);
+        ctx.db
+            .transaction_with_config(
+                |txn| _transaction_with_config(txn, name1, name2, search_name),
+                Some(isolation_level),
+                access_mode,
+            )
+            .await
+            .unwrap();
+    }
+
+    ctx.db
+        .transaction_with_config::<_, _, DbErr>(
+            |txn| {
+                Box::pin(async move {
+                    let bakeries = Bakery::find()
+                        .filter(bakery::Column::Name.contains("Bakery"))
+                        .all(txn)
+                        .await?;
+
+                    assert_eq!(bakeries.len(), 8);
+
+                    Ok(())
+                })
+            },
+            None,
+            Some(AccessMode::ReadOnly),
+        )
+        .await
+        .unwrap();
+
+    ctx.delete().await;
+}
+
+fn _transaction_with_config<'a>(
+    txn: &'a DatabaseTransaction,
+    name1: String,
+    name2: String,
+    search_name: String,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), DbErr>> + Send + 'a>> {
+    Box::pin(async move {
+        let _ = bakery::ActiveModel {
+            name: Set(name1),
+            profit_margin: Set(10.4),
+            ..Default::default()
+        }
+        .save(txn)
+        .await?;
+
+        let _ = bakery::ActiveModel {
+            name: Set(name2),
+            profit_margin: Set(15.0),
+            ..Default::default()
+        }
+        .save(txn)
+        .await?;
+
+        let bakeries = Bakery::find()
+            .filter(bakery::Column::Name.contains(&search_name))
+            .all(txn)
+            .await?;
+
+        assert_eq!(bakeries.len(), 2);
+
+        Ok(())
+    })
+}
