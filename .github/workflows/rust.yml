@@ -464,4 +464,4 @@ jobs:
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
       - run: cargo test --test '*' --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --manifest-path sea-or m-migration/Cargo.toml--test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
