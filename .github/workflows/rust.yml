@@ -417,7 +417,7 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-mysql-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --test '*'--features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features default,sqlx-mysql,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
 
   postgres:
     name: Postgres
@@ -463,5 +463,5 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --test '*'--features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --manifest-path sea-or m-migration/Cargo.toml--test '*'--features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --manifest-path sea-or m-migration/Cargo.toml--test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
