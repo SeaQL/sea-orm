@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Remove dependency when not needed https://github.com/SeaQL/sea-orm/pull/1213
 
+### Bug Fixes
+
+* Fixes `DeriveColumn` (by qualifying `IdenStatic::as_str`) https://github.com/SeaQL/sea-orm/pull/1280
+
 ## 0.10.5 - 2022-12-02
 
 ### New Features
