@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
 * Added `DatabaseConnection::close` https://github.com/SeaQL/sea-orm/pull/1236
 
+### Upgrades
+
+* Upgrade `axum` to `0.6.1` https://github.com/SeaQL/sea-orm/pull/1285
+
 ### House Keeping
 
 * Remove dependency when not needed https://github.com/SeaQL/sea-orm/pull/1213
