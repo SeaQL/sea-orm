@@ -296,7 +296,7 @@ mod tests {
             make_col!("CakeId", ColumnType::TinyUnsigned),
             make_col!("CakeId", ColumnType::SmallInteger),
             make_col!("CakeId", ColumnType::SmallUnsigned),
-            make_col!("CakeId", ColumnType::Integer(None)),
+            make_col!("CakeId", ColumnType::Integer),
             make_col!("CakeId", ColumnType::Unsigned),
             make_col!("CakeFillingId", ColumnType::BigInteger),
             make_col!("CakeFillingId", ColumnType::BigUnsigned),
