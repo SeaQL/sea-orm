@@ -48,7 +48,7 @@ where
         V: IntoValueTuple,
     {
         let condition = self.apply_filter(values, |c, v| {
-            Expr::tbl(SeaRc::clone(&self.table), SeaRc::clone(c)).lt(v)
+            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c))).lt(v)
         });
         self.query.cond_where(condition);
         self
@@ -60,7 +60,7 @@ where
         V: IntoValueTuple,
     {
         let condition = self.apply_filter(values, |c, v| {
-            Expr::tbl(SeaRc::clone(&self.table), SeaRc::clone(c)).gt(v)
+            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c))).gt(v)
         });
         self.query.cond_where(condition);
         self
@@ -76,20 +76,28 @@ where
             (Identity::Binary(c1, c2), ValueTuple::Two(v1, v2)) => Condition::any()
                 .add(
                     Condition::all()
-                        .add(Expr::tbl(SeaRc::clone(&self.table), SeaRc::clone(c1)).eq(v1.clone()))
+                        .add(
+                            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c1))).eq(v1.clone()),
+                        )
                         .add(f(c2, v2)),
                 )
                 .add(f(c1, v1)),
             (Identity::Ternary(c1, c2, c3), ValueTuple::Three(v1, v2, v3)) => Condition::any()
                 .add(
                     Condition::all()
-                        .add(Expr::tbl(SeaRc::clone(&self.table), SeaRc::clone(c1)).eq(v1.clone()))
-                        .add(Expr::tbl(SeaRc::clone(&self.table), SeaRc::clone(c2)).eq(v2.clone()))
+                        .add(
+                            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c1))).eq(v1.clone()),
+                        )
+                        .add(
+                            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c2))).eq(v2.clone()),
+                        )
                         .add(f(c3, v3)),
                 )
                 .add(
                     Condition::all()
-                        .add(Expr::tbl(SeaRc::clone(&self.table), SeaRc::clone(c1)).eq(v1.clone()))
+                        .add(
+                            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c1))).eq(v1.clone()),
+                        )
                         .add(f(c2, v2)),
                 )
                 .add(f(c1, v1)),

@@ -370,10 +370,10 @@ mod tests {
         assert_eq!(paginator.fetch_page(2).await?, pages[2].clone());
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
@@ -402,10 +402,10 @@ mod tests {
         assert_eq!(paginator.fetch_page(2).await?, pages[2].clone());
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
@@ -436,10 +436,10 @@ mod tests {
         assert_eq!(paginator.fetch().await?, pages[2].clone());
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
@@ -472,10 +472,10 @@ mod tests {
         assert_eq!(paginator.fetch().await?, pages[2].clone());
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
@@ -503,10 +503,10 @@ mod tests {
         assert_eq!(paginator.num_pages().await?, num_pages);
 
         let sub_query = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
@@ -537,10 +537,10 @@ mod tests {
         assert_eq!(paginator.num_pages().await?, num_pages);
 
         let sub_query = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
@@ -607,10 +607,10 @@ mod tests {
         assert_eq!(paginator.fetch_and_next().await?, None);
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
@@ -644,10 +644,10 @@ mod tests {
         assert_eq!(paginator.fetch_and_next().await?, None);
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
@@ -676,10 +676,10 @@ mod tests {
         drop(fruit_stream);
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
@@ -711,10 +711,10 @@ mod tests {
         drop(fruit_stream);
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
@@ -753,9 +753,9 @@ mod tests {
 
         let mut select = SelectStatement::new()
             .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+                Expr::col((fruit::Entity, fruit::Column::Id)).
+                Expr::col((fruit::Entity, fruit::Column::Name)).
+                Expr::col((fruit::Entity, fruit::Column::CakeId)).
             ])
             .from(fruit::Entity)
             .to_owned();

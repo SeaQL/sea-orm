@@ -95,10 +95,10 @@ where
         let mut select_two = SelectTwo::new_without_prepare(slf.query);
         for col in <T::Column as Iterable>::iter() {
             let alias = format!("{}{}", SelectB.as_str(), col.as_str());
-            let expr = Expr::tbl(
+            let expr = Expr::col((
                 Alias::new(&format!("r{}", l.link().len() - 1)).into_iden(),
                 col.into_iden(),
-            );
+            ));
             select_two.query().expr(SelectExpr {
                 expr: cast_enum_as_text(expr, &col),
                 alias: Some(SeaRc::new(Alias::new(&alias))),
@@ -505,7 +505,7 @@ mod tests {
         assert_eq!(
             cake::Entity::find()
                 .column_as(
-                    Expr::tbl(Alias::new("fruit_alias"), fruit::Column::Name).into_simple_expr(),
+                    Expr::col((Alias::new("fruit_alias"), fruit::Column::Name)).into(),
                     "fruit_name"
                 )
                 .join_as(
@@ -534,7 +534,7 @@ mod tests {
         assert_eq!(
             cake::Entity::find()
                 .column_as(
-                    Expr::tbl(Alias::new("cake_filling_alias"), cake_filling::Column::CakeId).into_simple_expr(),
+                    Expr::col((Alias::new("cake_filling_alias"), cake_filling::Column::CakeId)).into(),
                     "cake_filling_cake_id"
                 )
                 .join(JoinType::LeftJoin, cake::Relation::TropicalFruit.def())
