@@ -752,10 +752,10 @@ mod tests {
         drop(fruit_stream);
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::col((fruit::Entity, fruit::Column::Id)).
-                Expr::col((fruit::Entity, fruit::Column::Name)).
-                Expr::col((fruit::Entity, fruit::Column::CakeId)).
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();

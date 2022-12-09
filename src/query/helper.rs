@@ -215,7 +215,7 @@ pub trait QuerySelect: Sized {
     where
         C: IntoSimpleExpr,
     {
-        self.query().add_group_by(vec![col.into_simple_expr()]);
+        self.query().add_group_by([col.into_simple_expr()]);
         self
     }
 
