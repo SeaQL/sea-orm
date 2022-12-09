@@ -184,7 +184,7 @@ impl RelationDef {
     ///                 .def()
     ///                 .rev()
     ///                 .on_condition(|_left, right| {
-    ///                     Expr::tbl(right, cake_filling::Column::CakeId)
+    ///                     Expr::col((right, cake_filling::Column::CakeId))
     ///                         .gt(10i32)
     ///                         .into_condition()
     ///                 })

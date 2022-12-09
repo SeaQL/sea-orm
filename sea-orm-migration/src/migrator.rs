@@ -387,7 +387,7 @@ fn query_pg_types(db: &DbConn) -> SelectStatement {
         .join(
             JoinType::LeftJoin,
             PgNamespace::Table,
-            Expr::tbl(PgNamespace::Table, PgNamespace::Oid)
+            Expr::col((PgNamespace::Table, PgNamespace::Oid))
                 .equals(PgType::Table, PgType::Typnamespace),
         )
         .cond_where(
@@ -396,7 +396,7 @@ fn query_pg_types(db: &DbConn) -> SelectStatement {
                     Expr::expr(get_current_schema(db))
                         .equals(PgNamespace::Table, PgNamespace::Nspname),
                 )
-                .add(Expr::tbl(PgType::Table, PgType::Typelem).eq(0)),
+                .add(Expr::col((PgType::Table, PgType::Typelem).eq(0))),
         );
     stmt
 }
