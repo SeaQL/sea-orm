@@ -345,13 +345,10 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(collection::Column::Integers)
-                .array(sea_query::ColumnType::Integer(None))
+                .array(sea_query::ColumnType::Integer)
                 .not_null(),
         )
-        .col(
-            ColumnDef::new(collection::Column::IntegersOpt)
-                .array(sea_query::ColumnType::Integer(None)),
-        )
+        .col(ColumnDef::new(collection::Column::IntegersOpt).array(sea_query::ColumnType::Integer))
         .col(
             ColumnDef::new(collection::Column::Teas)
                 .array(sea_query::ColumnType::Enum {
@@ -374,13 +371,10 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(collection::Column::Colors)
-                .array(sea_query::ColumnType::Integer(None))
+                .array(sea_query::ColumnType::Integer)
                 .not_null(),
         )
-        .col(
-            ColumnDef::new(collection::Column::ColorsOpt)
-                .array(sea_query::ColumnType::Integer(None)),
-        )
+        .col(ColumnDef::new(collection::Column::ColorsOpt).array(sea_query::ColumnType::Integer))
         .to_owned();
 
     create_table(db, &stmt, Collection).await

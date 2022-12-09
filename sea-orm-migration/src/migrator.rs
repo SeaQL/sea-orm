@@ -350,15 +350,15 @@ fn query_mysql_foreign_keys(db: &DbConn) -> SelectStatement {
     ))
     .cond_where(
         Condition::all()
-            .add(Expr::expr(get_current_schema(db)).equals(
+            .add(Expr::expr(get_current_schema(db)).equals((
                 InformationSchema::TableConstraints,
                 InformationSchema::TableSchema,
-            ))
+            )))
             .add(
-                Expr::tbl(
+                Expr::col((
                     InformationSchema::TableConstraints,
                     InformationSchema::ConstraintType,
-                )
+                ))
                 .eq("FOREIGN KEY"),
             ),
     );
@@ -388,15 +388,15 @@ fn query_pg_types(db: &DbConn) -> SelectStatement {
             JoinType::LeftJoin,
             PgNamespace::Table,
             Expr::col((PgNamespace::Table, PgNamespace::Oid))
-                .equals(PgType::Table, PgType::Typnamespace),
+                .equals((PgType::Table, PgType::Typnamespace)),
         )
         .cond_where(
             Condition::all()
                 .add(
                     Expr::expr(get_current_schema(db))
-                        .equals(PgNamespace::Table, PgNamespace::Nspname),
+                        .equals((PgNamespace::Table, PgNamespace::Nspname)),
                 )
-                .add(Expr::col((PgType::Table, PgType::Typelem).eq(0))),
+                .add(Expr::col((PgType::Table, PgType::Typelem)).eq(0)),
         );
     stmt
 }

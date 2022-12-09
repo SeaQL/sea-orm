@@ -471,7 +471,7 @@ mod tests {
                         .def()
                         .rev()
                         .on_condition(|_left, right| {
-                            Expr::tbl(right, cake_filling::Column::CakeId)
+                            Expr::col((right, cake_filling::Column::CakeId))
                                 .gt(10)
                                 .into_condition()
                         })
@@ -481,7 +481,7 @@ mod tests {
                     cake_filling::Relation::Filling
                         .def()
                         .on_condition(|_left, right| {
-                            Expr::tbl(right, filling::Column::Name)
+                            Expr::col((right, filling::Column::Name))
                                 .like("%lemon%")
                                 .into_condition()
                         })
@@ -505,7 +505,7 @@ mod tests {
         assert_eq!(
             cake::Entity::find()
                 .column_as(
-                    Expr::col((Alias::new("fruit_alias"), fruit::Column::Name)).into(),
+                    Expr::col((Alias::new("fruit_alias"), fruit::Column::Name)),
                     "fruit_name"
                 )
                 .join_as(
@@ -513,7 +513,7 @@ mod tests {
                     cake::Relation::Fruit
                         .def()
                         .on_condition(|_left, right| {
-                            Expr::tbl(right, fruit::Column::Name)
+                            Expr::col((right, fruit::Column::Name))
                                 .like("%tropical%")
                                 .into_condition()
                         }),
@@ -534,7 +534,7 @@ mod tests {
         assert_eq!(
             cake::Entity::find()
                 .column_as(
-                    Expr::col((Alias::new("cake_filling_alias"), cake_filling::Column::CakeId)).into(),
+                    Expr::col((Alias::new("cake_filling_alias"), cake_filling::Column::CakeId)),
                     "cake_filling_cake_id"
                 )
                 .join(JoinType::LeftJoin, cake::Relation::TropicalFruit.def())
@@ -543,7 +543,7 @@ mod tests {
                     cake_filling::Relation::Cake
                         .def()
                         .on_condition(|left, _right| {
-                            Expr::tbl(left, cake_filling::Column::CakeId)
+                            Expr::col((left, cake_filling::Column::CakeId))
                                 .gt(10)
                                 .into_condition()
                         }),

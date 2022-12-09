@@ -8,9 +8,9 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     #[sea_orm(column_type = "Text", nullable)]
-    pub name: Option<String> ,
-    #[sea_orm(column_type = "Double(Some(2))", nullable)]
-    pub price: Option<f64> ,
+    pub name: Option<String>,
+    #[sea_orm(column_type = "Double", nullable)]
+    pub price: Option<f64>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
