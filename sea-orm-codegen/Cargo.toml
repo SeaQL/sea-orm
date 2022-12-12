@@ -17,17 +17,12 @@ name = "sea_orm_codegen"
 path = "src/lib.rs"
 
 [dependencies]
-sea-query = { version = "0.27.1", features = ["thread-safe"] }
-syn = { version = "1", default-features = false, features = [
-    "derive",
-    "parsing",
-    "proc-macro",
-    "printing",
-] }
-quote = "1"
-heck = "0.3"
-proc-macro2 = "1"
-tracing = { version = "0.1", features = ["log"] }
+sea-query = { version = "0.27.1", default-features = false, features = ["thread-safe"] }
+syn = { version = "1", default-features = false }
+quote = { version = "1", default-features = false }
+heck = { version = "0.3", default-features = false }
+proc-macro2 = { version = "1", default-features = false }
+tracing = { version = "0.1", default-features = false, features = ["log"] }
 
 [dev-dependencies]
 pretty_assertions = { version = "0.7" }
