@@ -380,6 +380,36 @@ impl DatabaseConnection {
     }
 }
 
+#[cfg(feature = "sea-orm-internal")]
+impl DatabaseConnection {
+    /// Get [sqlx::MySqlPool]
+    #[cfg(feature = "sqlx-mysql")]
+    pub fn get_mysql_connection_pool(&self) -> &sqlx::MySqlPool {
+        match self {
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => &conn.pool,
+            _ => panic!("Not MySQL Connection"),
+        }
+    }
+
+    /// Get [sqlx::PgPool]
+    #[cfg(feature = "sqlx-postgres")]
+    pub fn get_postgres_connection_pool(&self) -> &sqlx::PgPool {
+        match self {
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => &conn.pool,
+            _ => panic!("Not Postgres Connection"),
+        }
+    }
+
+    /// Get [sqlx::SqlitePool]
+    #[cfg(feature = "sqlx-sqlite")]
+    pub fn get_sqlite_connection_pool(&self) -> &sqlx::SqlitePool {
+        match self {
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => &conn.pool,
+            _ => panic!("Not SQLite Connection"),
+        }
+    }
+}
+
 impl DbBackend {
     /// Check if the URI is the same as the specified database backend.
     /// Returns true if they match.

@@ -24,7 +24,7 @@ pub struct SqlxPostgresConnector;
 /// Defines a sqlx PostgreSQL pool
 #[derive(Clone)]
 pub struct SqlxPostgresPoolConnection {
-    pool: PgPool,
+    pub(crate) pool: PgPool,
     metric_callback: Option<crate::metric::Callback>,
 }
 

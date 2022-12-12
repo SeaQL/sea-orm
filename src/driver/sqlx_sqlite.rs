@@ -24,7 +24,7 @@ pub struct SqlxSqliteConnector;
 /// Defines a sqlx SQLite pool
 #[derive(Clone)]
 pub struct SqlxSqlitePoolConnection {
-    pool: SqlitePool,
+    pub(crate) pool: SqlitePool,
     metric_callback: Option<crate::metric::Callback>,
 }
 
