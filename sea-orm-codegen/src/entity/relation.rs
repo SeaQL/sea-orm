@@ -23,6 +23,7 @@ pub struct Relation {
     pub(crate) on_delete: Option<ForeignKeyAction>,
     pub(crate) self_referencing: bool,
     pub(crate) num_suffix: usize,
+    pub(crate) impl_related: bool,
 }
 
 impl Relation {
@@ -178,6 +179,7 @@ impl From<&TableForeignKey> for Relation {
             on_update,
             self_referencing: false,
             num_suffix: 0,
+            impl_related: true,
         }
     }
 }
@@ -199,6 +201,7 @@ mod tests {
                 on_update: None,
                 self_referencing: false,
                 num_suffix: 0,
+                impl_related: true,
             },
             Relation {
                 ref_table: "filling".to_owned(),
@@ -209,6 +212,7 @@ mod tests {
                 on_update: Some(ForeignKeyAction::Cascade),
                 self_referencing: false,
                 num_suffix: 0,
+                impl_related: true,
             },
             Relation {
                 ref_table: "filling".to_owned(),
@@ -219,6 +223,7 @@ mod tests {
                 on_update: None,
                 self_referencing: false,
                 num_suffix: 0,
+                impl_related: true,
             },
         ]
     }
