@@ -338,6 +338,42 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     fn into_expr(self) -> Expr {
         Expr::expr(self.into_simple_expr())
     }
+
+    /// Cast column expression used in select statement.
+    /// By default it only cast database enum as text.
+    fn cast_select(&self, expr: Expr) -> SimpleExpr {
+        self.cast_select_enum(expr)
+    }
+
+    /// Cast enum column as text
+    fn cast_select_enum(&self, expr: Expr) -> SimpleExpr {
+        cast_enum_text_inner(expr, self, |col, _, col_type| {
+            let type_name = match col_type {
+                ColumnType::Array(_) => TextArray.into_iden(),
+                _ => Text.into_iden(),
+            };
+            col.as_enum(type_name)
+        })
+    }
+
+    /// Cast value of a column into the correct type for database storage.
+    /// By default it only cast text as enum type if it's an enum column.
+    fn cast_value(&self, val: Expr) -> SimpleExpr {
+        self.cast_value_enum(val)
+    }
+
+    /// Cast value of a enum column as enum type
+    fn cast_value_enum(&self, val: Expr) -> SimpleExpr {
+        cast_enum_text_inner(val, self, |col, enum_name, col_type| {
+            let type_name = match col_type {
+                ColumnType::Array(_) => {
+                    Alias::new(&format!("{}[]", enum_name.to_string())).into_iden()
+                }
+                _ => enum_name,
+            };
+            col.as_enum(type_name)
+        })
+    }
 }
 
 impl ColumnType {
@@ -509,6 +545,26 @@ impl From<sea_query::ColumnType> for ColumnType {
             }
         }
         convert_column_type(&column_type)
+    }
+}
+
+#[derive(Iden)]
+struct Text;
+
+#[derive(Iden)]
+#[iden = "text[]"]
+struct TextArray;
+
+fn cast_enum_text_inner<C, F>(expr: Expr, col: &C, f: F) -> SimpleExpr
+where
+    C: ColumnTrait,
+    F: Fn(Expr, DynIden, &ColumnType) -> SimpleExpr,
+{
+    let col_def = col.def();
+    let col_type = col_def.get_column_type();
+    match col_type.get_enum_name() {
+        Some(enum_name) => f(expr, SeaRc::clone(enum_name), col_type),
+        None => expr.into(),
     }
 }
 
