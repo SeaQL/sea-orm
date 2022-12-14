@@ -149,7 +149,7 @@ pub async fn create_byte_primary_key_table(db: &DbConn) -> Result<ExecResult, Db
         .col(primary_key_col.not_null().primary_key())
         .col(
             ColumnDef::new(byte_primary_key::Column::Value)
-                .custom(Alias::new("citext"))
+                .string()
                 .not_null(),
         )
         .to_owned();
