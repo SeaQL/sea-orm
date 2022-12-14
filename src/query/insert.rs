@@ -1,5 +1,5 @@
 use crate::{
-    cast_text_as_enum, ActiveModelTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
+    ActiveModelTrait, ColumnTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
     PrimaryKeyTrait, QueryTrait,
 };
 use core::marker::PhantomData;
@@ -134,7 +134,7 @@ where
             }
             if av_has_val {
                 columns.push(col);
-                values.push(cast_text_as_enum(Expr::val(av.into_value().unwrap()), &col));
+                values.push(col.cast_value(Expr::val(av.into_value().unwrap())));
             }
         }
         self.query.columns(columns);

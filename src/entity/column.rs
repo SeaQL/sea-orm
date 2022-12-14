@@ -1,5 +1,7 @@
-use crate::{cast_text_as_enum, EntityName, IdenStatic, IntoSimpleExpr, Iterable};
-use sea_query::{BinOper, DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
+use crate::{EntityName, IdenStatic, IntoSimpleExpr, Iterable};
+use sea_query::{
+    Alias, BinOper, DynIden, Expr, Iden, IntoIden, SeaRc, SelectStatement, SimpleExpr, Value,
+};
 use std::str::FromStr;
 
 /// Defines a Column for an Entity
@@ -134,7 +136,7 @@ macro_rules! bind_oper_with_enum_casting {
         where
             V: Into<Value>,
         {
-            let expr = cast_text_as_enum(Expr::val(v), self);
+            let expr = self.cast_value(Expr::val(v));
             Expr::tbl(self.entity_name(), *self).binary(BinOper::$bin_op, expr)
         }
     };

@@ -1,5 +1,5 @@
 use crate::{
-    cast_enum_as_text, error::*, ActiveModelTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
+    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
     Iterable, SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
 };
 use sea_query::{Expr, FromValueTuple, Query, UpdateStatement};
@@ -92,8 +92,7 @@ where
     match db.support_returning() {
         true => {
             let returning = Query::returning().exprs(
-                <A::Entity as EntityTrait>::Column::iter()
-                    .map(|c| cast_enum_as_text(Expr::col(c), &c)),
+                <A::Entity as EntityTrait>::Column::iter().map(|c| c.cast_select(Expr::col(c))),
             );
             query.returning(returning);
             let db_backend = db.get_database_backend();

@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, ColumnType, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable,
-    ModelTrait, PrimaryKeyToColumn, RelationDef,
+    ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable, ModelTrait,
+    PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
     Alias, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr, SelectStatement,
@@ -67,7 +67,7 @@ pub trait QuerySelect: Sized {
     where
         C: ColumnTrait,
     {
-        self.query().expr(cast_enum_as_text(col.into_expr(), &col));
+        self.query().expr(col.cast_select(col.into_expr()));
         self
     }
 
@@ -90,7 +90,7 @@ pub trait QuerySelect: Sized {
         I: IntoIdentity,
     {
         self.query().expr(SelectExpr {
-            expr: col.into_simple_expr(),
+            expr: col.cast_select(col.into_simple_expr()),
             alias: Some(SeaRc::new(alias.into_identity())),
             window: None,
         });
@@ -676,51 +676,5 @@ pub(crate) fn unpack_table_alias(table_ref: &TableRef) -> Option<DynIden> {
         TableRef::TableAlias(_, alias)
         | TableRef::SchemaTableAlias(_, _, alias)
         | TableRef::DatabaseSchemaTableAlias(_, _, _, alias) => Some(SeaRc::clone(alias)),
-    }
-}
-
-#[derive(Iden)]
-struct Text;
-
-#[derive(Iden)]
-#[iden = "text[]"]
-struct TextArray;
-
-pub(crate) fn cast_enum_as_text<C>(expr: Expr, col: &C) -> SimpleExpr
-where
-    C: ColumnTrait,
-{
-    cast_enum_text_inner(expr, col, |col, _, col_type| {
-        let type_name = match col_type {
-            ColumnType::Array(_) => TextArray.into_iden(),
-            _ => Text.into_iden(),
-        };
-        col.as_enum(type_name)
-    })
-}
-
-pub(crate) fn cast_text_as_enum<C>(expr: Expr, col: &C) -> SimpleExpr
-where
-    C: ColumnTrait,
-{
-    cast_enum_text_inner(expr, col, |col, enum_name, col_type| {
-        let type_name = match col_type {
-            ColumnType::Array(_) => Alias::new(&format!("{}[]", enum_name.to_string())).into_iden(),
-            _ => enum_name,
-        };
-        col.as_enum(type_name)
-    })
-}
-
-fn cast_enum_text_inner<C, F>(expr: Expr, col: &C, f: F) -> SimpleExpr
-where
-    C: ColumnTrait,
-    F: Fn(Expr, DynIden, &ColumnType) -> SimpleExpr,
-{
-    let col_def = col.def();
-    let col_type = col_def.get_column_type();
-    match col_type.get_enum_name() {
-        Some(enum_name) => f(expr, SeaRc::clone(enum_name), col_type),
-        None => expr.into(),
     }
 }
