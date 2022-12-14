@@ -57,6 +57,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Fikabot](https://github.com/sousandrei/fikabot) | A slack bot to schedule coffee breaks (Fika in swedish) in slack channels | DB: MySQL
 - [RSS aggregator](https://github.com/fistons/rss-aggregator)| A small RSS aggregator and API using actix and SeaORM | DB: Postgres
 - [Dev Board](https://github.com/goto-eof/dev_board_api_rust)| A dashboard for organizing software development tasks implemented in Rust
+- [Wikipedia Speedrun](https://wikipediaspeedrun.com) ([repository](https://github.com/hut8/wikipedia-speedrun)) | Finds shortest paths between Wikipedia articles | DB: SQLite
 
 #### Frontend (desktop / cli)
 
