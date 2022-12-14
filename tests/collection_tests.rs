@@ -22,6 +22,7 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(
         Model {
             id: 1,
+            name: "Collection 1".into(),
             integers: vec![1, 2, 3],
             integers_opt: Some(vec![1, 2, 3]),
             teas: vec![Tea::BreakfastTea],
@@ -34,6 +35,7 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
         .await?,
         Model {
             id: 1,
+            name: "Collection 1".into(),
             integers: vec![1, 2, 3],
             integers_opt: Some(vec![1, 2, 3]),
             teas: vec![Tea::BreakfastTea],
@@ -46,6 +48,7 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(
         Model {
             id: 2,
+            name: "Collection 2".into(),
             integers: vec![10, 9],
             integers_opt: None,
             teas: vec![Tea::BreakfastTea],
@@ -58,6 +61,7 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
         .await?,
         Model {
             id: 2,
+            name: "Collection 2".into(),
             integers: vec![10, 9],
             integers_opt: None,
             teas: vec![Tea::BreakfastTea],
@@ -70,6 +74,7 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(
         Model {
             id: 3,
+            name: "Collection 3".into(),
             integers: vec![],
             integers_opt: Some(vec![]),
             teas: vec![],
@@ -82,6 +87,7 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
         .await?,
         Model {
             id: 3,
+            name: "Collection 3".into(),
             integers: vec![],
             integers_opt: Some(vec![]),
             teas: vec![],
@@ -113,6 +119,7 @@ pub async fn update_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     ActiveModel {
         id: Unchanged(3),
+        name: Set("Collection 3".into()),
         integers: Set(vec![3, 1, 4]),
         integers_opt: Set(None),
         teas: Set(vec![Tea::EverydayTea]),

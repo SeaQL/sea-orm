@@ -149,7 +149,7 @@ pub async fn create_byte_primary_key_table(db: &DbConn) -> Result<ExecResult, Db
         .col(primary_key_col.not_null().primary_key())
         .col(
             ColumnDef::new(byte_primary_key::Column::Value)
-                .string()
+                .custom(Alias::new("citext"))
                 .not_null(),
         )
         .to_owned();
@@ -333,6 +333,12 @@ pub async fn create_json_struct_table(db: &DbConn) -> Result<ExecResult, DbErr> 
 }
 
 pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    db.execute(sea_orm::Statement::from_string(
+        db.get_database_backend(),
+        "CREATE EXTENSION IF NOT EXISTS citext".into(),
+    ))
+    .await?;
+
     let stmt = sea_query::Table::create()
         .table(collection::Entity)
         .col(
@@ -341,6 +347,11 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .not_null()
                 .auto_increment()
                 .primary_key(),
+        )
+        .col(
+            ColumnDef::new(collection::Column::Name)
+                .custom(Alias::new("citext"))
+                .not_null(),
         )
         .col(
             ColumnDef::new(collection::Column::Integers)
