@@ -211,6 +211,21 @@ impl MockRow {
         T::try_from(self.values.get(col).unwrap().clone()).map_err(|e| DbErr::Type(e.to_string()))
     }
 
+    pub fn try_get_by_index<T>(&self, idx: usize) -> Result<T, DbErr>
+    where
+        T: ValueType,
+    {
+        let (_, value) = self
+            .values
+            .iter()
+            .nth(idx)
+            .ok_or(DbErr::Query(RuntimeErr::Internal(format!(
+                "Column at index {} not found",
+                idx
+            ))))?;
+        T::try_from(value.clone()).map_err(|e| DbErr::Type(e.to_string()))
+    }
+
     /// An iterator over the keys and values of a mock row
     pub fn into_column_value_tuples(self) -> impl Iterator<Item = (String, Value)> {
         self.values.into_iter()

@@ -29,6 +29,11 @@ impl TryGetable for StringVec {
         let json_str: String = res.try_get(pre, col).map_err(TryGetError::DbErr)?;
         serde_json::from_str(&json_str).map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))
     }
+
+    fn try_get_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
+        let json_str: String = res.try_get_by_index(idx).map_err(TryGetError::DbErr)?;
+        serde_json::from_str(&json_str).map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))
+    }
 }
 
 impl sea_query::ValueType for StringVec {

@@ -158,6 +158,13 @@ where
             .map(|value| T::try_from_value(&value).map_err(TryGetError::DbErr))
             .collect()
     }
+
+    fn try_get_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
+        <T::ValueVec as TryGetable>::try_get_by_index(res, idx)?
+            .into_iter()
+            .map(|value| T::try_from_value(&value).map_err(TryGetError::DbErr))
+            .collect()
+    }
 }
 
 #[cfg(test)]

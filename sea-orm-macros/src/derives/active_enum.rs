@@ -356,6 +356,11 @@ impl ActiveEnum {
                     let value = <<Self as sea_orm::ActiveEnum>::Value as sea_orm::TryGetable>::try_get(res, pre, col)?;
                     <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(sea_orm::TryGetError::DbErr)
                 }
+
+                fn try_get_by_index(res: &sea_orm::QueryResult, idx: usize) -> std::result::Result<Self, sea_orm::TryGetError> {
+                    let value = <<Self as sea_orm::ActiveEnum>::Value as sea_orm::TryGetable>::try_get_by_index(res, idx)?;
+                    <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(sea_orm::TryGetError::DbErr)
+                }
             }
 
             #[automatically_derived]

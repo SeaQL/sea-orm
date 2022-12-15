@@ -52,6 +52,14 @@ where
     model: PhantomData<T>,
 }
 
+#[derive(Debug)]
+pub struct SelectGetableTuple<T>
+where
+    T: TryGetableMany,
+{
+    model: PhantomData<T>,
+}
+
 /// Defines a type to get a Model
 #[derive(Debug)]
 pub struct SelectModel<M>
@@ -81,6 +89,17 @@ where
     fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr> {
         let cols: Vec<String> = C::iter().map(|col| col.to_string()).collect();
         T::try_get_many(&res, "", &cols).map_err(Into::into)
+    }
+}
+
+impl<T> SelectorTrait for SelectGetableTuple<T>
+where
+    T: TryGetableMany,
+{
+    type Item = T;
+
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr> {
+        T::try_get_many_by_index(&res).map_err(Into::into)
     }
 }
 
@@ -253,6 +272,104 @@ where
         Selector::<SelectGetableValue<T, C>>::with_columns(self.query)
     }
 
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(all(feature = "mock", feature = "macros"))]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![vec![
+    /// #         maplit::btreemap! {
+    /// #             "cake_name" => Into::<Value>::into("Chocolate Forest"),
+    /// #         },
+    /// #         maplit::btreemap! {
+    /// #             "cake_name" => Into::<Value>::into("New York Cheese"),
+    /// #         },
+    /// #     ]])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    ///
+    /// let res: Vec<String> = cake::Entity::find()
+    ///     .select_only()
+    ///     .column(cake::Column::Name)
+    ///     .into_tuple()
+    ///     .all(&db)
+    ///     .await?;
+    ///
+    /// assert_eq!(
+    ///     res,
+    ///     vec!["Chocolate Forest".to_owned(), "New York Cheese".to_owned()]
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         r#"SELECT "cake"."name" FROM "cake""#,
+    ///         vec![]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(all(feature = "mock", feature = "macros"))]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![vec![
+    /// #         maplit::btreemap! {
+    /// #             "cake_name" => Into::<Value>::into("Chocolate Forest"),
+    /// #             "num_of_cakes" => Into::<Value>::into(2i64),
+    /// #         },
+    /// #     ]])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    ///
+    /// let res: Vec<(String, i64)> = cake::Entity::find()
+    ///     .select_only()
+    ///     .column(cake::Column::Name)
+    ///     .column(cake::Column::Id)
+    ///     .group_by(cake::Column::Name)
+    ///     .into_tuple()
+    ///     .all(&db)
+    ///     .await?;
+    ///
+    /// assert_eq!(res, vec![("Chocolate Forest".to_owned(), 2i64)]);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         vec![
+    ///             r#"SELECT "cake"."name", "cake"."id""#,
+    ///             r#"FROM "cake" GROUP BY "cake"."name""#,
+    ///         ]
+    ///         .join(" ")
+    ///         .as_str(),
+    ///         vec![]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn into_tuple<T>(self) -> Selector<SelectGetableTuple<T>>
+    where
+        T: TryGetableMany,
+    {
+        Selector::<SelectGetableTuple<T>>::into_tuple(self.query)
+    }
+
     /// Get one Model from the SELECT query
     pub async fn one<'a, C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
     where
@@ -402,7 +519,7 @@ impl<S> Selector<S>
 where
     S: SelectorTrait,
 {
-    /// Create `Selector` from Statment and columns. Executing this `Selector`
+    /// Create `Selector` from Statement and columns. Executing this `Selector`
     /// will return a type `T` which implement `TryGetableMany`.
     pub fn with_columns<T, C>(query: SelectStatement) -> Selector<SelectGetableValue<T, C>>
     where
@@ -415,6 +532,16 @@ where
                 columns: PhantomData,
                 model: PhantomData,
             },
+        }
+    }
+
+    pub fn into_tuple<T>(query: SelectStatement) -> Selector<SelectGetableTuple<T>>
+    where
+        T: TryGetableMany,
+    {
+        Selector {
+            query,
+            selector: SelectGetableTuple { model: PhantomData },
         }
     }
 
