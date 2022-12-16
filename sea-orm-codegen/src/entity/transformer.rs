@@ -212,8 +212,8 @@ impl EntityTransformer {
         }
         Ok(EntityWriter {
             entities: entities
-                .into_iter()
-                .map(|(_, mut v)| {
+                .into_values()
+                .map(|mut v| {
                     v.relations.sort_by(|a, b| a.ref_table.cmp(&b.ref_table));
                     v
                 })

@@ -225,8 +225,8 @@ impl EntityWriter {
         lines.push("".to_owned());
         let code_blocks = self
             .enums
-            .iter()
-            .map(|(_, active_enum)| active_enum.impl_active_enum(with_serde, with_copy_enums))
+            .values()
+            .map(|active_enum| active_enum.impl_active_enum(with_serde, with_copy_enums))
             .collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
