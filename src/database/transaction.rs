@@ -174,7 +174,7 @@ impl DatabaseTransaction {
 
     /// Commit a transaction atomically
     #[instrument(level = "trace")]
-    #[allow(unreachable_code)]
+    #[allow(unreachable_code, unused_mut)]
     pub async fn commit(mut self) -> Result<(), DbErr> {
         match *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
@@ -206,7 +206,7 @@ impl DatabaseTransaction {
 
     /// rolls back a transaction in case error are encountered during the operation
     #[instrument(level = "trace")]
-    #[allow(unreachable_code)]
+    #[allow(unreachable_code, unused_mut)]
     pub async fn rollback(mut self) -> Result<(), DbErr> {
         match *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
