@@ -28,8 +28,8 @@ pub async fn insert_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
         key: "markup".to_owned(),
         value: "1.18".to_owned(),
         bytes: vec![1, 2, 3],
-        date: Some(Date::from_ymd(2021, 9, 27)),
-        time: Some(Time::from_hms(11, 32, 55)),
+        date: Some(Date::from_ymd_opt(2021, 9, 27).unwrap()),
+        time: Some(Time::from_hms_opt(11, 32, 55).unwrap()),
     };
 
     let result = metadata.clone().into_active_model().insert(db).await?;
@@ -65,8 +65,8 @@ pub async fn create_and_update_metadata(db: &DatabaseConnection) -> Result<(), D
         key: "markup".to_owned(),
         value: "1.18".to_owned(),
         bytes: vec![1, 2, 3],
-        date: Some(Date::from_ymd(2021, 9, 27)),
-        time: Some(Time::from_hms(11, 32, 55)),
+        date: Some(Date::from_ymd_opt(2021, 9, 27).unwrap()),
+        time: Some(Time::from_hms_opt(11, 32, 55).unwrap()),
     };
 
     let res = Metadata::insert(metadata.clone().into_active_model())
