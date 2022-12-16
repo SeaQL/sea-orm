@@ -176,7 +176,6 @@ impl DatabaseTransaction {
     #[instrument(level = "trace")]
     #[allow(unreachable_code)]
     pub async fn commit(mut self) -> Result<(), DbErr> {
-        self.open = false;
         match *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
             InnerConnection::MySql(ref mut c) => {
@@ -201,6 +200,7 @@ impl DatabaseTransaction {
                 c.commit();
             }
         }
+        self.open = false;
         Ok(())
     }
 
@@ -208,7 +208,6 @@ impl DatabaseTransaction {
     #[instrument(level = "trace")]
     #[allow(unreachable_code)]
     pub async fn rollback(mut self) -> Result<(), DbErr> {
-        self.open = false;
         match *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
             InnerConnection::MySql(ref mut c) => {
@@ -233,6 +232,7 @@ impl DatabaseTransaction {
                 c.rollback();
             }
         }
+        self.open = false;
         Ok(())
     }
 
