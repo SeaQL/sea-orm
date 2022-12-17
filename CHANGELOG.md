@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Fixes `DeriveColumn` (by qualifying `IdenStatic::as_str`) https://github.com/SeaQL/sea-orm/pull/1280
 * Prevent returning connections to pool with a positive transaction depth https://github.com/SeaQL/sea-orm/pull/1283
 
-## 0.10.6 - 2022-12-02
+## 0.10.6 - Pending
 
 ### Bug Fixes
 
