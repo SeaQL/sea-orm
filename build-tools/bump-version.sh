@@ -11,7 +11,7 @@ sleep 1
 # Bump `sea-orm-cli` version
 cd sea-orm-cli
 sed -i 's/^version.*$/version = "'$1'"/' Cargo.toml
-sed -i 's/^sea-orm-codegen [^,]*,/sea-orm-codegen = { version = "'$1'",/' Cargo.toml
+sed -i 's/^sea-orm-codegen [^,]*,/sea-orm-codegen = { version = "\='$1'",/' Cargo.toml
 git commit -am "sea-orm-cli $1"
 cd ..
 sleep 1
