@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.10.6 - Pending
+
+### Bug Fixes
+
+* [sea-orm-codegen] Skip implementing Related if the same related entity is being referenced by a conjunct relation https://github.com/SeaQL/sea-orm/pull/1298
+* [sea-orm-cli] CLI depends on codegen of the same version https://github.com/SeaQL/sea-orm/pull/1299/
+
 ## 0.10.5 - 2022-12-02
 
 ### New Features
