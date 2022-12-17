@@ -31,17 +31,17 @@ path = "src/bin/sea.rs"
 required-features = ["cli", "codegen"]
 
 [dependencies]
-clap = { version = "^3.2", features = ["env", "derive"], optional = true }
-dotenvy = { version = "^0.15", optional = true }
-async-std = { version = "^1.9", features = ["attributes", "tokio1"], optional = true }
-sea-orm-codegen = { version = "=0.10.3", path = "../sea-orm-codegen", optional = true }
-sea-schema = { version = "^0.10.2" }
-sqlx = { version = "^0.6", default-features = false, features = ["mysql", "postgres"], optional = true }
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tracing = { version = "0.1" }
-url = "^2.2"
-chrono = { version = "^0.4.20", default-features = false, features = ["clock"] }
-regex = "1"
+clap = { version = "3.2", default-features = false, features = ["std", "env", "derive"], optional = true }
+dotenvy = { version = "0.15", default-features = false, optional = true }
+async-std = { version = "1.9", default-features = false, features = ["attributes", "tokio1"], optional = true }
+sea-orm-codegen = { version = "=0.10.3", path = "../sea-orm-codegen", default-features = false, optional = true }
+sea-schema = { version = "0.10.2" }
+sqlx = { version = "0.6", default-features = false, features = ["mysql", "postgres"], optional = true }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+tracing = { version = "0.1", default-features = false }
+url = { version = "2.2", default-features = false }
+chrono = { version = "0.4.20", default-features = false, features = ["clock"] }
+regex = { version = "1", default-features = false }
 
 [dev-dependencies]
 smol = "1.2.5"

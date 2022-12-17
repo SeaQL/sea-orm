@@ -20,17 +20,17 @@ name = "sea_orm_migration"
 path = "src/lib.rs"
 
 [dependencies]
-async-trait = { version = "^0.1" }
-clap = { version = "^3.2", features = ["env", "derive"], optional = true }
-dotenvy = { version = "^0.15", optional = true }
-sea-orm = { version = "^0.10.3", path = "../", default-features = false, features = ["macros"] }
-sea-orm-cli = { version = "^0.10.3", path = "../sea-orm-cli", default-features = false, optional = true }
-sea-schema = { version = "^0.10.2" }
-tracing = { version = "0.1", features = ["log"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+async-trait = { version = "0.1", default-features = false }
+clap = { version = "3.2", default-features = false, features = ["std", "env", "derive"], optional = true }
+dotenvy = { version = "0.15", default-features = false, optional = true }
+sea-orm = { version = "0.10.3", path = "../", default-features = false, features = ["macros"] }
+sea-orm-cli = { version = "0.10.3", path = "../sea-orm-cli", default-features = false, optional = true }
+sea-schema = { version = "0.10.2" }
+tracing = { version = "0.1", default-features = false, features = ["log"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
 
 [dev-dependencies]
-async-std = { version = "^1", features = ["attributes", "tokio1"] }
+async-std = { version = "1", features = ["attributes", "tokio1"] }
 
 [features]
 default = ["cli"]

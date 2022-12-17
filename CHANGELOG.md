@@ -22,11 +22,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### House Keeping
 
-* Remove dependency when not needed https://github.com/SeaQL/sea-orm/pull/1213
+* Removed dependency when not needed https://github.com/SeaQL/sea-orm/pull/1213
+* Changed all version = "^x.y.z" into version = "x.y.z" and disabled default features and enable only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
 
 ### Bug Fixes
 
 * Fixes `DeriveColumn` (by qualifying `IdenStatic::as_str`) https://github.com/SeaQL/sea-orm/pull/1280
+* Prevent returning connections to pool with a positive transaction depth https://github.com/SeaQL/sea-orm/pull/1283
 
 ## 0.10.5 - 2022-12-02
 
