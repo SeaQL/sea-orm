@@ -312,12 +312,9 @@ where
     }
 }
 
-impl From<RelationDef> for ForeignKeyCreateStatement {
-    fn from(relation: RelationDef) -> Self {
-        let mut foreign_key_stmt = Self::new();
-        let from_tbl = unpack_table_ref(&relation.from_tbl);
-        let to_tbl = unpack_table_ref(&relation.to_tbl);
-        let from_cols: Vec<String> = match relation.from_col {
+macro_rules! set_foreign_key_stmt {
+    ( $relation: ident, $foreign_key: ident ) => {
+        let from_cols: Vec<String> = match $relation.from_col {
             Identity::Unary(o1) => vec![o1],
             Identity::Binary(o1, o2) => vec![o1, o2],
             Identity::Ternary(o1, o2, o3) => vec![o1, o2, o3],
@@ -325,39 +322,47 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
         .into_iter()
         .map(|col| {
             let col_name = col.to_string();
-            foreign_key_stmt.from_col(col);
+            $foreign_key.from_col(col);
             col_name
         })
         .collect();
-        match relation.to_col {
+        match $relation.to_col {
             Identity::Unary(o1) => {
-                foreign_key_stmt.to_col(o1);
+                $foreign_key.to_col(o1);
             }
             Identity::Binary(o1, o2) => {
-                foreign_key_stmt.to_col(o1);
-                foreign_key_stmt.to_col(o2);
+                $foreign_key.to_col(o1);
+                $foreign_key.to_col(o2);
             }
             Identity::Ternary(o1, o2, o3) => {
-                foreign_key_stmt.to_col(o1);
-                foreign_key_stmt.to_col(o2);
-                foreign_key_stmt.to_col(o3);
+                $foreign_key.to_col(o1);
+                $foreign_key.to_col(o2);
+                $foreign_key.to_col(o3);
             }
         }
-        if let Some(action) = relation.on_delete {
-            foreign_key_stmt.on_delete(action);
+        if let Some(action) = $relation.on_delete {
+            $foreign_key.on_delete(action);
         }
-        if let Some(action) = relation.on_update {
-            foreign_key_stmt.on_update(action);
+        if let Some(action) = $relation.on_update {
+            $foreign_key.on_update(action);
         }
-        let name = if let Some(name) = relation.fk_name {
+        let name = if let Some(name) = $relation.fk_name {
             name
         } else {
+            let from_tbl = unpack_table_ref(&$relation.from_tbl);
             format!("fk-{}-{}", from_tbl.to_string(), from_cols.join("-"))
         };
+        $foreign_key.name(&name);
+    };
+}
+
+impl From<RelationDef> for ForeignKeyCreateStatement {
+    fn from(relation: RelationDef) -> Self {
+        let mut foreign_key_stmt = Self::new();
+        set_foreign_key_stmt!(relation, foreign_key_stmt);
         foreign_key_stmt
-            .name(&name)
-            .from_tbl(from_tbl)
-            .to_tbl(to_tbl)
+            .from_tbl(unpack_table_ref(&relation.from_tbl))
+            .to_tbl(unpack_table_ref(&relation.to_tbl))
             .take()
     }
 }
@@ -390,50 +395,11 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
 /// ```
 impl From<RelationDef> for TableForeignKey {
     fn from(relation: RelationDef) -> Self {
-        let from_tbl = unpack_table_ref(&relation.from_tbl);
-        let mut foreign_key = Self::new()
-            .from_tbl(relation.from_tbl)
-            .to_tbl(relation.to_tbl)
-            .take();
-        let from_cols: Vec<String> = match relation.from_col {
-            Identity::Unary(o1) => vec![o1],
-            Identity::Binary(o1, o2) => vec![o1, o2],
-            Identity::Ternary(o1, o2, o3) => vec![o1, o2, o3],
-        }
-        .into_iter()
-        .map(|col| {
-            let col_name = col.to_string();
-            foreign_key.from_col(col);
-            col_name
-        })
-        .collect();
-        match relation.to_col {
-            Identity::Unary(o1) => {
-                foreign_key.to_col(o1);
-            }
-            Identity::Binary(o1, o2) => {
-                foreign_key.to_col(o1);
-                foreign_key.to_col(o2);
-            }
-            Identity::Ternary(o1, o2, o3) => {
-                foreign_key.to_col(o1);
-                foreign_key.to_col(o2);
-                foreign_key.to_col(o3);
-            }
-        }
-        if let Some(action) = relation.on_delete {
-            foreign_key.on_delete(action);
-        }
-        if let Some(action) = relation.on_update {
-            foreign_key.on_update(action);
-        }
-        let name = if let Some(name) = relation.fk_name {
-            name
-        } else {
-            format!("fk-{}-{}", from_tbl.to_string(), from_cols.join("-"))
-        };
-        foreign_key.name(&name);
+        let mut foreign_key = Self::new();
+        set_foreign_key_stmt!(relation, foreign_key);
         foreign_key
+            .from_tbl(unpack_table_ref(&relation.from_tbl))
+            .take()
     }
 }
 
