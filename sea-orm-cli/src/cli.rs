@@ -232,9 +232,9 @@ pub enum GenerateSubcommands {
         #[clap(
             action,
             long,
-            help = "Generate a serde field attribute for the primary keys to skip them during deserialization if they're not present, must also use '--with-serde' 'both' or 'deserialize'"
+            help = "Generate a serde field attribute, '#[serde(skip_deserializing)]', for the primary key fields to skip them during deserialization, this flag will be affective only when '--with-serde' is 'both' or 'deserialize'"
         )]
-        skip_primary_key_deserialization: bool,
+        skip_deserializing_primary_key: bool,
     },
 }
 
