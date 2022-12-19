@@ -405,37 +405,17 @@ impl EntityWriter {
         let column_names_snake_case = entity.get_column_names_snake_case();
         let column_rs_types = entity.get_column_rs_types(date_time_crate);
         let if_eq_needed = entity.get_eq_needed();
-        let primary_keys: Vec<String> = entity
-            .primary_keys
-            .iter()
-            .map(|pk| pk.name.clone())
-            .collect();
-        let fields = column_names_snake_case.into_iter().enumerate().fold(
-            TokenStream::new(),
-            |tokens, (i, field_name)| {
-                let field_type = column_rs_types.get(i).unwrap();
-                let is_primary_key = primary_keys.contains(&field_name.to_string());
-                if is_primary_key && skip_deserializing_primary_key {
-                    quote! {
-                        #tokens
-                        #[serde(skip_deserializing)]
-                        pub #field_name: #field_type,
-                    }
-                } else {
-                    quote! {
-                        #tokens
-                        pub #field_name: #field_type,
-                    }
-                }
-            },
-        );
-
+        let skip_serde_deserializing =
+            entity.get_skip_serde_deserializing(skip_deserializing_primary_key);
         let extra_derive = with_serde.extra_derive();
 
         quote! {
             #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel #if_eq_needed #extra_derive)]
             pub struct Model {
-                #fields
+                #(
+                    #skip_serde_deserializing
+                    pub #column_names_snake_case: #column_rs_types,
+                )*
             }
         }
     }
@@ -650,27 +630,23 @@ impl EntityWriter {
                 if col.unique {
                     attrs.push(quote! { unique });
                 }
+                let mut ts = quote! {};
                 if !attrs.is_empty() {
-                    let mut ts = TokenStream::new();
                     for (i, attr) in attrs.into_iter().enumerate() {
                         if i > 0 {
                             ts = quote! { #ts, };
                         }
                         ts = quote! { #ts #attr };
                     }
-                    if is_primary_key && skip_deserializing_primary_key {
-                        quote! {
-                            #[sea_orm(#ts)]
-                            #[serde(skip_deserializing)]
-                        }
-                    } else {
-                        quote! {
-                            #[sea_orm(#ts)]
-                        }
-                    }
-                } else {
-                    TokenStream::new()
+                    ts = quote! { #[sea_orm(#ts)] };
                 }
+                let skip_serde_deserializing = col
+                    .get_skip_serde_deserializing(is_primary_key, skip_deserializing_primary_key);
+                ts = quote! {
+                    #ts
+                    #skip_serde_deserializing
+                };
+                ts
             })
             .collect();
         let schema_name = match Self::gen_schema_name(schema_name) {
@@ -1469,7 +1445,6 @@ mod tests {
                 None,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
-            false,
         )?;
         assert_serde_variant_results(
             &cake_entity,
@@ -1479,7 +1454,6 @@ mod tests {
                 None,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
-            false,
         )?;
         assert_serde_variant_results(
             &cake_entity,
@@ -1489,7 +1463,6 @@ mod tests {
                 None,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
-            false,
         )?;
         assert_serde_variant_results(
             &cake_entity,
@@ -1499,7 +1472,6 @@ mod tests {
                 None,
             ),
             Box::new(EntityWriter::gen_compact_code_blocks),
-            false,
         )?;
 
         // Expanded code blocks
@@ -1511,7 +1483,6 @@ mod tests {
                 None,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
-            false,
         )?;
         assert_serde_variant_results(
             &cake_entity,
@@ -1521,7 +1492,6 @@ mod tests {
                 None,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
-            false,
         )?;
         assert_serde_variant_results(
             &cake_entity,
@@ -1531,7 +1501,6 @@ mod tests {
                 None,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
-            false,
         )?;
         assert_serde_variant_results(
             &cake_entity,
@@ -1541,7 +1510,6 @@ mod tests {
                 None,
             ),
             Box::new(EntityWriter::gen_expanded_code_blocks),
-            false,
         )?;
 
         Ok(())
@@ -1554,7 +1522,6 @@ mod tests {
         generator: Box<
             dyn Fn(&Entity, &WithSerde, &DateTimeCrate, &Option<String>, bool) -> Vec<TokenStream>,
         >,
-        primary_key_auto_increment: bool,
     ) -> io::Result<()> {
         let mut reader = BufReader::new(entity_serde_variant.0.as_bytes());
         let mut lines: Vec<String> = Vec::new();

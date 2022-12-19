@@ -211,6 +211,18 @@ impl Column {
         }
         info
     }
+
+    pub fn get_skip_serde_deserializing(
+        &self,
+        is_primary_key: bool,
+        skip_deserializing_primary_key: bool,
+    ) -> TokenStream {
+        if skip_deserializing_primary_key && is_primary_key {
+            quote! { #[serde(skip_deserializing)] }
+        } else {
+            quote! {}
+        }
+    }
 }
 
 impl From<ColumnDef> for Column {
