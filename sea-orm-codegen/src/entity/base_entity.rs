@@ -166,6 +166,22 @@ impl Entity {
             // if exist, return nothing
             .map_or(quote! {, Eq}, |_| quote! {})
     }
+
+    pub fn get_serde_skip_deserializing(
+        &self,
+        serde_skip_deserializing_primary_key: bool,
+    ) -> Vec<TokenStream> {
+        self.columns
+            .iter()
+            .map(|col| {
+                let is_primary_key = self.primary_keys.iter().any(|pk| pk.name == col.name);
+                col.get_serde_skip_deserializing(
+                    is_primary_key,
+                    serde_skip_deserializing_primary_key,
+                )
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]

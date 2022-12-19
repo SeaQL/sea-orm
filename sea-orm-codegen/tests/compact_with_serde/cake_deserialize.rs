@@ -7,6 +7,7 @@ use serde::Deserialize;
 #[sea_orm(table_name = "cake")]
 pub struct Model {
     #[sea_orm(primary_key)]
+    #[serde(skip_deserializing)]
     pub id: i32,
     #[sea_orm(column_type = "Text", nullable)]
     pub name: Option<String> ,
