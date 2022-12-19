@@ -24,10 +24,11 @@ pub async fn run_generate_command(
             database_schema,
             database_url,
             with_serde,
+            serde_skip_deserializing_primary_key,
+            serde_skip_hidden_column,
             with_copy_enums,
             date_time_crate,
             lib,
-            serde_skip_deserializing_primary_key,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -160,12 +161,13 @@ pub async fn run_generate_command(
 
             let writer_context = EntityWriterContext::new(
                 expanded_format,
-                WithSerde::from_str(&with_serde).unwrap(),
+                WithSerde::from_str(&with_serde).expect("Invalid serde derive option"),
                 with_copy_enums,
                 date_time_crate.into(),
                 schema_name,
                 lib,
                 serde_skip_deserializing_primary_key,
+                serde_skip_hidden_column,
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 

@@ -43,6 +43,7 @@ pub struct EntityWriterContext {
     pub(crate) date_time_crate: DateTimeCrate,
     pub(crate) schema_name: Option<String>,
     pub(crate) lib: bool,
+    pub(crate) serde_skip_hidden_column: bool,
     pub(crate) serde_skip_deserializing_primary_key: bool,
 }
 
@@ -68,11 +69,9 @@ impl WithSerde {
                 }
             }
         };
-
         if !extra_derive.is_empty() {
             extra_derive = quote! { , #extra_derive }
         }
-
         extra_derive
     }
 }
@@ -97,6 +96,7 @@ impl FromStr for WithSerde {
 }
 
 impl EntityWriterContext {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         expanded_format: bool,
         with_serde: WithSerde,
@@ -105,6 +105,7 @@ impl EntityWriterContext {
         schema_name: Option<String>,
         lib: bool,
         serde_skip_deserializing_primary_key: bool,
+        serde_skip_hidden_column: bool,
     ) -> Self {
         Self {
             expanded_format,
@@ -114,6 +115,7 @@ impl EntityWriterContext {
             schema_name,
             lib,
             serde_skip_deserializing_primary_key,
+            serde_skip_hidden_column,
         }
     }
 }
@@ -142,11 +144,15 @@ impl EntityWriter {
                     .iter()
                     .map(|column| column.get_info(&context.date_time_crate))
                     .collect::<Vec<String>>();
-                // use must have serde enabled to use this
+                // Serde must be enabled to use this
                 let serde_skip_deserializing_primary_key = context
                     .serde_skip_deserializing_primary_key
-                    && (context.with_serde == WithSerde::Both
-                        || context.with_serde == WithSerde::Deserialize);
+                    && matches!(context.with_serde, WithSerde::Both | WithSerde::Deserialize);
+                let serde_skip_hidden_column = context.serde_skip_hidden_column
+                    && matches!(
+                        context.with_serde,
+                        WithSerde::Both | WithSerde::Serialize | WithSerde::Deserialize
+                    );
 
                 info!("Generating {}", entity_file);
                 for info in column_info.iter() {
@@ -162,6 +168,7 @@ impl EntityWriter {
                         &context.date_time_crate,
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
+                        serde_skip_hidden_column,
                     )
                 } else {
                     Self::gen_compact_code_blocks(
@@ -170,6 +177,7 @@ impl EntityWriter {
                         &context.date_time_crate,
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
+                        serde_skip_hidden_column,
                     )
                 };
                 Self::write(&mut lines, code_blocks);
@@ -270,6 +278,7 @@ impl EntityWriter {
         date_time_crate: &DateTimeCrate,
         schema_name: &Option<String>,
         serde_skip_deserializing_primary_key: bool,
+        serde_skip_hidden_column: bool,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
@@ -282,6 +291,7 @@ impl EntityWriter {
                 with_serde,
                 date_time_crate,
                 serde_skip_deserializing_primary_key,
+                serde_skip_hidden_column,
             ),
             Self::gen_column_enum(entity),
             Self::gen_primary_key_enum(entity),
@@ -302,6 +312,7 @@ impl EntityWriter {
         date_time_crate: &DateTimeCrate,
         schema_name: &Option<String>,
         serde_skip_deserializing_primary_key: bool,
+        serde_skip_hidden_column: bool,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
@@ -313,6 +324,7 @@ impl EntityWriter {
                 date_time_crate,
                 schema_name,
                 serde_skip_deserializing_primary_key,
+                serde_skip_hidden_column,
             ),
             Self::gen_compact_relation_enum(entity),
         ];
@@ -335,14 +347,12 @@ impl EntityWriter {
                     use serde::Serialize;
                 }
             }
-
             WithSerde::Deserialize => {
                 quote! {
                     #prelude_import
                     use serde::Deserialize;
                 }
             }
-
             WithSerde::Both => {
                 quote! {
                     #prelude_import
@@ -402,19 +412,22 @@ impl EntityWriter {
         with_serde: &WithSerde,
         date_time_crate: &DateTimeCrate,
         serde_skip_deserializing_primary_key: bool,
+        serde_skip_hidden_column: bool,
     ) -> TokenStream {
         let column_names_snake_case = entity.get_column_names_snake_case();
         let column_rs_types = entity.get_column_rs_types(date_time_crate);
         let if_eq_needed = entity.get_eq_needed();
-        let serde_skip_deserializing =
-            entity.get_serde_skip_deserializing(serde_skip_deserializing_primary_key);
+        let serde_attributes = entity.get_column_serde_attributes(
+            serde_skip_deserializing_primary_key,
+            serde_skip_hidden_column,
+        );
         let extra_derive = with_serde.extra_derive();
 
         quote! {
             #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel #if_eq_needed #extra_derive)]
             pub struct Model {
                 #(
-                    #serde_skip_deserializing
+                    #serde_attributes
                     pub #column_names_snake_case: #column_rs_types,
                 )*
             }
@@ -596,6 +609,7 @@ impl EntityWriter {
         date_time_crate: &DateTimeCrate,
         schema_name: &Option<String>,
         serde_skip_deserializing_primary_key: bool,
+        serde_skip_hidden_column: bool,
     ) -> TokenStream {
         let table_name = entity.table_name.as_str();
         let column_names_snake_case = entity.get_column_names_snake_case();
@@ -641,13 +655,14 @@ impl EntityWriter {
                     }
                     ts = quote! { #[sea_orm(#ts)] };
                 }
-                let serde_skip_deserializing = col.get_serde_skip_deserializing(
+                let serde_attribute = col.get_serde_attribute(
                     is_primary_key,
                     serde_skip_deserializing_primary_key,
+                    serde_skip_hidden_column,
                 );
                 ts = quote! {
                     #ts
-                    #serde_skip_deserializing
+                    #serde_attribute
                 };
                 ts
             })
@@ -1298,6 +1313,7 @@ mod tests {
                     &crate::DateTimeCrate::Chrono,
                     &None,
                     false,
+                    false,
                 )
                 .into_iter()
                 .skip(1)
@@ -1315,6 +1331,7 @@ mod tests {
                     &crate::DateTimeCrate::Chrono,
                     &Some("public".to_owned()),
                     false,
+                    false,
                 )
                 .into_iter()
                 .skip(1)
@@ -1331,6 +1348,7 @@ mod tests {
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
                     &Some("schema_name".to_owned()),
+                    false,
                     false,
                 )
                 .into_iter()
@@ -1385,6 +1403,7 @@ mod tests {
                     &crate::DateTimeCrate::Chrono,
                     &None,
                     false,
+                    false,
                 )
                 .into_iter()
                 .skip(1)
@@ -1401,6 +1420,7 @@ mod tests {
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
                     &Some("public".to_owned()),
+                    false,
                     false,
                 )
                 .into_iter()
@@ -1419,6 +1439,7 @@ mod tests {
                     &crate::DateTimeCrate::Chrono,
                     &Some("schema_name".to_owned()),
                     false,
+                    false,
                 )
                 .into_iter()
                 .skip(1)
@@ -1435,7 +1456,7 @@ mod tests {
 
     #[test]
     fn test_gen_with_serde() -> io::Result<()> {
-        let cake_entity = setup().get(0).unwrap().clone();
+        let mut cake_entity = setup().get_mut(0).unwrap().clone();
 
         assert_eq!(cake_entity.get_table_name_snake_case(), "cake");
 
@@ -1515,6 +1536,32 @@ mod tests {
             Box::new(EntityWriter::gen_expanded_code_blocks),
         )?;
 
+        // Make the `name` column of `cake` entity as hidden column
+        cake_entity.columns[1].name = "_name".into();
+
+        assert_serde_variant_results(
+            &cake_entity,
+            &(
+                include_str!("../../tests/compact_with_serde/cake_serialize_with_hidden_column.rs")
+                    .into(),
+                WithSerde::Serialize,
+                None,
+            ),
+            Box::new(EntityWriter::gen_compact_code_blocks),
+        )?;
+        assert_serde_variant_results(
+            &cake_entity,
+            &(
+                include_str!(
+                    "../../tests/expanded_with_serde/cake_serialize_with_hidden_column.rs"
+                )
+                .into(),
+                WithSerde::Serialize,
+                None,
+            ),
+            Box::new(EntityWriter::gen_expanded_code_blocks),
+        )?;
+
         Ok(())
     }
 
@@ -1523,13 +1570,23 @@ mod tests {
         cake_entity: &Entity,
         entity_serde_variant: &(String, WithSerde, Option<String>),
         generator: Box<
-            dyn Fn(&Entity, &WithSerde, &DateTimeCrate, &Option<String>, bool) -> Vec<TokenStream>,
+            dyn Fn(
+                &Entity,
+                &WithSerde,
+                &DateTimeCrate,
+                &Option<String>,
+                bool,
+                bool,
+            ) -> Vec<TokenStream>,
         >,
     ) -> io::Result<()> {
         let mut reader = BufReader::new(entity_serde_variant.0.as_bytes());
         let mut lines: Vec<String> = Vec::new();
-        let serde_skip_deserializing_primary_key = entity_serde_variant.1 == WithSerde::Both
-            || entity_serde_variant.1 == WithSerde::Deserialize;
+        let serde_skip_deserializing_primary_key = matches!(
+            entity_serde_variant.1,
+            WithSerde::Both | WithSerde::Deserialize
+        );
+        let serde_skip_hidden_column = matches!(entity_serde_variant.1, WithSerde::Serialize);
 
         reader.read_until(b'\n', &mut Vec::new())?;
 
@@ -1547,6 +1604,7 @@ mod tests {
             &DateTimeCrate::Chrono,
             &entity_serde_variant.2,
             serde_skip_deserializing_primary_key,
+            serde_skip_hidden_column,
         )
         .into_iter()
         .fold(TokenStream::new(), |mut acc, tok| {
