@@ -134,7 +134,7 @@ pub fn expand_derive_custom_column(ident: &Ident, data: &Data) -> syn::Result<To
         #[automatically_derived]
         impl sea_orm::Iden for #ident {
             fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-                write!(s, "{}", self.as_str()).unwrap();
+                write!(s, "{}", sea_orm::IdenStatic::as_str(self)).unwrap();
             }
         }
     ))

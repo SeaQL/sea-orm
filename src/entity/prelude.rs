@@ -72,5 +72,8 @@ pub use time::OffsetDateTime as TimeDateTimeWithTimeZone;
 #[cfg(feature = "with-rust_decimal")]
 pub use rust_decimal::Decimal;
 
+#[cfg(feature = "with-bigdecimal")]
+pub use bigdecimal::BigDecimal;
+
 #[cfg(feature = "with-uuid")]
 pub use uuid::Uuid;

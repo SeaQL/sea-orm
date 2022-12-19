@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable, ModelTrait,
-    PrimaryKeyToColumn, RelationDef,
+    ColumnTrait, ColumnType, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable,
+    ModelTrait, PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
     Alias, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr, SelectStatement,
@@ -94,6 +94,72 @@ pub trait QuerySelect: Sized {
             alias: Some(SeaRc::new(alias.into_identity())),
             window: None,
         });
+        self
+    }
+
+    /// Select columns
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .columns([cake::Column::Id, cake::Column::Name])
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake""#
+    /// );
+    /// ```
+    ///
+    /// Conditionally select all columns expect a specific column
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .columns(cake::Column::iter().filter(|col| match col {
+    ///             cake::Column::Id => false,
+    ///             _ => true,
+    ///         }))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."name" FROM "cake""#
+    /// );
+    /// ```
+    ///
+    /// Enum column will be casted into text (PostgreSQL only)
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::lunch_set, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     lunch_set::Entity::find()
+    ///         .select_only()
+    ///         .columns([lunch_set::Column::Name, lunch_set::Column::Tea])
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "lunch_set"."name", CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    /// );
+    /// assert_eq!(
+    ///     lunch_set::Entity::find()
+    ///         .select_only()
+    ///         .columns([lunch_set::Column::Name, lunch_set::Column::Tea])
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     r#"SELECT `lunch_set`.`name`, `lunch_set`.`tea` FROM `lunch_set`"#
+    /// );
+    /// ```
+    fn columns<C, I>(mut self, cols: I) -> Self
+    where
+        C: ColumnTrait,
+        I: IntoIterator<Item = C>,
+    {
+        for col in cols.into_iter() {
+            self = self.column(col);
+        }
         self
     }
 
@@ -616,29 +682,45 @@ pub(crate) fn unpack_table_alias(table_ref: &TableRef) -> Option<DynIden> {
 #[derive(Iden)]
 struct Text;
 
+#[derive(Iden)]
+#[iden = "text[]"]
+struct TextArray;
+
 pub(crate) fn cast_enum_as_text<C>(expr: Expr, col: &C) -> SimpleExpr
 where
     C: ColumnTrait,
 {
-    cast_enum_text_inner(expr, col, |col, _| col.as_enum(Text))
+    cast_enum_text_inner(expr, col, |col, _, col_type| {
+        let type_name = match col_type {
+            ColumnType::Array(_) => TextArray.into_iden(),
+            _ => Text.into_iden(),
+        };
+        col.as_enum(type_name)
+    })
 }
 
 pub(crate) fn cast_text_as_enum<C>(expr: Expr, col: &C) -> SimpleExpr
 where
     C: ColumnTrait,
 {
-    cast_enum_text_inner(expr, col, |col, enum_name| col.as_enum(enum_name))
+    cast_enum_text_inner(expr, col, |col, enum_name, col_type| {
+        let type_name = match col_type {
+            ColumnType::Array(_) => Alias::new(&format!("{}[]", enum_name.to_string())).into_iden(),
+            _ => enum_name,
+        };
+        col.as_enum(type_name)
+    })
 }
 
 fn cast_enum_text_inner<C, F>(expr: Expr, col: &C, f: F) -> SimpleExpr
 where
     C: ColumnTrait,
-    F: Fn(Expr, DynIden) -> SimpleExpr,
+    F: Fn(Expr, DynIden, &ColumnType) -> SimpleExpr,
 {
     let col_def = col.def();
     let col_type = col_def.get_column_type();
     match col_type.get_enum_name() {
-        Some(enum_name) => f(expr, SeaRc::clone(enum_name)),
+        Some(enum_name) => f(expr, SeaRc::clone(enum_name), col_type),
         None => expr.into(),
     }
 }

@@ -141,7 +141,7 @@ pub enum GenerateSubcommands {
             takes_value = true,
             help = "Generate entity file for specified tables only (comma separated)"
         )]
-        tables: Option<String>,
+        tables: Vec<String>,
 
         #[clap(
             value_parser,

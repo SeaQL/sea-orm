@@ -12,8 +12,8 @@ path = "src/lib.rs"
 serde = { version = "1", features = ["derive"] }
 
 [dependencies.async-graphql]
-version = "^4.0.6"
+version = "4.0.6"
 
 [dependencies.sea-orm]
 path = "../../../" # remove this line in your own project
-version = "^0.10.2" # sea-orm version
+version = "0.10.3" # sea-orm version

@@ -6,7 +6,7 @@ use sea_orm::{
     error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName,
     ExecResult, Schema,
 };
-use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement};
+use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement, IntoIden};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     let db_backend = db.get_database_backend();
@@ -41,9 +41,11 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_active_enum_table(db).await?;
     create_active_enum_child_table(db).await?;
     create_insert_default_table(db).await?;
+    create_pi_table(db).await?;
 
     if DbBackend::Postgres == db_backend {
         create_collection_table(db).await?;
+        create_event_trigger_table(db).await?;
     }
 
     Ok(())
@@ -350,7 +352,83 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
             ColumnDef::new(collection::Column::IntegersOpt)
                 .array(sea_query::ColumnType::Integer(None)),
         )
+        .col(
+            ColumnDef::new(collection::Column::Teas)
+                .array(sea_query::ColumnType::Enum {
+                    name: TeaEnum.into_iden(),
+                    variants: vec![
+                        TeaVariant::EverydayTea.into_iden(),
+                        TeaVariant::BreakfastTea.into_iden(),
+                    ],
+                })
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(collection::Column::TeasOpt).array(sea_query::ColumnType::Enum {
+                name: TeaEnum.into_iden(),
+                variants: vec![
+                    TeaVariant::EverydayTea.into_iden(),
+                    TeaVariant::BreakfastTea.into_iden(),
+                ],
+            }),
+        )
+        .col(
+            ColumnDef::new(collection::Column::Colors)
+                .array(sea_query::ColumnType::Integer(None))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(collection::Column::ColorsOpt)
+                .array(sea_query::ColumnType::Integer(None)),
+        )
         .to_owned();
 
     create_table(db, &stmt, Collection).await
+}
+
+pub async fn create_pi_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(pi::Entity)
+        .col(
+            ColumnDef::new(pi::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(pi::Column::Decimal)
+                .decimal_len(11, 10)
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(pi::Column::BigDecimal)
+                .decimal_len(11, 10)
+                .not_null(),
+        )
+        .col(ColumnDef::new(pi::Column::DecimalOpt).decimal_len(11, 10))
+        .col(ColumnDef::new(pi::Column::BigDecimalOpt).decimal_len(11, 10))
+        .to_owned();
+
+    create_table(db, &stmt, Pi).await
+}
+
+pub async fn create_event_trigger_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(event_trigger::Entity)
+        .col(
+            ColumnDef::new(event_trigger::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(event_trigger::Column::Events)
+                .array(sea_query::ColumnType::String(None))
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, EventTrigger).await
 }

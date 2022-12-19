@@ -5,14 +5,75 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.11.0 - Pending
 
+### New Features
 
-## 0.10.3 - Pending
+* Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
+
+### Enhancements
+
+* Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
+* Added `DatabaseConnection::close` https://github.com/SeaQL/sea-orm/pull/1236
+
+### Upgrades
+
+* Upgrade `axum` to `0.6.1` https://github.com/SeaQL/sea-orm/pull/1285
+
+### House Keeping
+
+* Removed dependency when not needed https://github.com/SeaQL/sea-orm/pull/1213
+* Changed all version = "^x.y.z" into version = "x.y.z" and disabled default features and enable only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
+
+### Bug Fixes
+
+* Fixes `DeriveColumn` (by qualifying `IdenStatic::as_str`) https://github.com/SeaQL/sea-orm/pull/1280
+* Prevent returning connections to pool with a positive transaction depth https://github.com/SeaQL/sea-orm/pull/1283
+
+## 0.10.6 - Pending
+
+### Bug Fixes
+
+* [sea-orm-codegen] Skip implementing Related if the same related entity is being referenced by a conjunct relation https://github.com/SeaQL/sea-orm/pull/1298
+* [sea-orm-cli] CLI depends on codegen of the same version https://github.com/SeaQL/sea-orm/pull/1299/
+
+## 0.10.5 - 2022-12-02
+
+### New Features
+
+* Add `QuerySelect::columns` method - select multiple columns https://github.com/SeaQL/sea-orm/pull/1264
+* Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
+
+### Bug Fixes
+
+* `DeriveEntityModel` derive macro: when parsing field type, always treat field with `Option<T>` as nullable column https://github.com/SeaQL/sea-orm/pull/1257
+
+### Enhancements
+
+* [sea-orm-cli] Generate `Related` implementation for many-to-many relation with extra columns https://github.com/SeaQL/sea-orm/pull/1260
+* Optimize the default implementation of `TryGetableFromJson::try_get_from_json()` - deserializing into `Self` directly without the need of a intermediate `serde_json::Value` https://github.com/SeaQL/sea-orm/pull/1249
+
+## 0.10.4 - 2022-11-24
+
+### Bug Fixes
+
+* Fix DeriveActiveEnum expand enum variant starts with number https://github.com/SeaQL/sea-orm/pull/1219
+* [sea-orm-cli] Generate entity file for specified tables only https://github.com/SeaQL/sea-orm/pull/1245
+* Support appending `DbErr` to `MockDatabase` https://github.com/SeaQL/sea-orm/pull/1241
+
+### Enhancements
+
+* Filter rows with `IS IN` enum values expression https://github.com/SeaQL/sea-orm/pull/1183
+* [sea-orm-cli] Generate entity with relation variant order by name of reference table https://github.com/SeaQL/sea-orm/pull/1229
+
+## 0.10.3 - 2022-11-14
 
 ### Bug Fixes
 
 * [sea-orm-cli] Set search path when initializing Postgres connection for CLI generate entity https://github.com/SeaQL/sea-orm/pull/1212
 * [sea-orm-cli] Generate `_` prefix to enum variant starts with number https://github.com/SeaQL/sea-orm/pull/1211
+* Fix composite key cursor pagination https://github.com/SeaQL/sea-orm/pull/1216
+    + The logic for single-column primary key was correct, but for composite keys the logic was incorrect
 
 ### Enhancements
 

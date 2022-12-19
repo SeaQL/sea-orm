@@ -13,8 +13,8 @@ pub struct MockDatabase {
     db_backend: DbBackend,
     transaction: Option<OpenTransaction>,
     transaction_log: Vec<Transaction>,
-    exec_results: Vec<MockExecResult>,
-    query_results: Vec<Vec<MockRow>>,
+    exec_results: Vec<Result<MockExecResult, DbErr>>,
+    query_results: Vec<Result<Vec<MockRow>, DbErr>>,
 }
 
 /// Defines the results obtained from a [MockDatabase]
@@ -70,21 +70,33 @@ impl MockDatabase {
         DatabaseConnection::MockDatabaseConnection(Arc::new(MockDatabaseConnection::new(self)))
     }
 
-    /// Add the [MockExecResult]s to the `exec_results` field for `Self`
-    pub fn append_exec_results(mut self, mut vec: Vec<MockExecResult>) -> Self {
-        self.exec_results.append(&mut vec);
+    /// Add some [MockExecResult]s to `exec_results`
+    pub fn append_exec_results(mut self, vec: Vec<MockExecResult>) -> Self {
+        self.exec_results.extend(vec.into_iter().map(Result::Ok));
         self
     }
 
-    /// Add the [MockExecResult]s to the `exec_results` field for `Self`
+    /// Add some Values to `query_results`
     pub fn append_query_results<T>(mut self, vec: Vec<Vec<T>>) -> Self
     where
         T: IntoMockRow,
     {
         for row in vec.into_iter() {
-            let row = row.into_iter().map(|vec| vec.into_mock_row()).collect();
+            let row = row.into_iter().map(|vec| Ok(vec.into_mock_row())).collect();
             self.query_results.push(row);
         }
+        self
+    }
+
+    /// Add some [DbErr]s to `exec_results`
+    pub fn append_exec_errors(mut self, vec: Vec<DbErr>) -> Self {
+        self.exec_results.extend(vec.into_iter().map(Result::Err));
+        self
+    }
+
+    /// Add some [DbErr]s to `query_results`
+    pub fn append_query_errors(mut self, vec: Vec<DbErr>) -> Self {
+        self.query_results.extend(vec.into_iter().map(Result::Err));
         self
     }
 }
@@ -98,12 +110,20 @@ impl MockDatabaseTrait for MockDatabase {
             self.transaction_log.push(Transaction::one(statement));
         }
         if counter < self.exec_results.len() {
-            Ok(ExecResult {
-                result: ExecResultHolder::Mock(std::mem::take(&mut self.exec_results[counter])),
-            })
+            match std::mem::replace(
+                &mut self.exec_results[counter],
+                Err(DbErr::Exec(RuntimeErr::Internal(
+                    "this value has been consumed already".to_owned(),
+                ))),
+            ) {
+                Ok(result) => Ok(ExecResult {
+                    result: ExecResultHolder::Mock(result),
+                }),
+                Err(err) => Err(err),
+            }
         } else {
             Err(DbErr::Exec(RuntimeErr::Internal(
-                "`exec_results` buffer is empty.".to_owned(),
+                "`exec_results` buffer is empty".to_owned(),
             )))
         }
     }
@@ -116,12 +136,20 @@ impl MockDatabaseTrait for MockDatabase {
             self.transaction_log.push(Transaction::one(statement));
         }
         if counter < self.query_results.len() {
-            Ok(std::mem::take(&mut self.query_results[counter])
-                .into_iter()
-                .map(|row| QueryResult {
-                    row: QueryResultRow::Mock(row),
-                })
-                .collect())
+            match std::mem::replace(
+                &mut self.query_results[counter],
+                Err(DbErr::Query(RuntimeErr::Internal(
+                    "this value has been consumed already".to_owned(),
+                ))),
+            ) {
+                Ok(result) => Ok(result
+                    .into_iter()
+                    .map(|row| QueryResult {
+                        row: QueryResultRow::Mock(row),
+                    })
+                    .collect()),
+                Err(err) => Err(err),
+            }
         } else {
             Err(DbErr::Query(RuntimeErr::Internal(
                 "`query_results` buffer is empty.".to_owned(),
@@ -348,8 +376,8 @@ impl OpenTransaction {
 #[cfg(feature = "mock")]
 mod tests {
     use crate::{
-        entity::*, tests_cfg::*, DbBackend, DbErr, IntoMockRow, MockDatabase, Statement,
-        Transaction, TransactionError, TransactionTrait,
+        entity::*, tests_cfg::*, DbBackend, DbErr, IntoMockRow, MockDatabase, RuntimeErr,
+        Statement, Transaction, TransactionError, TransactionTrait,
     };
     use pretty_assertions::assert_eq;
 
@@ -785,5 +813,39 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn test_query_err() {
+        let db = MockDatabase::new(DbBackend::MySql)
+            .append_query_errors(vec![DbErr::Query(RuntimeErr::Internal(
+                "this is a mock query error".to_owned(),
+            ))])
+            .into_connection();
+
+        assert_eq!(
+            cake::Entity::find().all(&db).await,
+            Err(DbErr::Query(RuntimeErr::Internal(
+                "this is a mock query error".to_owned()
+            )))
+        );
+    }
+
+    #[smol_potat::test]
+    async fn test_exec_err() {
+        let db = MockDatabase::new(DbBackend::MySql)
+            .append_exec_errors(vec![DbErr::Exec(RuntimeErr::Internal(
+                "this is a mock exec error".to_owned(),
+            ))])
+            .into_connection();
+
+        let model = cake::ActiveModel::new();
+
+        assert_eq!(
+            model.save(&db).await,
+            Err(DbErr::Exec(RuntimeErr::Internal(
+                "this is a mock exec error".to_owned()
+            )))
+        );
     }
 }

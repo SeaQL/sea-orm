@@ -2,14 +2,14 @@ use crate::{util::escape_rust_keyword, ActiveEnum, Entity};
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::BTreeMap, str::FromStr};
 use syn::{punctuated::Punctuated, token::Comma};
 use tracing::info;
 
 #[derive(Clone, Debug)]
 pub struct EntityWriter {
     pub(crate) entities: Vec<Entity>,
-    pub(crate) enums: HashMap<String, ActiveEnum>,
+    pub(crate) enums: BTreeMap<String, ActiveEnum>,
 }
 
 pub struct WriterOutput {
@@ -255,8 +255,8 @@ impl EntityWriter {
         lines.push("".to_owned());
         let code_blocks = self
             .enums
-            .iter()
-            .map(|(_, active_enum)| active_enum.impl_active_enum(serde_options, with_copy_enums))
+            .values()
+            .map(|active_enum| active_enum.impl_active_enum(serde_options, with_copy_enums))
             .collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
@@ -520,7 +520,7 @@ impl EntityWriter {
         entity
             .relations
             .iter()
-            .filter(|rel| !rel.self_referencing && rel.num_suffix == 0)
+            .filter(|rel| !rel.self_referencing && rel.num_suffix == 0 && rel.impl_related)
             .map(|rel| {
                 let enum_name = rel.get_enum_name();
                 let module_name = rel.get_module_name();
@@ -756,6 +756,7 @@ mod tests {
                     on_update: None,
                     self_referencing: false,
                     num_suffix: 0,
+                    impl_related: true,
                 }],
                 conjunct_relations: vec![ConjunctRelation {
                     via: "cake_filling".to_owned(),
@@ -793,6 +794,7 @@ mod tests {
                         on_update: Some(ForeignKeyAction::Cascade),
                         self_referencing: false,
                         num_suffix: 0,
+                        impl_related: true,
                     },
                     Relation {
                         ref_table: "filling".to_owned(),
@@ -803,6 +805,7 @@ mod tests {
                         on_update: Some(ForeignKeyAction::Cascade),
                         self_referencing: false,
                         num_suffix: 0,
+                        impl_related: true,
                     },
                 ],
                 conjunct_relations: vec![],
@@ -877,6 +880,7 @@ mod tests {
                         on_update: None,
                         self_referencing: false,
                         num_suffix: 0,
+                        impl_related: true,
                     },
                     Relation {
                         ref_table: "vendor".to_owned(),
@@ -887,6 +891,7 @@ mod tests {
                         on_update: None,
                         self_referencing: false,
                         num_suffix: 0,
+                        impl_related: true,
                     },
                 ],
                 conjunct_relations: vec![],
@@ -928,6 +933,7 @@ mod tests {
                     on_update: None,
                     self_referencing: false,
                     num_suffix: 0,
+                    impl_related: true,
                 }],
                 conjunct_relations: vec![],
                 primary_keys: vec![PrimaryKey {
@@ -1039,6 +1045,7 @@ mod tests {
                         on_update: None,
                         self_referencing: true,
                         num_suffix: 1,
+                        impl_related: true,
                     },
                     Relation {
                         ref_table: "rust_keyword".to_owned(),
@@ -1049,6 +1056,7 @@ mod tests {
                         on_update: None,
                         self_referencing: true,
                         num_suffix: 2,
+                        impl_related: true,
                     },
                     Relation {
                         ref_table: "fruit".to_owned(),
@@ -1059,6 +1067,7 @@ mod tests {
                         on_update: None,
                         self_referencing: false,
                         num_suffix: 1,
+                        impl_related: true,
                     },
                     Relation {
                         ref_table: "fruit".to_owned(),
@@ -1069,6 +1078,7 @@ mod tests {
                         on_update: None,
                         self_referencing: false,
                         num_suffix: 2,
+                        impl_related: true,
                     },
                     Relation {
                         ref_table: "cake".to_owned(),
@@ -1079,6 +1089,7 @@ mod tests {
                         on_update: None,
                         self_referencing: false,
                         num_suffix: 0,
+                        impl_related: true,
                     },
                 ],
                 conjunct_relations: vec![],
@@ -1120,6 +1131,7 @@ mod tests {
                     on_update: None,
                     self_referencing: false,
                     num_suffix: 0,
+                    impl_related: true,
                 }],
                 conjunct_relations: vec![ConjunctRelation {
                     via: "cake_filling".to_owned(),
@@ -1163,6 +1175,7 @@ mod tests {
                     on_update: None,
                     self_referencing: false,
                     num_suffix: 0,
+                    impl_related: true,
                 }],
                 conjunct_relations: vec![ConjunctRelation {
                     via: "cake_filling".to_owned(),

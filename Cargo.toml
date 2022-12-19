@@ -3,8 +3,8 @@ members = [".", "sea-orm-macros", "sea-orm-codegen"]
 
 [package]
 name = "sea-orm"
-version = "0.10.2"
-authors = ["Chris Tsang <tyt2y7@gmail.com>"]
+version = "0.10.3"
+authors = ["Chris Tsang <chris.2y3@outlook.com>"]
 edition = "2021"
 description = "🐚 An async & dynamic ORM for Rust"
 license = "MIT OR Apache-2.0"
@@ -24,39 +24,41 @@ name = "sea_orm"
 path = "src/lib.rs"
 
 [dependencies]
-async-stream = { version = "^0.3" }
-async-trait = { version = "^0.1" }
-chrono = { version = "^0.4.20", default-features = false, features = ["clock"], optional = true }
-time = { version = "^0.3", optional = true }
-futures = { version = "^0.3" }
-futures-util = { version = "^0.3" }
-log = { version = "^0.4" }
-tracing = { version = "^0.1", features = ["log"] }
-rust_decimal = { version = "^1", optional = true }
-sea-orm-macros = { version = "^0.10.2", path = "sea-orm-macros", optional = true }
-sea-query = { version = "^0.27.1", features = ["thread-safe"] }
-sea-query-binder = { version = "^0.2.1", optional = true }
-sea-strum = { version = "^0.23", features = ["derive", "sea-orm"] }
-serde = { version = "^1.0", features = ["derive"] }
-serde_json = { version = "^1.0", optional = true }
-sqlx = { version = "^0.6", optional = true }
-uuid = { version = "^1", features = ["serde", "v4"], optional = true }
-ouroboros = "0.15"
-url = "^2.2"
-thiserror = "^1"
+async-stream = { version = "0.3", default-features = false }
+async-trait = { version = "0.1", default-features = false }
+chrono = { version = "0.4.20", default-features = false, optional = true }
+time = { version = "0.3", default-features = false, optional = true }
+futures = { version = "0.3", default-features = false, features = ["std"] }
+log = { version = "0.4", default-features = false }
+tracing = { version = "0.1", default-features = false, features = ["attributes", "log"] }
+rust_decimal = { version = "1", default-features = false, optional = true }
+bigdecimal = { version = "0.3", default-features = false, optional = true }
+sea-orm-macros = { version = "0.10.3", path = "sea-orm-macros", default-features = false, optional = true }
+sea-query = { version = "0.27.2", features = ["thread-safe"] }
+sea-query-binder = { version = "0.2.2", default-features = false, optional = true }
+sea-strum = { version = "0.23", default-features = false, features = ["derive", "sea-orm"] }
+serde = { version = "1.0", default-features = false }
+serde_json = { version = "1.0", default-features = false, optional = true }
+sqlx = { version = "0.6", default-features = false, optional = true }
+uuid = { version = "1", default-features = false, optional = true }
+ouroboros = { version = "0.15", default-features = false }
+url = { version = "2.2", default-features = false }
+thiserror = { version = "1", default-features = false }
 
 [dev-dependencies]
-smol = { version = "^1.2" }
-smol-potat = { version = "^1.1" }
-async-std = { version = "^1", features = ["attributes", "tokio1"] }
-tokio = { version = "^1.6", features = ["full"] }
+smol = { version = "1.2" }
+smol-potat = { version = "1.1" }
+async-std = { version = "1", features = ["attributes", "tokio1"] }
+futures = { version = "0.3" }
+tokio = { version = "1.6", features = ["full"] }
 actix-rt = { version = "2.2.0" }
-maplit = { version = "^1" }
-rust_decimal_macros = { version = "^1" }
+maplit = { version = "1" }
+rust_decimal_macros = { version = "1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 sea-orm = { path = ".", features = ["mock", "debug-print", "tests-cfg", "postgres-array"] }
-pretty_assertions = { version = "^0.7" }
-time = { version = "^0.3", features = ["macros"] }
+pretty_assertions = { version = "0.7" }
+time = { version = "0.3", features = ["macros"] }
+uuid = { version = "1", features = ["v4"] }
 once_cell = "1.8"
 
 [features]
@@ -66,17 +68,19 @@ default = [
     "with-json",
     "with-chrono",
     "with-rust_decimal",
+    "with-bigdecimal",
     "with-uuid",
     "with-time",
 ]
-macros = ["sea-orm-macros"]
+macros = ["sea-orm-macros", "sea-query/derive"]
 mock = []
-with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "time?/serde", "sea-query-binder?/with-json", "sqlx?/json"]
+with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "time?/serde", "uuid?/serde", "sea-query-binder?/with-json", "sqlx?/json"]
 with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-binder?/with-chrono", "sqlx?/chrono"]
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-binder?/with-rust_decimal", "sqlx?/decimal"]
+with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-binder?/with-bigdecimal", "sqlx?/bigdecimal"]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
 with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
-postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array"]
+postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array", "sea-orm-macros?/postgres-array"]
 sqlx-dep = []
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-mysql = ["sqlx-dep", "sea-query-binder/sqlx-mysql", "sqlx/mysql"]
@@ -84,34 +88,35 @@ sqlx-postgres = ["sqlx-dep", "sea-query-binder/sqlx-postgres", "sqlx/postgres"]
 sqlx-sqlite = ["sqlx-dep", "sea-query-binder/sqlx-sqlite", "sqlx/sqlite"]
 runtime-async-std = []
 runtime-async-std-native-tls = [
-    "sqlx/runtime-async-std-native-tls",
-    "sea-query-binder/runtime-async-std-native-tls",
+    "sqlx?/runtime-async-std-native-tls",
+    "sea-query-binder?/runtime-async-std-native-tls",
     "runtime-async-std",
 ]
 runtime-async-std-rustls = [
-    "sqlx/runtime-async-std-rustls",
+    "sqlx?/runtime-async-std-rustls",
+    "sea-query-binder?/runtime-async-std-rustls",
     "runtime-async-std",
 ]
 runtime-actix = []
 runtime-actix-native-tls = [
-    "sqlx/runtime-actix-native-tls",
-    "sea-query-binder/runtime-actix-native-tls",
+    "sqlx?/runtime-actix-native-tls",
+    "sea-query-binder?/runtime-actix-native-tls",
     "runtime-actix",
 ]
 runtime-actix-rustls = [
-    "sqlx/runtime-actix-rustls",
-    "sea-query-binder/runtime-actix-rustls",
+    "sqlx?/runtime-actix-rustls",
+    "sea-query-binder?/runtime-actix-rustls",
     "runtime-actix",
 ]
 runtime-tokio = []
 runtime-tokio-native-tls = [
-    "sqlx/runtime-tokio-native-tls",
-    "sea-query-binder/runtime-tokio-native-tls",
+    "sqlx?/runtime-tokio-native-tls",
+    "sea-query-binder?/runtime-tokio-native-tls",
     "runtime-tokio",
 ]
 runtime-tokio-rustls = [
-    "sqlx/runtime-tokio-rustls",
-    "sea-query-binder/runtime-tokio-rustls",
+    "sqlx?/runtime-tokio-rustls",
+    "sea-query-binder?/runtime-tokio-rustls",
     "runtime-tokio",
 ]
-tests-cfg = []
+tests-cfg = ["serde/derive"]

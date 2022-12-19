@@ -9,9 +9,10 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Caido](https://caido.io/) | A lightweight web security auditing toolkit
 - [Svix](https://www.svix.com/) ([repository](https://github.com/svix/svix-webhooks)) ![GitHub stars](https://img.shields.io/github/stars/svix/svix-webhooks.svg?style=social) | The enterprise ready webhooks service | DB: Postgres
 - [Sensei](https://l2.technology/sensei) ([repository](https://github.com/L2-Technology/sensei)) ![GitHub stars](https://img.shields.io/github/stars/L2-Technology/sensei.svg?style=social) | A Bitcoin lightning node implementation | DB: MySQL, Postgres, SQLite
-- [Spyglass](https://docs.spyglass.fyi/) ([repository](https://github.com/a5huynh/spyglass)) ![GitHub stars](https://img.shields.io/github/stars/a5huynh/spyglass.svg?style=social) | 🔭 A personal search engine that indexes what you want w/ a simple set of rules. | DB: SQLite
+- [Spyglass](https://www.spyglass.fyi/) ([repository](https://github.com/a5huynh/spyglass)) ![GitHub stars](https://img.shields.io/github/stars/a5huynh/spyglass.svg?style=social) | 🔭 A personal search engine that indexes what you want w/ a simple set of rules. | DB: SQLite
 - [My Data My Consent](https://mydatamyconsent.com/) | Online data sharing for people and businesses simplified
 - [CodeCTRL](https://codectrl.authentura.com) ([repository](https://github.com/Authentura/codectrl)) | A self-hostable code logging platform | DB: SQLite
+- [Prefix.dev](https://prefix.dev/) | Conda Package Search, Environment Management and Deployment built for [mamba](https://github.com/mamba-org/mamba)  | DB: Postgres, SQLite
 
 ### Frameworks
 
@@ -55,6 +56,8 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Ceobe Canteen Serve](https://github.com/Enraged-Dun-Cookie-Development-Team/Ceobe-Canteen-Serve) | A tool based on Arknights mobile game, using axum as web framework | DB: MySQL
 - [Fikabot](https://github.com/sousandrei/fikabot) | A slack bot to schedule coffee breaks (Fika in swedish) in slack channels | DB: MySQL
 - [RSS aggregator](https://github.com/fistons/rss-aggregator)| A small RSS aggregator and API using actix and SeaORM | DB: Postgres
+- [Dev Board](https://github.com/goto-eof/dev_board_api_rust)| A dashboard for organizing software development tasks implemented in Rust
+- [Wikipedia Speedrun](https://wikipediaspeedrun.com) ([repository](https://github.com/hut8/wikipedia-speedrun)) | Finds shortest paths between Wikipedia articles | DB: SQLite
 
 #### Frontend (desktop / cli)
 
@@ -69,6 +72,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 ### Dev tools
 
 - [symbols](https://github.com/nappa85/symbols) | A proc-macro utility to populates enum variants with primary keys values
+- [logic-lock](https://github.com/nappa85/logic-lock) | MySQL logic locks implemented over sea-orm | DB: MySQL
 
 ### Scaffolding
 

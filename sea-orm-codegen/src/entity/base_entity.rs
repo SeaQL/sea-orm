@@ -204,6 +204,7 @@ mod tests {
                     on_update: Some(ForeignKeyAction::Cascade),
                     self_referencing: false,
                     num_suffix: 0,
+                    impl_related: true,
                 },
                 Relation {
                     ref_table: "filling".to_owned(),
@@ -214,6 +215,7 @@ mod tests {
                     on_update: Some(ForeignKeyAction::Cascade),
                     self_referencing: false,
                     num_suffix: 0,
+                    impl_related: true,
                 },
             ],
             conjunct_relations: vec![],
