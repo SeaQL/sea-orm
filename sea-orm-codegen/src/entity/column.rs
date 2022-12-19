@@ -218,7 +218,7 @@ impl Column {
         serde_skip_deserializing_primary_key: bool,
         serde_skip_hidden_column: bool,
     ) -> TokenStream {
-        if self.name.starts_with("_") && serde_skip_hidden_column {
+        if self.name.starts_with('_') && serde_skip_hidden_column {
             quote! {
                 #[serde(skip)]
             }
