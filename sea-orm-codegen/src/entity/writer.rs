@@ -96,6 +96,7 @@ impl FromStr for WithSerde {
 }
 
 impl EntityWriterContext {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         expanded_format: bool,
         with_serde: WithSerde,
