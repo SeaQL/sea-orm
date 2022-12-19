@@ -204,6 +204,14 @@ pub enum GenerateSubcommands {
             action,
             long,
             default_value = "false",
+            help = "Opt-in to add skip attributes to hidden columns (i.e. when 'with-serde' enabled and column name starts with an underscore)"
+        )]
+        serde_skip_hidden_columns: bool,
+
+        #[clap(
+            action,
+            long,
+            default_value = "false",
             long_help = "Automatically derive the Copy trait on generated enums.\n\
             Enums generated from a database don't have associated data by default, and as such can \
             derive Copy.
