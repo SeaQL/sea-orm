@@ -203,10 +203,17 @@ pub enum GenerateSubcommands {
         #[clap(
             action,
             long,
+            help = "Generate a serde field attribute, '#[serde(skip_deserializing)]', for the primary key fields to skip them during deserialization, this flag will be affective only when '--with-serde' is 'both' or 'deserialize'"
+        )]
+        serde_skip_deserializing_primary_key: bool,
+
+        #[clap(
+            action,
+            long,
             default_value = "false",
             help = "Opt-in to add skip attributes to hidden columns (i.e. when 'with-serde' enabled and column name starts with an underscore)"
         )]
-        serde_skip_hidden_columns: bool,
+        serde_skip_hidden_column: bool,
 
         #[clap(
             action,
@@ -236,13 +243,6 @@ pub enum GenerateSubcommands {
             help = "Generate index file as `lib.rs` instead of `mod.rs`."
         )]
         lib: bool,
-
-        #[clap(
-            action,
-            long,
-            help = "Generate a serde field attribute, '#[serde(skip_deserializing)]', for the primary key fields to skip them during deserialization, this flag will be affective only when '--with-serde' is 'both' or 'deserialize'"
-        )]
-        serde_skip_deserializing_primary_key: bool,
     },
 }
 

@@ -167,17 +167,19 @@ impl Entity {
             .map_or(quote! {, Eq}, |_| quote! {})
     }
 
-    pub fn get_serde_skip_deserializing(
+    pub fn get_column_serde_attributes(
         &self,
         serde_skip_deserializing_primary_key: bool,
+        serde_skip_hidden_column: bool,
     ) -> Vec<TokenStream> {
         self.columns
             .iter()
             .map(|col| {
                 let is_primary_key = self.primary_keys.iter().any(|pk| pk.name == col.name);
-                col.get_serde_skip_deserializing(
+                col.get_serde_attribute(
                     is_primary_key,
                     serde_skip_deserializing_primary_key,
+                    serde_skip_hidden_column,
                 )
             })
             .collect()
