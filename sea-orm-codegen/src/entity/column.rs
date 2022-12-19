@@ -212,12 +212,12 @@ impl Column {
         info
     }
 
-    pub fn get_skip_serde_deserializing(
+    pub fn get_serde_skip_deserializing(
         &self,
         is_primary_key: bool,
-        skip_deserializing_primary_key: bool,
+        serde_skip_deserializing_primary_key: bool,
     ) -> TokenStream {
-        if skip_deserializing_primary_key && is_primary_key {
+        if serde_skip_deserializing_primary_key && is_primary_key {
             quote! { #[serde(skip_deserializing)] }
         } else {
             quote! {}

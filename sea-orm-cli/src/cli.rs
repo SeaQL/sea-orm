@@ -234,7 +234,7 @@ pub enum GenerateSubcommands {
             long,
             help = "Generate a serde field attribute, '#[serde(skip_deserializing)]', for the primary key fields to skip them during deserialization, this flag will be affective only when '--with-serde' is 'both' or 'deserialize'"
         )]
-        skip_deserializing_primary_key: bool,
+        serde_skip_deserializing_primary_key: bool,
     },
 }
 
