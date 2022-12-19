@@ -399,6 +399,7 @@ impl From<RelationDef> for TableForeignKey {
         set_foreign_key_stmt!(relation, foreign_key);
         foreign_key
             .from_tbl(unpack_table_ref(&relation.from_tbl))
+            .to_tbl(unpack_table_ref(&relation.to_tbl))
             .take()
     }
 }
