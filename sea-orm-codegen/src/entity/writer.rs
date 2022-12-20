@@ -313,6 +313,7 @@ impl EntityWriter {
         lines.push("".to_owned());
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn gen_expanded_code_blocks(
         entity: &Entity,
         with_serde: &WithSerde,
@@ -351,6 +352,7 @@ impl EntityWriter {
         code_blocks
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn gen_compact_code_blocks(
         entity: &Entity,
         with_serde: &WithSerde,
@@ -655,6 +657,7 @@ impl EntityWriter {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn gen_compact_model_struct(
         entity: &Entity,
         with_serde: &WithSerde,
