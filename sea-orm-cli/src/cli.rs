@@ -228,6 +228,24 @@ pub enum GenerateSubcommands {
             help = "Generate index file as `lib.rs` instead of `mod.rs`."
         )]
         lib: bool,
+
+        #[clap(
+            value_parser,
+            long,
+            use_value_delimiter = true,
+            takes_value = true,
+            help = "Add extra derive macros to generated model structs (comma separated), ex. `--derives 'ts_rs::Ts'`"
+        )]
+        derives: Vec<String>,
+
+        #[clap(
+            value_parser,
+            long,
+            use_value_delimiter = true,
+            takes_value = true,
+            help = r#"Add extra attributes to generated model struct, no need for `#[]` (comma separated), ex. `--attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
+        )]
+        attributes: Vec<String>,
     },
 }
 
