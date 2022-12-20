@@ -414,11 +414,11 @@ impl TryGetable for BigDecimal {
 #[allow(unused_macros)]
 macro_rules! try_getable_uuid {
     ( $type: ty, $conversion_fn: expr ) => {
-        #[allow(unused_variables)]
+        #[allow(unused_variables, unreachable_code)]
         impl TryGetable for $type {
             fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
                 let column = format!("{}{}", pre, col);
-                match &res.row {
+                let res: Result<uuid::Uuid, TryGetError> = match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
@@ -450,8 +450,8 @@ macro_rules! try_getable_uuid {
                     }
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
-                }
-                .map($conversion_fn)
+                };
+                res.map($conversion_fn)
             }
         }
     };
@@ -605,11 +605,11 @@ mod postgres_array {
     #[allow(unused_macros)]
     macro_rules! try_getable_postgres_array_uuid {
         ( $type: ty, $conversion_fn: expr ) => {
+            #[allow(unused_variables, unreachable_code)]
             impl TryGetable for Vec<$type> {
-                #[allow(unused_variables)]
                 fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
                     let column = format!("{}{}", pre, col);
-                    match &res.row {
+                    let res: Result<uuid::Uuid, TryGetError> = match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
                         QueryResultRow::SqlxMySql(row) => {
                             panic!("{} unsupported by sqlx-mysql", stringify!($type))
@@ -634,8 +634,8 @@ mod postgres_array {
                             }),
                         #[allow(unreachable_patterns)]
                         _ => unreachable!(),
-                    }
-                    .map(|vec| vec.into_iter().map($conversion_fn).collect())
+                    };
+                    res.map(|vec| vec.into_iter().map($conversion_fn).collect())
                 }
             }
         };

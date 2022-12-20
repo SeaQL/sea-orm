@@ -382,8 +382,16 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
             ColumnDef::new(collection::Column::ColorsOpt)
                 .array(sea_query::ColumnType::Integer(None)),
         )
-        .col(ColumnDef::new(collection::Column::Uuid).array(sea_query::ColumnType::Uuid).not_null())
-        .col(ColumnDef::new(collection::Column::UuidHyphenated).array(sea_query::ColumnType::Uuid).not_null())
+        .col(
+            ColumnDef::new(collection::Column::Uuid)
+                .array(sea_query::ColumnType::Uuid)
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(collection::Column::UuidHyphenated)
+                .array(sea_query::ColumnType::Uuid)
+                .not_null(),
+        )
         .to_owned();
 
     create_table(db, &stmt, Collection).await
