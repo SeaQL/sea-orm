@@ -203,7 +203,7 @@ impl MockDatabaseTrait for MockDatabase {
 }
 
 impl MockRow {
-    /// Try to get the values of a [MockRow] and fail gracefully on error
+    /// Get a value from the [MockRow]
     pub fn try_get<T>(&self, col: &str) -> Result<T, DbErr>
     where
         T: ValueType,
@@ -211,6 +211,7 @@ impl MockRow {
         T::try_from(self.values.get(col).unwrap().clone()).map_err(|e| DbErr::Type(e.to_string()))
     }
 
+    /// Get a value from the [MockRow] based on the order of column name
     pub fn try_get_by_index<T>(&self, idx: usize) -> Result<T, DbErr>
     where
         T: ValueType,

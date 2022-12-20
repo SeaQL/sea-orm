@@ -53,7 +53,7 @@ impl From<TryGetError> for DbErr {
 // QueryResult //
 
 impl QueryResult {
-    /// Get a Row from a Column
+    /// Get a value from the query result with prefixed column name
     pub fn try_get<T>(&self, pre: &str, col: &str) -> Result<T, DbErr>
     where
         T: TryGetable,
@@ -61,6 +61,7 @@ impl QueryResult {
         Ok(T::try_get(self, pre, col)?)
     }
 
+    /// Get a value from the query result based on the order in the select expressions
     pub fn try_get_by_index<T>(&self, idx: usize) -> Result<T, DbErr>
     where
         T: TryGetable,
@@ -68,7 +69,7 @@ impl QueryResult {
         Ok(T::try_get_by_index(self, idx)?)
     }
 
-    /// Perform query operations on multiple Columns
+    /// Get a tuple value from the query result with prefixed column name
     pub fn try_get_many<T>(&self, pre: &str, cols: &[String]) -> Result<T, DbErr>
     where
         T: TryGetableMany,
@@ -76,6 +77,7 @@ impl QueryResult {
         Ok(T::try_get_many(self, pre, cols)?)
     }
 
+    /// Get a tuple value from the query result based on the order in the select expressions
     pub fn try_get_many_by_index<T>(&self) -> Result<T, DbErr>
     where
         T: TryGetableMany,
@@ -1175,13 +1177,13 @@ fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), Try
 
 // TryGetableFromJson //
 
-/// Perform a query on multiple columns
+/// An interface to get a JSON from the query result
 #[cfg(feature = "with-json")]
 pub trait TryGetableFromJson: Sized
 where
     for<'de> Self: serde::Deserialize<'de>,
 {
-    /// Ensure the type implements this method
+    /// Get a JSON from the query result with prefixed column name
     #[allow(unused_variables, unreachable_code)]
     fn try_get_from_json(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
         let column = format!("{}{}", pre, col);
@@ -1223,6 +1225,7 @@ where
         }
     }
 
+    /// Get a JSON from the query result based on the order in the select expressions
     fn try_get_from_json_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]

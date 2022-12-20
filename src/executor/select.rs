@@ -41,7 +41,7 @@ pub trait SelectorTrait {
     fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr>;
 }
 
-/// Perform an operation on an entity that can yield a Value
+/// Get tuple from query result based on a list of column identifiers
 #[derive(Debug)]
 pub struct SelectGetableValue<T, C>
 where
@@ -52,6 +52,7 @@ where
     model: PhantomData<T>,
 }
 
+/// Get tuple from query result based on column index
 #[derive(Debug)]
 pub struct SelectGetableTuple<T>
 where
@@ -535,6 +536,7 @@ where
         }
     }
 
+    /// Get tuple from query result based on column index
     pub fn into_tuple<T>(query: SelectStatement) -> Selector<SelectGetableTuple<T>>
     where
         T: TryGetableMany,
