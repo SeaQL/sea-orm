@@ -10,11 +10,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### New Features
 
 * Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
+* [sea-orm-cli] Generate `#[serde(skip_deserializing)]` for primary key columns https://github.com/SeaQL/sea-orm/pull/846, https://github.com/SeaQL/sea-orm/pull/1186, https://github.com/SeaQL/sea-orm/pull/1318
+* [sea-orm-cli] Generate `#[serde(skip)]` for hidden columns https://github.com/SeaQL/sea-orm/pull/1171, https://github.com/SeaQL/sea-orm/pull/1320
+* [sea-orm-cli] Generate entity with extra derives and attributes for model struct https://github.com/SeaQL/sea-orm/pull/1124, https://github.com/SeaQL/sea-orm/pull/1321
 
 ### Enhancements
 
 * Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
 * Added `DatabaseConnection::close` https://github.com/SeaQL/sea-orm/pull/1236
+* Refactor schema module to expose functions for database alteration https://github.com/SeaQL/sea-orm/pull/1256
 
 ### Upgrades
 
@@ -22,11 +26,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### House Keeping
 
-* Remove dependency when not needed https://github.com/SeaQL/sea-orm/pull/1213
+* Removed dependency when not needed https://github.com/SeaQL/sea-orm/pull/1213
+* Changed all version = "^x.y.z" into version = "x.y.z" and disabled default features and enable only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
 
 ### Bug Fixes
 
 * Fixes `DeriveColumn` (by qualifying `IdenStatic::as_str`) https://github.com/SeaQL/sea-orm/pull/1280
+* Prevent returning connections to pool with a positive transaction depth https://github.com/SeaQL/sea-orm/pull/1283
+
+## 0.10.6 - Pending
+
+### Enhancements
+
+* Cast enum values when constructing update many query https://github.com/SeaQL/sea-orm/pull/1178
+
+### Bug Fixes
+
+* [sea-orm-codegen] Skip implementing Related if the same related entity is being referenced by a conjunct relation https://github.com/SeaQL/sea-orm/pull/1298
+* [sea-orm-cli] CLI depends on codegen of the same version https://github.com/SeaQL/sea-orm/pull/1299/
 
 ## 0.10.5 - 2022-12-02
 

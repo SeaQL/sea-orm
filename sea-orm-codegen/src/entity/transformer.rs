@@ -197,13 +197,23 @@ impl EntityTransformer {
         }
         for (tbl_name, mut conjunct_relations) in conjunct_relations.into_iter() {
             if let Some(entity) = entities.get_mut(&tbl_name) {
+                for relation in entity.relations.iter_mut() {
+                    // Skip `impl Related ... { fn to() ... }` implementation block,
+                    // if the same related entity is being referenced by a conjunct relation
+                    if conjunct_relations
+                        .iter()
+                        .any(|conjunct_relation| conjunct_relation.to == relation.ref_table)
+                    {
+                        relation.impl_related = false;
+                    }
+                }
                 entity.conjunct_relations.append(&mut conjunct_relations);
             }
         }
         Ok(EntityWriter {
             entities: entities
-                .into_iter()
-                .map(|(_, mut v)| {
+                .into_values()
+                .map(|mut v| {
                     v.relations.sort_by(|a, b| a.ref_table.cmp(&b.ref_table));
                     v
                 })
