@@ -251,7 +251,7 @@ pub enum GenerateSubcommands {
             takes_value = true,
             help = "Add extra derive macros to generated model structs (comma separated), ex. `--derives 'ts_rs::Ts'`"
         )]
-        derives: Vec<String>,
+        model_extra_derives: Vec<String>,
 
         #[clap(
             value_parser,
@@ -260,7 +260,7 @@ pub enum GenerateSubcommands {
             takes_value = true,
             help = r#"Add extra attributes to generated model struct, no need for `#[]` (comma separated), ex. `--attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
         )]
-        attributes: Vec<String>,
+        model_extra_attributes: Vec<String>,
     },
 }
 

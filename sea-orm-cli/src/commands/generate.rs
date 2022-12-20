@@ -29,8 +29,8 @@ pub async fn run_generate_command(
             with_copy_enums,
             date_time_crate,
             lib,
-            derives,
-            attributes,
+            model_extra_derives,
+            model_extra_attributes,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -170,8 +170,8 @@ pub async fn run_generate_command(
                 lib,
                 serde_skip_deserializing_primary_key,
                 serde_skip_hidden_column,
-                derives,
-                attributes,
+                model_extra_derives,
+                model_extra_attributes,
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
