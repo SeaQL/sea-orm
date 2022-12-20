@@ -10,11 +10,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### New Features
 
 * Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
+* [sea-orm-cli] Generate `#[serde(skip_deserializing)]` for primary key columns https://github.com/SeaQL/sea-orm/pull/846, https://github.com/SeaQL/sea-orm/pull/1186, https://github.com/SeaQL/sea-orm/pull/1318
+* [sea-orm-cli] Generate `#[serde(skip)]` for hidden columns https://github.com/SeaQL/sea-orm/pull/1171, https://github.com/SeaQL/sea-orm/pull/1320
+* [sea-orm-cli] Generate entity with extra derives and attributes for model struct https://github.com/SeaQL/sea-orm/pull/1124, https://github.com/SeaQL/sea-orm/pull/1321
 
 ### Enhancements
 
 * Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
 * Added `DatabaseConnection::close` https://github.com/SeaQL/sea-orm/pull/1236
+* Refactor schema module to expose functions for database alteration https://github.com/SeaQL/sea-orm/pull/1256
 
 ### Upgrades
 
@@ -31,6 +35,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Prevent returning connections to pool with a positive transaction depth https://github.com/SeaQL/sea-orm/pull/1283
 
 ## 0.10.6 - Pending
+
+### Enhancements
+
+* Cast enum values when constructing update many query https://github.com/SeaQL/sea-orm/pull/1178
 
 ### Bug Fixes
 
