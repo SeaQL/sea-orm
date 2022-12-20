@@ -43,6 +43,11 @@ impl TryGetable for Events {
         let vec: Vec<String> = res.try_get(pre, col).map_err(TryGetError::DbErr)?;
         Ok(Events(vec.into_iter().map(Event).collect()))
     }
+
+    fn try_get_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
+        let vec: Vec<String> = res.try_get_by_index(idx).map_err(TryGetError::DbErr)?;
+        Ok(Events(vec.into_iter().map(Event).collect()))
+    }
 }
 
 impl ValueType for Events {
