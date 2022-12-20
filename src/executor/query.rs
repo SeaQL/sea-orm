@@ -163,6 +163,7 @@ macro_rules! try_getable_all {
                 }
             }
 
+            #[allow(unused_variables)]
             fn try_get_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
@@ -236,6 +237,7 @@ macro_rules! try_getable_unsigned {
                 }
             }
 
+            #[allow(unused_variables)]
             fn try_get_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
@@ -303,6 +305,7 @@ macro_rules! try_getable_mysql {
                 }
             }
 
+            #[allow(unused_variables)]
             fn try_get_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
@@ -378,6 +381,7 @@ macro_rules! try_getable_date_time {
                 }
             }
 
+            #[allow(unused_variables)]
             fn try_get_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
                 match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
@@ -516,6 +520,7 @@ impl TryGetable for Decimal {
         }
     }
 
+    #[allow(unused_variables)]
     fn try_get_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
@@ -612,6 +617,7 @@ impl TryGetable for BigDecimal {
         }
     }
 
+    #[allow(unused_variables)]
     fn try_get_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
@@ -701,6 +707,7 @@ impl TryGetable for u32 {
         }
     }
 
+    #[allow(unused_variables)]
     fn try_get_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
@@ -740,6 +747,7 @@ impl TryGetable for u32 {
     }
 }
 
+#[allow(dead_code)]
 fn err_null_idx_col(idx: usize) -> TryGetError {
     TryGetError::Null(format!("column at index {}", idx))
 }
@@ -781,6 +789,7 @@ mod postgres_array {
                     }
                 }
 
+                #[allow(unused_variables)]
                 fn try_get_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
                     match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
@@ -896,6 +905,7 @@ mod postgres_array {
             }
         }
 
+        #[allow(unused_variables)]
         fn try_get_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
             match &res.row {
                 #[cfg(feature = "sqlx-mysql")]
@@ -1226,6 +1236,7 @@ where
     }
 
     /// Get a JSON from the query result based on the order in the select expressions
+    #[allow(unused_variables)]
     fn try_get_from_json_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
         match &res.row {
             #[cfg(feature = "sqlx-mysql")]
