@@ -93,6 +93,28 @@ where
                         .add(f(c2, v2)),
                 )
                 .add(f(c1, v1)),
+            (Identity::Many(col_vec), ValueTuple::Many(value_vec))
+                if col_vec.len() == value_vec.len() =>
+            {
+                let len = col_vec.len();
+                let mut cond_any = Condition::any();
+                for n in (1..=len).rev() {
+                    let mut cond_all = Condition::all();
+                    for (i, (col, value)) in
+                        col_vec.iter().zip(value_vec.iter()).enumerate().take(n)
+                    {
+                        let v = value.clone();
+                        let expr = if i != (n - 1) {
+                            Expr::tbl(SeaRc::clone(&self.table), SeaRc::clone(col)).eq(v)
+                        } else {
+                            f(col, v)
+                        };
+                        cond_all = cond_all.add(expr);
+                    }
+                    cond_any = cond_any.add(cond_all);
+                }
+                cond_any
+            }
             _ => panic!("column arity mismatch"),
         }
     }
@@ -136,6 +158,11 @@ where
                 f(query, c1);
                 f(query, c2);
                 f(query, c3);
+            }
+            Identity::Many(vec) => {
+                for col in vec.iter() {
+                    f(query, col);
+                }
             }
         }
     }
@@ -229,6 +256,7 @@ mod tests {
     use crate::tests_cfg::*;
     use crate::{DbBackend, MockDatabase, Statement, Transaction};
     use pretty_assertions::assert_eq;
+    use sea_query::IntoIden;
 
     #[smol_potat::test]
     async fn first_2_before_10() -> Result<(), DbErr> {
@@ -613,46 +641,74 @@ mod tests {
         use xyz_entity::*;
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![Model {
-                x: 'x' as i32,
-                y: "y".into(),
-                z: 'z' as i64,
-            }]])
+            .append_query_results(vec![
+                vec![Model {
+                    x: 'x' as i32,
+                    y: "y".into(),
+                    z: 'z' as i64,
+                }],
+                vec![Model {
+                    x: 'x' as i32,
+                    y: "y".into(),
+                    z: 'z' as i64,
+                }],
+            ])
             .into_connection();
 
+        let cursor_by = Identity::Ternary(
+            Column::X.into_iden(),
+            Column::Y.into_iden(),
+            Column::Z.into_iden(),
+        );
+        let after = ValueTuple::Three(('x' as i32).into(), "y".into(), ('z' as i64).into());
+
         assert!(!Entity::find()
-            .cursor_by((Column::X, Column::Y, Column::Z))
-            .after(('x' as i32, "y".to_owned(), 'z' as i64))
+            .cursor_by(cursor_by.clone())
+            .after(after.clone())
             .first(4)
             .all(&db)
             .await?
             .is_empty());
 
+        // We can construct the same cursor via `Identity::Many` and `ValueTuple::Many`
+        assert!(!Entity::find()
+            .cursor_by(Identity::Many(cursor_by.into_iter().collect()))
+            .after(ValueTuple::Many(after.into_iter().collect()))
+            .first(4)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        let stmt = Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            [
+                r#"SELECT "m"."x", "m"."y", "m"."z""#,
+                r#"FROM "m""#,
+                r#"WHERE ("m"."x" = $1 AND "m"."y" = $2 AND "m"."z" > $3)"#,
+                r#"OR ("m"."x" = $4 AND "m"."y" > $5)"#,
+                r#"OR "m"."x" > $6"#,
+                r#"ORDER BY "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
+                r#"LIMIT $7"#,
+            ]
+            .join(" ")
+            .as_str(),
+            vec![
+                ('x' as i32).into(),
+                "y".into(),
+                ('z' as i64).into(),
+                ('x' as i32).into(),
+                "y".into(),
+                ('x' as i32).into(),
+                4_u64.into(),
+            ],
+        );
+
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many(vec![Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                [
-                    r#"SELECT "m"."x", "m"."y", "m"."z""#,
-                    r#"FROM "m""#,
-                    r#"WHERE ("m"."x" = $1 AND "m"."y" = $2 AND "m"."z" > $3)"#,
-                    r#"OR ("m"."x" = $4 AND "m"."y" > $5)"#,
-                    r#"OR "m"."x" > $6"#,
-                    r#"ORDER BY "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
-                    r#"LIMIT $7"#,
-                ]
-                .join(" ")
-                .as_str(),
-                vec![
-                    ('x' as i32).into(),
-                    "y".into(),
-                    ('z' as i64).into(),
-                    ('x' as i32).into(),
-                    "y".into(),
-                    ('x' as i32).into(),
-                    4_u64.into(),
-                ]
-            ),])]
+            vec![
+                Transaction::one(stmt.clone()),
+                Transaction::one(stmt.clone()),
+            ]
         );
 
         Ok(())

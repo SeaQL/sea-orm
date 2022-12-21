@@ -633,24 +633,15 @@ pub(crate) fn join_tbl_on_condition(
     to_tbl: SeaRc<dyn Iden>,
     owner_keys: Identity,
     foreign_keys: Identity,
-) -> SimpleExpr {
-    match (owner_keys, foreign_keys) {
-        (Identity::Unary(o1), Identity::Unary(f1)) => {
-            Expr::tbl(SeaRc::clone(&from_tbl), o1).equals(SeaRc::clone(&to_tbl), f1)
-        }
-        (Identity::Binary(o1, o2), Identity::Binary(f1, f2)) => {
-            Expr::tbl(SeaRc::clone(&from_tbl), o1)
-                .equals(SeaRc::clone(&to_tbl), f1)
-                .and(Expr::tbl(SeaRc::clone(&from_tbl), o2).equals(SeaRc::clone(&to_tbl), f2))
-        }
-        (Identity::Ternary(o1, o2, o3), Identity::Ternary(f1, f2, f3)) => {
-            Expr::tbl(SeaRc::clone(&from_tbl), o1)
-                .equals(SeaRc::clone(&to_tbl), f1)
-                .and(Expr::tbl(SeaRc::clone(&from_tbl), o2).equals(SeaRc::clone(&to_tbl), f2))
-                .and(Expr::tbl(SeaRc::clone(&from_tbl), o3).equals(SeaRc::clone(&to_tbl), f3))
-        }
-        _ => panic!("Owner key and foreign key mismatch"),
+) -> Condition {
+    let mut cond = Condition::all();
+    for (owner_key, foreign_key) in owner_keys.into_iter().zip(foreign_keys.into_iter()) {
+        cond = cond.add(
+            Expr::tbl(SeaRc::clone(&from_tbl), owner_key)
+                .equals(SeaRc::clone(&to_tbl), foreign_key),
+        );
     }
+    cond
 }
 
 pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> DynIden {

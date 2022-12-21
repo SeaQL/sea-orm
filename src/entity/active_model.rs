@@ -122,7 +122,8 @@ pub trait ActiveModelTrait: Clone + Debug {
                 }
             };
         }
-        match <Self::Entity as EntityTrait>::PrimaryKey::iter().count() {
+        let count = <Self::Entity as EntityTrait>::PrimaryKey::iter().count();
+        match count {
             1 => {
                 let s1 = next!();
                 Some(ValueTuple::One(s1))
@@ -138,31 +139,15 @@ pub trait ActiveModelTrait: Clone + Debug {
                 let s3 = next!();
                 Some(ValueTuple::Three(s1, s2, s3))
             }
-            4 => {
-                let s1 = next!();
-                let s2 = next!();
-                let s3 = next!();
-                let s4 = next!();
-                Some(ValueTuple::Four(s1, s2, s3, s4))
+            4..=12 => {
+                let mut vec = Vec::with_capacity(count);
+                for _ in 0..count {
+                    let s = next!();
+                    vec.push(s);
+                }
+                Some(ValueTuple::Many(vec))
             }
-            5 => {
-                let s1 = next!();
-                let s2 = next!();
-                let s3 = next!();
-                let s4 = next!();
-                let s5 = next!();
-                Some(ValueTuple::Five(s1, s2, s3, s4, s5))
-            }
-            6 => {
-                let s1 = next!();
-                let s2 = next!();
-                let s3 = next!();
-                let s4 = next!();
-                let s5 = next!();
-                let s6 = next!();
-                Some(ValueTuple::Six(s1, s2, s3, s4, s5, s6))
-            }
-            _ => panic!("The arity cannot be larger than 6"),
+            _ => panic!("The arity cannot be larger than 12"),
         }
     }
 
