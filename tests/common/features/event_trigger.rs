@@ -65,6 +65,6 @@ impl ValueType for Events {
     }
 
     fn column_type() -> ColumnType {
-        ColumnType::Array(SeaRc::new(Box::new(ColumnType::String(None))))
+        ColumnType::Array(SeaRc::new(ColumnType::String(None)))
     }
 }
