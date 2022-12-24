@@ -99,6 +99,7 @@ pub fn run_migrate_init(migration_dir: &str) -> Result<(), Box<dyn Error>> {
     write_file!("src/lib.rs");
     write_file!("src/m20220101_000001_create_table.rs");
     write_file!("src/main.rs");
+    write_file!("src/.gitignore");
     write_file!("Cargo.toml", "_Cargo.toml", |content: String| {
         let ver = format!(
             "{}.{}.0",
