@@ -5,6 +5,7 @@ mod insert;
 mod join;
 #[cfg(feature = "with-json")]
 mod json;
+mod loader;
 mod select;
 mod traits;
 mod update;
@@ -17,6 +18,7 @@ pub use insert::*;
 pub use join::*;
 #[cfg(feature = "with-json")]
 pub use json::*;
+pub use loader::*;
 pub use select::*;
 pub use traits::*;
 pub use update::*;
