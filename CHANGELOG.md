@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * [sea-orm-cli] Generate `#[serde(skip_deserializing)]` for primary key columns https://github.com/SeaQL/sea-orm/pull/846, https://github.com/SeaQL/sea-orm/pull/1186, https://github.com/SeaQL/sea-orm/pull/1318
 * [sea-orm-cli] Generate `#[serde(skip)]` for hidden columns https://github.com/SeaQL/sea-orm/pull/1171, https://github.com/SeaQL/sea-orm/pull/1320
 * [sea-orm-cli] Generate entity with extra derives and attributes for model struct https://github.com/SeaQL/sea-orm/pull/1124, https://github.com/SeaQL/sea-orm/pull/1321
+* Simple data loader https://github.com/SeaQL/sea-orm/pull/1238
 
 ### Enhancements
 
