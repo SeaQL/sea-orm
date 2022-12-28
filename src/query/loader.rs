@@ -29,7 +29,7 @@ pub trait LoaderTrait {
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>;
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl<M> LoaderTrait for Vec<M>
 where
     M: ModelTrait,
