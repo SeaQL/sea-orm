@@ -42,6 +42,7 @@ tracing = { version = "0.1", default-features = false }
 url = { version = "2.2", default-features = false }
 chrono = { version = "0.4.20", default-features = false, features = ["clock"] }
 regex = { version = "1", default-features = false }
+git-discover = "0.10.0"
 
 [dev-dependencies]
 smol = "1.2.5"
