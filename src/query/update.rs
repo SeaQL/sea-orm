@@ -189,7 +189,7 @@ where
         for col in E::Column::iter() {
             let av = model.get(col);
             if av.is_set() {
-                let expr = cast_text_as_enum(Expr::val(av.into_value().unwrap()), &col);
+                let expr = col.cast_value(Expr::val(av.into_value().unwrap()));
                 self.query.value(col, expr);
             }
         }
