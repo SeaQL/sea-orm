@@ -1074,4 +1074,414 @@ mod tests {
         assert_eq!(my_entity::Column::IdentityColumn.to_string().as_str(), "id");
         assert_eq!(my_entity::Column::Type.to_string().as_str(), "type");
     }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn cast_select_1() {
+        use crate::{ActiveModelTrait, ActiveValue, Update};
+
+        mod hello_expanded {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+            use crate::sea_query::{Alias, Expr, SimpleExpr};
+
+            #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+            pub struct Entity;
+
+            impl EntityName for Entity {
+                fn table_name(&self) -> &str {
+                    "hello"
+                }
+            }
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
+            pub struct Model {
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+            pub enum Column {
+                Id,
+                One1,
+                Two,
+                Three3,
+            }
+
+            impl ColumnTrait for Column {
+                type EntityName = Entity;
+
+                fn def(&self) -> ColumnDef {
+                    match self {
+                        Column::Id => ColumnType::Integer.def(),
+                        Column::One1 => ColumnType::Integer.def(),
+                        Column::Two => ColumnType::Integer.def(),
+                        Column::Three3 => ColumnType::Integer.def(),
+                    }
+                }
+
+                fn cast_select(&self, expr: Expr) -> SimpleExpr {
+                    match self {
+                        Self::Two => SimpleExpr::cast_as(
+                            Into::<SimpleExpr>::into(expr),
+                            Alias::new("integer"),
+                        ),
+                        _ => self.cast_select_enum(expr),
+                    }
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+            pub enum PrimaryKey {
+                Id,
+            }
+
+            impl PrimaryKeyTrait for PrimaryKey {
+                type ValueType = i32;
+
+                fn auto_increment() -> bool {
+                    true
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        #[allow(clippy::enum_variant_names)]
+        mod hello_compact {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "hello")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                #[sea_orm(cast_select = "integer")]
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        fn assert_it<E, A>(active_model: A)
+        where
+            E: EntityTrait,
+            A: ActiveModelTrait<Entity = E>,
+        {
+            assert_eq!(
+                E::find().build(DbBackend::Postgres).to_string(),
+                r#"SELECT "hello"."id", "hello"."one1", CAST("hello"."two" AS integer), "hello"."three3" FROM "hello""#,
+            );
+            assert_eq!(
+                Update::one(active_model)
+                    .build(DbBackend::Postgres)
+                    .to_string(),
+                r#"UPDATE "hello" SET "one1" = 1, "two" = 2, "three3" = 3 WHERE "hello"."id" = 1"#,
+            );
+        }
+
+        assert_it(hello_expanded::ActiveModel {
+            id: ActiveValue::set(1),
+            one: ActiveValue::set(1),
+            two: ActiveValue::set(2),
+            three: ActiveValue::set(3),
+        });
+        assert_it(hello_compact::ActiveModel {
+            id: ActiveValue::set(1),
+            one: ActiveValue::set(1),
+            two: ActiveValue::set(2),
+            three: ActiveValue::set(3),
+        });
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn cast_value_1() {
+        use crate::{ActiveModelTrait, ActiveValue, Update};
+
+        mod hello_expanded {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+            use crate::sea_query::{Alias, Expr, SimpleExpr};
+
+            #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+            pub struct Entity;
+
+            impl EntityName for Entity {
+                fn table_name(&self) -> &str {
+                    "hello"
+                }
+            }
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
+            pub struct Model {
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+            pub enum Column {
+                Id,
+                One1,
+                Two,
+                Three3,
+            }
+
+            impl ColumnTrait for Column {
+                type EntityName = Entity;
+
+                fn def(&self) -> ColumnDef {
+                    match self {
+                        Column::Id => ColumnType::Integer.def(),
+                        Column::One1 => ColumnType::Integer.def(),
+                        Column::Two => ColumnType::Integer.def(),
+                        Column::Three3 => ColumnType::Integer.def(),
+                    }
+                }
+
+                fn cast_value(&self, expr: Expr) -> SimpleExpr {
+                    match self {
+                        Self::Two => {
+                            SimpleExpr::cast_as(Into::<SimpleExpr>::into(expr), Alias::new("text"))
+                        }
+                        _ => self.cast_value_enum(expr),
+                    }
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+            pub enum PrimaryKey {
+                Id,
+            }
+
+            impl PrimaryKeyTrait for PrimaryKey {
+                type ValueType = i32;
+
+                fn auto_increment() -> bool {
+                    true
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        #[allow(clippy::enum_variant_names)]
+        mod hello_compact {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "hello")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                #[sea_orm(cast_value = "text")]
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        fn assert_it<E, A>(active_model: A)
+        where
+            E: EntityTrait,
+            A: ActiveModelTrait<Entity = E>,
+        {
+            assert_eq!(
+                E::find().build(DbBackend::Postgres).to_string(),
+                r#"SELECT "hello"."id", "hello"."one1", "hello"."two", "hello"."three3" FROM "hello""#,
+            );
+            assert_eq!(
+                Update::one(active_model)
+                    .build(DbBackend::Postgres)
+                    .to_string(),
+                r#"UPDATE "hello" SET "one1" = 1, "two" = CAST(2 AS text), "three3" = 3 WHERE "hello"."id" = 1"#,
+            );
+        }
+
+        assert_it(hello_expanded::ActiveModel {
+            id: ActiveValue::set(1),
+            one: ActiveValue::set(1),
+            two: ActiveValue::set(2),
+            three: ActiveValue::set(3),
+        });
+        assert_it(hello_compact::ActiveModel {
+            id: ActiveValue::set(1),
+            one: ActiveValue::set(1),
+            two: ActiveValue::set(2),
+            three: ActiveValue::set(3),
+        });
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn cast_select_and_value_1() {
+        use crate::{ActiveModelTrait, ActiveValue, Update};
+
+        mod hello_expanded {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+            use crate::sea_query::{Alias, Expr, SimpleExpr};
+
+            #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+            pub struct Entity;
+
+            impl EntityName for Entity {
+                fn table_name(&self) -> &str {
+                    "hello"
+                }
+            }
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
+            pub struct Model {
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+            pub enum Column {
+                Id,
+                One1,
+                Two,
+                Three3,
+            }
+
+            impl ColumnTrait for Column {
+                type EntityName = Entity;
+
+                fn def(&self) -> ColumnDef {
+                    match self {
+                        Column::Id => ColumnType::Integer.def(),
+                        Column::One1 => ColumnType::Integer.def(),
+                        Column::Two => ColumnType::Integer.def(),
+                        Column::Three3 => ColumnType::Integer.def(),
+                    }
+                }
+
+                fn cast_select(&self, expr: Expr) -> SimpleExpr {
+                    match self {
+                        Self::Two => SimpleExpr::cast_as(
+                            Into::<SimpleExpr>::into(expr),
+                            Alias::new("integer"),
+                        ),
+                        _ => self.cast_select_enum(expr),
+                    }
+                }
+
+                fn cast_value(&self, expr: Expr) -> SimpleExpr {
+                    match self {
+                        Self::Two => {
+                            SimpleExpr::cast_as(Into::<SimpleExpr>::into(expr), Alias::new("text"))
+                        }
+                        _ => self.cast_value_enum(expr),
+                    }
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+            pub enum PrimaryKey {
+                Id,
+            }
+
+            impl PrimaryKeyTrait for PrimaryKey {
+                type ValueType = i32;
+
+                fn auto_increment() -> bool {
+                    true
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        #[allow(clippy::enum_variant_names)]
+        mod hello_compact {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "hello")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                #[sea_orm(cast_select = "integer", cast_value = "text")]
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        fn assert_it<E, A>(active_model: A)
+        where
+            E: EntityTrait,
+            A: ActiveModelTrait<Entity = E>,
+        {
+            assert_eq!(
+                E::find().build(DbBackend::Postgres).to_string(),
+                r#"SELECT "hello"."id", "hello"."one1", CAST("hello"."two" AS integer), "hello"."three3" FROM "hello""#,
+            );
+            assert_eq!(
+                Update::one(active_model)
+                    .build(DbBackend::Postgres)
+                    .to_string(),
+                r#"UPDATE "hello" SET "one1" = 1, "two" = CAST(2 AS text), "three3" = 3 WHERE "hello"."id" = 1"#,
+            );
+        }
+
+        assert_it(hello_expanded::ActiveModel {
+            id: ActiveValue::set(1),
+            one: ActiveValue::set(1),
+            two: ActiveValue::set(2),
+            three: ActiveValue::set(3),
+        });
+        assert_it(hello_compact::ActiveModel {
+            id: ActiveValue::set(1),
+            one: ActiveValue::set(1),
+            two: ActiveValue::set(2),
+            three: ActiveValue::set(3),
+        });
+    }
 }
