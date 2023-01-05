@@ -124,6 +124,32 @@ impl ConnectionTrait for DatabaseConnection {
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
+    async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.execute_unprepared(sql).await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
+                conn.execute_unprepared(sql).await
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => {
+                conn.execute_unprepared(sql).await
+            }
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(conn) => {
+                let db_backend = conn.get_database_backend();
+                let stmt = Statement::from_string(db_backend, sql.into());
+                conn.execute(stmt)
+            }
+            DatabaseConnection::Disconnected => {
+                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
+            }
+        }
+    }
+
+    #[instrument(level = "trace")]
+    #[allow(unused_variables)]
     async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]

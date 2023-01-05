@@ -4,7 +4,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 use sqlx::{
     pool::PoolConnection,
     sqlite::{SqliteConnectOptions, SqliteQueryResult, SqliteRow},
-    Sqlite, SqlitePool,
+    Executor, Sqlite, SqlitePool,
 };
 
 use sea_query_binder::SqlxValues;
@@ -96,6 +96,21 @@ impl SqlxSqlitePoolConnection {
                     Err(err) => Err(sqlx_error_to_exec_err(err)),
                 }
             })
+        } else {
+            Err(DbErr::ConnectionAcquire)
+        }
+    }
+
+    /// Execute an unprepared SQL statement on a SQLite backend
+    #[instrument(level = "trace")]
+    pub async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
+        debug_print!("{}", sql);
+
+        if let Ok(conn) = &mut self.pool.acquire().await {
+            match conn.execute(sql).await {
+                Ok(res) => Ok(res.into()),
+                Err(err) => Err(sqlx_error_to_exec_err(err)),
+            }
         } else {
             Err(DbErr::ConnectionAcquire)
         }

@@ -109,6 +109,21 @@ impl SqlxPostgresPoolConnection {
         }
     }
 
+    /// Execute an unprepared SQL statement on a PostgreSQL backend
+    #[instrument(level = "trace")]
+    pub async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
+        debug_print!("{}", sql);
+
+        if let Ok(conn) = &mut self.pool.acquire().await {
+            match conn.execute(sql).await {
+                Ok(res) => Ok(res.into()),
+                Err(err) => Err(sqlx_error_to_exec_err(err)),
+            }
+        } else {
+            Err(DbErr::ConnectionAcquire)
+        }
+    }
+
     /// Get one result from a SQL query. Returns [Option::None] if no match was found
     #[instrument(level = "trace")]
     pub async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {

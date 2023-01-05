@@ -332,6 +332,38 @@ impl ConnectionTrait for DatabaseTransaction {
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
+    async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
+        debug_print!("{}", sql);
+
+        match &mut *self.conn.lock().await {
+            #[cfg(feature = "sqlx-mysql")]
+            InnerConnection::MySql(conn) => sqlx::Executor::execute(conn, sql)
+                .await
+                .map(Into::into)
+                .map_err(sqlx_error_to_exec_err),
+            #[cfg(feature = "sqlx-postgres")]
+            InnerConnection::Postgres(conn) => sqlx::Executor::execute(conn, sql)
+                .await
+                .map(Into::into)
+                .map_err(sqlx_error_to_exec_err),
+            #[cfg(feature = "sqlx-sqlite")]
+            InnerConnection::Sqlite(conn) => sqlx::Executor::execute(conn, sql)
+                .await
+                .map(Into::into)
+                .map_err(sqlx_error_to_exec_err),
+            #[cfg(feature = "mock")]
+            InnerConnection::Mock(conn) => {
+                let db_backend = conn.get_database_backend();
+                let stmt = Statement::from_string(db_backend, sql.into());
+                conn.execute(stmt)
+            }
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
+        }
+    }
+
+    #[instrument(level = "trace")]
+    #[allow(unused_variables)]
     async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", stmt);
 
