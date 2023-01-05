@@ -609,7 +609,7 @@ mod postgres_array {
             impl TryGetable for Vec<$type> {
                 fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
                     let column = format!("{}{}", pre, col);
-                    let res: Result<uuid::Uuid, TryGetError> = match &res.row {
+                    let res: Result<Vec<uuid::Uuid>, TryGetError> = match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
                         QueryResultRow::SqlxMySql(row) => {
                             panic!("{} unsupported by sqlx-mysql", stringify!($type))
