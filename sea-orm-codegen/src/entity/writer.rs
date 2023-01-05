@@ -79,9 +79,10 @@ impl WithSerde {
 }
 
 /// Converts model_extra_derives argument to token stream
-fn bonus_derive<T>(model_extra_derives: Vec<T>) -> TokenStream
+fn bonus_derive<T, I>(model_extra_derives: I) -> TokenStream
 where
     T: Into<String>,
+    I: IntoIterator<Item = T>,
 {
     model_extra_derives
         .into_iter()
@@ -93,9 +94,10 @@ where
 }
 
 /// convert attributes argument to token stream
-fn bonus_attributes<T>(attributes: Vec<T>) -> TokenStream
+fn bonus_attributes<T, I>(attributes: I) -> TokenStream
 where
     T: Into<String>,
+    I: IntoIterator<Item = T>,
 {
     attributes.into_iter().map(Into::<String>::into).fold(
         TokenStream::default(),

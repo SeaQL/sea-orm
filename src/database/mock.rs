@@ -71,15 +71,20 @@ impl MockDatabase {
     }
 
     /// Add some [MockExecResult]s to `exec_results`
-    pub fn append_exec_results(mut self, vec: Vec<MockExecResult>) -> Self {
+    pub fn append_exec_results<I>(mut self, vec: I) -> Self
+    where
+        I: IntoIterator<Item = MockExecResult>,
+    {
         self.exec_results.extend(vec.into_iter().map(Result::Ok));
         self
     }
 
     /// Add some Values to `query_results`
-    pub fn append_query_results<T>(mut self, vec: Vec<Vec<T>>) -> Self
+    pub fn append_query_results<T, I, II>(mut self, vec: II) -> Self
     where
         T: IntoMockRow,
+        I: IntoIterator<Item = T>,
+        II: IntoIterator<Item = I>,
     {
         for row in vec.into_iter() {
             let row = row.into_iter().map(|vec| Ok(vec.into_mock_row())).collect();
@@ -89,13 +94,19 @@ impl MockDatabase {
     }
 
     /// Add some [DbErr]s to `exec_results`
-    pub fn append_exec_errors(mut self, vec: Vec<DbErr>) -> Self {
+    pub fn append_exec_errors<I>(mut self, vec: I) -> Self
+    where
+        I: IntoIterator<Item = DbErr>,
+    {
         self.exec_results.extend(vec.into_iter().map(Result::Err));
         self
     }
 
     /// Add some [DbErr]s to `query_results`
-    pub fn append_query_errors(mut self, vec: Vec<DbErr>) -> Self {
+    pub fn append_query_errors<I>(mut self, vec: I) -> Self
+    where
+        I: IntoIterator<Item = DbErr>,
+    {
         self.query_results.extend(vec.into_iter().map(Result::Err));
         self
     }
