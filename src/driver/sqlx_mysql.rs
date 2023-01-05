@@ -24,7 +24,7 @@ pub struct SqlxMySqlConnector;
 /// Defines a sqlx MySQL pool
 #[derive(Clone)]
 pub struct SqlxMySqlPoolConnection {
-    pool: MySqlPool,
+    pub(crate) pool: MySqlPool,
     metric_callback: Option<crate::metric::Callback>,
 }
 
