@@ -160,7 +160,7 @@ mod tests {
     #[smol_potat::test]
     async fn update_record_not_found_1() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![
+            .append_query_results([
                 vec![cake::Model {
                     id: 1,
                     name: "Cheese Cake".to_owned(),
@@ -169,7 +169,7 @@ mod tests {
                 vec![],
                 vec![],
             ])
-            .append_exec_results(vec![MockExecResult {
+            .append_exec_results([MockExecResult {
                 last_insert_id: 0,
                 rows_affected: 0,
             }])
@@ -245,31 +245,31 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![
+            [
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
-                    vec!["Cheese Cake".into(), 1i32.into()]
+                    ["Cheese Cake".into(), 1i32.into()]
                 ),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
-                    vec!["Cheese Cake".into(), 2i32.into()]
+                    ["Cheese Cake".into(), 2i32.into()]
                 ),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
-                    vec!["Cheese Cake".into(), 2i32.into()]
+                    ["Cheese Cake".into(), 2i32.into()]
                 ),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2 RETURNING "id", "name""#,
-                    vec!["Cheese Cake".into(), 2i32.into()]
+                    ["Cheese Cake".into(), 2i32.into()]
                 ),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2"#,
-                    vec!["Cheese Cake".into(), 2i32.into()]
+                    ["Cheese Cake".into(), 2i32.into()]
                 ),
             ]
         );

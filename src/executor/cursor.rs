@@ -242,7 +242,7 @@ mod tests {
     async fn first_2_before_10() -> Result<(), DbErr> {
         use fruit::*;
 
-        let models = vec![
+        let models = [
             Model {
                 id: 1,
                 name: "Blueberry".into(),
@@ -256,7 +256,7 @@ mod tests {
         ];
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![models.clone()])
+            .append_query_results([models.clone()])
             .into_connection();
 
         assert_eq!(
@@ -271,7 +271,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many([Statement::from_sql_and_values(
+            [Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
@@ -282,7 +282,7 @@ mod tests {
                 ]
                 .join(" ")
                 .as_str(),
-                vec![10_i32.into(), 2_u64.into()]
+                [10_i32.into(), 2_u64.into()]
             ),])]
         );
 
@@ -294,7 +294,7 @@ mod tests {
         use fruit::*;
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![
+            .append_query_results([[
                 Model {
                     id: 22,
                     name: "Rasberry".into(),
@@ -315,7 +315,7 @@ mod tests {
                 .last(2)
                 .all(&db)
                 .await?,
-            vec![
+            [
                 Model {
                     id: 21,
                     name: "Blueberry".into(),
@@ -331,7 +331,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many([Statement::from_sql_and_values(
+            [Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
@@ -342,7 +342,7 @@ mod tests {
                 ]
                 .join(" ")
                 .as_str(),
-                vec![10_i32.into(), 2_u64.into()]
+                [10_i32.into(), 2_u64.into()]
             ),])]
         );
 
@@ -354,7 +354,7 @@ mod tests {
         use fruit::*;
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![
+            .append_query_results([[
                 Model {
                     id: 27,
                     name: "Rasberry".into(),
@@ -376,7 +376,7 @@ mod tests {
                 .last(2)
                 .all(&db)
                 .await?,
-            vec![
+            [
                 Model {
                     id: 26,
                     name: "Blueberry".into(),
@@ -392,7 +392,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many([Statement::from_sql_and_values(
+            [Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
@@ -404,7 +404,7 @@ mod tests {
                 ]
                 .join(" ")
                 .as_str(),
-                vec![25_i32.into(), 30_i32.into(), 2_u64.into()]
+                [25_i32.into(), 30_i32.into(), 2_u64.into()]
             ),])]
         );
 
@@ -456,7 +456,7 @@ mod tests {
         use test_entity::*;
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![Model {
+            .append_query_results([[Model {
                 id: 1,
                 category: "CAT".into(),
             }]])
@@ -471,7 +471,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many([Statement::from_sql_and_values(
+            [Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "example"."id", "example"."category""#,
@@ -481,7 +481,7 @@ mod tests {
                 ]
                 .join(" ")
                 .as_str(),
-                vec![3_u64.into()]
+                [3_u64.into()]
             ),])]
         );
 
@@ -493,7 +493,7 @@ mod tests {
         use test_entity::*;
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![Model {
+            .append_query_results([[Model {
                 id: 1,
                 category: "CAT".into(),
             }]])
@@ -509,7 +509,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many([Statement::from_sql_and_values(
+            [Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "example"."id", "example"."category""#,
@@ -521,7 +521,7 @@ mod tests {
                 ]
                 .join(" ")
                 .as_str(),
-                vec![
+                [
                     "A".to_string().into(),
                     2i32.into(),
                     "A".to_string().into(),
@@ -538,7 +538,7 @@ mod tests {
         use test_entity::*;
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![Model {
+            .append_query_results([[Model {
                 id: 1,
                 category: "CAT".into(),
             }]])
@@ -554,7 +554,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many([Statement::from_sql_and_values(
+            [Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "example"."id", "example"."category""#,
@@ -566,7 +566,7 @@ mod tests {
                 ]
                 .join(" ")
                 .as_str(),
-                vec![
+                [
                     "A".to_string().into(),
                     2i32.into(),
                     "A".to_string().into(),
@@ -583,7 +583,7 @@ mod tests {
         use xyz_entity::*;
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![Model {
+            .append_query_results([[Model {
                 x: 'x' as i32,
                 y: "y".into(),
                 z: 'z' as i64,
@@ -599,7 +599,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many([Statement::from_sql_and_values(
+            [Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "m"."x", "m"."y", "m"."z""#,
@@ -609,7 +609,7 @@ mod tests {
                 ]
                 .join(" ")
                 .as_str(),
-                vec![4_u64.into()]
+                [4_u64.into()]
             ),])]
         );
 
@@ -621,7 +621,7 @@ mod tests {
         use xyz_entity::*;
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![Model {
+            .append_query_results([[Model {
                 x: 'x' as i32,
                 y: "y".into(),
                 z: 'z' as i64,
@@ -638,7 +638,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many([Statement::from_sql_and_values(
+            [Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "m"."x", "m"."y", "m"."z""#,
@@ -651,7 +651,7 @@ mod tests {
                 ]
                 .join(" ")
                 .as_str(),
-                vec![
+                [
                     ('x' as i32).into(),
                     "y".into(),
                     ('z' as i64).into(),

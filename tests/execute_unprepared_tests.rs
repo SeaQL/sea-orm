@@ -34,7 +34,7 @@ pub async fn execute_unprepared(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     assert_eq!(
         Entity::find().all(db).await?,
-        vec![Model { id: 1 }, Model { id: 3 }, Model { id: 5 },]
+        [Model { id: 1 }, Model { id: 3 }, Model { id: 5 }]
     );
 
     Ok(())

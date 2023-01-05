@@ -675,7 +675,7 @@ pub async fn linked() -> Result<(), DbErr> {
 
     assert_eq!(
         baked_for_customers,
-        vec![
+        [
             (
                 BakerLite {
                     name: "Baker Bob".to_owned(),
@@ -716,7 +716,7 @@ pub async fn linked() -> Result<(), DbErr> {
 
     assert_eq!(
         baker_bob_customers,
-        vec![customer::Model {
+        [customer::Model {
             id: 2,
             name: "Kara".to_owned(),
             notes: Some("Loves all cakes".to_owned()),

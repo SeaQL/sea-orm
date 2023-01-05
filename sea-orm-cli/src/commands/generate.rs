@@ -244,7 +244,7 @@ mod tests {
         expected = "called `Result::unwrap()` on an `Err` value: RelativeUrlWithoutBase"
     )]
     fn test_generate_entity_no_protocol() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",
@@ -265,7 +265,7 @@ mod tests {
         expected = "There is no database name as part of the url path: postgresql://root:root@localhost:3306"
     )]
     fn test_generate_entity_no_database_section() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",
@@ -286,7 +286,7 @@ mod tests {
         expected = "There is no database name as part of the url path: mysql://root:root@localhost:3306/"
     )]
     fn test_generate_entity_no_database_path() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",
@@ -305,7 +305,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: PoolTimedOut")]
     fn test_generate_entity_no_password() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",
@@ -324,7 +324,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: EmptyHost")]
     fn test_generate_entity_no_host() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",
