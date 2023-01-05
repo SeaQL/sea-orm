@@ -182,7 +182,7 @@
 //! # };
 //!
 //! // insert many
-//! Fruit::insert_many(vec![apple, pear]).exec(db).await?;
+//! Fruit::insert_many([apple, pear]).exec(db).await?;
 //! # Ok(())
 //! # }
 //! ```

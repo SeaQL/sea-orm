@@ -21,7 +21,7 @@ async fn main() -> Result<(), DbErr> {
     insert
         .into_table(Entity)
         .columns([Column::Name, Column::ProfitMargin])
-        .values_panic(vec!["Bakery Shop".into(), 0.5.into()]);
+        .values_panic(["Bakery Shop".into(), 0.5.into()]);
 
     let mut update = Query::update();
     update

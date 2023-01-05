@@ -412,7 +412,7 @@ mod tests {
         assert_eq!(
             db.into_transaction_log(),
             vec![
-                Transaction::many(vec![
+                Transaction::many([
                     Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
                     Statement::from_sql_and_values(
                         DbBackend::Postgres,
@@ -457,7 +457,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many(vec![
+            vec![Transaction::many([
                 Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
@@ -495,7 +495,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many(vec![
+            vec![Transaction::many([
                 Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
@@ -553,7 +553,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many(vec![
+            vec![Transaction::many([
                 Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,

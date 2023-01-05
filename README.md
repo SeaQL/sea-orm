@@ -125,7 +125,7 @@ let pear = fruit::ActiveModel {
 let pear = pear.insert(db).await?;
 
 // insert many
-Fruit::insert_many(vec![apple, pear]).exec(db).await?;
+Fruit::insert_many([apple, pear]).exec(db).await?;
 ```
 ### Update
 ```rust

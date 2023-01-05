@@ -27,7 +27,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
             let schema = Schema::new(db_backend);
             let enum_create_stmt = Type::create()
                 .as_enum(Alias::new("tea"))
-                .values(vec![Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
+                .values([Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
                 .to_owned();
             assert_eq!(
                 db_backend.build(&enum_create_stmt),

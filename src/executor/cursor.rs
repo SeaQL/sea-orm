@@ -271,7 +271,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many(vec![Statement::from_sql_and_values(
+            vec![Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
@@ -331,7 +331,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many(vec![Statement::from_sql_and_values(
+            vec![Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
@@ -392,7 +392,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many(vec![Statement::from_sql_and_values(
+            vec![Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
@@ -471,7 +471,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many(vec![Statement::from_sql_and_values(
+            vec![Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "example"."id", "example"."category""#,
@@ -509,7 +509,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many(vec![Statement::from_sql_and_values(
+            vec![Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "example"."id", "example"."category""#,
@@ -554,7 +554,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many(vec![Statement::from_sql_and_values(
+            vec![Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "example"."id", "example"."category""#,
@@ -599,7 +599,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many(vec![Statement::from_sql_and_values(
+            vec![Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "m"."x", "m"."y", "m"."z""#,
@@ -638,7 +638,7 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many(vec![Statement::from_sql_and_values(
+            vec![Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
                     r#"SELECT "m"."x", "m"."y", "m"."z""#,
