@@ -124,6 +124,32 @@ impl ConnectionTrait for DatabaseConnection {
 
     #[instrument(level = "trace")]
     #[allow(unused_variables)]
+    async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.execute_unprepared(sql).await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => {
+                conn.execute_unprepared(sql).await
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => {
+                conn.execute_unprepared(sql).await
+            }
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(conn) => {
+                let db_backend = conn.get_database_backend();
+                let stmt = Statement::from_string(db_backend, sql.into());
+                conn.execute(stmt)
+            }
+            DatabaseConnection::Disconnected => {
+                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
+            }
+        }
+    }
+
+    #[instrument(level = "trace")]
+    #[allow(unused_variables)]
     async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
@@ -376,6 +402,36 @@ impl DatabaseConnection {
             DatabaseConnection::Disconnected => {
                 Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
             }
+        }
+    }
+}
+
+#[cfg(feature = "sea-orm-internal")]
+impl DatabaseConnection {
+    /// Get [sqlx::MySqlPool]
+    #[cfg(feature = "sqlx-mysql")]
+    pub fn get_mysql_connection_pool(&self) -> &sqlx::MySqlPool {
+        match self {
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => &conn.pool,
+            _ => panic!("Not MySQL Connection"),
+        }
+    }
+
+    /// Get [sqlx::PgPool]
+    #[cfg(feature = "sqlx-postgres")]
+    pub fn get_postgres_connection_pool(&self) -> &sqlx::PgPool {
+        match self {
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => &conn.pool,
+            _ => panic!("Not Postgres Connection"),
+        }
+    }
+
+    /// Get [sqlx::SqlitePool]
+    #[cfg(feature = "sqlx-sqlite")]
+    pub fn get_sqlite_connection_pool(&self) -> &sqlx::SqlitePool {
+        match self {
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => &conn.pool,
+            _ => panic!("Not SQLite Connection"),
         }
     }
 }

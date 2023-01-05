@@ -45,8 +45,8 @@ where
         let query = self
             .query
             .clone()
-            .limit(self.page_size as u64)
-            .offset((self.page_size * page) as u64)
+            .limit(self.page_size)
+            .offset(self.page_size * page)
             .to_owned();
         let builder = self.db.get_database_backend();
         let stmt = builder.build(&query);

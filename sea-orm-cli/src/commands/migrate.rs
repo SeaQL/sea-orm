@@ -101,7 +101,7 @@ pub fn run_migrate_init(migration_dir: &str) -> Result<(), Box<dyn Error>> {
     write_file!("src/main.rs");
     write_file!("Cargo.toml", "_Cargo.toml", |content: String| {
         let ver = format!(
-            "^{}.{}.0",
+            "{}.{}.0",
             env!("CARGO_PKG_VERSION_MAJOR"),
             env!("CARGO_PKG_VERSION_MINOR")
         );

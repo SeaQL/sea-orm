@@ -9,4 +9,4 @@ publish = false
 
 [dependencies]
 sea-orm = { path = "../../", features = [ "sqlx-all", "runtime-async-std-native-tls", "debug-print" ] }
-async-std = { version = "^1", features = ["attributes", "tokio1"] }
+async-std = { version = "1", features = ["attributes", "tokio1"] }

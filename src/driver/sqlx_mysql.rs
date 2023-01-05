@@ -24,7 +24,7 @@ pub struct SqlxMySqlConnector;
 /// Defines a sqlx MySQL pool
 #[derive(Clone)]
 pub struct SqlxMySqlPoolConnection {
-    pool: MySqlPool,
+    pub(crate) pool: MySqlPool,
     metric_callback: Option<crate::metric::Callback>,
 }
 
@@ -89,6 +89,21 @@ impl SqlxMySqlPoolConnection {
                     Err(err) => Err(sqlx_error_to_exec_err(err)),
                 }
             })
+        } else {
+            Err(DbErr::ConnectionAcquire)
+        }
+    }
+
+    /// Execute an unprepared SQL statement on a MySQL backend
+    #[instrument(level = "trace")]
+    pub async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
+        debug_print!("{}", sql);
+
+        if let Ok(conn) = &mut self.pool.acquire().await {
+            match conn.execute(sql).await {
+                Ok(res) => Ok(res.into()),
+                Err(err) => Err(sqlx_error_to_exec_err(err)),
+            }
         } else {
             Err(DbErr::ConnectionAcquire)
         }

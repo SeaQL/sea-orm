@@ -211,6 +211,25 @@ impl Column {
         }
         info
     }
+
+    pub fn get_serde_attribute(
+        &self,
+        is_primary_key: bool,
+        serde_skip_deserializing_primary_key: bool,
+        serde_skip_hidden_column: bool,
+    ) -> TokenStream {
+        if self.name.starts_with('_') && serde_skip_hidden_column {
+            quote! {
+                #[serde(skip)]
+            }
+        } else if serde_skip_deserializing_primary_key && is_primary_key {
+            quote! {
+                #[serde(skip_deserializing)]
+            }
+        } else {
+            quote! {}
+        }
+    }
 }
 
 impl From<ColumnDef> for Column {

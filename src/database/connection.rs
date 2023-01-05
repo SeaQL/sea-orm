@@ -15,6 +15,9 @@ pub trait ConnectionTrait: Sync {
     /// Execute a [Statement]
     async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr>;
 
+    /// Execute a unprepared [Statement]
+    async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr>;
+
     /// Execute a [Statement] and return a query
     async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr>;
 

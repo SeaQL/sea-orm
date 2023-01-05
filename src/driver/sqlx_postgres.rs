@@ -24,7 +24,7 @@ pub struct SqlxPostgresConnector;
 /// Defines a sqlx PostgreSQL pool
 #[derive(Clone)]
 pub struct SqlxPostgresPoolConnection {
-    pool: PgPool,
+    pub(crate) pool: PgPool,
     metric_callback: Option<crate::metric::Callback>,
 }
 
@@ -104,6 +104,21 @@ impl SqlxPostgresPoolConnection {
                     Err(err) => Err(sqlx_error_to_exec_err(err)),
                 }
             })
+        } else {
+            Err(DbErr::ConnectionAcquire)
+        }
+    }
+
+    /// Execute an unprepared SQL statement on a PostgreSQL backend
+    #[instrument(level = "trace")]
+    pub async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
+        debug_print!("{}", sql);
+
+        if let Ok(conn) = &mut self.pool.acquire().await {
+            match conn.execute(sql).await {
+                Ok(res) => Ok(res.into()),
+                Err(err) => Err(sqlx_error_to_exec_err(err)),
+            }
         } else {
             Err(DbErr::ConnectionAcquire)
         }
