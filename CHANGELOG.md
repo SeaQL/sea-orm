@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * [sea-orm-cli] Generate `#[serde(skip_deserializing)]` for primary key columns https://github.com/SeaQL/sea-orm/pull/846, https://github.com/SeaQL/sea-orm/pull/1186, https://github.com/SeaQL/sea-orm/pull/1318
 * [sea-orm-cli] Generate `#[serde(skip)]` for hidden columns https://github.com/SeaQL/sea-orm/pull/1171, https://github.com/SeaQL/sea-orm/pull/1320
 * [sea-orm-cli] Generate entity with extra derives and attributes for model struct https://github.com/SeaQL/sea-orm/pull/1124, https://github.com/SeaQL/sea-orm/pull/1321
+* Added `sea-orm-internal` feature https://github.com/SeaQL/sea-orm/pull/1297
+* Added `DatabaseConnection::get_*_connection_pool()` method to borrow the inner SQLx connection pool https://github.com/SeaQL/sea-orm/pull/1297
+* Execute unprepared statements https://github.com/SeaQL/sea-orm/pull/1327
+* Added `DatabaseConnection::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
+* Added `DatabaseTransaction::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
 
 ### Enhancements
 
@@ -34,6 +39,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Fixes `DeriveColumn` (by qualifying `IdenStatic::as_str`) https://github.com/SeaQL/sea-orm/pull/1280
 * Prevent returning connections to pool with a positive transaction depth https://github.com/SeaQL/sea-orm/pull/1283
+
+### Breaking changes
+
+* Added `ConnectionTrait::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
 
 ## 0.10.6 - 2022-12-23
 
