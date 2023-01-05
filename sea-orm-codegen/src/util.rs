@@ -33,6 +33,7 @@ pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> String {
         | TableRef::SchemaTableAlias(_, tbl, _)
         | TableRef::DatabaseSchemaTableAlias(_, _, tbl, _)
         | TableRef::SubQuery(_, tbl)
-        | TableRef::ValuesList(_, tbl) => tbl.to_string(),
+        | TableRef::ValuesList(_, tbl)
+        | TableRef::FunctionCall(_, tbl) => tbl.to_string(),
     }
 }

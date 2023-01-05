@@ -47,7 +47,7 @@ impl Linked for CheeseCakeToFillingVendor {
             super::cake_filling::Relation::Cake
                 .def()
                 .on_condition(|left, _right| {
-                    Expr::tbl(left, super::cake::Column::Name)
+                    Expr::col((left, super::cake::Column::Name))
                         .like("%cheese%")
                         .into_condition()
                 })
@@ -71,7 +71,7 @@ impl Linked for JoinWithoutReverse {
             super::cake_filling::Relation::Cake
                 .def()
                 .on_condition(|left, _right| {
-                    Expr::tbl(left, super::cake::Column::Name)
+                    Expr::col((left, super::cake::Column::Name))
                         .like("%cheese%")
                         .into_condition()
                 }),

@@ -34,8 +34,8 @@ tracing = { version = "0.1", default-features = false, features = ["attributes",
 rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.3", default-features = false, optional = true }
 sea-orm-macros = { version = "0.10.3", path = "sea-orm-macros", default-features = false, optional = true }
-sea-query = { version = "0.27.2", features = ["thread-safe"] }
-sea-query-binder = { version = "0.2.2", default-features = false, optional = true }
+sea-query = { version = "0.28", features = ["thread-safe"] }
+sea-query-binder = { version = "0.3", default-features = false, optional = true }
 sea-strum = { version = "0.23", default-features = false, features = ["derive", "sea-orm"] }
 serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false, optional = true }

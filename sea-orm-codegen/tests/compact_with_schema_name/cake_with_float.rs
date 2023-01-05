@@ -9,7 +9,7 @@ pub struct Model {
     pub id: i32,
     #[sea_orm(column_type = "Text", nullable)]
     pub name: Option<String> ,
-    #[sea_orm(column_type = "Float(Some(2))", nullable)]
+    #[sea_orm(column_type = "Float", nullable)]
     pub price: Option<f32> ,
 }
 

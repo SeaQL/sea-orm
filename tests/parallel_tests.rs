@@ -64,7 +64,7 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     assert_eq!(
         metadata,
-        vec![
+        [
             find_res.0.clone().unwrap(),
             find_res.1.clone().unwrap(),
             find_res.2.clone().unwrap(),
