@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Upgrades
 
 * Upgrade `axum` to `0.6.1` https://github.com/SeaQL/sea-orm/pull/1285
+* Upgrade `sea-query` to `0.28` https://github.com/SeaQL/sea-orm/pull/1366
+* Upgrade `sea-query-binder` to `0.3` https://github.com/SeaQL/sea-orm/pull/1366
+* Upgrade `sea-schema` to `0.11` https://github.com/SeaQL/sea-orm/pull/1366
 
 ### House Keeping
 
