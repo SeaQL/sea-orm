@@ -215,7 +215,7 @@ pub trait QuerySelect: Sized {
     where
         C: IntoSimpleExpr,
     {
-        self.query().add_group_by(vec![col.into_simple_expr()]);
+        self.query().add_group_by([col.into_simple_expr()]);
         self
     }
 
@@ -595,7 +595,7 @@ pub trait QueryFilter: Sized {
     {
         for key in <M::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
-            let expr = Expr::tbl(Alias::new(tbl_alias), col).eq(model.get(col));
+            let expr = Expr::col((Alias::new(tbl_alias), col)).eq(model.get(col));
             self = self.filter(expr);
         }
         self
@@ -636,18 +636,18 @@ pub(crate) fn join_tbl_on_condition(
 ) -> SimpleExpr {
     match (owner_keys, foreign_keys) {
         (Identity::Unary(o1), Identity::Unary(f1)) => {
-            Expr::tbl(SeaRc::clone(&from_tbl), o1).equals(SeaRc::clone(&to_tbl), f1)
+            Expr::col((SeaRc::clone(&from_tbl), o1)).equals((SeaRc::clone(&to_tbl), f1))
         }
         (Identity::Binary(o1, o2), Identity::Binary(f1, f2)) => {
-            Expr::tbl(SeaRc::clone(&from_tbl), o1)
-                .equals(SeaRc::clone(&to_tbl), f1)
-                .and(Expr::tbl(SeaRc::clone(&from_tbl), o2).equals(SeaRc::clone(&to_tbl), f2))
+            Expr::col((SeaRc::clone(&from_tbl), o1))
+                .equals((SeaRc::clone(&to_tbl), f1))
+                .and(Expr::col((SeaRc::clone(&from_tbl), o2)).equals((SeaRc::clone(&to_tbl), f2)))
         }
         (Identity::Ternary(o1, o2, o3), Identity::Ternary(f1, f2, f3)) => {
-            Expr::tbl(SeaRc::clone(&from_tbl), o1)
-                .equals(SeaRc::clone(&to_tbl), f1)
-                .and(Expr::tbl(SeaRc::clone(&from_tbl), o2).equals(SeaRc::clone(&to_tbl), f2))
-                .and(Expr::tbl(SeaRc::clone(&from_tbl), o3).equals(SeaRc::clone(&to_tbl), f3))
+            Expr::col((SeaRc::clone(&from_tbl), o1))
+                .equals((SeaRc::clone(&to_tbl), f1))
+                .and(Expr::col((SeaRc::clone(&from_tbl), o2)).equals((SeaRc::clone(&to_tbl), f2)))
+                .and(Expr::col((SeaRc::clone(&from_tbl), o3)).equals((SeaRc::clone(&to_tbl), f3)))
         }
         _ => panic!("Owner key and foreign key mismatch"),
     }
@@ -662,7 +662,8 @@ pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> DynIden {
         | TableRef::SchemaTableAlias(_, tbl, _)
         | TableRef::DatabaseSchemaTableAlias(_, _, tbl, _)
         | TableRef::SubQuery(_, tbl)
-        | TableRef::ValuesList(_, tbl) => SeaRc::clone(tbl),
+        | TableRef::ValuesList(_, tbl)
+        | TableRef::FunctionCall(_, tbl) => SeaRc::clone(tbl),
     }
 }
 
@@ -675,7 +676,8 @@ pub(crate) fn unpack_table_alias(table_ref: &TableRef) -> Option<DynIden> {
         | TableRef::ValuesList(_, _) => None,
         TableRef::TableAlias(_, alias)
         | TableRef::SchemaTableAlias(_, _, alias)
-        | TableRef::DatabaseSchemaTableAlias(_, _, _, alias) => Some(SeaRc::clone(alias)),
+        | TableRef::DatabaseSchemaTableAlias(_, _, _, alias)
+        | TableRef::FunctionCall(_, alias) => Some(SeaRc::clone(alias)),
     }
 }
 

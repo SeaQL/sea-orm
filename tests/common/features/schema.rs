@@ -27,7 +27,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
             let schema = Schema::new(db_backend);
             let enum_create_stmt = Type::create()
                 .as_enum(Alias::new("tea"))
-                .values(vec![Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
+                .values([Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
                 .to_owned();
             assert_eq!(
                 db_backend.build(&enum_create_stmt),
@@ -346,13 +346,10 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(collection::Column::Integers)
-                .array(sea_query::ColumnType::Integer(None))
+                .array(sea_query::ColumnType::Integer)
                 .not_null(),
         )
-        .col(
-            ColumnDef::new(collection::Column::IntegersOpt)
-                .array(sea_query::ColumnType::Integer(None)),
-        )
+        .col(ColumnDef::new(collection::Column::IntegersOpt).array(sea_query::ColumnType::Integer))
         .col(
             ColumnDef::new(collection::Column::Teas)
                 .array(sea_query::ColumnType::Enum {
@@ -375,13 +372,10 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(collection::Column::Colors)
-                .array(sea_query::ColumnType::Integer(None))
+                .array(sea_query::ColumnType::Integer)
                 .not_null(),
         )
-        .col(
-            ColumnDef::new(collection::Column::ColorsOpt)
-                .array(sea_query::ColumnType::Integer(None)),
-        )
+        .col(ColumnDef::new(collection::Column::ColorsOpt).array(sea_query::ColumnType::Integer))
         .col(
             ColumnDef::new(collection::Column::Uuid)
                 .array(sea_query::ColumnType::Uuid)

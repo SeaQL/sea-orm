@@ -152,9 +152,9 @@ impl Entity {
     }
 
     pub fn get_eq_needed(&self) -> TokenStream {
-        fn is_floats(col_type: &sea_query::ColumnType) -> bool {
+        fn is_floats(col_type: &ColumnType) -> bool {
             match col_type {
-                ColumnType::Float(_) | ColumnType::Double(_) => true,
+                ColumnType::Float | ColumnType::Double => true,
                 ColumnType::Array(col_type) => is_floats(col_type),
                 _ => false,
             }
@@ -199,7 +199,7 @@ mod tests {
             columns: vec![
                 Column {
                     name: "id".to_owned(),
-                    col_type: ColumnType::Integer(None),
+                    col_type: ColumnType::Integer,
                     auto_increment: false,
                     not_null: false,
                     unique: false,

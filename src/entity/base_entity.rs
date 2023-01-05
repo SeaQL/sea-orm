@@ -390,9 +390,7 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// let insert_result = cake::Entity::insert_many(vec![apple, orange])
-    ///     .exec(&db)
-    ///     .await?;
+    /// let insert_result = cake::Entity::insert_many([apple, orange]).exec(&db).await?;
     ///
     /// assert_eq!(insert_result.last_insert_id, 28);
     ///
@@ -438,9 +436,7 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// let insert_result = cake::Entity::insert_many(vec![apple, orange])
-    ///     .exec(&db)
-    ///     .await?;
+    /// let insert_result = cake::Entity::insert_many([apple, orange]).exec(&db).await?;
     ///
     /// assert_eq!(insert_result.last_insert_id, 28);
     ///
