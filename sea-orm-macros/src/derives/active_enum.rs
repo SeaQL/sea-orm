@@ -251,11 +251,7 @@ impl ActiveEnum {
                 .map(|v| {
                     let v_cleaned = camel_case_with_escaped_non_xid(v);
                     
-                    if v_cleaned.chars().next().map(char::is_numeric).unwrap_or(false)  {
-                        format_ident!("_{}", v_cleaned)
-                    } else {
-                        format_ident!("{}", v_cleaned)
-                    }
+                    format_ident!("{}", v_cleaned)
                 })
                 .collect();
 

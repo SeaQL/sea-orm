@@ -93,7 +93,7 @@ where
 {   
     let additional_chars_to_replace: [char; 2] = ['_', ' '];
 
-    string
+    let mut rebuilt = string
     .to_string()
     .chars()
     .into_iter()
@@ -126,7 +126,13 @@ where
         // all potential conflicts.
         String::from("__Empty"),
         |s| s.to_camel_case(),
-    )
+    );
+
+    if rebuilt.chars().next().map(char::is_numeric).unwrap_or(false)  {
+        rebuilt = String::from("_") + &rebuilt;
+    }
+    
+    rebuilt
 }
 
 pub(crate) const RAW_IDENTIFIER: &str = "r#";
