@@ -1,5 +1,7 @@
+use heck::CamelCase;
 use quote::format_ident;
 use syn::{punctuated::Punctuated, token::Comma, Field, Ident, Meta};
+use unicode_ident;
 
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
     for attr in field.attrs.iter() {
@@ -52,6 +54,68 @@ where
     } else {
         string
     }
+}
+
+/// string_value in ActiveEnum will be CamelCased and become
+/// an identifier in {Enum}Variant.
+/// However Rust only allows for XID_Start char followed by
+/// XID_Continue characters as identifiers; this causes a few
+/// problems:
+///
+/// - string_value = "" will cause a panic;
+/// - string_value containing only non-alphanumerics will become ""
+///   and cause the above panic;
+/// - string_values:
+///      - "AB"
+///      - "A B"
+///      - "A  B"
+///      - "A_B"
+///      - "A_ B"
+///   shares the same identifier of "AB";
+///
+/// What this does NOT address
+/// - case-sensitivity. String value "ABC" and "abc" remains
+///   conflicted after .camel_case().
+pub(crate) fn camel_case_with_escaped_non_xid<T>(string: T) -> String
+where
+    T: ToString,
+{   
+    let additional_chars_to_replace: [char; 2] = ['_', ' '];
+
+    string
+    .to_string()
+    .chars()
+    .into_iter()
+    .enumerate()
+    .map(
+        | (pos, char_) | {
+            if  !additional_chars_to_replace.contains(&char_)
+                && match pos {
+                    0 => unicode_ident::is_xid_start(char_) ,
+                    _ => unicode_ident::is_xid_continue(char_),
+                } {
+                    char_.to_string()
+                } else {
+                    format!("{:#X}", char_ as u32)
+                }
+        }
+    )
+    .reduce(
+        // Join the "characters" (now strings)
+        // back together
+        | lhs, rhs | {
+            lhs + rhs.as_str()
+        }
+    )
+    .map_or(
+        // if string_value is ""
+        // Make sure the default does NOT go through camel_case,
+        // as the __ will be removed! The underscores are
+        // what guarantees this being special case avoiding
+        // all potential conflicts.
+        String::from("__Empty"),
+        |s| s.to_camel_case(),
+    )
 }
 
 pub(crate) const RAW_IDENTIFIER: &str = "r#";

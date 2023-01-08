@@ -1,7 +1,9 @@
+use crate::util::camel_case_with_escaped_non_xid;
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse, punctuated::Punctuated, token::Comma, Expr, Lit, LitInt, LitStr, Meta, UnOp};
+
 
 enum Error {
     InputNotEnum,
@@ -247,10 +249,12 @@ impl ActiveEnum {
             let enum_variants: Vec<syn::Ident> = str_variants
                 .iter()
                 .map(|v| {
-                    if v.chars().next().map(char::is_numeric).unwrap_or(false) {
-                        format_ident!("_{}", v)
+                    let v_cleaned = camel_case_with_escaped_non_xid(v);
+                    
+                    if v_cleaned.chars().next().map(char::is_numeric).unwrap_or(false)  {
+                        format_ident!("_{}", v_cleaned)
                     } else {
-                        format_ident!("{}", v.to_camel_case())
+                        format_ident!("{}", v_cleaned)
                     }
                 })
                 .collect();
