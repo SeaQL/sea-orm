@@ -56,8 +56,13 @@ where
     }
 }
 
-/// string_value in ActiveEnum will be CamelCased and become
+/// Turn a string to PascalCase while escaping all special characters in ASCII words.
+/// 
+/// (camel_case is used here to match naming of heck.)
+/// 
+/// In ActiveEnum, string_value will be PascalCased and made
 /// an identifier in {Enum}Variant.
+/// 
 /// However Rust only allows for XID_Start char followed by
 /// XID_Continue characters as identifiers; this causes a few
 /// problems:
@@ -73,6 +78,12 @@ where
 ///      - "A_ B"
 ///   shares the same identifier of "AB";
 ///
+/// This function does the PascelCase conversion with a few special escapes:
+/// - Non-Unicode Standard Annex #31 compliant characters will converted to their hex notation;
+/// - "_" into "0x5F";
+/// - " " into "0x20";
+/// - Empty strings will become special keyword of "__Empty"
+/// 
 /// What this does NOT address
 /// - case-sensitivity. String value "ABC" and "abc" remains
 ///   conflicted after .camel_case().
