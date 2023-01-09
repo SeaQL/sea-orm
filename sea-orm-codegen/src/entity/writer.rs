@@ -586,7 +586,7 @@ impl EntityWriter {
         entity
             .relations
             .iter()
-            .filter(|rel| !rel.self_referencing && rel.num_suffix == 0 && rel.impl_related)
+            .filter(|rel| rel.num_suffix == 0 && rel.impl_related)
             .map(|rel| {
                 let enum_name = rel.get_enum_name();
                 let module_name = rel.get_module_name();
