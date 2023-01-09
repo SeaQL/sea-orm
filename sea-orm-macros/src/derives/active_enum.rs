@@ -4,7 +4,6 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse, punctuated::Punctuated, token::Comma, Expr, Lit, LitInt, LitStr, Meta, UnOp};
 
-
 enum Error {
     InputNotEnum,
     Syn(syn::Error),
@@ -250,7 +249,7 @@ impl ActiveEnum {
                 .iter()
                 .map(|v| {
                     let v_cleaned = camel_case_with_escaped_non_xid(v);
-                    
+
                     format_ident!("{}", v_cleaned)
                 })
                 .collect();

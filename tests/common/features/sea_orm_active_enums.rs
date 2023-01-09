@@ -54,7 +54,6 @@ pub enum MediaType {
     _3D,
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "pop_os_names_typos")]
 pub enum PopOSTypos {
@@ -82,7 +81,6 @@ pub enum PopOSTypos {
     PopOSJustTheSymbols,
     #[sea_orm(string_value = "")]
     Nothing,
-
     // This WILL fail:
     // Both PopOS and PopOS will create identifier "PopOs"
     // #[sea_orm(string_value = "PopOs")]
