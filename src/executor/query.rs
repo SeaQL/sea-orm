@@ -257,7 +257,6 @@ macro_rules! try_getable_all {
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                     }
                     #[cfg(feature = "mock")]
-                    #[allow(unused_variables)]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
@@ -295,7 +294,6 @@ macro_rules! try_getable_unsigned {
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                     }
                     #[cfg(feature = "mock")]
-                    #[allow(unused_variables)]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
@@ -330,7 +328,6 @@ macro_rules! try_getable_mysql {
                         panic!("{} unsupported by sqlx-sqlite", stringify!($type))
                     }
                     #[cfg(feature = "mock")]
-                    #[allow(unused_variables)]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
@@ -376,7 +373,6 @@ macro_rules! try_getable_date_time {
                             .map(|v| v.into())
                     }
                     #[cfg(feature = "mock")]
-                    #[allow(unused_variables)]
                     QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
