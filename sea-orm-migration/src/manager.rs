@@ -1,20 +1,28 @@
+use super::{IntoSchemaManagerConnection, SchemaManagerConnection};
 use sea_orm::sea_query::{
     extension::postgres::{TypeAlterStatement, TypeCreateStatement, TypeDropStatement},
     ForeignKeyCreateStatement, ForeignKeyDropStatement, IndexCreateStatement, IndexDropStatement,
     TableAlterStatement, TableCreateStatement, TableDropStatement, TableRenameStatement,
     TableTruncateStatement,
 };
-use sea_orm::{ConnectionTrait, DbBackend, DbConn, DbErr, StatementBuilder};
+use sea_orm::{
+    ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr, StatementBuilder,
+};
 use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
 
 /// Helper struct for writing migration scripts in migration file
 pub struct SchemaManager<'c> {
-    conn: &'c DbConn,
+    conn: SchemaManagerConnection<'c>,
 }
 
 impl<'c> SchemaManager<'c> {
-    pub fn new(conn: &'c DbConn) -> Self {
-        Self { conn }
+    pub fn new<T>(conn: T) -> Self
+    where
+        T: IntoSchemaManagerConnection<'c>,
+    {
+        Self {
+            conn: conn.into_schema_manager_connection(),
+        }
     }
 
     pub async fn exec_stmt<S>(&self, stmt: S) -> Result<(), DbErr>
@@ -29,8 +37,8 @@ impl<'c> SchemaManager<'c> {
         self.conn.get_database_backend()
     }
 
-    pub fn get_connection(&self) -> &'c DbConn {
-        self.conn
+    pub fn get_connection(&self) -> &SchemaManagerConnection<'c> {
+        &self.conn
     }
 }
 
