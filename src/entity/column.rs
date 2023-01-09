@@ -401,6 +401,10 @@ impl ColumnDef {
     pub fn get_column_type(&self) -> &ColumnType {
         &self.col_type
     }
+
+    pub fn is_null(&self) -> bool {
+        self.null
+    }
 }
 
 impl From<ColumnType> for sea_query::ColumnType {
