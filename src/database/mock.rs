@@ -204,27 +204,26 @@ impl MockDatabaseTrait for MockDatabase {
 
 impl MockRow {
     /// Get a value from the [MockRow]
-    pub fn try_get<T>(&self, col: &str) -> Result<T, DbErr>
+    pub fn try_get_by<T, I: crate::ColIdx>(&self, index: I) -> Result<T, DbErr>
     where
         T: ValueType,
     {
-        T::try_from(self.values.get(col).unwrap().clone()).map_err(|e| DbErr::Type(e.to_string()))
-    }
-
-    /// Get a value from the [MockRow] based on the order of column name
-    pub fn try_get_by_index<T>(&self, idx: usize) -> Result<T, DbErr>
-    where
-        T: ValueType,
-    {
-        let (_, value) = self
-            .values
-            .iter()
-            .nth(idx)
-            .ok_or(DbErr::Query(RuntimeErr::Internal(format!(
-                "Column at index {} not found",
-                idx
-            ))))?;
-        T::try_from(value.clone()).map_err(|e| DbErr::Type(e.to_string()))
+        if let Some(index) = index.as_str() {
+            T::try_from(self.values.get(index).unwrap().clone())
+                .map_err(|e| DbErr::Type(e.to_string()))
+        } else if let Some(index) = index.as_usize() {
+            let (_, value) =
+                self.values
+                    .iter()
+                    .nth(*index)
+                    .ok_or(DbErr::Query(RuntimeErr::Internal(format!(
+                        "Column at index {} not found",
+                        index
+                    ))))?;
+            T::try_from(value.clone()).map_err(|e| DbErr::Type(e.to_string()))
+        } else {
+            unreachable!("Missing ColIdx implementation for MockRow");
+        }
     }
 
     /// An iterator over the keys and values of a mock row
