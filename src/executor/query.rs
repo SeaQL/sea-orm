@@ -258,7 +258,7 @@ macro_rules! try_getable_all {
                     }
                     #[cfg(feature = "mock")]
                     #[allow(unused_variables)]
-                    QueryResultRow::Mock(row) => row.try_get_by(idx).map_err(|e| {
+                    QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
@@ -296,7 +296,7 @@ macro_rules! try_getable_unsigned {
                     }
                     #[cfg(feature = "mock")]
                     #[allow(unused_variables)]
-                    QueryResultRow::Mock(row) => row.try_get_by(idx).map_err(|e| {
+                    QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
@@ -331,7 +331,7 @@ macro_rules! try_getable_mysql {
                     }
                     #[cfg(feature = "mock")]
                     #[allow(unused_variables)]
-                    QueryResultRow::Mock(row) => row.try_get_by(idx).map_err(|e| {
+                    QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
@@ -377,7 +377,7 @@ macro_rules! try_getable_date_time {
                     }
                     #[cfg(feature = "mock")]
                     #[allow(unused_variables)]
-                    QueryResultRow::Mock(row) => row.try_get_by(idx).map_err(|e| {
+                    QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
@@ -476,7 +476,7 @@ impl TryGetable for Decimal {
             }
             #[cfg(feature = "mock")]
             #[allow(unused_variables)]
-            QueryResultRow::Mock(row) => row.try_get_by(idx).map_err(|e| {
+            QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                 debug_print!("{:#?}", e.to_string());
                 err_null_idx_col(idx)
             }),
@@ -527,7 +527,7 @@ impl TryGetable for BigDecimal {
             }
             #[cfg(feature = "mock")]
             #[allow(unused_variables)]
-            QueryResultRow::Mock(row) => row.try_get_by(idx).map_err(|e| {
+            QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                 debug_print!("{:#?}", e.to_string());
                 err_null_idx_col(idx)
             }),
@@ -571,7 +571,7 @@ impl TryGetable for u32 {
             }
             #[cfg(feature = "mock")]
             #[allow(unused_variables)]
-            QueryResultRow::Mock(row) => row.try_get_by(idx).map_err(|e| {
+            QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                 debug_print!("{:#?}", e.to_string());
                 err_null_idx_col(idx)
             }),
@@ -614,7 +614,7 @@ mod postgres_array {
                         }
                         #[cfg(feature = "mock")]
                         #[allow(unused_variables)]
-                        QueryResultRow::Mock(row) => row.try_get_by(idx).map_err(|e| {
+                        QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                             debug_print!("{:#?}", e.to_string());
                             err_null_idx_col(idx)
                         }),
@@ -702,7 +702,7 @@ mod postgres_array {
                 }
                 #[cfg(feature = "mock")]
                 #[allow(unused_variables)]
-                QueryResultRow::Mock(row) => row.try_get_by(idx).map_err(|e| {
+                QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
                     debug_print!("{:#?}", e.to_string());
                     err_null_idx_col(idx)
                 }),
@@ -994,7 +994,7 @@ where
             }
             #[cfg(feature = "mock")]
             QueryResultRow::Mock(row) => row
-                .try_get_by::<serde_json::Value, I>(idx)
+                .try_get::<serde_json::Value, I>(idx)
                 .map_err(|e| {
                     debug_print!("{:#?}", e.to_string());
                     err_null_idx_col(idx)
