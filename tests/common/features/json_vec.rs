@@ -25,13 +25,8 @@ impl From<StringVec> for Value {
 }
 
 impl TryGetable for StringVec {
-    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
-        let json_str: String = res.try_get(pre, col).map_err(TryGetError::DbErr)?;
-        serde_json::from_str(&json_str).map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))
-    }
-
-    fn try_get_by_index(res: &QueryResult, idx: usize) -> Result<Self, TryGetError> {
-        let json_str: String = res.try_get_by_index(idx).map_err(TryGetError::DbErr)?;
+    fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+        let json_str: String = res.try_get_by(idx).map_err(TryGetError::DbErr)?;
         serde_json::from_str(&json_str).map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))
     }
 }

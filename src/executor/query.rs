@@ -61,6 +61,15 @@ impl From<TryGetError> for DbErr {
 // QueryResult //
 
 impl QueryResult {
+    /// Get a value from the query result with an ColIdx
+    pub fn try_get_by<T, I>(&self, index: I) -> Result<T, DbErr>
+    where
+        T: TryGetable,
+        I: ColIdx,
+    {
+        Ok(T::try_get_by(self, index)?)
+    }
+
     /// Get a value from the query result with prefixed column name
     pub fn try_get<T>(&self, pre: &str, col: &str) -> Result<T, DbErr>
     where
@@ -125,7 +134,7 @@ impl<T: TryGetable> TryGetable for Option<T> {
 }
 
 /// Column Index, used by [`TryGetable`]
-pub trait ColIdx: std::fmt::Debug {
+pub trait ColIdx: std::fmt::Debug + Copy {
     #[cfg(feature = "sqlx-mysql")]
     /// Type shenanigans
     type SqlxMySqlIndex: sqlx::ColumnIndex<sqlx::mysql::MySqlRow>;
