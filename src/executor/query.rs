@@ -124,22 +124,31 @@ impl<T: TryGetable> TryGetable for Option<T> {
     }
 }
 
+/// Column Index, used by [`TryGetable`]
 pub trait ColIdx: std::fmt::Debug {
     #[cfg(feature = "sqlx-mysql")]
+    /// Type shenanigans
     type SqlxMySqlIndex: sqlx::ColumnIndex<sqlx::mysql::MySqlRow>;
     #[cfg(feature = "sqlx-postgres")]
+    /// Type shenanigans
     type SqlxPostgresIndex: sqlx::ColumnIndex<sqlx::postgres::PgRow>;
     #[cfg(feature = "sqlx-sqlite")]
+    /// Type shenanigans
     type SqlxSqliteIndex: sqlx::ColumnIndex<sqlx::sqlite::SqliteRow>;
 
     #[cfg(feature = "sqlx-mysql")]
+    /// Basically a no-op; only to satisfy a trait bound
     fn as_sqlx_mysql_index(&self) -> Self::SqlxMySqlIndex;
     #[cfg(feature = "sqlx-postgres")]
+    /// Basically a no-op; only to satisfy a trait bound
     fn as_sqlx_postgres_index(&self) -> Self::SqlxPostgresIndex;
     #[cfg(feature = "sqlx-sqlite")]
+    /// Basically a no-op; only to satisfy a trait bound
     fn as_sqlx_sqlite_index(&self) -> Self::SqlxSqliteIndex;
 
+    /// Self must be `&str`, return `None` otherwise
     fn as_str(&self) -> Option<&str>;
+    /// Self must be `usize`, return `None` otherwise
     fn as_usize(&self) -> Option<&usize>;
 }
 
@@ -152,14 +161,17 @@ impl ColIdx for &str {
     type SqlxSqliteIndex = Self;
 
     #[cfg(feature = "sqlx-mysql")]
+    #[inline]
     fn as_sqlx_mysql_index(&self) -> Self::SqlxMySqlIndex {
         self
     }
     #[cfg(feature = "sqlx-postgres")]
+    #[inline]
     fn as_sqlx_postgres_index(&self) -> Self::SqlxPostgresIndex {
         self
     }
     #[cfg(feature = "sqlx-sqlite")]
+    #[inline]
     fn as_sqlx_sqlite_index(&self) -> Self::SqlxSqliteIndex {
         self
     }
@@ -183,14 +195,17 @@ impl ColIdx for usize {
     type SqlxSqliteIndex = Self;
 
     #[cfg(feature = "sqlx-mysql")]
+    #[inline]
     fn as_sqlx_mysql_index(&self) -> Self::SqlxMySqlIndex {
         *self
     }
     #[cfg(feature = "sqlx-postgres")]
+    #[inline]
     fn as_sqlx_postgres_index(&self) -> Self::SqlxPostgresIndex {
         *self
     }
     #[cfg(feature = "sqlx-sqlite")]
+    #[inline]
     fn as_sqlx_sqlite_index(&self) -> Self::SqlxSqliteIndex {
         *self
     }
@@ -434,7 +449,7 @@ impl TryGetable for Decimal {
             QueryResultRow::SqlxSqlite(row) => {
                 use sqlx::Row;
                 let val: Option<f64> = row
-                    .try_get((idx.as_sqlx_sqlite_index()))
+                    .try_get(idx.as_sqlx_sqlite_index())
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))?;
                 match val {
                     Some(v) => Decimal::try_from(v).map_err(|e| {
@@ -470,14 +485,14 @@ impl TryGetable for BigDecimal {
             #[cfg(feature = "sqlx-mysql")]
             QueryResultRow::SqlxMySql(row) => {
                 use sqlx::Row;
-                row.try_get::<Option<BigDecimal>, _>((idx.as_sqlx_mysql_index()))
+                row.try_get::<Option<BigDecimal>, _>(idx.as_sqlx_mysql_index())
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
                     .and_then(|opt| opt.ok_or(err_null_idx_col(idx)))
             }
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => {
                 use sqlx::Row;
-                row.try_get::<Option<BigDecimal>, _>((idx.as_sqlx_postgres_index()))
+                row.try_get::<Option<BigDecimal>, _>(idx.as_sqlx_postgres_index())
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
                     .and_then(|opt| opt.ok_or(err_null_idx_col(idx)))
             }
@@ -485,7 +500,7 @@ impl TryGetable for BigDecimal {
             QueryResultRow::SqlxSqlite(row) => {
                 use sqlx::Row;
                 let val: Option<f64> = row
-                    .try_get((idx.as_sqlx_sqlite_index()))
+                    .try_get(idx.as_sqlx_sqlite_index())
                     .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))?;
                 match val {
                     Some(v) => BigDecimal::try_from(v).map_err(|e| {
@@ -575,7 +590,7 @@ mod postgres_array {
                         #[cfg(feature = "sqlx-postgres")]
                         QueryResultRow::SqlxPostgres(row) => {
                             use sqlx::Row;
-                            row.try_get::<Option<Vec<$type>>, _>((idx.as_sqlx_postgres_index()))
+                            row.try_get::<Option<Vec<$type>>, _>(idx.as_sqlx_postgres_index())
                                 .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
                                 .and_then(|opt| opt.ok_or(err_null_idx_col(idx)))
                         }
@@ -661,7 +676,7 @@ mod postgres_array {
                     // Since 0.6.0, SQLx has dropped direct mapping from PostgreSQL's OID to Rust's `u32`;
                     // Instead, `u32` was wrapped by a `sqlx::Oid`.
                     use sqlx::Row;
-                    row.try_get::<Option<Vec<Oid>>, _>((idx.as_sqlx_postgres_index()))
+                    row.try_get::<Option<Vec<Oid>>, _>(idx.as_sqlx_postgres_index())
                         .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
                         .and_then(|opt| opt.ok_or(err_null_idx_col(idx)))
                         .map(|oids| oids.into_iter().map(|oid| oid.0).collect())
