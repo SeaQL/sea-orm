@@ -401,7 +401,8 @@ impl ColumnDef {
     pub fn get_column_type(&self) -> &ColumnType {
         &self.col_type
     }
-/// Returns true if the column is nullable
+
+    /// Returns true if the column is nullable
     pub fn is_null(&self) -> bool {
         self.null
     }
