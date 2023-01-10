@@ -203,12 +203,25 @@ impl MockDatabaseTrait for MockDatabase {
 }
 
 impl MockRow {
-    /// Try to get the values of a [MockRow] and fail gracefully on error
-    pub fn try_get<T>(&self, col: &str) -> Result<T, DbErr>
+    /// Get a value from the [MockRow]
+    pub fn try_get<T, I: crate::ColIdx>(&self, index: I) -> Result<T, DbErr>
     where
         T: ValueType,
     {
-        T::try_from(self.values.get(col).unwrap().clone()).map_err(|e| DbErr::Type(e.to_string()))
+        if let Some(index) = index.as_str() {
+            T::try_from(self.values.get(index).unwrap().clone())
+                .map_err(|e| DbErr::Type(e.to_string()))
+        } else if let Some(index) = index.as_usize() {
+            let (_, value) = self.values.iter().nth(*index).ok_or_else(|| {
+                DbErr::Query(RuntimeErr::Internal(format!(
+                    "Column at index {} not found",
+                    index
+                )))
+            })?;
+            T::try_from(value.clone()).map_err(|e| DbErr::Type(e.to_string()))
+        } else {
+            unreachable!("Missing ColIdx implementation for MockRow");
+        }
     }
 
     /// An iterator over the keys and values of a mock row
@@ -686,10 +699,10 @@ mod tests {
         );
         let mocked_row = row.into_mock_row();
 
-        let a_id = mocked_row.try_get::<i32>("A_id");
+        let a_id = mocked_row.try_get::<i32, _>("A_id");
         assert!(a_id.is_ok());
         assert_eq!(1, a_id.unwrap());
-        let b_id = mocked_row.try_get::<i32>("B_id");
+        let b_id = mocked_row.try_get::<i32, _>("B_id");
         assert!(b_id.is_ok());
         assert_eq!(2, b_id.unwrap());
     }
