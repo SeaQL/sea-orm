@@ -133,26 +133,26 @@ impl<T: TryGetable> TryGetable for Option<T> {
     }
 }
 
-/// Column Index, used by [`TryGetable`]
+/// Column Index, used by [`TryGetable`]. Implemented for `&str` and `usize`
 pub trait ColIdx: std::fmt::Debug + Copy {
     #[cfg(feature = "sqlx-mysql")]
-    /// Type shenanigans
+    /// Type surrogate
     type SqlxMySqlIndex: sqlx::ColumnIndex<sqlx::mysql::MySqlRow>;
     #[cfg(feature = "sqlx-postgres")]
-    /// Type shenanigans
+    /// Type surrogate
     type SqlxPostgresIndex: sqlx::ColumnIndex<sqlx::postgres::PgRow>;
     #[cfg(feature = "sqlx-sqlite")]
-    /// Type shenanigans
+    /// Type surrogate
     type SqlxSqliteIndex: sqlx::ColumnIndex<sqlx::sqlite::SqliteRow>;
 
     #[cfg(feature = "sqlx-mysql")]
-    /// Basically a no-op; only to satisfy a trait bound
+    /// Basically a no-op; only to satisfy trait bounds
     fn as_sqlx_mysql_index(&self) -> Self::SqlxMySqlIndex;
     #[cfg(feature = "sqlx-postgres")]
-    /// Basically a no-op; only to satisfy a trait bound
+    /// Basically a no-op; only to satisfy trait bounds
     fn as_sqlx_postgres_index(&self) -> Self::SqlxPostgresIndex;
     #[cfg(feature = "sqlx-sqlite")]
-    /// Basically a no-op; only to satisfy a trait bound
+    /// Basically a no-op; only to satisfy trait bounds
     fn as_sqlx_sqlite_index(&self) -> Self::SqlxSqliteIndex;
 
     /// Self must be `&str`, return `None` otherwise

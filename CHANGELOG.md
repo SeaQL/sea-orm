@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Execute unprepared statements https://github.com/SeaQL/sea-orm/pull/1327
 * Added `DatabaseConnection::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
 * Added `DatabaseTransaction::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
+* Added `Select::into_tuple` to select rows as tuples instead of having to define a custom Model https://github.com/SeaQL/sea-orm/pull/1311
 
 ### Enhancements
 
@@ -46,6 +47,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Breaking changes
 
 * Added `ConnectionTrait::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
+* As part of https://github.com/SeaQL/sea-orm/pull/1311, the required method of `TryGetable` changed:
+```rust
+// then
+fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError>;
+// now; ColIdx can be `&str` or `usize`
+fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError>;
+```
 
 ## 0.10.6 - 2022-12-23
 
