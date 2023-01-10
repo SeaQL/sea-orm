@@ -209,8 +209,13 @@ impl MockRow {
         T: ValueType,
     {
         if let Some(index) = index.as_str() {
-            T::try_from(self.values.get(index).unwrap().clone())
-                .map_err(|e| DbErr::Type(e.to_string()))
+            T::try_from(
+                self.values
+                    .get(index)
+                    .unwrap_or_else(|| panic!("No column for ColIdx {:?}", index))
+                    .clone(),
+            )
+            .map_err(|e| DbErr::Type(e.to_string()))
         } else if let Some(index) = index.as_usize() {
             let (_, value) = self.values.iter().nth(*index).ok_or_else(|| {
                 DbErr::Query(RuntimeErr::Internal(format!(
