@@ -82,7 +82,7 @@ pub enum PopOSTypos {
     #[sea_orm(string_value = "")]
     Nothing,
     // This WILL fail:
-    // Both PopOS and PopOS will create identifier "PopOs"
+    // Both PopOs and PopOS will create identifier "Popos"
     // #[sea_orm(string_value = "PopOs")]
     // PopOSLowerCase,
 }

@@ -539,7 +539,7 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 ///         - For `string_value`, value should be passed as string, i.e. `string_value = "A"`
 ///             - Due to the way internal Enums are automatically derived, the following restrictions apply:
 ///                 - members cannot share identical `string_value`, case-insensitive.
-///                 - any future Rust reserved keywords that are CamelCased or Titlecased.
+///                 - in principle, any future Titlecased Rust keywords are not valid `string_value`.
 ///         - For `num_value`, value should be passed as integer, i.e. `num_value = 1` or `num_value = 1i32`
 ///         - Note that only one of it can be specified, and all variants of an enum have to annotate with the same `*_value` macro attribute
 ///

@@ -1,4 +1,4 @@
-use crate::util::camel_case_with_escaped_non_xid;
+use crate::util::camel_case_with_escaped_non_uax31;
 use heck::CamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
@@ -248,7 +248,7 @@ impl ActiveEnum {
             let enum_variants: Vec<syn::Ident> = str_variants
                 .iter()
                 .map(|v| {
-                    let v_cleaned = camel_case_with_escaped_non_xid(v);
+                    let v_cleaned = camel_case_with_escaped_non_uax31(v);
 
                     format_ident!("{}", v_cleaned)
                 })

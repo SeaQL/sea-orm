@@ -66,27 +66,38 @@ where
 /// XID_Continue characters as identifiers; this causes a few
 /// problems:
 ///
-/// - string_value = "" will cause a panic;
-/// - string_value containing only non-alphanumerics will become ""
+/// - `string_value = ""` will cause a panic;
+/// - `string_value` containing only non-alphanumerics will become `""`
 ///   and cause the above panic;
-/// - string_values:
-///      -  
-///      - "A B"
-///      - "A  B"
-///      - "A_B"
-///      - "A_ B"
-///   shares the same identifier of "AB";
+/// - `string_values`:
+///      - `"A B"`
+///      - `"A  B"`
+///      - `"A_B"`
+///      - `"A_ B"`
+///   shares the same identifier of `"AB"`;
 ///
 /// This function does the PascelCase conversion with a few special escapes:
 /// - Non-Unicode Standard Annex #31 compliant characters will converted to their hex notation;
-/// - "_" into "0x5F";
-/// - " " into "0x20";
-/// - Empty strings will become special keyword of "__Empty"
+/// - `"_"` into `"0x5F"`;
+/// - `" "` into `"0x20"`;
+/// - Empty strings will become special keyword of `"__Empty"`
 ///
-/// What this does NOT address
+/// Note that this does NOT address:
+///
 /// - case-sensitivity. String value "ABC" and "abc" remains
 ///   conflicted after .camel_case().
-pub(crate) fn camel_case_with_escaped_non_xid<T>(string: T) -> String
+///
+/// Example Conversions:
+///
+/// ```ignore
+/// assert_eq!(camel_case_with_escaped_non_uax31(""), "__Empty");
+/// assert_eq!(camel_case_with_escaped_non_uax31(" "), "_0x20");
+/// assert_eq!(camel_case_with_escaped_non_uax31("  "), "_0x200x20");
+/// assert_eq!(camel_case_with_escaped_non_uax31("_"), "_0x5F");
+/// assert_eq!(camel_case_with_escaped_non_uax31("foobar"), "Foobar");
+/// assert_eq!(camel_case_with_escaped_non_uax31("foo bar"), "Foo0x20Bar");
+/// ```
+pub(crate) fn camel_case_with_escaped_non_uax31<T>(string: T) -> String
 where
     T: ToString,
 {
@@ -147,3 +158,42 @@ pub(crate) const RUST_KEYWORDS: [&str; 49] = [
 ];
 
 pub(crate) const RUST_SPECIAL_KEYWORDS: [&str; 3] = ["crate", "Self", "self"];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_non_uax31_escape() {
+        // Test empty string
+        assert_eq!(camel_case_with_escaped_non_uax31(""), "__Empty");
+
+        // Test additional_chars_to_replace (to_camel_case related characters)
+        assert_eq!(camel_case_with_escaped_non_uax31(" "), "_0x20");
+
+        // Test additional_chars_to_replace (multiples. ensure distinct from single)
+        assert_eq!(camel_case_with_escaped_non_uax31("  "), "_0x200x20");
+
+        // Test additional_chars_to_replace (udnerscores)
+        assert_eq!(camel_case_with_escaped_non_uax31("_"), "_0x5F");
+
+        // Test typical use case
+        assert_eq!(camel_case_with_escaped_non_uax31("foobar"), "Foobar");
+
+        // Test spaced words distinct from non-spaced
+        assert_eq!(camel_case_with_escaped_non_uax31("foo bar"), "Foo0x20bar");
+
+        // Test undescored words distinct from non-spaced and spaced
+        assert_eq!(camel_case_with_escaped_non_uax31("foo_bar"), "Foo0x5Fbar");
+
+        // Test leading numeric characters
+        assert_eq!(camel_case_with_escaped_non_uax31("1"), "_0x31");
+
+        // Test escaping also works on full string following lead numeric character
+        // This was previously a fail condition.
+        assert_eq!(
+            camel_case_with_escaped_non_uax31("1 2 3"),
+            "_0x310x2020x203"
+        );
+    }
+}
