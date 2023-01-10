@@ -95,7 +95,7 @@ where
 /// assert_eq!(camel_case_with_escaped_non_uax31("  "), "_0x200x20");
 /// assert_eq!(camel_case_with_escaped_non_uax31("_"), "_0x5F");
 /// assert_eq!(camel_case_with_escaped_non_uax31("foobar"), "Foobar");
-/// assert_eq!(camel_case_with_escaped_non_uax31("foo bar"), "Foo0x20Bar");
+/// assert_eq!(camel_case_with_escaped_non_uax31("foo bar"), "Foo0x20bar");
 /// ```
 pub(crate) fn camel_case_with_escaped_non_uax31<T>(string: T) -> String
 where
