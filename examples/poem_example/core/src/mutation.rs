@@ -5,7 +5,7 @@ pub struct Mutation;
 
 impl Mutation {
     pub async fn create_post(
-        db: &DbConn,
+        db: &DatabaseTransaction,
         form_data: post::Model,
     ) -> Result<post::ActiveModel, DbErr> {
         post::ActiveModel {
@@ -18,7 +18,7 @@ impl Mutation {
     }
 
     pub async fn update_post_by_id(
-        db: &DbConn,
+        db: &DatabaseTransaction,
         id: i32,
         form_data: post::Model,
     ) -> Result<post::Model, DbErr> {
@@ -37,7 +37,7 @@ impl Mutation {
         .await
     }
 
-    pub async fn delete_post(db: &DbConn, id: i32) -> Result<DeleteResult, DbErr> {
+    pub async fn delete_post(db: &DatabaseTransaction, id: i32) -> Result<DeleteResult, DbErr> {
         let post: post::ActiveModel = Post::find_by_id(id)
             .one(db)
             .await?
