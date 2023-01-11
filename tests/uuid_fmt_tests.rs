@@ -24,11 +24,11 @@ pub async fn insert_uuid_fmt(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     let uuid_fmt = uuid_fmt::Model {
         id: 1,
-        uuid: uuid.clone(),
-        uuid_braced: uuid.clone().braced(),
-        uuid_hyphenated: uuid.clone().hyphenated(),
-        uuid_simple: uuid.clone().simple(),
-        uuid_urn: uuid.clone().urn(),
+        uuid: uuid,
+        uuid_braced: uuid.braced(),
+        uuid_hyphenated: uuid.hyphenated(),
+        uuid_simple: uuid.simple(),
+        uuid_urn: uuid.urn(),
     };
 
     let result = uuid_fmt.clone().into_active_model().insert(db).await?;

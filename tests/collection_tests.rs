@@ -30,8 +30,8 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             teas_opt: Some(vec![Tea::BreakfastTea]),
             colors: vec![Color::Black],
             colors_opt: Some(vec![Color::Black]),
-            uuid: vec![uuid.clone()],
-            uuid_hyphenated: vec![uuid.clone().hyphenated()],
+            uuid: vec![uuid],
+            uuid_hyphenated: vec![uuid.hyphenated()],
         }
         .into_active_model()
         .insert(db)
@@ -44,8 +44,8 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             teas_opt: Some(vec![Tea::BreakfastTea]),
             colors: vec![Color::Black],
             colors_opt: Some(vec![Color::Black]),
-            uuid: vec![uuid.clone()],
-            uuid_hyphenated: vec![uuid.clone().hyphenated()],
+            uuid: vec![uuid],
+            uuid_hyphenated: vec![uuid.hyphenated()],
         }
     );
 
@@ -58,8 +58,8 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             teas_opt: None,
             colors: vec![Color::Black],
             colors_opt: None,
-            uuid: vec![uuid.clone()],
-            uuid_hyphenated: vec![uuid.clone().hyphenated()],
+            uuid: vec![uuid],
+            uuid_hyphenated: vec![uuid.hyphenated()],
         }
         .into_active_model()
         .insert(db)
@@ -72,8 +72,8 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             teas_opt: None,
             colors: vec![Color::Black],
             colors_opt: None,
-            uuid: vec![uuid.clone()],
-            uuid_hyphenated: vec![uuid.clone().hyphenated()],
+            uuid: vec![uuid],
+            uuid_hyphenated: vec![uuid.hyphenated()],
         }
     );
 
@@ -86,8 +86,8 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             teas_opt: Some(vec![]),
             colors: vec![],
             colors_opt: Some(vec![]),
-            uuid: vec![uuid.clone()],
-            uuid_hyphenated: vec![uuid.clone().hyphenated()],
+            uuid: vec![uuid],
+            uuid_hyphenated: vec![uuid.hyphenated()],
         }
         .into_active_model()
         .insert(db)
@@ -100,8 +100,8 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             teas_opt: Some(vec![]),
             colors: vec![],
             colors_opt: Some(vec![]),
-            uuid: vec![uuid.clone()],
-            uuid_hyphenated: vec![uuid.clone().hyphenated()],
+            uuid: vec![uuid],
+            uuid_hyphenated: vec![uuid.hyphenated()],
         }
     );
 
@@ -134,8 +134,8 @@ pub async fn update_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
         teas_opt: Set(None),
         colors: Set(vec![Color::White]),
         colors_opt: Set(None),
-        uuid: Set(vec![uuid.clone()]),
-        uuid_hyphenated: Set(vec![uuid.clone().hyphenated()]),
+        uuid: Set(vec![uuid]),
+        uuid_hyphenated: Set(vec![uuid.hyphenated()]),
     }
     .update(db)
     .await?;
