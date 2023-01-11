@@ -142,7 +142,10 @@ where
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
                 .collect::<Vec<_>>();
-            let res = db.query_one(statement).await?.unwrap();
+            let rows = db.query_all(statement).await?;
+            let res = rows.last().ok_or_else(|| {
+                DbErr::RecordNotInserted("None of the records are being inserted".to_owned())
+            })?;
             res.try_get_many("", cols.as_ref()).ok()
         }
         false => {
