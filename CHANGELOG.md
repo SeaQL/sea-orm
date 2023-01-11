@@ -20,12 +20,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Added `DatabaseConnection::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
 * Added `DatabaseTransaction::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
 * Added `Select::into_tuple` to select rows as tuples instead of having to define a custom Model https://github.com/SeaQL/sea-orm/pull/1311
+* Support various UUID formats that are available in `uuid::fmt` module https://github.com/SeaQL/sea-orm/pull/1325
 
 ### Enhancements
 
 * Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
 * Added `DatabaseConnection::close` https://github.com/SeaQL/sea-orm/pull/1236
 * Refactor schema module to expose functions for database alteration https://github.com/SeaQL/sea-orm/pull/1256
+* Added `is_null` getter for `ColumnDef` struct https://github.com/SeaQL/sea-orm/pull/1381
+* Postgres insert many will throw `RecordNotInserted` error if non of them are being inserted https://github.com/SeaQL/sea-orm/pull/1021
 
 ### Upgrades
 
@@ -38,6 +41,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Removed dependency when not needed https://github.com/SeaQL/sea-orm/pull/1213
 * Changed all version = "^x.y.z" into version = "x.y.z" and disabled default features and enable only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
+* Cleanup the use of `vec!` macros https://github.com/SeaQL/sea-orm/pull/1367
 
 ### Bug Fixes
 
