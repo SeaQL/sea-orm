@@ -1,6 +1,6 @@
 use crate::{
     cast_enum_as_text, error::*, ActiveModelTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
-    Iterable, SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
+    Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
 };
 use sea_query::{Expr, FromValueTuple, Query, UpdateStatement};
 use std::future::Future;
@@ -89,20 +89,20 @@ where
     A: ActiveModelTrait,
     C: ConnectionTrait,
 {
+    type Entity<A> = <A as ActiveModelTrait>::Entity;
+    type Model<A> = <Entity<A> as EntityTrait>::Model;
+    type Column<A> = <Entity<A> as EntityTrait>::Column;
+    type ValueType<A> = <<Entity<A> as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType;
     match db.support_returning() {
         true => {
-            let returning = Query::returning().exprs(
-                <A::Entity as EntityTrait>::Column::iter()
-                    .map(|c| cast_enum_as_text(Expr::col(c), &c)),
-            );
+            let returning = Query::returning()
+                .exprs(Column::<A>::iter().map(|c| cast_enum_as_text(Expr::col(c), &c)));
             query.returning(returning);
             let db_backend = db.get_database_backend();
-            let found: Option<<A::Entity as EntityTrait>::Model> =
-                SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
-                    db_backend.build(&query),
-                )
-                .one(db)
-                .await?;
+            let found: Option<Model<A>> =
+                SelectorRaw::<SelectModel<Model<A>>>::from_statement(db_backend.build(&query))
+                    .one(db)
+                    .await?;
             // If we got `None` then we are updating a row that does not exist.
             match found {
                 Some(model) => Ok(model),
@@ -115,12 +115,10 @@ where
             // If we updating a row that does not exist then an error will be thrown here.
             Updater::new(query).check_record_exists().exec(db).await?;
             let primary_key_value = match model.get_primary_key_value() {
-                Some(val) => FromValueTuple::from_value_tuple(val),
+                Some(val) => ValueType::<A>::from_value_tuple(val),
                 None => return Err(DbErr::UpdateGetPrimaryKey),
             };
-            let found = <A::Entity as EntityTrait>::find_by_id(primary_key_value)
-                .one(db)
-                .await?;
+            let found = Entity::<A>::find_by_id(primary_key_value).one(db).await?;
             // If we cannot select the updated row from db by the cached primary key
             match found {
                 Some(model) => Ok(model),

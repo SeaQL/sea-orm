@@ -256,10 +256,13 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
-    fn find_by_id(values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType) -> Select<Self> {
+    fn find_by_id<T>(values: T) -> Select<Self>
+    where
+        T: Into<<Self::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+    {
         let mut select = Self::find();
         let mut keys = Self::PrimaryKey::iter();
-        for v in values.into_value_tuple() {
+        for v in values.into().into_value_tuple() {
             if let Some(key) = keys.next() {
                 let col = key.into_column();
                 select = select.filter(col.eq(v));
@@ -815,10 +818,13 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
-    fn delete_by_id(values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType) -> DeleteMany<Self> {
+    fn delete_by_id<T>(values: T) -> DeleteMany<Self>
+    where
+        T: Into<<Self::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+    {
         let mut delete = Self::delete_many();
         let mut keys = Self::PrimaryKey::iter();
-        for v in values.into_value_tuple() {
+        for v in values.into().into_value_tuple() {
             if let Some(key) = keys.next() {
                 let col = key.into_column();
                 delete = delete.filter(col.eq(v));
@@ -909,5 +915,46 @@ mod tests {
 
         assert_eq!(hello::Entity.table_name(), "hello");
         assert_eq!(hello::Entity.schema_name(), Some("world"));
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn entity_model_3() {
+        use crate::{entity::*, query::*, DbBackend};
+        use std::borrow::Cow;
+
+        mod hello {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "hello", schema_name = "world")]
+            pub struct Model {
+                #[sea_orm(primary_key, auto_increment = false)]
+                pub id: String,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        fn delete_by_id<T>(value: T)
+        where
+            T: Into<<<hello::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+        {
+            assert_eq!(
+                hello::Entity::delete_by_id(value)
+                    .build(DbBackend::Sqlite)
+                    .to_string(),
+                r#"DELETE FROM "world"."hello" WHERE "hello"."id" = 'UUID'"#
+            );
+        }
+
+        delete_by_id(format!("UUID"));
+        delete_by_id("UUID".to_string());
+        delete_by_id("UUID");
+        delete_by_id(Cow::from("UUID"));
     }
 }
