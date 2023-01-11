@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
-* Simple data loader https://github.com/SeaQL/sea-orm/pull/1238
+* Simple data loader https://github.com/SeaQL/sea-orm/pull/1238, https://github.com/SeaQL/sea-orm/pull/1368
 * Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
 * [sea-orm-cli] Generate `#[serde(skip_deserializing)]` for primary key columns https://github.com/SeaQL/sea-orm/pull/846, https://github.com/SeaQL/sea-orm/pull/1186, https://github.com/SeaQL/sea-orm/pull/1318
 * [sea-orm-cli] Generate `#[serde(skip)]` for hidden columns https://github.com/SeaQL/sea-orm/pull/1171, https://github.com/SeaQL/sea-orm/pull/1320
