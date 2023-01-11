@@ -67,7 +67,7 @@ pub trait QuerySelect: Sized {
     where
         C: ColumnTrait,
     {
-        self.query().expr(col.cast_select(col.into_expr()));
+        self.query().expr(col.select_as(col.into_expr()));
         self
     }
 

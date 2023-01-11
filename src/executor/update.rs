@@ -92,7 +92,7 @@ where
     match db.support_returning() {
         true => {
             let returning = Query::returning().exprs(
-                <A::Entity as EntityTrait>::Column::iter().map(|c| c.cast_select(Expr::col(c))),
+                <A::Entity as EntityTrait>::Column::iter().map(|c| c.select_as(Expr::col(c))),
             );
             query.returning(returning);
             let db_backend = db.get_database_backend();

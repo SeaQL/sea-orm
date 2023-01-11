@@ -63,8 +63,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
     // generate Column enum and it's ColumnTrait impl
     let mut columns_enum: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_trait: Punctuated<_, Comma> = Punctuated::new();
-    let mut cast_selects: Punctuated<_, Comma> = Punctuated::new();
-    let mut cast_values: Punctuated<_, Comma> = Punctuated::new();
+    let mut columns_select_as: Punctuated<_, Comma> = Punctuated::new();
+    let mut columns_save_as: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_keys: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_key_types: Punctuated<_, Comma> = Punctuated::new();
     let mut auto_increment = true;
@@ -92,8 +92,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut nullable = false;
                     let mut default_value = None;
                     let mut default_expr = None;
-                    let mut cast_select = None;
-                    let mut cast_value = None;
+                    let mut select_as = None;
+                    let mut save_as = None;
                     let mut indexed = false;
                     let mut ignore = false;
                     let mut unique = false;
@@ -173,22 +173,22 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                                         format!("Invalid enum_name {:?}", nv.lit),
                                                     ));
                                                 }
-                                            } else if name == "cast_select" {
+                                            } else if name == "select_as" {
                                                 if let Lit::Str(litstr) = &nv.lit {
-                                                    cast_select = Some(litstr.value());
+                                                    select_as = Some(litstr.value());
                                                 } else {
                                                     return Err(Error::new(
                                                         field.span(),
-                                                        format!("Invalid cast_select {:?}", nv.lit),
+                                                        format!("Invalid select_as {:?}", nv.lit),
                                                     ));
                                                 }
-                                            } else if name == "cast_value" {
+                                            } else if name == "save_as" {
                                                 if let Lit::Str(litstr) = &nv.lit {
-                                                    cast_value = Some(litstr.value());
+                                                    save_as = Some(litstr.value());
                                                 } else {
                                                     return Err(Error::new(
                                                         field.span(),
-                                                        format!("Invalid cast_value {:?}", nv.lit),
+                                                        format!("Invalid save_as {:?}", nv.lit),
                                                     ));
                                                 }
                                             }
@@ -246,19 +246,19 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         });
                     }
 
-                    if let Some(cast_select) = cast_select {
-                        cast_selects.push(quote! {
+                    if let Some(select_as) = select_as {
+                        columns_select_as.push(quote! {
                             Self::#field_name => sea_orm::sea_query::SimpleExpr::cast_as(
                                 Into::<sea_orm::sea_query::SimpleExpr>::into(expr),
-                                sea_orm::sea_query::Alias::new(&#cast_select),
+                                sea_orm::sea_query::Alias::new(&#select_as),
                             ),
                         });
                     }
-                    if let Some(cast_value) = cast_value {
-                        cast_values.push(quote! {
+                    if let Some(save_as) = save_as {
+                        columns_save_as.push(quote! {
                             Self::#field_name => sea_orm::sea_query::SimpleExpr::cast_as(
                                 Into::<sea_orm::sea_query::SimpleExpr>::into(val),
-                                sea_orm::sea_query::Alias::new(&#cast_value),
+                                sea_orm::sea_query::Alias::new(&#save_as),
                             ),
                         });
                     }
@@ -387,17 +387,17 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                 }
             }
 
-            fn cast_select(&self, expr: sea_orm::sea_query::Expr) -> sea_orm::sea_query::SimpleExpr {
+            fn select_as(&self, expr: sea_orm::sea_query::Expr) -> sea_orm::sea_query::SimpleExpr {
                 match self {
-                    #cast_selects
-                    _ => sea_orm::prelude::ColumnTrait::cast_select_enum(self, expr),
+                    #columns_select_as
+                    _ => sea_orm::prelude::ColumnTrait::select_enum_as(self, expr),
                 }
             }
 
-            fn cast_value(&self, val: sea_orm::sea_query::Expr) -> sea_orm::sea_query::SimpleExpr {
+            fn save_as(&self, val: sea_orm::sea_query::Expr) -> sea_orm::sea_query::SimpleExpr {
                 match self {
-                    #cast_values
-                    _ => sea_orm::prelude::ColumnTrait::cast_value_enum(self, val),
+                    #columns_save_as
+                    _ => sea_orm::prelude::ColumnTrait::save_enum_as(self, val),
                 }
             }
         }

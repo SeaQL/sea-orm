@@ -120,7 +120,7 @@ where
 
     fn column_list(&self) -> Vec<SimpleExpr> {
         E::Column::iter()
-            .map(|col| col.cast_select(col.into_expr()))
+            .map(|col| col.select_as(col.into_expr()))
             .collect()
     }
 

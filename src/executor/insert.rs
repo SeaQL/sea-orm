@@ -186,7 +186,7 @@ where
     let found = match db.support_returning() {
         true => {
             let returning = Query::returning().exprs(
-                <A::Entity as EntityTrait>::Column::iter().map(|c| c.cast_select(Expr::col(c))),
+                <A::Entity as EntityTrait>::Column::iter().map(|c| c.select_as(Expr::col(c))),
             );
             insert_statement.returning(returning);
             SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(

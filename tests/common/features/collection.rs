@@ -8,8 +8,8 @@ pub struct Model {
     pub id: i32,
     #[sea_orm(
         column_type = r#"Custom("citext".into())"#,
-        cast_select = "text",
-        cast_value = "citext"
+        select_as = "text",
+        save_as = "citext"
     )]
     pub name: String,
     pub integers: Vec<i32>,

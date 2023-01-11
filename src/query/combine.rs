@@ -148,7 +148,7 @@ where
     for col in <F::Column as Iterable>::iter() {
         let alias = format!("{}{}", SelectB.as_str(), col.as_str());
         selector.query().expr(SelectExpr {
-            expr: col.cast_select(col.into_expr()),
+            expr: col.select_as(col.into_expr()),
             alias: Some(SeaRc::new(Alias::new(&alias))),
             window: None,
         });

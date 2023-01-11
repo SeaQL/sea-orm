@@ -134,7 +134,7 @@ where
             }
             if av_has_val {
                 columns.push(col);
-                values.push(col.cast_value(Expr::val(av.into_value().unwrap())));
+                values.push(col.save_as(Expr::val(av.into_value().unwrap())));
             }
         }
         self.query.columns(columns);

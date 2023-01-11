@@ -136,7 +136,7 @@ macro_rules! bind_oper_with_enum_casting {
         where
             V: Into<Value>,
         {
-            let expr = self.cast_value(Expr::val(v));
+            let expr = self.save_as(Expr::val(v));
             Expr::tbl(self.entity_name(), *self).binary(BinOper::$bin_op, expr)
         }
     };
@@ -343,13 +343,13 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
 
     /// Cast column expression used in select statement.
     /// By default it only cast database enum as text.
-    fn cast_select(&self, expr: Expr) -> SimpleExpr {
-        self.cast_select_enum(expr)
+    fn select_as(&self, expr: Expr) -> SimpleExpr {
+        self.select_enum_as(expr)
     }
 
     /// Cast enum column as text
-    fn cast_select_enum(&self, expr: Expr) -> SimpleExpr {
-        cast_enum_text_inner(expr, self, |col, _, col_type| {
+    fn select_enum_as(&self, expr: Expr) -> SimpleExpr {
+        cast_enum_as(expr, self, |col, _, col_type| {
             let type_name = match col_type {
                 ColumnType::Array(_) => TextArray.into_iden(),
                 _ => Text.into_iden(),
@@ -360,13 +360,13 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
 
     /// Cast value of a column into the correct type for database storage.
     /// By default it only cast text as enum type if it's an enum column.
-    fn cast_value(&self, val: Expr) -> SimpleExpr {
-        self.cast_value_enum(val)
+    fn save_as(&self, val: Expr) -> SimpleExpr {
+        self.save_enum_as(val)
     }
 
     /// Cast value of a enum column as enum type
-    fn cast_value_enum(&self, val: Expr) -> SimpleExpr {
-        cast_enum_text_inner(val, self, |col, enum_name, col_type| {
+    fn save_enum_as(&self, val: Expr) -> SimpleExpr {
+        cast_enum_as(val, self, |col, enum_name, col_type| {
             let type_name = match col_type {
                 ColumnType::Array(_) => {
                     Alias::new(&format!("{}[]", enum_name.to_string())).into_iden()
@@ -557,7 +557,7 @@ struct Text;
 #[iden = "text[]"]
 struct TextArray;
 
-fn cast_enum_text_inner<C, F>(expr: Expr, col: &C, f: F) -> SimpleExpr
+fn cast_enum_as<C, F>(expr: Expr, col: &C, f: F) -> SimpleExpr
 where
     C: ColumnTrait,
     F: Fn(Expr, DynIden, &ColumnType) -> SimpleExpr,
@@ -1077,7 +1077,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "macros")]
-    fn cast_select_1() {
+    fn select_as_1() {
         use crate::{ActiveModelTrait, ActiveValue, Update};
 
         mod hello_expanded {
@@ -1124,13 +1124,13 @@ mod tests {
                     }
                 }
 
-                fn cast_select(&self, expr: Expr) -> SimpleExpr {
+                fn select_as(&self, expr: Expr) -> SimpleExpr {
                     match self {
                         Self::Two => SimpleExpr::cast_as(
                             Into::<SimpleExpr>::into(expr),
                             Alias::new("integer"),
                         ),
-                        _ => self.cast_select_enum(expr),
+                        _ => self.select_enum_as(expr),
                     }
                 }
             }
@@ -1166,7 +1166,7 @@ mod tests {
                 pub id: i32,
                 #[sea_orm(enum_name = "One1")]
                 pub one: i32,
-                #[sea_orm(cast_select = "integer")]
+                #[sea_orm(select_as = "integer")]
                 pub two: i32,
                 #[sea_orm(enum_name = "Three3")]
                 pub three: i32,
@@ -1211,7 +1211,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "macros")]
-    fn cast_value_1() {
+    fn save_as_1() {
         use crate::{ActiveModelTrait, ActiveValue, Update};
 
         mod hello_expanded {
@@ -1258,12 +1258,12 @@ mod tests {
                     }
                 }
 
-                fn cast_value(&self, expr: Expr) -> SimpleExpr {
+                fn save_as(&self, expr: Expr) -> SimpleExpr {
                     match self {
                         Self::Two => {
                             SimpleExpr::cast_as(Into::<SimpleExpr>::into(expr), Alias::new("text"))
                         }
-                        _ => self.cast_value_enum(expr),
+                        _ => self.save_enum_as(expr),
                     }
                 }
             }
@@ -1299,7 +1299,7 @@ mod tests {
                 pub id: i32,
                 #[sea_orm(enum_name = "One1")]
                 pub one: i32,
-                #[sea_orm(cast_value = "text")]
+                #[sea_orm(save_as = "text")]
                 pub two: i32,
                 #[sea_orm(enum_name = "Three3")]
                 pub three: i32,
@@ -1344,7 +1344,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "macros")]
-    fn cast_select_and_value_1() {
+    fn select_as_and_value_1() {
         use crate::{ActiveModelTrait, ActiveValue, Update};
 
         mod hello_expanded {
@@ -1391,22 +1391,22 @@ mod tests {
                     }
                 }
 
-                fn cast_select(&self, expr: Expr) -> SimpleExpr {
+                fn select_as(&self, expr: Expr) -> SimpleExpr {
                     match self {
                         Self::Two => SimpleExpr::cast_as(
                             Into::<SimpleExpr>::into(expr),
                             Alias::new("integer"),
                         ),
-                        _ => self.cast_select_enum(expr),
+                        _ => self.select_enum_as(expr),
                     }
                 }
 
-                fn cast_value(&self, expr: Expr) -> SimpleExpr {
+                fn save_as(&self, expr: Expr) -> SimpleExpr {
                     match self {
                         Self::Two => {
                             SimpleExpr::cast_as(Into::<SimpleExpr>::into(expr), Alias::new("text"))
                         }
-                        _ => self.cast_value_enum(expr),
+                        _ => self.save_enum_as(expr),
                     }
                 }
             }
@@ -1442,7 +1442,7 @@ mod tests {
                 pub id: i32,
                 #[sea_orm(enum_name = "One1")]
                 pub one: i32,
-                #[sea_orm(cast_select = "integer", cast_value = "text")]
+                #[sea_orm(select_as = "integer", save_as = "text")]
                 pub two: i32,
                 #[sea_orm(enum_name = "Three3")]
                 pub three: i32,

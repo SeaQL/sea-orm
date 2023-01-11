@@ -100,7 +100,7 @@ where
                 col.into_iden(),
             );
             select_two.query().expr(SelectExpr {
-                expr: col.cast_select(expr),
+                expr: col.select_as(expr),
                 alias: Some(SeaRc::new(Alias::new(&alias))),
                 window: None,
             });
