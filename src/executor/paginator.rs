@@ -129,7 +129,7 @@ where
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![
+    /// #     .append_query_results([
     /// #         vec![cake::Model {
     /// #             id: 1,
     /// #             name: "Cake".to_owned(),
@@ -168,7 +168,7 @@ where
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![
+    /// #     .append_query_results([
     /// #         vec![cake::Model {
     /// #             id: 1,
     /// #             name: "Cake".to_owned(),
@@ -315,7 +315,7 @@ mod tests {
         Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
-            vec![],
+            [],
         )
     });
 
@@ -342,7 +342,7 @@ mod tests {
         let page3 = Vec::<fruit::Model>::new();
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![page1.clone(), page2.clone(), page3.clone()])
+            .append_query_results([page1.clone(), page2.clone(), page3.clone()])
             .into_connection();
 
         (db, vec![page1, page2, page3])
@@ -351,7 +351,7 @@ mod tests {
     fn setup_num_items() -> (DatabaseConnection, i64) {
         let num_items = 3;
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![maplit::btreemap! {
+            .append_query_results([[maplit::btreemap! {
                 "num_items" => Into::<Value>::into(num_items),
             }]])
             .into_connection();
@@ -379,7 +379,7 @@ mod tests {
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -411,7 +411,7 @@ mod tests {
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -445,7 +445,7 @@ mod tests {
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -481,7 +481,7 @@ mod tests {
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -517,7 +517,7 @@ mod tests {
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![query_builder.build(&select)];
+        let stmts = [query_builder.build(&select)];
 
         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
@@ -551,7 +551,7 @@ mod tests {
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![query_builder.build(&select)];
+        let stmts = [query_builder.build(&select)];
 
         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
@@ -616,7 +616,7 @@ mod tests {
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -653,7 +653,7 @@ mod tests {
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -685,7 +685,7 @@ mod tests {
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -720,7 +720,7 @@ mod tests {
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -737,7 +737,7 @@ mod tests {
         let raw_stmt = Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"  SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit"  "#,
-            vec![],
+            [],
         );
 
         let mut fruit_stream = fruit::Entity::find()
@@ -761,7 +761,7 @@ mod tests {
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),

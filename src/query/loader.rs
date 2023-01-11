@@ -259,7 +259,7 @@ mod tests {
         };
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![
+            .append_query_results([[
                 cake::Model {
                     id: 1,
                     name: "New York Cheese".to_owned(),
@@ -286,7 +286,7 @@ mod tests {
 
         assert_eq!(
             cakes,
-            vec![Some(cake::Model {
+            [Some(cake::Model {
                 id: 1,
                 name: "New York Cheese".to_owned(),
             })]
@@ -300,7 +300,7 @@ mod tests {
         };
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![fruit::Model {
+            .append_query_results([[fruit::Model {
                 id: 1,
                 name: "Apple".to_owned(),
                 cake_id: Some(1),
@@ -326,7 +326,7 @@ mod tests {
 
         assert_eq!(
             fruits,
-            vec![
+            [
                 vec![fruit::Model {
                     id: 1,
                     name: "Apple".to_owned(),
