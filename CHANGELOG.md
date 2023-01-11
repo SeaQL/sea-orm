@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Refactor schema module to expose functions for database alteration https://github.com/SeaQL/sea-orm/pull/1256
 * Added `is_null` getter for `ColumnDef` struct https://github.com/SeaQL/sea-orm/pull/1381
 * Postgres insert many will throw `RecordNotInserted` error if non of them are being inserted https://github.com/SeaQL/sea-orm/pull/1021
+* `MockDatabase::append_exec_results()`, `MockDatabase::append_query_results()`, `MockDatabase::append_exec_errors()` and `MockDatabase::append_query_errors()` take any types implemented `IntoIterator` trait https://github.com/SeaQL/sea-orm/pull/1367
 
 ### Upgrades
 
