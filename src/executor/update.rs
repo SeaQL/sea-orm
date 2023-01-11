@@ -165,15 +165,20 @@ mod tests {
 
     #[smol_potat::test]
     async fn update_record_not_found_1() -> Result<(), DbErr> {
+        let updated_cake = cake::Model {
+            id: 1,
+            name: "Cheese Cake".to_owned(),
+        };
+
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
-                vec![cake::Model {
-                    id: 1,
-                    name: "Cheese Cake".to_owned(),
-                }],
+                vec![updated_cake.clone()],
                 vec![],
                 vec![],
                 vec![],
+                vec![updated_cake.clone()],
+                vec![updated_cake.clone()],
+                vec![updated_cake.clone()],
             ])
             .append_exec_results([MockExecResult {
                 last_insert_id: 0,
@@ -189,7 +194,7 @@ mod tests {
         assert_eq!(
             cake::ActiveModel {
                 name: Set("Cheese Cake".to_owned()),
-                ..model.into_active_model()
+                ..model.clone().into_active_model()
             }
             .update(&db)
             .await?,
@@ -231,7 +236,7 @@ mod tests {
         assert_eq!(
             Update::one(cake::ActiveModel {
                 name: Set("Cheese Cake".to_owned()),
-                ..model.into_active_model()
+                ..model.clone().into_active_model()
             })
             .exec(&db)
             .await,
@@ -247,6 +252,28 @@ mod tests {
                 .exec(&db)
                 .await,
             Ok(UpdateResult { rows_affected: 0 })
+        );
+
+        assert_eq!(
+            updated_cake.clone().into_active_model().save(&db).await?,
+            updated_cake.clone().into_active_model()
+        );
+
+        assert_eq!(
+            updated_cake.clone().into_active_model().update(&db).await?,
+            updated_cake
+        );
+
+        assert_eq!(
+            cake::Entity::update(updated_cake.clone().into_active_model())
+                .exec(&db)
+                .await?,
+            updated_cake
+        );
+
+        assert_eq!(
+            cake::Entity::update_many().exec(&db).await?.rows_affected,
+            0
         );
 
         assert_eq!(
@@ -276,6 +303,21 @@ mod tests {
                     DbBackend::Postgres,
                     r#"UPDATE "cake" SET "name" = $1 WHERE "cake"."id" = $2"#,
                     ["Cheese Cake".into(), 2i32.into()]
+                ),
+                Transaction::from_sql_and_values(
+                    DbBackend::Postgres,
+                    r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = $1 LIMIT $2"#,
+                    [1.into(), 1u64.into()]
+                ),
+                Transaction::from_sql_and_values(
+                    DbBackend::Postgres,
+                    r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = $1 LIMIT $2"#,
+                    [1.into(), 1u64.into()]
+                ),
+                Transaction::from_sql_and_values(
+                    DbBackend::Postgres,
+                    r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = $1 LIMIT $2"#,
+                    [1.into(), 1u64.into()]
                 ),
             ]
         );
