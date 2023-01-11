@@ -155,9 +155,9 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
                 }
             }
 
-            fn set_dirty(&mut self, c: <Self::Entity as EntityTrait>::Column) {
+            fn reset(&mut self, c: <Self::Entity as EntityTrait>::Column) {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.set_dirty(),)*
+                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.reset(),)*
                     _ => panic!("This ActiveModel does not have this field"),
                 }
             }

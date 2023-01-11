@@ -105,13 +105,15 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// The default implementation of the ActiveModel
     fn default() -> Self;
 
-    /// Set fields of value [ActiveValue::Unchanged] as [ActiveValue::Set]
-    fn set_dirty(&mut self, c: <Self::Entity as EntityTrait>::Column);
+    /// Reset the value from [ActiveValue::Unchanged] to [ActiveValue::Set],
+    /// leaving [ActiveValue::NotSet] untouched.
+    fn reset(&mut self, c: <Self::Entity as EntityTrait>::Column);
 
-    /// Set all fields of value [ActiveValue::Unchanged] as [ActiveValue::Set]
-    fn set_all_dirty(mut self) -> Self {
+    /// Reset all values from [ActiveValue::Unchanged] to [ActiveValue::Set],
+    /// leaving [ActiveValue::NotSet] untouched.
+    fn reset_all(mut self) -> Self {
         for col in <Self::Entity as EntityTrait>::Column::iter() {
-            self.set_dirty(col);
+            self.reset(col);
         }
         self
     }
@@ -831,8 +833,9 @@ where
         }
     }
 
-    /// Convert [ActiveValue::Unchanged] into [ActiveValue::Set]
-    pub fn set_dirty(&mut self) {
+    /// Reset the value from [ActiveValue::Unchanged] to [ActiveValue::Set],
+    /// leaving [ActiveValue::NotSet] untouched.
+    pub fn reset(&mut self) {
         *self = match self.take() {
             Some(value) => ActiveValue::Set(value),
             None => ActiveValue::NotSet,
@@ -1293,7 +1296,7 @@ mod tests {
     }
 
     #[test]
-    fn test_set_dirty_1() {
+    fn test_reset_1() {
         assert_eq!(
             fruit::Model {
                 id: 1,
@@ -1315,7 +1318,7 @@ mod tests {
                 cake_id: None,
             }
             .into_active_model()
-            .set_all_dirty(),
+            .reset_all(),
             fruit::ActiveModel {
                 id: Set(1),
                 name: Set("Apple".into()),
@@ -1344,7 +1347,7 @@ mod tests {
                 cake_id: Some(2),
             }
             .into_active_model()
-            .set_all_dirty(),
+            .reset_all(),
             fruit::ActiveModel {
                 id: Set(1),
                 name: Set("Apple".into()),
@@ -1354,7 +1357,7 @@ mod tests {
     }
 
     #[smol_potat::test]
-    async fn test_set_dirty_2() -> Result<(), DbErr> {
+    async fn test_reset_2() -> Result<(), DbErr> {
         use crate::*;
 
         let db = MockDatabase::new(DbBackend::Postgres)
@@ -1397,7 +1400,7 @@ mod tests {
             cake_id: None,
         }
         .into_active_model()
-        .set_all_dirty()
+        .reset_all()
         .update(&db)
         .await?;
 
