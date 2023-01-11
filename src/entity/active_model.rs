@@ -1,6 +1,7 @@
 use crate::{
     error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn, Value,
 };
+use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
 use std::fmt::Debug;
 
@@ -81,7 +82,7 @@ where
 /// A Trait for ActiveModel to perform Create, Update or Delete operation.
 /// The type must also implement the [EntityTrait].
 /// See module level docs [crate::entity] for a full example
-#[async_trait::async_trait]
+#[async_trait]
 pub trait ActiveModelTrait: Clone + Debug {
     /// The Entity this ActiveModel belongs to
     type Entity: EntityTrait;
@@ -583,7 +584,7 @@ pub trait ActiveModelTrait: Clone + Debug {
 /// ```
 /// See module level docs [crate::entity] for a full example
 #[allow(unused_variables)]
-#[async_trait::async_trait]
+#[async_trait]
 pub trait ActiveModelBehavior: ActiveModelTrait {
     /// Create a new ActiveModel with default values. Also used by `Default::default()`.
     fn new() -> Self {
