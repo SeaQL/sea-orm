@@ -55,6 +55,11 @@ pub enum DbErr {
     /// A migration error
     #[error("Migration Error: {0}")]
     Migration(String),
+    /// None of the records are being inserted into the database,
+    /// if you insert with upsert expression that means
+    /// all of them conflict with existing records in the database
+    #[error("RecordNotInserted Error: {0}")]
+    RecordNotInserted(String),
 }
 
 /// Runtime error

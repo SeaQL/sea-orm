@@ -177,8 +177,8 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![
-    /// #         vec![cake::Model {
+    /// #     .append_query_results([
+    /// #         [cake::Model {
     /// #             id: 15,
     /// #             name: "Apple Pie".to_owned(),
     /// #         }],
@@ -202,10 +202,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"INSERT INTO "cake" ("name") VALUES ($1) RETURNING "id", "name""#,
-    ///         vec!["Apple Pie".into()]
+    ///         ["Apple Pie".into()]
     ///     )]
     /// );
     /// #
@@ -223,13 +223,13 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
-    /// #     .append_query_results(vec![
-    /// #         vec![cake::Model {
+    /// #     .append_query_results([
+    /// #         [cake::Model {
     /// #             id: 15,
     /// #             name: "Apple Pie".to_owned(),
     /// #         }],
     /// #     ])
-    /// #     .append_exec_results(vec![
+    /// #     .append_exec_results([
     /// #         MockExecResult {
     /// #             last_insert_id: 15,
     /// #             rows_affected: 1,
@@ -254,16 +254,16 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![
+    ///     [
     ///         Transaction::from_sql_and_values(
     ///             DbBackend::MySql,
     ///             r#"INSERT INTO `cake` (`name`) VALUES (?)"#,
-    ///             vec!["Apple Pie".into()]
+    ///             ["Apple Pie".into()]
     ///         ),
     ///         Transaction::from_sql_and_values(
     ///             DbBackend::MySql,
     ///             r#"SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = ? LIMIT ?"#,
-    ///             vec![15.into(), 1u64.into()]
+    ///             [15.into(), 1u64.into()]
     ///         )
     ///     ]
     /// );
@@ -296,8 +296,8 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![
-    /// #         vec![fruit::Model {
+    /// #     .append_query_results([
+    /// #         [fruit::Model {
     /// #             id: 1,
     /// #             name: "Orange".to_owned(),
     /// #             cake_id: None,
@@ -324,10 +324,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"UPDATE "fruit" SET "name" = $1 WHERE "fruit"."id" = $2 RETURNING "id", "name", "cake_id""#,
-    ///         vec!["Orange".into(), 1i32.into()]
+    ///         ["Orange".into(), 1i32.into()]
     ///     )]);
     /// #
     /// # Ok(())
@@ -344,14 +344,14 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
-    /// #     .append_query_results(vec![
-    /// #         vec![fruit::Model {
+    /// #     .append_query_results([
+    /// #         [fruit::Model {
     /// #             id: 1,
     /// #             name: "Orange".to_owned(),
     /// #             cake_id: None,
     /// #         }],
     /// #     ])
-    /// #     .append_exec_results(vec![
+    /// #     .append_exec_results([
     /// #         MockExecResult {
     /// #             last_insert_id: 0,
     /// #             rows_affected: 1,
@@ -378,16 +378,16 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![
+    ///     [
     ///         Transaction::from_sql_and_values(
     ///             DbBackend::MySql,
     ///             r#"UPDATE `fruit` SET `name` = ? WHERE `fruit`.`id` = ?"#,
-    ///             vec!["Orange".into(), 1i32.into()]
+    ///             ["Orange".into(), 1i32.into()]
     ///         ),
     ///         Transaction::from_sql_and_values(
     ///             DbBackend::MySql,
     ///             r#"SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`id` = ? LIMIT ?"#,
-    ///             vec![1i32.into(), 1u64.into()]
+    ///             [1i32.into(), 1u64.into()]
     ///         )]);
     /// #
     /// # Ok(())
@@ -440,7 +440,7 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_exec_results(vec![
+    /// #     .append_exec_results([
     /// #         MockExecResult {
     /// #             last_insert_id: 0,
     /// #             rows_affected: 1,
@@ -461,10 +461,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"DELETE FROM "fruit" WHERE "fruit"."id" = $1"#,
-    ///         vec![3i32.into()]
+    ///         [3i32.into()]
     ///     )]
     /// );
     /// #
@@ -1217,7 +1217,7 @@ mod tests {
         use crate::*;
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_exec_results(vec![
+            .append_exec_results([
                 MockExecResult {
                     last_insert_id: 1,
                     rows_affected: 1,
@@ -1227,13 +1227,13 @@ mod tests {
                     rows_affected: 1,
                 },
             ])
-            .append_query_results(vec![
-                vec![fruit::Model {
+            .append_query_results([
+                [fruit::Model {
                     id: 1,
                     name: "Apple".to_owned(),
                     cake_id: None,
                 }],
-                vec![fruit::Model {
+                [fruit::Model {
                     id: 2,
                     name: "Orange".to_owned(),
                     cake_id: Some(1),
@@ -1260,16 +1260,16 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![
+            [
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"INSERT INTO "fruit" ("name") VALUES ($1) RETURNING "id", "name", "cake_id""#,
-                    vec!["Apple".into()],
+                    ["Apple".into()],
                 ),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"UPDATE "fruit" SET "name" = $1, "cake_id" = $2 WHERE "fruit"."id" = $3 RETURNING "id", "name", "cake_id""#,
-                    vec!["Orange".into(), 1i32.into(), 2i32.into()],
+                    ["Orange".into(), 1i32.into(), 2i32.into()],
                 ),
             ]
         );

@@ -168,6 +168,8 @@ impl RelationDef {
     /// This method takes a closure with two parameters
     /// denoting the left-hand side and right-hand side table in the join expression.
     ///
+    /// This replaces the current condition if it is already set.
+    ///
     /// # Examples
     ///
     /// ```
@@ -182,7 +184,7 @@ impl RelationDef {
     ///                 .def()
     ///                 .rev()
     ///                 .on_condition(|_left, right| {
-    ///                     Expr::tbl(right, cake_filling::Column::CakeId)
+    ///                     Expr::col((right, cake_filling::Column::CakeId))
     ///                         .gt(10i32)
     ///                         .into_condition()
     ///                 })

@@ -143,7 +143,7 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
     let mut ts: TokenStream = derives::expand_derive_entity_model(data, attrs)
         .unwrap_or_else(Error::into_compile_error)
         .into();
-    ts.extend(vec![
+    ts.extend([
         derive_model(input_ts.clone()),
         derive_active_model(input_ts),
     ]);

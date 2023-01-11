@@ -76,5 +76,23 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
         })
     );
 
+    assert_eq!(
+        Entity::find()
+            .filter(Column::Id.eq(vec![1_u8, 2_u8, 3_u8])) // annotate it as Vec<u8> explicitly
+            .into_values::<_, Column>()
+            .one(db)
+            .await?,
+        Some((vec![1_u8, 2_u8, 3_u8], "First Row (Updated)".to_owned(),))
+    );
+
+    assert_eq!(
+        Entity::find()
+            .filter(Column::Id.eq(vec![1_u8, 2_u8, 3_u8])) // annotate it as Vec<u8> explicitly
+            .into_tuple()
+            .one(db)
+            .await?,
+        Some((vec![1_u8, 2_u8, 3_u8], "First Row (Updated)".to_owned(),))
+    );
+
     Ok(())
 }
