@@ -53,7 +53,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
             .find_linked(self_join::SelfReferencingLink)
             .all(db)
             .await?,
-        vec![]
+        []
     );
 
     assert_eq!(
@@ -61,7 +61,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
             .find_linked(self_join::SelfReferencingLink)
             .all(db)
             .await?,
-        vec![model.clone()]
+        [model.clone()]
     );
 
     assert_eq!(
@@ -69,7 +69,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
             .find_linked(self_join::SelfReferencingLink)
             .all(db)
             .await?,
-        vec![]
+        []
     );
 
     assert_eq!(
@@ -78,7 +78,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
             .order_by_asc(self_join::Column::Time)
             .all(db)
             .await?,
-        vec![
+        [
             (model.clone(), None),
             (linked_model, Some(model)),
             (not_linked_model, None),

@@ -79,9 +79,10 @@ impl WithSerde {
 }
 
 /// Converts model_extra_derives argument to token stream
-fn bonus_derive<T>(model_extra_derives: Vec<T>) -> TokenStream
+fn bonus_derive<T, I>(model_extra_derives: I) -> TokenStream
 where
     T: Into<String>,
+    I: IntoIterator<Item = T>,
 {
     model_extra_derives
         .into_iter()
@@ -93,9 +94,10 @@ where
 }
 
 /// convert attributes argument to token stream
-fn bonus_attributes<T>(attributes: Vec<T>) -> TokenStream
+fn bonus_attributes<T, I>(attributes: I) -> TokenStream
 where
     T: Into<String>,
+    I: IntoIterator<Item = T>,
 {
     attributes.into_iter().map(Into::<String>::into).fold(
         TokenStream::default(),
@@ -348,7 +350,7 @@ impl EntityWriter {
         ];
         code_blocks.extend(Self::gen_impl_related(entity));
         code_blocks.extend(Self::gen_impl_conjunct_related(entity));
-        code_blocks.extend(vec![Self::gen_impl_active_model_behavior()]);
+        code_blocks.extend([Self::gen_impl_active_model_behavior()]);
         code_blocks
     }
 
@@ -381,7 +383,7 @@ impl EntityWriter {
         ];
         code_blocks.extend(Self::gen_impl_related(entity));
         code_blocks.extend(Self::gen_impl_conjunct_related(entity));
-        code_blocks.extend(vec![Self::gen_impl_active_model_behavior()]);
+        code_blocks.extend([Self::gen_impl_active_model_behavior()]);
         code_blocks
     }
 
@@ -450,7 +452,7 @@ impl EntityWriter {
             .fold(TokenStream::new(), |mut ts, col| {
                 if let sea_query::ColumnType::Enum { name, .. } = &col.col_type {
                     let enum_name = format_ident!("{}", name.to_string().to_camel_case());
-                    ts.extend(vec![quote! {
+                    ts.extend([quote! {
                         use super::sea_orm_active_enums::#enum_name;
                     }]);
                 }
@@ -694,7 +696,7 @@ impl EntityWriter {
                     }
                 }
                 if let Some(ts) = col.get_col_type_attrs() {
-                    attrs.extend(vec![ts]);
+                    attrs.extend([ts]);
                     if !col.not_null {
                         attrs.push(quote! { nullable });
                     }
@@ -1677,7 +1679,7 @@ mod tests {
                 &None,
                 false,
                 false,
-                &bonus_derive(vec!["ts_rs::TS"]),
+                &bonus_derive(["ts_rs::TS"]),
                 &TokenStream::new(),
             ))
         );
@@ -1692,7 +1694,7 @@ mod tests {
                 &None,
                 false,
                 false,
-                &bonus_derive(vec!["ts_rs::TS", "utoipa::ToSchema"]),
+                &bonus_derive(["ts_rs::TS", "utoipa::ToSchema"]),
                 &TokenStream::new(),
             ))
         );
@@ -1724,7 +1726,7 @@ mod tests {
                 &None,
                 false,
                 false,
-                &bonus_derive(vec!["ts_rs::TS"]),
+                &bonus_derive(["ts_rs::TS"]),
                 &TokenStream::new(),
             ))
         );
@@ -1739,7 +1741,7 @@ mod tests {
                 &None,
                 false,
                 false,
-                &bonus_derive(vec!["ts_rs::TS", "utoipa::ToSchema"]),
+                &bonus_derive(["ts_rs::TS", "utoipa::ToSchema"]),
                 &TokenStream::new(),
             ))
         );
@@ -1860,7 +1862,7 @@ mod tests {
                 false,
                 false,
                 &TokenStream::new(),
-                &bonus_attributes(vec![r#"serde(rename_all = "camelCase")"#]),
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
             ))
         );
         assert_eq!(
@@ -1875,7 +1877,7 @@ mod tests {
                 false,
                 false,
                 &TokenStream::new(),
-                &bonus_attributes(vec![r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
             ))
         );
 
@@ -1907,7 +1909,7 @@ mod tests {
                 false,
                 false,
                 &TokenStream::new(),
-                &bonus_attributes(vec![r#"serde(rename_all = "camelCase")"#]),
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
             ))
         );
         assert_eq!(
@@ -1922,7 +1924,7 @@ mod tests {
                 false,
                 false,
                 &TokenStream::new(),
-                &bonus_attributes(vec![r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
             ))
         );
 
