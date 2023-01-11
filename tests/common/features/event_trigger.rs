@@ -39,8 +39,8 @@ impl From<Events> for Value {
 }
 
 impl TryGetable for Events {
-    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
-        let vec: Vec<String> = res.try_get(pre, col).map_err(TryGetError::DbErr)?;
+    fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+        let vec: Vec<String> = res.try_get_by(idx).map_err(TryGetError::DbErr)?;
         Ok(Events(vec.into_iter().map(Event).collect()))
     }
 }
@@ -65,6 +65,6 @@ impl ValueType for Events {
     }
 
     fn column_type() -> ColumnType {
-        ColumnType::Array(SeaRc::new(Box::new(ColumnType::String(None))))
+        ColumnType::Array(SeaRc::new(ColumnType::String(None)))
     }
 }

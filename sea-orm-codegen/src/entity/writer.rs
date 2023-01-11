@@ -79,9 +79,10 @@ impl WithSerde {
 }
 
 /// Converts model_extra_derives argument to token stream
-fn bonus_derive<T>(model_extra_derives: Vec<T>) -> TokenStream
+fn bonus_derive<T, I>(model_extra_derives: I) -> TokenStream
 where
     T: Into<String>,
+    I: IntoIterator<Item = T>,
 {
     model_extra_derives
         .into_iter()
@@ -93,9 +94,10 @@ where
 }
 
 /// convert attributes argument to token stream
-fn bonus_attributes<T>(attributes: Vec<T>) -> TokenStream
+fn bonus_attributes<T, I>(attributes: I) -> TokenStream
 where
     T: Into<String>,
+    I: IntoIterator<Item = T>,
 {
     attributes.into_iter().map(Into::<String>::into).fold(
         TokenStream::default(),
@@ -348,7 +350,7 @@ impl EntityWriter {
         ];
         code_blocks.extend(Self::gen_impl_related(entity));
         code_blocks.extend(Self::gen_impl_conjunct_related(entity));
-        code_blocks.extend(vec![Self::gen_impl_active_model_behavior()]);
+        code_blocks.extend([Self::gen_impl_active_model_behavior()]);
         code_blocks
     }
 
@@ -381,7 +383,7 @@ impl EntityWriter {
         ];
         code_blocks.extend(Self::gen_impl_related(entity));
         code_blocks.extend(Self::gen_impl_conjunct_related(entity));
-        code_blocks.extend(vec![Self::gen_impl_active_model_behavior()]);
+        code_blocks.extend([Self::gen_impl_active_model_behavior()]);
         code_blocks
     }
 
@@ -450,7 +452,7 @@ impl EntityWriter {
             .fold(TokenStream::new(), |mut ts, col| {
                 if let sea_query::ColumnType::Enum { name, .. } = &col.col_type {
                     let enum_name = format_ident!("{}", name.to_string().to_camel_case());
-                    ts.extend(vec![quote! {
+                    ts.extend([quote! {
                         use super::sea_orm_active_enums::#enum_name;
                     }]);
                 }
@@ -694,7 +696,7 @@ impl EntityWriter {
                     }
                 }
                 if let Some(ts) = col.get_col_type_attrs() {
-                    attrs.extend(vec![ts]);
+                    attrs.extend([ts]);
                     if !col.not_null {
                         attrs.push(quote! { nullable });
                     }
@@ -795,7 +797,7 @@ mod tests {
                 columns: vec![
                     Column {
                         name: "id".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: true,
                         not_null: true,
                         unique: false,
@@ -832,14 +834,14 @@ mod tests {
                 columns: vec![
                     Column {
                         name: "cake_id".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "filling_id".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: false,
                         not_null: true,
                         unique: false,
@@ -884,7 +886,7 @@ mod tests {
                 columns: vec![
                     Column {
                         name: "id".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: true,
                         not_null: true,
                         unique: false,
@@ -911,7 +913,7 @@ mod tests {
                 columns: vec![
                     Column {
                         name: "id".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: true,
                         not_null: true,
                         unique: false,
@@ -925,7 +927,7 @@ mod tests {
                     },
                     Column {
                         name: "cake_id".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: false,
                         not_null: false,
                         unique: false,
@@ -965,7 +967,7 @@ mod tests {
                 columns: vec![
                     Column {
                         name: "id".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: true,
                         not_null: true,
                         unique: false,
@@ -979,7 +981,7 @@ mod tests {
                     },
                     Column {
                         name: "fruitId".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: false,
                         not_null: false,
                         unique: false,
@@ -1006,91 +1008,91 @@ mod tests {
                 columns: vec![
                     Column {
                         name: "id".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: true,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "testing".to_owned(),
-                        col_type: ColumnType::TinyInteger(Some(11)),
+                        col_type: ColumnType::TinyInteger,
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "rust".to_owned(),
-                        col_type: ColumnType::TinyUnsigned(Some(11)),
+                        col_type: ColumnType::TinyUnsigned,
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "keywords".to_owned(),
-                        col_type: ColumnType::SmallInteger(Some(11)),
+                        col_type: ColumnType::SmallInteger,
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "type".to_owned(),
-                        col_type: ColumnType::SmallUnsigned(Some(11)),
+                        col_type: ColumnType::SmallUnsigned,
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "typeof".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "crate".to_owned(),
-                        col_type: ColumnType::Unsigned(Some(11)),
+                        col_type: ColumnType::Unsigned,
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "self".to_owned(),
-                        col_type: ColumnType::BigInteger(Some(11)),
+                        col_type: ColumnType::BigInteger,
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "self_id1".to_owned(),
-                        col_type: ColumnType::BigUnsigned(Some(11)),
+                        col_type: ColumnType::BigUnsigned,
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "self_id2".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "fruit_id1".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "fruit_id2".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "cake_id".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: false,
                         not_null: true,
                         unique: false,
@@ -1163,7 +1165,7 @@ mod tests {
                 columns: vec![
                     Column {
                         name: "id".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: true,
                         not_null: true,
                         unique: false,
@@ -1177,7 +1179,7 @@ mod tests {
                     },
                     Column {
                         name: "price".to_owned(),
-                        col_type: ColumnType::Float(Some(2)),
+                        col_type: ColumnType::Float,
                         auto_increment: false,
                         not_null: false,
                         unique: false,
@@ -1207,7 +1209,7 @@ mod tests {
                 columns: vec![
                     Column {
                         name: "id".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: true,
                         not_null: true,
                         unique: false,
@@ -1221,7 +1223,7 @@ mod tests {
                     },
                     Column {
                         name: "price".to_owned(),
-                        col_type: ColumnType::Double(Some(2)),
+                        col_type: ColumnType::Double,
                         auto_increment: false,
                         not_null: false,
                         unique: false,
@@ -1251,25 +1253,21 @@ mod tests {
                 columns: vec![
                     Column {
                         name: "id".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: true,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "integers".to_owned(),
-                        col_type: ColumnType::Array(SeaRc::new(Box::new(ColumnType::Integer(
-                            None,
-                        )))),
+                        col_type: ColumnType::Array(SeaRc::new(ColumnType::Integer)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "integers_opt".to_owned(),
-                        col_type: ColumnType::Array(SeaRc::new(Box::new(ColumnType::Integer(
-                            None,
-                        )))),
+                        col_type: ColumnType::Array(SeaRc::new(ColumnType::Integer)),
                         auto_increment: false,
                         not_null: false,
                         unique: false,
@@ -1286,21 +1284,21 @@ mod tests {
                 columns: vec![
                     Column {
                         name: "id".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: true,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "floats".to_owned(),
-                        col_type: ColumnType::Array(SeaRc::new(Box::new(ColumnType::Float(None)))),
+                        col_type: ColumnType::Array(SeaRc::new(ColumnType::Float)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "doubles".to_owned(),
-                        col_type: ColumnType::Array(SeaRc::new(Box::new(ColumnType::Double(None)))),
+                        col_type: ColumnType::Array(SeaRc::new(ColumnType::Double)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
@@ -1681,7 +1679,7 @@ mod tests {
                 &None,
                 false,
                 false,
-                &bonus_derive(vec!["ts_rs::TS"]),
+                &bonus_derive(["ts_rs::TS"]),
                 &TokenStream::new(),
             ))
         );
@@ -1696,7 +1694,7 @@ mod tests {
                 &None,
                 false,
                 false,
-                &bonus_derive(vec!["ts_rs::TS", "utoipa::ToSchema"]),
+                &bonus_derive(["ts_rs::TS", "utoipa::ToSchema"]),
                 &TokenStream::new(),
             ))
         );
@@ -1728,7 +1726,7 @@ mod tests {
                 &None,
                 false,
                 false,
-                &bonus_derive(vec!["ts_rs::TS"]),
+                &bonus_derive(["ts_rs::TS"]),
                 &TokenStream::new(),
             ))
         );
@@ -1743,7 +1741,7 @@ mod tests {
                 &None,
                 false,
                 false,
-                &bonus_derive(vec!["ts_rs::TS", "utoipa::ToSchema"]),
+                &bonus_derive(["ts_rs::TS", "utoipa::ToSchema"]),
                 &TokenStream::new(),
             ))
         );
@@ -1864,7 +1862,7 @@ mod tests {
                 false,
                 false,
                 &TokenStream::new(),
-                &bonus_attributes(vec![r#"serde(rename_all = "camelCase")"#]),
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
             ))
         );
         assert_eq!(
@@ -1879,7 +1877,7 @@ mod tests {
                 false,
                 false,
                 &TokenStream::new(),
-                &bonus_attributes(vec![r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
             ))
         );
 
@@ -1911,7 +1909,7 @@ mod tests {
                 false,
                 false,
                 &TokenStream::new(),
-                &bonus_attributes(vec![r#"serde(rename_all = "camelCase")"#]),
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
             ))
         );
         assert_eq!(
@@ -1926,7 +1924,7 @@ mod tests {
                 false,
                 false,
                 &TokenStream::new(),
-                &bonus_attributes(vec![r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
             ))
         );
 

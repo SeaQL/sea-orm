@@ -216,7 +216,7 @@ pub async fn find_related_active_enum(db: &DatabaseConnection) -> Result<(), DbE
         .find_related(ActiveEnumChild)
         .all(db)
         .await?,
-        vec![active_enum_child::Model {
+        [active_enum_child::Model {
             id: 1,
             parent_id: 2,
             category: Some(Category::Big),
@@ -229,7 +229,7 @@ pub async fn find_related_active_enum(db: &DatabaseConnection) -> Result<(), DbE
             .find_with_related(ActiveEnumChild)
             .all(db)
             .await?,
-        vec![(
+        [(
             active_enum::Model {
                 id: 2,
                 category: Some(Category::Small),
@@ -250,7 +250,7 @@ pub async fn find_related_active_enum(db: &DatabaseConnection) -> Result<(), DbE
             .find_also_related(ActiveEnumChild)
             .all(db)
             .await?,
-        vec![(
+        [(
             active_enum::Model {
                 id: 2,
                 category: Some(Category::Small),
@@ -278,7 +278,7 @@ pub async fn find_related_active_enum(db: &DatabaseConnection) -> Result<(), DbE
         .find_related(ActiveEnum)
         .all(db)
         .await?,
-        vec![active_enum::Model {
+        [active_enum::Model {
             id: 2,
             category: Some(Category::Small),
             color: Some(Color::White),
@@ -290,7 +290,7 @@ pub async fn find_related_active_enum(db: &DatabaseConnection) -> Result<(), DbE
             .find_with_related(ActiveEnum)
             .all(db)
             .await?,
-        vec![(
+        [(
             active_enum_child::Model {
                 id: 1,
                 parent_id: 2,
@@ -311,7 +311,7 @@ pub async fn find_related_active_enum(db: &DatabaseConnection) -> Result<(), DbE
             .find_also_related(ActiveEnum)
             .all(db)
             .await?,
-        vec![(
+        [(
             active_enum_child::Model {
                 id: 1,
                 parent_id: 2,
@@ -342,7 +342,7 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
         .find_linked(active_enum::ActiveEnumChildLink)
         .all(db)
         .await?,
-        vec![active_enum_child::Model {
+        [active_enum_child::Model {
             id: 1,
             parent_id: 2,
             category: Some(Category::Big),
@@ -355,7 +355,7 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
             .find_also_linked(active_enum::ActiveEnumChildLink)
             .all(db)
             .await?,
-        vec![(
+        [(
             active_enum::Model {
                 id: 2,
                 category: Some(Category::Small),
@@ -383,7 +383,7 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
         .find_linked(active_enum_child::ActiveEnumLink)
         .all(db)
         .await?,
-        vec![active_enum::Model {
+        [active_enum::Model {
             id: 2,
             category: Some(Category::Small),
             color: Some(Color::White),
@@ -395,7 +395,7 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
             .find_also_linked(active_enum_child::ActiveEnumLink)
             .all(db)
             .await?,
-        vec![(
+        [(
             active_enum_child::Model {
                 id: 1,
                 parent_id: 2,
@@ -784,7 +784,7 @@ mod tests {
                 .iter()
                 .map(|stmt| db_postgres.build(stmt))
                 .collect::<Vec<_>>(),
-            vec![Statement::from_string(
+            [Statement::from_string(
                 db_postgres,
                 r#"CREATE TYPE "tea" AS ENUM ('EverydayTea', 'BreakfastTea')"#.to_owned()
             ),]

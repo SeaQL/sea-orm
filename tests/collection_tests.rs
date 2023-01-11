@@ -19,6 +19,8 @@ async fn main() -> Result<(), DbErr> {
 pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
     use collection::*;
 
+    let uuid = Uuid::new_v4();
+
     assert_eq!(
         Model {
             id: 1,
@@ -29,6 +31,8 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             teas_opt: Some(vec![Tea::BreakfastTea]),
             colors: vec![Color::Black],
             colors_opt: Some(vec![Color::Black]),
+            uuid: vec![uuid],
+            uuid_hyphenated: vec![uuid.hyphenated()],
         }
         .into_active_model()
         .insert(db)
@@ -42,6 +46,8 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             teas_opt: Some(vec![Tea::BreakfastTea]),
             colors: vec![Color::Black],
             colors_opt: Some(vec![Color::Black]),
+            uuid: vec![uuid],
+            uuid_hyphenated: vec![uuid.hyphenated()],
         }
     );
 
@@ -55,6 +61,8 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             teas_opt: None,
             colors: vec![Color::Black],
             colors_opt: None,
+            uuid: vec![uuid],
+            uuid_hyphenated: vec![uuid.hyphenated()],
         }
         .into_active_model()
         .insert(db)
@@ -68,6 +76,8 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             teas_opt: None,
             colors: vec![Color::Black],
             colors_opt: None,
+            uuid: vec![uuid],
+            uuid_hyphenated: vec![uuid.hyphenated()],
         }
     );
 
@@ -81,6 +91,8 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             teas_opt: Some(vec![]),
             colors: vec![],
             colors_opt: Some(vec![]),
+            uuid: vec![uuid],
+            uuid_hyphenated: vec![uuid.hyphenated()],
         }
         .into_active_model()
         .insert(db)
@@ -94,6 +106,8 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             teas_opt: Some(vec![]),
             colors: vec![],
             colors_opt: Some(vec![]),
+            uuid: vec![uuid],
+            uuid_hyphenated: vec![uuid.hyphenated()],
         }
     );
 
@@ -103,6 +117,7 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
 pub async fn update_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
     use collection::*;
 
+    let uuid = Uuid::new_v4();
     let model = Entity::find_by_id(1).one(db).await?.unwrap();
 
     ActiveModel {
@@ -126,6 +141,8 @@ pub async fn update_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
         teas_opt: Set(None),
         colors: Set(vec![Color::White]),
         colors_opt: Set(None),
+        uuid: Set(vec![uuid]),
+        uuid_hyphenated: Set(vec![uuid.hyphenated()]),
     }
     .update(db)
     .await?;

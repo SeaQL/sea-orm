@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
-* Simple data loader https://github.com/SeaQL/sea-orm/pull/1238
+* Simple data loader https://github.com/SeaQL/sea-orm/pull/1238, https://github.com/SeaQL/sea-orm/pull/1368
 * Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
 * [sea-orm-cli] Generate `#[serde(skip_deserializing)]` for primary key columns https://github.com/SeaQL/sea-orm/pull/846, https://github.com/SeaQL/sea-orm/pull/1186, https://github.com/SeaQL/sea-orm/pull/1318
 * [sea-orm-cli] Generate `#[serde(skip)]` for hidden columns https://github.com/SeaQL/sea-orm/pull/1171, https://github.com/SeaQL/sea-orm/pull/1320
@@ -19,21 +19,31 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Execute unprepared statements https://github.com/SeaQL/sea-orm/pull/1327
 * Added `DatabaseConnection::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
 * Added `DatabaseTransaction::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
+* Added `Select::into_tuple` to select rows as tuples instead of having to define a custom Model https://github.com/SeaQL/sea-orm/pull/1311
+* Support various UUID formats that are available in `uuid::fmt` module https://github.com/SeaQL/sea-orm/pull/1325
 
 ### Enhancements
 
 * Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
 * Added `DatabaseConnection::close` https://github.com/SeaQL/sea-orm/pull/1236
 * Refactor schema module to expose functions for database alteration https://github.com/SeaQL/sea-orm/pull/1256
+* Added `is_null` getter for `ColumnDef` struct https://github.com/SeaQL/sea-orm/pull/1381
+* Postgres insert many will throw `RecordNotInserted` error if non of them are being inserted https://github.com/SeaQL/sea-orm/pull/1021
+* `MockDatabase::append_exec_results()`, `MockDatabase::append_query_results()`, `MockDatabase::append_exec_errors()` and `MockDatabase::append_query_errors()` take any types implemented `IntoIterator` trait https://github.com/SeaQL/sea-orm/pull/1367
+* `find_by_id` and `delete_by_id` take any Into primary key value https://github.com/SeaQL/sea-orm/pull/1362
 
 ### Upgrades
 
 * Upgrade `axum` to `0.6.1` https://github.com/SeaQL/sea-orm/pull/1285
+* Upgrade `sea-query` to `0.28` https://github.com/SeaQL/sea-orm/pull/1366
+* Upgrade `sea-query-binder` to `0.3` https://github.com/SeaQL/sea-orm/pull/1366
+* Upgrade `sea-schema` to `0.11` https://github.com/SeaQL/sea-orm/pull/1366
 
 ### House Keeping
 
 * Removed dependency when not needed https://github.com/SeaQL/sea-orm/pull/1213
 * Changed all version = "^x.y.z" into version = "x.y.z" and disabled default features and enable only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
+* Cleanup the use of `vec!` macros https://github.com/SeaQL/sea-orm/pull/1367
 
 ### Bug Fixes
 
@@ -43,6 +53,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Breaking changes
 
 * Added `ConnectionTrait::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
+* As part of https://github.com/SeaQL/sea-orm/pull/1311, the required method of `TryGetable` changed:
+```rust
+// then
+fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError>;
+// now; ColIdx can be `&str` or `usize`
+fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError>;
+```
 
 ## 0.10.6 - 2022-12-23
 

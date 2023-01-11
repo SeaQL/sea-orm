@@ -124,7 +124,7 @@ macro_rules! bind_oper {
         where
             V: Into<Value>,
         {
-            Expr::tbl(self.entity_name(), *self).$op(v)
+            Expr::col((self.entity_name(), *self)).$op(v)
         }
     };
 }
@@ -137,7 +137,7 @@ macro_rules! bind_oper_with_enum_casting {
             V: Into<Value>,
         {
             let expr = self.save_as(Expr::val(v));
-            Expr::tbl(self.entity_name(), *self).binary(BinOper::$bin_op, expr)
+            Expr::col((self.entity_name(), *self)).binary(BinOper::$bin_op, expr)
         }
     };
 }
@@ -146,7 +146,7 @@ macro_rules! bind_func_no_params {
     ( $func: ident ) => {
         /// See also SeaQuery's method with same name.
         fn $func(&self) -> SimpleExpr {
-            Expr::tbl(self.entity_name(), *self).$func()
+            Expr::col((self.entity_name(), *self)).$func()
         }
     };
 }
@@ -160,7 +160,7 @@ macro_rules! bind_vec_func {
             V: Into<Value>,
             I: IntoIterator<Item = V>,
         {
-            Expr::tbl(self.entity_name(), *self).$func(v)
+            Expr::col((self.entity_name(), *self)).$func(v)
         }
     };
 }
@@ -170,7 +170,7 @@ macro_rules! bind_subquery_func {
         #[allow(clippy::wrong_self_convention)]
         #[allow(missing_docs)]
         fn $func(&self, s: SelectStatement) -> SimpleExpr {
-            Expr::tbl(self.entity_name(), *self).$func(s)
+            Expr::col((self.entity_name(), *self)).$func(s)
         }
     };
 }
@@ -216,7 +216,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     where
         V: Into<Value>,
     {
-        Expr::tbl(self.entity_name(), *self).between(a, b)
+        Expr::col((self.entity_name(), *self)).between(a, b)
     }
 
     /// ```
@@ -234,7 +234,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     where
         V: Into<Value>,
     {
-        Expr::tbl(self.entity_name(), *self).not_between(a, b)
+        Expr::col((self.entity_name(), *self)).not_between(a, b)
     }
 
     /// ```
@@ -249,7 +249,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// );
     /// ```
     fn like(&self, s: &str) -> SimpleExpr {
-        Expr::tbl(self.entity_name(), *self).like(s)
+        Expr::col((self.entity_name(), *self)).like(s)
     }
 
     /// ```
@@ -264,7 +264,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// );
     /// ```
     fn not_like(&self, s: &str) -> SimpleExpr {
-        Expr::tbl(self.entity_name(), *self).not_like(s)
+        Expr::col((self.entity_name(), *self)).not_like(s)
     }
 
     /// ```
@@ -280,7 +280,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// ```
     fn starts_with(&self, s: &str) -> SimpleExpr {
         let pattern = format!("{}%", s);
-        Expr::tbl(self.entity_name(), *self).like(pattern)
+        Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
     /// ```
@@ -296,7 +296,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// ```
     fn ends_with(&self, s: &str) -> SimpleExpr {
         let pattern = format!("%{}", s);
-        Expr::tbl(self.entity_name(), *self).like(pattern)
+        Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
     /// ```
@@ -312,7 +312,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// ```
     fn contains(&self, s: &str) -> SimpleExpr {
         let pattern = format!("%{}%", s);
-        Expr::tbl(self.entity_name(), *self).like(pattern)
+        Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
     bind_func_no_params!(max);
@@ -327,7 +327,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     where
         V: Into<Value>,
     {
-        Expr::tbl(self.entity_name(), *self).if_null(v)
+        Expr::col((self.entity_name(), *self)).if_null(v)
     }
 
     bind_vec_func!(is_in);
@@ -439,6 +439,11 @@ impl ColumnDef {
     pub fn get_column_type(&self) -> &ColumnType {
         &self.col_type
     }
+
+    /// Returns true if the column is nullable
+    pub fn is_null(&self) -> bool {
+        self.null
+    }
 }
 
 impl From<ColumnType> for sea_query::ColumnType {
@@ -448,23 +453,21 @@ impl From<ColumnType> for sea_query::ColumnType {
                 ColumnType::Char(s) => sea_query::ColumnType::Char(*s),
                 ColumnType::String(s) => sea_query::ColumnType::String(*s),
                 ColumnType::Text => sea_query::ColumnType::Text,
-                ColumnType::TinyInteger => sea_query::ColumnType::TinyInteger(None),
-                ColumnType::SmallInteger => sea_query::ColumnType::SmallInteger(None),
-                ColumnType::Integer => sea_query::ColumnType::Integer(None),
-                ColumnType::BigInteger => sea_query::ColumnType::BigInteger(None),
-                ColumnType::TinyUnsigned => sea_query::ColumnType::TinyUnsigned(None),
-                ColumnType::SmallUnsigned => sea_query::ColumnType::SmallUnsigned(None),
-                ColumnType::Unsigned => sea_query::ColumnType::Unsigned(None),
-                ColumnType::BigUnsigned => sea_query::ColumnType::BigUnsigned(None),
-                ColumnType::Float => sea_query::ColumnType::Float(None),
-                ColumnType::Double => sea_query::ColumnType::Double(None),
+                ColumnType::TinyInteger => sea_query::ColumnType::TinyInteger,
+                ColumnType::SmallInteger => sea_query::ColumnType::SmallInteger,
+                ColumnType::Integer => sea_query::ColumnType::Integer,
+                ColumnType::BigInteger => sea_query::ColumnType::BigInteger,
+                ColumnType::TinyUnsigned => sea_query::ColumnType::TinyUnsigned,
+                ColumnType::SmallUnsigned => sea_query::ColumnType::SmallUnsigned,
+                ColumnType::Unsigned => sea_query::ColumnType::Unsigned,
+                ColumnType::BigUnsigned => sea_query::ColumnType::BigUnsigned,
+                ColumnType::Float => sea_query::ColumnType::Float,
+                ColumnType::Double => sea_query::ColumnType::Double,
                 ColumnType::Decimal(s) => sea_query::ColumnType::Decimal(*s),
-                ColumnType::DateTime => sea_query::ColumnType::DateTime(None),
-                ColumnType::Timestamp => sea_query::ColumnType::Timestamp(None),
-                ColumnType::TimestampWithTimeZone => {
-                    sea_query::ColumnType::TimestampWithTimeZone(None)
-                }
-                ColumnType::Time => sea_query::ColumnType::Time(None),
+                ColumnType::DateTime => sea_query::ColumnType::DateTime,
+                ColumnType::Timestamp => sea_query::ColumnType::Timestamp,
+                ColumnType::TimestampWithTimeZone => sea_query::ColumnType::TimestampWithTimeZone,
+                ColumnType::Time => sea_query::ColumnType::Time,
                 ColumnType::Date => sea_query::ColumnType::Date,
                 ColumnType::Binary => {
                     sea_query::ColumnType::Binary(sea_query::BlobSize::Blob(None))
@@ -488,7 +491,7 @@ impl From<ColumnType> for sea_query::ColumnType {
                 },
                 ColumnType::Array(column_type) => {
                     let column_type = convert_column_type(column_type);
-                    sea_query::ColumnType::Array(SeaRc::new(Box::new(column_type)))
+                    sea_query::ColumnType::Array(SeaRc::new(column_type))
                 }
             }
         }
@@ -505,23 +508,21 @@ impl From<sea_query::ColumnType> for ColumnType {
                 sea_query::ColumnType::Char(s) => ColumnType::Char(*s),
                 sea_query::ColumnType::String(s) => ColumnType::String(*s),
                 sea_query::ColumnType::Text => ColumnType::Text,
-                sea_query::ColumnType::TinyInteger(_) => ColumnType::TinyInteger,
-                sea_query::ColumnType::SmallInteger(_) => ColumnType::SmallInteger,
-                sea_query::ColumnType::Integer(_) => ColumnType::Integer,
-                sea_query::ColumnType::BigInteger(_) => ColumnType::BigInteger,
-                sea_query::ColumnType::TinyUnsigned(_) => ColumnType::TinyUnsigned,
-                sea_query::ColumnType::SmallUnsigned(_) => ColumnType::SmallUnsigned,
-                sea_query::ColumnType::Unsigned(_) => ColumnType::Unsigned,
-                sea_query::ColumnType::BigUnsigned(_) => ColumnType::BigUnsigned,
-                sea_query::ColumnType::Float(_) => ColumnType::Float,
-                sea_query::ColumnType::Double(_) => ColumnType::Double,
+                sea_query::ColumnType::TinyInteger => ColumnType::TinyInteger,
+                sea_query::ColumnType::SmallInteger => ColumnType::SmallInteger,
+                sea_query::ColumnType::Integer => ColumnType::Integer,
+                sea_query::ColumnType::BigInteger => ColumnType::BigInteger,
+                sea_query::ColumnType::TinyUnsigned => ColumnType::TinyUnsigned,
+                sea_query::ColumnType::SmallUnsigned => ColumnType::SmallUnsigned,
+                sea_query::ColumnType::Unsigned => ColumnType::Unsigned,
+                sea_query::ColumnType::BigUnsigned => ColumnType::BigUnsigned,
+                sea_query::ColumnType::Float => ColumnType::Float,
+                sea_query::ColumnType::Double => ColumnType::Double,
                 sea_query::ColumnType::Decimal(s) => ColumnType::Decimal(*s),
-                sea_query::ColumnType::DateTime(_) => ColumnType::DateTime,
-                sea_query::ColumnType::Timestamp(_) => ColumnType::Timestamp,
-                sea_query::ColumnType::TimestampWithTimeZone(_) => {
-                    ColumnType::TimestampWithTimeZone
-                }
-                sea_query::ColumnType::Time(_) => ColumnType::Time,
+                sea_query::ColumnType::DateTime => ColumnType::DateTime,
+                sea_query::ColumnType::Timestamp => ColumnType::Timestamp,
+                sea_query::ColumnType::TimestampWithTimeZone => ColumnType::TimestampWithTimeZone,
+                sea_query::ColumnType::Time => ColumnType::Time,
                 sea_query::ColumnType::Date => ColumnType::Date,
                 sea_query::ColumnType::Binary(sea_query::BlobSize::Blob(_)) => ColumnType::Binary,
                 sea_query::ColumnType::Binary(sea_query::BlobSize::Tiny) => ColumnType::TinyBinary,
