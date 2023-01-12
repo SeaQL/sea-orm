@@ -3,14 +3,12 @@ use crate::{
     ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related, RelationBuilder,
     RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
 };
-use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
+use sea_query::{Alias, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 pub use strum::IntoEnumIterator as Iterable;
 
-/// Ensure the identifier for an Entity can be converted to a static str
-pub trait IdenStatic: Iden + Copy + 'static {
-    /// Method to call to get the static string identity
-    fn as_str(&self) -> &'static str;
-}
+// The original `sea_orm::IdenStatic` trait was dropped since 0.11.0
+// It was replaced by `sea_query::IdenStatic`, we reexport it here to keep the `IdenStatic` symbol
+pub use sea_query::IdenStatic;
 
 /// A Trait for mapping an Entity to a database table
 pub trait EntityName: IdenStatic + Default {
