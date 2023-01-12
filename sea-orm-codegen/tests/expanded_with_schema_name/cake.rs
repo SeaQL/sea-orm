@@ -10,7 +10,7 @@ impl EntityName for Entity {
         Some("schema_name")
     }
 
-    fn table_name(&self) -> &'static str {
+    fn table_name(&self) -> & 'static str {
         "cake"
     }
 }

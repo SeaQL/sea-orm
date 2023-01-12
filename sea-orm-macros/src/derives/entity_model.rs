@@ -235,8 +235,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         field_type.as_str()
                     };
 
-                    let col_type = match sql_type {
-                        Some(t) => quote! { sea_orm::prelude::ColumnType::#t.def() },
+                    let sea_query_col_type = match sql_type {
+                        Some(t) => quote! { sea_orm::prelude::ColumnType::#t },
                         None => {
                             let col_type = match field_type {
                                 "char" => quote! { Char(None) },
@@ -263,7 +263,9 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 "Uuid" => quote! { Uuid },
                                 "Json" => quote! { Json },
                                 "Decimal" => quote! { Decimal(None) },
-                                "Vec<u8>" => quote! { Binary },
+                                "Vec<u8>" => {
+                                    quote! { Binary(sea_orm::sea_query::BlobSize::Blob(None)) }
+                                }
                                 _ => {
                                     // Assumed it's ActiveEnum if none of the above type matches
                                     quote! {}
@@ -272,20 +274,21 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             if col_type.is_empty() {
                                 let field_span = field.span();
                                 let ty: Type = LitStr::new(field_type, field_span).parse()?;
-                                let def = quote_spanned! { field_span => {
+                                let def = quote_spanned! { field_span =>
                                     std::convert::Into::<sea_orm::ColumnType>::into(
                                         <#ty as sea_orm::sea_query::ValueType>::column_type()
                                     )
-                                    .def()
-                                }};
+                                };
                                 quote! { #def }
                             } else {
-                                quote! { sea_orm::prelude::ColumnType::#col_type.def() }
+                                quote! { sea_orm::prelude::ColumnType::#col_type }
                             }
                         }
                     };
+                    let col_def =
+                        quote! { sea_orm::prelude::ColumnTypeTrait::def(#sea_query_col_type) };
 
-                    let mut match_row = quote! { Self::#field_name => #col_type };
+                    let mut match_row = quote! { Self::#field_name => #col_def };
                     if nullable {
                         match_row = quote! { #match_row.nullable() };
                     }
