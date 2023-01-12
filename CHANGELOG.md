@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Added `DatabaseTransaction::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
 * Added `Select::into_tuple` to select rows as tuples instead of having to define a custom Model https://github.com/SeaQL/sea-orm/pull/1311
 * Support various UUID formats that are available in `uuid::fmt` module https://github.com/SeaQL/sea-orm/pull/1325
+* Casting columns as a different data type on select, insert and update https://github.com/SeaQL/sea-orm/pull/1304
 
 ### Enhancements
 
