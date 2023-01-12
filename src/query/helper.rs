@@ -1,5 +1,5 @@
 use crate::{
-    ColumnTrait, ColumnTypeTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable,
+    ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable,
     ModelTrait, PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
