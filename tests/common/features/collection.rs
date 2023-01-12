@@ -6,6 +6,12 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
+    #[sea_orm(
+        column_type = r#"Custom("citext".into())"#,
+        select_as = "text",
+        save_as = "citext"
+    )]
+    pub name: String,
     pub integers: Vec<i32>,
     pub integers_opt: Option<Vec<i32>>,
     pub teas: Vec<Tea>,

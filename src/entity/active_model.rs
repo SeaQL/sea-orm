@@ -105,6 +105,19 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// The default implementation of the ActiveModel
     fn default() -> Self;
 
+    /// Reset the value from [ActiveValue::Unchanged] to [ActiveValue::Set],
+    /// leaving [ActiveValue::NotSet] untouched.
+    fn reset(&mut self, c: <Self::Entity as EntityTrait>::Column);
+
+    /// Reset all values from [ActiveValue::Unchanged] to [ActiveValue::Set],
+    /// leaving [ActiveValue::NotSet] untouched.
+    fn reset_all(mut self) -> Self {
+        for col in <Self::Entity as EntityTrait>::Column::iter() {
+            self.reset(col);
+        }
+        self
+    }
+
     /// Get the primary key of the ActiveModel
     #[allow(clippy::question_mark)]
     fn get_primary_key_value(&self) -> Option<ValueTuple> {
@@ -278,11 +291,11 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait,
     {
-        let am = ActiveModelBehavior::before_save(self, true)?;
+        let am = ActiveModelBehavior::before_save(self, db, true).await?;
         let model = <Self::Entity as EntityTrait>::insert(am)
             .exec_with_returning(db)
             .await?;
-        Self::after_save(model, true)
+        Self::after_save(model, db, true).await
     }
 
     /// Perform the `UPDATE` operation on an ActiveModel
@@ -400,9 +413,9 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait,
     {
-        let am = ActiveModelBehavior::before_save(self, false)?;
+        let am = ActiveModelBehavior::before_save(self, db, false).await?;
         let model: <Self::Entity as EntityTrait>::Model = Self::Entity::update(am).exec(db).await?;
-        Self::after_save(model, false)
+        Self::after_save(model, db, false).await
     }
 
     /// Insert the model if primary key is `NotSet`, update otherwise.
@@ -477,10 +490,10 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait,
     {
-        let am = ActiveModelBehavior::before_delete(self)?;
+        let am = ActiveModelBehavior::before_delete(self, db).await?;
         let am_clone = am.clone();
         let delete_res = Self::Entity::delete(am).exec(db).await?;
-        ActiveModelBehavior::after_delete(am_clone)?;
+        ActiveModelBehavior::after_delete(am_clone, db).await?;
         Ok(delete_res)
     }
 
@@ -584,6 +597,7 @@ pub trait ActiveModelTrait: Clone + Debug {
 /// ```
 /// See module level docs [crate::entity] for a full example
 #[allow(unused_variables)]
+#[async_trait]
 pub trait ActiveModelBehavior: ActiveModelTrait {
     /// Create a new ActiveModel with default values. Also used by `Default::default()`.
     fn new() -> Self {
@@ -591,25 +605,38 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
     }
 
     /// Will be called before saving
-    fn before_save(self, insert: bool) -> Result<Self, DbErr> {
+    async fn before_save<C>(self, db: &C, insert: bool) -> Result<Self, DbErr>
+    where
+        C: ConnectionTrait,
+    {
         Ok(self)
     }
 
     /// Will be called after saving
-    fn after_save(
+    async fn after_save<C>(
         model: <Self::Entity as EntityTrait>::Model,
+        db: &C,
         insert: bool,
-    ) -> Result<<Self::Entity as EntityTrait>::Model, DbErr> {
+    ) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
+    where
+        C: ConnectionTrait,
+    {
         Ok(model)
     }
 
     /// Will be called before deleting
-    fn before_delete(self) -> Result<Self, DbErr> {
+    async fn before_delete<C>(self, db: &C) -> Result<Self, DbErr>
+    where
+        C: ConnectionTrait,
+    {
         Ok(self)
     }
 
     /// Will be called after deleting
-    fn after_delete(self) -> Result<Self, DbErr> {
+    async fn after_delete<C>(self, db: &C) -> Result<Self, DbErr>
+    where
+        C: ConnectionTrait,
+    {
         Ok(self)
     }
 }
@@ -632,7 +659,7 @@ where
     }
 }
 
-/// Constraints to perform the conversion of a type into an [ActiveValue]
+/// Any type that can be converted into an [ActiveValue]
 pub trait IntoActiveValue<V>
 where
     V: Into<Value>,
@@ -818,6 +845,15 @@ where
             Self::Unchanged(value) => ActiveValue::unchanged(value.into()),
             Self::NotSet => ActiveValue::not_set(),
         }
+    }
+
+    /// Reset the value from [ActiveValue::Unchanged] to [ActiveValue::Set],
+    /// leaving [ActiveValue::NotSet] untouched.
+    pub fn reset(&mut self) {
+        *self = match self.take() {
+            Some(value) => ActiveValue::Set(value),
+            None => ActiveValue::NotSet,
+        };
     }
 }
 
@@ -1271,5 +1307,133 @@ mod tests {
 
         fruit.set(fruit::Column::Name, "apple".into());
         assert!(fruit.is_changed());
+    }
+
+    #[test]
+    fn test_reset_1() {
+        assert_eq!(
+            fruit::Model {
+                id: 1,
+                name: "Apple".into(),
+                cake_id: None,
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Unchanged(1),
+                name: Unchanged("Apple".into()),
+                cake_id: Unchanged(None)
+            },
+        );
+
+        assert_eq!(
+            fruit::Model {
+                id: 1,
+                name: "Apple".into(),
+                cake_id: None,
+            }
+            .into_active_model()
+            .reset_all(),
+            fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Apple".into()),
+                cake_id: Set(None)
+            },
+        );
+
+        assert_eq!(
+            fruit::Model {
+                id: 1,
+                name: "Apple".into(),
+                cake_id: Some(2),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: Unchanged(1),
+                name: Unchanged("Apple".into()),
+                cake_id: Unchanged(Some(2)),
+            },
+        );
+
+        assert_eq!(
+            fruit::Model {
+                id: 1,
+                name: "Apple".into(),
+                cake_id: Some(2),
+            }
+            .into_active_model()
+            .reset_all(),
+            fruit::ActiveModel {
+                id: Set(1),
+                name: Set("Apple".into()),
+                cake_id: Set(Some(2)),
+            },
+        );
+    }
+
+    #[smol_potat::test]
+    async fn test_reset_2() -> Result<(), DbErr> {
+        use crate::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_exec_results(vec![
+                MockExecResult {
+                    last_insert_id: 1,
+                    rows_affected: 1,
+                },
+                MockExecResult {
+                    last_insert_id: 1,
+                    rows_affected: 1,
+                },
+            ])
+            .append_query_results(vec![
+                vec![fruit::Model {
+                    id: 1,
+                    name: "Apple".to_owned(),
+                    cake_id: None,
+                }],
+                vec![fruit::Model {
+                    id: 1,
+                    name: "Apple".to_owned(),
+                    cake_id: None,
+                }],
+            ])
+            .into_connection();
+
+        fruit::Model {
+            id: 1,
+            name: "Apple".into(),
+            cake_id: None,
+        }
+        .into_active_model()
+        .update(&db)
+        .await?;
+
+        fruit::Model {
+            id: 1,
+            name: "Apple".into(),
+            cake_id: None,
+        }
+        .into_active_model()
+        .reset_all()
+        .update(&db)
+        .await?;
+
+        assert_eq!(
+            db.into_transaction_log(),
+            vec![
+                Transaction::from_sql_and_values(
+                    DbBackend::Postgres,
+                    r#"UPDATE "fruit" SET  WHERE "fruit"."id" = $1 RETURNING "id", "name", "cake_id""#,
+                    vec![1i32.into()],
+                ),
+                Transaction::from_sql_and_values(
+                    DbBackend::Postgres,
+                    r#"UPDATE "fruit" SET "name" = $1, "cake_id" = $2 WHERE "fruit"."id" = $3 RETURNING "id", "name", "cake_id""#,
+                    vec!["Apple".into(), Option::<i32>::None.into(), 1i32.into()],
+                ),
+            ]
+        );
+
+        Ok(())
     }
 }

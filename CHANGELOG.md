@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Added `DatabaseTransaction::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
 * Added `Select::into_tuple` to select rows as tuples instead of having to define a custom Model https://github.com/SeaQL/sea-orm/pull/1311
 * Support various UUID formats that are available in `uuid::fmt` module https://github.com/SeaQL/sea-orm/pull/1325
+* Casting columns as a different data type on select, insert and update https://github.com/SeaQL/sea-orm/pull/1304
+* Methods of `ActiveModelBehavior` receive db connection as the parameter https://github.com/SeaQL/sea-orm/pull/1145, https://github.com/SeaQL/sea-orm/pull/1328
 
 ### Enhancements
 
@@ -31,6 +33,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Postgres insert many will throw `RecordNotInserted` error if non of them are being inserted https://github.com/SeaQL/sea-orm/pull/1021
 * `MockDatabase::append_exec_results()`, `MockDatabase::append_query_results()`, `MockDatabase::append_exec_errors()` and `MockDatabase::append_query_errors()` take any types implemented `IntoIterator` trait https://github.com/SeaQL/sea-orm/pull/1367
 * `find_by_id` and `delete_by_id` take any Into primary key value https://github.com/SeaQL/sea-orm/pull/1362
+* Added `ActiveValue::reset` to convert `Unchanged` into `Set` https://github.com/SeaQL/sea-orm/pull/1177
 
 ### Upgrades
 
@@ -59,6 +62,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError>;
 // now; ColIdx can be `&str` or `usize`
 fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError>;
+```
+* The `ActiveModelBehaviour` trait becomes async trait https://github.com/SeaQL/sea-orm/pull/1328
+```rust
+// For anyone who implement the `ActiveModelBehaviour` with default implementation (no*op).
+// No code changes is required.
+impl ActiveModelBehavior for ActiveModel {}
+
+// However, if you overridden the default implementation:
+#[async_trait::async_trait]
+impl ActiveModelBehavior for ActiveModel {
+    async fn before_save<C>(self, db: &C, insert: bool) -> Result<Self, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        // ...
+    }
+
+    // ...
+}
 ```
 
 ## 0.10.6 - 2022-12-23
