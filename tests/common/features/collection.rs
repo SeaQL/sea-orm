@@ -7,7 +7,7 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     #[sea_orm(
-        column_type = r#"Custom("citext".into())"#,
+        column_type = r#"custom("citext")"#,
         select_as = "text",
         save_as = "citext"
     )]
