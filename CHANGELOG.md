@@ -64,12 +64,12 @@ fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError>
 fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError>;
 ```
 * The `ActiveModelBehaviour` trait becomes async trait https://github.com/SeaQL/sea-orm/pull/1328
-For anyone who implement the `ActiveModelBehaviour` with default implementation (no*op). No code changes is required.
-```rs
+```rust
+// For anyone who implement the `ActiveModelBehaviour` with default implementation (no*op).
+// No code changes is required.
 impl ActiveModelBehavior for ActiveModel {}
-```
-If you overridden the default implementation:
-```rs
+
+// However, if you overridden the default implementation:
 #[async_trait::async_trait]
 impl ActiveModelBehavior for ActiveModel {
     async fn before_save<C>(self, db: &C, insert: bool) -> Result<Self, DbErr>
