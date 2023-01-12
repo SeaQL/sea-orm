@@ -200,9 +200,8 @@ where
             }
             DbBackend::Postgres => ColumnType::Custom(SeaRc::clone(&name)),
             DbBackend::Sqlite => ColumnType::Text,
-        }
-        .into(),
-        _ => orm_column_def.col_type.into(),
+        },
+        _ => orm_column_def.col_type,
     };
     let mut column_def = ColumnDef::new_with_type(column, types);
     if !orm_column_def.null {
