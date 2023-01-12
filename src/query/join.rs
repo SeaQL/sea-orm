@@ -1,5 +1,5 @@
 use crate::{
-    cast_enum_as_text, join_tbl_on_condition, unpack_table_ref, EntityTrait, IdenStatic, Iterable,
+    join_tbl_on_condition, unpack_table_ref, ColumnTrait, EntityTrait, IdenStatic, Iterable,
     Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
 };
 pub use sea_query::JoinType;
@@ -100,7 +100,7 @@ where
                 col.into_iden(),
             ));
             select_two.query().expr(SelectExpr {
-                expr: cast_enum_as_text(expr, &col),
+                expr: col.select_as(expr),
                 alias: Some(SeaRc::new(Alias::new(&alias))),
                 window: None,
             });
