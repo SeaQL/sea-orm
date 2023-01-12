@@ -342,12 +342,12 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     }
 
     /// Cast column expression used in select statement.
-    /// By default it only cast database enum as text.
+    /// It only cast database enum as text if it's an enum column.
     fn select_as(&self, expr: Expr) -> SimpleExpr {
         self.select_enum_as(expr)
     }
 
-    /// Cast enum column as text
+    /// Cast enum column as text; do nothing if `self` is not an enum.
     fn select_enum_as(&self, expr: Expr) -> SimpleExpr {
         cast_enum_as(expr, self, |col, _, col_type| {
             let type_name = match col_type {
@@ -359,12 +359,12 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     }
 
     /// Cast value of a column into the correct type for database storage.
-    /// By default it only cast text as enum type if it's an enum column.
+    /// It only cast text as enum type if it's an enum column.
     fn save_as(&self, val: Expr) -> SimpleExpr {
         self.save_enum_as(val)
     }
 
-    /// Cast value of a enum column as enum type
+    /// Cast value of an enum column as enum type; do nothing if `self` is not an enum.
     fn save_enum_as(&self, val: Expr) -> SimpleExpr {
         cast_enum_as(val, self, |col, enum_name, col_type| {
             let type_name = match col_type {
