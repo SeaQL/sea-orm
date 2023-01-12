@@ -291,11 +291,11 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait,
     {
-        let am = ActiveModelBehavior::before_save(self, true)?;
+        let am = ActiveModelBehavior::before_save(self, db, true).await?;
         let model = <Self::Entity as EntityTrait>::insert(am)
             .exec_with_returning(db)
             .await?;
-        Self::after_save(model, true)
+        Self::after_save(model, db, true).await
     }
 
     /// Perform the `UPDATE` operation on an ActiveModel
@@ -413,9 +413,9 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait,
     {
-        let am = ActiveModelBehavior::before_save(self, false)?;
+        let am = ActiveModelBehavior::before_save(self, db, false).await?;
         let model: <Self::Entity as EntityTrait>::Model = Self::Entity::update(am).exec(db).await?;
-        Self::after_save(model, false)
+        Self::after_save(model, db, false).await
     }
 
     /// Insert the model if primary key is `NotSet`, update otherwise.
@@ -490,10 +490,10 @@ pub trait ActiveModelTrait: Clone + Debug {
         Self: ActiveModelBehavior + 'a,
         C: ConnectionTrait,
     {
-        let am = ActiveModelBehavior::before_delete(self)?;
+        let am = ActiveModelBehavior::before_delete(self, db).await?;
         let am_clone = am.clone();
         let delete_res = Self::Entity::delete(am).exec(db).await?;
-        ActiveModelBehavior::after_delete(am_clone)?;
+        ActiveModelBehavior::after_delete(am_clone, db).await?;
         Ok(delete_res)
     }
 
@@ -597,6 +597,7 @@ pub trait ActiveModelTrait: Clone + Debug {
 /// ```
 /// See module level docs [crate::entity] for a full example
 #[allow(unused_variables)]
+#[async_trait]
 pub trait ActiveModelBehavior: ActiveModelTrait {
     /// Create a new ActiveModel with default values. Also used by `Default::default()`.
     fn new() -> Self {
@@ -604,25 +605,38 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
     }
 
     /// Will be called before saving
-    fn before_save(self, insert: bool) -> Result<Self, DbErr> {
+    async fn before_save<C>(self, db: &C, insert: bool) -> Result<Self, DbErr>
+    where
+        C: ConnectionTrait,
+    {
         Ok(self)
     }
 
     /// Will be called after saving
-    fn after_save(
+    async fn after_save<C>(
         model: <Self::Entity as EntityTrait>::Model,
+        db: &C,
         insert: bool,
-    ) -> Result<<Self::Entity as EntityTrait>::Model, DbErr> {
+    ) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
+    where
+        C: ConnectionTrait,
+    {
         Ok(model)
     }
 
     /// Will be called before deleting
-    fn before_delete(self) -> Result<Self, DbErr> {
+    async fn before_delete<C>(self, db: &C) -> Result<Self, DbErr>
+    where
+        C: ConnectionTrait,
+    {
         Ok(self)
     }
 
     /// Will be called after deleting
-    fn after_delete(self) -> Result<Self, DbErr> {
+    async fn after_delete<C>(self, db: &C) -> Result<Self, DbErr>
+    where
+        C: ConnectionTrait,
+    {
         Ok(self)
     }
 }

@@ -3,6 +3,7 @@ pub mod common;
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
 use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use serde_json::json;
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -14,13 +15,13 @@ async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("features_schema_string_primary_key_tests").await;
     create_tables(&ctx.db).await?;
     create_and_update_repository(&ctx.db).await?;
-    insert_repository(&ctx.db).await?;
+    insert_and_delete_repository(&ctx.db).await?;
     ctx.delete().await;
 
     Ok(())
 }
 
-pub async fn insert_repository(db: &DatabaseConnection) -> Result<(), DbErr> {
+pub async fn insert_and_delete_repository(db: &DatabaseConnection) -> Result<(), DbErr> {
     let repository = repository::Model {
         id: "unique-id-001".to_owned(),
         owner: "GC".to_owned(),
@@ -39,6 +40,54 @@ pub async fn insert_repository(db: &DatabaseConnection) -> Result<(), DbErr> {
             name: "G.C.".to_owned(),
             description: None,
         }
+    );
+
+    result.delete(db).await?;
+
+    assert_eq!(
+        edit_log::Entity::find().all(db).await?,
+        [
+            edit_log::Model {
+                id: 1,
+                action: "before_save".into(),
+                values: json!({
+                    "description": null,
+                    "id": "unique-id-001",
+                    "name": "G.C.",
+                    "owner": "GC",
+                }),
+            },
+            edit_log::Model {
+                id: 2,
+                action: "after_save".into(),
+                values: json!({
+                    "description": null,
+                    "id": "unique-id-001",
+                    "name": "G.C.",
+                    "owner": "GC",
+                }),
+            },
+            edit_log::Model {
+                id: 3,
+                action: "before_delete".into(),
+                values: json!({
+                    "description": null,
+                    "id": "unique-id-001",
+                    "name": "G.C.",
+                    "owner": "GC",
+                }),
+            },
+            edit_log::Model {
+                id: 4,
+                action: "after_delete".into(),
+                values: json!({
+                    "description": null,
+                    "id": "unique-id-001",
+                    "name": "G.C.",
+                    "owner": "GC",
+                }),
+            },
+        ]
     );
 
     Ok(())
