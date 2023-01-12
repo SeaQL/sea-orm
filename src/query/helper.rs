@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable,
-    ModelTrait, PrimaryKeyToColumn, RelationDef,
+    ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable, ModelTrait,
+    PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
     Alias, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr, SelectStatement,

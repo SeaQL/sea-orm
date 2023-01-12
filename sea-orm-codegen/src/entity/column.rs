@@ -94,9 +94,7 @@ impl Column {
             ColumnType::Decimal(Some((p, s))) => Some(format!("Decimal(Some(({}, {})))", p, s)),
             ColumnType::Money(Some((p, s))) => Some(format!("Money(Some({}, {}))", p, s)),
             ColumnType::Text => Some("Text".to_owned()),
-            ColumnType::Custom(iden) => {
-                Some(format!("custom(\"{}\")", iden.to_string()))
-            }
+            ColumnType::Custom(iden) => Some(format!("custom(\"{}\")", iden.to_string())),
             _ => None,
         };
         col_type.map(|ty| quote! { column_type = #ty })
