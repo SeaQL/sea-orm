@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Added `Select::into_tuple` to select rows as tuples instead of having to define a custom Model https://github.com/SeaQL/sea-orm/pull/1311
 * Support various UUID formats that are available in `uuid::fmt` module https://github.com/SeaQL/sea-orm/pull/1325
 * Casting columns as a different data type on select, insert and update https://github.com/SeaQL/sea-orm/pull/1304
+* Methods of `ActiveModelBehavior` receive db connection as the parameter https://github.com/SeaQL/sea-orm/pull/1145, https://github.com/SeaQL/sea-orm/pull/1328
 
 ### Enhancements
 
@@ -61,6 +62,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError>;
 // now; ColIdx can be `&str` or `usize`
 fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError>;
+```
+* The `ActiveModelBehaviour` trait becomes async trait https://github.com/SeaQL/sea-orm/pull/1328
+For anyone who implement the `ActiveModelBehaviour` with default implementation (no*op). No code changes is required.
+```rs
+impl ActiveModelBehavior for ActiveModel {}
+```
+If you overridden the default implementation:
+```rs
+#[async_trait::async_trait]
+impl ActiveModelBehavior for ActiveModel {
+    async fn before_save<C>(self, db: &C, insert: bool) -> Result<Self, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        // ...
+    }
+
+    // ...
+}
 ```
 
 ## 0.10.6 - 2022-12-23
