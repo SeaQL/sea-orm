@@ -19,7 +19,7 @@ pub enum RelationType {
 /// to an ActiveModel
 pub type ForeignKeyAction = sea_query::ForeignKeyAction;
 
-/// Constraints a type to implement the trait to create a relationship
+/// Defines the relations of an Entity
 pub trait RelationTrait: Iterable + Debug + 'static {
     /// The method to call
     fn def(&self) -> RelationDef;

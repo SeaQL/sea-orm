@@ -632,7 +632,7 @@ where
     }
 }
 
-/// Constraints to perform the conversion of a type into an [ActiveValue]
+/// Any type that can be converted into an [ActiveValue]
 pub trait IntoActiveValue<V>
 where
     V: Into<Value>,

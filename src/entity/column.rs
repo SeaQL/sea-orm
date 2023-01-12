@@ -174,7 +174,7 @@ macro_rules! bind_subquery_func {
 }
 
 // LINT: when the operand value does not match column type
-/// Wrapper of the identically named method in [`sea_query::Expr`]
+/// API for working with a `Column`. Mostly a wrapper of the identically named methods in [`sea_query::Expr`]
 pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     #[allow(missing_docs)]
     type EntityName: EntityName;

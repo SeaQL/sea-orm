@@ -37,7 +37,7 @@ pub trait EntityName: IdenStatic + Default {
     }
 }
 
-/// An Entity implementing `EntityTrait` represents a table in a database.
+/// An abstract base class for defining Entities.
 ///
 /// This trait provides an API for you to inspect it's properties
 /// - Column (implemented [`ColumnTrait`])

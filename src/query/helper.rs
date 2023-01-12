@@ -13,7 +13,7 @@ use sea_query::IntoColumnRef;
 // LINT: when the column does not appear in tables selected from
 // LINT: when there is a group by clause, but some columns don't have aggregate functions
 // LINT: when the join table or column does not exists
-/// Constraints for any type that needs to perform select statements on a Model
+/// Abstract API for performing queries
 pub trait QuerySelect: Sized {
     #[allow(missing_docs)]
     type QueryStatement;
