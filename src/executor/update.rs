@@ -1,5 +1,5 @@
 use crate::{
-    cast_enum_as_text, error::*, ActiveModelTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
+    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
     Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
 };
 use sea_query::{Expr, FromValueTuple, Query, UpdateStatement};
@@ -95,8 +95,8 @@ where
     type ValueType<A> = <<Entity<A> as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType;
     match db.support_returning() {
         true => {
-            let returning = Query::returning()
-                .exprs(Column::<A>::iter().map(|c| cast_enum_as_text(Expr::col(c), &c)));
+            let returning =
+                Query::returning().exprs(Column::<A>::iter().map(|c| c.select_as(Expr::col(c))));
             query.returning(returning);
             let db_backend = db.get_database_backend();
             let found: Option<Model<A>> =

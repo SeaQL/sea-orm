@@ -1,6 +1,6 @@
 use crate::{
-    cast_enum_as_text, error::*, ActiveModelTrait, ConnectionTrait, EntityTrait, Insert,
-    IntoActiveModel, Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
+    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert, IntoActiveModel,
+    Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
 };
 use sea_query::{Expr, FromValueTuple, Iden, InsertStatement, IntoColumnRef, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};
@@ -189,8 +189,7 @@ where
     let found = match db.support_returning() {
         true => {
             let returning = Query::returning().exprs(
-                <A::Entity as EntityTrait>::Column::iter()
-                    .map(|c| cast_enum_as_text(Expr::col(c), &c)),
+                <A::Entity as EntityTrait>::Column::iter().map(|c| c.select_as(Expr::col(c))),
             );
             insert_statement.returning(returning);
             SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
