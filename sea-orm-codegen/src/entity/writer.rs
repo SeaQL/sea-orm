@@ -167,7 +167,7 @@ impl EntityWriter {
         files.push(self.write_prelude());
         if !self.enums.is_empty() {
             files.push(
-                self.write_sea_orm_active_enums(&context.with_serde, context.with_copy_enums),
+                self.write_sea_orm_active_enums(context),
             );
         }
         WriterOutput { files }
@@ -277,17 +277,18 @@ impl EntityWriter {
 
     pub fn write_sea_orm_active_enums(
         &self,
-        with_serde: &WithSerde,
-        with_copy_enums: bool,
+        context: &EntityWriterContext
     ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
-        Self::write(&mut lines, vec![Self::gen_import(with_serde)]);
+        Self::write(&mut lines, vec![Self::gen_import(&context.with_serde)]);
         lines.push("".to_owned());
+
+
         let code_blocks = self
             .enums
             .values()
-            .map(|active_enum| active_enum.impl_active_enum(with_serde, with_copy_enums))
+            .map(|active_enum| active_enum.impl_active_enum(&context.with_serde, context.with_copy_enums, context.model_extra_derives.clone()))
             .collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
