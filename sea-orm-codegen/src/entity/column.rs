@@ -94,9 +94,7 @@ impl Column {
             ColumnType::Decimal(Some((p, s))) => Some(format!("Decimal(Some(({}, {})))", p, s)),
             ColumnType::Money(Some((p, s))) => Some(format!("Money(Some({}, {}))", p, s)),
             ColumnType::Text => Some("Text".to_owned()),
-            ColumnType::Custom(iden) => {
-                Some(format!("Custom(\"{}\".to_owned())", iden.to_string()))
-            }
+            ColumnType::Custom(iden) => Some(format!("custom(\"{}\")", iden.to_string())),
             _ => None,
         };
         col_type.map(|ty| quote! { column_type = #ty })
@@ -151,7 +149,7 @@ impl Column {
                 ColumnType::Uuid => quote! { ColumnType::Uuid },
                 ColumnType::Custom(s) => {
                     let s = s.to_string();
-                    quote! { ColumnType::Custom(#s.to_owned()) }
+                    quote! { ColumnType::custom(#s) }
                 }
                 ColumnType::Enum { name, .. } => {
                     let enum_ident = format_ident!("{}", name.to_string().to_camel_case());
@@ -464,7 +462,7 @@ mod tests {
         let columns = setup();
         let col_defs = vec![
             "ColumnType::String(Some(255u32)).def()",
-            "ColumnType::Custom(\"cus_col\".to_owned()).def()",
+            "ColumnType::custom(\"cus_col\").def()",
             "ColumnType::TinyInteger.def()",
             "ColumnType::TinyUnsigned.def()",
             "ColumnType::SmallInteger.def()",

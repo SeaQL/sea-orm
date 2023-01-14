@@ -4,7 +4,7 @@ use crate::{
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
-    ColumnDef, Iden, Index, IndexCreateStatement, TableCreateStatement,
+    Alias, ColumnDef, Iden, Index, IndexCreateStatement, IntoIden, SeaRc, TableCreateStatement,
 };
 
 impl Schema {
@@ -194,13 +194,14 @@ where
         ColumnType::Enum { name, variants } => match backend {
             DbBackend::MySql => {
                 let variants: Vec<String> = variants.iter().map(|v| v.to_string()).collect();
-                ColumnType::Custom(format!("ENUM('{}')", variants.join("', '")))
+                ColumnType::Custom(
+                    Alias::new(&format!("ENUM('{}')", variants.join("', '"))).into_iden(),
+                )
             }
-            DbBackend::Postgres => ColumnType::Custom(name.to_string()),
+            DbBackend::Postgres => ColumnType::Custom(SeaRc::clone(&name)),
             DbBackend::Sqlite => ColumnType::Text,
-        }
-        .into(),
-        _ => orm_column_def.col_type.into(),
+        },
+        _ => orm_column_def.col_type,
     };
     let mut column_def = ColumnDef::new_with_type(column, types);
     if !orm_column_def.null {
