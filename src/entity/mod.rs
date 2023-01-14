@@ -32,7 +32,7 @@
 ///
 /// /// The [EntityName] describes the name of a table
 /// impl EntityName for Entity {
-///     fn table_name(&self) -> &str {
+///     fn table_name(&self) -> &'static str {
 ///         "filling"
 ///     }
 /// }

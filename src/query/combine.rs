@@ -18,7 +18,7 @@ macro_rules! select_def {
         }
 
         impl IdenStatic for $ident {
-            fn as_str(&self) -> &str {
+            fn as_str(&self) -> &'static str {
                 $str
             }
         }
