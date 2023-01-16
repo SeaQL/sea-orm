@@ -2000,6 +2000,9 @@ mod tests {
         ];
         const ENTITY_FILES: [&str; 1] = [include_str!("../../tests/postgres/binary_json.rs")];
 
+        const ENTITY_FILES_EXPANDED: [&str; 1] =
+            [include_str!("../../tests/postgres/binary_json_expanded.rs")];
+
         assert_eq!(entities.len(), ENTITY_FILES.len());
 
         for (i, entity) in entities.iter().enumerate() {
@@ -2030,6 +2033,26 @@ mod tests {
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
                     &Some("public".to_owned()),
+                    false,
+                    false,
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+            assert_eq!(
+                parse_from_file(ENTITY_FILES_EXPANDED[i].as_bytes())?.to_string(),
+                EntityWriter::gen_expanded_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &crate::DateTimeCrate::Chrono,
+                    &Some("schema_name".to_owned()),
                     false,
                     false,
                     &TokenStream::new(),
