@@ -1971,7 +1971,7 @@ mod tests {
                 columns: vec![
                     Column {
                         name: "id".to_owned(),
-                        col_type: ColumnType::Integer(Some(11)),
+                        col_type: ColumnType::Integer,
                         auto_increment: true,
                         not_null: true,
                         unique: false,
