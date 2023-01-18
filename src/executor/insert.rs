@@ -138,36 +138,33 @@ where
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
 
-    let last_insert_id = if db.support_returning() {
-        let mut rows = db.query_all(statement).await?;
-        let row = match rows.pop() {
-            Some(row) => row,
-            None => {
-                return Err(DbErr::RecordNotInserted(
-                    "None of the records are being inserted".to_owned(),
-                ))
-            }
-        };
-        match primary_key {
-            Some(value_tuple) => Ok(FromValueTuple::from_value_tuple(value_tuple)),
-            None => {
-                let cols = PrimaryKey::<A>::iter()
-                    .map(|col| col.to_string())
-                    .collect::<Vec<_>>();
-                row.try_get_many("", cols.as_ref())
-            }
+    let last_insert_id = match (primary_key, db.support_returning()) {
+        (Some(value_tuple), _) => {
+            db.execute(statement).await?;
+            FromValueTuple::from_value_tuple(value_tuple)
         }
-    } else {
-        let res = db.execute(statement).await?;
-        match primary_key {
-            Some(value_tuple) => Ok(FromValueTuple::from_value_tuple(value_tuple)),
-            None => {
-                let last_insert_id = res.last_insert_id();
-                ValueTypeOf::<A>::try_from_u64(last_insert_id)
-            }
+        (None, true) => {
+            let mut rows = db.query_all(statement).await?;
+            let row = match rows.pop() {
+                Some(row) => row,
+                None => {
+                    return Err(DbErr::RecordNotInserted(
+                        "None of the records are being inserted".to_owned(),
+                    ))
+                }
+            };
+            let cols = PrimaryKey::<A>::iter()
+                .map(|col| col.to_string())
+                .collect::<Vec<_>>();
+            row.try_get_many("", cols.as_ref())
+                .map_err(|_| DbErr::UnpackInsertId)?
         }
-    }
-    .map_err(|_| DbErr::UnpackInsertId)?;
+        (None, false) => {
+            let res = db.execute(statement).await?;
+            let last_insert_id = res.last_insert_id();
+            ValueTypeOf::<A>::try_from_u64(last_insert_id).map_err(|_| DbErr::UnpackInsertId)?
+        }
+    };
 
     Ok(InsertResult { last_insert_id })
 }
