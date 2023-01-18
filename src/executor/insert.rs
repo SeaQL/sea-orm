@@ -137,26 +137,39 @@ where
 {
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
-    let last_insert_id_opt = match db.support_returning() {
-        true => {
-            let cols = PrimaryKey::<A>::iter()
-                .map(|col| col.to_string())
-                .collect::<Vec<_>>();
-            let res = db.query_one(statement).await?.unwrap();
-            res.try_get_many("", cols.as_ref()).ok()
+
+    let last_insert_id = if db.support_returning() {
+        let mut rows = db.query_all(statement).await?;
+        let row = match rows.pop() {
+            Some(row) => row,
+            None => {
+                return Err(DbErr::Exec(RuntimeErr::Internal(
+                    // in 0.11 we will have a new error variant
+                    "None of the records are being inserted".to_owned(),
+                )));
+            }
+        };
+        match primary_key {
+            Some(value_tuple) => Ok(FromValueTuple::from_value_tuple(value_tuple)),
+            None => {
+                let cols = PrimaryKey::<A>::iter()
+                    .map(|col| col.to_string())
+                    .collect::<Vec<_>>();
+                row.try_get_many("", cols.as_ref())
+            }
         }
-        false => {
-            let last_insert_id = db.execute(statement).await?.last_insert_id();
-            ValueTypeOf::<A>::try_from_u64(last_insert_id).ok()
+    } else {
+        let res = db.execute(statement).await?;
+        match primary_key {
+            Some(value_tuple) => Ok(FromValueTuple::from_value_tuple(value_tuple)),
+            None => {
+                let last_insert_id = res.last_insert_id();
+                ValueTypeOf::<A>::try_from_u64(last_insert_id)
+            }
         }
-    };
-    let last_insert_id = match primary_key {
-        Some(value_tuple) => FromValueTuple::from_value_tuple(value_tuple),
-        None => match last_insert_id_opt {
-            Some(last_insert_id) => last_insert_id,
-            None => return Err(DbErr::UnpackInsertId),
-        },
-    };
+    }
+    .map_err(|_| DbErr::UnpackInsertId)?;
+
     Ok(InsertResult { last_insert_id })
 }
 
