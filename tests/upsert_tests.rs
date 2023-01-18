@@ -54,12 +54,7 @@ pub async fn create_insert_default(db: &DatabaseConnection) -> Result<(), DbErr>
     .exec(db)
     .await;
 
-    assert_eq!(
-        res.err(),
-        Some(DbErr::RecordNotInserted(
-            "None of the records are being inserted".to_owned()
-        ))
-    );
+    assert_eq!(res.err(), Some(DbErr::RecordNotInserted));
 
     Ok(())
 }

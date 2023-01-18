@@ -58,8 +58,8 @@ pub enum DbErr {
     /// None of the records are being inserted into the database,
     /// if you insert with upsert expression that means
     /// all of them conflict with existing records in the database
-    #[error("RecordNotInserted Error: {0}")]
-    RecordNotInserted(String),
+    #[error("None of the records are being inserted")]
+    RecordNotInserted,
 }
 
 /// Runtime error

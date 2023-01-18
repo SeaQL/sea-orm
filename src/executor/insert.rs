@@ -140,18 +140,17 @@ where
 
     let last_insert_id = match (primary_key, db.support_returning()) {
         (Some(value_tuple), _) => {
-            db.execute(statement).await?;
+            let res = db.execute(statement).await?;
+            if res.rows_affected() == 0 {
+                return Err(DbErr::RecordNotInserted);
+            }
             FromValueTuple::from_value_tuple(value_tuple)
         }
         (None, true) => {
             let mut rows = db.query_all(statement).await?;
             let row = match rows.pop() {
                 Some(row) => row,
-                None => {
-                    return Err(DbErr::RecordNotInserted(
-                        "None of the records are being inserted".to_owned(),
-                    ))
-                }
+                None => return Err(DbErr::RecordNotInserted),
             };
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
@@ -161,6 +160,9 @@ where
         }
         (None, false) => {
             let res = db.execute(statement).await?;
+            if res.rows_affected() == 0 {
+                return Err(DbErr::RecordNotInserted);
+            }
             let last_insert_id = res.last_insert_id();
             ValueTypeOf::<A>::try_from_u64(last_insert_id).map_err(|_| DbErr::UnpackInsertId)?
         }
