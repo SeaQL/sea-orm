@@ -1,7 +1,6 @@
 use crate::{
-    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, ExecResult, Insert,
-    IntoActiveModel, Iterable, PrimaryKeyTrait, QueryResult, SelectModel, SelectorRaw, Statement,
-    TryFromU64,
+    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert, IntoActiveModel,
+    Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
 };
 use sea_query::{Expr, FromValueTuple, Iden, InsertStatement, IntoColumnRef, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};
@@ -139,48 +138,37 @@ where
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
 
-    enum QueryOrExecResult {
-        Query(QueryResult),
-        Exec(ExecResult),
-    }
-
-    let insert_result = if db.support_returning() {
+    let last_insert_id = if db.support_returning() {
         let mut rows = db.query_all(statement).await?;
-        if rows.is_empty() {
-            return Err(DbErr::RecordNotInserted(
-                "None of the records are being inserted".to_owned(),
-            ));
+        let row = match rows.pop() {
+            Some(row) => row,
+            None => {
+                return Err(DbErr::RecordNotInserted(
+                    "None of the records are being inserted".to_owned(),
+                ))
+            }
+        };
+        match primary_key {
+            Some(value_tuple) => Ok(FromValueTuple::from_value_tuple(value_tuple)),
+            None => {
+                let cols = PrimaryKey::<A>::iter()
+                    .map(|col| col.to_string())
+                    .collect::<Vec<_>>();
+                row.try_get_many("", cols.as_ref())
+            }
         }
-        QueryOrExecResult::Query(rows.remove(rows.len() - 1))
     } else {
-        QueryOrExecResult::Exec(db.execute(statement).await?)
-    };
-
-    let last_insert_id = match primary_key {
-        Some(value_tuple) => Ok(FromValueTuple::from_value_tuple(value_tuple)),
-        None => {
-            if db.support_returning() {
-                match insert_result {
-                    QueryOrExecResult::Query(row) => {
-                        let cols = PrimaryKey::<A>::iter()
-                            .map(|col| col.to_string())
-                            .collect::<Vec<_>>();
-                        row.try_get_many("", cols.as_ref())
-                    }
-                    _ => unreachable!(),
-                }
-            } else {
-                match insert_result {
-                    QueryOrExecResult::Exec(res) => {
-                        let last_insert_id = res.last_insert_id();
-                        ValueTypeOf::<A>::try_from_u64(last_insert_id)
-                    }
-                    _ => unreachable!(),
-                }
+        let res = db.execute(statement).await?;
+        match primary_key {
+            Some(value_tuple) => Ok(FromValueTuple::from_value_tuple(value_tuple)),
+            None => {
+                let last_insert_id = res.last_insert_id();
+                ValueTypeOf::<A>::try_from_u64(last_insert_id)
             }
         }
     }
     .map_err(|_| DbErr::UnpackInsertId)?;
+
     Ok(InsertResult { last_insert_id })
 }
 
