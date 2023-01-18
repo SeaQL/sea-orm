@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Removed dependency when not needed https://github.com/SeaQL/sea-orm/pull/1213
 * Changed all version = "^x.y.z" into version = "x.y.z" and disabled default features and enable only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
 * Cleanup the use of `vec!` macros https://github.com/SeaQL/sea-orm/pull/1367
+* Fixed a small typo https://github.com/SeaQL/sea-orm/pull/1391
 
 ### Bug Fixes
 
