@@ -30,7 +30,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Added `DatabaseConnection::close` https://github.com/SeaQL/sea-orm/pull/1236
 * Refactor schema module to expose functions for database alteration https://github.com/SeaQL/sea-orm/pull/1256
 * Added `is_null` getter for `ColumnDef` struct https://github.com/SeaQL/sea-orm/pull/1381
-* Postgres insert many will throw `RecordNotInserted` error if non of them are being inserted https://github.com/SeaQL/sea-orm/pull/1021
 * `MockDatabase::append_exec_results()`, `MockDatabase::append_query_results()`, `MockDatabase::append_exec_errors()` and `MockDatabase::append_query_errors()` take any types implemented `IntoIterator` trait https://github.com/SeaQL/sea-orm/pull/1367
 * `find_by_id` and `delete_by_id` take any Into primary key value https://github.com/SeaQL/sea-orm/pull/1362
 * Added `ActiveValue::reset` to convert `Unchanged` into `Set` https://github.com/SeaQL/sea-orm/pull/1177
@@ -54,6 +53,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Fixes `DeriveColumn` (by qualifying `IdenStatic::as_str`) https://github.com/SeaQL/sea-orm/pull/1280
 * Prevent returning connections to pool with a positive transaction depth https://github.com/SeaQL/sea-orm/pull/1283
+* Postgres insert many will throw `RecordNotInserted` error if non of them are being inserted https://github.com/SeaQL/sea-orm/pull/1021
+    * Fixes inserting active models by `insert_many` with `on_conflict` and `do_nothing` panics if no rows are inserted on Postgres https://github.com/SeaQL/sea-orm/issues/899
+* Don't call `last_insert_id` if not needed https://github.com/SeaQL/sea-orm/pull/1403
+    * Fixes hitting 'negative last_insert_rowid' panic with Sqlite https://github.com/SeaQL/sea-orm/issues/1357
 
 ### Breaking changes
 
@@ -84,6 +87,13 @@ impl ActiveModelBehavior for ActiveModel {
     // ...
 }
 ```
+
+## 0.10.7 - 2023-01-19
+
+### Bug Fixes
+
+* Inserting active models by `insert_many` with `on_conflict` and `do_nothing` panics if no rows are inserted on Postgres https://github.com/SeaQL/sea-orm/issues/899
+* Hitting 'negative last_insert_rowid' panic with Sqlite https://github.com/SeaQL/sea-orm/issues/1357
 
 ## 0.10.6 - 2022-12-23
 
