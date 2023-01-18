@@ -16,4 +16,4 @@ migration = { path = "../migration" }
 anyhow = "1.0.52"
 async-trait = "0.1.52"
 log = { version = "0.4", features = ["std"] }
-simplelog = "*"
+simplelog = "0.12"
