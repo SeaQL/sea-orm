@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.10.7 - 2023-01-19
+
+### Bug Fixes
+
+* Inserting active models by `insert_many` with `on_conflict` and `do_nothing` panics if no rows are inserted on Postgres https://github.com/SeaQL/sea-orm/issues/899
+* Hitting 'negative last_insert_rowid' panic with Sqlite https://github.com/SeaQL/sea-orm/issues/1357
+
 ## 0.10.6 - 2022-12-23
 
 ### Enhancements
