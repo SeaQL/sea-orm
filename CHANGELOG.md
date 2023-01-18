@@ -311,6 +311,8 @@ impl ActiveEnum for Category {
 
 * Upgrade `sea-query` to 0.26 https://github.com/SeaQL/sea-orm/pull/985
 
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.9.0...0.10.0
+
 ## 0.9.3 - 2022-09-30
 
 ### Enhancements
@@ -404,6 +406,8 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 * `SelectTwoMany::one()` has been dropped https://github.com/SeaQL/sea-orm/pull/813, you can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity, then use [`ModelTrait::find_related`] on the model.
 * #### Feature flag revamp
     We now adopt the [weak dependency](https://blog.rust-lang.org/2022/04/07/Rust-1.60.0.html#new-syntax-for-cargo-features) syntax in Cargo. That means the flags `["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid", "sqlx-time"]` are not needed and now removed. Instead, `with-time` will enable `sqlx?/time` only if `sqlx` is already enabled. As a consequence, now the features `with-json`, `with-chrono`, `with-rust_decimal`, `with-uuid`, `with-time` will not be enabled as a side-effect of enabling `sqlx`.
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.8.0...0.9.0
 
 ## sea-orm-migration 0.8.3
 
