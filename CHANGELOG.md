@@ -57,6 +57,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     * Fixes inserting active models by `insert_many` with `on_conflict` and `do_nothing` panics if no rows are inserted on Postgres https://github.com/SeaQL/sea-orm/issues/899
 * Don't call `last_insert_id` if not needed https://github.com/SeaQL/sea-orm/pull/1403
     * Fixes hitting 'negative last_insert_rowid' panic with Sqlite https://github.com/SeaQL/sea-orm/issues/1357
+* [sea-orm-cli] Propagate error on the spawned child processes https://github.com/SeaQL/sea-orm/pull/1402
+    * Fixes sea-orm-cli errors exit with error code 0 https://github.com/SeaQL/sea-orm/issues/1342
 
 ### Breaking changes
 
