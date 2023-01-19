@@ -1423,8 +1423,8 @@ mod tests {
             vec![
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
-                    r#"UPDATE "fruit" SET  WHERE "fruit"."id" = $1 RETURNING "id", "name", "cake_id""#,
-                    vec![1i32.into()],
+                    r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit" WHERE "fruit"."id" = $1 LIMIT $2"#,
+                    vec![1i32.into(), 1u64.into()],
                 ),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,

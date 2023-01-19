@@ -1,6 +1,6 @@
 use crate::{
     error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
-    Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, UpdateMany, UpdateOne,
+    Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, UpdateMany, UpdateOne,
 };
 use sea_query::{Expr, FromValueTuple, Query, UpdateStatement};
 
@@ -103,7 +103,7 @@ impl Updater {
         match db.support_returning() {
             true => {
                 let returning = Query::returning()
-                    .exprs(Column::<A>::iter().map(|c| cast_enum_as_text(Expr::col(c), &c)));
+                    .exprs(Column::<A>::iter().map(|c| c.select_as(Expr::col(c))));
                 self.query.returning(returning);
                 let db_backend = db.get_database_backend();
                 let found: Option<Model<A>> = SelectorRaw::<SelectModel<Model<A>>>::from_statement(
