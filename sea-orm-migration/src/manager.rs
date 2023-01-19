@@ -5,9 +5,7 @@ use sea_orm::sea_query::{
     TableAlterStatement, TableCreateStatement, TableDropStatement, TableRenameStatement,
     TableTruncateStatement,
 };
-use sea_orm::{
-    ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr, StatementBuilder,
-};
+use sea_orm::{ConnectionTrait, DbBackend, DbErr, StatementBuilder};
 use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
 
 /// Helper struct for writing migration scripts in migration file

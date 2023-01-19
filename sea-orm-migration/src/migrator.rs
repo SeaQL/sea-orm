@@ -8,8 +8,8 @@ use sea_orm::sea_query::{
     SelectStatement, SimpleExpr, Table,
 };
 use sea_orm::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, Condition, ConnectionTrait, DbBackend, DbConn,
-    DbErr, EntityTrait, QueryFilter, QueryOrder, Schema, Statement,
+    ActiveModelTrait, ActiveValue, ColumnTrait, Condition, ConnectionTrait, DbBackend, DbErr,
+    EntityTrait, QueryFilter, QueryOrder, Schema, Statement,
 };
 use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
 
@@ -237,8 +237,8 @@ pub trait MigratorTrait: Send {
         C: IntoSchemaManagerConnection<'c>,
     {
         let manager = SchemaManager::new(db);
-        Self::down_inner(&manager, None).await?;
-        Self::up_inner(&manager, None).await
+        down_internal::<Self>(&manager, None).await?;
+        up_internal::<Self>(&manager, None).await
     }
 
     /// Rollback all applied migrations
@@ -247,7 +247,7 @@ pub trait MigratorTrait: Send {
         C: IntoSchemaManagerConnection<'c>,
     {
         let manager = SchemaManager::new(db);
-        Self::down_inner(&manager, None).await
+        down_internal::<Self>(&manager, None).await
     }
 
     /// Check the status of all migrations
@@ -272,47 +272,7 @@ pub trait MigratorTrait: Send {
         C: IntoSchemaManagerConnection<'c>,
     {
         let manager = SchemaManager::new(db);
-        Self::up_inner(&manager, steps).await
-    }
-
-    /// Apply pending migrations
-    async fn up_inner(manager: &SchemaManager, mut steps: Option<u32>) -> Result<(), DbErr> {
-        let db = manager.get_connection();
-
-        Self::install(db).await?;
-
-        if let Some(steps) = steps {
-            info!("Applying {} pending migrations", steps);
-        } else {
-            info!("Applying all pending migrations");
-        }
-
-        let migrations = Self::get_pending_migrations(db).await?.into_iter();
-        if migrations.len() == 0 {
-            info!("No pending migrations");
-        }
-        for Migration { migration, .. } in migrations {
-            if let Some(steps) = steps.as_mut() {
-                if steps == &0 {
-                    break;
-                }
-                *steps -= 1;
-            }
-            info!("Applying migration '{}'", migration.name());
-            migration.up(manager).await?;
-            info!("Migration '{}' has been applied", migration.name());
-            let now = SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .expect("SystemTime before UNIX EPOCH!");
-            seaql_migrations::ActiveModel {
-                version: ActiveValue::Set(migration.name().to_owned()),
-                applied_at: ActiveValue::Set(now.as_secs() as i64),
-            }
-            .insert(db)
-            .await?;
-        }
-
-        Ok(())
+        up_internal::<Self>(&manager, steps).await
     }
 
     /// Rollback applied migrations
@@ -321,43 +281,87 @@ pub trait MigratorTrait: Send {
         C: IntoSchemaManagerConnection<'c>,
     {
         let manager = SchemaManager::new(db);
-        Self::down_inner(&manager, steps).await
+        down_internal::<Self>(&manager, steps).await
+    }
+}
+
+async fn up_internal<M>(manager: &SchemaManager<'_>, mut steps: Option<u32>) -> Result<(), DbErr>
+where
+    M: MigratorTrait + ?Sized,
+{
+    let db = manager.get_connection();
+
+    M::install(db).await?;
+
+    if let Some(steps) = steps {
+        info!("Applying {} pending migrations", steps);
+    } else {
+        info!("Applying all pending migrations");
     }
 
-    /// Rollback applied migrations
-    async fn down_inner(manager: &SchemaManager, mut steps: Option<u32>) -> Result<(), DbErr> {
-        let db = manager.get_connection();
-
-        Self::install(db).await?;
-
-        if let Some(steps) = steps {
-            info!("Rolling back {} applied migrations", steps);
-        } else {
-            info!("Rolling back all applied migrations");
-        }
-
-        let migrations = Self::get_applied_migrations(db).await?.into_iter().rev();
-        if migrations.len() == 0 {
-            info!("No applied migrations");
-        }
-        for Migration { migration, .. } in migrations {
-            if let Some(steps) = steps.as_mut() {
-                if steps == &0 {
-                    break;
-                }
-                *steps -= 1;
+    let migrations = M::get_pending_migrations(db).await?.into_iter();
+    if migrations.len() == 0 {
+        info!("No pending migrations");
+    }
+    for Migration { migration, .. } in migrations {
+        if let Some(steps) = steps.as_mut() {
+            if steps == &0 {
+                break;
             }
-            info!("Rolling back migration '{}'", migration.name());
-            migration.down(&manager).await?;
-            info!("Migration '{}' has been rollbacked", migration.name());
-            seaql_migrations::Entity::delete_many()
-                .filter(seaql_migrations::Column::Version.eq(migration.name()))
-                .exec(db)
-                .await?;
+            *steps -= 1;
         }
-
-        Ok(())
+        info!("Applying migration '{}'", migration.name());
+        migration.up(manager).await?;
+        info!("Migration '{}' has been applied", migration.name());
+        let now = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("SystemTime before UNIX EPOCH!");
+        seaql_migrations::ActiveModel {
+            version: ActiveValue::Set(migration.name().to_owned()),
+            applied_at: ActiveValue::Set(now.as_secs() as i64),
+        }
+        .insert(db)
+        .await?;
     }
+
+    Ok(())
+}
+
+async fn down_internal<M>(manager: &SchemaManager<'_>, mut steps: Option<u32>) -> Result<(), DbErr>
+where
+    M: MigratorTrait + ?Sized,
+{
+    let db = manager.get_connection();
+
+    M::install(db).await?;
+
+    if let Some(steps) = steps {
+        info!("Rolling back {} applied migrations", steps);
+    } else {
+        info!("Rolling back all applied migrations");
+    }
+
+    let migrations = M::get_applied_migrations(db).await?.into_iter().rev();
+    if migrations.len() == 0 {
+        info!("No applied migrations");
+    }
+    for Migration { migration, .. } in migrations {
+        if let Some(steps) = steps.as_mut() {
+            if steps == &0 {
+                break;
+            }
+            *steps -= 1;
+        }
+        info!("Rolling back migration '{}'", migration.name());
+        migration.down(&manager).await?;
+        info!("Migration '{}' has been rollbacked", migration.name());
+        seaql_migrations::Entity::delete_many()
+            .filter(seaql_migrations::Column::Version.eq(migration.name()))
+            .exec(db)
+            .await?;
+    }
+
+    Ok(())
 }
 
 pub(crate) fn query_tables<C>(db: &C) -> SelectStatement
