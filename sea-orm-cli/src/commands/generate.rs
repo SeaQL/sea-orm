@@ -186,10 +186,11 @@ pub async fn run_generate_command(
 
             // Format each of the files
             for OutputFile { name, .. } in output.files.iter() {
-                Command::new("rustfmt")
-                    .arg(dir.join(name))
-                    .spawn()?
-                    .wait()?;
+                let exit_status = Command::new("rustfmt").arg(dir.join(name)).status()?; // Get the status code
+                if !exit_status.success() {
+                    // Propagate the error if any
+                    return Err(format!("Fail to format file `{name}`").into());
+                }
             }
         }
     }

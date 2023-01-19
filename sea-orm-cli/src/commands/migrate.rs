@@ -66,7 +66,11 @@ pub fn run_migrate_command(
             }
             // Run migrator CLI on user's behalf
             println!("Running `cargo {}`", args.join(" "));
-            Command::new("cargo").args(args).spawn()?.wait()?;
+            let exit_status = Command::new("cargo").args(args).status()?; // Get the status code
+            if !exit_status.success() {
+                // Propagate the error if any
+                return Err("Fail to run migration".into());
+            }
         }
     }
 
