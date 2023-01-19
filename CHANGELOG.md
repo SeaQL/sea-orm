@@ -30,10 +30,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Added `DatabaseConnection::close` https://github.com/SeaQL/sea-orm/pull/1236
 * Refactor schema module to expose functions for database alteration https://github.com/SeaQL/sea-orm/pull/1256
 * Added `is_null` getter for `ColumnDef` struct https://github.com/SeaQL/sea-orm/pull/1381
-* Postgres insert many will throw `RecordNotInserted` error if non of them are being inserted https://github.com/SeaQL/sea-orm/pull/1021
 * `MockDatabase::append_exec_results()`, `MockDatabase::append_query_results()`, `MockDatabase::append_exec_errors()` and `MockDatabase::append_query_errors()` take any types implemented `IntoIterator` trait https://github.com/SeaQL/sea-orm/pull/1367
 * `find_by_id` and `delete_by_id` take any Into primary key value https://github.com/SeaQL/sea-orm/pull/1362
 * Added `ActiveValue::reset` to convert `Unchanged` into `Set` https://github.com/SeaQL/sea-orm/pull/1177
+* Generate compact entity with `#[sea_orm(column_type = "JsonBinary")]` macro attribute https://github.com/SeaQL/sea-orm/pull/1346
 
 ### Upgrades
 
@@ -47,11 +47,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Removed dependency when not needed https://github.com/SeaQL/sea-orm/pull/1213
 * Changed all version = "^x.y.z" into version = "x.y.z" and disabled default features and enable only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
 * Cleanup the use of `vec!` macros https://github.com/SeaQL/sea-orm/pull/1367
+* Fixed a small typo https://github.com/SeaQL/sea-orm/pull/1391
 
 ### Bug Fixes
 
 * Fixes `DeriveColumn` (by qualifying `IdenStatic::as_str`) https://github.com/SeaQL/sea-orm/pull/1280
 * Prevent returning connections to pool with a positive transaction depth https://github.com/SeaQL/sea-orm/pull/1283
+* Postgres insert many will throw `RecordNotInserted` error if non of them are being inserted https://github.com/SeaQL/sea-orm/pull/1021
+    * Fixes inserting active models by `insert_many` with `on_conflict` and `do_nothing` panics if no rows are inserted on Postgres https://github.com/SeaQL/sea-orm/issues/899
+* Don't call `last_insert_id` if not needed https://github.com/SeaQL/sea-orm/pull/1403
+    * Fixes hitting 'negative last_insert_rowid' panic with Sqlite https://github.com/SeaQL/sea-orm/issues/1357
+* [sea-orm-cli] Propagate error on the spawned child processes https://github.com/SeaQL/sea-orm/pull/1402
+    * Fixes sea-orm-cli errors exit with error code 0 https://github.com/SeaQL/sea-orm/issues/1342
 
 ### Breaking changes
 
@@ -82,6 +89,13 @@ impl ActiveModelBehavior for ActiveModel {
     // ...
 }
 ```
+
+## 0.10.7 - 2023-01-19
+
+### Bug Fixes
+
+* Inserting active models by `insert_many` with `on_conflict` and `do_nothing` panics if no rows are inserted on Postgres https://github.com/SeaQL/sea-orm/issues/899
+* Hitting 'negative last_insert_rowid' panic with Sqlite https://github.com/SeaQL/sea-orm/issues/1357
 
 ## 0.10.6 - 2022-12-23
 
@@ -299,6 +313,8 @@ impl ActiveEnum for Category {
 
 * Upgrade `sea-query` to 0.26 https://github.com/SeaQL/sea-orm/pull/985
 
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.9.0...0.10.0
+
 ## 0.9.3 - 2022-09-30
 
 ### Enhancements
@@ -392,6 +408,8 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 * `SelectTwoMany::one()` has been dropped https://github.com/SeaQL/sea-orm/pull/813, you can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity, then use [`ModelTrait::find_related`] on the model.
 * #### Feature flag revamp
     We now adopt the [weak dependency](https://blog.rust-lang.org/2022/04/07/Rust-1.60.0.html#new-syntax-for-cargo-features) syntax in Cargo. That means the flags `["sqlx-json", "sqlx-chrono", "sqlx-decimal", "sqlx-uuid", "sqlx-time"]` are not needed and now removed. Instead, `with-time` will enable `sqlx?/time` only if `sqlx` is already enabled. As a consequence, now the features `with-json`, `with-chrono`, `with-rust_decimal`, `with-uuid`, `with-time` will not be enabled as a side-effect of enabling `sqlx`.
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.8.0...0.9.0
 
 ## sea-orm-migration 0.8.3
 

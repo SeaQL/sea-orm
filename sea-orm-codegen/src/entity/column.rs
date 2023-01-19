@@ -94,6 +94,7 @@ impl Column {
             ColumnType::Decimal(Some((p, s))) => Some(format!("Decimal(Some(({}, {})))", p, s)),
             ColumnType::Money(Some((p, s))) => Some(format!("Money(Some({}, {}))", p, s)),
             ColumnType::Text => Some("Text".to_owned()),
+            ColumnType::JsonBinary => Some("JsonBinary".to_owned()),
             ColumnType::Custom(iden) => {
                 Some(format!("Custom(\"{}\".to_owned())", iden.to_string()))
             }
