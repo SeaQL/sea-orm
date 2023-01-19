@@ -17,7 +17,7 @@ name = "sea_orm_codegen"
 path = "src/lib.rs"
 
 [dependencies]
-sea-query = { version = "0.28", default-features = false, features = ["thread-safe"] }
+sea-query = { version = "0.28.3", default-features = false, features = ["thread-safe"] }
 syn = { version = "1", default-features = false }
 quote = { version = "1", default-features = false }
 heck = { version = "0.3", default-features = false }
