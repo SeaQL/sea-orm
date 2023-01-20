@@ -1,7 +1,7 @@
 use crate::{
     ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne, FromQueryResult, Insert,
     ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related, RelationBuilder,
-    RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
+    RelationTrait, RelationType, Select, Truncate, Update, UpdateMany, UpdateOne,
 };
 use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 use std::fmt::Debug;
@@ -836,6 +836,84 @@ pub trait EntityTrait: EntityName {
             panic!("primary key arity mismatch");
         }
         delete
+    }
+
+    /// Truncate a table
+    ///
+    /// # Postgres and MySQL
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_exec_results([
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// let truncate_result = fruit::Entity::truncate().exec(&db).await?;
+    ///
+    /// assert_eq!(truncate_result.rows_affected, 1);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     [Transaction::one(Statement::from_string(
+    ///         DbBackend::Postgres,
+    ///         r#"TRUNCATE TABLE "fruit""#.into()
+    ///     ))]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # SQLite
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(feature = "mock")]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Sqlite)
+    /// #     .append_exec_results([
+    /// #         MockExecResult {
+    /// #             last_insert_id: 0,
+    /// #             rows_affected: 1,
+    /// #         },
+    /// #     ])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
+    ///
+    /// let truncate_result = fruit::Entity::truncate().exec(&db).await?;
+    ///
+    /// assert_eq!(truncate_result.rows_affected, 1);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     [Transaction::from_sql_and_values(
+    ///         DbBackend::Sqlite,
+    ///         r#"DELETE FROM "fruit""#,
+    ///         []
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    fn truncate() -> Truncate<Self> {
+        Truncate::new()
     }
 }
 

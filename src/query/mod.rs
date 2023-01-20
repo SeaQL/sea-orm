@@ -8,6 +8,7 @@ mod json;
 mod loader;
 mod select;
 mod traits;
+mod truncate;
 mod update;
 mod util;
 
@@ -21,6 +22,7 @@ pub use json::*;
 pub use loader::*;
 pub use select::*;
 pub use traits::*;
+pub use truncate::*;
 pub use update::*;
 pub use util::*;
 
