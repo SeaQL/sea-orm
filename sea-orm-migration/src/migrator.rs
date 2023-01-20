@@ -164,24 +164,22 @@ pub trait MigratorTrait: Send {
     }
 
     /// Drop all tables from the database, then reapply all migrations
-    async fn fresh<'a, 'c, C>(db: C) -> Result<(), DbErr>
+    async fn fresh<'c, C>(db: C) -> Result<(), DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
-        Self: 'a,
     {
-        exec_with_connection::<'a, '_, _, _, Self>(db, move |manager| {
+        exec_with_connection::<'_, _, _, Self>(db, move |manager| {
             Box::pin(async move { exec_fresh::<Self>(manager).await })
         })
         .await
     }
 
     /// Rollback all applied migrations, then reapply all migrations
-    async fn refresh<'a, 'c, C>(db: C) -> Result<(), DbErr>
+    async fn refresh<'c, C>(db: C) -> Result<(), DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
-        Self: 'a,
     {
-        exec_with_connection::<'a, '_, _, _, Self>(db, move |manager| {
+        exec_with_connection::<'_, _, _, Self>(db, move |manager| {
             Box::pin(async move {
                 exec_down::<Self>(manager, None).await?;
                 exec_up::<Self>(manager, None).await
@@ -191,50 +189,46 @@ pub trait MigratorTrait: Send {
     }
 
     /// Rollback all applied migrations
-    async fn reset<'a, 'c, C>(db: C) -> Result<(), DbErr>
+    async fn reset<'c, C>(db: C) -> Result<(), DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
-        Self: 'a,
     {
-        exec_with_connection::<'a, '_, _, _, Self>(db, move |manager| {
+        exec_with_connection::<'_, _, _, Self>(db, move |manager| {
             Box::pin(async move { exec_down::<Self>(manager, None).await })
         })
         .await
     }
 
     /// Apply pending migrations
-    async fn up<'a, 'c, C>(db: C, steps: Option<u32>) -> Result<(), DbErr>
+    async fn up<'c, C>(db: C, steps: Option<u32>) -> Result<(), DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
-        Self: 'a,
     {
-        exec_with_connection::<'a, '_, _, _, Self>(db, move |manager| {
+        exec_with_connection::<'_, _, _, Self>(db, move |manager| {
             Box::pin(async move { exec_up::<Self>(manager, steps).await })
         })
         .await
     }
 
     /// Rollback applied migrations
-    async fn down<'a, 'c, C>(db: C, steps: Option<u32>) -> Result<(), DbErr>
+    async fn down<'c, C>(db: C, steps: Option<u32>) -> Result<(), DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
-        Self: 'a,
     {
-        exec_with_connection::<'a, '_, _, _, Self>(db, move |manager| {
+        exec_with_connection::<'_, _, _, Self>(db, move |manager| {
             Box::pin(async move { exec_down::<Self>(manager, steps).await })
         })
         .await
     }
 }
 
-async fn exec_with_connection<'a, 'c, C, F, M>(db: C, f: F) -> Result<(), DbErr>
+async fn exec_with_connection<'c, C, F, M>(db: C, f: F) -> Result<(), DbErr>
 where
     C: IntoSchemaManagerConnection<'c>,
     F: for<'b> Fn(
-            &'b SchemaManager<'_>,
-        ) -> Pin<Box<dyn Future<Output = Result<(), DbErr>> + Send + 'b>>
-        + 'a,
-    M: MigratorTrait + ?Sized + 'a,
+        &'b SchemaManager<'_>,
+    ) -> Pin<Box<dyn Future<Output = Result<(), DbErr>> + Send + 'b>>,
+    M: MigratorTrait + ?Sized,
 {
     let db = db.into_schema_manager_connection();
 
