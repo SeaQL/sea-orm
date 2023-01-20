@@ -174,9 +174,30 @@ pub trait QuerySelect: Sized {
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` OFFSET 10"
     /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .offset(Some(10))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` OFFSET 10"
+    /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .offset(None)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    /// );
     /// ```
-    fn offset(mut self, offset: u64) -> Self {
-        self.query().offset(offset);
+    fn offset<T>(mut self, offset: T) -> Self
+    where
+        T: OptionalU64,
+    {
+        if let Some(offset) = offset.optional_u64() {
+            self.query().offset(offset);
+        }
         self
     }
 
@@ -191,9 +212,30 @@ pub trait QuerySelect: Sized {
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 10"
     /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .limit(Some(10))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 10"
+    /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .limit(None)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    /// );
     /// ```
-    fn limit(mut self, limit: u64) -> Self {
-        self.query().limit(limit);
+    fn limit<T>(mut self, limit: T) -> Self
+    where
+        T: OptionalU64,
+    {
+        if let Some(limit) = limit.optional_u64() {
+            self.query().limit(limit);
+        }
         self
     }
 
@@ -598,6 +640,24 @@ pub trait QueryFilter: Sized {
             let expr = Expr::col((Alias::new(tbl_alias), col)).eq(model.get(col));
             self = self.filter(expr);
         }
+        self
+    }
+}
+
+/// An optional u64
+pub trait OptionalU64 {
+    /// Represent an optional u64 in the form of Option<u64>
+    fn optional_u64(self) -> Option<u64>;
+}
+
+impl OptionalU64 for u64 {
+    fn optional_u64(self) -> Option<u64> {
+        Some(self)
+    }
+}
+
+impl OptionalU64 for Option<u64> {
+    fn optional_u64(self) -> Option<u64> {
         self
     }
 }
