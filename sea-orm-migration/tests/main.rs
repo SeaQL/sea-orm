@@ -1,9 +1,7 @@
 mod migrator;
 use migrator::Migrator;
 
-use sea_orm::{
-    ConnectOptions, ConnectionTrait, Database, DbBackend, DbErr, Statement, TransactionTrait,
-};
+use sea_orm::{ConnectOptions, ConnectionTrait, Database, DbBackend, DbErr, Statement};
 use sea_orm_migration::prelude::*;
 
 #[async_std::test]
@@ -69,109 +67,112 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
         }
         DbBackend::Sqlite => db,
     };
+    let manager = SchemaManager::new(db);
 
-    macro_rules! run_migration_tests {
-        ($db:expr, $manager:expr) => {
-            println!("\nMigrator::status");
-            Migrator::status($db).await?;
+    println!("\nMigrator::status");
+    Migrator::status(db).await?;
 
-            println!("\nMigrator::install");
-            Migrator::install($db).await?;
+    println!("\nMigrator::install");
+    Migrator::install(db).await?;
 
-            assert!($manager.has_table("seaql_migrations").await?);
+    assert!(manager.has_table("seaql_migrations").await?);
 
-            println!("\nMigrator::reset");
-            Migrator::reset($db).await?;
+    println!("\nMigrator::reset");
+    Migrator::reset(db).await?;
 
-            assert!(!$manager.has_table("cake").await?);
-            assert!(!$manager.has_table("fruit").await?);
+    assert!(!manager.has_table("cake").await?);
+    assert!(!manager.has_table("fruit").await?);
 
-            println!("\nMigrator::up");
-            Migrator::up($db, Some(0)).await?;
+    println!("\nMigrator::up");
+    Migrator::up(db, Some(0)).await?;
 
-            assert!(!$manager.has_table("cake").await?);
-            assert!(!$manager.has_table("fruit").await?);
+    assert!(!manager.has_table("cake").await?);
+    assert!(!manager.has_table("fruit").await?);
 
-            println!("\nMigrator::up");
-            Migrator::up($db, Some(1)).await?;
+    println!("\nMigrator::up");
+    Migrator::up(db, Some(1)).await?;
 
-            assert!($manager.has_table("cake").await?);
-            assert!(!$manager.has_table("fruit").await?);
+    assert!(manager.has_table("cake").await?);
+    assert!(!manager.has_table("fruit").await?);
 
-            println!("\nMigrator::down");
-            Migrator::down($db, Some(0)).await?;
+    println!("\nMigrator::down");
+    Migrator::down(db, Some(0)).await?;
 
-            assert!($manager.has_table("cake").await?);
-            assert!(!$manager.has_table("fruit").await?);
+    assert!(manager.has_table("cake").await?);
+    assert!(!manager.has_table("fruit").await?);
 
-            println!("\nMigrator::down");
-            Migrator::down($db, Some(1)).await?;
+    println!("\nMigrator::down");
+    Migrator::down(db, Some(1)).await?;
 
-            assert!(!$manager.has_table("cake").await?);
-            assert!(!$manager.has_table("fruit").await?);
+    assert!(!manager.has_table("cake").await?);
+    assert!(!manager.has_table("fruit").await?);
 
-            println!("\nMigrator::up");
-            Migrator::up($db, None).await?;
+    // Tests rolling back changes when running migration on Postgres
+    if matches!(db.get_database_backend(), DbBackend::Postgres) {
+        println!("\nRoll back changes when encounter errors");
 
-            println!("\nMigrator::status");
-            Migrator::status($db).await?;
+        // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
+        std::env::set_var("ABOARD_MIGRATION", "YES");
 
-            assert!($manager.has_table("cake").await?);
-            assert!($manager.has_table("fruit").await?);
+        // Should throw an error
+        println!("\nMigrator::up");
+        assert_eq!(
+            Migrator::up(db, None).await,
+            Err(DbErr::Migration(
+                "Aboard migration and rollback changes".into()
+            ))
+        );
 
-            assert!($manager.has_column("cake", "name").await?);
-            assert!($manager.has_column("fruit", "cake_id").await?);
+        println!("\nMigrator::status");
+        Migrator::status(db).await?;
 
-            println!("\nMigrator::down");
-            Migrator::down($db, None).await?;
+        // Check migrations have been rolled back
+        assert!(!manager.has_table("cake").await?);
+        assert!(!manager.has_table("fruit").await?);
 
-            assert!($manager.has_table("seaql_migrations").await?);
-            assert!(!$manager.has_table("cake").await?);
-            assert!(!$manager.has_table("fruit").await?);
-
-            println!("\nMigrator::fresh");
-            Migrator::fresh($db).await?;
-
-            assert!($manager.has_table("cake").await?);
-            assert!($manager.has_table("fruit").await?);
-
-            println!("\nMigrator::refresh");
-            Migrator::refresh($db).await?;
-
-            assert!($manager.has_table("cake").await?);
-            assert!($manager.has_table("fruit").await?);
-
-            println!("\nMigrator::reset");
-            Migrator::reset($db).await?;
-
-            assert!(!$manager.has_table("cake").await?);
-            assert!(!$manager.has_table("fruit").await?);
-
-            println!("\nMigrator::status");
-            Migrator::status($db).await?;
-        };
+        // Unset the flag
+        std::env::remove_var("ABOARD_MIGRATION");
     }
 
-    // Run migration via `DatabaseConnection`
-    let manager = SchemaManager::new(db);
-    run_migration_tests!(db, manager);
+    println!("\nMigrator::up");
+    Migrator::up(db, None).await?;
 
-    // Run migration via `DatabaseTransaction`
-    let transaction = db.begin().await?;
-    let manager = SchemaManager::new(&transaction);
-    run_migration_tests!(&transaction, manager);
-    transaction.commit().await?;
+    println!("\nMigrator::status");
+    Migrator::status(db).await?;
 
-    // Run migration via transaction closure
-    db.transaction::<_, _, DbErr>(|transaction| {
-        Box::pin(async move {
-            let manager = SchemaManager::new(transaction);
-            run_migration_tests!(transaction, manager);
-            Ok(())
-        })
-    })
-    .await
-    .unwrap();
+    assert!(manager.has_table("cake").await?);
+    assert!(manager.has_table("fruit").await?);
+
+    assert!(manager.has_column("cake", "name").await?);
+    assert!(manager.has_column("fruit", "cake_id").await?);
+
+    println!("\nMigrator::down");
+    Migrator::down(db, None).await?;
+
+    assert!(manager.has_table("seaql_migrations").await?);
+    assert!(!manager.has_table("cake").await?);
+    assert!(!manager.has_table("fruit").await?);
+
+    println!("\nMigrator::fresh");
+    Migrator::fresh(db).await?;
+
+    assert!(manager.has_table("cake").await?);
+    assert!(manager.has_table("fruit").await?);
+
+    println!("\nMigrator::refresh");
+    Migrator::refresh(db).await?;
+
+    assert!(manager.has_table("cake").await?);
+    assert!(manager.has_table("fruit").await?);
+
+    println!("\nMigrator::reset");
+    Migrator::reset(db).await?;
+
+    assert!(!manager.has_table("cake").await?);
+    assert!(!manager.has_table("fruit").await?);
+
+    println!("\nMigrator::status");
+    Migrator::status(db).await?;
 
     Ok(())
 }
