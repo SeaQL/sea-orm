@@ -364,7 +364,7 @@ where
     Ok(())
 }
 
-pub(crate) fn query_tables<C>(db: &C) -> SelectStatement
+fn query_tables<C>(db: &C) -> SelectStatement
 where
     C: ConnectionTrait,
 {
@@ -375,7 +375,7 @@ where
     }
 }
 
-pub(crate) fn get_current_schema<C>(db: &C) -> SimpleExpr
+fn get_current_schema<C>(db: &C) -> SimpleExpr
 where
     C: ConnectionTrait,
 {
