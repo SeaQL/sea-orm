@@ -107,7 +107,7 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
     assert!(!manager.has_table("cake").await?);
     assert!(!manager.has_table("fruit").await?);
 
-    // Tests rolling back changes when running migration on Postgres
+    // Tests rolling back changes of "migrate up" when running migration on Postgres
     if matches!(db.get_database_backend(), DbBackend::Postgres) {
         println!("\nRoll back changes when encounter errors");
 
@@ -145,6 +145,33 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
 
     assert!(manager.has_column("cake", "name").await?);
     assert!(manager.has_column("fruit", "cake_id").await?);
+
+    // Tests rolling back changes of "migrate down" when running migration on Postgres
+    if matches!(db.get_database_backend(), DbBackend::Postgres) {
+        println!("\nRoll back changes when encounter errors");
+
+        // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
+        std::env::set_var("ABOARD_MIGRATION", "YES");
+
+        // Should throw an error
+        println!("\nMigrator::down");
+        assert_eq!(
+            Migrator::down(db, None).await,
+            Err(DbErr::Migration(
+                "Aboard migration and rollback changes".into()
+            ))
+        );
+
+        println!("\nMigrator::status");
+        Migrator::status(db).await?;
+
+        // Check migrations have been rolled back
+        assert!(manager.has_table("cake").await?);
+        assert!(manager.has_table("fruit").await?);
+
+        // Unset the flag
+        std::env::remove_var("ABOARD_MIGRATION");
+    }
 
     println!("\nMigrator::down");
     Migrator::down(db, None).await?;
