@@ -23,4 +23,49 @@ pub trait QueryTrait {
             self.as_query().build_any(query_builder.as_ref()),
         )
     }
+
+    /// Perform some operations on the [QueryTrait::QueryStatement] with the given `Option<T>` value
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         // Select column
+    ///         .maybe(cake::Column::Id, |mut query, column| {
+    ///             if let Some(col) = column.into() {
+    ///                 query = query.column_as(col.count(), "count");
+    ///             }
+    ///             query
+    ///         })
+    ///         // Limit result to the first 100 rows
+    ///         .maybe(Some(100), |mut query, limit| {
+    ///             if let Some(n) = limit.into() {
+    ///                 query = query.limit(n);
+    ///             }
+    ///             query
+    ///         })
+    ///         // Do nothing
+    ///         .maybe(None, |mut query, offset| {
+    ///             if let Some(n) = offset.into() {
+    ///                 query = query.offset(n);
+    ///             }
+    ///             query
+    ///         })
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT COUNT("cake"."id") AS "count" FROM "cake" LIMIT 100"#
+    /// );
+    /// ```
+    fn maybe<T, F>(self, val: T, if_some: F) -> Self
+    where
+        Self: Sized,
+        T: Into<Option<T>>,
+        F: FnOnce(Self, T) -> Self,
+    {
+        if_some(self, val)
+    }
 }
