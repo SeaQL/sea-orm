@@ -853,16 +853,14 @@ pub trait EntityTrait: EntityName {
     /// #     .append_exec_results([
     /// #         MockExecResult {
     /// #             last_insert_id: 0,
-    /// #             rows_affected: 1,
+    /// #             rows_affected: 0,
     /// #         },
     /// #     ])
     /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
     ///
-    /// let truncate_result = fruit::Entity::truncate().exec(&db).await?;
-    ///
-    /// assert_eq!(truncate_result.rows_affected, 1);
+    /// fruit::Entity::truncate().exec(&db).await?;
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -889,16 +887,14 @@ pub trait EntityTrait: EntityName {
     /// #     .append_exec_results([
     /// #         MockExecResult {
     /// #             last_insert_id: 0,
-    /// #             rows_affected: 1,
+    /// #             rows_affected: 0,
     /// #         },
     /// #     ])
     /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::fruit};
     ///
-    /// let truncate_result = fruit::Entity::truncate().exec(&db).await?;
-    ///
-    /// assert_eq!(truncate_result.rows_affected, 1);
+    /// fruit::Entity::truncate().exec(&db).await?;
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),

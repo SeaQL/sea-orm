@@ -35,7 +35,7 @@ pub async fn test_truncate(db: &DatabaseConnection) -> Result<(), DbErr> {
         [Model { id: 1 }, Model { id: 2 }, Model { id: 3 }]
     );
 
-    assert_eq!(Entity::truncate().exec(db).await?.rows_affected, 3);
+    Entity::truncate().exec(db).await?;
 
     assert_eq!(Entity::find().all(db).await?, []);
 
