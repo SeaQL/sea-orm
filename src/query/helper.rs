@@ -193,9 +193,9 @@ pub trait QuerySelect: Sized {
     /// ```
     fn offset<T>(mut self, offset: T) -> Self
     where
-        T: OptionalU64,
+        T: Into<Option<u64>>,
     {
-        if let Some(offset) = offset.optional_u64() {
+        if let Some(offset) = offset.into() {
             self.query().offset(offset);
         }
         self
@@ -231,9 +231,9 @@ pub trait QuerySelect: Sized {
     /// ```
     fn limit<T>(mut self, limit: T) -> Self
     where
-        T: OptionalU64,
+        T: Into<Option<u64>>,
     {
-        if let Some(limit) = limit.optional_u64() {
+        if let Some(limit) = limit.into() {
             self.query().limit(limit);
         }
         self
@@ -640,24 +640,6 @@ pub trait QueryFilter: Sized {
             let expr = Expr::col((Alias::new(tbl_alias), col)).eq(model.get(col));
             self = self.filter(expr);
         }
-        self
-    }
-}
-
-/// An optional u64
-pub trait OptionalU64 {
-    /// Represent an optional u64 in the form of Option<u64>
-    fn optional_u64(self) -> Option<u64>;
-}
-
-impl OptionalU64 for u64 {
-    fn optional_u64(self) -> Option<u64> {
-        Some(self)
-    }
-}
-
-impl OptionalU64 for Option<u64> {
-    fn optional_u64(self) -> Option<u64> {
         self
     }
 }
