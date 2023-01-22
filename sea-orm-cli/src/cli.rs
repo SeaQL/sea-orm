@@ -1,7 +1,31 @@
 use clap::{ArgEnum, ArgGroup, Parser, Subcommand};
 
 #[derive(Parser, Debug)]
-#[clap(version)]
+#[clap(
+    version,
+    author,
+    about = r#"
+   ____                 ___   ____   __  __        /\
+  / ___|   ___   __ _  / _ \ |  _ \ |  \/  |      {.-}
+  \___ \  / _ \ / _` || | | || |_) || |\/| |     ;_.-'\
+   ___) ||  __/| (_| || |_| ||  _ < | |  | |    {    _.}_
+  |____/  \___| \__,_| \___/ |_| \_\|_|  |_|     \.-' /  `,
+                                                  \  |    /
+  An async & dynamic ORM for Rust                  \ |  ,/
+  ===============================                   \|_/
+
+  Getting Started!
+    - documentation: https://www.sea-ql.org/SeaORM
+    - step-by-step tutorials: https://www.sea-ql.org/sea-orm-tutorial
+    - integration examples: https://github.com/SeaQL/sea-orm/tree/master/examples
+    - cookbook: https://www.sea-ql.org/sea-orm-cookbook
+
+  Join our Discord server to chat with others in the SeaQL community!
+    - invitation link: https://discord.com/invite/uCPdDXzbdv
+
+  If you like what we do, consider starring, commenting, sharing and contributing!
+"#
+)]
 pub struct Cli {
     #[clap(action, global = true, short, long, help = "Show debug messages")]
     pub verbose: bool,
