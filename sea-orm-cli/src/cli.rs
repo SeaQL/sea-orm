@@ -78,6 +78,7 @@ pub enum MigrateSubcommands {
         #[clap(
             action,
             long,
+            default_value = "true",
             help = "Generate migration file based on Utc time instead of Local time"
         )]
         universal_time: bool,
