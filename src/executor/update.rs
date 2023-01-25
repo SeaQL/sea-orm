@@ -74,9 +74,7 @@ impl Updater {
         let statement = builder.build(&self.query);
         let result = db.execute(statement).await?;
         if self.check_record_exists && result.rows_affected() == 0 {
-            return Err(DbErr::RecordNotFound(
-                "None of the database rows are affected".to_owned(),
-            ));
+            return Err(DbErr::RecordNotUpdated);
         }
         Ok(UpdateResult {
             rows_affected: result.rows_affected(),
@@ -114,9 +112,7 @@ impl Updater {
                 // If we got `None` then we are updating a row that does not exist.
                 match found {
                     Some(model) => Ok(model),
-                    None => Err(DbErr::RecordNotFound(
-                        "None of the database rows are affected".to_owned(),
-                    )),
+                    None => Err(DbErr::RecordNotUpdated),
                 }
             }
             false => {
@@ -216,9 +212,7 @@ mod tests {
             }
             .update(&db)
             .await,
-            Err(DbErr::RecordNotFound(
-                "None of the database rows are affected".to_owned()
-            ))
+            Err(DbErr::RecordNotUpdated)
         );
 
         assert_eq!(
@@ -228,9 +222,7 @@ mod tests {
             })
             .exec(&db)
             .await,
-            Err(DbErr::RecordNotFound(
-                "None of the database rows are affected".to_owned()
-            ))
+            Err(DbErr::RecordNotUpdated)
         );
 
         assert_eq!(
@@ -240,9 +232,7 @@ mod tests {
             })
             .exec(&db)
             .await,
-            Err(DbErr::RecordNotFound(
-                "None of the database rows are affected".to_owned()
-            ))
+            Err(DbErr::RecordNotUpdated)
         );
 
         assert_eq!(

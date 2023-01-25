@@ -130,12 +130,7 @@ pub async fn create_and_update_repository(db: &DatabaseConnection) -> Result<(),
         .exec(db)
         .await;
 
-    assert_eq!(
-        update_res,
-        Err(DbErr::RecordNotFound(
-            "None of the database rows are affected".to_owned()
-        ))
-    );
+    assert_eq!(update_res, Err(DbErr::RecordNotUpdated));
 
     let update_res = Repository::update(updated_active_model)
         .filter(repository::Column::Id.eq("unique-id-002".to_owned()))
