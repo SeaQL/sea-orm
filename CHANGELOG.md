@@ -64,6 +64,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Breaking changes
 
+* Added to `RecordNotInserted` and `RecordNotUpdated` to `DbErr` 
 * Added `ConnectionTrait::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
 * As part of https://github.com/SeaQL/sea-orm/pull/1311, the required method of `TryGetable` changed:
 ```rust
@@ -90,6 +91,26 @@ impl ActiveModelBehavior for ActiveModel {
 
     // ...
 }
+```
+* `DbErr::RecordNotFound("None of the database rows are affected")` is moved to a dedicated error variant `DbErr::RecordNotUpdated`
+```rust
+let res = Update::one(cake::ActiveModel {
+        name: Set("Cheese Cake".to_owned()),
+        ..model.into_active_model()
+    })
+    .exec(&db)
+    .await;
+
+// then
+assert_eq!(
+    res,
+    Err(DbErr::RecordNotFound(
+        "None of the database rows are affected".to_owned()
+    ))
+);
+
+// now
+assert_eq!(res, Err(DbErr::RecordNotUpdated));
 ```
 
 ## 0.10.7 - 2023-01-19
