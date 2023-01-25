@@ -33,39 +33,25 @@ pub trait QueryTrait {
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
-    ///         .select_only()
-    ///         // Select column
-    ///         .maybe(cake::Column::Id, |mut query, column| {
-    ///             if let Some(col) = column.into() {
-    ///                 query = query.column_as(col.count(), "count");
-    ///             }
-    ///             query
+    ///         .apply_if(Some(3), |mut query, v| {
+    ///             query.filter(cake::Column::Id.eq(v))
     ///         })
-    ///         // Limit result to the first 100 rows
-    ///         .maybe(Some(100), |mut query, limit| {
-    ///             if let Some(n) = limit.into() {
-    ///                 query = query.limit(n);
-    ///             }
-    ///             query
-    ///         })
-    ///         // Do nothing
-    ///         .maybe(None, |mut query, offset| {
-    ///             if let Some(n) = offset.into() {
-    ///                 query = query.offset(n);
-    ///             }
-    ///             query
-    ///         })
+    ///         .apply_if(Some(100), QuerySelect::limit)
+    ///         .apply_if(None, QuerySelect::offset) // no-op
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     r#"SELECT COUNT("cake"."id") AS "count" FROM "cake" LIMIT 100"#
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = 3 LIMIT 100"#
     /// );
     /// ```
-    fn maybe<T, F>(self, val: T, if_some: F) -> Self
+    fn apply_if<T, F>(self, val: Option<T>, if_some: F) -> Self
     where
         Self: Sized,
-        T: Into<Option<T>>,
         F: FnOnce(Self, T) -> Self,
     {
-        if_some(self, val)
+        if let Some(val) = val {
+            if_some(self, val)
+        } else {
+            self
+        }
     }
 }
