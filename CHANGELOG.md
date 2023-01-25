@@ -14,24 +14,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * [sea-orm-cli] Generate entity with extra derives and attributes for model struct https://github.com/SeaQL/sea-orm/pull/1124, https://github.com/SeaQL/sea-orm/pull/1321
 * Simple data loader https://github.com/SeaQL/sea-orm/pull/1238, https://github.com/SeaQL/sea-orm/pull/1368
 * Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
-* Added `sea-orm-internal` feature https://github.com/SeaQL/sea-orm/pull/1297
-* Added `DatabaseConnection::get_*_connection_pool()` method to borrow the inner SQLx connection pool https://github.com/SeaQL/sea-orm/pull/1297
-* Execute unprepared statements https://github.com/SeaQL/sea-orm/pull/1327
-* Added `DatabaseConnection::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
-* Added `DatabaseTransaction::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
-* Added `Select::into_tuple` to select rows as tuples instead of having to define a custom Model https://github.com/SeaQL/sea-orm/pull/1311
+* Added `DatabaseConnection::get_*_connection_pool()` method to access the inner SQLx connection pool https://github.com/SeaQL/sea-orm/pull/1297
+    * `sea-orm-internal` has to be enabled
+* Added `execute_unprepared` method to `DatabaseConnection` and `DatabaseTransaction` https://github.com/SeaQL/sea-orm/pull/1327
+* Added `Select::into_tuple` to select rows as tuples (instead of defining a custom Model) https://github.com/SeaQL/sea-orm/pull/1311
 * Support various UUID formats that are available in `uuid::fmt` module https://github.com/SeaQL/sea-orm/pull/1325
 * Casting columns as a different data type on select, insert and update https://github.com/SeaQL/sea-orm/pull/1304
-* Methods of `ActiveModelBehavior` receive db connection as the parameter https://github.com/SeaQL/sea-orm/pull/1145, https://github.com/SeaQL/sea-orm/pull/1328
+* Methods of `ActiveModelBehavior` receive db connection as a parameter https://github.com/SeaQL/sea-orm/pull/1145, https://github.com/SeaQL/sea-orm/pull/1328
+* Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
 
 ### Enhancements
 
-* Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
 * Added `DatabaseConnection::close` https://github.com/SeaQL/sea-orm/pull/1236
 * Refactor schema module to expose functions for database alteration https://github.com/SeaQL/sea-orm/pull/1256
 * Added `is_null` getter for `ColumnDef` struct https://github.com/SeaQL/sea-orm/pull/1381
 * `MockDatabase::append_exec_results()`, `MockDatabase::append_query_results()`, `MockDatabase::append_exec_errors()` and `MockDatabase::append_query_errors()` take any types implemented `IntoIterator` trait https://github.com/SeaQL/sea-orm/pull/1367
-* `find_by_id` and `delete_by_id` take any Into primary key value https://github.com/SeaQL/sea-orm/pull/1362
+* `find_by_id` and `delete_by_id` take any `Into` primary key value https://github.com/SeaQL/sea-orm/pull/1362
 * Added `ActiveValue::reset` to convert `Unchanged` into `Set` https://github.com/SeaQL/sea-orm/pull/1177
 * Generate compact entity with `#[sea_orm(column_type = "JsonBinary")]` macro attribute https://github.com/SeaQL/sea-orm/pull/1346
 
