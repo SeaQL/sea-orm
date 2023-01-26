@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Generate compact entity with `#[sea_orm(column_type = "JsonBinary")]` macro attribute https://github.com/SeaQL/sea-orm/pull/1346
 * `MockDatabase::append_exec_results()`, `MockDatabase::append_query_results()`, `MockDatabase::append_exec_errors()` and `MockDatabase::append_query_errors()` take any types implemented `IntoIterator` trait https://github.com/SeaQL/sea-orm/pull/1367
 * `find_by_id` and `delete_by_id` take any `Into` primary key value https://github.com/SeaQL/sea-orm/pull/1362
+* `QuerySelect::offset` and `QuerySelect::limit` takes in `Into<Option<u64>>` where `None` would reset them https://github.com/SeaQL/sea-orm/pull/1410
 * Added `DatabaseConnection::close` https://github.com/SeaQL/sea-orm/pull/1236
 * Added `is_null` getter for `ColumnDef` https://github.com/SeaQL/sea-orm/pull/1381
 * Added `ActiveValue::reset` to convert `Unchanged` into `Set` https://github.com/SeaQL/sea-orm/pull/1177

@@ -163,7 +163,8 @@ pub trait QuerySelect: Sized {
         self
     }
 
-    /// Add an offset expression
+    /// Add an offset expression. Passing in None would remove the offset.
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
@@ -178,23 +179,16 @@ pub trait QuerySelect: Sized {
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .offset(Some(10))
+    ///         .offset(Some(20))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` OFFSET 10"
-    /// );
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .offset(None)
-    ///         .build(DbBackend::MySql)
-    ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` OFFSET 20"
     /// );
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .offset(10)
-    ///         .offset(None) // This will reset the offset
+    ///         .offset(None)
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
@@ -212,7 +206,8 @@ pub trait QuerySelect: Sized {
         self
     }
 
-    /// Add a limit expression
+    /// Add a limit expression. Passing in None would remove the limit.
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
@@ -227,17 +222,10 @@ pub trait QuerySelect: Sized {
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .limit(Some(10))
+    ///         .limit(Some(20))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 10"
-    /// );
-    ///
-    /// assert_eq!(
-    ///     cake::Entity::find()
-    ///         .limit(None)
-    ///         .build(DbBackend::MySql)
-    ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 20"
     /// );
     ///
     /// assert_eq!(
