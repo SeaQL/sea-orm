@@ -4,14 +4,12 @@ use clap::{ArgEnum, ArgGroup, Parser, Subcommand};
 #[clap(
     version,
     author,
-    help_template = r#"
-{before-help}{name} {version}
+    help_template = r#"{before-help}{name} {version}
 {about-with-newline}
 
 {usage-heading} {usage}
 
 {all-args}{after-help}
-
 
 AUTHORS:
     {author}
