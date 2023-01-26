@@ -4,6 +4,18 @@ use clap::{ArgEnum, ArgGroup, Parser, Subcommand};
 #[clap(
     version,
     author,
+    help_template = r#"
+{before-help}{name} {version}
+{about-with-newline}
+
+{usage-heading} {usage}
+
+{all-args}{after-help}
+
+
+AUTHORS:
+    {author}
+"#,
     about = r#"
    ____                 ___   ____   __  __        /\
   / ___|   ___   __ _  / _ \ |  _ \ |  \/  |      {.-}
@@ -36,13 +48,16 @@ pub struct Cli {
 
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum Commands {
-    #[clap(about = "Codegen related commands")]
-    #[clap(arg_required_else_help = true)]
+    #[clap(
+        about = "Codegen related commands",
+        arg_required_else_help = true,
+        display_order = 10
+    )]
     Generate {
         #[clap(subcommand)]
         command: GenerateSubcommands,
     },
-    #[clap(about = "Migration related commands")]
+    #[clap(about = "Migration related commands", display_order = 20)]
     Migrate {
         #[clap(
             value_parser,
@@ -87,9 +102,9 @@ you should provide the directory of that submodule.",
 
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum MigrateSubcommands {
-    #[clap(about = "Initialize migration directory")]
+    #[clap(about = "Initialize migration directory", display_order = 10)]
     Init,
-    #[clap(about = "Generate a new, empty migration")]
+    #[clap(about = "Generate a new, empty migration", display_order = 20)]
     Generate {
         #[clap(
             value_parser,
@@ -106,15 +121,21 @@ pub enum MigrateSubcommands {
         )]
         universal_time: bool,
     },
-    #[clap(about = "Drop all tables from the database, then reapply all migrations")]
+    #[clap(
+        about = "Drop all tables from the database, then reapply all migrations",
+        display_order = 30
+    )]
     Fresh,
-    #[clap(about = "Rollback all applied migrations, then reapply all migrations")]
+    #[clap(
+        about = "Rollback all applied migrations, then reapply all migrations",
+        display_order = 40
+    )]
     Refresh,
-    #[clap(about = "Rollback all applied migrations")]
+    #[clap(about = "Rollback all applied migrations", display_order = 50)]
     Reset,
-    #[clap(about = "Check the status of all migrations")]
+    #[clap(about = "Check the status of all migrations", display_order = 60)]
     Status,
-    #[clap(about = "Apply pending migrations")]
+    #[clap(about = "Apply pending migrations", display_order = 70)]
     Up {
         #[clap(
             value_parser,
@@ -124,14 +145,19 @@ pub enum MigrateSubcommands {
         )]
         num: Option<u32>,
     },
-    #[clap(value_parser, about = "Rollback applied migrations")]
+    #[clap(
+        value_parser,
+        about = "Rollback applied migrations",
+        display_order = 80
+    )]
     Down {
         #[clap(
             value_parser,
             short,
             long,
             default_value = "1",
-            help = "Number of applied migrations to be rolled back"
+            help = "Number of applied migrations to be rolled back",
+            display_order = 90
         )]
         num: u32,
     },
