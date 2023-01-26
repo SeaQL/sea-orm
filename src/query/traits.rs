@@ -24,7 +24,7 @@ pub trait QueryTrait {
         )
     }
 
-    /// Apply a operation on the [QueryTrait::QueryStatement] if the given `Option<T>` is `Some(_)`
+    /// Apply an operation on the [QueryTrait::QueryStatement] if the given `Option<T>` is `Some(_)`
     ///
     /// # Example
     ///
