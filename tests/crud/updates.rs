@@ -121,12 +121,7 @@ pub async fn test_update_deleted_customer(db: &DbConn) {
 
     let customer_update_res = customer.update(db).await;
 
-    assert_eq!(
-        customer_update_res,
-        Err(DbErr::RecordNotFound(
-            "None of the database rows are affected".to_owned()
-        ))
-    );
+    assert_eq!(customer_update_res, Err(DbErr::RecordNotUpdated));
 
     assert_eq!(Customer::find().count(db).await.unwrap(), init_n_customers);
 
