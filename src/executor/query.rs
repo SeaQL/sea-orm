@@ -28,7 +28,7 @@ pub trait TryGetable: Sized {
 
     /// Get a value from the query result with prefixed column name
     fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
-        let index = format!("{}{}", pre, col);
+        let index = format!("{pre}{col}");
         Self::try_get_by(res, index.as_str())
     }
 
@@ -52,7 +52,7 @@ impl From<TryGetError> for DbErr {
         match e {
             TryGetError::DbErr(e) => e,
             TryGetError::Null(s) => {
-                DbErr::Type(format!("A null value was encountered while decoding {}", s))
+                DbErr::Type(format!("A null value was encountered while decoding {s}"))
             }
         }
     }
@@ -114,7 +114,7 @@ impl fmt::Debug for QueryResultRow {
             #[cfg(feature = "sqlx-sqlite")]
             Self::SqlxSqlite(_) => write!(f, "QueryResultRow::SqlxSqlite cannot be inspected"),
             #[cfg(feature = "mock")]
-            Self::Mock(row) => write!(f, "{:?}", row),
+            Self::Mock(row) => write!(f, "{row:?}"),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -634,7 +634,7 @@ impl TryGetable for u32 {
 
 #[allow(dead_code)]
 fn err_null_idx_col<I: ColIdx>(idx: I) -> TryGetError {
-    TryGetError::Null(format!("{:?}", idx))
+    TryGetError::Null(format!("{idx:?}"))
 }
 
 #[cfg(feature = "postgres-array")]

@@ -86,11 +86,11 @@ impl Relation {
     pub fn get_attrs(&self) -> TokenStream {
         let rel_type = self.get_rel_type();
         let module_name = if let Some(module_name) = self.get_module_name() {
-            format!("super::{}::", module_name)
+            format!("super::{module_name}::")
         } else {
             String::new()
         };
-        let ref_entity = format!("{}Entity", module_name);
+        let ref_entity = format!("{module_name}Entity");
         match self.rel_type {
             RelationType::HasOne | RelationType::HasMany => {
                 quote! {
@@ -100,8 +100,8 @@ impl Relation {
             RelationType::BelongsTo => {
                 let column_camel_case = self.get_column_camel_case();
                 let ref_column_camel_case = self.get_ref_column_camel_case();
-                let from = format!("Column::{}", column_camel_case);
-                let to = format!("{}Column::{}", module_name, ref_column_camel_case);
+                let from = format!("Column::{column_camel_case}");
+                let to = format!("{module_name}Column::{ref_column_camel_case}");
                 let on_update = if let Some(action) = &self.on_update {
                     let action = Self::get_foreign_key_action(action);
                     quote! {

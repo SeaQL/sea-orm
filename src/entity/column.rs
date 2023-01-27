@@ -279,7 +279,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// );
     /// ```
     fn starts_with(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("{}%", s);
+        let pattern = format!("{s}%");
         Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
@@ -295,7 +295,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// );
     /// ```
     fn ends_with(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("%{}", s);
+        let pattern = format!("%{s}");
         Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
@@ -311,7 +311,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// );
     /// ```
     fn contains(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("%{}%", s);
+        let pattern = format!("%{s}%");
         Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
