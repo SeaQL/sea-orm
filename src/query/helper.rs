@@ -174,9 +174,41 @@ pub trait QuerySelect: Sized {
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` OFFSET 10"
     /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .offset(Some(10))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` OFFSET 10"
+    /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .offset(None)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .offset(10)
+    ///         .offset(None) // This will reset the offset
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    /// );
     /// ```
-    fn offset(mut self, offset: u64) -> Self {
-        self.query().offset(offset);
+    fn offset<T>(mut self, offset: T) -> Self
+    where
+        T: Into<Option<u64>>,
+    {
+        if let Some(offset) = offset.into() {
+            self.query().offset(offset);
+        } else {
+            self.query().reset_offset();
+        }
         self
     }
 
@@ -191,9 +223,41 @@ pub trait QuerySelect: Sized {
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 10"
     /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .limit(Some(10))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 10"
+    /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .limit(None)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .limit(10)
+    ///         .limit(None)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    /// );
     /// ```
-    fn limit(mut self, limit: u64) -> Self {
-        self.query().limit(limit);
+    fn limit<T>(mut self, limit: T) -> Self
+    where
+        T: Into<Option<u64>>,
+    {
+        if let Some(limit) = limit.into() {
+            self.query().limit(limit);
+        } else {
+            self.query().reset_limit();
+        }
         self
     }
 
