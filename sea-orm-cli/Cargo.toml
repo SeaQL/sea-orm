@@ -4,7 +4,10 @@
 [package]
 name = "sea-orm-cli"
 version = "0.10.3"
-authors = ["Billy Chan <ccw.billy.123@gmail.com>"]
+authors = [
+    "Chris Tsang <chris.2y3@outlook.com>",
+    "Billy Chan <ccw.billy.123@gmail.com>",
+]
 edition = "2021"
 description = "Command line utility for SeaORM"
 license = "MIT OR Apache-2.0"
