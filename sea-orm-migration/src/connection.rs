@@ -122,7 +122,10 @@ impl<'c> TransactionTrait for SchemaManagerConnection<'c> {
     }
 }
 
-pub trait IntoSchemaManagerConnection<'c>: Send {
+pub trait IntoSchemaManagerConnection<'c>: Send
+where
+    Self: 'c,
+{
     fn into_schema_manager_connection(self) -> SchemaManagerConnection<'c>;
 }
 

@@ -30,7 +30,7 @@ impl MigrationTrait for Migration {
 
         if std::env::var_os("ABORT_MIGRATION").eq(&Some("YES".into())) {
             return Err(DbErr::Migration(
-                "Aboard migration and rollback changes".into(),
+                "Abort migration and rollback changes".into(),
             ));
         }
 

@@ -119,7 +119,7 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
         assert_eq!(
             Migrator::up(db, None).await,
             Err(DbErr::Migration(
-                "Aboard migration and rollback changes".into()
+                "Abort migration and rollback changes".into()
             ))
         );
 
@@ -158,7 +158,7 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
         assert_eq!(
             Migrator::down(db, None).await,
             Err(DbErr::Migration(
-                "Aboard migration and rollback changes".into()
+                "Abort migration and rollback changes".into()
             ))
         );
 
