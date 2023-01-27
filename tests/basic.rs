@@ -12,9 +12,15 @@ async fn main() -> Result<(), DbErr> {
 
     let mut db: DbConn = Database::connect(&base_url).await?;
 
-    let tokio_receiver = db.set_event_stream(tokio::sync::broadcast::channel(10));
+    let mut tokio_receiver = db.set_event_stream(async_broadcast::broadcast(10));
 
-    let async_channel_receiver = db.set_event_stream(async_channel::bounded(10));
+    while let Ok(event) = tokio_receiver.recv().await {
+        if event.of_entity::<cake::Entity>() {
+            if let Some(val) = event.values.get(cake::Column::Name.as_str()) {
+                todo!()
+            }
+        }
+    }
 
     setup_schema(&db).await?;
     crud_cake(&db).await?;
