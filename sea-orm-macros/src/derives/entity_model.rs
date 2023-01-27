@@ -251,7 +251,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             Self::#field_name => sea_orm::sea_query::SimpleExpr::cast_as(
                                 Into::<sea_orm::sea_query::SimpleExpr>::into(expr),
                                 sea_orm::sea_query::Alias::new(&#select_as),
-                            ),
+                            )
                         });
                     }
                     if let Some(save_as) = save_as {
@@ -259,7 +259,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             Self::#field_name => sea_orm::sea_query::SimpleExpr::cast_as(
                                 Into::<sea_orm::sea_query::SimpleExpr>::into(val),
                                 sea_orm::sea_query::Alias::new(&#save_as),
-                            ),
+                            )
                         });
                     }
 
@@ -344,6 +344,14 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                 }
             }
         }
+    }
+
+    // Add tailing comma
+    if !columns_select_as.is_empty() {
+        columns_select_as.push_punct(Comma::default());
+    }
+    if !columns_save_as.is_empty() {
+        columns_save_as.push_punct(Comma::default());
     }
 
     let primary_key = {
