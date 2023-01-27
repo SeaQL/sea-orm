@@ -152,8 +152,8 @@ where
     T: ActiveEnum,
     T::ValueVec: TryGetable,
 {
-    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
-        <T::ValueVec as TryGetable>::try_get(res, pre, col)?
+    fn try_get_by<I: crate::ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
+        <T::ValueVec as TryGetable>::try_get_by(res, index)?
             .into_iter()
             .map(|value| T::try_from_value(&value).map_err(TryGetError::DbErr))
             .collect()
@@ -200,8 +200,7 @@ mod tests {
                     "B" => Ok(Self::Big),
                     "S" => Ok(Self::Small),
                     _ => Err(DbErr::Type(format!(
-                        "unexpected value for Category enum: {}",
-                        v
+                        "unexpected value for Category enum: {v}"
                     ))),
                 }
             }

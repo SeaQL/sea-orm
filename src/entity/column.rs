@@ -1,5 +1,7 @@
-use crate::{cast_text_as_enum, EntityName, IdenStatic, IntoSimpleExpr, Iterable};
-use sea_query::{BinOper, DynIden, Expr, SeaRc, SelectStatement, SimpleExpr, Value};
+use crate::{EntityName, IdenStatic, IntoSimpleExpr, Iterable};
+use sea_query::{
+    Alias, BinOper, DynIden, Expr, Iden, IntoIden, SeaRc, SelectStatement, SimpleExpr, Value,
+};
 use std::str::FromStr;
 
 /// Defines a Column for an Entity
@@ -122,7 +124,7 @@ macro_rules! bind_oper {
         where
             V: Into<Value>,
         {
-            Expr::tbl(self.entity_name(), *self).$op(v)
+            Expr::col((self.entity_name(), *self)).$op(v)
         }
     };
 }
@@ -134,8 +136,8 @@ macro_rules! bind_oper_with_enum_casting {
         where
             V: Into<Value>,
         {
-            let expr = cast_text_as_enum(Expr::val(v), self);
-            Expr::tbl(self.entity_name(), *self).binary(BinOper::$bin_op, expr)
+            let expr = self.save_as(Expr::val(v));
+            Expr::col((self.entity_name(), *self)).binary(BinOper::$bin_op, expr)
         }
     };
 }
@@ -144,7 +146,7 @@ macro_rules! bind_func_no_params {
     ( $func: ident ) => {
         /// See also SeaQuery's method with same name.
         fn $func(&self) -> SimpleExpr {
-            Expr::tbl(self.entity_name(), *self).$func()
+            Expr::col((self.entity_name(), *self)).$func()
         }
     };
 }
@@ -158,7 +160,7 @@ macro_rules! bind_vec_func {
             V: Into<Value>,
             I: IntoIterator<Item = V>,
         {
-            Expr::tbl(self.entity_name(), *self).$func(v)
+            Expr::col((self.entity_name(), *self)).$func(v)
         }
     };
 }
@@ -168,13 +170,13 @@ macro_rules! bind_subquery_func {
         #[allow(clippy::wrong_self_convention)]
         #[allow(missing_docs)]
         fn $func(&self, s: SelectStatement) -> SimpleExpr {
-            Expr::tbl(self.entity_name(), *self).$func(s)
+            Expr::col((self.entity_name(), *self)).$func(s)
         }
     };
 }
 
 // LINT: when the operand value does not match column type
-/// Wrapper of the identically named method in [`sea_query::Expr`]
+/// API for working with a `Column`. Mostly a wrapper of the identically named methods in [`sea_query::Expr`]
 pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     #[allow(missing_docs)]
     type EntityName: EntityName;
@@ -214,7 +216,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     where
         V: Into<Value>,
     {
-        Expr::tbl(self.entity_name(), *self).between(a, b)
+        Expr::col((self.entity_name(), *self)).between(a, b)
     }
 
     /// ```
@@ -232,7 +234,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     where
         V: Into<Value>,
     {
-        Expr::tbl(self.entity_name(), *self).not_between(a, b)
+        Expr::col((self.entity_name(), *self)).not_between(a, b)
     }
 
     /// ```
@@ -247,7 +249,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// );
     /// ```
     fn like(&self, s: &str) -> SimpleExpr {
-        Expr::tbl(self.entity_name(), *self).like(s)
+        Expr::col((self.entity_name(), *self)).like(s)
     }
 
     /// ```
@@ -262,7 +264,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// );
     /// ```
     fn not_like(&self, s: &str) -> SimpleExpr {
-        Expr::tbl(self.entity_name(), *self).not_like(s)
+        Expr::col((self.entity_name(), *self)).not_like(s)
     }
 
     /// ```
@@ -277,8 +279,8 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// );
     /// ```
     fn starts_with(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("{}%", s);
-        Expr::tbl(self.entity_name(), *self).like(pattern)
+        let pattern = format!("{s}%");
+        Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
     /// ```
@@ -293,8 +295,8 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// );
     /// ```
     fn ends_with(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("%{}", s);
-        Expr::tbl(self.entity_name(), *self).like(pattern)
+        let pattern = format!("%{s}");
+        Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
     /// ```
@@ -309,8 +311,8 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// );
     /// ```
     fn contains(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("%{}%", s);
-        Expr::tbl(self.entity_name(), *self).like(pattern)
+        let pattern = format!("%{s}%");
+        Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
     bind_func_no_params!(max);
@@ -325,7 +327,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     where
         V: Into<Value>,
     {
-        Expr::tbl(self.entity_name(), *self).if_null(v)
+        Expr::col((self.entity_name(), *self)).if_null(v)
     }
 
     bind_vec_func!(is_in);
@@ -337,6 +339,42 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// Construct a [`SimpleExpr::Column`] wrapped in [`Expr`].
     fn into_expr(self) -> Expr {
         Expr::expr(self.into_simple_expr())
+    }
+
+    /// Cast column expression used in select statement.
+    /// It only cast database enum as text if it's an enum column.
+    fn select_as(&self, expr: Expr) -> SimpleExpr {
+        self.select_enum_as(expr)
+    }
+
+    /// Cast enum column as text; do nothing if `self` is not an enum.
+    fn select_enum_as(&self, expr: Expr) -> SimpleExpr {
+        cast_enum_as(expr, self, |col, _, col_type| {
+            let type_name = match col_type {
+                ColumnType::Array(_) => TextArray.into_iden(),
+                _ => Text.into_iden(),
+            };
+            col.as_enum(type_name)
+        })
+    }
+
+    /// Cast value of a column into the correct type for database storage.
+    /// It only cast text as enum type if it's an enum column.
+    fn save_as(&self, val: Expr) -> SimpleExpr {
+        self.save_enum_as(val)
+    }
+
+    /// Cast value of an enum column as enum type; do nothing if `self` is not an enum.
+    fn save_enum_as(&self, val: Expr) -> SimpleExpr {
+        cast_enum_as(val, self, |col, enum_name, col_type| {
+            let type_name = match col_type {
+                ColumnType::Array(_) => {
+                    Alias::new(&format!("{}[]", enum_name.to_string())).into_iden()
+                }
+                _ => enum_name,
+            };
+            col.as_enum(type_name)
+        })
     }
 }
 
@@ -401,6 +439,11 @@ impl ColumnDef {
     pub fn get_column_type(&self) -> &ColumnType {
         &self.col_type
     }
+
+    /// Returns true if the column is nullable
+    pub fn is_null(&self) -> bool {
+        self.null
+    }
 }
 
 impl From<ColumnType> for sea_query::ColumnType {
@@ -410,23 +453,21 @@ impl From<ColumnType> for sea_query::ColumnType {
                 ColumnType::Char(s) => sea_query::ColumnType::Char(*s),
                 ColumnType::String(s) => sea_query::ColumnType::String(*s),
                 ColumnType::Text => sea_query::ColumnType::Text,
-                ColumnType::TinyInteger => sea_query::ColumnType::TinyInteger(None),
-                ColumnType::SmallInteger => sea_query::ColumnType::SmallInteger(None),
-                ColumnType::Integer => sea_query::ColumnType::Integer(None),
-                ColumnType::BigInteger => sea_query::ColumnType::BigInteger(None),
-                ColumnType::TinyUnsigned => sea_query::ColumnType::TinyUnsigned(None),
-                ColumnType::SmallUnsigned => sea_query::ColumnType::SmallUnsigned(None),
-                ColumnType::Unsigned => sea_query::ColumnType::Unsigned(None),
-                ColumnType::BigUnsigned => sea_query::ColumnType::BigUnsigned(None),
-                ColumnType::Float => sea_query::ColumnType::Float(None),
-                ColumnType::Double => sea_query::ColumnType::Double(None),
+                ColumnType::TinyInteger => sea_query::ColumnType::TinyInteger,
+                ColumnType::SmallInteger => sea_query::ColumnType::SmallInteger,
+                ColumnType::Integer => sea_query::ColumnType::Integer,
+                ColumnType::BigInteger => sea_query::ColumnType::BigInteger,
+                ColumnType::TinyUnsigned => sea_query::ColumnType::TinyUnsigned,
+                ColumnType::SmallUnsigned => sea_query::ColumnType::SmallUnsigned,
+                ColumnType::Unsigned => sea_query::ColumnType::Unsigned,
+                ColumnType::BigUnsigned => sea_query::ColumnType::BigUnsigned,
+                ColumnType::Float => sea_query::ColumnType::Float,
+                ColumnType::Double => sea_query::ColumnType::Double,
                 ColumnType::Decimal(s) => sea_query::ColumnType::Decimal(*s),
-                ColumnType::DateTime => sea_query::ColumnType::DateTime(None),
-                ColumnType::Timestamp => sea_query::ColumnType::Timestamp(None),
-                ColumnType::TimestampWithTimeZone => {
-                    sea_query::ColumnType::TimestampWithTimeZone(None)
-                }
-                ColumnType::Time => sea_query::ColumnType::Time(None),
+                ColumnType::DateTime => sea_query::ColumnType::DateTime,
+                ColumnType::Timestamp => sea_query::ColumnType::Timestamp,
+                ColumnType::TimestampWithTimeZone => sea_query::ColumnType::TimestampWithTimeZone,
+                ColumnType::Time => sea_query::ColumnType::Time,
                 ColumnType::Date => sea_query::ColumnType::Date,
                 ColumnType::Binary => {
                     sea_query::ColumnType::Binary(sea_query::BlobSize::Blob(None))
@@ -450,7 +491,7 @@ impl From<ColumnType> for sea_query::ColumnType {
                 },
                 ColumnType::Array(column_type) => {
                     let column_type = convert_column_type(column_type);
-                    sea_query::ColumnType::Array(SeaRc::new(Box::new(column_type)))
+                    sea_query::ColumnType::Array(SeaRc::new(column_type))
                 }
             }
         }
@@ -467,23 +508,21 @@ impl From<sea_query::ColumnType> for ColumnType {
                 sea_query::ColumnType::Char(s) => ColumnType::Char(*s),
                 sea_query::ColumnType::String(s) => ColumnType::String(*s),
                 sea_query::ColumnType::Text => ColumnType::Text,
-                sea_query::ColumnType::TinyInteger(_) => ColumnType::TinyInteger,
-                sea_query::ColumnType::SmallInteger(_) => ColumnType::SmallInteger,
-                sea_query::ColumnType::Integer(_) => ColumnType::Integer,
-                sea_query::ColumnType::BigInteger(_) => ColumnType::BigInteger,
-                sea_query::ColumnType::TinyUnsigned(_) => ColumnType::TinyUnsigned,
-                sea_query::ColumnType::SmallUnsigned(_) => ColumnType::SmallUnsigned,
-                sea_query::ColumnType::Unsigned(_) => ColumnType::Unsigned,
-                sea_query::ColumnType::BigUnsigned(_) => ColumnType::BigUnsigned,
-                sea_query::ColumnType::Float(_) => ColumnType::Float,
-                sea_query::ColumnType::Double(_) => ColumnType::Double,
+                sea_query::ColumnType::TinyInteger => ColumnType::TinyInteger,
+                sea_query::ColumnType::SmallInteger => ColumnType::SmallInteger,
+                sea_query::ColumnType::Integer => ColumnType::Integer,
+                sea_query::ColumnType::BigInteger => ColumnType::BigInteger,
+                sea_query::ColumnType::TinyUnsigned => ColumnType::TinyUnsigned,
+                sea_query::ColumnType::SmallUnsigned => ColumnType::SmallUnsigned,
+                sea_query::ColumnType::Unsigned => ColumnType::Unsigned,
+                sea_query::ColumnType::BigUnsigned => ColumnType::BigUnsigned,
+                sea_query::ColumnType::Float => ColumnType::Float,
+                sea_query::ColumnType::Double => ColumnType::Double,
                 sea_query::ColumnType::Decimal(s) => ColumnType::Decimal(*s),
-                sea_query::ColumnType::DateTime(_) => ColumnType::DateTime,
-                sea_query::ColumnType::Timestamp(_) => ColumnType::Timestamp,
-                sea_query::ColumnType::TimestampWithTimeZone(_) => {
-                    ColumnType::TimestampWithTimeZone
-                }
-                sea_query::ColumnType::Time(_) => ColumnType::Time,
+                sea_query::ColumnType::DateTime => ColumnType::DateTime,
+                sea_query::ColumnType::Timestamp => ColumnType::Timestamp,
+                sea_query::ColumnType::TimestampWithTimeZone => ColumnType::TimestampWithTimeZone,
+                sea_query::ColumnType::Time => ColumnType::Time,
                 sea_query::ColumnType::Date => ColumnType::Date,
                 sea_query::ColumnType::Binary(sea_query::BlobSize::Blob(_)) => ColumnType::Binary,
                 sea_query::ColumnType::Binary(sea_query::BlobSize::Tiny) => ColumnType::TinyBinary,
@@ -509,6 +548,26 @@ impl From<sea_query::ColumnType> for ColumnType {
             }
         }
         convert_column_type(&column_type)
+    }
+}
+
+#[derive(Iden)]
+struct Text;
+
+#[derive(Iden)]
+#[iden = "text[]"]
+struct TextArray;
+
+fn cast_enum_as<C, F>(expr: Expr, col: &C, f: F) -> SimpleExpr
+where
+    C: ColumnTrait,
+    F: Fn(Expr, DynIden, &ColumnType) -> SimpleExpr,
+{
+    let col_def = col.def();
+    let col_type = col_def.get_column_type();
+    match col_type.get_enum_name() {
+        Some(enum_name) => f(expr, SeaRc::clone(enum_name), col_type),
+        None => expr.into(),
     }
 }
 
@@ -1015,5 +1074,415 @@ mod tests {
 
         assert_eq!(my_entity::Column::IdentityColumn.to_string().as_str(), "id");
         assert_eq!(my_entity::Column::Type.to_string().as_str(), "type");
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn select_as_1() {
+        use crate::{ActiveModelTrait, ActiveValue, Update};
+
+        mod hello_expanded {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+            use crate::sea_query::{Alias, Expr, SimpleExpr};
+
+            #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+            pub struct Entity;
+
+            impl EntityName for Entity {
+                fn table_name(&self) -> &str {
+                    "hello"
+                }
+            }
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
+            pub struct Model {
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+            pub enum Column {
+                Id,
+                One1,
+                Two,
+                Three3,
+            }
+
+            impl ColumnTrait for Column {
+                type EntityName = Entity;
+
+                fn def(&self) -> ColumnDef {
+                    match self {
+                        Column::Id => ColumnType::Integer.def(),
+                        Column::One1 => ColumnType::Integer.def(),
+                        Column::Two => ColumnType::Integer.def(),
+                        Column::Three3 => ColumnType::Integer.def(),
+                    }
+                }
+
+                fn select_as(&self, expr: Expr) -> SimpleExpr {
+                    match self {
+                        Self::Two => SimpleExpr::cast_as(
+                            Into::<SimpleExpr>::into(expr),
+                            Alias::new("integer"),
+                        ),
+                        _ => self.select_enum_as(expr),
+                    }
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+            pub enum PrimaryKey {
+                Id,
+            }
+
+            impl PrimaryKeyTrait for PrimaryKey {
+                type ValueType = i32;
+
+                fn auto_increment() -> bool {
+                    true
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        #[allow(clippy::enum_variant_names)]
+        mod hello_compact {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "hello")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                #[sea_orm(select_as = "integer")]
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        fn assert_it<E, A>(active_model: A)
+        where
+            E: EntityTrait,
+            A: ActiveModelTrait<Entity = E>,
+        {
+            assert_eq!(
+                E::find().build(DbBackend::Postgres).to_string(),
+                r#"SELECT "hello"."id", "hello"."one1", CAST("hello"."two" AS integer), "hello"."three3" FROM "hello""#,
+            );
+            assert_eq!(
+                Update::one(active_model)
+                    .build(DbBackend::Postgres)
+                    .to_string(),
+                r#"UPDATE "hello" SET "one1" = 1, "two" = 2, "three3" = 3 WHERE "hello"."id" = 1"#,
+            );
+        }
+
+        assert_it(hello_expanded::ActiveModel {
+            id: ActiveValue::set(1),
+            one: ActiveValue::set(1),
+            two: ActiveValue::set(2),
+            three: ActiveValue::set(3),
+        });
+        assert_it(hello_compact::ActiveModel {
+            id: ActiveValue::set(1),
+            one: ActiveValue::set(1),
+            two: ActiveValue::set(2),
+            three: ActiveValue::set(3),
+        });
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn save_as_1() {
+        use crate::{ActiveModelTrait, ActiveValue, Update};
+
+        mod hello_expanded {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+            use crate::sea_query::{Alias, Expr, SimpleExpr};
+
+            #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+            pub struct Entity;
+
+            impl EntityName for Entity {
+                fn table_name(&self) -> &str {
+                    "hello"
+                }
+            }
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
+            pub struct Model {
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+            pub enum Column {
+                Id,
+                One1,
+                Two,
+                Three3,
+            }
+
+            impl ColumnTrait for Column {
+                type EntityName = Entity;
+
+                fn def(&self) -> ColumnDef {
+                    match self {
+                        Column::Id => ColumnType::Integer.def(),
+                        Column::One1 => ColumnType::Integer.def(),
+                        Column::Two => ColumnType::Integer.def(),
+                        Column::Three3 => ColumnType::Integer.def(),
+                    }
+                }
+
+                fn save_as(&self, expr: Expr) -> SimpleExpr {
+                    match self {
+                        Self::Two => {
+                            SimpleExpr::cast_as(Into::<SimpleExpr>::into(expr), Alias::new("text"))
+                        }
+                        _ => self.save_enum_as(expr),
+                    }
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+            pub enum PrimaryKey {
+                Id,
+            }
+
+            impl PrimaryKeyTrait for PrimaryKey {
+                type ValueType = i32;
+
+                fn auto_increment() -> bool {
+                    true
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        #[allow(clippy::enum_variant_names)]
+        mod hello_compact {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "hello")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                #[sea_orm(save_as = "text")]
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        fn assert_it<E, A>(active_model: A)
+        where
+            E: EntityTrait,
+            A: ActiveModelTrait<Entity = E>,
+        {
+            assert_eq!(
+                E::find().build(DbBackend::Postgres).to_string(),
+                r#"SELECT "hello"."id", "hello"."one1", "hello"."two", "hello"."three3" FROM "hello""#,
+            );
+            assert_eq!(
+                Update::one(active_model)
+                    .build(DbBackend::Postgres)
+                    .to_string(),
+                r#"UPDATE "hello" SET "one1" = 1, "two" = CAST(2 AS text), "three3" = 3 WHERE "hello"."id" = 1"#,
+            );
+        }
+
+        assert_it(hello_expanded::ActiveModel {
+            id: ActiveValue::set(1),
+            one: ActiveValue::set(1),
+            two: ActiveValue::set(2),
+            three: ActiveValue::set(3),
+        });
+        assert_it(hello_compact::ActiveModel {
+            id: ActiveValue::set(1),
+            one: ActiveValue::set(1),
+            two: ActiveValue::set(2),
+            three: ActiveValue::set(3),
+        });
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn select_as_and_value_1() {
+        use crate::{ActiveModelTrait, ActiveValue, Update};
+
+        mod hello_expanded {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+            use crate::sea_query::{Alias, Expr, SimpleExpr};
+
+            #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
+            pub struct Entity;
+
+            impl EntityName for Entity {
+                fn table_name(&self) -> &str {
+                    "hello"
+                }
+            }
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
+            pub struct Model {
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+            pub enum Column {
+                Id,
+                One1,
+                Two,
+                Three3,
+            }
+
+            impl ColumnTrait for Column {
+                type EntityName = Entity;
+
+                fn def(&self) -> ColumnDef {
+                    match self {
+                        Column::Id => ColumnType::Integer.def(),
+                        Column::One1 => ColumnType::Integer.def(),
+                        Column::Two => ColumnType::Integer.def(),
+                        Column::Three3 => ColumnType::Integer.def(),
+                    }
+                }
+
+                fn select_as(&self, expr: Expr) -> SimpleExpr {
+                    match self {
+                        Self::Two => SimpleExpr::cast_as(
+                            Into::<SimpleExpr>::into(expr),
+                            Alias::new("integer"),
+                        ),
+                        _ => self.select_enum_as(expr),
+                    }
+                }
+
+                fn save_as(&self, expr: Expr) -> SimpleExpr {
+                    match self {
+                        Self::Two => {
+                            SimpleExpr::cast_as(Into::<SimpleExpr>::into(expr), Alias::new("text"))
+                        }
+                        _ => self.save_enum_as(expr),
+                    }
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
+            pub enum PrimaryKey {
+                Id,
+            }
+
+            impl PrimaryKeyTrait for PrimaryKey {
+                type ValueType = i32;
+
+                fn auto_increment() -> bool {
+                    true
+                }
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        #[allow(clippy::enum_variant_names)]
+        mod hello_compact {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "hello")]
+            pub struct Model {
+                #[sea_orm(primary_key)]
+                pub id: i32,
+                #[sea_orm(enum_name = "One1")]
+                pub one: i32,
+                #[sea_orm(select_as = "integer", save_as = "text")]
+                pub two: i32,
+                #[sea_orm(enum_name = "Three3")]
+                pub three: i32,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        fn assert_it<E, A>(active_model: A)
+        where
+            E: EntityTrait,
+            A: ActiveModelTrait<Entity = E>,
+        {
+            assert_eq!(
+                E::find().build(DbBackend::Postgres).to_string(),
+                r#"SELECT "hello"."id", "hello"."one1", CAST("hello"."two" AS integer), "hello"."three3" FROM "hello""#,
+            );
+            assert_eq!(
+                Update::one(active_model)
+                    .build(DbBackend::Postgres)
+                    .to_string(),
+                r#"UPDATE "hello" SET "one1" = 1, "two" = CAST(2 AS text), "three3" = 3 WHERE "hello"."id" = 1"#,
+            );
+        }
+
+        assert_it(hello_expanded::ActiveModel {
+            id: ActiveValue::set(1),
+            one: ActiveValue::set(1),
+            two: ActiveValue::set(2),
+            three: ActiveValue::set(3),
+        });
+        assert_it(hello_compact::ActiveModel {
+            id: ActiveValue::set(1),
+            one: ActiveValue::set(1),
+            two: ActiveValue::set(2),
+            three: ActiveValue::set(3),
+        });
     }
 }

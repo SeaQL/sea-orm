@@ -24,9 +24,13 @@ pub async fn run_generate_command(
             database_schema,
             database_url,
             with_serde,
+            serde_skip_deserializing_primary_key,
+            serde_skip_hidden_column,
             with_copy_enums,
             date_time_crate,
             lib,
+            model_extra_derives,
+            model_extra_attributes,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -56,19 +60,9 @@ pub async fn run_generate_command(
             // above
             let is_sqlite = url.scheme() == "sqlite";
 
-            let tables = match tables {
-                Some(t) => t,
-                _ => "".to_string(),
-            };
-
             // Closures for filtering tables
-            let filter_tables = |table: &str| -> bool {
-                if !tables.is_empty() {
-                    return tables.contains(table);
-                }
-
-                true
-            };
+            let filter_tables =
+                |table: &String| -> bool { tables.is_empty() || tables.contains(table) };
 
             let filter_hidden_tables = |table: &str| -> bool {
                 if include_hidden_tables {
@@ -169,11 +163,15 @@ pub async fn run_generate_command(
 
             let writer_context = EntityWriterContext::new(
                 expanded_format,
-                WithSerde::from_str(&with_serde).unwrap(),
+                WithSerde::from_str(&with_serde).expect("Invalid serde derive option"),
                 with_copy_enums,
                 date_time_crate.into(),
                 schema_name,
                 lib,
+                serde_skip_deserializing_primary_key,
+                serde_skip_hidden_column,
+                model_extra_derives,
+                model_extra_attributes,
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
@@ -188,10 +186,11 @@ pub async fn run_generate_command(
 
             // Format each of the files
             for OutputFile { name, .. } in output.files.iter() {
-                Command::new("rustfmt")
-                    .arg(dir.join(name))
-                    .spawn()?
-                    .wait()?;
+                let exit_status = Command::new("rustfmt").arg(dir.join(name)).status()?; // Get the status code
+                if !exit_status.success() {
+                    // Propagate the error if any
+                    return Err(format!("Fail to format file `{name}`").into());
+                }
             }
         }
     }
@@ -212,7 +211,7 @@ where
     // Set search_path for Postgres, E.g. Some("public") by default
     // MySQL & SQLite connection initialize with schema `None`
     if let Some(schema) = schema {
-        let sql = format!("SET search_path = '{}'", schema);
+        let sql = format!("SET search_path = '{schema}'");
         pool_options = pool_options.after_connect(move |conn, _| {
             let sql = sql.clone();
             Box::pin(async move {
@@ -246,7 +245,7 @@ mod tests {
         expected = "called `Result::unwrap()` on an `Err` value: RelativeUrlWithoutBase"
     )]
     fn test_generate_entity_no_protocol() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",
@@ -267,7 +266,7 @@ mod tests {
         expected = "There is no database name as part of the url path: postgresql://root:root@localhost:3306"
     )]
     fn test_generate_entity_no_database_section() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",
@@ -288,7 +287,7 @@ mod tests {
         expected = "There is no database name as part of the url path: mysql://root:root@localhost:3306/"
     )]
     fn test_generate_entity_no_database_path() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",
@@ -307,7 +306,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: PoolTimedOut")]
     fn test_generate_entity_no_password() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",
@@ -326,7 +325,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: EmptyHost")]
     fn test_generate_entity_no_host() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",

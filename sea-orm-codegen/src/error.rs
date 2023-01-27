@@ -9,8 +9,8 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::StdIoError(e) => write!(f, "{:?}", e),
-            Self::TransformError(e) => write!(f, "{:?}", e),
+            Self::StdIoError(e) => write!(f, "{e:?}"),
+            Self::TransformError(e) => write!(f, "{e:?}"),
         }
     }
 }

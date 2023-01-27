@@ -35,35 +35,35 @@ impl Column {
                 | ColumnType::String(_)
                 | ColumnType::Text
                 | ColumnType::Custom(_) => "String".to_owned(),
-                ColumnType::TinyInteger(_) => "i8".to_owned(),
-                ColumnType::SmallInteger(_) => "i16".to_owned(),
-                ColumnType::Integer(_) => "i32".to_owned(),
-                ColumnType::BigInteger(_) => "i64".to_owned(),
-                ColumnType::TinyUnsigned(_) => "u8".to_owned(),
-                ColumnType::SmallUnsigned(_) => "u16".to_owned(),
-                ColumnType::Unsigned(_) => "u32".to_owned(),
-                ColumnType::BigUnsigned(_) => "u64".to_owned(),
-                ColumnType::Float(_) => "f32".to_owned(),
-                ColumnType::Double(_) => "f64".to_owned(),
+                ColumnType::TinyInteger => "i8".to_owned(),
+                ColumnType::SmallInteger => "i16".to_owned(),
+                ColumnType::Integer => "i32".to_owned(),
+                ColumnType::BigInteger => "i64".to_owned(),
+                ColumnType::TinyUnsigned => "u8".to_owned(),
+                ColumnType::SmallUnsigned => "u16".to_owned(),
+                ColumnType::Unsigned => "u32".to_owned(),
+                ColumnType::BigUnsigned => "u64".to_owned(),
+                ColumnType::Float => "f32".to_owned(),
+                ColumnType::Double => "f64".to_owned(),
                 ColumnType::Json | ColumnType::JsonBinary => "Json".to_owned(),
                 ColumnType::Date => match date_time_crate {
                     DateTimeCrate::Chrono => "Date".to_owned(),
                     DateTimeCrate::Time => "TimeDate".to_owned(),
                 },
-                ColumnType::Time(_) => match date_time_crate {
+                ColumnType::Time => match date_time_crate {
                     DateTimeCrate::Chrono => "Time".to_owned(),
                     DateTimeCrate::Time => "TimeTime".to_owned(),
                 },
-                ColumnType::DateTime(_) => match date_time_crate {
+                ColumnType::DateTime => match date_time_crate {
                     DateTimeCrate::Chrono => "DateTime".to_owned(),
                     DateTimeCrate::Time => "TimeDateTime".to_owned(),
                 },
-                ColumnType::Timestamp(_) => match date_time_crate {
+                ColumnType::Timestamp => match date_time_crate {
                     DateTimeCrate::Chrono => "DateTimeUtc".to_owned(),
                     // ColumnType::Timpestamp(_) => time::PrimitiveDateTime: https://docs.rs/sqlx/0.3.5/sqlx/postgres/types/index.html#time
                     DateTimeCrate::Time => "TimeDateTime".to_owned(),
                 },
-                ColumnType::TimestampWithTimeZone(_) => match date_time_crate {
+                ColumnType::TimestampWithTimeZone => match date_time_crate {
                     DateTimeCrate::Chrono => "DateTimeWithTimeZone".to_owned(),
                     DateTimeCrate::Time => "TimeDateTimeWithTimeZone".to_owned(),
                 },
@@ -89,11 +89,12 @@ impl Column {
 
     pub fn get_col_type_attrs(&self) -> Option<TokenStream> {
         let col_type = match &self.col_type {
-            ColumnType::Float(Some(l)) => Some(format!("Float(Some({}))", l)),
-            ColumnType::Double(Some(l)) => Some(format!("Double(Some({}))", l)),
-            ColumnType::Decimal(Some((p, s))) => Some(format!("Decimal(Some(({}, {})))", p, s)),
-            ColumnType::Money(Some((p, s))) => Some(format!("Money(Some({}, {}))", p, s)),
+            ColumnType::Float => Some("Float".to_owned()),
+            ColumnType::Double => Some("Double".to_owned()),
+            ColumnType::Decimal(Some((p, s))) => Some(format!("Decimal(Some(({p}, {s})))")),
+            ColumnType::Money(Some((p, s))) => Some(format!("Money(Some({p}, {s}))")),
             ColumnType::Text => Some("Text".to_owned()),
+            ColumnType::JsonBinary => Some("JsonBinary".to_owned()),
             ColumnType::Custom(iden) => {
                 Some(format!("Custom(\"{}\".to_owned())", iden.to_string()))
             }
@@ -114,26 +115,26 @@ impl Column {
                     None => quote! { ColumnType::String(None) },
                 },
                 ColumnType::Text => quote! { ColumnType::Text },
-                ColumnType::TinyInteger(_) => quote! { ColumnType::TinyInteger },
-                ColumnType::SmallInteger(_) => quote! { ColumnType::SmallInteger },
-                ColumnType::Integer(_) => quote! { ColumnType::Integer },
-                ColumnType::BigInteger(_) => quote! { ColumnType::BigInteger },
-                ColumnType::TinyUnsigned(_) => quote! { ColumnType::TinyUnsigned },
-                ColumnType::SmallUnsigned(_) => quote! { ColumnType::SmallUnsigned },
-                ColumnType::Unsigned(_) => quote! { ColumnType::Unsigned },
-                ColumnType::BigUnsigned(_) => quote! { ColumnType::BigUnsigned },
-                ColumnType::Float(_) => quote! { ColumnType::Float },
-                ColumnType::Double(_) => quote! { ColumnType::Double },
+                ColumnType::TinyInteger => quote! { ColumnType::TinyInteger },
+                ColumnType::SmallInteger => quote! { ColumnType::SmallInteger },
+                ColumnType::Integer => quote! { ColumnType::Integer },
+                ColumnType::BigInteger => quote! { ColumnType::BigInteger },
+                ColumnType::TinyUnsigned => quote! { ColumnType::TinyUnsigned },
+                ColumnType::SmallUnsigned => quote! { ColumnType::SmallUnsigned },
+                ColumnType::Unsigned => quote! { ColumnType::Unsigned },
+                ColumnType::BigUnsigned => quote! { ColumnType::BigUnsigned },
+                ColumnType::Float => quote! { ColumnType::Float },
+                ColumnType::Double => quote! { ColumnType::Double },
                 ColumnType::Decimal(s) => match s {
                     Some((s1, s2)) => quote! { ColumnType::Decimal(Some((#s1, #s2))) },
                     None => quote! { ColumnType::Decimal(None) },
                 },
-                ColumnType::DateTime(_) => quote! { ColumnType::DateTime },
-                ColumnType::Timestamp(_) => quote! { ColumnType::Timestamp },
-                ColumnType::TimestampWithTimeZone(_) => {
+                ColumnType::DateTime => quote! { ColumnType::DateTime },
+                ColumnType::Timestamp => quote! { ColumnType::Timestamp },
+                ColumnType::TimestampWithTimeZone => {
                     quote! { ColumnType::TimestampWithTimeZone }
                 }
-                ColumnType::Time(_) => quote! { ColumnType::Time },
+                ColumnType::Time => quote! { ColumnType::Time },
                 ColumnType::Date => quote! { ColumnType::Date },
                 ColumnType::Binary(BlobSize::Blob(_)) | ColumnType::VarBinary(_) => {
                     quote! { ColumnType::Binary }
@@ -211,6 +212,25 @@ impl Column {
         }
         info
     }
+
+    pub fn get_serde_attribute(
+        &self,
+        is_primary_key: bool,
+        serde_skip_deserializing_primary_key: bool,
+        serde_skip_hidden_column: bool,
+    ) -> TokenStream {
+        if self.name.starts_with('_') && serde_skip_hidden_column {
+            quote! {
+                #[serde(skip)]
+            }
+        } else if serde_skip_deserializing_primary_key && is_primary_key {
+            quote! {
+                #[serde(skip_deserializing)]
+            }
+        } else {
+            quote! {}
+        }
+    }
 }
 
 impl From<ColumnDef> for Column {
@@ -273,24 +293,24 @@ mod tests {
                 "cake_id",
                 ColumnType::Custom(SeaRc::new(Alias::new("cus_col")))
             ),
-            make_col!("CakeId", ColumnType::TinyInteger(None)),
-            make_col!("CakeId", ColumnType::TinyUnsigned(Some(9))),
-            make_col!("CakeId", ColumnType::SmallInteger(None)),
-            make_col!("CakeId", ColumnType::SmallUnsigned(Some(10))),
-            make_col!("CakeId", ColumnType::Integer(None)),
-            make_col!("CakeId", ColumnType::Unsigned(Some(11))),
-            make_col!("CakeFillingId", ColumnType::BigInteger(None)),
-            make_col!("CakeFillingId", ColumnType::BigUnsigned(Some(12))),
-            make_col!("cake-filling-id", ColumnType::Float(None)),
-            make_col!("CAKE_FILLING_ID", ColumnType::Double(None)),
+            make_col!("CakeId", ColumnType::TinyInteger),
+            make_col!("CakeId", ColumnType::TinyUnsigned),
+            make_col!("CakeId", ColumnType::SmallInteger),
+            make_col!("CakeId", ColumnType::SmallUnsigned),
+            make_col!("CakeId", ColumnType::Integer),
+            make_col!("CakeId", ColumnType::Unsigned),
+            make_col!("CakeFillingId", ColumnType::BigInteger),
+            make_col!("CakeFillingId", ColumnType::BigUnsigned),
+            make_col!("cake-filling-id", ColumnType::Float),
+            make_col!("CAKE_FILLING_ID", ColumnType::Double),
             make_col!("CAKE-FILLING-ID", ColumnType::Binary(BlobSize::Blob(None))),
             make_col!("CAKE-FILLING-ID", ColumnType::VarBinary(10)),
             make_col!("CAKE", ColumnType::Boolean),
             make_col!("date", ColumnType::Date),
-            make_col!("time", ColumnType::Time(None)),
-            make_col!("date_time", ColumnType::DateTime(None)),
-            make_col!("timestamp", ColumnType::Timestamp(None)),
-            make_col!("timestamp_tz", ColumnType::TimestampWithTimeZone(None)),
+            make_col!("time", ColumnType::Time),
+            make_col!("date_time", ColumnType::DateTime),
+            make_col!("timestamp", ColumnType::Timestamp),
+            make_col!("timestamp_tz", ColumnType::TimestampWithTimeZone),
         ]
     }
 

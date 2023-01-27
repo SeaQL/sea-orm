@@ -154,6 +154,13 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
                     #(#field: sea_orm::ActiveValue::not_set()),*
                 }
             }
+
+            fn reset(&mut self, c: <Self::Entity as EntityTrait>::Column) {
+                match c {
+                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.reset(),)*
+                    _ => panic!("This ActiveModel does not have this field"),
+                }
+            }
         }
     ))
 }

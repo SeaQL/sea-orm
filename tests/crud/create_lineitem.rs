@@ -23,7 +23,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
             "home": "0395555555",
             "address": "12 Test St, Testville, Vic, Australia"
         })),
-        bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
+        bakery_id: Set(Some(bakery_insert_res.last_insert_id)),
         ..Default::default()
     };
     let baker_insert_res = Baker::insert(baker_bob)
@@ -37,7 +37,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
         price: Set(dec!(10.25)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
-        bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
+        bakery_id: Set(Some(bakery_insert_res.last_insert_id)),
         ..Default::default()
     };
 
@@ -48,8 +48,8 @@ pub async fn test_create_lineitem(db: &DbConn) {
 
     // Cake_Baker
     let cake_baker = cakes_bakers::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id as i32),
-        baker_id: Set(baker_insert_res.last_insert_id as i32),
+        cake_id: Set(cake_insert_res.last_insert_id),
+        baker_id: Set(baker_insert_res.last_insert_id),
     };
     let cake_baker_res = CakesBakers::insert(cake_baker.clone())
         .exec(db)
@@ -73,8 +73,8 @@ pub async fn test_create_lineitem(db: &DbConn) {
 
     // Order
     let order_1 = order::ActiveModel {
-        bakery_id: Set(bakery_insert_res.last_insert_id as i32),
-        customer_id: Set(customer_insert_res.last_insert_id as i32),
+        bakery_id: Set(bakery_insert_res.last_insert_id),
+        customer_id: Set(customer_insert_res.last_insert_id),
         total: Set(dec!(7.55)),
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
@@ -86,8 +86,8 @@ pub async fn test_create_lineitem(db: &DbConn) {
 
     // Lineitem
     let lineitem_1 = lineitem::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id as i32),
-        order_id: Set(order_insert_res.last_insert_id as i32),
+        cake_id: Set(cake_insert_res.last_insert_id),
+        order_id: Set(order_insert_res.last_insert_id),
         price: Set(dec!(7.55)),
         quantity: Set(1),
         ..Default::default()
@@ -122,8 +122,5 @@ pub async fn test_create_lineitem(db: &DbConn) {
         .expect("could not find order");
 
     let order_model = order.unwrap();
-    assert_eq!(
-        order_model.customer_id,
-        customer_insert_res.last_insert_id as i32
-    );
+    assert_eq!(order_model.customer_id, customer_insert_res.last_insert_id);
 }

@@ -158,7 +158,7 @@ impl DeriveModel {
             .filter_map(ignore)
             .collect();
 
-        let missing_field_msg = format!("field does not exist on {}", ident);
+        let missing_field_msg = format!("field does not exist on {ident}");
 
         quote!(
             #[automatically_derived]

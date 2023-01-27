@@ -23,6 +23,7 @@ pub struct Relation {
     pub(crate) on_delete: Option<ForeignKeyAction>,
     pub(crate) self_referencing: bool,
     pub(crate) num_suffix: usize,
+    pub(crate) impl_related: bool,
 }
 
 impl Relation {
@@ -85,11 +86,11 @@ impl Relation {
     pub fn get_attrs(&self) -> TokenStream {
         let rel_type = self.get_rel_type();
         let module_name = if let Some(module_name) = self.get_module_name() {
-            format!("super::{}::", module_name)
+            format!("super::{module_name}::")
         } else {
             String::new()
         };
-        let ref_entity = format!("{}Entity", module_name);
+        let ref_entity = format!("{module_name}Entity");
         match self.rel_type {
             RelationType::HasOne | RelationType::HasMany => {
                 quote! {
@@ -99,8 +100,8 @@ impl Relation {
             RelationType::BelongsTo => {
                 let column_camel_case = self.get_column_camel_case();
                 let ref_column_camel_case = self.get_ref_column_camel_case();
-                let from = format!("Column::{}", column_camel_case);
-                let to = format!("{}Column::{}", module_name, ref_column_camel_case);
+                let from = format!("Column::{column_camel_case}");
+                let to = format!("{module_name}Column::{ref_column_camel_case}");
                 let on_update = if let Some(action) = &self.on_update {
                     let action = Self::get_foreign_key_action(action);
                     quote! {
@@ -178,6 +179,7 @@ impl From<&TableForeignKey> for Relation {
             on_update,
             self_referencing: false,
             num_suffix: 0,
+            impl_related: true,
         }
     }
 }
@@ -199,6 +201,7 @@ mod tests {
                 on_update: None,
                 self_referencing: false,
                 num_suffix: 0,
+                impl_related: true,
             },
             Relation {
                 ref_table: "filling".to_owned(),
@@ -209,6 +212,7 @@ mod tests {
                 on_update: Some(ForeignKeyAction::Cascade),
                 self_referencing: false,
                 num_suffix: 0,
+                impl_related: true,
             },
             Relation {
                 ref_table: "filling".to_owned(),
@@ -219,6 +223,7 @@ mod tests {
                 on_update: None,
                 self_referencing: false,
                 num_suffix: 0,
+                impl_related: true,
             },
         ]
     }

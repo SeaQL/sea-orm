@@ -20,20 +20,19 @@ async fn main() -> Result<(), DbErr> {
     let mut insert = Query::insert();
     insert
         .into_table(Entity)
-        .columns(vec![Column::Name, Column::ProfitMargin])
-        .values_panic(vec!["Bakery Shop".into(), 0.5.into()]);
+        .columns([Column::Name, Column::ProfitMargin])
+        .values_panic(["Bakery Shop".into(), 0.5.into()]);
 
     let mut update = Query::update();
     update
         .table(Entity)
-        .values(vec![
+        .values([
             (Column::Name, "Bakery Shop".into()),
             (Column::ProfitMargin, 0.5.into()),
         ])
         .and_where(Column::Id.eq(1));
 
-    let returning =
-        Query::returning().columns(vec![Column::Id, Column::Name, Column::ProfitMargin]);
+    let returning = Query::returning().columns([Column::Id, Column::Name, Column::ProfitMargin]);
 
     create_tables(db).await?;
 

@@ -1,5 +1,5 @@
 use crate::{
-    cast_text_as_enum, ActiveModelTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
+    ActiveModelTrait, ColumnTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
     PrimaryKeyTrait, QueryTrait,
 };
 use core::marker::PhantomData;
@@ -85,7 +85,7 @@ where
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
-    ///     Insert::many(vec![
+    ///     Insert::many([
     ///         cake::Model {
     ///             id: 1,
     ///             name: "Apple Pie".to_owned(),
@@ -134,7 +134,7 @@ where
             }
             if av_has_val {
                 columns.push(col);
-                values.push(cast_text_as_enum(Expr::val(av.into_value().unwrap()), &col));
+                values.push(col.save_as(Expr::val(av.into_value().unwrap())));
             }
         }
         self.query.columns(columns);
@@ -275,7 +275,7 @@ mod tests {
     fn insert_4() {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
-                .add_many(vec![
+                .add_many([
                     cake::Model {
                         id: 1,
                         name: "Apple Pie".to_owned(),
@@ -304,7 +304,7 @@ mod tests {
         };
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
-                .add_many(vec![apple, orange])
+                .add_many([apple, orange])
                 .build(DbBackend::Postgres)
                 .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (NULL, 'Apple'), (2, 'Orange')"#,

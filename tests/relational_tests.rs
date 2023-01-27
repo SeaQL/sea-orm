@@ -660,22 +660,22 @@ pub async fn linked() -> Result<(), DbErr> {
         .select_only()
         .column_as(baker::Column::Name, (SelectA, baker::Column::Name))
         .column_as(
-            Expr::tbl(Alias::new("r4"), customer::Column::Name).into_simple_expr(),
+            Expr::col((Alias::new("r4"), customer::Column::Name)),
             (SelectB, customer::Column::Name),
         )
         .group_by(baker::Column::Id)
-        .group_by(Expr::tbl(Alias::new("r4"), customer::Column::Id).into_simple_expr())
+        .group_by(Expr::col((Alias::new("r4"), customer::Column::Id)))
         .group_by(baker::Column::Name)
-        .group_by(Expr::tbl(Alias::new("r4"), customer::Column::Name).into_simple_expr())
+        .group_by(Expr::col((Alias::new("r4"), customer::Column::Name)))
         .order_by_asc(baker::Column::Id)
-        .order_by_asc(Expr::tbl(Alias::new("r4"), customer::Column::Id).into_simple_expr())
+        .order_by_asc(Expr::col((Alias::new("r4"), customer::Column::Id)))
         .into_model()
         .all(&ctx.db)
         .await?;
 
     assert_eq!(
         baked_for_customers,
-        vec![
+        [
             (
                 BakerLite {
                     name: "Baker Bob".to_owned(),
@@ -716,7 +716,7 @@ pub async fn linked() -> Result<(), DbErr> {
 
     assert_eq!(
         baker_bob_customers,
-        vec![customer::Model {
+        [customer::Model {
             id: 2,
             name: "Kara".to_owned(),
             notes: Some("Loves all cakes".to_owned()),

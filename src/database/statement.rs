@@ -15,7 +15,7 @@ pub struct Statement {
     pub db_backend: DbBackend,
 }
 
-/// Constraints for building a [Statement]
+/// Any type that can build a [Statement]
 pub trait StatementBuilder {
     /// Method to call in order to build a [Statement]
     fn build(&self, db_backend: &DbBackend) -> Statement;

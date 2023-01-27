@@ -1,7 +1,7 @@
 mod flash;
 
 use axum::{
-    extract::{Extension, Form, Path, Query},
+    extract::{Form, Path, Query, State},
     http::StatusCode,
     response::Html,
     routing::{get, get_service, post},
@@ -18,7 +18,6 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::{env, net::SocketAddr};
 use tera::Tera;
-use tower::ServiceBuilder;
 use tower_cookies::{CookieManagerLayer, Cookies};
 use tower_http::services::ServeDir;
 
@@ -37,16 +36,18 @@ async fn start() -> anyhow::Result<()> {
         .await
         .expect("Database connection failed");
     Migrator::up(&conn, None).await.unwrap();
+
     let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*"))
         .expect("Tera initialization failed");
-    // let state = AppState { templates, conn };
+
+    let state = AppState { templates, conn };
 
     let app = Router::new()
         .route("/", get(list_posts).post(create_post))
         .route("/:id", get(edit_post).post(update_post))
         .route("/new", get(new_post))
         .route("/delete/:id", post(delete_post))
-        .nest(
+        .nest_service(
             "/static",
             get_service(ServeDir::new(concat!(
                 env!("CARGO_MANIFEST_DIR"),
@@ -59,17 +60,19 @@ async fn start() -> anyhow::Result<()> {
                 )
             }),
         )
-        .layer(
-            ServiceBuilder::new()
-                .layer(CookieManagerLayer::new())
-                .layer(Extension(conn))
-                .layer(Extension(templates)),
-        );
+        .layer(CookieManagerLayer::new())
+        .with_state(state);
 
     let addr = SocketAddr::from_str(&server_url).unwrap();
     Server::bind(&addr).serve(app.into_make_service()).await?;
 
     Ok(())
+}
+
+#[derive(Clone)]
+struct AppState {
+    templates: Tera,
+    conn: DatabaseConnection,
 }
 
 #[derive(Deserialize)]
@@ -85,15 +88,14 @@ struct FlashData {
 }
 
 async fn list_posts(
-    Extension(ref templates): Extension<Tera>,
-    Extension(ref conn): Extension<DatabaseConnection>,
+    state: State<AppState>,
     Query(params): Query<Params>,
     cookies: Cookies,
 ) -> Result<Html<String>, (StatusCode, &'static str)> {
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.posts_per_page.unwrap_or(5);
 
-    let (posts, num_pages) = QueryCore::find_posts_in_page(conn, page, posts_per_page)
+    let (posts, num_pages) = QueryCore::find_posts_in_page(&state.conn, page, posts_per_page)
         .await
         .expect("Cannot find posts in page");
 
@@ -107,18 +109,18 @@ async fn list_posts(
         ctx.insert("flash", &value);
     }
 
-    let body = templates
+    let body = state
+        .templates
         .render("index.html.tera", &ctx)
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Template error"))?;
 
     Ok(Html(body))
 }
 
-async fn new_post(
-    Extension(ref templates): Extension<Tera>,
-) -> Result<Html<String>, (StatusCode, &'static str)> {
+async fn new_post(state: State<AppState>) -> Result<Html<String>, (StatusCode, &'static str)> {
     let ctx = tera::Context::new();
-    let body = templates
+    let body = state
+        .templates
         .render("new.html.tera", &ctx)
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Template error"))?;
 
@@ -126,13 +128,13 @@ async fn new_post(
 }
 
 async fn create_post(
-    Extension(ref conn): Extension<DatabaseConnection>,
-    form: Form<post::Model>,
+    state: State<AppState>,
     mut cookies: Cookies,
+    form: Form<post::Model>,
 ) -> Result<PostResponse, (StatusCode, &'static str)> {
     let form = form.0;
 
-    MutationCore::create_post(conn, form)
+    MutationCore::create_post(&state.conn, form)
         .await
         .expect("could not insert post");
 
@@ -145,11 +147,10 @@ async fn create_post(
 }
 
 async fn edit_post(
-    Extension(ref templates): Extension<Tera>,
-    Extension(ref conn): Extension<DatabaseConnection>,
+    state: State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<Html<String>, (StatusCode, &'static str)> {
-    let post: post::Model = QueryCore::find_post_by_id(conn, id)
+    let post: post::Model = QueryCore::find_post_by_id(&state.conn, id)
         .await
         .expect("could not find post")
         .unwrap_or_else(|| panic!("could not find post with id {}", id));
@@ -157,7 +158,8 @@ async fn edit_post(
     let mut ctx = tera::Context::new();
     ctx.insert("post", &post);
 
-    let body = templates
+    let body = state
+        .templates
         .render("edit.html.tera", &ctx)
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Template error"))?;
 
@@ -165,14 +167,14 @@ async fn edit_post(
 }
 
 async fn update_post(
-    Extension(ref conn): Extension<DatabaseConnection>,
+    state: State<AppState>,
     Path(id): Path<i32>,
-    form: Form<post::Model>,
     mut cookies: Cookies,
+    form: Form<post::Model>,
 ) -> Result<PostResponse, (StatusCode, String)> {
     let form = form.0;
 
-    MutationCore::update_post_by_id(conn, id, form)
+    MutationCore::update_post_by_id(&state.conn, id, form)
         .await
         .expect("could not edit post");
 
@@ -185,11 +187,11 @@ async fn update_post(
 }
 
 async fn delete_post(
-    Extension(ref conn): Extension<DatabaseConnection>,
+    state: State<AppState>,
     Path(id): Path<i32>,
     mut cookies: Cookies,
 ) -> Result<PostResponse, (StatusCode, &'static str)> {
-    MutationCore::delete_post(conn, id)
+    MutationCore::delete_post(&state.conn, id)
         .await
         .expect("could not delete post");
 

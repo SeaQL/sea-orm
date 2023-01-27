@@ -1,8 +1,9 @@
 pub use crate::{
     error::*, ActiveEnum, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait,
     ColumnType, CursorTrait, DatabaseConnection, DbConn, EntityName, EntityTrait, EnumIter,
-    ForeignKeyAction, Iden, IdenStatic, Linked, ModelTrait, PaginatorTrait, PrimaryKeyToColumn,
-    PrimaryKeyTrait, QueryFilter, QueryResult, Related, RelationDef, RelationTrait, Select, Value,
+    ForeignKeyAction, Iden, IdenStatic, Linked, LoaderTrait, ModelTrait, PaginatorTrait,
+    PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryResult, Related, RelationDef,
+    RelationTrait, Select, Value,
 };
 
 #[cfg(feature = "macros")]
@@ -71,6 +72,9 @@ pub use time::OffsetDateTime as TimeDateTimeWithTimeZone;
 
 #[cfg(feature = "with-rust_decimal")]
 pub use rust_decimal::Decimal;
+
+#[cfg(feature = "with-bigdecimal")]
+pub use bigdecimal::BigDecimal;
 
 #[cfg(feature = "with-uuid")]
 pub use uuid::Uuid;
