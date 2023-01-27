@@ -83,7 +83,7 @@ pub fn derive_database(input: TokenStream) -> TokenStream {
                 .map(|attr| attr.name)
                 .ok_or_else(|| s.span().error(ONE_DATABASE_ATTR))?;
 
-            let fairing_name = format!("'{}' Database Pool", db_name);
+            let fairing_name = format!("'{db_name}' Database Pool");
 
             let pool_type = match &s.fields {
                 syn::Fields::Unnamed(f) => &f.unnamed[0].ty,

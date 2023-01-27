@@ -37,7 +37,7 @@ pub trait QueryTrait {
     ///             query.filter(cake::Column::Id.eq(v))
     ///         })
     ///         .apply_if(Some(100), QuerySelect::limit)
-    ///         .apply_if(None, QuerySelect::offset) // no-op
+    ///         .apply_if(None, QuerySelect::offset::<Option<u64>>) // no-op
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
     ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = 3 LIMIT 100"#
