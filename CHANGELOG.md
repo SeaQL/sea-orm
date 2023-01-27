@@ -19,8 +19,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Support `ActiveEnum` field as primary key https://github.com/SeaQL/sea-orm/pull/1414
 * Casting columns as a different data type on select, insert and update https://github.com/SeaQL/sea-orm/pull/1304
 * Methods of `ActiveModelBehavior` receive db connection as a parameter https://github.com/SeaQL/sea-orm/pull/1145, https://github.com/SeaQL/sea-orm/pull/1328
-* Added `DatabaseConnection::get_*_connection_pool()` method to access the inner SQLx connection pool https://github.com/SeaQL/sea-orm/pull/1297
-    * Note: guarded by the `sea-orm-internal` feature flag
 * Added `execute_unprepared` method to `DatabaseConnection` and `DatabaseTransaction` https://github.com/SeaQL/sea-orm/pull/1327
 * Added `Select::into_tuple` to select rows as tuples (instead of defining a custom Model) https://github.com/SeaQL/sea-orm/pull/1311
 
@@ -35,6 +33,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Added `is_null` getter for `ColumnDef` https://github.com/SeaQL/sea-orm/pull/1381
 * Added `ActiveValue::reset` to convert `Unchanged` into `Set` https://github.com/SeaQL/sea-orm/pull/1177
 * Added `QueryTrait::apply_if` to optionally apply a filter https://github.com/SeaQL/sea-orm/pull/1415
+* Added the `sea-orm-internal` feature flag to expose some SQLx types
+    * Added `DatabaseConnection::get_*_connection_pool()` for accessing the inner SQLx connection pool https://github.com/SeaQL/sea-orm/pull/1297
+    * Re-exporting SQLx errors https://github.com/SeaQL/sea-orm/pull/1434
 
 ### Upgrades
 
