@@ -87,13 +87,9 @@ impl TryGetable for XXX {
     }
 }
 ```
-* The `ActiveModelBehaviour` trait becomes async trait https://github.com/SeaQL/sea-orm/pull/1328
+* The `ActiveModelBehaviour` trait becomes async trait https://github.com/SeaQL/sea-orm/pull/1328.
+If you overridden the default `ActiveModelBehaviour` implementation:
 ```rust
-// For anyone who implement the `ActiveModelBehaviour` with default implementation (no*op).
-// No code changes is required.
-impl ActiveModelBehavior for ActiveModel {}
-
-// However, if you overridden the default implementation:
 #[async_trait::async_trait]
 impl ActiveModelBehavior for ActiveModel {
     async fn before_save<C>(self, db: &C, insert: bool) -> Result<Self, DbErr>
@@ -125,6 +121,33 @@ assert_eq!(
 
 // now
 assert_eq!(res, Err(DbErr::RecordNotUpdated));
+```
+* `sea_orm::ColumnType` was replaced by `sea_query::ColumnType` https://github.com/SeaQL/sea-orm/pull/1395
+    * Method `ColumnType::def` was moved to `ColumnTypeTrait`
+    * `ColumnType::Binary` becomes a tuple variant which takes in additional option `sea_query::BlobSize`
+    * `ColumnType::Custom` takes a `sea_query::DynIden` instead of `String` and thus a new method `custom` is added (note the lowercase)
+```diff
+// Compact Entity
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "fruit")]
+pub struct Model {
+-   #[sea_orm(column_type = r#"Custom("citext".to_owned())"#)]
++   #[sea_orm(column_type = r#"custom("citext")"#)]
+    pub column: String,
+}
+```
+```diff
+// Expanded Entity
+impl ColumnTrait for Column {
+    type EntityName = Entity;
+
+    fn def(&self) -> ColumnDef {
+        match self {
+-           Self::Column => ColumnType::Custom("citext".to_owned()).def(),
++           Self::Column => ColumnType::custom("citext").def(),
+        }
+    }
+}
 ```
 
 ## 0.10.7 - 2023-01-19
