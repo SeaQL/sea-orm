@@ -211,7 +211,7 @@ where
     // Set search_path for Postgres, E.g. Some("public") by default
     // MySQL & SQLite connection initialize with schema `None`
     if let Some(schema) = schema {
-        let sql = format!("SET search_path = '{}'", schema);
+        let sql = format!("SET search_path = '{schema}'");
         pool_options = pool_options.after_connect(move |conn, _| {
             let sql = sql.clone();
             Box::pin(async move {

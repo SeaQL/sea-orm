@@ -35,7 +35,7 @@ impl Display for MigrationStatus {
             MigrationStatus::Pending => "Pending",
             MigrationStatus::Applied => "Applied",
         };
-        write!(f, "{}", status)
+        write!(f, "{status}")
     }
 }
 
@@ -91,7 +91,7 @@ pub trait MigratorTrait: Send {
         let errors: Vec<String> = missing_migrations_in_fs
             .iter()
             .map(|missing_migration| {
-                format!("Migration file of version '{}' is missing, this migration has been applied but its file is missing", missing_migration)
+                format!("Migration file of version '{missing_migration}' is missing, this migration has been applied but its file is missing")
             }).collect();
 
         if !errors.is_empty() {
