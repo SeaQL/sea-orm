@@ -46,9 +46,9 @@ where
 {
     let string = string.to_string();
     if RUST_KEYWORDS.iter().any(|s| s.eq(&string)) {
-        format!("r#{}", string)
+        format!("r#{string}")
     } else if RUST_SPECIAL_KEYWORDS.iter().any(|s| s.eq(&string)) {
-        format!("{}_", string)
+        format!("{string}_")
     } else {
         string
     }

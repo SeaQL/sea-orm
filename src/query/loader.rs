@@ -99,7 +99,7 @@ where
                 {
                     let key = extract_key(&rel_def.to_col, &value);
 
-                    acc.insert(format!("{:?}", key), value);
+                    acc.insert(format!("{key:?}"), value);
                 }
 
                 acc
@@ -108,7 +108,7 @@ where
 
         let result: Vec<Option<<R as EntityTrait>::Model>> = keys
             .iter()
-            .map(|key| hashmap.get(&format!("{:?}", key)).cloned())
+            .map(|key| hashmap.get(&format!("{key:?}")).cloned())
             .collect();
 
         Ok(result)
@@ -145,7 +145,7 @@ where
         let mut hashmap: HashMap<String, Vec<<R as EntityTrait>::Model>> =
             keys.iter()
                 .fold(HashMap::new(), |mut acc, key: &ValueTuple| {
-                    acc.insert(format!("{:?}", key), Vec::new());
+                    acc.insert(format!("{key:?}"), Vec::new());
 
                     acc
                 });
@@ -155,7 +155,7 @@ where
                 let key = extract_key(&rel_def.to_col, &value);
 
                 let vec = hashmap
-                    .get_mut(&format!("{:?}", key))
+                    .get_mut(&format!("{key:?}"))
                     .expect("Failed at finding key on hashmap");
 
                 vec.push(value);
@@ -165,7 +165,7 @@ where
             .iter()
             .map(|key: &ValueTuple| {
                 hashmap
-                    .get(&format!("{:?}", key))
+                    .get(&format!("{key:?}"))
                     .cloned()
                     .unwrap_or_default()
             })
