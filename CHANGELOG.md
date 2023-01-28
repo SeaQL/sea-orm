@@ -75,7 +75,7 @@ fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError>
 // now; ColIdx can be `&str` or `usize`
 fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError>;
 ```
-So if you implmented it yourself:
+So if you implemented it yourself:
 ```patch
 impl TryGetable for XXX {
 -   fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
