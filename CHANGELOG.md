@@ -48,6 +48,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Changed all version = "^x.y.z" into version = "x.y.z" and disabled default features and enable only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
 * Cleanup the use of `vec!` macros https://github.com/SeaQL/sea-orm/pull/1367
 * Fixed a small typo https://github.com/SeaQL/sea-orm/pull/1391
+* `axum` example should use tokio runtime https://github.com/SeaQL/sea-orm/pull/1428
+* Fixed all clippy warnings as of `1.67.0` https://github.com/SeaQL/sea-orm/pull/1426
 
 ### Bug Fixes
 
