@@ -75,6 +75,17 @@ fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError>
 // now; ColIdx can be `&str` or `usize`
 fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError>;
 ```
+So if you implmented it yourself:
+```patch
+impl TryGetable for XXX {
+-   fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
++   fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+-       let value: YYY = res.try_get(pre, col).map_err(TryGetError::DbErr)?;
++       let value: YYY = res.try_get_by(idx).map_err(TryGetError::DbErr)?;
+        ..
+    }
+}
+```
 * The `ActiveModelBehaviour` trait becomes async trait https://github.com/SeaQL/sea-orm/pull/1328
 ```rust
 // For anyone who implement the `ActiveModelBehaviour` with default implementation (no*op).
