@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Casting columns as a different data type on select, insert and update https://github.com/SeaQL/sea-orm/pull/1304
 * Methods of `ActiveModelBehavior` receive db connection as a parameter https://github.com/SeaQL/sea-orm/pull/1145, https://github.com/SeaQL/sea-orm/pull/1328
 * Added `DatabaseConnection::get_*_connection_pool()` method to access the inner SQLx connection pool https://github.com/SeaQL/sea-orm/pull/1297
-    * Note: `sea-orm-internal` has to be enabled
+    * Note: guarded by the `sea-orm-internal` feature flag
 * Added `execute_unprepared` method to `DatabaseConnection` and `DatabaseTransaction` https://github.com/SeaQL/sea-orm/pull/1327
 * Added `Select::into_tuple` to select rows as tuples (instead of defining a custom Model) https://github.com/SeaQL/sea-orm/pull/1311
 
