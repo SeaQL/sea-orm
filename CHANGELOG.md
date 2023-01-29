@@ -66,6 +66,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Breaking changes
 
+* [sea-orm-cli] Enable --universal-time by default https://github.com/SeaQL/sea-orm/pull/1420
 * Added `RecordNotInserted` and `RecordNotUpdated` to `DbErr` 
 * Added `ConnectionTrait::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
 * As part of https://github.com/SeaQL/sea-orm/pull/1311, the required method of `TryGetable` changed:
