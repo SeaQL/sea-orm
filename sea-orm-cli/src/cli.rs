@@ -115,9 +115,21 @@ pub enum MigrateSubcommands {
         #[clap(
             action,
             long,
-            help = "Generate migration file based on Utc time instead of Local time"
+            default_value = "true",
+            help = "Generate migration file based on Utc time",
+            conflicts_with = "local-time",
+            display_order = 1001
         )]
         universal_time: bool,
+
+        #[clap(
+            action,
+            long,
+            help = "Generate migration file based on Local time",
+            conflicts_with = "universal-time",
+            display_order = 1002
+        )]
+        local_time: bool,
     },
     #[clap(
         about = "Drop all tables from the database, then reapply all migrations",

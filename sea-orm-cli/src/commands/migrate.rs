@@ -25,7 +25,8 @@ pub fn run_migrate_command(
         Some(MigrateSubcommands::Generate {
             migration_name,
             universal_time,
-        }) => run_migrate_generate(migration_dir, &migration_name, universal_time)?,
+            local_time,
+        }) => run_migrate_generate(migration_dir, &migration_name, !local_time)?,
         _ => {
             let (subcommand, migration_dir, steps, verbose) = match command {
                 Some(MigrateSubcommands::Fresh) => ("fresh", migration_dir, None, verbose),
