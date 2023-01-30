@@ -1,12 +1,14 @@
 #[cfg(feature = "cli")]
 pub mod cli;
 pub mod manager;
+pub mod manager_connection;
 pub mod migrator;
 pub mod prelude;
 pub mod seaql_migrations;
 pub mod util;
 
 pub use manager::*;
+pub use manager_connection::*;
 pub use migrator::*;
 
 pub use async_trait;
