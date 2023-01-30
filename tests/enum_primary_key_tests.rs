@@ -56,6 +56,28 @@ pub async fn insert_teas(db: &DatabaseConnection) -> Result<(), DbErr> {
             .unwrap()
     );
 
+    // UNIQUE constraint failed
+    assert!(ActiveModel {
+        id: Set(Tea::EverydayTea),
+        category: Set(Some(Category::Big)),
+        color: Set(Some(Color::Black)),
+        ..Default::default()
+    }
+    .insert(db)
+    .await
+    .is_err());
+
+    // UNIQUE constraint failed
+    assert!(Entity::insert(ActiveModel {
+        id: Set(Tea::EverydayTea),
+        category: Set(Some(Category::Big)),
+        color: Set(Some(Color::Black)),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .is_err());
+
     let _ = ActiveModel {
         category: Set(Some(Category::Big)),
         color: Set(Some(Color::Black)),
