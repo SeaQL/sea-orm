@@ -44,6 +44,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_pi_table(db).await?;
     create_uuid_fmt_table(db).await?;
     create_edit_log_table(db).await?;
+    create_check_table(db).await?;
 
     if DbBackend::Postgres == db_backend {
         create_collection_table(db).await?;
@@ -497,4 +498,31 @@ pub async fn create_edit_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &stmt, EditLog).await
+}
+
+pub async fn create_check_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(check::Entity)
+        .col(
+            ColumnDef::new(check::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(check::Column::Pay).string().not_null())
+        .col(ColumnDef::new(check::Column::Amount).double().not_null())
+        .col(
+            ColumnDef::new(check::Column::UpdatedAt)
+                .timestamp_with_time_zone()
+                .default("CURRENT_TIMESTAMP"),
+        )
+        .col(
+            ColumnDef::new(check::Column::CreatedAt)
+                .timestamp_with_time_zone()
+                .default("CURRENT_TIMESTAMP"),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, Check).await
 }
