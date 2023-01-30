@@ -44,6 +44,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_pi_table(db).await?;
     create_uuid_fmt_table(db).await?;
     create_edit_log_table(db).await?;
+    create_teas_table(db).await?;
 
     if DbBackend::Postgres == db_backend {
         create_collection_table(db).await?;
@@ -497,4 +498,20 @@ pub async fn create_edit_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &stmt, EditLog).await
+}
+
+pub async fn create_teas_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(teas::Entity.table_ref())
+        .col(
+            ColumnDef::new(teas::Column::Id)
+                .enumeration(TeaEnum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea])
+                .not_null()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(teas::Column::Category).string_len(1))
+        .col(ColumnDef::new(teas::Column::Color).integer())
+        .to_owned();
+
+    create_table(db, &create_table_stmt, Teas).await
 }

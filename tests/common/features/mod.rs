@@ -16,6 +16,7 @@ pub mod satellite;
 pub mod schema;
 pub mod sea_orm_active_enums;
 pub mod self_join;
+pub mod teas;
 pub mod transaction_log;
 pub mod uuid_fmt;
 
@@ -36,5 +37,6 @@ pub use satellite::Entity as Satellite;
 pub use schema::*;
 pub use sea_orm_active_enums::*;
 pub use self_join::Entity as SelfJoin;
+pub use teas::Entity as Teas;
 pub use transaction_log::Entity as TransactionLog;
 pub use uuid_fmt::Entity as UuidFmt;
