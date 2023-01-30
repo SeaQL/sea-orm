@@ -107,10 +107,13 @@ where
             if <A::Entity as EntityTrait>::PrimaryKey::from_column(col).is_some() {
                 continue;
             }
+            let col_def = col.def();
             let av = self.model.get(col);
             if av.is_set() {
                 let expr = col.save_as(Expr::val(av.into_value().unwrap()));
                 self.query.value(col, expr);
+            } else if col_def.updated_at {
+                self.query.value(col, Expr::current_timestamp());
             }
         }
         self

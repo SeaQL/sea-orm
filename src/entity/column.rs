@@ -15,7 +15,10 @@ pub struct ColumnDef {
     pub(crate) null: bool,
     pub(crate) unique: bool,
     pub(crate) indexed: bool,
+    pub(crate) created_at: bool,
+    pub(crate) updated_at: bool,
     pub(crate) default_value: Option<Value>,
+    pub(crate) default_expr: Option<String>,
 }
 
 macro_rules! bind_oper {
@@ -295,7 +298,10 @@ impl ColumnTypeTrait for ColumnType {
             null: false,
             unique: false,
             indexed: false,
+            created_at: false,
+            updated_at: false,
             default_value: None,
+            default_expr: None,
         }
     }
 
@@ -335,12 +341,30 @@ impl ColumnDef {
         self
     }
 
+    /// Set the `created_at` field  to `true`
+    pub fn created_at(mut self) -> Self {
+        self.created_at = true;
+        self
+    }
+
+    /// Set the `updated_at` field  to `true`
+    pub fn updated_at(mut self) -> Self {
+        self.updated_at = true;
+        self
+    }
+
     /// Set the default value
     pub fn default_value<T>(mut self, value: T) -> Self
     where
         T: Into<Value>,
     {
         self.default_value = Some(value.into());
+        self
+    }
+
+    /// Set the default expr
+    pub fn default_expr(mut self, value: String) -> Self {
+        self.default_expr = Some(value);
         self
     }
 
