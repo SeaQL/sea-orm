@@ -18,7 +18,7 @@ pub struct ColumnDef {
     pub(crate) created_at: bool,
     pub(crate) updated_at: bool,
     pub(crate) default_value: Option<Value>,
-    pub(crate) extra: Option<String>,
+    pub(crate) default_expr: Option<String>,
 }
 
 macro_rules! bind_oper {
@@ -301,7 +301,7 @@ impl ColumnTypeTrait for ColumnType {
             created_at: false,
             updated_at: false,
             default_value: None,
-            extra: None,
+            default_expr: None,
         }
     }
 
@@ -362,9 +362,9 @@ impl ColumnDef {
         self
     }
 
-    /// Set the extra
-    pub fn extra(mut self, value: String) -> Self {
-        self.extra = Some(value);
+    /// Set the default expr
+    pub fn default_expr(mut self, value: String) -> Self {
+        self.default_expr = Some(value);
         self
     }
 

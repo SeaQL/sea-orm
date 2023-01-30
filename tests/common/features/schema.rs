@@ -6,7 +6,9 @@ use sea_orm::{
     error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName,
     ExecResult, Schema,
 };
-use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement, IntoIden};
+use sea_query::{
+    extension::postgres::Type, Alias, ColumnDef, Expr, ForeignKeyCreateStatement, IntoIden,
+};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     let db_backend = db.get_database_backend();
@@ -515,12 +517,12 @@ pub async fn create_check_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(
             ColumnDef::new(check::Column::UpdatedAt)
                 .timestamp_with_time_zone()
-                .default("CURRENT_TIMESTAMP"),
+                .default(Expr::current_timestamp()),
         )
         .col(
             ColumnDef::new(check::Column::CreatedAt)
                 .timestamp_with_time_zone()
-                .default("CURRENT_TIMESTAMP"),
+                .default(Expr::current_timestamp()),
         )
         .to_owned();
 

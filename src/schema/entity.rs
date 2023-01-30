@@ -4,7 +4,7 @@ use crate::{
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
-    ColumnDef, Iden, Index, IndexCreateStatement, SeaRc, TableCreateStatement,
+    ColumnDef, Iden, Index, IndexCreateStatement, SeaRc, SimpleExpr, TableCreateStatement,
 };
 
 impl Schema {
@@ -210,9 +210,8 @@ where
     }
     if let Some(value) = orm_column_def.default_value {
         column_def.default(value);
-    }
-    if let Some(value) = orm_column_def.extra {
-        column_def.default(value);
+    } else if let Some(value) = orm_column_def.default_expr {
+        column_def.default(SimpleExpr::CustomWithExpr(value, vec![]));
     }
     for primary_key in E::PrimaryKey::iter() {
         if column.to_string() == primary_key.into_column().to_string() {
