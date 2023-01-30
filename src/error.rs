@@ -1,5 +1,12 @@
 #[cfg(feature = "sqlx-dep")]
-use sqlx::error::Error as SqlxError;
+pub use sqlx::error::Error as SqlxError;
+#[cfg(feature = "sqlx-mysql")]
+pub use sqlx::mysql::MySqlDatabaseError as SqlxMySqlDatabaseError;
+#[cfg(feature = "sqlx-postgres")]
+pub use sqlx::postgres::PgDatabaseError as SqlxPgDatabaseError;
+#[cfg(feature = "sqlx-sqlite")]
+pub use sqlx::sqlite::SqliteError as SqlxSqliteError;
+
 use thiserror::Error;
 
 /// An error from unsuccessful database operations
