@@ -28,7 +28,7 @@ impl MigrationTrait for Migration {
             .drop_table(Table::drop().table(Cake::Table).to_owned())
             .await?;
 
-        if std::env::var_os("ABOARD_MIGRATION").eq(&Some("YES".into())) {
+        if std::env::var_os("ABORT_MIGRATION").eq(&Some("YES".into())) {
             return Err(DbErr::Migration(
                 "Aboard migration and rollback changes".into(),
             ));

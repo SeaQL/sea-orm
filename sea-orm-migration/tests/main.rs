@@ -112,7 +112,7 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
         println!("\nRoll back changes when encounter errors");
 
         // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
-        std::env::set_var("ABOARD_MIGRATION", "YES");
+        std::env::set_var("ABORT_MIGRATION", "YES");
 
         // Should throw an error
         println!("\nMigrator::up");
@@ -131,7 +131,7 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
         assert!(!manager.has_table("fruit").await?);
 
         // Unset the flag
-        std::env::remove_var("ABOARD_MIGRATION");
+        std::env::remove_var("ABORT_MIGRATION");
     }
 
     println!("\nMigrator::up");
@@ -151,7 +151,7 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
         println!("\nRoll back changes when encounter errors");
 
         // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
-        std::env::set_var("ABOARD_MIGRATION", "YES");
+        std::env::set_var("ABORT_MIGRATION", "YES");
 
         // Should throw an error
         println!("\nMigrator::down");
@@ -170,7 +170,7 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
         assert!(manager.has_table("fruit").await?);
 
         // Unset the flag
-        std::env::remove_var("ABOARD_MIGRATION");
+        std::env::remove_var("ABORT_MIGRATION");
     }
 
     println!("\nMigrator::down");
