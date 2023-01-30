@@ -353,7 +353,7 @@ mod tests {
 
     #[smol_potat::test]
     async fn insert_8() -> Result<(), DbErr> {
-        use crate::{ActiveModelTrait, DbBackend, MockDatabase, Statement, Transaction};
+        use crate::{DbBackend, MockDatabase, Statement, Transaction};
 
         mod post {
             use crate as sea_orm;
@@ -406,9 +406,7 @@ mod tests {
 
     #[smol_potat::test]
     async fn insert_9() -> Result<(), DbErr> {
-        use crate::{
-            ActiveModelTrait, DbBackend, MockDatabase, MockExecResult, Statement, Transaction,
-        };
+        use crate::{DbBackend, MockDatabase, MockExecResult, Statement, Transaction};
 
         mod post {
             use crate as sea_orm;
