@@ -1,7 +1,41 @@
 use clap::{ArgEnum, ArgGroup, Parser, Subcommand};
 
 #[derive(Parser, Debug)]
-#[clap(version)]
+#[clap(
+    version,
+    author,
+    help_template = r#"{before-help}{name} {version}
+{about-with-newline}
+
+{usage-heading} {usage}
+
+{all-args}{after-help}
+
+AUTHORS:
+    {author}
+"#,
+    about = r#"
+   ____                 ___   ____   __  __        /\
+  / ___|   ___   __ _  / _ \ |  _ \ |  \/  |      {.-}
+  \___ \  / _ \ / _` || | | || |_) || |\/| |     ;_.-'\
+   ___) ||  __/| (_| || |_| ||  _ < | |  | |    {    _.}_
+  |____/  \___| \__,_| \___/ |_| \_\|_|  |_|     \.-' /  `,
+                                                  \  |    /
+  An async & dynamic ORM for Rust                  \ |  ,/
+  ===============================                   \|_/
+
+  Getting Started!
+    - documentation: https://www.sea-ql.org/SeaORM
+    - step-by-step tutorials: https://www.sea-ql.org/sea-orm-tutorial
+    - integration examples: https://github.com/SeaQL/sea-orm/tree/master/examples
+    - cookbook: https://www.sea-ql.org/sea-orm-cookbook
+
+  Join our Discord server to chat with others in the SeaQL community!
+    - invitation link: https://discord.com/invite/uCPdDXzbdv
+
+  If you like what we do, consider starring, commenting, sharing and contributing!
+"#
+)]
 pub struct Cli {
     #[clap(action, global = true, short, long, help = "Show debug messages")]
     pub verbose: bool,
@@ -12,13 +46,16 @@ pub struct Cli {
 
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum Commands {
-    #[clap(about = "Codegen related commands")]
-    #[clap(arg_required_else_help = true)]
+    #[clap(
+        about = "Codegen related commands",
+        arg_required_else_help = true,
+        display_order = 10
+    )]
     Generate {
         #[clap(subcommand)]
         command: GenerateSubcommands,
     },
-    #[clap(about = "Migration related commands")]
+    #[clap(about = "Migration related commands", display_order = 20)]
     Migrate {
         #[clap(
             value_parser,
@@ -63,9 +100,9 @@ you should provide the directory of that submodule.",
 
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum MigrateSubcommands {
-    #[clap(about = "Initialize migration directory")]
+    #[clap(about = "Initialize migration directory", display_order = 10)]
     Init,
-    #[clap(about = "Generate a new, empty migration")]
+    #[clap(about = "Generate a new, empty migration", display_order = 20)]
     Generate {
         #[clap(
             value_parser,
@@ -78,19 +115,37 @@ pub enum MigrateSubcommands {
         #[clap(
             action,
             long,
-            help = "Generate migration file based on Utc time instead of Local time"
+            default_value = "true",
+            help = "Generate migration file based on Utc time",
+            conflicts_with = "local-time",
+            display_order = 1001
         )]
         universal_time: bool,
+
+        #[clap(
+            action,
+            long,
+            help = "Generate migration file based on Local time",
+            conflicts_with = "universal-time",
+            display_order = 1002
+        )]
+        local_time: bool,
     },
-    #[clap(about = "Drop all tables from the database, then reapply all migrations")]
+    #[clap(
+        about = "Drop all tables from the database, then reapply all migrations",
+        display_order = 30
+    )]
     Fresh,
-    #[clap(about = "Rollback all applied migrations, then reapply all migrations")]
+    #[clap(
+        about = "Rollback all applied migrations, then reapply all migrations",
+        display_order = 40
+    )]
     Refresh,
-    #[clap(about = "Rollback all applied migrations")]
+    #[clap(about = "Rollback all applied migrations", display_order = 50)]
     Reset,
-    #[clap(about = "Check the status of all migrations")]
+    #[clap(about = "Check the status of all migrations", display_order = 60)]
     Status,
-    #[clap(about = "Apply pending migrations")]
+    #[clap(about = "Apply pending migrations", display_order = 70)]
     Up {
         #[clap(
             value_parser,
@@ -100,14 +155,19 @@ pub enum MigrateSubcommands {
         )]
         num: Option<u32>,
     },
-    #[clap(value_parser, about = "Rollback applied migrations")]
+    #[clap(
+        value_parser,
+        about = "Rollback applied migrations",
+        display_order = 80
+    )]
     Down {
         #[clap(
             value_parser,
             short,
             long,
             default_value = "1",
-            help = "Number of applied migrations to be rolled back"
+            help = "Number of applied migrations to be rolled back",
+            display_order = 90
         )]
         num: u32,
     },

@@ -71,15 +71,20 @@ impl MockDatabase {
     }
 
     /// Add some [MockExecResult]s to `exec_results`
-    pub fn append_exec_results(mut self, vec: Vec<MockExecResult>) -> Self {
+    pub fn append_exec_results<I>(mut self, vec: I) -> Self
+    where
+        I: IntoIterator<Item = MockExecResult>,
+    {
         self.exec_results.extend(vec.into_iter().map(Result::Ok));
         self
     }
 
     /// Add some Values to `query_results`
-    pub fn append_query_results<T>(mut self, vec: Vec<Vec<T>>) -> Self
+    pub fn append_query_results<T, I, II>(mut self, vec: II) -> Self
     where
         T: IntoMockRow,
+        I: IntoIterator<Item = T>,
+        II: IntoIterator<Item = I>,
     {
         for row in vec.into_iter() {
             let row = row.into_iter().map(|vec| Ok(vec.into_mock_row())).collect();
@@ -89,13 +94,19 @@ impl MockDatabase {
     }
 
     /// Add some [DbErr]s to `exec_results`
-    pub fn append_exec_errors(mut self, vec: Vec<DbErr>) -> Self {
+    pub fn append_exec_errors<I>(mut self, vec: I) -> Self
+    where
+        I: IntoIterator<Item = DbErr>,
+    {
         self.exec_results.extend(vec.into_iter().map(Result::Err));
         self
     }
 
     /// Add some [DbErr]s to `query_results`
-    pub fn append_query_errors(mut self, vec: Vec<DbErr>) -> Self {
+    pub fn append_query_errors<I>(mut self, vec: I) -> Self
+    where
+        I: IntoIterator<Item = DbErr>,
+    {
         self.query_results.extend(vec.into_iter().map(Result::Err));
         self
     }
@@ -203,12 +214,29 @@ impl MockDatabaseTrait for MockDatabase {
 }
 
 impl MockRow {
-    /// Try to get the values of a [MockRow] and fail gracefully on error
-    pub fn try_get<T>(&self, col: &str) -> Result<T, DbErr>
+    /// Get a value from the [MockRow]
+    pub fn try_get<T, I: crate::ColIdx>(&self, index: I) -> Result<T, DbErr>
     where
         T: ValueType,
     {
-        T::try_from(self.values.get(col).unwrap().clone()).map_err(|e| DbErr::Type(e.to_string()))
+        if let Some(index) = index.as_str() {
+            T::try_from(
+                self.values
+                    .get(index)
+                    .unwrap_or_else(|| panic!("No column for ColIdx {index:?}"))
+                    .clone(),
+            )
+            .map_err(|e| DbErr::Type(e.to_string()))
+        } else if let Some(index) = index.as_usize() {
+            let (_, value) = self.values.iter().nth(*index).ok_or_else(|| {
+                DbErr::Query(RuntimeErr::Internal(format!(
+                    "Column at index {index} not found"
+                )))
+            })?;
+            T::try_from(value.clone()).map_err(|e| DbErr::Type(e.to_string()))
+        } else {
+            unreachable!("Missing ColIdx implementation for MockRow");
+        }
     }
 
     /// An iterator over the keys and values of a mock row
@@ -411,25 +439,25 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![
+            [
                 Transaction::many([
                     Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
                     Statement::from_sql_and_values(
                         DbBackend::Postgres,
                         r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
-                        vec![1u64.into()]
+                        [1u64.into()]
                     ),
                     Statement::from_sql_and_values(
                         DbBackend::Postgres,
                         r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
-                        vec![]
+                        []
                     ),
                     Statement::from_string(DbBackend::Postgres, "COMMIT".to_owned()),
                 ]),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
-                    vec![]
+                    []
                 ),
             ]
         );
@@ -457,15 +485,15 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many([
+            [Transaction::many([
                 Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
-                    vec![1u64.into()]
+                    [1u64.into()]
                 ),
                 Statement::from_string(DbBackend::Postgres, "ROLLBACK".to_owned()),
-            ]),]
+            ])]
         );
     }
 
@@ -495,18 +523,18 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many([
+            [Transaction::many([
                 Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
-                    vec![1u64.into()]
+                    [1u64.into()]
                 ),
                 Statement::from_string(DbBackend::Postgres, "SAVEPOINT savepoint_1".to_owned()),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
-                    vec![]
+                    []
                 ),
                 Statement::from_string(
                     DbBackend::Postgres,
@@ -553,24 +581,24 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::many([
+            [Transaction::many([
                 Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
-                    vec![1u64.into()]
+                    [1u64.into()]
                 ),
                 Statement::from_string(DbBackend::Postgres, "SAVEPOINT savepoint_1".to_owned()),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
-                    vec![]
+                    []
                 ),
                 Statement::from_string(DbBackend::Postgres, "SAVEPOINT savepoint_2".to_owned()),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
-                    vec![]
+                    []
                 ),
                 Statement::from_string(
                     DbBackend::Postgres,
@@ -602,7 +630,7 @@ mod tests {
         };
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![apple.clone(), orange.clone()]])
+            .append_query_results([[apple.clone(), orange.clone()]])
             .into_connection();
 
         let mut stream = fruit::Entity::find().stream(&db).await?;
@@ -622,7 +650,7 @@ mod tests {
         use futures::TryStreamExt;
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![Vec::<fruit::Model>::new()])
+            .append_query_results([Vec::<fruit::Model>::new()])
             .into_connection();
 
         let mut stream = Fruit::find().stream(&db).await?;
@@ -651,7 +679,7 @@ mod tests {
         };
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![apple.clone(), orange.clone()]])
+            .append_query_results([[apple.clone(), orange.clone()]])
             .into_connection();
 
         let txn = db.begin().await?;
@@ -686,10 +714,10 @@ mod tests {
         );
         let mocked_row = row.into_mock_row();
 
-        let a_id = mocked_row.try_get::<i32>("A_id");
+        let a_id = mocked_row.try_get::<i32, _>("A_id");
         assert!(a_id.is_ok());
         assert_eq!(1, a_id.unwrap());
-        let b_id = mocked_row.try_get::<i32>("B_id");
+        let b_id = mocked_row.try_get::<i32, _>("B_id");
         assert!(b_id.is_ok());
         assert_eq!(2, b_id.unwrap());
     }
@@ -697,7 +725,7 @@ mod tests {
     #[smol_potat::test]
     async fn test_find_also_related_1() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![(
+            .append_query_results([[(
                 cake::Model {
                     id: 1,
                     name: "Apple Cake".to_owned(),
@@ -715,7 +743,7 @@ mod tests {
                 .find_also_related(fruit::Entity)
                 .all(&db)
                 .await?,
-            vec![(
+            [(
                 cake::Model {
                     id: 1,
                     name: "Apple Cake".to_owned(),
@@ -730,10 +758,10 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::from_sql_and_values(
+            [Transaction::from_sql_and_values(
                 DbBackend::Postgres,
                 r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name", "fruit"."id" AS "B_id", "fruit"."name" AS "B_name", "fruit"."cake_id" AS "B_cake_id" FROM "cake" LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
-                vec![]
+                []
             ),]
         );
 
@@ -763,7 +791,7 @@ mod tests {
         }
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![
+            .append_query_results([[
                 collection::Model {
                     id: 1,
                     integers: vec![1, 2, 3],
@@ -784,7 +812,7 @@ mod tests {
 
         assert_eq!(
             collection::Entity::find().all(&db).await?,
-            vec![
+            [
                 collection::Model {
                     id: 1,
                     integers: vec![1, 2, 3],
@@ -805,10 +833,10 @@ mod tests {
 
         assert_eq!(
             db.into_transaction_log(),
-            vec![Transaction::from_sql_and_values(
+            [Transaction::from_sql_and_values(
                 DbBackend::Postgres,
                 r#"SELECT "collection"."id", "collection"."integers", "collection"."integers_opt" FROM "collection""#,
-                vec![]
+                []
             ),]
         );
 
@@ -818,7 +846,7 @@ mod tests {
     #[smol_potat::test]
     async fn test_query_err() {
         let db = MockDatabase::new(DbBackend::MySql)
-            .append_query_errors(vec![DbErr::Query(RuntimeErr::Internal(
+            .append_query_errors([DbErr::Query(RuntimeErr::Internal(
                 "this is a mock query error".to_owned(),
             ))])
             .into_connection();
@@ -834,7 +862,7 @@ mod tests {
     #[smol_potat::test]
     async fn test_exec_err() {
         let db = MockDatabase::new(DbBackend::MySql)
-            .append_exec_errors(vec![DbErr::Exec(RuntimeErr::Internal(
+            .append_exec_errors([DbErr::Exec(RuntimeErr::Internal(
                 "this is a mock exec error".to_owned(),
             ))])
             .into_connection();

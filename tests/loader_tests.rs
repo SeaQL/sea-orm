@@ -56,9 +56,9 @@ async fn loader_load_one() -> Result<(), DbErr> {
         .await
         .expect("Should load bakeries");
 
-    assert_eq!(bakers, vec![baker_1, baker_2]);
+    assert_eq!(bakers, [baker_1, baker_2]);
 
-    assert_eq!(bakeries, vec![Some(bakery), None]);
+    assert_eq!(bakeries, [Some(bakery), None]);
 
     Ok(())
 }
@@ -116,9 +116,9 @@ async fn loader_load_one_complex() -> Result<(), DbErr> {
         .await
         .expect("Should load bakeries");
 
-    assert_eq!(bakers, vec![baker_1, baker_2]);
+    assert_eq!(bakers, [baker_1, baker_2]);
 
-    assert_eq!(bakeries, vec![Some(bakery.clone()), Some(bakery.clone())]);
+    assert_eq!(bakeries, [Some(bakery.clone()), Some(bakery.clone())]);
 
     Ok(())
 }
@@ -211,11 +211,11 @@ async fn loader_load_many() -> Result<(), DbErr> {
     println!("A: {:?}", bakers);
     println!("B: {:?}", bakeries);
 
-    assert_eq!(bakeries, vec![bakery_1, bakery_2]);
+    assert_eq!(bakeries, [bakery_1, bakery_2]);
 
     assert_eq!(
         bakers,
-        vec![
+        [
             vec![baker_1.clone(), baker_2.clone()],
             vec![baker_4.clone()]
         ]
@@ -226,7 +226,7 @@ async fn loader_load_many() -> Result<(), DbErr> {
         .await
         .expect("Should load bakers");
 
-    assert_eq!(bakers, vec![vec![baker_1, baker_2], vec![baker_3, baker_4]]);
+    assert_eq!(bakers, [[baker_1, baker_2], [baker_3, baker_4]]);
 
     Ok(())
 }

@@ -55,6 +55,14 @@ pub enum DbErr {
     /// A migration error
     #[error("Migration Error: {0}")]
     Migration(String),
+    /// None of the records are inserted,
+    /// that probably means all of them conflict with existing records in the table
+    #[error("None of the records are inserted")]
+    RecordNotInserted,
+    /// None of the records are updated, that means a WHERE condition has no matches.
+    /// May be the table is empty or the record does not exist
+    #[error("None of the records are updated")]
+    RecordNotUpdated,
 }
 
 /// Runtime error

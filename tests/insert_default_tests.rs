@@ -32,7 +32,7 @@ pub async fn create_insert_default(db: &DatabaseConnection) -> Result<(), DbErr>
 
     assert_eq!(
         Entity::find().all(db).await?,
-        vec![Model { id: 1 }, Model { id: 2 }, Model { id: 3 }]
+        [Model { id: 1 }, Model { id: 2 }, Model { id: 3 }]
     );
 
     Ok(())

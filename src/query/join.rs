@@ -1,5 +1,5 @@
 use crate::{
-    cast_enum_as_text, join_tbl_on_condition, unpack_table_ref, EntityTrait, IdenStatic, Iterable,
+    join_tbl_on_condition, unpack_table_ref, ColumnTrait, EntityTrait, IdenStatic, Iterable,
     Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
 };
 pub use sea_query::JoinType;
@@ -70,7 +70,7 @@ where
     {
         let mut slf = self;
         for (i, mut rel) in l.link().into_iter().enumerate() {
-            let to_tbl = Alias::new(&format!("r{}", i)).into_iden();
+            let to_tbl = Alias::new(&format!("r{i}")).into_iden();
             let from_tbl = if i > 0 {
                 Alias::new(&format!("r{}", i - 1)).into_iden()
             } else {
@@ -100,7 +100,7 @@ where
                 col.into_iden(),
             ));
             select_two.query().expr(SelectExpr {
-                expr: cast_enum_as_text(expr, &col),
+                expr: col.select_as(expr),
                 alias: Some(SeaRc::new(Alias::new(&alias))),
                 window: None,
             });

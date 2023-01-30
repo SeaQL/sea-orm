@@ -32,8 +32,35 @@ pub trait LoaderTrait {
 #[async_trait]
 impl<M> LoaderTrait for Vec<M>
 where
-    M: ModelTrait,
-    Vec<M>: Sync,
+    M: ModelTrait + Sync,
+{
+    type Model = M;
+
+    async fn load_one<R, C>(&self, stmt: Select<R>, db: &C) -> Result<Vec<Option<R::Model>>, DbErr>
+    where
+        C: ConnectionTrait,
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
+    {
+        self.as_slice().load_one(stmt, db).await
+    }
+
+    async fn load_many<R, C>(&self, stmt: Select<R>, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
+    where
+        C: ConnectionTrait,
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
+    {
+        self.as_slice().load_many(stmt, db).await
+    }
+}
+
+#[async_trait]
+impl<M> LoaderTrait for &[M]
+where
+    M: ModelTrait + Sync,
 {
     type Model = M;
 
@@ -72,7 +99,7 @@ where
                 {
                     let key = extract_key(&rel_def.to_col, &value);
 
-                    acc.insert(format!("{:?}", key), value);
+                    acc.insert(format!("{key:?}"), value);
                 }
 
                 acc
@@ -81,7 +108,7 @@ where
 
         let result: Vec<Option<<R as EntityTrait>::Model>> = keys
             .iter()
-            .map(|key| hashmap.get(&format!("{:?}", key)).cloned())
+            .map(|key| hashmap.get(&format!("{key:?}")).cloned())
             .collect();
 
         Ok(result)
@@ -118,7 +145,7 @@ where
         let mut hashmap: HashMap<String, Vec<<R as EntityTrait>::Model>> =
             keys.iter()
                 .fold(HashMap::new(), |mut acc, key: &ValueTuple| {
-                    acc.insert(format!("{:?}", key), Vec::new());
+                    acc.insert(format!("{key:?}"), Vec::new());
 
                     acc
                 });
@@ -128,7 +155,7 @@ where
                 let key = extract_key(&rel_def.to_col, &value);
 
                 let vec = hashmap
-                    .get_mut(&format!("{:?}", key))
+                    .get_mut(&format!("{key:?}"))
                     .expect("Failed at finding key on hashmap");
 
                 vec.push(value);
@@ -138,7 +165,7 @@ where
             .iter()
             .map(|key: &ValueTuple| {
                 hashmap
-                    .get(&format!("{:?}", key))
+                    .get(&format!("{key:?}"))
                     .cloned()
                     .unwrap_or_default()
             })
@@ -259,7 +286,7 @@ mod tests {
         };
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![
+            .append_query_results([[
                 cake::Model {
                     id: 1,
                     name: "New York Cheese".to_owned(),
@@ -286,7 +313,7 @@ mod tests {
 
         assert_eq!(
             cakes,
-            vec![Some(cake::Model {
+            [Some(cake::Model {
                 id: 1,
                 name: "New York Cheese".to_owned(),
             })]
@@ -300,7 +327,7 @@ mod tests {
         };
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![fruit::Model {
+            .append_query_results([[fruit::Model {
                 id: 1,
                 name: "Apple".to_owned(),
                 cake_id: Some(1),
@@ -326,7 +353,7 @@ mod tests {
 
         assert_eq!(
             fruits,
-            vec![
+            [
                 vec![fruit::Model {
                     id: 1,
                     name: "Apple".to_owned(),
