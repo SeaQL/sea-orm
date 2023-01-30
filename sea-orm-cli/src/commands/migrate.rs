@@ -24,7 +24,7 @@ pub fn run_migrate_command(
         Some(MigrateSubcommands::Init) => run_migrate_init(migration_dir)?,
         Some(MigrateSubcommands::Generate {
             migration_name,
-            universal_time,
+            universal_time: _,
             local_time,
         }) => run_migrate_generate(migration_dir, &migration_name, !local_time)?,
         _ => {

@@ -77,7 +77,7 @@ where
         Some(MigrateSubcommands::Init) => run_migrate_init(MIGRATION_DIR)?,
         Some(MigrateSubcommands::Generate {
             migration_name,
-            universal_time,
+            universal_time: _,
             local_time,
         }) => run_migrate_generate(MIGRATION_DIR, &migration_name, !local_time)?,
         _ => M::up(db, None).await?,
