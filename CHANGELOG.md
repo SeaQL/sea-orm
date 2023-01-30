@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
 * Support various UUID formats that are available in `uuid::fmt` module https://github.com/SeaQL/sea-orm/pull/1325
 * Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
+* Support `ActiveEnum` field as primary key https://github.com/SeaQL/sea-orm/pull/1414
 * Casting columns as a different data type on select, insert and update https://github.com/SeaQL/sea-orm/pull/1304
 * Methods of `ActiveModelBehavior` receive db connection as a parameter https://github.com/SeaQL/sea-orm/pull/1145, https://github.com/SeaQL/sea-orm/pull/1328
 * Added `DatabaseConnection::get_*_connection_pool()` method to access the inner SQLx connection pool https://github.com/SeaQL/sea-orm/pull/1297
