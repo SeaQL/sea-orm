@@ -13,7 +13,7 @@ path = "../../../" # remove this line in your own project
 version = "0.10.3" # sea-orm version
 features = [
     "debug-print",
-    "runtime-async-std-native-tls",
+    "runtime-tokio-native-tls",
     "sqlx-postgres",
     # "sqlx-mysql",
     # "sqlx-sqlite",

@@ -70,7 +70,7 @@ where
     {
         let mut slf = self;
         for (i, mut rel) in l.link().into_iter().enumerate() {
-            let to_tbl = Alias::new(&format!("r{}", i)).into_iden();
+            let to_tbl = Alias::new(&format!("r{i}")).into_iden();
             let from_tbl = if i > 0 {
                 Alias::new(&format!("r{}", i - 1)).into_iden()
             } else {

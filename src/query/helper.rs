@@ -163,7 +163,8 @@ pub trait QuerySelect: Sized {
         self
     }
 
-    /// Add an offset expression
+    /// Add an offset expression. Passing in None would remove the offset.
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
@@ -174,13 +175,39 @@ pub trait QuerySelect: Sized {
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` OFFSET 10"
     /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .offset(Some(10))
+    ///         .offset(Some(20))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` OFFSET 20"
+    /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .offset(10)
+    ///         .offset(None)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    /// );
     /// ```
-    fn offset(mut self, offset: u64) -> Self {
-        self.query().offset(offset);
+    fn offset<T>(mut self, offset: T) -> Self
+    where
+        T: Into<Option<u64>>,
+    {
+        if let Some(offset) = offset.into() {
+            self.query().offset(offset);
+        } else {
+            self.query().reset_offset();
+        }
         self
     }
 
-    /// Add a limit expression
+    /// Add a limit expression. Passing in None would remove the limit.
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
@@ -191,9 +218,34 @@ pub trait QuerySelect: Sized {
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 10"
     /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .limit(Some(10))
+    ///         .limit(Some(20))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 20"
+    /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .limit(10)
+    ///         .limit(None)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    /// );
     /// ```
-    fn limit(mut self, limit: u64) -> Self {
-        self.query().limit(limit);
+    fn limit<T>(mut self, limit: T) -> Self
+    where
+        T: Into<Option<u64>>,
+    {
+        if let Some(limit) = limit.into() {
+            self.query().limit(limit);
+        } else {
+            self.query().reset_limit();
+        }
         self
     }
 

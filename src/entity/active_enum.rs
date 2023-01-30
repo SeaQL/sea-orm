@@ -211,8 +211,7 @@ mod tests {
                     "B" => Ok(Self::Big),
                     "S" => Ok(Self::Small),
                     _ => Err(DbErr::Type(format!(
-                        "unexpected value for Category enum: {}",
-                        v
+                        "unexpected value for Category enum: {v}"
                     ))),
                 }
             }

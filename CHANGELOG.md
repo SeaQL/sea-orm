@@ -9,31 +9,31 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
-* Simple data loader https://github.com/SeaQL/sea-orm/pull/1238, https://github.com/SeaQL/sea-orm/pull/1368
-* Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
 * [sea-orm-cli] Generate `#[serde(skip_deserializing)]` for primary key columns https://github.com/SeaQL/sea-orm/pull/846, https://github.com/SeaQL/sea-orm/pull/1186, https://github.com/SeaQL/sea-orm/pull/1318
 * [sea-orm-cli] Generate `#[serde(skip)]` for hidden columns https://github.com/SeaQL/sea-orm/pull/1171, https://github.com/SeaQL/sea-orm/pull/1320
 * [sea-orm-cli] Generate entity with extra derives and attributes for model struct https://github.com/SeaQL/sea-orm/pull/1124, https://github.com/SeaQL/sea-orm/pull/1321
-* Added `sea-orm-internal` feature https://github.com/SeaQL/sea-orm/pull/1297
-* Added `DatabaseConnection::get_*_connection_pool()` method to borrow the inner SQLx connection pool https://github.com/SeaQL/sea-orm/pull/1297
-* Execute unprepared statements https://github.com/SeaQL/sea-orm/pull/1327
-* Added `DatabaseConnection::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
-* Added `DatabaseTransaction::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
-* Added `Select::into_tuple` to select rows as tuples instead of having to define a custom Model https://github.com/SeaQL/sea-orm/pull/1311
+* Simple data loader https://github.com/SeaQL/sea-orm/pull/1238, https://github.com/SeaQL/sea-orm/pull/1368
+* Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
 * Support various UUID formats that are available in `uuid::fmt` module https://github.com/SeaQL/sea-orm/pull/1325
+* Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
 * Casting columns as a different data type on select, insert and update https://github.com/SeaQL/sea-orm/pull/1304
-* Methods of `ActiveModelBehavior` receive db connection as the parameter https://github.com/SeaQL/sea-orm/pull/1145, https://github.com/SeaQL/sea-orm/pull/1328
+* Methods of `ActiveModelBehavior` receive db connection as a parameter https://github.com/SeaQL/sea-orm/pull/1145, https://github.com/SeaQL/sea-orm/pull/1328
+* Added `DatabaseConnection::get_*_connection_pool()` method to access the inner SQLx connection pool https://github.com/SeaQL/sea-orm/pull/1297
+    * Note: guarded by the `sea-orm-internal` feature flag
+* Added `execute_unprepared` method to `DatabaseConnection` and `DatabaseTransaction` https://github.com/SeaQL/sea-orm/pull/1327
+* Added `Select::into_tuple` to select rows as tuples (instead of defining a custom Model) https://github.com/SeaQL/sea-orm/pull/1311
 
 ### Enhancements
 
-* Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
-* Added `DatabaseConnection::close` https://github.com/SeaQL/sea-orm/pull/1236
 * Refactor schema module to expose functions for database alteration https://github.com/SeaQL/sea-orm/pull/1256
-* Added `is_null` getter for `ColumnDef` struct https://github.com/SeaQL/sea-orm/pull/1381
-* `MockDatabase::append_exec_results()`, `MockDatabase::append_query_results()`, `MockDatabase::append_exec_errors()` and `MockDatabase::append_query_errors()` take any types implemented `IntoIterator` trait https://github.com/SeaQL/sea-orm/pull/1367
-* `find_by_id` and `delete_by_id` take any Into primary key value https://github.com/SeaQL/sea-orm/pull/1362
-* Added `ActiveValue::reset` to convert `Unchanged` into `Set` https://github.com/SeaQL/sea-orm/pull/1177
 * Generate compact entity with `#[sea_orm(column_type = "JsonBinary")]` macro attribute https://github.com/SeaQL/sea-orm/pull/1346
+* `MockDatabase::append_exec_results()`, `MockDatabase::append_query_results()`, `MockDatabase::append_exec_errors()` and `MockDatabase::append_query_errors()` take any types implemented `IntoIterator` trait https://github.com/SeaQL/sea-orm/pull/1367
+* `find_by_id` and `delete_by_id` take any `Into` primary key value https://github.com/SeaQL/sea-orm/pull/1362
+* `QuerySelect::offset` and `QuerySelect::limit` takes in `Into<Option<u64>>` where `None` would reset them https://github.com/SeaQL/sea-orm/pull/1410
+* Added `DatabaseConnection::close` https://github.com/SeaQL/sea-orm/pull/1236
+* Added `is_null` getter for `ColumnDef` https://github.com/SeaQL/sea-orm/pull/1381
+* Added `ActiveValue::reset` to convert `Unchanged` into `Set` https://github.com/SeaQL/sea-orm/pull/1177
+* Added `QueryTrait::apply_if` to optionally apply a filter https://github.com/SeaQL/sea-orm/pull/1415
 
 ### Upgrades
 
@@ -48,20 +48,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Changed all version = "^x.y.z" into version = "x.y.z" and disabled default features and enable only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
 * Cleanup the use of `vec!` macros https://github.com/SeaQL/sea-orm/pull/1367
 * Fixed a small typo https://github.com/SeaQL/sea-orm/pull/1391
+* `axum` example should use tokio runtime https://github.com/SeaQL/sea-orm/pull/1428
+* Fixed all clippy warnings as of `1.67.0` https://github.com/SeaQL/sea-orm/pull/1426
 
 ### Bug Fixes
 
+* [sea-orm-cli] Propagate error on the spawned child processes https://github.com/SeaQL/sea-orm/pull/1402
+    * Fixes sea-orm-cli errors exit with error code 0 https://github.com/SeaQL/sea-orm/issues/1342
 * Fixes `DeriveColumn` (by qualifying `IdenStatic::as_str`) https://github.com/SeaQL/sea-orm/pull/1280
 * Prevent returning connections to pool with a positive transaction depth https://github.com/SeaQL/sea-orm/pull/1283
 * Postgres insert many will throw `RecordNotInserted` error if non of them are being inserted https://github.com/SeaQL/sea-orm/pull/1021
     * Fixes inserting active models by `insert_many` with `on_conflict` and `do_nothing` panics if no rows are inserted on Postgres https://github.com/SeaQL/sea-orm/issues/899
 * Don't call `last_insert_id` if not needed https://github.com/SeaQL/sea-orm/pull/1403
     * Fixes hitting 'negative last_insert_rowid' panic with Sqlite https://github.com/SeaQL/sea-orm/issues/1357
-* [sea-orm-cli] Propagate error on the spawned child processes https://github.com/SeaQL/sea-orm/pull/1402
-    * Fixes sea-orm-cli errors exit with error code 0 https://github.com/SeaQL/sea-orm/issues/1342
+* Noop when update without providing any values https://github.com/SeaQL/sea-orm/pull/1384
+    * Fixes Syntax Error when saving active model that sets nothing https://github.com/SeaQL/sea-orm/pull/1376
 
 ### Breaking changes
 
+* [sea-orm-cli] Enable --universal-time by default https://github.com/SeaQL/sea-orm/pull/1420
+* Added `RecordNotInserted` and `RecordNotUpdated` to `DbErr` 
 * Added `ConnectionTrait::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
 * As part of https://github.com/SeaQL/sea-orm/pull/1311, the required method of `TryGetable` changed:
 ```rust
@@ -70,13 +76,20 @@ fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError>
 // now; ColIdx can be `&str` or `usize`
 fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError>;
 ```
-* The `ActiveModelBehaviour` trait becomes async trait https://github.com/SeaQL/sea-orm/pull/1328
+So if you implemented it yourself:
+```patch
+impl TryGetable for XXX {
+-   fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
++   fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+-       let value: YYY = res.try_get(pre, col).map_err(TryGetError::DbErr)?;
++       let value: YYY = res.try_get_by(idx).map_err(TryGetError::DbErr)?;
+        ..
+    }
+}
+```
+* The `ActiveModelBehaviour` trait becomes async trait https://github.com/SeaQL/sea-orm/pull/1328.
+If you overridden the default `ActiveModelBehaviour` implementation:
 ```rust
-// For anyone who implement the `ActiveModelBehaviour` with default implementation (no*op).
-// No code changes is required.
-impl ActiveModelBehavior for ActiveModel {}
-
-// However, if you overridden the default implementation:
 #[async_trait::async_trait]
 impl ActiveModelBehavior for ActiveModel {
     async fn before_save<C>(self, db: &C, insert: bool) -> Result<Self, DbErr>
@@ -87,6 +100,53 @@ impl ActiveModelBehavior for ActiveModel {
     }
 
     // ...
+}
+```
+* `DbErr::RecordNotFound("None of the database rows are affected")` is moved to a dedicated error variant `DbErr::RecordNotUpdated` https://github.com/SeaQL/sea-orm/pull/1425
+```rust
+let res = Update::one(cake::ActiveModel {
+        name: Set("Cheese Cake".to_owned()),
+        ..model.into_active_model()
+    })
+    .exec(&db)
+    .await;
+
+// then
+assert_eq!(
+    res,
+    Err(DbErr::RecordNotFound(
+        "None of the database rows are affected".to_owned()
+    ))
+);
+
+// now
+assert_eq!(res, Err(DbErr::RecordNotUpdated));
+```
+* `sea_orm::ColumnType` was replaced by `sea_query::ColumnType` https://github.com/SeaQL/sea-orm/pull/1395
+    * Method `ColumnType::def` was moved to `ColumnTypeTrait`
+    * `ColumnType::Binary` becomes a tuple variant which takes in additional option `sea_query::BlobSize`
+    * `ColumnType::Custom` takes a `sea_query::DynIden` instead of `String` and thus a new method `custom` is added (note the lowercase)
+```diff
+// Compact Entity
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "fruit")]
+pub struct Model {
+-   #[sea_orm(column_type = r#"Custom("citext".to_owned())"#)]
++   #[sea_orm(column_type = r#"custom("citext")"#)]
+    pub column: String,
+}
+```
+```diff
+// Expanded Entity
+impl ColumnTrait for Column {
+    type EntityName = Entity;
+
+    fn def(&self) -> ColumnDef {
+        match self {
+-           Self::Column => ColumnType::Custom("citext".to_owned()).def(),
++           Self::Column => ColumnType::custom("citext").def(),
+        }
+    }
 }
 ```
 

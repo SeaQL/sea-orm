@@ -45,12 +45,7 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
         .exec(db)
         .await;
 
-    assert_eq!(
-        update_res,
-        Err(DbErr::RecordNotFound(
-            "None of the database rows are affected".to_owned()
-        ))
-    );
+    assert_eq!(update_res, Err(DbErr::RecordNotUpdated));
 
     let update_res = Entity::update(updated_active_model)
         .filter(Column::Id.eq(vec![1_u8, 2_u8, 3_u8])) // annotate it as Vec<u8> explicitly

@@ -20,7 +20,7 @@ pub async fn test_create_cake(db: &DbConn) {
             "home": "0395555555",
             "address": "12 Test St, Testville, Vic, Australia"
         })),
-        bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
+        bakery_id: Set(Some(bakery_insert_res.last_insert_id)),
         ..Default::default()
     };
     let baker_insert_res = Baker::insert(baker_bob)
@@ -34,7 +34,7 @@ pub async fn test_create_cake(db: &DbConn) {
         price: Set(dec!(10.25)),
         gluten_free: Set(false),
         serial: Set(uuid),
-        bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
+        bakery_id: Set(Some(bakery_insert_res.last_insert_id)),
         ..Default::default()
     };
 
@@ -49,8 +49,8 @@ pub async fn test_create_cake(db: &DbConn) {
         .expect("could not find cake");
 
     let cake_baker = cakes_bakers::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id as i32),
-        baker_id: Set(baker_insert_res.last_insert_id as i32),
+        cake_id: Set(cake_insert_res.last_insert_id),
+        baker_id: Set(baker_insert_res.last_insert_id),
     };
     let cake_baker_res = CakesBakers::insert(cake_baker.clone())
         .exec(db)

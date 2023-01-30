@@ -35,31 +35,31 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
         DbBackend::MySql => {
             db.execute(Statement::from_string(
                 db.get_database_backend(),
-                format!("CREATE DATABASE IF NOT EXISTS `{}`;", db_name),
+                format!("CREATE DATABASE IF NOT EXISTS `{db_name}`;"),
             ))
             .await?;
 
-            let url = format!("{}/{}", url, db_name);
+            let url = format!("{url}/{db_name}");
             db_connect(url).await?
         }
         DbBackend::Postgres => {
             db.execute(Statement::from_string(
                 db.get_database_backend(),
-                format!("DROP DATABASE IF EXISTS \"{}\";", db_name),
+                format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
             ))
             .await?;
             db.execute(Statement::from_string(
                 db.get_database_backend(),
-                format!("CREATE DATABASE \"{}\";", db_name),
+                format!("CREATE DATABASE \"{db_name}\";"),
             ))
             .await?;
 
-            let url = format!("{}/{}", url, db_name);
+            let url = format!("{url}/{db_name}");
             let db = db_connect(url).await?;
 
             db.execute(Statement::from_string(
                 db.get_database_backend(),
-                format!("CREATE SCHEMA IF NOT EXISTS \"{}\";", schema),
+                format!("CREATE SCHEMA IF NOT EXISTS \"{schema}\";"),
             ))
             .await?;
 

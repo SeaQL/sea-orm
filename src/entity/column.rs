@@ -4,6 +4,10 @@ use sea_query::{
 };
 use std::str::FromStr;
 
+// The original `sea_orm::ColumnType` enum was dropped since 0.11.0
+// It was replaced by `sea_query::ColumnType`, we reexport it here to keep the `ColumnType` symbol
+pub use sea_query::ColumnType;
+
 /// Defines a Column for an Entity
 #[derive(Debug, Clone, PartialEq)]
 pub struct ColumnDef {
@@ -12,109 +16,6 @@ pub struct ColumnDef {
     pub(crate) unique: bool,
     pub(crate) indexed: bool,
     pub(crate) default_value: Option<Value>,
-}
-
-/// The type of column as defined in the SQL format
-#[derive(Debug, Clone)]
-pub enum ColumnType {
-    /// `CHAR` type of specified fixed length
-    Char(Option<u32>),
-    /// `STRING` type for variable string length
-    String(Option<u32>),
-    /// `TEXT` type used for large pieces of string data and stored out of row in case size is too big
-    Text,
-    /// `TINYINT` useful for storing one byte of data (range of 0-255)
-    TinyInteger,
-    /// `SMALLINT` data type stores small whole numbers that range from –32,767 to 32,767
-    SmallInteger,
-    /// `INTEGER` data types hold numbers that are whole, or without a decimal point
-    Integer,
-    /// `BIGINT` is a 64-bit representation of an integer taking up 8 bytes of storage and
-    /// ranging from -2^63 (-9,223,372,036,854,775,808) to 2^63 (9,223,372,036,854,775,807).
-    BigInteger,
-    /// `TINYINT UNSIGNED` data type
-    TinyUnsigned,
-    /// `SMALLINT UNSIGNED` data type
-    SmallUnsigned,
-    /// `INTEGER UNSIGNED` data type
-    Unsigned,
-    /// `BIGINT UNSIGNED` data type
-    BigUnsigned,
-    /// `FLOAT` an approximate-number data type, where values range cannot be represented exactly.
-    Float,
-    /// `DOUBLE` is a normal-size floating point number where the
-    /// total number of digits is specified in size.
-    Double,
-    /// `DECIMAL` type store numbers that have fixed precision and scale
-    Decimal(Option<(u32, u32)>),
-    /// `DATETIME` type is used for values that contain both date and time parts.
-    DateTime,
-    /// `TIMESTAMP` is a temporal data type that holds the combination of date and time.
-    Timestamp,
-    /// `TIMESTAMP WITH TIME ZONE` (or `TIMESTAMPTZ`) data type stores 8-byte
-    /// date values that include timestamp and time zone information in UTC format.
-    TimestampWithTimeZone,
-    /// `TIME` data type defines a time of a day based on 24-hour clock
-    Time,
-    /// `DATE` data type stores the calendar date
-    Date,
-    /// `BINARY` data types contain byte strings—a sequence of octets or bytes.
-    Binary,
-    /// Tiny Binary
-    TinyBinary,
-    /// Medium Binary
-    MediumBinary,
-    /// Long Binary
-    LongBinary,
-    /// `BOOLEAN` is the result of a comparison operator
-    Boolean,
-    /// `MONEY` data type handles monetary data
-    Money(Option<(u32, u32)>),
-    /// `JSON` represents the JavaScript Object Notation type
-    Json,
-    /// JSON binary format is structured in the way that permits the server to search for
-    /// values within the JSON document directly by key or array index, which is very fast.
-    JsonBinary,
-    /// A custom implementation of a data type
-    Custom(String),
-    /// A Universally Unique IDentifier that is specified in  RFC 4122
-    Uuid,
-    /// `ENUM` data type with name and variants
-    Enum {
-        /// Name of enum
-        name: DynIden,
-        /// Variants of enum
-        variants: Vec<DynIden>,
-    },
-    /// Array of a specific data type (PostgreSQL only)
-    Array(SeaRc<ColumnType>),
-}
-
-impl PartialEq for ColumnType {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Char(l0), Self::Char(r0)) => l0 == r0,
-            (Self::String(l0), Self::String(r0)) => l0 == r0,
-            (Self::Decimal(l0), Self::Decimal(r0)) => l0 == r0,
-            (Self::Money(l0), Self::Money(r0)) => l0 == r0,
-            (Self::Custom(l0), Self::Custom(r0)) => l0 == r0,
-            (
-                Self::Enum {
-                    name: l_name,
-                    variants: l_variants,
-                },
-                Self::Enum {
-                    name: r_name,
-                    variants: r_variants,
-                },
-            ) => {
-                l_name.to_string() == r_name.to_string()
-                    && l_variants.iter().map(|v| v.to_string()).collect::<Vec<_>>()
-                        == r_variants.iter().map(|v| v.to_string()).collect::<Vec<_>>()
-            }
-            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-        }
-    }
 }
 
 macro_rules! bind_oper {
@@ -279,7 +180,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// );
     /// ```
     fn starts_with(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("{}%", s);
+        let pattern = format!("{s}%");
         Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
@@ -295,7 +196,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// );
     /// ```
     fn ends_with(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("%{}", s);
+        let pattern = format!("%{s}");
         Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
@@ -311,7 +212,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// );
     /// ```
     fn contains(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("%{}%", s);
+        let pattern = format!("%{s}%");
         Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
@@ -378,9 +279,17 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     }
 }
 
-impl ColumnType {
-    /// instantiate a new [ColumnDef]
-    pub fn def(self) -> ColumnDef {
+/// SeaORM's utility methods that act on [ColumnType]
+pub trait ColumnTypeTrait {
+    /// Instantiate a new [ColumnDef]
+    fn def(self) -> ColumnDef;
+
+    /// Get the name of the enum if this is a enum column
+    fn get_enum_name(&self) -> Option<&DynIden>;
+}
+
+impl ColumnTypeTrait for ColumnType {
+    fn def(self) -> ColumnDef {
         ColumnDef {
             col_type: self,
             null: false,
@@ -390,7 +299,7 @@ impl ColumnType {
         }
     }
 
-    pub(crate) fn get_enum_name(&self) -> Option<&DynIden> {
+    fn get_enum_name(&self) -> Option<&DynIden> {
         fn enum_name(col_type: &ColumnType) -> Option<&DynIden> {
             match col_type {
                 ColumnType::Enum { name, .. } => Some(name),
@@ -443,111 +352,6 @@ impl ColumnDef {
     /// Returns true if the column is nullable
     pub fn is_null(&self) -> bool {
         self.null
-    }
-}
-
-impl From<ColumnType> for sea_query::ColumnType {
-    fn from(column_type: ColumnType) -> Self {
-        fn convert_column_type(column_type: &ColumnType) -> sea_query::ColumnType {
-            match column_type {
-                ColumnType::Char(s) => sea_query::ColumnType::Char(*s),
-                ColumnType::String(s) => sea_query::ColumnType::String(*s),
-                ColumnType::Text => sea_query::ColumnType::Text,
-                ColumnType::TinyInteger => sea_query::ColumnType::TinyInteger,
-                ColumnType::SmallInteger => sea_query::ColumnType::SmallInteger,
-                ColumnType::Integer => sea_query::ColumnType::Integer,
-                ColumnType::BigInteger => sea_query::ColumnType::BigInteger,
-                ColumnType::TinyUnsigned => sea_query::ColumnType::TinyUnsigned,
-                ColumnType::SmallUnsigned => sea_query::ColumnType::SmallUnsigned,
-                ColumnType::Unsigned => sea_query::ColumnType::Unsigned,
-                ColumnType::BigUnsigned => sea_query::ColumnType::BigUnsigned,
-                ColumnType::Float => sea_query::ColumnType::Float,
-                ColumnType::Double => sea_query::ColumnType::Double,
-                ColumnType::Decimal(s) => sea_query::ColumnType::Decimal(*s),
-                ColumnType::DateTime => sea_query::ColumnType::DateTime,
-                ColumnType::Timestamp => sea_query::ColumnType::Timestamp,
-                ColumnType::TimestampWithTimeZone => sea_query::ColumnType::TimestampWithTimeZone,
-                ColumnType::Time => sea_query::ColumnType::Time,
-                ColumnType::Date => sea_query::ColumnType::Date,
-                ColumnType::Binary => {
-                    sea_query::ColumnType::Binary(sea_query::BlobSize::Blob(None))
-                }
-                ColumnType::TinyBinary => sea_query::ColumnType::Binary(sea_query::BlobSize::Tiny),
-                ColumnType::MediumBinary => {
-                    sea_query::ColumnType::Binary(sea_query::BlobSize::Medium)
-                }
-                ColumnType::LongBinary => sea_query::ColumnType::Binary(sea_query::BlobSize::Long),
-                ColumnType::Boolean => sea_query::ColumnType::Boolean,
-                ColumnType::Money(s) => sea_query::ColumnType::Money(*s),
-                ColumnType::Json => sea_query::ColumnType::Json,
-                ColumnType::JsonBinary => sea_query::ColumnType::JsonBinary,
-                ColumnType::Custom(s) => {
-                    sea_query::ColumnType::Custom(sea_query::SeaRc::new(sea_query::Alias::new(s)))
-                }
-                ColumnType::Uuid => sea_query::ColumnType::Uuid,
-                ColumnType::Enum { name, variants } => sea_query::ColumnType::Enum {
-                    name: SeaRc::clone(name),
-                    variants: variants.clone(),
-                },
-                ColumnType::Array(column_type) => {
-                    let column_type = convert_column_type(column_type);
-                    sea_query::ColumnType::Array(SeaRc::new(column_type))
-                }
-            }
-        }
-        convert_column_type(&column_type)
-    }
-}
-
-impl From<sea_query::ColumnType> for ColumnType {
-    fn from(column_type: sea_query::ColumnType) -> Self {
-        #[allow(clippy::redundant_allocation)]
-        fn convert_column_type(column_type: &sea_query::ColumnType) -> ColumnType {
-            #[allow(unreachable_patterns)]
-            match column_type {
-                sea_query::ColumnType::Char(s) => ColumnType::Char(*s),
-                sea_query::ColumnType::String(s) => ColumnType::String(*s),
-                sea_query::ColumnType::Text => ColumnType::Text,
-                sea_query::ColumnType::TinyInteger => ColumnType::TinyInteger,
-                sea_query::ColumnType::SmallInteger => ColumnType::SmallInteger,
-                sea_query::ColumnType::Integer => ColumnType::Integer,
-                sea_query::ColumnType::BigInteger => ColumnType::BigInteger,
-                sea_query::ColumnType::TinyUnsigned => ColumnType::TinyUnsigned,
-                sea_query::ColumnType::SmallUnsigned => ColumnType::SmallUnsigned,
-                sea_query::ColumnType::Unsigned => ColumnType::Unsigned,
-                sea_query::ColumnType::BigUnsigned => ColumnType::BigUnsigned,
-                sea_query::ColumnType::Float => ColumnType::Float,
-                sea_query::ColumnType::Double => ColumnType::Double,
-                sea_query::ColumnType::Decimal(s) => ColumnType::Decimal(*s),
-                sea_query::ColumnType::DateTime => ColumnType::DateTime,
-                sea_query::ColumnType::Timestamp => ColumnType::Timestamp,
-                sea_query::ColumnType::TimestampWithTimeZone => ColumnType::TimestampWithTimeZone,
-                sea_query::ColumnType::Time => ColumnType::Time,
-                sea_query::ColumnType::Date => ColumnType::Date,
-                sea_query::ColumnType::Binary(sea_query::BlobSize::Blob(_)) => ColumnType::Binary,
-                sea_query::ColumnType::Binary(sea_query::BlobSize::Tiny) => ColumnType::TinyBinary,
-                sea_query::ColumnType::Binary(sea_query::BlobSize::Medium) => {
-                    ColumnType::MediumBinary
-                }
-                sea_query::ColumnType::Binary(sea_query::BlobSize::Long) => ColumnType::LongBinary,
-                sea_query::ColumnType::Boolean => ColumnType::Boolean,
-                sea_query::ColumnType::Money(s) => ColumnType::Money(*s),
-                sea_query::ColumnType::Json => ColumnType::Json,
-                sea_query::ColumnType::JsonBinary => ColumnType::JsonBinary,
-                sea_query::ColumnType::Custom(s) => ColumnType::Custom(s.to_string()),
-                sea_query::ColumnType::Uuid => ColumnType::Uuid,
-                sea_query::ColumnType::Enum { name, variants } => ColumnType::Enum {
-                    name: SeaRc::clone(name),
-                    variants: variants.clone(),
-                },
-                sea_query::ColumnType::Array(column_type) => {
-                    let column_type = convert_column_type(column_type);
-                    ColumnType::Array(SeaRc::new(column_type))
-                }
-                _ => unimplemented!(),
-            }
-        }
-        convert_column_type(&column_type)
     }
 }
 

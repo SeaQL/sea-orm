@@ -1,6 +1,6 @@
 use crate::{
     error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert, IntoActiveModel,
-    Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
+    Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
 };
 use sea_query::{Expr, FromValueTuple, Iden, InsertStatement, IntoColumnRef, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};
@@ -40,8 +40,9 @@ where
         // so that self is dropped before entering await
         let mut query = self.query;
         if db.support_returning() && <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
-            let returning = Query::returning().columns(
-                <A::Entity as EntityTrait>::PrimaryKey::iter().map(|c| c.into_column_ref()),
+            let returning = Query::returning().exprs(
+                <A::Entity as EntityTrait>::PrimaryKey::iter()
+                    .map(|c| c.into_column().select_as(Expr::col(c.into_column_ref()))),
             );
             query.returning(returning);
         }
