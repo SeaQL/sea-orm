@@ -245,21 +245,21 @@ macro_rules! try_getable_all {
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<$type>, _>(idx.as_sqlx_mysql_index())
-                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<$type>, _>(idx.as_sqlx_postgres_index())
-                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<$type>, _>(idx.as_sqlx_sqlite_index())
-                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                     }
                     #[cfg(feature = "mock")]
@@ -285,7 +285,7 @@ macro_rules! try_getable_unsigned {
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<$type>, _>(idx.as_sqlx_mysql_index())
-                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                     }
                     #[cfg(feature = "sqlx-postgres")]
@@ -298,7 +298,7 @@ macro_rules! try_getable_unsigned {
                     QueryResultRow::SqlxSqlite(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<$type>, _>(idx.as_sqlx_sqlite_index())
-                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                     }
                     #[cfg(feature = "mock")]
@@ -324,7 +324,7 @@ macro_rules! try_getable_mysql {
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<$type>, _>(idx.as_sqlx_mysql_index())
-                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                     }
                     #[cfg(feature = "sqlx-postgres")]
@@ -364,7 +364,7 @@ macro_rules! try_getable_date_time {
                         use chrono::{DateTime, Utc};
                         use sqlx::Row;
                         row.try_get::<Option<DateTime<Utc>>, _>(idx.as_sqlx_mysql_index())
-                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                             .map(|v| v.into())
                     }
@@ -372,7 +372,7 @@ macro_rules! try_getable_date_time {
                     QueryResultRow::SqlxPostgres(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<$type>, _>(idx.as_sqlx_postgres_index())
-                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                     }
                     #[cfg(feature = "sqlx-sqlite")]
@@ -380,7 +380,7 @@ macro_rules! try_getable_date_time {
                         use chrono::{DateTime, Utc};
                         use sqlx::Row;
                         row.try_get::<Option<DateTime<Utc>>, _>(idx.as_sqlx_sqlite_index())
-                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                             .map(|v| v.into())
                     }
@@ -455,14 +455,14 @@ impl TryGetable for Decimal {
             QueryResultRow::SqlxMySql(row) => {
                 use sqlx::Row;
                 row.try_get::<Option<Decimal>, _>(idx.as_sqlx_mysql_index())
-                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                     .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
             }
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => {
                 use sqlx::Row;
                 row.try_get::<Option<Decimal>, _>(idx.as_sqlx_postgres_index())
-                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                     .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
             }
             #[cfg(feature = "sqlx-sqlite")]
@@ -470,14 +470,15 @@ impl TryGetable for Decimal {
                 use sqlx::Row;
                 let val: Option<f64> = row
                     .try_get(idx.as_sqlx_sqlite_index())
-                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))?;
+                    .map_err(|e| crate::sqlx_error_to_query_err(e))?;
                 match val {
                     Some(v) => Decimal::try_from(v).map_err(|e| {
-                        TryGetError::DbErr(DbErr::TryIntoErr {
+                        DbErr::TryIntoErr {
                             from: "f64",
                             into: "Decimal",
                             source: Box::new(e),
-                        })
+                        }
+                        .into()
                     }),
                     None => Err(err_null_idx_col(idx)),
                 }
@@ -506,14 +507,14 @@ impl TryGetable for BigDecimal {
             QueryResultRow::SqlxMySql(row) => {
                 use sqlx::Row;
                 row.try_get::<Option<BigDecimal>, _>(idx.as_sqlx_mysql_index())
-                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                     .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
             }
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => {
                 use sqlx::Row;
                 row.try_get::<Option<BigDecimal>, _>(idx.as_sqlx_postgres_index())
-                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                     .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
             }
             #[cfg(feature = "sqlx-sqlite")]
@@ -521,14 +522,15 @@ impl TryGetable for BigDecimal {
                 use sqlx::Row;
                 let val: Option<f64> = row
                     .try_get(idx.as_sqlx_sqlite_index())
-                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))?;
+                    .map_err(|e| crate::sqlx_error_to_query_err(e))?;
                 match val {
                     Some(v) => BigDecimal::try_from(v).map_err(|e| {
-                        TryGetError::DbErr(DbErr::TryIntoErr {
+                        DbErr::TryIntoErr {
                             from: "f64",
                             into: "BigDecimal",
                             source: Box::new(e),
-                        })
+                        }
+                        .into()
                     }),
                     None => Err(err_null_idx_col(idx)),
                 }
@@ -556,21 +558,21 @@ macro_rules! try_getable_uuid {
                     QueryResultRow::SqlxMySql(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_mysql_index())
-                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                     }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_postgres_index())
-                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                     }
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => {
                         use sqlx::Row;
                         row.try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_sqlite_index())
-                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                     }
                     #[cfg(feature = "mock")]
@@ -611,7 +613,7 @@ impl TryGetable for u32 {
             QueryResultRow::SqlxMySql(row) => {
                 use sqlx::Row;
                 row.try_get::<Option<u32>, _>(idx.as_sqlx_mysql_index())
-                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                     .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
             }
             #[cfg(feature = "sqlx-postgres")]
@@ -621,7 +623,7 @@ impl TryGetable for u32 {
                 // Instead, `u32` was wrapped by a `sqlx::Oid`.
                 use sqlx::Row;
                 row.try_get::<Option<Oid>, _>(idx.as_sqlx_postgres_index())
-                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                     .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                     .map(|oid| oid.0)
             }
@@ -629,7 +631,7 @@ impl TryGetable for u32 {
             QueryResultRow::SqlxSqlite(row) => {
                 use sqlx::Row;
                 row.try_get::<Option<u32>, _>(idx.as_sqlx_sqlite_index())
-                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                     .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
             }
             #[cfg(feature = "mock")]
@@ -670,7 +672,7 @@ mod postgres_array {
                         QueryResultRow::SqlxPostgres(row) => {
                             use sqlx::Row;
                             row.try_get::<Option<Vec<$type>>, _>(idx.as_sqlx_postgres_index())
-                                .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                                .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                                 .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                         }
                         #[cfg(feature = "sqlx-sqlite")]
@@ -758,7 +760,7 @@ mod postgres_array {
                         QueryResultRow::SqlxPostgres(row) => {
                             use sqlx::Row;
                             row.try_get::<Option<Vec<uuid::Uuid>>, _>(idx.as_sqlx_postgres_index())
-                                .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                                .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                                 .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                         }
                         #[cfg(feature = "sqlx-sqlite")]
@@ -815,7 +817,7 @@ mod postgres_array {
                     // Instead, `u32` was wrapped by a `sqlx::Oid`.
                     use sqlx::Row;
                     row.try_get::<Option<Vec<Oid>>, _>(idx.as_sqlx_postgres_index())
-                        .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                        .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                         .map(|oids| oids.into_iter().map(|oid| oid.0).collect())
                 }
@@ -1101,21 +1103,21 @@ where
             QueryResultRow::SqlxMySql(row) => {
                 use sqlx::Row;
                 row.try_get::<Option<sqlx::types::Json<Self>>, _>(idx.as_sqlx_mysql_index())
-                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                     .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)).map(|json| json.0))
             }
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => {
                 use sqlx::Row;
                 row.try_get::<Option<sqlx::types::Json<Self>>, _>(idx.as_sqlx_postgres_index())
-                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                     .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)).map(|json| json.0))
             }
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => {
                 use sqlx::Row;
                 row.try_get::<Option<sqlx::types::Json<Self>>, _>(idx.as_sqlx_sqlite_index())
-                    .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                    .map_err(|e| crate::sqlx_error_to_query_err(e).into())
                     .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)).map(|json| json.0))
             }
             #[cfg(feature = "mock")]
@@ -1125,9 +1127,7 @@ where
                     debug_print!("{:#?}", e.to_string());
                     err_null_idx_col(idx)
                 })
-                .and_then(|json| {
-                    serde_json::from_value(json).map_err(|e| TryGetError::DbErr(json_err(e)))
-                }),
+                .and_then(|json| serde_json::from_value(json).map_err(|e| json_err(e).into())),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
