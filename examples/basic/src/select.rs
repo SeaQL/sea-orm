@@ -48,7 +48,7 @@ async fn find_all(db: &DbConn) -> Result<(), DbErr> {
 
     println!();
     for cc in cakes.iter() {
-        println!("{:?}\n", cc);
+        println!("{cc:?}\n");
     }
 
     print!("find all fruits: ");
@@ -57,7 +57,7 @@ async fn find_all(db: &DbConn) -> Result<(), DbErr> {
 
     println!();
     for ff in fruits.iter() {
-        println!("{:?}\n", ff);
+        println!("{ff:?}\n");
     }
 
     Ok(())
@@ -71,7 +71,7 @@ async fn find_together(db: &DbConn) -> Result<(), DbErr> {
 
     println!();
     for bb in both.iter() {
-        println!("{:?}\n", bb);
+        println!("{bb:?}\n");
     }
 
     Ok(())
@@ -90,7 +90,7 @@ async fn find_one(db: &DbConn) -> Result<(), DbErr> {
     let cheese = cheese.unwrap();
 
     println!();
-    println!("{:?}", cheese);
+    println!("{cheese:?}");
     println!();
 
     print!("find one by name: ");
@@ -98,7 +98,7 @@ async fn find_one(db: &DbConn) -> Result<(), DbErr> {
     let chocolate = Cake::find_by_name("chocolate").one(db).await?;
 
     println!();
-    println!("{:?}", chocolate);
+    println!("{chocolate:?}");
     println!();
 
     print!("find models belong to: ");
@@ -107,7 +107,7 @@ async fn find_one(db: &DbConn) -> Result<(), DbErr> {
 
     println!();
     for ff in fruits.iter() {
-        println!("{:?}\n", ff);
+        println!("{ff:?}\n");
     }
 
     Ok(())
@@ -133,7 +133,7 @@ async fn count_fruits_by_cake(db: &DbConn) -> Result<(), DbErr> {
 
     println!();
     for rr in results.iter() {
-        println!("{:?}\n", rr);
+        println!("{rr:?}\n");
     }
 
     Ok(())
@@ -147,7 +147,7 @@ async fn find_many_to_many(db: &DbConn) -> Result<(), DbErr> {
 
     println!();
     for bb in both.iter() {
-        println!("{:?}\n", bb);
+        println!("{bb:?}\n");
     }
 
     print!("find fillings for cheese cake: ");
@@ -159,7 +159,7 @@ async fn find_many_to_many(db: &DbConn) -> Result<(), DbErr> {
 
         println!();
         for ff in fillings.iter() {
-            println!("{:?}\n", ff);
+            println!("{ff:?}\n");
         }
     }
 
@@ -172,7 +172,7 @@ async fn find_many_to_many(db: &DbConn) -> Result<(), DbErr> {
 
         println!();
         for cc in cakes.iter() {
-            println!("{:?}\n", cc);
+            println!("{cc:?}\n");
         }
     }
 
@@ -253,7 +253,7 @@ async fn find_all_stream(db: &DbConn) -> Result<(), DbErr> {
     let mut cake_paginator = cake::Entity::find().paginate(db, 2);
     while let Some(cake_res) = cake_paginator.fetch_and_next().await? {
         for cake in cake_res {
-            println!("{:?}", cake);
+            println!("{cake:?}");
         }
     }
 
@@ -262,7 +262,7 @@ async fn find_all_stream(db: &DbConn) -> Result<(), DbErr> {
     let mut fruit_paginator = fruit::Entity::find().paginate(db, 2);
     while let Some(fruit_res) = fruit_paginator.fetch_and_next().await? {
         for fruit in fruit_res {
-            println!("{:?}", fruit);
+            println!("{fruit:?}");
         }
     }
 
@@ -271,7 +271,7 @@ async fn find_all_stream(db: &DbConn) -> Result<(), DbErr> {
     let mut fruit_stream = fruit::Entity::find().paginate(db, 2).into_stream();
     while let Some(fruits) = fruit_stream.try_next().await? {
         for fruit in fruits {
-            println!("{:?}", fruit);
+            println!("{fruit:?}");
         }
         sleep(Duration::from_millis(250)).await;
     }
@@ -284,7 +284,7 @@ async fn find_all_stream(db: &DbConn) -> Result<(), DbErr> {
         .into_stream();
     while let Some(jsons) = json_stream.try_next().await? {
         for json in jsons {
-            println!("{:?}", json);
+            println!("{json:?}");
         }
         sleep(Duration::from_millis(250)).await;
     }
@@ -296,7 +296,7 @@ async fn find_first_page(db: &DbConn) -> Result<(), DbErr> {
     println!("fruits first page: ");
     let page = fruit::Entity::find().paginate(db, 2).fetch_page(0).await?;
     for fruit in page {
-        println!("{:?}", fruit);
+        println!("{fruit:?}");
     }
 
     Ok(())
@@ -305,7 +305,7 @@ async fn find_first_page(db: &DbConn) -> Result<(), DbErr> {
 async fn find_num_pages(db: &DbConn) -> Result<(), DbErr> {
     println!("fruits number of page: ");
     let num_pages = fruit::Entity::find().paginate(db, 2).num_pages().await?;
-    println!("{:?}", num_pages);
+    println!("{num_pages:?}");
 
     Ok(())
 }
