@@ -166,6 +166,6 @@ pub fn main() {
     println!("Rocket: deorbit.");
 
     if let Some(err) = result.err() {
-        println!("Error: {}", err);
+        println!("Error: {err}");
     }
 }

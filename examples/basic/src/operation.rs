@@ -28,7 +28,7 @@ pub async fn insert_and_update(db: &DbConn) -> Result<(), DbErr> {
     let pear: Option<fruit::Model> = Fruit::find_by_id(res.last_insert_id).one(db).await?;
 
     println!();
-    println!("Pear: {:?}\n", pear);
+    println!("Pear: {pear:?}\n");
 
     let mut pear: fruit::ActiveModel = pear.unwrap().into();
     pear.name = Set("Sweet pear".to_owned());
@@ -36,7 +36,7 @@ pub async fn insert_and_update(db: &DbConn) -> Result<(), DbErr> {
     let pear: fruit::Model = pear.update(db).await?;
 
     println!();
-    println!("Updated: {:?}\n", pear);
+    println!("Updated: {pear:?}\n");
 
     Ok(())
 }
@@ -49,19 +49,19 @@ pub async fn save_active_model(db: &DbConn) -> Result<(), DbErr> {
     let mut banana: fruit::ActiveModel = banana.save(db).await?;
 
     println!();
-    println!("Inserted: {:?}\n", banana);
+    println!("Inserted: {banana:?}\n");
 
     banana.name = Set("Banana Mongo".to_owned());
 
     let banana: fruit::ActiveModel = banana.save(db).await?;
 
     println!();
-    println!("Updated: {:?}\n", banana);
+    println!("Updated: {banana:?}\n");
 
     let result = banana.delete(db).await?;
 
     println!();
-    println!("Deleted: {:?}\n", result);
+    println!("Deleted: {result:?}\n");
 
     Ok(())
 }
@@ -85,7 +85,7 @@ async fn save_custom_active_model(db: &DbConn) -> Result<(), DbErr> {
     let pineapple = pineapple.save(db).await?;
 
     println!();
-    println!("Saved: {:?}\n", pineapple);
+    println!("Saved: {pineapple:?}\n");
 
     Ok(())
 }

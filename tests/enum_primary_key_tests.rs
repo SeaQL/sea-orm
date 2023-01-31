@@ -39,7 +39,6 @@ pub async fn insert_teas(db: &DatabaseConnection) -> Result<(), DbErr> {
             id: Set(Tea::EverydayTea),
             category: Set(None),
             color: Set(None),
-            ..Default::default()
         }
         .insert(db)
         .await?
@@ -61,7 +60,6 @@ pub async fn insert_teas(db: &DatabaseConnection) -> Result<(), DbErr> {
         id: Set(Tea::EverydayTea),
         category: Set(Some(Category::Big)),
         color: Set(Some(Color::Black)),
-        ..Default::default()
     }
     .insert(db)
     .await
@@ -72,7 +70,6 @@ pub async fn insert_teas(db: &DatabaseConnection) -> Result<(), DbErr> {
         id: Set(Tea::EverydayTea),
         category: Set(Some(Category::Big)),
         color: Set(Some(Color::Black)),
-        ..Default::default()
     })
     .exec(db)
     .await

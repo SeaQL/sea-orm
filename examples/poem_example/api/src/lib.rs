@@ -130,7 +130,7 @@ async fn start() -> std::io::Result<()> {
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
     let host = env::var("HOST").expect("HOST is not set in .env file");
     let port = env::var("PORT").expect("PORT is not set in .env file");
-    let server_url = format!("{}:{}", host, port);
+    let server_url = format!("{host}:{port}");
 
     // create post table if not exists
     let conn = Database::connect(&db_url).await.unwrap();
@@ -138,7 +138,7 @@ async fn start() -> std::io::Result<()> {
     let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).unwrap();
     let state = AppState { templates, conn };
 
-    println!("Starting server at {}", server_url);
+    println!("Starting server at {server_url}");
 
     let app = Route::new()
         .at("/", post(create).get(list))
@@ -150,7 +150,7 @@ async fn start() -> std::io::Result<()> {
             StaticFilesEndpoint::new(concat!(env!("CARGO_MANIFEST_DIR"), "/static")),
         )
         .data(state);
-    let server = Server::new(TcpListener::bind(format!("{}:{}", host, port)));
+    let server = Server::new(TcpListener::bind(format!("{host}:{port}")));
     server.run(app).await
 }
 
@@ -158,6 +158,6 @@ pub fn main() {
     let result = start();
 
     if let Some(err) = result.err() {
-        println!("Error: {}", err);
+        println!("Error: {err}");
     }
 }

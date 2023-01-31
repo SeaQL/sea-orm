@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let response = client.get_posts(request).await?;
 
     for post in response.into_inner().post.iter() {
-        println!("{:?}", post);
+        println!("{post:?}");
     }
 
     Ok(())
