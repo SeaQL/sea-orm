@@ -160,6 +160,7 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
+    #[instrument(level = "trace")]
     fn begin(&mut self) {
         match self.transaction.as_mut() {
             Some(transaction) => transaction.begin_nested(self.db_backend),
@@ -167,6 +168,7 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
+    #[instrument(level = "trace")]
     fn commit(&mut self) {
         match self.transaction.as_mut() {
             Some(transaction) => {
@@ -182,6 +184,7 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
+    #[instrument(level = "trace")]
     fn rollback(&mut self) {
         match self.transaction.as_mut() {
             Some(transaction) => {
