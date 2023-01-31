@@ -22,13 +22,6 @@ pub(crate) enum ExecResultHolder {
     /// Holds the result of executing an operation on the Mock database
     #[cfg(feature = "mock")]
     Mock(crate::MockExecResult),
-    Disconnected,
-}
-
-impl Default for ExecResultHolder {
-    fn default() -> Self {
-        Self::Disconnected
-    }
 }
 
 // ExecResult //
@@ -58,7 +51,8 @@ impl ExecResult {
             }
             #[cfg(feature = "mock")]
             ExecResultHolder::Mock(result) => result.last_insert_id,
-            ExecResultHolder::Disconnected => unimplemented!("Disconnected"),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 
@@ -73,7 +67,8 @@ impl ExecResult {
             ExecResultHolder::SqlxSqlite(result) => result.rows_affected(),
             #[cfg(feature = "mock")]
             ExecResultHolder::Mock(result) => result.rows_affected,
-            ExecResultHolder::Disconnected => unimplemented!("Disconnected"),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 }
