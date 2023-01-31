@@ -152,7 +152,7 @@ pub async fn main() {
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
     let host = env::var("HOST").expect("HOST is not set in .env file");
     let port = env::var("PORT").expect("PORT is not set in .env file");
-    let server_url = format!("{}:{}", host, port);
+    let server_url = format!("{host}:{port}");
 
     // create post table if not exists
     let conn = Database::connect(&db_url).await.unwrap();
@@ -160,7 +160,7 @@ pub async fn main() {
     let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).unwrap();
     let state = AppState { templates, conn };
 
-    println!("Starting server at {}", server_url);
+    println!("Starting server at {server_url}");
 
     let router = Router::new()
         .hoop(affix::inject(state))
@@ -176,7 +176,7 @@ pub async fn main() {
             ))),
         );
 
-    Server::new(TcpListener::bind(&format!("{}:{}", host, port)))
+    Server::new(TcpListener::bind(&format!("{host}:{port}")))
         .serve(router)
         .await;
 }

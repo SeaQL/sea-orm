@@ -22,7 +22,7 @@ async fn main() {
         .await
         .unwrap();
 
-    println!("{:?}\n", db);
+    println!("{db:?}\n");
 
     println!("===== =====\n");
 

@@ -30,7 +30,7 @@ async fn start() -> anyhow::Result<()> {
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
     let host = env::var("HOST").expect("HOST is not set in .env file");
     let port = env::var("PORT").expect("PORT is not set in .env file");
-    let server_url = format!("{}:{}", host, port);
+    let server_url = format!("{host}:{port}");
 
     let conn = Database::connect(db_url)
         .await
@@ -56,7 +56,7 @@ async fn start() -> anyhow::Result<()> {
             .handle_error(|error: std::io::Error| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Unhandled internal error: {}", error),
+                    format!("Unhandled internal error: {error}"),
                 )
             }),
         )
@@ -153,7 +153,7 @@ async fn edit_post(
     let post: post::Model = QueryCore::find_post_by_id(&state.conn, id)
         .await
         .expect("could not find post")
-        .unwrap_or_else(|| panic!("could not find post with id {}", id));
+        .unwrap_or_else(|| panic!("could not find post with id {id}"));
 
     let mut ctx = tera::Context::new();
     ctx.insert("post", &post);
@@ -207,6 +207,6 @@ pub fn main() {
     let result = start();
 
     if let Some(err) = result.err() {
-        println!("Error: {}", err);
+        println!("Error: {err}");
     }
 }

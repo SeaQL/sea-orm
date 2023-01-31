@@ -24,7 +24,7 @@ pub async fn insert_uuid_fmt(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     let uuid_fmt = uuid_fmt::Model {
         id: 1,
-        uuid: uuid,
+        uuid,
         uuid_braced: uuid.braced(),
         uuid_hyphenated: uuid.hyphenated(),
         uuid_simple: uuid.simple(),

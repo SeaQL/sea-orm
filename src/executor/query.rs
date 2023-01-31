@@ -127,7 +127,7 @@ impl fmt::Debug for QueryResultRow {
             #[cfg(feature = "sqlx-sqlite")]
             Self::SqlxSqlite(_) => write!(f, "QueryResultRow::SqlxSqlite cannot be inspected"),
             #[cfg(feature = "mock")]
-            Self::Mock(row) => write!(f, "{:?}", row),
+            Self::Mock(row) => write!(f, "{row:?}"),
             Self::Disconnected => write!(f, "Disconnected"),
         }
     }
