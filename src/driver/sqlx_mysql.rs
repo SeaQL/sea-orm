@@ -224,7 +224,8 @@ impl SqlxMySqlPoolConnection {
 
     /// Explicitly close the MySQL connection
     pub async fn close(self) -> Result<(), DbErr> {
-        Ok(self.pool.close().await)
+        self.pool.close().await;
+        Ok(())
     }
 }
 

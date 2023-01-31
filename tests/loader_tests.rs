@@ -208,8 +208,8 @@ async fn loader_load_many() -> Result<(), DbErr> {
         .await
         .expect("Should load bakers");
 
-    println!("A: {:?}", bakers);
-    println!("B: {:?}", bakeries);
+    println!("A: {bakers:?}");
+    println!("B: {bakeries:?}");
 
     assert_eq!(bakeries, [bakery_1, bakery_2]);
 

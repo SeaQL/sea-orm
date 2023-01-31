@@ -108,7 +108,7 @@ impl fmt::Debug for QueryResultRow {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            Self::SqlxMySql(row) => write!(f, "{:?}", row),
+            Self::SqlxMySql(row) => write!(f, "{row:?}"),
             #[cfg(feature = "sqlx-postgres")]
             Self::SqlxPostgres(_) => write!(f, "QueryResultRow::SqlxPostgres cannot be inspected"),
             #[cfg(feature = "sqlx-sqlite")]

@@ -107,6 +107,7 @@ jobs:
           toolchain: stable
           components: clippy
       - run: cargo clippy --all -- -D warnings
+      - run: cargo clippy --all --features runtime-async-std-native-tls,sqlx-all -- -D warnings
       - run: cargo clippy --manifest-path sea-orm-cli/Cargo.toml -- -D warnings
       - run: cargo clippy --manifest-path sea-orm-migration/Cargo.toml -- -D warnings
       - run: cargo clippy --manifest-path sea-orm-rocket/Cargo.toml -- -D warnings
