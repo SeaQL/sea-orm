@@ -42,6 +42,7 @@ impl Schema {
     }
 
     /// Creates a column definition for example to update a table.
+    ///
     /// ```
     /// use crate::sea_orm::IdenStatic;
     /// use sea_orm::{
@@ -59,13 +60,9 @@ impl Schema {
     ///     pub title: String,
     /// }
     ///
-    /// #[derive(Copy, Clone, Debug, EnumIter)]
+    /// #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
     /// pub enum Relation {}
-    /// impl RelationTrait for Relation {
-    ///     fn def(&self) -> RelationDef {
-    ///         panic!("No RelationDef")
-    ///     }
-    /// }
+    ///
     /// impl ActiveModelBehavior for ActiveModel {}
     ///
     /// let schema = Schema::new(DbBackend::MySql);

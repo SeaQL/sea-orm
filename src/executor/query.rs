@@ -490,8 +490,7 @@ impl TryGetable for Decimal {
                 debug_print!("{:#?}", e.to_string());
                 err_null_idx_col(idx)
             }),
-            #[allow(unreachable_patterns)]
-            _ => unreachable!(),
+            QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
         }
     }
 }
@@ -580,8 +579,7 @@ macro_rules! try_getable_uuid {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
-                    #[allow(unreachable_patterns)]
-                    _ => unreachable!(),
+                    QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
                 };
                 res.map($conversion_fn)
             }
@@ -748,9 +746,10 @@ mod postgres_array {
                 fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
                     let res: Result<Vec<uuid::Uuid>, TryGetError> = match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
-                        QueryResultRow::SqlxMySql(row) => {
-                            panic!("{} unsupported by sqlx-mysql", stringify!($type))
-                        }
+                        QueryResultRow::SqlxMySql(row) => Err(query_err(format!(
+                            "{} unsupported by sqlx-mysql",
+                            stringify!($type)
+                        ))),
                         #[cfg(feature = "sqlx-postgres")]
                         QueryResultRow::SqlxPostgres(row) => {
                             use sqlx::Row;
@@ -759,9 +758,10 @@ mod postgres_array {
                                 .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                         }
                         #[cfg(feature = "sqlx-sqlite")]
-                        QueryResultRow::SqlxSqlite(_) => {
-                            panic!("{} unsupported by sqlx-sqlite", stringify!($type))
-                        }
+                        QueryResultRow::SqlxSqlite(_) => Err(query_err(format!(
+                            "{} unsupported by sqlx-sqlite",
+                            stringify!($type)
+                        ))),
                         #[cfg(feature = "mock")]
                         QueryResultRow::Mock(row) => {
                             row.try_get::<Vec<uuid::Uuid>, _>(idx).map_err(|e| {
@@ -769,8 +769,7 @@ mod postgres_array {
                                 err_null_idx_col(idx)
                             })
                         }
-                        #[allow(unreachable_patterns)]
-                        _ => unreachable!(),
+                        QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
                     };
                     res.map(|vec| vec.into_iter().map($conversion_fn).collect())
                 }

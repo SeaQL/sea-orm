@@ -227,7 +227,11 @@ impl MockRow {
             T::try_from(
                 self.values
                     .get(index)
-                    .unwrap_or_else(|| panic!("No column for ColIdx {index:?}"))
+                    .ok_or_else(|| {
+                        DbErr::Query(RuntimeErr::Internal(format!(
+                            "No column for ColIdx {index:?}"
+                        )))
+                    })?
                     .clone(),
             )
             .map_err(|e| DbErr::Type(e.to_string()))

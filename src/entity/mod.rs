@@ -91,6 +91,7 @@
 ///         unimplemented!()
 ///     }
 /// }
+///
 /// // Implement user defined operations for CREATE, UPDATE and DELETE operations
 /// // to create an ActiveModel using the [ActiveModelBehavior]
 /// impl ActiveModelBehavior for ActiveModel {}
