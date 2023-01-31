@@ -1,5 +1,5 @@
 use crate::{
-    ActiveModelTrait, ColumnTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
+    ActiveModelTrait, ActiveValue, ColumnTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
     PrimaryKeyTrait, QueryTrait,
 };
 use core::marker::PhantomData;
@@ -136,9 +136,12 @@ where
             } else if self.columns[idx] != av_has_val {
                 panic!("columns mismatch");
             }
-            if av_has_val {
-                columns.push(col);
-                values.push(col.save_as(Expr::val(av.into_value().unwrap())));
+            match av {
+                ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
+                    columns.push(col);
+                    values.push(col.save_as(Expr::val(value)));
+                }
+                ActiveValue::NotSet => {}
             }
         }
         self.query.columns(columns);
