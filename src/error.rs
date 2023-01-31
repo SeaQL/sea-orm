@@ -2,10 +2,10 @@
 pub use sqlx::error::Error as SqlxError;
 
 #[cfg(all(feature = "sea-orm-internal", feature = "sqlx-mysql"))]
-pub use sqlx::mysql::MySqlDatabaseError as SqlxMySqlDatabaseError;
+pub use sqlx::mysql::MySqlDatabaseError as SqlxMySqlError;
 
 #[cfg(all(feature = "sea-orm-internal", feature = "sqlx-postgres"))]
-pub use sqlx::postgres::PgDatabaseError as SqlxPgDatabaseError;
+pub use sqlx::postgres::PgDatabaseError as SqlxPostgresError;
 
 #[cfg(all(feature = "sea-orm-internal", feature = "sqlx-sqlite"))]
 pub use sqlx::sqlite::SqliteError as SqlxSqliteError;
