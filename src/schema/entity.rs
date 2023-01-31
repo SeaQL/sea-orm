@@ -60,9 +60,14 @@ impl Schema {
     ///     pub title: String,
     /// }
     ///
-    /// #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+    /// #[derive(Copy, Clone, Debug, EnumIter)]
     /// pub enum Relation {}
     ///
+    /// impl RelationTrait for Relation {
+    ///     fn def(&self) -> RelationDef {
+    ///         panic!("No RelationDef")
+    ///     }
+    /// }
     /// impl ActiveModelBehavior for ActiveModel {}
     ///
     /// let schema = Schema::new(DbBackend::MySql);
