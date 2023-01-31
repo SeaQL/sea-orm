@@ -224,14 +224,14 @@ impl MockRow {
                     .ok_or_else(|| query_err(format!("No column for ColIdx {index:?}")))?
                     .clone(),
             )
-            .map_err(|e| type_err(e))
+            .map_err(type_err)
         } else if let Some(index) = index.as_usize() {
             let (_, value) = self
                 .values
                 .iter()
                 .nth(*index)
                 .ok_or_else(|| query_err(format!("Column at index {index} not found")))?;
-            T::try_from(value.clone()).map_err(|e| type_err(e))
+            T::try_from(value.clone()).map_err(type_err)
         } else {
             unreachable!("Missing ColIdx implementation for MockRow");
         }
