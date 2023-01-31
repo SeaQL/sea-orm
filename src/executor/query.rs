@@ -455,7 +455,7 @@ impl TryGetable for Decimal {
             QueryResultRow::SqlxSqlite(row) => {
                 let val: Option<f64> = row
                     .try_get(idx.as_sqlx_sqlite_index())
-                    .map_err(|e| sqlx_error_to_query_err(e))?;
+                    .map_err(sqlx_error_to_query_err)?;
                 match val {
                     Some(v) => Decimal::try_from(v).map_err(|e| {
                         DbErr::TryIntoErr {
@@ -502,7 +502,7 @@ impl TryGetable for BigDecimal {
             QueryResultRow::SqlxSqlite(row) => {
                 let val: Option<f64> = row
                     .try_get(idx.as_sqlx_sqlite_index())
-                    .map_err(|e| sqlx_error_to_query_err(e))?;
+                    .map_err(sqlx_error_to_query_err)?;
                 match val {
                     Some(v) => BigDecimal::try_from(v).map_err(|e| {
                         DbErr::TryIntoErr {
