@@ -4,13 +4,13 @@ use sea_orm::*;
 pub struct Query;
 
 impl Query {
-    pub async fn find_post_by_id(db: &DbConn, id: i32) -> Result<Option<post::Model>, DbErr> {
+    pub async fn find_post_by_id(db: &DatabaseTransaction, id: i32) -> Result<Option<post::Model>, DbErr> {
         Post::find_by_id(id).one(db).await
     }
 
     /// If ok, returns (post models, num pages).
     pub async fn find_posts_in_page(
-        db: &DbConn,
+        db: &DatabaseTransaction,
         page: u64,
         posts_per_page: u64,
     ) -> Result<(Vec<post::Model>, u64), DbErr> {

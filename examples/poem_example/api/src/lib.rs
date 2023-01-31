@@ -1,4 +1,5 @@
 use std::env;
+use std::sync::Arc;
 
 use entity::post;
 use migration::{Migrator, MigratorTrait};
@@ -7,9 +8,9 @@ use poem::error::InternalServerError;
 use poem::http::StatusCode;
 use poem::listener::TcpListener;
 use poem::web::{Data, Form, Html, Path, Query};
-use poem::{get, handler, post, EndpointExt, Error, IntoResponse, Result, Route, Server};
+use poem::{get, handler, post, EndpointExt, Error, IntoResponse, Result, Route, Server, Endpoint};
 use poem_example_core::{
-    sea_orm::{Database, DatabaseConnection},
+    sea_orm::{Database, DatabaseConnection, DatabaseTransaction, TransactionTrait},
     Mutation as MutationCore, Query as QueryCore,
 };
 use serde::Deserialize;
@@ -30,11 +31,10 @@ struct Params {
 }
 
 #[handler]
-async fn create(state: Data<&AppState>, form: Form<post::Model>) -> Result<impl IntoResponse> {
+async fn create(txn: Data<&Arc<DatabaseTransaction>>, form: Form<post::Model>) -> Result<impl IntoResponse> {
     let form = form.0;
-    let conn = &state.conn;
 
-    MutationCore::create_post(conn, form)
+    MutationCore::create_post(txn.0, form)
         .await
         .map_err(InternalServerError)?;
 
@@ -42,12 +42,11 @@ async fn create(state: Data<&AppState>, form: Form<post::Model>) -> Result<impl 
 }
 
 #[handler]
-async fn list(state: Data<&AppState>, Query(params): Query<Params>) -> Result<impl IntoResponse> {
-    let conn = &state.conn;
+async fn list(state: Data<&AppState>, txn: Data<&Arc<DatabaseTransaction>>, Query(params): Query<Params>) -> Result<impl IntoResponse> {
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.posts_per_page.unwrap_or(DEFAULT_POSTS_PER_PAGE);
 
-    let (posts, num_pages) = QueryCore::find_posts_in_page(conn, page, posts_per_page)
+    let (posts, num_pages) = QueryCore::find_posts_in_page(txn.0, page, posts_per_page)
         .await
         .map_err(InternalServerError)?;
 
@@ -75,10 +74,9 @@ async fn new(state: Data<&AppState>) -> Result<impl IntoResponse> {
 }
 
 #[handler]
-async fn edit(state: Data<&AppState>, Path(id): Path<i32>) -> Result<impl IntoResponse> {
-    let conn = &state.conn;
+async fn edit(state: Data<&AppState>, txn: Data<&Arc<DatabaseTransaction>>, Path(id): Path<i32>) -> Result<impl IntoResponse> {
 
-    let post: post::Model = QueryCore::find_post_by_id(conn, id)
+    let post: post::Model = QueryCore::find_post_by_id(txn.0, id)
         .await
         .map_err(InternalServerError)?
         .ok_or_else(|| Error::from_status(StatusCode::NOT_FOUND))?;
@@ -95,14 +93,13 @@ async fn edit(state: Data<&AppState>, Path(id): Path<i32>) -> Result<impl IntoRe
 
 #[handler]
 async fn update(
-    state: Data<&AppState>,
+    txn: Data<&Arc<DatabaseTransaction>>,
     Path(id): Path<i32>,
     form: Form<post::Model>,
 ) -> Result<impl IntoResponse> {
-    let conn = &state.conn;
     let form = form.0;
 
-    MutationCore::update_post_by_id(conn, id, form)
+    MutationCore::update_post_by_id(txn.0, id, form)
         .await
         .map_err(InternalServerError)?;
 
@@ -110,10 +107,8 @@ async fn update(
 }
 
 #[handler]
-async fn delete(state: Data<&AppState>, Path(id): Path<i32>) -> Result<impl IntoResponse> {
-    let conn = &state.conn;
-
-    MutationCore::delete_post(conn, id)
+async fn delete(txn: Data<&Arc<DatabaseTransaction>>, Path(id): Path<i32>) -> Result<impl IntoResponse> {
+    MutationCore::delete_post(txn.0, id)
         .await
         .map_err(InternalServerError)?;
 
@@ -136,7 +131,7 @@ async fn start() -> std::io::Result<()> {
     let conn = Database::connect(&db_url).await.unwrap();
     Migrator::up(&conn, None).await.unwrap();
     let templates = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")).unwrap();
-    let state = AppState { templates, conn };
+    let state = AppState { templates, conn: conn.clone() };
 
     println!("Starting server at {}", server_url);
 
@@ -149,7 +144,41 @@ async fn start() -> std::io::Result<()> {
             "/static",
             StaticFilesEndpoint::new(concat!(env!("CARGO_MANIFEST_DIR"), "/static")),
         )
-        .data(state);
+        .around(|ep, mut req| async move {
+            let db = &req
+                .extensions()
+                .get::<AppState>()
+                .expect("DB not found in request data")
+                .conn;
+            let arc = match db.begin().await {
+                Ok(v) => { Arc::new(v) }
+                Err(err) => {
+                    println!("{}", err);
+                    return Ok(Error::from_status(StatusCode::INTERNAL_SERVER_ERROR).into_response());
+                }
+            };
+            req.extensions_mut().insert(arc.clone());
+            let resp = ep.get_response(req).await;
+
+            let transaction = match Arc::try_unwrap(arc) {
+                Ok(v) => {v}
+                Err(_) => {
+                    println!("Transaction arc has strong references!");
+                    return Ok(Error::from_status(StatusCode::INTERNAL_SERVER_ERROR).into_response());}
+            };
+            if resp.status().is_success() || vec![StatusCode::FOUND, StatusCode::NOT_MODIFIED, StatusCode::SEE_OTHER].contains(&resp.status()) {
+                if let Err(err) = transaction.commit().await {
+                    println!("{}", err);
+                    return Ok(Error::from_status(StatusCode::INTERNAL_SERVER_ERROR).into_response());
+                };
+            } else if let Err(err) = transaction.rollback().await {
+                println!("{}", err);
+                return Ok(Error::from_status(StatusCode::INTERNAL_SERVER_ERROR).into_response());
+            }
+
+            Ok(resp)
+        })
+        .data(state); // DO NOT MOVE THIS BEFORE THE `around` CALL!!!!!!
     let server = Server::new(TcpListener::bind(format!("{}:{}", host, port)));
     server.run(app).await
 }
