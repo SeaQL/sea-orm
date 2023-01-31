@@ -1,4 +1,4 @@
-#![allow(missing_docs, unused_variables)]
+#![allow(missing_docs, unused_variables, unreachable_code)]
 
 use std::{pin::Pin, task::Poll};
 
