@@ -749,7 +749,8 @@ mod postgres_array {
                         QueryResultRow::SqlxMySql(row) => Err(query_err(format!(
                             "{} unsupported by sqlx-mysql",
                             stringify!($type)
-                        ))),
+                        ))
+                        .into()),
                         #[cfg(feature = "sqlx-postgres")]
                         QueryResultRow::SqlxPostgres(row) => {
                             use sqlx::Row;
@@ -761,7 +762,8 @@ mod postgres_array {
                         QueryResultRow::SqlxSqlite(_) => Err(query_err(format!(
                             "{} unsupported by sqlx-sqlite",
                             stringify!($type)
-                        ))),
+                        ))
+                        .into()),
                         #[cfg(feature = "mock")]
                         QueryResultRow::Mock(row) => {
                             row.try_get::<Vec<uuid::Uuid>, _>(idx).map_err(|e| {
