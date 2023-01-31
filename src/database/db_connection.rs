@@ -361,7 +361,7 @@ impl DatabaseConnection {
             .as_mock_connection()?
             .get_mocker_mutex()
             .lock()
-            .map_err(|e| exec_err(e.to_string()))?;
+            .map_err(exec_err)?;
         Ok(mocker.drain_transaction_log())
     }
 

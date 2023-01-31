@@ -128,7 +128,7 @@ impl MockDatabaseConnection {
         let counter = self.execute_counter.fetch_add(1, Ordering::SeqCst);
         self.mocker
             .lock()
-            .map_err(|e| exec_err(e.to_string()))?
+            .map_err(exec_err)?
             .execute(counter, statement)
     }
 
@@ -140,7 +140,7 @@ impl MockDatabaseConnection {
         let result = self
             .mocker
             .lock()
-            .map_err(|e| query_err(e.to_string()))?
+            .map_err(query_err)?
             .query(counter, statement)?;
         Ok(result.into_iter().next())
     }
@@ -152,7 +152,7 @@ impl MockDatabaseConnection {
         let counter = self.query_counter.fetch_add(1, Ordering::SeqCst);
         self.mocker
             .lock()
-            .map_err(|e| query_err(e.to_string()))?
+            .map_err(query_err)?
             .query(counter, statement)
     }
 
@@ -171,27 +171,18 @@ impl MockDatabaseConnection {
     /// Create a statement block  of SQL statements that execute together.
     #[instrument(level = "trace")]
     pub fn begin(&self) -> Result<(), DbErr> {
-        self.mocker
-            .lock()
-            .map_err(|e| exec_err(e.to_string()))?
-            .begin()
+        self.mocker.lock().map_err(exec_err)?.begin()
     }
 
     /// Commit a transaction atomically to the database
     #[instrument(level = "trace")]
     pub fn commit(&self) -> Result<(), DbErr> {
-        self.mocker
-            .lock()
-            .map_err(|e| exec_err(e.to_string()))?
-            .commit()
+        self.mocker.lock().map_err(exec_err)?.commit()
     }
 
     /// Roll back a faulty transaction
     #[instrument(level = "trace")]
     pub fn rollback(&self) -> Result<(), DbErr> {
-        self.mocker
-            .lock()
-            .map_err(|e| exec_err(e.to_string()))?
-            .rollback()
+        self.mocker.lock().map_err(exec_err)?.rollback()
     }
 }

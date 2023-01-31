@@ -174,9 +174,10 @@ impl MockDatabaseTrait for MockDatabase {
         match self.transaction.as_mut() {
             Some(transaction) => {
                 if transaction.commit(self.db_backend) {
-                    let transaction = self.transaction.take().ok_or(exec_err(
-                        "There is no open transaction to commit".to_owned(),
-                    ))?;
+                    let transaction = self
+                        .transaction
+                        .take()
+                        .ok_or(exec_err("There is no open transaction to commit"))?;
                     self.transaction_log.push(transaction.into_transaction()?);
                 }
                 Ok(())
