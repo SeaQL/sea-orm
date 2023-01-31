@@ -1,5 +1,15 @@
-#[cfg(feature = "sqlx-dep")]
-use sqlx::error::Error as SqlxError;
+#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-dep"))]
+pub use sqlx::error::Error as SqlxError;
+
+#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-mysql"))]
+pub use sqlx::mysql::MySqlDatabaseError as SqlxMySqlError;
+
+#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-postgres"))]
+pub use sqlx::postgres::PgDatabaseError as SqlxPostgresError;
+
+#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-sqlite"))]
+pub use sqlx::sqlite::SqliteError as SqlxSqliteError;
+
 use thiserror::Error;
 
 /// An error from unsuccessful database operations
@@ -71,7 +81,7 @@ pub enum RuntimeErr {
     /// SQLx Error
     #[cfg(feature = "sqlx-dep")]
     #[error("{0}")]
-    SqlxError(SqlxError),
+    SqlxError(sqlx::error::Error),
     /// Error generated from within SeaORM
     #[error("{0}")]
     Internal(String),
