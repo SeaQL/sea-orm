@@ -1,6 +1,6 @@
 pub mod common;
 
-use common::features::{TestContext, *};
+use common::{features::*, TestContext};
 use pretty_assertions::assert_eq;
 use rust_decimal_macros::dec;
 use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
