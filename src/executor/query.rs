@@ -19,13 +19,6 @@ pub(crate) enum QueryResultRow {
     SqlxSqlite(sqlx::sqlite::SqliteRow),
     #[cfg(feature = "mock")]
     Mock(crate::MockRow),
-    Disconnected,
-}
-
-impl Default for QueryResultRow {
-    fn default() -> Self {
-        Self::Disconnected
-    }
 }
 
 /// An interface to get a value from the query result
@@ -128,7 +121,8 @@ impl fmt::Debug for QueryResultRow {
             Self::SqlxSqlite(_) => write!(f, "QueryResultRow::SqlxSqlite cannot be inspected"),
             #[cfg(feature = "mock")]
             Self::Mock(row) => write!(f, "{row:?}"),
-            Self::Disconnected => write!(f, "Disconnected"),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 }
@@ -273,7 +267,8 @@ macro_rules! try_getable_all {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
-                    QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             }
         }
@@ -311,7 +306,8 @@ macro_rules! try_getable_unsigned {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
-                    QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             }
         }
@@ -348,7 +344,8 @@ macro_rules! try_getable_mysql {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
-                    QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             }
         }
@@ -392,7 +389,8 @@ macro_rules! try_getable_date_time {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
-                    QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             }
         }
@@ -490,7 +488,8 @@ impl TryGetable for Decimal {
                 debug_print!("{:#?}", e.to_string());
                 err_null_idx_col(idx)
             }),
-            QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 }
@@ -540,7 +539,8 @@ impl TryGetable for BigDecimal {
                 debug_print!("{:#?}", e.to_string());
                 err_null_idx_col(idx)
             }),
-            QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 }
@@ -579,7 +579,8 @@ macro_rules! try_getable_uuid {
                         debug_print!("{:#?}", e.to_string());
                         err_null_idx_col(idx)
                     }),
-                    QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 };
                 res.map($conversion_fn)
             }
@@ -637,7 +638,8 @@ impl TryGetable for u32 {
                 debug_print!("{:#?}", e.to_string());
                 err_null_idx_col(idx)
             }),
-            QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 }
@@ -683,7 +685,8 @@ mod postgres_array {
                             debug_print!("{:#?}", e.to_string());
                             err_null_idx_col(idx)
                         }),
-                        QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
+                        #[allow(unreachable_patterns)]
+                        _ => unreachable!(),
                     }
                 }
             }
@@ -771,7 +774,8 @@ mod postgres_array {
                                 err_null_idx_col(idx)
                             })
                         }
-                        QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
+                        #[allow(unreachable_patterns)]
+                        _ => unreachable!(),
                     };
                     res.map(|vec| vec.into_iter().map($conversion_fn).collect())
                 }
@@ -827,7 +831,8 @@ mod postgres_array {
                     debug_print!("{:#?}", e.to_string());
                     err_null_idx_col(idx)
                 }),
-                QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
+                #[allow(unreachable_patterns)]
+                _ => unreachable!(),
             }
         }
     }
@@ -1124,7 +1129,8 @@ where
                     serde_json::from_value(json)
                         .map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))
                 }),
-            QueryResultRow::Disconnected => Err(conn_err("Disconnected").into()),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 }
