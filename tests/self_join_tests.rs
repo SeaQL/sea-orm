@@ -23,7 +23,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
     let model = self_join::Model {
         uuid: Uuid::new_v4(),
         uuid_ref: None,
-        time: Some(Time::from_hms(1, 00, 00)),
+        time: Some(Time::from_hms_opt(1, 00, 00).unwrap()),
     };
 
     model.clone().into_active_model().insert(db).await?;
@@ -31,7 +31,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
     let linked_model = self_join::Model {
         uuid: Uuid::new_v4(),
         uuid_ref: Some(model.clone().uuid),
-        time: Some(Time::from_hms(2, 00, 00)),
+        time: Some(Time::from_hms_opt(2, 00, 00).unwrap()),
     };
 
     linked_model.clone().into_active_model().insert(db).await?;
@@ -39,7 +39,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
     let not_linked_model = self_join::Model {
         uuid: Uuid::new_v4(),
         uuid_ref: None,
-        time: Some(Time::from_hms(3, 00, 00)),
+        time: Some(Time::from_hms_opt(3, 00, 00).unwrap()),
     };
 
     not_linked_model
@@ -53,7 +53,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
             .find_linked(self_join::SelfReferencingLink)
             .all(db)
             .await?,
-        vec![]
+        []
     );
 
     assert_eq!(
@@ -61,7 +61,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
             .find_linked(self_join::SelfReferencingLink)
             .all(db)
             .await?,
-        vec![model.clone()]
+        [model.clone()]
     );
 
     assert_eq!(
@@ -69,7 +69,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
             .find_linked(self_join::SelfReferencingLink)
             .all(db)
             .await?,
-        vec![]
+        []
     );
 
     assert_eq!(
@@ -78,7 +78,7 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
             .order_by_asc(self_join::Column::Time)
             .all(db)
             .await?,
-        vec![
+        [
             (model.clone(), None),
             (linked_model, Some(model)),
             (not_linked_model, None),

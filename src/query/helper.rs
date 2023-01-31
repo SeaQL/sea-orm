@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, ColumnType, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable,
-    ModelTrait, PrimaryKeyToColumn, RelationDef,
+    ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable, ModelTrait,
+    PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
     Alias, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr, SelectStatement,
@@ -13,7 +13,7 @@ use sea_query::IntoColumnRef;
 // LINT: when the column does not appear in tables selected from
 // LINT: when there is a group by clause, but some columns don't have aggregate functions
 // LINT: when the join table or column does not exists
-/// Constraints for any type that needs to perform select statements on a Model
+/// Abstract API for performing queries
 pub trait QuerySelect: Sized {
     #[allow(missing_docs)]
     type QueryStatement;
@@ -67,7 +67,7 @@ pub trait QuerySelect: Sized {
     where
         C: ColumnTrait,
     {
-        self.query().expr(cast_enum_as_text(col.into_expr(), &col));
+        self.query().expr(col.select_as(col.into_expr()));
         self
     }
 
@@ -97,7 +97,74 @@ pub trait QuerySelect: Sized {
         self
     }
 
-    /// Add an offset expression
+    /// Select columns
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .columns([cake::Column::Id, cake::Column::Name])
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake""#
+    /// );
+    /// ```
+    ///
+    /// Conditionally select all columns expect a specific column
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .columns(cake::Column::iter().filter(|col| match col {
+    ///             cake::Column::Id => false,
+    ///             _ => true,
+    ///         }))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."name" FROM "cake""#
+    /// );
+    /// ```
+    ///
+    /// Enum column will be casted into text (PostgreSQL only)
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::lunch_set, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     lunch_set::Entity::find()
+    ///         .select_only()
+    ///         .columns([lunch_set::Column::Name, lunch_set::Column::Tea])
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "lunch_set"."name", CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    /// );
+    /// assert_eq!(
+    ///     lunch_set::Entity::find()
+    ///         .select_only()
+    ///         .columns([lunch_set::Column::Name, lunch_set::Column::Tea])
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     r#"SELECT `lunch_set`.`name`, `lunch_set`.`tea` FROM `lunch_set`"#
+    /// );
+    /// ```
+    fn columns<C, I>(mut self, cols: I) -> Self
+    where
+        C: ColumnTrait,
+        I: IntoIterator<Item = C>,
+    {
+        for col in cols.into_iter() {
+            self = self.column(col);
+        }
+        self
+    }
+
+    /// Add an offset expression. Passing in None would remove the offset.
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
@@ -108,13 +175,39 @@ pub trait QuerySelect: Sized {
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` OFFSET 10"
     /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .offset(Some(10))
+    ///         .offset(Some(20))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` OFFSET 20"
+    /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .offset(10)
+    ///         .offset(None)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    /// );
     /// ```
-    fn offset(mut self, offset: u64) -> Self {
-        self.query().offset(offset);
+    fn offset<T>(mut self, offset: T) -> Self
+    where
+        T: Into<Option<u64>>,
+    {
+        if let Some(offset) = offset.into() {
+            self.query().offset(offset);
+        } else {
+            self.query().reset_offset();
+        }
         self
     }
 
-    /// Add a limit expression
+    /// Add a limit expression. Passing in None would remove the limit.
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
@@ -125,9 +218,34 @@ pub trait QuerySelect: Sized {
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 10"
     /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .limit(Some(10))
+    ///         .limit(Some(20))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 20"
+    /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .limit(10)
+    ///         .limit(None)
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    /// );
     /// ```
-    fn limit(mut self, limit: u64) -> Self {
-        self.query().limit(limit);
+    fn limit<T>(mut self, limit: T) -> Self
+    where
+        T: Into<Option<u64>>,
+    {
+        if let Some(limit) = limit.into() {
+            self.query().limit(limit);
+        } else {
+            self.query().reset_limit();
+        }
         self
     }
 
@@ -149,7 +267,7 @@ pub trait QuerySelect: Sized {
     where
         C: IntoSimpleExpr,
     {
-        self.query().add_group_by(vec![col.into_simple_expr()]);
+        self.query().add_group_by([col.into_simple_expr()]);
         self
     }
 
@@ -529,7 +647,7 @@ pub trait QueryFilter: Sized {
     {
         for key in <M::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
-            let expr = Expr::tbl(Alias::new(tbl_alias), col).eq(model.get(col));
+            let expr = Expr::col((Alias::new(tbl_alias), col)).eq(model.get(col));
             self = self.filter(expr);
         }
         self
@@ -570,18 +688,18 @@ pub(crate) fn join_tbl_on_condition(
 ) -> SimpleExpr {
     match (owner_keys, foreign_keys) {
         (Identity::Unary(o1), Identity::Unary(f1)) => {
-            Expr::tbl(SeaRc::clone(&from_tbl), o1).equals(SeaRc::clone(&to_tbl), f1)
+            Expr::col((SeaRc::clone(&from_tbl), o1)).equals((SeaRc::clone(&to_tbl), f1))
         }
         (Identity::Binary(o1, o2), Identity::Binary(f1, f2)) => {
-            Expr::tbl(SeaRc::clone(&from_tbl), o1)
-                .equals(SeaRc::clone(&to_tbl), f1)
-                .and(Expr::tbl(SeaRc::clone(&from_tbl), o2).equals(SeaRc::clone(&to_tbl), f2))
+            Expr::col((SeaRc::clone(&from_tbl), o1))
+                .equals((SeaRc::clone(&to_tbl), f1))
+                .and(Expr::col((SeaRc::clone(&from_tbl), o2)).equals((SeaRc::clone(&to_tbl), f2)))
         }
         (Identity::Ternary(o1, o2, o3), Identity::Ternary(f1, f2, f3)) => {
-            Expr::tbl(SeaRc::clone(&from_tbl), o1)
-                .equals(SeaRc::clone(&to_tbl), f1)
-                .and(Expr::tbl(SeaRc::clone(&from_tbl), o2).equals(SeaRc::clone(&to_tbl), f2))
-                .and(Expr::tbl(SeaRc::clone(&from_tbl), o3).equals(SeaRc::clone(&to_tbl), f3))
+            Expr::col((SeaRc::clone(&from_tbl), o1))
+                .equals((SeaRc::clone(&to_tbl), f1))
+                .and(Expr::col((SeaRc::clone(&from_tbl), o2)).equals((SeaRc::clone(&to_tbl), f2)))
+                .and(Expr::col((SeaRc::clone(&from_tbl), o3)).equals((SeaRc::clone(&to_tbl), f3)))
         }
         _ => panic!("Owner key and foreign key mismatch"),
     }
@@ -596,7 +714,8 @@ pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> DynIden {
         | TableRef::SchemaTableAlias(_, tbl, _)
         | TableRef::DatabaseSchemaTableAlias(_, _, tbl, _)
         | TableRef::SubQuery(_, tbl)
-        | TableRef::ValuesList(_, tbl) => SeaRc::clone(tbl),
+        | TableRef::ValuesList(_, tbl)
+        | TableRef::FunctionCall(_, tbl) => SeaRc::clone(tbl),
     }
 }
 
@@ -609,52 +728,7 @@ pub(crate) fn unpack_table_alias(table_ref: &TableRef) -> Option<DynIden> {
         | TableRef::ValuesList(_, _) => None,
         TableRef::TableAlias(_, alias)
         | TableRef::SchemaTableAlias(_, _, alias)
-        | TableRef::DatabaseSchemaTableAlias(_, _, _, alias) => Some(SeaRc::clone(alias)),
-    }
-}
-
-#[derive(Iden)]
-struct Text;
-
-#[derive(Iden)]
-#[iden = "text[]"]
-struct TextArray;
-
-pub(crate) fn cast_enum_as_text<C>(expr: Expr, col: &C) -> SimpleExpr
-where
-    C: ColumnTrait,
-{
-    cast_enum_text_inner(expr, col, |col, _, col_type| {
-        let type_name = match col_type {
-            ColumnType::Array(_) => TextArray.into_iden(),
-            _ => Text.into_iden(),
-        };
-        col.as_enum(type_name)
-    })
-}
-
-pub(crate) fn cast_text_as_enum<C>(expr: Expr, col: &C) -> SimpleExpr
-where
-    C: ColumnTrait,
-{
-    cast_enum_text_inner(expr, col, |col, enum_name, col_type| {
-        let type_name = match col_type {
-            ColumnType::Array(_) => Alias::new(&format!("{}[]", enum_name.to_string())).into_iden(),
-            _ => enum_name,
-        };
-        col.as_enum(type_name)
-    })
-}
-
-fn cast_enum_text_inner<C, F>(expr: Expr, col: &C, f: F) -> SimpleExpr
-where
-    C: ColumnTrait,
-    F: Fn(Expr, DynIden, &ColumnType) -> SimpleExpr,
-{
-    let col_def = col.def();
-    let col_type = col_def.get_column_type();
-    match col_type.get_enum_name() {
-        Some(enum_name) => f(expr, SeaRc::clone(enum_name), col_type),
-        None => expr.into(),
+        | TableRef::DatabaseSchemaTableAlias(_, _, _, alias)
+        | TableRef::FunctionCall(_, alias) => Some(SeaRc::clone(alias)),
     }
 }

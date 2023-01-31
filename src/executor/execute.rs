@@ -62,7 +62,7 @@ impl ExecResult {
         }
     }
 
-    /// Get the number of rows affedted by the operation
+    /// Get the number of rows affected by the operation
     pub fn rows_affected(&self) -> u64 {
         match &self.result {
             #[cfg(feature = "sqlx-mysql")]

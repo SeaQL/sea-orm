@@ -9,7 +9,7 @@ name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
-async-std = { version = "^1", features = ["attributes", "tokio1"] }
+async-std = { version = "1", features = ["attributes", "tokio1"] }
 
 [dependencies.sea-orm-migration]
 version = "<sea-orm-migration-version>"

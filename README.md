@@ -125,7 +125,7 @@ let pear = fruit::ActiveModel {
 let pear = pear.insert(db).await?;
 
 // insert many
-Fruit::insert_many(vec![apple, pear]).exec(db).await?;
+Fruit::insert_many([apple, pear]).exec(db).await?;
 ```
 ### Update
 ```rust
@@ -202,12 +202,14 @@ The following products are powered by SeaORM:
     <tr>
       <td><br><a href="https://caido.io/"><img src="https://www.sea-ql.org/SeaORM/img/other/caido-logo.png" width="250"/></a><br>A lightweight web security auditing toolkit</td>
       <td><a href="https://www.svix.com/"><img src="https://www.sea-ql.org/SeaORM/img/other/svix-logo.svg" width="250"/></a><br>The enterprise ready webhooks service</td>
-      <td><a href="https://docs.spyglass.fyi/"><img src="https://www.sea-ql.org/SeaORM/img/other/spyglass-logo.svg" width="250"/></a><br/>A personal search engine</td>
+      <td><a href="https://www.spyglass.fyi/"><img src="https://www.sea-ql.org/SeaORM/img/other/spyglass-logo.svg" width="250"/></a><br/>A personal search engine</td>
     </tr>
   </tbody>
 </table>
 
-SeaORM is the foundation of [StarfishQL](https://github.com/SeaQL/starfish-ql), an experimental graph database and query engine developed by SeaQL.
+SeaORM is the foundation of:
++ [StarfishQL](https://github.com/SeaQL/starfish-ql): an experimental graph database
++ [Seaography](https://github.com/SeaQL/seaography): GraphQL framework for SeaORM
 
 For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm).
 
@@ -233,3 +235,9 @@ SeaORM is a community driven project. We welcome you to participate, contribute 
 A big shout out to our contributors:
 
 [![Contributors](https://opencollective.com/sea-orm/contributors.svg?width=1000&button=false)](https://github.com/SeaQL/sea-orm/graphs/contributors)
+
+## Mascot
+
+A friend of Ferris, Terres the hermit crab is the official mascot of SeaORM. His hobby is collecting shells.
+
+<img alt="Terres" src="https://www.sea-ql.org/SeaORM/img/Terres.png" width="400"/>

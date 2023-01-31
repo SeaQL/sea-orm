@@ -1,10 +1,10 @@
 use crate::{
-    unpack_table_ref, ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, Identity,
-    Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, RelationTrait, Schema,
+    ActiveEnum, ColumnTrait, ColumnType, DbBackend, EntityTrait, Iterable, PrimaryKeyToColumn,
+    PrimaryKeyTrait, RelationTrait, Schema,
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
-    ColumnDef, ForeignKeyCreateStatement, Iden, Index, IndexCreateStatement, TableCreateStatement,
+    ColumnDef, Iden, Index, IndexCreateStatement, SeaRc, TableCreateStatement,
 };
 
 impl Schema {
@@ -39,6 +39,51 @@ impl Schema {
         E: EntityTrait,
     {
         create_index_from_entity(entity, self.backend)
+    }
+
+    /// Creates a column definition for example to update a table.
+    /// ```
+    /// use crate::sea_orm::IdenStatic;
+    /// use sea_orm::{
+    ///     ActiveModelBehavior, ColumnDef, ColumnTrait, ColumnType, DbBackend, EntityName,
+    ///     EntityTrait, EnumIter, PrimaryKeyTrait, RelationDef, RelationTrait, Schema,
+    /// };
+    /// use sea_orm_macros::{DeriveEntityModel, DerivePrimaryKey};
+    /// use sea_query::{MysqlQueryBuilder, TableAlterStatement};
+    ///
+    /// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+    /// #[sea_orm(table_name = "posts")]
+    /// pub struct Model {
+    ///     #[sea_orm(primary_key)]
+    ///     pub id: u32,
+    ///     pub title: String,
+    /// }
+    ///
+    /// #[derive(Copy, Clone, Debug, EnumIter)]
+    /// pub enum Relation {}
+    /// impl RelationTrait for Relation {
+    ///     fn def(&self) -> RelationDef {
+    ///         panic!("No RelationDef")
+    ///     }
+    /// }
+    /// impl ActiveModelBehavior for ActiveModel {}
+    ///
+    /// let schema = Schema::new(DbBackend::MySql);
+    ///
+    /// let mut alter_table = TableAlterStatement::new()
+    ///     .table(Entity)
+    ///     .add_column(&mut schema.get_column_def::<Entity>(Column::Title))
+    ///     .take();
+    /// assert_eq!(
+    ///     alter_table.to_string(MysqlQueryBuilder::default()),
+    ///     "ALTER TABLE `posts` ADD COLUMN `title` varchar(255) NOT NULL"
+    /// );
+    /// ```
+    pub fn get_column_def<E>(&self, column: E::Column) -> ColumnDef
+    where
+        E: EntityTrait,
+    {
+        column_def_from_entity_column::<E>(column, self.backend)
     }
 }
 
@@ -117,39 +162,7 @@ where
     let mut stmt = TableCreateStatement::new();
 
     for column in E::Column::iter() {
-        let orm_column_def = column.def();
-        let types = match orm_column_def.col_type {
-            ColumnType::Enum { name, variants } => match backend {
-                DbBackend::MySql => {
-                    let variants: Vec<String> = variants.iter().map(|v| v.to_string()).collect();
-                    ColumnType::Custom(format!("ENUM('{}')", variants.join("', '")))
-                }
-                DbBackend::Postgres => ColumnType::Custom(name.to_string()),
-                DbBackend::Sqlite => ColumnType::Text,
-            }
-            .into(),
-            _ => orm_column_def.col_type.into(),
-        };
-        let mut column_def = ColumnDef::new_with_type(column, types);
-        if !orm_column_def.null {
-            column_def.not_null();
-        }
-        if orm_column_def.unique {
-            column_def.unique_key();
-        }
-        if let Some(value) = orm_column_def.default_value {
-            column_def.default(value);
-        }
-        for primary_key in E::PrimaryKey::iter() {
-            if column.to_string() == primary_key.into_column().to_string() {
-                if E::PrimaryKey::auto_increment() {
-                    column_def.auto_increment();
-                }
-                if E::PrimaryKey::iter().count() == 1 {
-                    column_def.primary_key();
-                }
-            }
-        }
+        let mut column_def = column_def_from_entity_column::<E>(column, backend);
         stmt.col(&mut column_def);
     }
 
@@ -166,55 +179,49 @@ where
         if relation.is_owner {
             continue;
         }
-        let mut foreign_key_stmt = ForeignKeyCreateStatement::new();
-        let from_tbl = unpack_table_ref(&relation.from_tbl);
-        let to_tbl = unpack_table_ref(&relation.to_tbl);
-        let from_cols: Vec<String> = match relation.from_col {
-            Identity::Unary(o1) => vec![o1],
-            Identity::Binary(o1, o2) => vec![o1, o2],
-            Identity::Ternary(o1, o2, o3) => vec![o1, o2, o3],
-        }
-        .into_iter()
-        .map(|col| {
-            let col_name = col.to_string();
-            foreign_key_stmt.from_col(col);
-            col_name
-        })
-        .collect();
-        match relation.to_col {
-            Identity::Unary(o1) => {
-                foreign_key_stmt.to_col(o1);
-            }
-            Identity::Binary(o1, o2) => {
-                foreign_key_stmt.to_col(o1);
-                foreign_key_stmt.to_col(o2);
-            }
-            Identity::Ternary(o1, o2, o3) => {
-                foreign_key_stmt.to_col(o1);
-                foreign_key_stmt.to_col(o2);
-                foreign_key_stmt.to_col(o3);
-            }
-        }
-        if let Some(action) = relation.on_delete {
-            foreign_key_stmt.on_delete(action);
-        }
-        if let Some(action) = relation.on_update {
-            foreign_key_stmt.on_update(action);
-        }
-        let name = if let Some(name) = relation.fk_name {
-            name
-        } else {
-            format!("fk-{}-{}", from_tbl.to_string(), from_cols.join("-"))
-        };
-        stmt.foreign_key(
-            foreign_key_stmt
-                .name(&name)
-                .from_tbl(from_tbl)
-                .to_tbl(to_tbl),
-        );
+        stmt.foreign_key(&mut relation.into());
     }
 
     stmt.table(entity.table_ref()).take()
+}
+
+fn column_def_from_entity_column<E>(column: E::Column, backend: DbBackend) -> ColumnDef
+where
+    E: EntityTrait,
+{
+    let orm_column_def = column.def();
+    let types = match orm_column_def.col_type {
+        ColumnType::Enum { name, variants } => match backend {
+            DbBackend::MySql => {
+                let variants: Vec<String> = variants.iter().map(|v| v.to_string()).collect();
+                ColumnType::custom(format!("ENUM('{}')", variants.join("', '")).as_str())
+            }
+            DbBackend::Postgres => ColumnType::Custom(SeaRc::clone(&name)),
+            DbBackend::Sqlite => ColumnType::Text,
+        },
+        _ => orm_column_def.col_type,
+    };
+    let mut column_def = ColumnDef::new_with_type(column, types);
+    if !orm_column_def.null {
+        column_def.not_null();
+    }
+    if orm_column_def.unique {
+        column_def.unique_key();
+    }
+    if let Some(value) = orm_column_def.default_value {
+        column_def.default(value);
+    }
+    for primary_key in E::PrimaryKey::iter() {
+        if column.to_string() == primary_key.into_column().to_string() {
+            if E::PrimaryKey::auto_increment() {
+                column_def.auto_increment();
+            }
+            if E::PrimaryKey::iter().count() == 1 {
+                column_def.primary_key();
+            }
+        }
+    }
+    column_def
 }
 
 #[cfg(test)]

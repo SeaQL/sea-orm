@@ -44,7 +44,7 @@ impl DeriveRelation {
     fn impl_relation_trait(&self) -> syn::Result<TokenStream> {
         let ident = &self.ident;
         let entity_ident = &self.entity_ident;
-        let no_relation_def_msg = format!("No RelationDef for {}", ident);
+        let no_relation_def_msg = format!("No RelationDef for {ident}");
 
         let variant_relation_defs: Vec<TokenStream> = self
             .variants

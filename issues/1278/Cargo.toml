@@ -1,0 +1,17 @@
+[workspace]
+# A separate workspace
+
+[package]
+name = "sea-orm-issues-1278"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+serde = "1"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+
+[dependencies.sea-orm]
+path = "../../"
+default-features = false
+features = ["macros", "runtime-tokio-native-tls"]

@@ -1,6 +1,6 @@
 use crate::{
-    cast_text_as_enum, ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, Iterable,
-    PrimaryKeyToColumn, QueryFilter, QueryTrait,
+    ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, Iterable, PrimaryKeyToColumn,
+    QueryFilter, QueryTrait,
 };
 use core::marker::PhantomData;
 use sea_query::{Expr, IntoIden, SimpleExpr, UpdateStatement};
@@ -109,12 +109,9 @@ where
                 continue;
             }
             let av = self.model.get(col);
-            match av {
-                ActiveValue::Set(value) => {
-                    let expr = cast_text_as_enum(Expr::val(value), &col);
-                    self.query.value(col, expr);
-                }
-                ActiveValue::Unchanged(_) | ActiveValue::NotSet => {}
+            if av.is_set() {
+                let expr = col.save_as(Expr::val(av.into_value().unwrap()));
+                self.query.value(col, expr);
             }
         }
         self
@@ -192,11 +189,9 @@ where
     {
         for col in E::Column::iter() {
             let av = model.get(col);
-            match av {
-                ActiveValue::Set(value) => {
-                    self.query.value(col, value);
-                }
-                ActiveValue::Unchanged(_) | ActiveValue::NotSet => {}
+            if av.is_set() {
+                let expr = col.save_as(Expr::val(av.into_value().unwrap()));
+                self.query.value(col, expr);
             }
         }
         self
@@ -214,7 +209,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_cfg::{cake, fruit};
+    use crate::tests_cfg::{cake, fruit, lunch_set, sea_orm_active_enums::Tea};
     use crate::{entity::*, query::*, DbBackend};
     use sea_query::{Expr, Value};
 
@@ -299,6 +294,35 @@ mod tests {
                 .build(DbBackend::Postgres)
                 .to_string(),
             r#"UPDATE "fruit" SET "id" = 3 WHERE "fruit"."id" = 2"#,
+        );
+    }
+
+    #[test]
+    fn update_7() {
+        assert_eq!(
+            Update::many(lunch_set::Entity)
+                .set(lunch_set::ActiveModel {
+                    tea: Set(Tea::EverydayTea),
+                    ..Default::default()
+                })
+                .filter(lunch_set::Column::Tea.eq(Tea::BreakfastTea))
+                .build(DbBackend::Postgres)
+                .to_string(),
+            r#"UPDATE "lunch_set" SET "tea" = CAST('EverydayTea' AS tea) WHERE "lunch_set"."tea" = CAST('BreakfastTea' AS tea)"#,
+        );
+    }
+
+    #[test]
+    fn update_8() {
+        assert_eq!(
+            Update::one(lunch_set::ActiveModel {
+                id: Unchanged(1),
+                tea: Set(Tea::EverydayTea),
+                ..Default::default()
+            })
+            .build(DbBackend::Postgres)
+            .to_string(),
+            r#"UPDATE "lunch_set" SET "tea" = CAST('EverydayTea' AS tea) WHERE "lunch_set"."id" = 1"#,
         );
     }
 }

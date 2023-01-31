@@ -63,6 +63,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
     // generate Column enum and it's ColumnTrait impl
     let mut columns_enum: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_trait: Punctuated<_, Comma> = Punctuated::new();
+    let mut columns_select_as: Punctuated<_, Comma> = Punctuated::new();
+    let mut columns_save_as: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_keys: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_key_types: Punctuated<_, Comma> = Punctuated::new();
     let mut auto_increment = true;
@@ -90,6 +92,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut nullable = false;
                     let mut default_value = None;
                     let mut default_expr = None;
+                    let mut select_as = None;
+                    let mut save_as = None;
                     let mut indexed = false;
                     let mut ignore = false;
                     let mut unique = false;
@@ -169,6 +173,24 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                                         format!("Invalid enum_name {:?}", nv.lit),
                                                     ));
                                                 }
+                                            } else if name == "select_as" {
+                                                if let Lit::Str(litstr) = &nv.lit {
+                                                    select_as = Some(litstr.value());
+                                                } else {
+                                                    return Err(Error::new(
+                                                        field.span(),
+                                                        format!("Invalid select_as {:?}", nv.lit),
+                                                    ));
+                                                }
+                                            } else if name == "save_as" {
+                                                if let Lit::Str(litstr) = &nv.lit {
+                                                    save_as = Some(litstr.value());
+                                                } else {
+                                                    return Err(Error::new(
+                                                        field.span(),
+                                                        format!("Invalid save_as {:?}", nv.lit),
+                                                    ));
+                                                }
                                             }
                                         }
                                     }
@@ -224,20 +246,38 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         });
                     }
 
-                    let col_type = match sql_type {
-                        Some(t) => quote! { sea_orm::prelude::ColumnType::#t.def() },
+                    if let Some(select_as) = select_as {
+                        columns_select_as.push(quote! {
+                            Self::#field_name => sea_orm::sea_query::SimpleExpr::cast_as(
+                                Into::<sea_orm::sea_query::SimpleExpr>::into(expr),
+                                sea_orm::sea_query::Alias::new(&#select_as),
+                            )
+                        });
+                    }
+                    if let Some(save_as) = save_as {
+                        columns_save_as.push(quote! {
+                            Self::#field_name => sea_orm::sea_query::SimpleExpr::cast_as(
+                                Into::<sea_orm::sea_query::SimpleExpr>::into(val),
+                                sea_orm::sea_query::Alias::new(&#save_as),
+                            )
+                        });
+                    }
+
+                    let field_type = &field.ty;
+                    let field_type = quote! { #field_type }
+                        .to_string() //E.g.: "Option < String >"
+                        .replace(' ', ""); // Remove spaces
+                    let field_type = if field_type.starts_with("Option<") {
+                        nullable = true;
+                        &field_type[7..(field_type.len() - 1)] // Extract `T` out of `Option<T>`
+                    } else {
+                        field_type.as_str()
+                    };
+
+                    let sea_query_col_type = match sql_type {
+                        Some(t) => quote! { sea_orm::prelude::ColumnType::#t },
                         None => {
-                            let field_type = &field.ty;
-                            let temp = quote! { #field_type }
-                                .to_string() //E.g.: "Option < String >"
-                                .replace(' ', "");
-                            let temp = if temp.starts_with("Option<") {
-                                nullable = true;
-                                &temp[7..(temp.len() - 1)]
-                            } else {
-                                temp.as_str()
-                            };
-                            let col_type = match temp {
+                            let col_type = match field_type {
                                 "char" => quote! { Char(None) },
                                 "String" | "&str" => quote! { String(None) },
                                 "i8" => quote! { TinyInteger },
@@ -262,7 +302,9 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 "Uuid" => quote! { Uuid },
                                 "Json" => quote! { Json },
                                 "Decimal" => quote! { Decimal(None) },
-                                "Vec<u8>" => quote! { Binary },
+                                "Vec<u8>" => {
+                                    quote! { Binary(sea_orm::sea_query::BlobSize::Blob(None)) }
+                                }
                                 _ => {
                                     // Assumed it's ActiveEnum if none of the above type matches
                                     quote! {}
@@ -270,21 +312,22 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             };
                             if col_type.is_empty() {
                                 let field_span = field.span();
-                                let ty: Type = LitStr::new(temp, field_span).parse()?;
-                                let def = quote_spanned! { field_span => {
+                                let ty: Type = LitStr::new(field_type, field_span).parse()?;
+                                let def = quote_spanned! { field_span =>
                                     std::convert::Into::<sea_orm::ColumnType>::into(
                                         <#ty as sea_orm::sea_query::ValueType>::column_type()
                                     )
-                                    .def()
-                                }};
+                                };
                                 quote! { #def }
                             } else {
-                                quote! { sea_orm::prelude::ColumnType::#col_type.def() }
+                                quote! { sea_orm::prelude::ColumnType::#col_type }
                             }
                         }
                     };
+                    let col_def =
+                        quote! { sea_orm::prelude::ColumnTypeTrait::def(#sea_query_col_type) };
 
-                    let mut match_row = quote! { Self::#field_name => #col_type };
+                    let mut match_row = quote! { Self::#field_name => #col_def };
                     if nullable {
                         match_row = quote! { #match_row.nullable() };
                     }
@@ -304,6 +347,14 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                 }
             }
         }
+    }
+
+    // Add tailing comma
+    if !columns_select_as.is_empty() {
+        columns_select_as.push_punct(Comma::default());
+    }
+    if !columns_save_as.is_empty() {
+        columns_save_as.push_punct(Comma::default());
     }
 
     let primary_key = {
@@ -344,6 +395,20 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
             fn def(&self) -> sea_orm::prelude::ColumnDef {
                 match self {
                     #columns_trait
+                }
+            }
+
+            fn select_as(&self, expr: sea_orm::sea_query::Expr) -> sea_orm::sea_query::SimpleExpr {
+                match self {
+                    #columns_select_as
+                    _ => sea_orm::prelude::ColumnTrait::select_enum_as(self, expr),
+                }
+            }
+
+            fn save_as(&self, val: sea_orm::sea_query::Expr) -> sea_orm::sea_query::SimpleExpr {
+                match self {
+                    #columns_save_as
+                    _ => sea_orm::prelude::ColumnTrait::save_enum_as(self, val),
                 }
             }
         }

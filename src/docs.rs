@@ -10,13 +10,13 @@
 //! # pub async fn main() -> Result<(), DbErr> {
 //! #
 //! # let db = MockDatabase::new(DbBackend::Postgres)
-//! #     .append_query_results(vec![
-//! #         vec![cake::Model {
+//! #     .append_query_results([
+//! #         [cake::Model {
 //! #             id: 1,
 //! #             name: "New York Cheese".to_owned(),
 //! #         }
 //! #         .into_mock_row()],
-//! #         vec![fruit::Model {
+//! #         [fruit::Model {
 //! #             id: 1,
 //! #             name: "Apple".to_owned(),
 //! #             cake_id: Some(1),
@@ -44,16 +44,16 @@
 //! # );
 //! # assert_eq!(
 //! #     db.into_transaction_log(),
-//! #     vec![
+//! #     [
 //! #         Transaction::from_sql_and_values(
 //! #             DbBackend::Postgres,
 //! #             r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
-//! #             vec![]
+//! #             []
 //! #         ),
 //! #         Transaction::from_sql_and_values(
 //! #             DbBackend::Postgres,
 //! #             r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
-//! #             vec![]
+//! #             []
 //! #         ),
 //! #     ]
 //! # );
@@ -97,8 +97,8 @@
 //! # async fn function(db: DbConn) -> Result<(), DbErr> {
 //! // Setup mock connection
 //! let db = MockDatabase::new(DbBackend::Postgres)
-//!     .append_query_results(vec![
-//!         vec![
+//!     .append_query_results([
+//!         [
 //!             cake::Model {
 //!                 id: 1,
 //!                 name: "New York Cheese".to_owned(),
@@ -119,11 +119,11 @@
 //! // Compare it against the expected transaction log
 //! assert_eq!(
 //!     db.into_transaction_log(),
-//!     vec![
+//!     [
 //!         Transaction::from_sql_and_values(
 //!             DbBackend::Postgres,
 //!             r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
-//!             vec![1u64.into()]
+//!             [1u64.into()]
 //!         ),
 //!     ]
 //! );

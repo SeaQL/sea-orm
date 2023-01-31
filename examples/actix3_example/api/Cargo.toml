@@ -11,8 +11,8 @@ actix-http = "2"
 actix-web = "3"
 actix-flash = "0.2"
 actix-files = "0.5"
-futures = { version = "^0.3" }
-futures-util = { version = "^0.3" }
+futures = { version = "0.3" }
+futures-util = { version = "0.3" }
 tera = "1.8.0"
 dotenvy = "0.15"
 listenfd = "0.3.3"

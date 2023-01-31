@@ -26,7 +26,15 @@ impl MigrationTrait for Migration {
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .drop_table(Table::drop().table(Cake::Table).to_owned())
-            .await
+            .await?;
+
+        if std::env::var_os("ABORT_MIGRATION").eq(&Some("YES".into())) {
+            return Err(DbErr::Migration(
+                "Abort migration and rollback changes".into(),
+            ));
+        }
+
+        Ok(())
     }
 }
 

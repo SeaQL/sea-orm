@@ -8,8 +8,8 @@ edition = "2021"
 publish = false
 
 [dependencies]
-serde = "^1"
-tokio = { version = "^1", features = ["rt", "rt-multi-thread", "macros"] }
+serde = "1"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 
 [dependencies.sea-orm]
 path = "../../"

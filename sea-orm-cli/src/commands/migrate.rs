@@ -24,8 +24,9 @@ pub fn run_migrate_command(
         Some(MigrateSubcommands::Init) => run_migrate_init(migration_dir)?,
         Some(MigrateSubcommands::Generate {
             migration_name,
-            universal_time,
-        }) => run_migrate_generate(migration_dir, &migration_name, universal_time)?,
+            universal_time: _,
+            local_time,
+        }) => run_migrate_generate(migration_dir, &migration_name, !local_time)?,
         _ => {
             let (subcommand, migration_dir, steps, verbose) = match command {
                 Some(MigrateSubcommands::Fresh) => ("fresh", migration_dir, None, verbose),
@@ -41,9 +42,9 @@ pub fn run_migrate_command(
 
             // Construct the `--manifest-path`
             let manifest_path = if migration_dir.ends_with('/') {
-                format!("{}Cargo.toml", migration_dir)
+                format!("{migration_dir}Cargo.toml")
             } else {
-                format!("{}/Cargo.toml", migration_dir)
+                format!("{migration_dir}/Cargo.toml")
             };
             // Construct the arguments that will be supplied to `cargo` command
             let mut args = vec!["run", "--manifest-path", &manifest_path, "--", subcommand];
@@ -66,7 +67,11 @@ pub fn run_migrate_command(
             }
             // Run migrator CLI on user's behalf
             println!("Running `cargo {}`", args.join(" "));
-            Command::new("cargo").args(args).spawn()?.wait()?;
+            let exit_status = Command::new("cargo").args(args).status()?; // Get the status code
+            if !exit_status.success() {
+                // Propagate the error if any
+                return Err("Fail to run migration".into());
+            }
         }
     }
 
@@ -76,7 +81,7 @@ pub fn run_migrate_command(
 pub fn run_migrate_init(migration_dir: &str) -> Result<(), Box<dyn Error>> {
     let migration_dir = match migration_dir.ends_with('/') {
         true => migration_dir.to_string(),
-        false => format!("{}/", migration_dir),
+        false => format!("{migration_dir}/"),
     };
     println!("Initializing migration directory...");
     macro_rules! write_file {
@@ -101,7 +106,7 @@ pub fn run_migrate_init(migration_dir: &str) -> Result<(), Box<dyn Error>> {
     write_file!("src/main.rs");
     write_file!("Cargo.toml", "_Cargo.toml", |content: String| {
         let ver = format!(
-            "^{}.{}.0",
+            "{}.{}.0",
             env!("CARGO_PKG_VERSION_MAJOR"),
             env!("CARGO_PKG_VERSION_MINOR")
         );
@@ -135,7 +140,7 @@ pub fn run_migrate_generate(
     } else {
         Local::now().format(FMT)
     };
-    let migration_name = format!("m{}_{}", formatted_now, migration_name);
+    let migration_name = format!("m{formatted_now}_{migration_name}");
 
     create_new_migration(&migration_name, migration_dir)?;
     update_migrator(&migration_name, migration_dir)?;
@@ -213,7 +218,7 @@ fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<
     let mod_regex = Regex::new(r"mod\s+(?P<name>m\d{8}_\d{6}_\w+);")?;
     let mods: Vec<_> = mod_regex.captures_iter(&migrator_content).collect();
     let mods_end = mods.last().unwrap().get(0).unwrap().end() + 1;
-    updated_migrator_content.insert_str(mods_end, format!("mod {};\n", migration_name).as_str());
+    updated_migrator_content.insert_str(mods_end, format!("mod {migration_name};\n").as_str());
 
     // build new vector from declared migration modules
     let mut migrations: Vec<&str> = mods
@@ -223,11 +228,11 @@ fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<
     migrations.push(migration_name);
     let mut boxed_migrations = migrations
         .iter()
-        .map(|migration| format!("            Box::new({}::Migration),", migration))
+        .map(|migration| format!("            Box::new({migration}::Migration),"))
         .collect::<Vec<String>>()
         .join("\n");
     boxed_migrations.push('\n');
-    let boxed_migrations = format!("vec![\n{}        ]\n", boxed_migrations);
+    let boxed_migrations = format!("vec![\n{boxed_migrations}        ]\n");
     let vec_regex = Regex::new(r"vec!\[[\s\S]+\]\n")?;
     let updated_migrator_content = vec_regex.replace(&updated_migrator_content, &boxed_migrations);
 
@@ -245,7 +250,7 @@ impl Display for MigrationCommandError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             MigrationCommandError::InvalidName(name) => {
-                write!(f, "Invalid migration name: {}", name)
+                write!(f, "Invalid migration name: {name}")
             }
         }
     }
@@ -261,11 +266,11 @@ mod tests {
     fn test_create_new_migration() {
         let migration_name = "test_name";
         let migration_dir = "/tmp/sea_orm_cli_test_new_migration/";
-        fs::create_dir_all(format!("{}src", migration_dir)).unwrap();
+        fs::create_dir_all(format!("{migration_dir}src")).unwrap();
         create_new_migration(migration_name, migration_dir).unwrap();
         let migration_filepath = Path::new(migration_dir)
             .join("src")
-            .join(format!("{}.rs", migration_name));
+            .join(format!("{migration_name}.rs"));
         assert!(migration_filepath.exists());
         let migration_content = fs::read_to_string(migration_filepath).unwrap();
         assert_eq!(
@@ -279,7 +284,7 @@ mod tests {
     fn test_update_migrator() {
         let migration_name = "test_name";
         let migration_dir = "/tmp/sea_orm_cli_test_update_migrator/";
-        fs::create_dir_all(format!("{}src", migration_dir)).unwrap();
+        fs::create_dir_all(format!("{migration_dir}src")).unwrap();
         let migrator_filepath = Path::new(migration_dir).join("src").join("lib.rs");
         fs::copy("./template/migration/src/lib.rs", &migrator_filepath).unwrap();
         update_migrator(migration_name, migration_dir).unwrap();

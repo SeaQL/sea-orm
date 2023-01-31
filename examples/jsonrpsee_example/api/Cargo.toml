@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 jsonrpsee-example-core = { path = "../core" }
-jsonrpsee = { version = "^0.8.0", features = ["full"] }
+jsonrpsee = { version = "0.8.0", features = ["full"] }
 jsonrpsee-core = "0.9.0"
 tokio = { version = "1.8.0", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
@@ -16,4 +16,4 @@ migration = { path = "../migration" }
 anyhow = "1.0.52"
 async-trait = "0.1.52"
 log = { version = "0.4", features = ["std"] }
-simplelog = "*"
+simplelog = "0.12"

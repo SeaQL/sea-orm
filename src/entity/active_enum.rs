@@ -1,4 +1,4 @@
-use crate::{ColumnDef, DbErr, Iterable, QueryResult, TryGetError, TryGetable};
+use crate::{ColumnDef, DbErr, Iterable, QueryResult, TryFromU64, TryGetError, TryGetable};
 use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 
 /// A Rust representation of enum defined in database.
@@ -152,11 +152,22 @@ where
     T: ActiveEnum,
     T::ValueVec: TryGetable,
 {
-    fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
-        <T::ValueVec as TryGetable>::try_get(res, pre, col)?
+    fn try_get_by<I: crate::ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
+        <T::ValueVec as TryGetable>::try_get_by(res, index)?
             .into_iter()
             .map(|value| T::try_from_value(&value).map_err(TryGetError::DbErr))
             .collect()
+    }
+}
+
+impl<T> TryFromU64 for T
+where
+    T: ActiveEnum,
+{
+    fn try_from_u64(_: u64) -> Result<Self, DbErr> {
+        Err(DbErr::ConvertFromU64(
+            "Fail to construct ActiveEnum from a u64, if your primary key consist of a ActiveEnum field, its auto increment should be set to false."
+        ))
     }
 }
 
@@ -200,8 +211,7 @@ mod tests {
                     "B" => Ok(Self::Big),
                     "S" => Ok(Self::Small),
                     _ => Err(DbErr::Type(format!(
-                        "unexpected value for Category enum: {}",
-                        v
+                        "unexpected value for Category enum: {v}"
                     ))),
                 }
             }

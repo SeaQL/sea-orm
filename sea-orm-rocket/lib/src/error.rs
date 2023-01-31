@@ -18,9 +18,9 @@ pub enum Error<A, B = A> {
 impl<A: fmt::Display, B: fmt::Display> fmt::Display for Error<A, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Init(e) => write!(f, "failed to initialize database: {}", e),
-            Error::Get(e) => write!(f, "failed to get db connection: {}", e),
-            Error::Config(e) => write!(f, "bad configuration: {}", e),
+            Error::Init(e) => write!(f, "failed to initialize database: {e}"),
+            Error::Get(e) => write!(f, "failed to get db connection: {e}"),
+            Error::Config(e) => write!(f, "bad configuration: {e}"),
         }
     }
 }
