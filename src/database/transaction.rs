@@ -259,7 +259,7 @@ impl DatabaseTransaction {
                 }
             } else {
                 //this should never happen
-                unreachable!("Dropping a locked Transaction");
+                return Err(conn_err("Dropping a locked Transaction"));
             }
         }
         Ok(())
@@ -353,8 +353,7 @@ impl ConnectionTrait for DatabaseTransaction {
                 let stmt = Statement::from_string(db_backend, sql.into());
                 conn.execute(stmt)
             }
-            #[allow(unreachable_patterns)]
-            _ => unreachable!(),
+            InnerConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 

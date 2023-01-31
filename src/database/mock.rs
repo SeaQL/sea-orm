@@ -141,9 +141,10 @@ impl MockDatabaseTrait for MockDatabase {
 
     #[instrument(level = "trace")]
     fn query(&mut self, counter: usize, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
-        match self.transaction.as_mut() {
-            Some(transaction) => transaction.push(statement),
-            None => self.transaction_log.push(Transaction::one(statement)),
+        if let Some(transaction) = &mut self.transaction {
+            transaction.push(statement);
+        } else {
+            self.transaction_log.push(Transaction::one(statement));
         }
         if counter < self.query_results.len() {
             match std::mem::replace(
