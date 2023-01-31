@@ -67,13 +67,6 @@ pub(crate) enum InnerConnection {
     Sqlite(PoolConnection<sqlx::Sqlite>),
     #[cfg(feature = "mock")]
     Mock(std::sync::Arc<crate::MockDatabaseConnection>),
-    Disconnected,
-}
-
-impl Default for InnerConnection {
-    fn default() -> Self {
-        Self::Disconnected
-    }
 }
 
 impl std::fmt::Debug for DatabaseConnection {

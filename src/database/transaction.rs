@@ -143,7 +143,8 @@ impl DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(ref mut c) => c.begin(),
-            InnerConnection::Disconnected => Err(conn_err("Disconnected")),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }?;
         Ok(res)
     }
@@ -196,7 +197,8 @@ impl DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(ref mut c) => c.commit(),
-            InnerConnection::Disconnected => Err(conn_err("Disconnected")),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }?;
         self.open = false;
         Ok(())
@@ -227,7 +229,8 @@ impl DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(ref mut c) => c.rollback(),
-            InnerConnection::Disconnected => Err(conn_err("Disconnected")),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }?;
         self.open = false;
         Ok(())
@@ -255,7 +258,8 @@ impl DatabaseTransaction {
                     InnerConnection::Mock(c) => {
                         c.rollback()?;
                     }
-                    InnerConnection::Disconnected => Err(conn_err("Disconnected"))?,
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!(),
                 }
             } else {
                 //this should never happen
@@ -322,7 +326,8 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.execute(stmt),
-            InnerConnection::Disconnected => Err(conn_err("Disconnected")),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 
@@ -353,7 +358,8 @@ impl ConnectionTrait for DatabaseTransaction {
                 let stmt = Statement::from_string(db_backend, sql.into());
                 conn.execute(stmt)
             }
-            InnerConnection::Disconnected => Err(conn_err("Disconnected")),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 
@@ -392,7 +398,8 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_one(stmt),
-            InnerConnection::Disconnected => Err(conn_err("Disconnected")),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 
@@ -437,7 +444,8 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_all(stmt),
-            InnerConnection::Disconnected => Err(conn_err("Disconnected")),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 }
