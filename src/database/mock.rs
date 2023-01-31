@@ -160,46 +160,40 @@ impl MockDatabaseTrait for MockDatabase {
         }
     }
 
-    #[instrument(level = "trace")]
-    fn begin(&mut self) -> Result<(), DbErr> {
+    fn begin(&mut self) {
         match self.transaction.as_mut() {
             Some(transaction) => transaction.begin_nested(self.db_backend),
             None => self.transaction = Some(OpenTransaction::init()),
-        };
-        Ok(())
+        }
     }
 
-    #[instrument(level = "trace")]
-    fn commit(&mut self) -> Result<(), DbErr> {
+    fn commit(&mut self) {
         match self.transaction.as_mut() {
             Some(transaction) => {
                 if transaction.commit(self.db_backend) {
                     let transaction = self
                         .transaction
                         .take()
-                        .ok_or(exec_err("There is no open transaction to commit"))?;
-                    self.transaction_log.push(transaction.into_transaction()?);
+                        .expect("There is no open transaction to commit");
+                    self.transaction_log.push(transaction.into_transaction());
                 }
-                Ok(())
             }
-            None => Err(exec_err("There is no open transaction to commit")),
+            None => panic!("There is no open transaction to commit"),
         }
     }
 
-    #[instrument(level = "trace")]
-    fn rollback(&mut self) -> Result<(), DbErr> {
+    fn rollback(&mut self) {
         match self.transaction.as_mut() {
             Some(transaction) => {
                 if transaction.rollback(self.db_backend) {
                     let transaction = self
                         .transaction
                         .take()
-                        .ok_or(exec_err("There is no open transaction to commit"))?;
-                    self.transaction_log.push(transaction.into_transaction()?);
+                        .expect("There is no open transaction to commit");
+                    self.transaction_log.push(transaction.into_transaction());
                 }
-                Ok(())
             }
-            None => Err(exec_err("There is no open transaction to rollback")),
+            None => panic!("There is no open transaction to rollback"),
         }
     }
 
@@ -397,10 +391,10 @@ impl OpenTransaction {
         self.stmts.push(stmt);
     }
 
-    fn into_transaction(self) -> Result<Transaction, DbErr> {
+    fn into_transaction(self) -> Transaction {
         match self.transaction_depth {
-            0 => Ok(Transaction { stmts: self.stmts }),
-            _ => Err(exec_err("There is uncommitted nested transaction")),
+            0 => Transaction { stmts: self.stmts },
+            _ => panic!("There is uncommitted nested transaction"),
         }
     }
 }
@@ -485,7 +479,7 @@ mod tests {
             Err(TransactionError::Transaction(err)) => {
                 assert_eq!(err, MyErr("test".to_owned()))
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
 
         assert_eq!(

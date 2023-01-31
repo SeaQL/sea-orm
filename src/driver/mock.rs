@@ -34,13 +34,13 @@ pub trait MockDatabaseTrait: Send + Debug {
     fn query(&mut self, counter: usize, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
 
     /// Create a transaction that can be committed atomically
-    fn begin(&mut self) -> Result<(), DbErr>;
+    fn begin(&mut self);
 
     /// Commit a successful transaction atomically into the [MockDatabase]
-    fn commit(&mut self) -> Result<(), DbErr>;
+    fn commit(&mut self);
 
     /// Roll back a transaction since errors were encountered
-    fn rollback(&mut self) -> Result<(), DbErr>;
+    fn rollback(&mut self);
 
     /// Get all logs from a [MockDatabase] and return a [Transaction]
     fn drain_transaction_log(&mut self) -> Vec<Transaction>;
@@ -171,18 +171,21 @@ impl MockDatabaseConnection {
     /// Create a statement block  of SQL statements that execute together.
     #[instrument(level = "trace")]
     pub fn begin(&self) -> Result<(), DbErr> {
-        self.mocker.lock().map_err(exec_err)?.begin()
+        self.mocker.lock().map_err(exec_err)?.begin();
+        Ok(())
     }
 
     /// Commit a transaction atomically to the database
     #[instrument(level = "trace")]
     pub fn commit(&self) -> Result<(), DbErr> {
-        self.mocker.lock().map_err(exec_err)?.commit()
+        self.mocker.lock().map_err(exec_err)?.commit();
+        Ok(())
     }
 
     /// Roll back a faulty transaction
     #[instrument(level = "trace")]
     pub fn rollback(&self) -> Result<(), DbErr> {
-        self.mocker.lock().map_err(exec_err)?.rollback()
+        self.mocker.lock().map_err(exec_err)?.rollback();
+        Ok(())
     }
 }

@@ -341,17 +341,17 @@ impl TransactionTrait for DatabaseConnection {
 #[cfg(feature = "mock")]
 impl DatabaseConnection {
     /// Generate a database connection for testing the Mock database
-    pub fn as_mock_connection(&self) -> Result<&crate::MockDatabaseConnection, DbErr> {
+    pub fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
         match self {
-            DatabaseConnection::MockDatabaseConnection(mock_conn) => Ok(mock_conn),
-            _ => Err(exec_err("Not a mock connection")),
+            DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
+            _ => panic!("Not mock connection"),
         }
     }
 
     /// Get the transaction log as a collection Vec<[crate::Transaction]>, returning an error if it fails
     pub fn try_into_transaction_log(self) -> Result<Vec<crate::Transaction>, DbErr> {
         let mut mocker = self
-            .as_mock_connection()?
+            .as_mock_connection()
             .get_mocker_mutex()
             .lock()
             .map_err(exec_err)?;
@@ -411,40 +411,40 @@ impl DatabaseConnection {
 impl DatabaseConnection {
     /// Get [sqlx::MySqlPool]
     ///
-    /// # Errors
+    /// # Panics
     ///
-    /// An [Err] will be returned if [DbConn] is not a MySQL connection.
+    /// Panics if [DbConn] is not a MySQL connection.
     #[cfg(feature = "sqlx-mysql")]
-    pub fn get_mysql_connection_pool(&self) -> Result<&sqlx::MySqlPool, DbErr> {
+    pub fn get_mysql_connection_pool(&self) -> &sqlx::MySqlPool {
         match self {
-            DatabaseConnection::SqlxMySqlPoolConnection(conn) => Ok(&conn.pool),
-            _ => Err(conn_err("Not MySQL Connection")),
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => &conn.pool,
+            _ => panic!("Not MySQL Connection"),
         }
     }
 
     /// Get [sqlx::PgPool]
     ///
-    /// # Errors
+    /// # Panics
     ///
-    /// An [Err] will be returned if [DbConn] is not a Postgres connection.
+    /// Panics if [DbConn] is not a Postgres connection.
     #[cfg(feature = "sqlx-postgres")]
-    pub fn get_postgres_connection_pool(&self) -> Result<&sqlx::PgPool, DbErr> {
+    pub fn get_postgres_connection_pool(&self) -> &sqlx::PgPool {
         match self {
-            DatabaseConnection::SqlxPostgresPoolConnection(conn) => Ok(&conn.pool),
-            _ => Err(conn_err("Not Postgres Connection")),
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => &conn.pool,
+            _ => panic!("Not Postgres Connection"),
         }
     }
 
     /// Get [sqlx::SqlitePool]
     ///
-    /// # Errors
+    /// # Panics
     ///
-    /// An [Err] will be returned if [DbConn] is not a SQLite connection.
+    /// Panics if [DbConn] is not a SQLite connection.
     #[cfg(feature = "sqlx-sqlite")]
-    pub fn get_sqlite_connection_pool(&self) -> Result<&sqlx::SqlitePool, DbErr> {
+    pub fn get_sqlite_connection_pool(&self) -> &sqlx::SqlitePool {
         match self {
-            DatabaseConnection::SqlxSqlitePoolConnection(conn) => Ok(&conn.pool),
-            _ => Err(conn_err("Not SQLite Connection")),
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => &conn.pool,
+            _ => panic!("Not SQLite Connection"),
         }
     }
 }
