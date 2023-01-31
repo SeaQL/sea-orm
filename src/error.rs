@@ -103,23 +103,39 @@ pub struct ColumnFromStrErr(pub String);
 #[allow(dead_code)]
 pub(crate) fn conn_err<T>(s: T) -> DbErr
 where
-    T: Into<String>,
+    T: ToString,
 {
-    DbErr::Conn(RuntimeErr::Internal(s.into()))
+    DbErr::Conn(RuntimeErr::Internal(s.to_string()))
 }
 
 #[allow(dead_code)]
 pub(crate) fn exec_err<T>(s: T) -> DbErr
 where
-    T: Into<String>,
+    T: ToString,
 {
-    DbErr::Exec(RuntimeErr::Internal(s.into()))
+    DbErr::Exec(RuntimeErr::Internal(s.to_string()))
 }
 
 #[allow(dead_code)]
 pub(crate) fn query_err<T>(s: T) -> DbErr
 where
-    T: Into<String>,
+    T: ToString,
 {
-    DbErr::Query(RuntimeErr::Internal(s.into()))
+    DbErr::Query(RuntimeErr::Internal(s.to_string()))
+}
+
+#[allow(dead_code)]
+pub(crate) fn type_err<T>(s: T) -> DbErr
+where
+    T: ToString,
+{
+    DbErr::Type(s.to_string())
+}
+
+#[allow(dead_code)]
+pub(crate) fn json_err<T>(s: T) -> DbErr
+where
+    T: ToString,
+{
+    DbErr::Json(s.to_string())
 }

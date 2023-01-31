@@ -123,9 +123,7 @@ impl MockDatabaseTrait for MockDatabase {
         if counter < self.exec_results.len() {
             match std::mem::replace(
                 &mut self.exec_results[counter],
-                Err(DbErr::Exec(RuntimeErr::Internal(
-                    "this value has been consumed already".to_owned(),
-                ))),
+                Err(exec_err("this value has been consumed already")),
             ) {
                 Ok(result) => Ok(ExecResult {
                     result: ExecResultHolder::Mock(result),
@@ -133,9 +131,7 @@ impl MockDatabaseTrait for MockDatabase {
                 Err(err) => Err(err),
             }
         } else {
-            Err(DbErr::Exec(RuntimeErr::Internal(
-                "`exec_results` buffer is empty".to_owned(),
-            )))
+            Err(exec_err("`exec_results` buffer is empty"))
         }
     }
 
@@ -149,9 +145,7 @@ impl MockDatabaseTrait for MockDatabase {
         if counter < self.query_results.len() {
             match std::mem::replace(
                 &mut self.query_results[counter],
-                Err(DbErr::Query(RuntimeErr::Internal(
-                    "this value has been consumed already".to_owned(),
-                ))),
+                Err(query_err("this value has been consumed already")),
             ) {
                 Ok(result) => Ok(result
                     .into_iter()
@@ -227,21 +221,17 @@ impl MockRow {
             T::try_from(
                 self.values
                     .get(index)
-                    .ok_or_else(|| {
-                        DbErr::Query(RuntimeErr::Internal(format!(
-                            "No column for ColIdx {index:?}"
-                        )))
-                    })?
+                    .ok_or_else(|| query_err(format!("No column for ColIdx {index:?}")))?
                     .clone(),
             )
-            .map_err(|e| DbErr::Type(e.to_string()))
+            .map_err(|e| type_err(e))
         } else if let Some(index) = index.as_usize() {
-            let (_, value) = self.values.iter().nth(*index).ok_or_else(|| {
-                DbErr::Query(RuntimeErr::Internal(format!(
-                    "Column at index {index} not found"
-                )))
-            })?;
-            T::try_from(value.clone()).map_err(|e| DbErr::Type(e.to_string()))
+            let (_, value) = self
+                .values
+                .iter()
+                .nth(*index)
+                .ok_or_else(|| query_err(format!("Column at index {index} not found")))?;
+            T::try_from(value.clone()).map_err(|e| type_err(e))
         } else {
             unreachable!("Missing ColIdx implementation for MockRow");
         }
@@ -418,8 +408,8 @@ impl OpenTransaction {
 #[cfg(feature = "mock")]
 mod tests {
     use crate::{
-        entity::*, tests_cfg::*, DbBackend, DbErr, IntoMockRow, MockDatabase, RuntimeErr,
-        Statement, Transaction, TransactionError, TransactionTrait,
+        entity::*, error::*, tests_cfg::*, DbBackend, DbErr, IntoMockRow, MockDatabase, Statement,
+        Transaction, TransactionError, TransactionTrait,
     };
     use pretty_assertions::assert_eq;
 
@@ -860,34 +850,26 @@ mod tests {
     #[smol_potat::test]
     async fn test_query_err() {
         let db = MockDatabase::new(DbBackend::MySql)
-            .append_query_errors([DbErr::Query(RuntimeErr::Internal(
-                "this is a mock query error".to_owned(),
-            ))])
+            .append_query_errors([query_err("this is a mock query error")])
             .into_connection();
 
         assert_eq!(
             cake::Entity::find().all(&db).await,
-            Err(DbErr::Query(RuntimeErr::Internal(
-                "this is a mock query error".to_owned()
-            )))
+            Err(query_err("this is a mock query error"))
         );
     }
 
     #[smol_potat::test]
     async fn test_exec_err() {
         let db = MockDatabase::new(DbBackend::MySql)
-            .append_exec_errors([DbErr::Exec(RuntimeErr::Internal(
-                "this is a mock exec error".to_owned(),
-            ))])
+            .append_exec_errors([exec_err("this is a mock exec error")])
             .into_connection();
 
         let model = cake::ActiveModel::new();
 
         assert_eq!(
             model.save(&db).await,
-            Err(DbErr::Exec(RuntimeErr::Internal(
-                "this is a mock exec error".to_owned()
-            )))
+            Err(exec_err("this is a mock exec error"))
         );
     }
 }

@@ -551,7 +551,7 @@ pub trait ActiveModelTrait: Clone + Debug {
 
         // Convert JSON object into ActiveModel via Model
         let model: <Self::Entity as EntityTrait>::Model =
-            serde_json::from_value(json).map_err(|e| DbErr::Json(e.to_string()))?;
+            serde_json::from_value(json).map_err(|e| json_err(e))?;
         let mut am = model.into_active_model();
 
         // Transform attribute that exists in JSON object into ActiveValue::Set, otherwise ActiveValue::NotSet

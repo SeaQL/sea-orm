@@ -52,7 +52,7 @@ impl From<TryGetError> for DbErr {
         match e {
             TryGetError::DbErr(e) => e,
             TryGetError::Null(s) => {
-                DbErr::Type(format!("A null value was encountered while decoding {s}"))
+                type_err(format!("A null value was encountered while decoding {s}"))
             }
         }
     }
@@ -1074,7 +1074,7 @@ where
 
 fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), TryGetError> {
     if cols.len() < len {
-        Err(DbErr::Type(format!(
+        Err(type_err(format!(
             "Expect {} column names supplied but got slice of length {}",
             len,
             cols.len()
@@ -1126,8 +1126,7 @@ where
                     err_null_idx_col(idx)
                 })
                 .and_then(|json| {
-                    serde_json::from_value(json)
-                        .map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))
+                    serde_json::from_value(json).map_err(|e| TryGetError::DbErr(json_err(e)))
                 }),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),

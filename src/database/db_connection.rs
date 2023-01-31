@@ -148,9 +148,7 @@ impl ConnectionTrait for DatabaseConnection {
                 let stmt = Statement::from_string(db_backend, sql.into());
                 conn.execute(stmt)
             }
-            DatabaseConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -411,9 +409,7 @@ impl DatabaseConnection {
                 // Nothing to cleanup, we just consume the `DatabaseConnection`
                 Ok(())
             }
-            DatabaseConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 }
@@ -429,9 +425,7 @@ impl DatabaseConnection {
     pub fn get_mysql_connection_pool(&self) -> Result<&sqlx::MySqlPool, DbErr> {
         match self {
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => Ok(&conn.pool),
-            _ => Err(DbErr::Conn(RuntimeErr::Internal(
-                "Not MySQL Connection".to_owned(),
-            ))),
+            _ => Err(conn_err("Not MySQL Connection")),
         }
     }
 
@@ -444,9 +438,7 @@ impl DatabaseConnection {
     pub fn get_postgres_connection_pool(&self) -> Result<&sqlx::PgPool, DbErr> {
         match self {
             DatabaseConnection::SqlxPostgresPoolConnection(conn) => Ok(&conn.pool),
-            _ => Err(DbErr::Conn(RuntimeErr::Internal(
-                "Not Postgres Connection".to_owned(),
-            ))),
+            _ => Err(conn_err("Not Postgres Connection")),
         }
     }
 
@@ -459,9 +451,7 @@ impl DatabaseConnection {
     pub fn get_sqlite_connection_pool(&self) -> Result<&sqlx::SqlitePool, DbErr> {
         match self {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => Ok(&conn.pool),
-            _ => Err(DbErr::Conn(RuntimeErr::Internal(
-                "Not SQLite Connection".to_owned(),
-            ))),
+            _ => Err(conn_err("Not SQLite Connection")),
         }
     }
 }
