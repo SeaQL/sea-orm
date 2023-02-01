@@ -3,7 +3,7 @@
 
 [package]
 name = "sea-orm-migration"
-version = "0.10.3"
+version = "0.11.0-rc.1"
 authors = ["Billy Chan <ccw.billy.123@gmail.com>"]
 edition = "2021"
 description = "Migration utility for SeaORM"
@@ -23,8 +23,8 @@ path = "src/lib.rs"
 async-trait = { version = "0.1", default-features = false }
 clap = { version = "3.2", default-features = false, features = ["std", "env", "derive"], optional = true }
 dotenvy = { version = "0.15", default-features = false, optional = true }
-sea-orm = { version = "0.10.3", path = "../", default-features = false, features = ["macros"] }
-sea-orm-cli = { version = "0.10.3", path = "../sea-orm-cli", default-features = false, optional = true }
+sea-orm = { version = "0.11.0-rc.1", path = "../", default-features = false, features = ["macros"] }
+sea-orm-cli = { version = "0.11.0-rc.1", path = "../sea-orm-cli", default-features = false, optional = true }
 sea-schema = { version = "0.11" }
 tracing = { version = "0.1", default-features = false, features = ["log"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
