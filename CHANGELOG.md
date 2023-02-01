@@ -57,8 +57,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Fixed all clippy warnings as of `1.67.0` https://github.com/SeaQL/sea-orm/pull/1426
 * Removed dependency where not needed https://github.com/SeaQL/sea-orm/pull/1213
+* Disabled default features and enabled only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
 * Cleanup panic and unwrap https://github.com/SeaQL/sea-orm/pull/1231
-* Cleanup the use of `vec!` macros https://github.com/SeaQL/sea-orm/pull/1367
+* Cleanup the use of `vec!` macro https://github.com/SeaQL/sea-orm/pull/1367
 
 ### Bug Fixes
 
@@ -161,7 +162,6 @@ impl ColumnTrait for Column {
 
 ### Miscellaneous
 
-* Disabled default features and enabled only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
 * Fixed a small typo https://github.com/SeaQL/sea-orm/pull/1391
 * `axum` example should use tokio runtime https://github.com/SeaQL/sea-orm/pull/1428
 
