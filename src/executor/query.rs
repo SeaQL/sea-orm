@@ -632,7 +632,7 @@ mod postgres_array {
                 fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
                     match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
-                        QueryResultRow::SqlxMySql(row) => Err(type_err(format!(
+                        QueryResultRow::SqlxMySql(_) => Err(type_err(format!(
                             "{} unsupported by sqlx-mysql",
                             stringify!($type)
                         ))
@@ -718,7 +718,7 @@ mod postgres_array {
                 fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
                     let res: Result<Vec<uuid::Uuid>, TryGetError> = match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
-                        QueryResultRow::SqlxMySql(row) => Err(type_err(format!(
+                        QueryResultRow::SqlxMySql(_) => Err(type_err(format!(
                             "{} unsupported by sqlx-mysql",
                             stringify!($type)
                         ))
@@ -770,7 +770,7 @@ mod postgres_array {
         fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
             match &res.row {
                 #[cfg(feature = "sqlx-mysql")]
-                QueryResultRow::SqlxMySql(row) => {
+                QueryResultRow::SqlxMySql(_) => {
                     Err(type_err(format!("{} unsupported by sqlx-mysql", stringify!($type))).into())
                 }
                 #[cfg(feature = "sqlx-postgres")]
