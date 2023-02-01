@@ -353,36 +353,30 @@ impl OpenTransaction {
     }
 
     fn commit(&mut self, db_backend: DbBackend) -> bool {
-        match self.transaction_depth {
-            0 => {
-                self.push(Statement::from_string(db_backend, "COMMIT".to_owned()));
-                true
-            }
-            _ => {
-                self.push(Statement::from_string(
-                    db_backend,
-                    format!("RELEASE SAVEPOINT savepoint_{}", self.transaction_depth),
-                ));
-                self.transaction_depth -= 1;
-                false
-            }
+        if self.transaction_depth == 0 {
+            self.push(Statement::from_string(db_backend, "COMMIT".to_owned()));
+            true
+        } else {
+            self.push(Statement::from_string(
+                db_backend,
+                format!("RELEASE SAVEPOINT savepoint_{}", self.transaction_depth),
+            ));
+            self.transaction_depth -= 1;
+            false
         }
     }
 
     fn rollback(&mut self, db_backend: DbBackend) -> bool {
-        match self.transaction_depth {
-            0 => {
-                self.push(Statement::from_string(db_backend, "ROLLBACK".to_owned()));
-                true
-            }
-            _ => {
-                self.push(Statement::from_string(
-                    db_backend,
-                    format!("ROLLBACK TO SAVEPOINT savepoint_{}", self.transaction_depth),
-                ));
-                self.transaction_depth -= 1;
-                false
-            }
+        if self.transaction_depth == 0 {
+            self.push(Statement::from_string(db_backend, "ROLLBACK".to_owned()));
+            true
+        } else {
+            self.push(Statement::from_string(
+                db_backend,
+                format!("ROLLBACK TO SAVEPOINT savepoint_{}", self.transaction_depth),
+            ));
+            self.transaction_depth -= 1;
+            false
         }
     }
 
