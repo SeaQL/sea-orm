@@ -15,5 +15,5 @@ serde = { version = "1", features = ["derive"] }
 version = "4.0.6"
 
 [dependencies.sea-orm]
-path = "../../../" # remove this line in your own project
+# path = "../../../" # remove this line in your own project
 version = "0.11.0-rc.1" # sea-orm version

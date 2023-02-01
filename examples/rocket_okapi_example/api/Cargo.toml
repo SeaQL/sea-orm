@@ -25,7 +25,7 @@ serde = "1.0"
 dto = { path = "../dto" }
 
 [dependencies.sea-orm-rocket]
-path = "../../../sea-orm-rocket/lib" # remove this line in your own project and use the version line
+# path = "../../../sea-orm-rocket/lib" # remove this line in your own project and use the version line
 features = ["rocket_okapi"] # enables rocket_okapi so to have open api features enabled
 # version = "0.5.1"
 
