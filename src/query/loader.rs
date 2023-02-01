@@ -1,9 +1,9 @@
 use crate::{
-    error::*, ColumnTrait, Condition, ConnectionTrait, DbErr, EntityTrait, Identity, ModelTrait,
-    QueryFilter, Related, RelationType, Select,
+    error::*, Condition, ConnectionTrait, DbErr, EntityTrait, Identity, ModelTrait, QueryFilter,
+    Related, RelationType, Select,
 };
 use async_trait::async_trait;
-use sea_query::{Expr, IntoColumnRef, SimpleExpr, ValueTuple};
+use sea_query::{ColumnRef, DynIden, Expr, IntoColumnRef, SimpleExpr, TableRef, ValueTuple};
 use std::{collections::HashMap, str::FromStr};
 
 /// A trait for basic Dataloader
@@ -71,12 +71,13 @@ where
         R::Model: Send + Sync,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
     {
+        // we verify that is HasOne relation
+        if <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::via().is_some() {
+            return Err(type_err("Relation is ManytoMany instead of HasOne"));
+        }
         let rel_def = <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
-
-        // we verify that is has_one relation
-        match (rel_def).rel_type {
-            RelationType::HasOne => (),
-            RelationType::HasMany => return Err(type_err("Relation is HasMany instead of HasOne")),
+        if rel_def.rel_type == RelationType::HasMany {
+            return Err(type_err("Relation is HasMany instead of HasOne"));
         }
 
         let keys: Vec<ValueTuple> = self
@@ -84,7 +85,7 @@ where
             .map(|model: &M| extract_key(&rel_def.from_col, model))
             .collect();
 
-        let condition = prepare_condition::<<R as EntityTrait>::Model>(&rel_def.to_col, &keys);
+        let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
         let stmt = <Select<R> as QueryFilter>::filter(stmt, condition);
 
@@ -119,12 +120,14 @@ where
         R::Model: Send + Sync,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
     {
-        let rel_def = <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
+        // we verify that is HasMany relation
 
-        // we verify that is has_many relation
-        match (rel_def).rel_type {
-            RelationType::HasMany => (),
-            RelationType::HasOne => return Err(type_err("Relation is HasOne instead of HasMany")),
+        if <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::via().is_some() {
+            return Err(type_err("Relation is ManyToMany instead of HasMany"));
+        }
+        let rel_def = <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
+        if rel_def.rel_type == RelationType::HasOne {
+            return Err(type_err("Relation is HasOne instead of HasMany"));
         }
 
         let keys: Vec<ValueTuple> = self
@@ -132,7 +135,7 @@ where
             .map(|model: &M| extract_key(&rel_def.from_col, model))
             .collect();
 
-        let condition = prepare_condition::<<R as EntityTrait>::Model>(&rel_def.to_col, &keys);
+        let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
         let stmt = <Select<R> as QueryFilter>::filter(stmt, condition);
 
@@ -222,54 +225,35 @@ where
     }
 }
 
-fn prepare_condition<M>(col: &Identity, keys: &[ValueTuple]) -> Condition
-where
-    M: ModelTrait,
-{
+fn prepare_condition(table: &TableRef, col: &Identity, keys: &[ValueTuple]) -> Condition {
     match col {
         Identity::Unary(column_a) => {
-            let column_a: <M::Entity as EntityTrait>::Column =
-                <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_a.to_string())
-                    .unwrap_or_else(|_| panic!("Failed at mapping string to column *A:1"));
-            Condition::all().add(ColumnTrait::is_in(
-                &column_a,
-                keys.iter().cloned().flatten(),
-            ))
+            let column_a = table_column(table, column_a);
+            Condition::all().add(Expr::col(column_a).is_in(keys.iter().cloned().flatten()))
         }
-        Identity::Binary(column_a, column_b) => {
-            let column_a: <M::Entity as EntityTrait>::Column =
-                <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_a.to_string())
-                    .unwrap_or_else(|_| panic!("Failed at mapping string to column *A:2"));
-            let column_b: <M::Entity as EntityTrait>::Column =
-                <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_b.to_string())
-                    .unwrap_or_else(|_| panic!("Failed at mapping string to column *B:2"));
-            Condition::all().add(
-                Expr::tuple([
-                    SimpleExpr::Column(column_a.into_column_ref()),
-                    SimpleExpr::Column(column_b.into_column_ref()),
-                ])
-                .in_tuples(keys.iter().cloned()),
-            )
-        }
-        Identity::Ternary(column_a, column_b, column_c) => {
-            let column_a: <M::Entity as EntityTrait>::Column =
-                <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_a.to_string())
-                    .unwrap_or_else(|_| panic!("Failed at mapping string to column *A:3"));
-            let column_b: <M::Entity as EntityTrait>::Column =
-                <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_b.to_string())
-                    .unwrap_or_else(|_| panic!("Failed at mapping string to column *B:3"));
-            let column_c: <M::Entity as EntityTrait>::Column =
-                <<M::Entity as EntityTrait>::Column as FromStr>::from_str(&column_c.to_string())
-                    .unwrap_or_else(|_| panic!("Failed at mapping string to column *C:3"));
-            Condition::all().add(
-                Expr::tuple([
-                    SimpleExpr::Column(column_a.into_column_ref()),
-                    SimpleExpr::Column(column_b.into_column_ref()),
-                    SimpleExpr::Column(column_c.into_column_ref()),
-                ])
-                .in_tuples(keys.iter().cloned()),
-            )
-        }
+        Identity::Binary(column_a, column_b) => Condition::all().add(
+            Expr::tuple([
+                SimpleExpr::Column(table_column(table, column_a)),
+                SimpleExpr::Column(table_column(table, column_b)),
+            ])
+            .in_tuples(keys.iter().cloned()),
+        ),
+        Identity::Ternary(column_a, column_b, column_c) => Condition::all().add(
+            Expr::tuple([
+                SimpleExpr::Column(table_column(table, column_a)),
+                SimpleExpr::Column(table_column(table, column_b)),
+                SimpleExpr::Column(table_column(table, column_c)),
+            ])
+            .in_tuples(keys.iter().cloned()),
+        ),
+    }
+}
+
+fn table_column(tbl: &TableRef, col: &DynIden) -> ColumnRef {
+    match tbl.to_owned() {
+        TableRef::Table(tbl) => (tbl, col.clone()).into_column_ref(),
+        TableRef::SchemaTable(sch, tbl) => (sch, tbl, col.clone()).into_column_ref(),
+        val => unimplemented!("Unsupported TableRef {val:?}"),
     }
 }
 
