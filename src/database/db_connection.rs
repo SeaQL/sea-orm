@@ -36,6 +36,12 @@ pub enum DatabaseConnection {
 /// The same as a [DatabaseConnection]
 pub type DbConn = DatabaseConnection;
 
+impl Default for DatabaseConnection {
+    fn default() -> Self {
+        Self::Disconnected
+    }
+}
+
 /// The type of database backend for real world databases.
 /// This is enabled by feature flags as specified in the crate documentation
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -50,6 +56,7 @@ pub enum DatabaseBackend {
 
 /// The same as [DatabaseBackend] just shorter :)
 pub type DbBackend = DatabaseBackend;
+
 #[derive(Debug)]
 pub(crate) enum InnerConnection {
     #[cfg(feature = "sqlx-mysql")]
@@ -60,12 +67,6 @@ pub(crate) enum InnerConnection {
     Sqlite(PoolConnection<sqlx::Sqlite>),
     #[cfg(feature = "mock")]
     Mock(std::sync::Arc<crate::MockDatabaseConnection>),
-}
-
-impl Default for DatabaseConnection {
-    fn default() -> Self {
-        Self::Disconnected
-    }
 }
 
 impl std::fmt::Debug for DatabaseConnection {
@@ -116,9 +117,7 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.execute(stmt).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.execute(stmt),
-            DatabaseConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -142,9 +141,7 @@ impl ConnectionTrait for DatabaseConnection {
                 let stmt = Statement::from_string(db_backend, sql.into());
                 conn.execute(stmt)
             }
-            DatabaseConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -160,9 +157,7 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.query_one(stmt).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.query_one(stmt),
-            DatabaseConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -178,9 +173,7 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.query_all(stmt).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.query_all(stmt),
-            DatabaseConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -195,25 +188,25 @@ impl StreamTrait for DatabaseConnection {
     type Stream<'a> = crate::QueryStream;
 
     #[instrument(level = "trace")]
-    #[allow(unused_variables, unreachable_code)]
+    #[allow(unused_variables)]
     fn stream<'a>(
         &'a self,
         stmt: Statement,
     ) -> Pin<Box<dyn Future<Output = Result<Self::Stream<'a>, DbErr>> + 'a + Send>> {
         Box::pin(async move {
-            Ok(match self {
+            match self {
                 #[cfg(feature = "sqlx-mysql")]
-                DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.stream(stmt).await?,
+                DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.stream(stmt).await,
                 #[cfg(feature = "sqlx-postgres")]
-                DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.stream(stmt).await?,
+                DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.stream(stmt).await,
                 #[cfg(feature = "sqlx-sqlite")]
-                DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.stream(stmt).await?,
+                DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.stream(stmt).await,
                 #[cfg(feature = "mock")]
                 DatabaseConnection::MockDatabaseConnection(conn) => {
-                    crate::QueryStream::from((Arc::clone(conn), stmt, None))
+                    Ok(crate::QueryStream::from((Arc::clone(conn), stmt, None)))
                 }
-                DatabaseConnection::Disconnected => panic!("Disconnected"),
-            })
+                DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
+            }
         })
     }
 }
@@ -233,7 +226,7 @@ impl TransactionTrait for DatabaseConnection {
             DatabaseConnection::MockDatabaseConnection(conn) => {
                 DatabaseTransaction::new_mock(Arc::clone(conn), None).await
             }
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -260,7 +253,7 @@ impl TransactionTrait for DatabaseConnection {
             DatabaseConnection::MockDatabaseConnection(conn) => {
                 DatabaseTransaction::new_mock(Arc::clone(conn), None).await
             }
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
@@ -296,7 +289,7 @@ impl TransactionTrait for DatabaseConnection {
                     .map_err(TransactionError::Connection)?;
                 transaction.run(_callback).await
             }
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected").into()),
         }
     }
 
@@ -340,7 +333,7 @@ impl TransactionTrait for DatabaseConnection {
                     .map_err(TransactionError::Connection)?;
                 transaction.run(_callback).await
             }
-            DatabaseConnection::Disconnected => panic!("Disconnected"),
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected").into()),
         }
     }
 }
@@ -348,16 +341,28 @@ impl TransactionTrait for DatabaseConnection {
 #[cfg(feature = "mock")]
 impl DatabaseConnection {
     /// Generate a database connection for testing the Mock database
+    ///
+    /// # Panics
+    ///
+    /// Panics if [DbConn] is not a mock connection.
     pub fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
         match self {
             DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
-            _ => panic!("not mock connection"),
+            _ => panic!("Not mock connection"),
         }
     }
 
-    /// Get the transaction log as a collection  Vec<[crate::Transaction]>
+    /// Get the transaction log as a collection Vec<[crate::Transaction]>
+    ///
+    /// # Panics
+    ///
+    /// Panics if the mocker mutex is being held by another thread.
     pub fn into_transaction_log(self) -> Vec<crate::Transaction> {
-        let mut mocker = self.as_mock_connection().get_mocker_mutex().lock().unwrap();
+        let mut mocker = self
+            .as_mock_connection()
+            .get_mocker_mutex()
+            .lock()
+            .expect("Fail to acquire mocker");
         mocker.drain_transaction_log()
     }
 }
@@ -399,9 +404,7 @@ impl DatabaseConnection {
                 // Nothing to cleanup, we just consume the `DatabaseConnection`
                 Ok(())
             }
-            DatabaseConnection::Disconnected => {
-                Err(DbErr::Conn(RuntimeErr::Internal("Disconnected".to_owned())))
-            }
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 }
@@ -409,6 +412,10 @@ impl DatabaseConnection {
 #[cfg(feature = "sea-orm-internal")]
 impl DatabaseConnection {
     /// Get [sqlx::MySqlPool]
+    ///
+    /// # Panics
+    ///
+    /// Panics if [DbConn] is not a MySQL connection.
     #[cfg(feature = "sqlx-mysql")]
     pub fn get_mysql_connection_pool(&self) -> &sqlx::MySqlPool {
         match self {
@@ -418,6 +425,10 @@ impl DatabaseConnection {
     }
 
     /// Get [sqlx::PgPool]
+    ///
+    /// # Panics
+    ///
+    /// Panics if [DbConn] is not a Postgres connection.
     #[cfg(feature = "sqlx-postgres")]
     pub fn get_postgres_connection_pool(&self) -> &sqlx::PgPool {
         match self {
@@ -427,6 +438,10 @@ impl DatabaseConnection {
     }
 
     /// Get [sqlx::SqlitePool]
+    ///
+    /// # Panics
+    ///
+    /// Panics if [DbConn] is not a SQLite connection.
     #[cfg(feature = "sqlx-sqlite")]
     pub fn get_sqlite_connection_pool(&self) -> &sqlx::SqlitePool {
         match self {
@@ -440,7 +455,7 @@ impl DbBackend {
     /// Check if the URI is the same as the specified database backend.
     /// Returns true if they match.
     pub fn is_prefix_of(self, base_url: &str) -> bool {
-        let base_url_parsed = Url::parse(base_url).unwrap();
+        let base_url_parsed = Url::parse(base_url).expect("Fail to parse database URL");
         match self {
             Self::Postgres => {
                 base_url_parsed.scheme() == "postgres" || base_url_parsed.scheme() == "postgresql"

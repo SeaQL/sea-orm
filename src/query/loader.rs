@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, Condition, ConnectionTrait, DbErr, EntityTrait, Identity, ModelTrait, QueryFilter,
-    Related, RelationType, Select,
+    error::*, ColumnTrait, Condition, ConnectionTrait, DbErr, EntityTrait, Identity, ModelTrait,
+    QueryFilter, Related, RelationType, Select,
 };
 use async_trait::async_trait;
 use sea_query::{Expr, IntoColumnRef, SimpleExpr, ValueTuple};
@@ -76,9 +76,7 @@ where
         // we verify that is has_one relation
         match (rel_def).rel_type {
             RelationType::HasOne => (),
-            RelationType::HasMany => {
-                return Err(DbErr::Type("Relation is HasMany instead of HasOne".into()))
-            }
+            RelationType::HasMany => return Err(type_err("Relation is HasMany instead of HasOne")),
         }
 
         let keys: Vec<ValueTuple> = self
@@ -126,9 +124,7 @@ where
         // we verify that is has_many relation
         match (rel_def).rel_type {
             RelationType::HasMany => (),
-            RelationType::HasOne => {
-                return Err(DbErr::Type("Relation is HasOne instead of HasMany".into()))
-            }
+            RelationType::HasOne => return Err(type_err("Relation is HasOne instead of HasMany")),
         }
 
         let keys: Vec<ValueTuple> = self

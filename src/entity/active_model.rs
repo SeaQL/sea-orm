@@ -119,6 +119,10 @@ pub trait ActiveModelTrait: Clone + Debug {
     }
 
     /// Get the primary key of the ActiveModel
+    ///
+    /// # Panics
+    ///
+    /// Panics if arity of primary key exceed maximum arity of [ValueTuple]
     #[allow(clippy::question_mark)]
     fn get_primary_key_value(&self) -> Option<ValueTuple> {
         let mut cols = <Self::Entity as EntityTrait>::PrimaryKey::iter();
@@ -547,15 +551,18 @@ pub trait ActiveModelTrait: Clone + Debug {
 
         // Convert JSON object into ActiveModel via Model
         let model: <Self::Entity as EntityTrait>::Model =
-            serde_json::from_value(json).map_err(|e| DbErr::Json(e.to_string()))?;
+            serde_json::from_value(json).map_err(json_err)?;
         let mut am = model.into_active_model();
 
         // Transform attribute that exists in JSON object into ActiveValue::Set, otherwise ActiveValue::NotSet
         for (col, json_key_exists) in json_keys {
-            if json_key_exists && !am.is_not_set(col) {
-                am.set(col, am.get(col).unwrap());
-            } else {
-                am.not_set(col);
+            match (json_key_exists, am.get(col)) {
+                (true, ActiveValue::Set(value) | ActiveValue::Unchanged(value)) => {
+                    am.set(col, value);
+                }
+                _ => {
+                    am.not_set(col);
+                }
             }
         }
 
@@ -823,6 +830,10 @@ where
     }
 
     /// Get an owned value of the [ActiveValue]
+    ///
+    /// # Panics
+    ///
+    /// Panics if it is [ActiveValue::NotSet]
     pub fn unwrap(self) -> V {
         match self {
             ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
@@ -861,6 +872,9 @@ impl<V> std::convert::AsRef<V> for ActiveValue<V>
 where
     V: Into<Value>,
 {
+    /// # Panics
+    ///
+    /// Panics if it is [ActiveValue::NotSet]
     fn as_ref(&self) -> &V {
         match self {
             ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,

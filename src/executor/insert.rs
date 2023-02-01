@@ -126,7 +126,6 @@ where
     }
 }
 
-#[allow(unused_variables, unreachable_code)]
 async fn exec_insert<A, C>(
     primary_key: Option<ValueTuple>,
     statement: Statement,

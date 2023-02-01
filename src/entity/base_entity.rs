@@ -256,6 +256,10 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if arity of input values don't match arity of primary key
     fn find_by_id<T>(values: T) -> Select<Self>
     where
         T: Into<<Self::PrimaryKey as PrimaryKeyTrait>::ValueType>,
@@ -818,6 +822,10 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if arity of input values don't match arity of primary key
     fn delete_by_id<T>(values: T) -> DeleteMany<Self>
     where
         T: Into<<Self::PrimaryKey as PrimaryKeyTrait>::ValueType>,

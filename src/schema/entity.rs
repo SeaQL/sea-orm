@@ -42,6 +42,7 @@ impl Schema {
     }
 
     /// Creates a column definition for example to update a table.
+    ///
     /// ```
     /// use crate::sea_orm::IdenStatic;
     /// use sea_orm::{
@@ -61,6 +62,7 @@ impl Schema {
     ///
     /// #[derive(Copy, Clone, Debug, EnumIter)]
     /// pub enum Relation {}
+    ///
     /// impl RelationTrait for Relation {
     ///     fn def(&self) -> RelationDef {
     ///         panic!("No RelationDef")
