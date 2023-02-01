@@ -51,7 +51,7 @@ async fn loader_load_one() -> Result<(), DbErr> {
     feature = "sqlx-postgres"
 ))]
 async fn loader_load_one_complex() -> Result<(), DbErr> {
-    let ctx = TestContext::new("loader_test_load_one").await;
+    let ctx = TestContext::new("loader_test_load_one_complex").await;
     create_tables(&ctx.db).await?;
 
     let bakery = insert_bakery(&ctx.db, "SeaSide Bakery").await?;
