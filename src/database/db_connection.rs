@@ -341,6 +341,10 @@ impl TransactionTrait for DatabaseConnection {
 #[cfg(feature = "mock")]
 impl DatabaseConnection {
     /// Generate a database connection for testing the Mock database
+    ///
+    /// # Panics
+    ///
+    /// Panics if [DbConn] is not a mock connection.
     pub fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
         match self {
             DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
@@ -348,20 +352,18 @@ impl DatabaseConnection {
         }
     }
 
-    /// Get the transaction log as a collection Vec<[crate::Transaction]>, returning an error if it fails
-    pub fn try_into_transaction_log(self) -> Result<Vec<crate::Transaction>, DbErr> {
+    /// Get the transaction log as a collection Vec<[crate::Transaction]>
+    ///
+    /// # Panics
+    ///
+    /// Panics if the mocker mutex is being held by another thread.
+    pub fn into_transaction_log(self) -> Vec<crate::Transaction> {
         let mut mocker = self
             .as_mock_connection()
             .get_mocker_mutex()
             .lock()
-            .map_err(exec_err)?;
-        Ok(mocker.drain_transaction_log())
-    }
-
-    /// Get the transaction log as a collection Vec<[crate::Transaction]>
-    pub fn into_transaction_log(self) -> Vec<crate::Transaction> {
-        self.try_into_transaction_log()
-            .expect("Fail to acquire transaction log")
+            .expect("Fail to acquire mocker");
+        mocker.drain_transaction_log()
     }
 }
 
