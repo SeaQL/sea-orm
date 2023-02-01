@@ -1,9 +1,10 @@
 #![allow(missing_docs, unreachable_code, unused_variables)]
 
-use std::{pin::Pin, task::Poll};
+use tracing::instrument;
 
 #[cfg(feature = "mock")]
 use std::sync::Arc;
+use std::{pin::Pin, task::Poll};
 
 use futures::Stream;
 #[cfg(feature = "sqlx-dep")]
@@ -12,11 +13,10 @@ use futures::TryStreamExt;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::{pool::PoolConnection, Executor};
 
-use tracing::instrument;
-
-use crate::{error::*, InnerConnection, QueryResult, Statement};
-
 use super::metric::MetricStream;
+#[cfg(feature = "sqlx-dep")]
+use crate::driver::*;
+use crate::{DbErr, InnerConnection, QueryResult, Statement};
 
 /// Creates a stream from a [QueryResult]
 #[ouroboros::self_referencing]
@@ -130,7 +130,7 @@ impl QueryStream {
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
-                        .map_err(crate::sqlx_error_to_query_err);
+                        .map_err(sqlx_error_to_query_err);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
@@ -141,7 +141,7 @@ impl QueryStream {
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
-                        .map_err(crate::sqlx_error_to_query_err);
+                        .map_err(sqlx_error_to_query_err);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
@@ -152,7 +152,7 @@ impl QueryStream {
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
-                        .map_err(crate::sqlx_error_to_query_err);
+                        .map_err(sqlx_error_to_query_err);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
