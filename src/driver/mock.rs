@@ -170,22 +170,28 @@ impl MockDatabaseConnection {
 
     /// Create a statement block  of SQL statements that execute together.
     #[instrument(level = "trace")]
-    pub fn begin(&self) -> Result<(), DbErr> {
-        self.mocker.lock().map_err(exec_err)?.begin();
-        Ok(())
+    pub fn begin(&self) {
+        self.mocker
+            .lock()
+            .expect("Failed to acquire mocker")
+            .begin()
     }
 
     /// Commit a transaction atomically to the database
     #[instrument(level = "trace")]
-    pub fn commit(&self) -> Result<(), DbErr> {
-        self.mocker.lock().map_err(exec_err)?.commit();
-        Ok(())
+    pub fn commit(&self) {
+        self.mocker
+            .lock()
+            .expect("Failed to acquire mocker")
+            .commit()
     }
 
     /// Roll back a faulty transaction
     #[instrument(level = "trace")]
-    pub fn rollback(&self) -> Result<(), DbErr> {
-        self.mocker.lock().map_err(exec_err)?.rollback();
-        Ok(())
+    pub fn rollback(&self) {
+        self.mocker
+            .lock()
+            .expect("Failed to acquire mocker")
+            .rollback()
     }
 }
