@@ -287,7 +287,7 @@ macro_rules! try_getable_unsigned {
                         .map_err(|e| sqlx_error_to_query_err(e).into())
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                     #[cfg(feature = "sqlx-postgres")]
-                    QueryResultRow::SqlxPostgres(_) => Err(query_err(format!(
+                    QueryResultRow::SqlxPostgres(_) => Err(type_err(format!(
                         "{} unsupported by sqlx-postgres",
                         stringify!($type)
                     ))
@@ -322,13 +322,13 @@ macro_rules! try_getable_mysql {
                         .map_err(|e| sqlx_error_to_query_err(e).into())
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                     #[cfg(feature = "sqlx-postgres")]
-                    QueryResultRow::SqlxPostgres(_) => Err(query_err(format!(
+                    QueryResultRow::SqlxPostgres(_) => Err(type_err(format!(
                         "{} unsupported by sqlx-postgres",
                         stringify!($type)
                     ))
                     .into()),
                     #[cfg(feature = "sqlx-sqlite")]
-                    QueryResultRow::SqlxSqlite(_) => Err(query_err(format!(
+                    QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
                         "{} unsupported by sqlx-sqlite",
                         stringify!($type)
                     ))
@@ -632,7 +632,7 @@ mod postgres_array {
                 fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
                     match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
-                        QueryResultRow::SqlxMySql(row) => Err(query_err(format!(
+                        QueryResultRow::SqlxMySql(row) => Err(type_err(format!(
                             "{} unsupported by sqlx-mysql",
                             stringify!($type)
                         ))
@@ -643,7 +643,7 @@ mod postgres_array {
                             .map_err(|e| sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                         #[cfg(feature = "sqlx-sqlite")]
-                        QueryResultRow::SqlxSqlite(_) => Err(query_err(format!(
+                        QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
                             "{} unsupported by sqlx-sqlite",
                             stringify!($type)
                         ))
@@ -718,7 +718,7 @@ mod postgres_array {
                 fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
                     let res: Result<Vec<uuid::Uuid>, TryGetError> = match &res.row {
                         #[cfg(feature = "sqlx-mysql")]
-                        QueryResultRow::SqlxMySql(row) => Err(query_err(format!(
+                        QueryResultRow::SqlxMySql(row) => Err(type_err(format!(
                             "{} unsupported by sqlx-mysql",
                             stringify!($type)
                         ))
@@ -729,7 +729,7 @@ mod postgres_array {
                             .map_err(|e| sqlx_error_to_query_err(e).into())
                             .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                         #[cfg(feature = "sqlx-sqlite")]
-                        QueryResultRow::SqlxSqlite(_) => Err(query_err(format!(
+                        QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
                             "{} unsupported by sqlx-sqlite",
                             stringify!($type)
                         ))
@@ -770,11 +770,9 @@ mod postgres_array {
         fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
             match &res.row {
                 #[cfg(feature = "sqlx-mysql")]
-                QueryResultRow::SqlxMySql(row) => Err(query_err(format!(
-                    "{} unsupported by sqlx-mysql",
-                    stringify!($type)
-                ))
-                .into()),
+                QueryResultRow::SqlxMySql(row) => {
+                    Err(type_err(format!("{} unsupported by sqlx-mysql", stringify!($type))).into())
+                }
                 #[cfg(feature = "sqlx-postgres")]
                 QueryResultRow::SqlxPostgres(row) => {
                     use sqlx::postgres::types::Oid;
@@ -786,7 +784,7 @@ mod postgres_array {
                         .map(|oids| oids.into_iter().map(|oid| oid.0).collect())
                 }
                 #[cfg(feature = "sqlx-sqlite")]
-                QueryResultRow::SqlxSqlite(_) => Err(query_err(format!(
+                QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
                     "{} unsupported by sqlx-sqlite",
                     stringify!($type)
                 ))
