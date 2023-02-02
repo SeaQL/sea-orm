@@ -20,12 +20,27 @@ pub trait LoaderTrait {
         R::Model: Send + Sync,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>;
 
-    ///  Used to eager load has_many relations
+    /// Used to eager load has_many relations
     async fn load_many<R, C>(&self, stmt: Select<R>, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
     where
         C: ConnectionTrait,
         R: EntityTrait,
         R::Model: Send + Sync,
+        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>;
+
+    /// Used to eager load many_to_many relations
+    async fn load_many_to_many<R, V, C>(
+        &self,
+        stmt: Select<R>,
+        via: V,
+        db: &C,
+    ) -> Result<Vec<Vec<R::Model>>, DbErr>
+    where
+        C: ConnectionTrait,
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        V: EntityTrait,
+        V::Model: Send + Sync,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>;
 }
 
@@ -55,6 +70,23 @@ where
     {
         self.as_slice().load_many(stmt, db).await
     }
+
+    async fn load_many_to_many<R, V, C>(
+        &self,
+        stmt: Select<R>,
+        via: V,
+        db: &C,
+    ) -> Result<Vec<Vec<R::Model>>, DbErr>
+    where
+        C: ConnectionTrait,
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        V: EntityTrait,
+        V::Model: Send + Sync,
+        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
+    {
+        self.as_slice().load_many_to_many(stmt, via, db).await
+    }
 }
 
 #[async_trait]
@@ -73,11 +105,11 @@ where
     {
         // we verify that is HasOne relation
         if <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::via().is_some() {
-            return Err(type_err("Relation is ManytoMany instead of HasOne"));
+            return Err(query_err("Relation is ManytoMany instead of HasOne"));
         }
         let rel_def = <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
         if rel_def.rel_type == RelationType::HasMany {
-            return Err(type_err("Relation is HasMany instead of HasOne"));
+            return Err(query_err("Relation is HasMany instead of HasOne"));
         }
 
         let keys: Vec<ValueTuple> = self
@@ -123,11 +155,11 @@ where
         // we verify that is HasMany relation
 
         if <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::via().is_some() {
-            return Err(type_err("Relation is ManyToMany instead of HasMany"));
+            return Err(query_err("Relation is ManyToMany instead of HasMany"));
         }
         let rel_def = <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
         if rel_def.rel_type == RelationType::HasOne {
-            return Err(type_err("Relation is HasOne instead of HasMany"));
+            return Err(query_err("Relation is HasOne instead of HasMany"));
         }
 
         let keys: Vec<ValueTuple> = self
@@ -172,6 +204,106 @@ where
 
         Ok(result)
     }
+
+    async fn load_many_to_many<R, V, C>(
+        &self,
+        stmt: Select<R>,
+        via: V,
+        db: &C,
+    ) -> Result<Vec<Vec<R::Model>>, DbErr>
+    where
+        C: ConnectionTrait,
+        R: EntityTrait,
+        R::Model: Send + Sync,
+        V: EntityTrait,
+        V::Model: Send + Sync,
+        <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
+    {
+        if let Some(via_rel) =
+            <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::via()
+        {
+            let rel_def =
+                <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
+            if rel_def.rel_type != RelationType::HasOne {
+                return Err(query_err("Relation to is not HasOne"));
+            }
+
+            if !cmp_table_ref(&via_rel.to_tbl, &via.table_ref()) {
+                return Err(query_err(format!(
+                    "The given via Entity is incorrect: expected: {:?}, given: {:?}",
+                    via_rel.to_tbl,
+                    via.table_ref()
+                )));
+            }
+
+            let pkeys: Vec<ValueTuple> = self
+                .iter()
+                .map(|model: &M| extract_key(&via_rel.from_col, model))
+                .collect();
+
+            // Map of M::PK -> Vec<R::PK>
+            let mut keymap: HashMap<String, Vec<ValueTuple>> = Default::default();
+
+            let keys: Vec<ValueTuple> = {
+                let condition = prepare_condition(&via_rel.to_tbl, &via_rel.to_col, &pkeys);
+                let stmt = V::find().filter(condition);
+                let data = stmt.all(db).await?;
+                data.into_iter().for_each(|model| {
+                    let pk = format!("{:?}", extract_key(&via_rel.to_col, &model));
+                    let entry = keymap.entry(pk).or_default();
+
+                    let fk = extract_key(&rel_def.from_col, &model);
+                    entry.push(fk);
+                });
+
+                keymap.values().flatten().cloned().collect()
+            };
+
+            let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
+
+            let stmt = <Select<R> as QueryFilter>::filter(stmt, condition);
+
+            let data = stmt.all(db).await?;
+            // Map of R::PK -> R::Model
+            let data: HashMap<String, <R as EntityTrait>::Model> = data
+                .into_iter()
+                .map(|model| {
+                    let key = format!("{:?}", extract_key(&rel_def.to_col, &model));
+                    (key, model)
+                })
+                .collect();
+
+            let result: Vec<Vec<R::Model>> = pkeys
+                .into_iter()
+                .map(|pkey| {
+                    let fkeys = keymap
+                        .get(&format!("{pkey:?}"))
+                        .cloned()
+                        .unwrap_or_default();
+
+                    let models: Vec<_> = fkeys
+                        .into_iter()
+                        .map(|fkey| {
+                            data.get(&format!("{fkey:?}"))
+                                .cloned()
+                                .expect("Failed at finding key on hashmap")
+                        })
+                        .collect();
+
+                    models
+                })
+                .collect();
+
+            Ok(result)
+        } else {
+            return Err(query_err("Relation is not ManyToMany"));
+        }
+    }
+}
+
+fn cmp_table_ref(left: &TableRef, right: &TableRef) -> bool {
+    // not ideal; but
+    format!("{left:?}") == format!("{right:?}")
 }
 
 fn extract_key<Model>(target_col: &Identity, model: &Model) -> ValueTuple
