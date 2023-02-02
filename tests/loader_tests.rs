@@ -27,7 +27,7 @@ async fn loader_load_one() -> Result<(), DbErr> {
     .await?;
 
     let bakers = baker::Entity::find().all(&ctx.db).await?;
-    let bakeries = bakers.load_one(bakery::Entity::find(), &ctx.db).await?;
+    let bakeries = bakers.load_one(bakery::Entity, &ctx.db).await?;
 
     assert_eq!(bakers, [baker_1, baker_2, baker_3]);
     assert_eq!(bakeries, [Some(bakery_0.clone()), Some(bakery_0), None]);
@@ -55,7 +55,7 @@ async fn loader_load_many() -> Result<(), DbErr> {
     let baker_4 = insert_baker(&ctx.db, "Baker 4", bakery_2.id).await?;
 
     let bakeries = bakery::Entity::find().all(&ctx.db).await?;
-    let bakers = bakeries.load_many(baker::Entity::find(), &ctx.db).await?;
+    let bakers = bakeries.load_many(baker::Entity, &ctx.db).await?;
 
     assert_eq!(bakeries, [bakery_1.clone(), bakery_2.clone()]);
     assert_eq!(
@@ -126,8 +126,8 @@ async fn loader_load_many_multi() -> Result<(), DbErr> {
     let _cake_4 = insert_cake(&ctx.db, "Apple Pie", None).await?; // no one makes apple pie
 
     let bakeries = bakery::Entity::find().all(&ctx.db).await?;
-    let bakers = bakeries.load_many(baker::Entity::find(), &ctx.db).await?;
-    let cakes = bakeries.load_many(cake::Entity::find(), &ctx.db).await?;
+    let bakers = bakeries.load_many(baker::Entity, &ctx.db).await?;
+    let cakes = bakeries.load_many(cake::Entity, &ctx.db).await?;
 
     assert_eq!(bakeries, [bakery_1, bakery_2]);
     assert_eq!(bakers, [vec![baker_1, baker_2], vec![baker_3]]);
@@ -152,7 +152,7 @@ async fn loader_load_many_to_many() -> Result<(), DbErr> {
     let baker_2 = insert_baker(&ctx.db, "Peter", bakery_1.id).await?;
 
     let cake_1 = insert_cake(&ctx.db, "Cheesecake", None).await?;
-    let cake_2 = insert_cake(&ctx.db, "Chocolate", None).await?;
+    let cake_2 = insert_cake(&ctx.db, "Coffee", None).await?;
     let cake_3 = insert_cake(&ctx.db, "Chiffon", None).await?;
     let cake_4 = insert_cake(&ctx.db, "Apple Pie", None).await?; // no one makes apple pie
 
@@ -163,7 +163,7 @@ async fn loader_load_many_to_many() -> Result<(), DbErr> {
 
     let bakers = baker::Entity::find().all(&ctx.db).await?;
     let cakes = bakers
-        .load_many_to_many(cake::Entity::find(), cakes_bakers::Entity, &ctx.db)
+        .load_many_to_many(cake::Entity, cakes_bakers::Entity, &ctx.db)
         .await?;
 
     assert_eq!(bakers, [baker_1.clone(), baker_2.clone()]);
@@ -175,11 +175,22 @@ async fn loader_load_many_to_many() -> Result<(), DbErr> {
         ]
     );
 
+    // same, but apply restrictions on cakes
+
+    let cakes = bakers
+        .load_many_to_many(
+            cake::Entity::find().filter(cake::Column::Name.like("Ch%")),
+            cakes_bakers::Entity,
+            &ctx.db,
+        )
+        .await?;
+    assert_eq!(cakes, [vec![cake_1.clone()], vec![cake_3.clone()]]);
+
     // now, start again from cakes
 
     let cakes = cake::Entity::find().all(&ctx.db).await?;
     let bakers = cakes
-        .load_many_to_many(baker::Entity::find(), cakes_bakers::Entity, &ctx.db)
+        .load_many_to_many(baker::Entity, cakes_bakers::Entity, &ctx.db)
         .await?;
 
     assert_eq!(cakes, [cake_1, cake_2, cake_3, cake_4]);

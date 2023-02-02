@@ -6,32 +6,40 @@ use async_trait::async_trait;
 use sea_query::{ColumnRef, DynIden, Expr, IntoColumnRef, SimpleExpr, TableRef, ValueTuple};
 use std::{collections::HashMap, str::FromStr};
 
-/// A trait for basic Dataloader
+/// Entity, or a Select<Entity>; to be used as parameters in [`LoaderTrait`]
+pub trait EntityOrSelect<E: EntityTrait>: Send {
+    /// If self is Entity, use Entity::find()
+    fn select(self) -> Select<E>;
+}
+
+/// This trait implements the Data Loader API
 #[async_trait]
 pub trait LoaderTrait {
     /// Source model
     type Model: ModelTrait;
 
     /// Used to eager load has_one relations
-    async fn load_one<R, C>(&self, stmt: Select<R>, db: &C) -> Result<Vec<Option<R::Model>>, DbErr>
+    async fn load_one<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Option<R::Model>>, DbErr>
     where
         C: ConnectionTrait,
         R: EntityTrait,
         R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>;
 
     /// Used to eager load has_many relations
-    async fn load_many<R, C>(&self, stmt: Select<R>, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
+    async fn load_many<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
     where
         C: ConnectionTrait,
         R: EntityTrait,
         R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>;
 
     /// Used to eager load many_to_many relations
-    async fn load_many_to_many<R, V, C>(
+    async fn load_many_to_many<R, S, V, C>(
         &self,
-        stmt: Select<R>,
+        stmt: S,
         via: V,
         db: &C,
     ) -> Result<Vec<Vec<R::Model>>, DbErr>
@@ -39,9 +47,28 @@ pub trait LoaderTrait {
         C: ConnectionTrait,
         R: EntityTrait,
         R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
         V: EntityTrait,
         V::Model: Send + Sync,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>;
+}
+
+impl<E> EntityOrSelect<E> for E
+where
+    E: EntityTrait,
+{
+    fn select(self) -> Select<E> {
+        E::find()
+    }
+}
+
+impl<E> EntityOrSelect<E> for Select<E>
+where
+    E: EntityTrait,
+{
+    fn select(self) -> Select<E> {
+        self
+    }
 }
 
 #[async_trait]
@@ -51,29 +78,31 @@ where
 {
     type Model = M;
 
-    async fn load_one<R, C>(&self, stmt: Select<R>, db: &C) -> Result<Vec<Option<R::Model>>, DbErr>
+    async fn load_one<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Option<R::Model>>, DbErr>
     where
         C: ConnectionTrait,
         R: EntityTrait,
         R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
     {
         self.as_slice().load_one(stmt, db).await
     }
 
-    async fn load_many<R, C>(&self, stmt: Select<R>, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
+    async fn load_many<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
     where
         C: ConnectionTrait,
         R: EntityTrait,
         R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
     {
         self.as_slice().load_many(stmt, db).await
     }
 
-    async fn load_many_to_many<R, V, C>(
+    async fn load_many_to_many<R, S, V, C>(
         &self,
-        stmt: Select<R>,
+        stmt: S,
         via: V,
         db: &C,
     ) -> Result<Vec<Vec<R::Model>>, DbErr>
@@ -81,6 +110,7 @@ where
         C: ConnectionTrait,
         R: EntityTrait,
         R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
         V: EntityTrait,
         V::Model: Send + Sync,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
@@ -96,11 +126,12 @@ where
 {
     type Model = M;
 
-    async fn load_one<R, C>(&self, stmt: Select<R>, db: &C) -> Result<Vec<Option<R::Model>>, DbErr>
+    async fn load_one<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Option<R::Model>>, DbErr>
     where
         C: ConnectionTrait,
         R: EntityTrait,
         R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
     {
         // we verify that is HasOne relation
@@ -119,7 +150,7 @@ where
 
         let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
-        let stmt = <Select<R> as QueryFilter>::filter(stmt, condition);
+        let stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
 
         let data = stmt.all(db).await?;
 
@@ -145,11 +176,12 @@ where
         Ok(result)
     }
 
-    async fn load_many<R, C>(&self, stmt: Select<R>, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
+    async fn load_many<R, S, C>(&self, stmt: S, db: &C) -> Result<Vec<Vec<R::Model>>, DbErr>
     where
         C: ConnectionTrait,
         R: EntityTrait,
         R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
     {
         // we verify that is HasMany relation
@@ -169,7 +201,7 @@ where
 
         let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
-        let stmt = <Select<R> as QueryFilter>::filter(stmt, condition);
+        let stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
 
         let data = stmt.all(db).await?;
 
@@ -205,9 +237,9 @@ where
         Ok(result)
     }
 
-    async fn load_many_to_many<R, V, C>(
+    async fn load_many_to_many<R, S, V, C>(
         &self,
-        stmt: Select<R>,
+        stmt: S,
         via: V,
         db: &C,
     ) -> Result<Vec<Vec<R::Model>>, DbErr>
@@ -215,6 +247,7 @@ where
         C: ConnectionTrait,
         R: EntityTrait,
         R::Model: Send + Sync,
+        S: EntityOrSelect<R>,
         V: EntityTrait,
         V::Model: Send + Sync,
         <<Self as LoaderTrait>::Model as ModelTrait>::Entity: Related<R>,
@@ -261,7 +294,7 @@ where
 
             let condition = prepare_condition(&rel_def.to_tbl, &rel_def.to_col, &keys);
 
-            let stmt = <Select<R> as QueryFilter>::filter(stmt, condition);
+            let stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
 
             let data = stmt.all(db).await?;
             // Map of R::PK -> R::Model
@@ -283,11 +316,7 @@ where
 
                     let models: Vec<_> = fkeys
                         .into_iter()
-                        .map(|fkey| {
-                            data.get(&format!("{fkey:?}"))
-                                .cloned()
-                                .expect("Failed at finding key on hashmap")
-                        })
+                        .filter_map(|fkey| data.get(&format!("{fkey:?}")).cloned())
                         .collect();
 
                     models

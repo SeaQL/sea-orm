@@ -10,6 +10,10 @@ pub async fn all_about_select(db: &DbConn) -> Result<(), DbErr> {
 
     println!("===== =====\n");
 
+    find_many(db).await?;
+
+    println!("===== =====\n");
+
     find_one(db).await?;
 
     println!("===== =====\n");
@@ -72,6 +76,30 @@ async fn find_together(db: &DbConn) -> Result<(), DbErr> {
     println!();
     for bb in both.iter() {
         println!("{bb:?}\n");
+    }
+
+    Ok(())
+}
+
+async fn find_many(db: &DbConn) -> Result<(), DbErr> {
+    print!("find cakes with fruits: ");
+
+    let cakes_with_fruits: Vec<(cake::Model, Vec<fruit::Model>)> = Cake::find()
+        .find_with_related(fruit::Entity)
+        .all(db)
+        .await?;
+
+    // equivalent; but with a different API
+    let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
+    let fruits: Vec<Vec<fruit::Model>> = cakes.load_many(fruit::Entity, db).await?;
+
+    println!();
+    for (left, right) in cakes_with_fruits
+        .into_iter()
+        .zip(cakes.into_iter().zip(fruits.into_iter()))
+    {
+        println!("{left:?}\n");
+        assert_eq!(left, right);
     }
 
     Ok(())
@@ -142,13 +170,24 @@ async fn count_fruits_by_cake(db: &DbConn) -> Result<(), DbErr> {
 async fn find_many_to_many(db: &DbConn) -> Result<(), DbErr> {
     print!("find cakes and fillings: ");
 
-    let both: Vec<(cake::Model, Vec<filling::Model>)> =
+    let cakes_with_fillings: Vec<(cake::Model, Vec<filling::Model>)> =
         Cake::find().find_with_related(Filling).all(db).await?;
 
+    // equivalent; but with a different API
+    let cakes: Vec<cake::Model> = Cake::find().all(db).await?;
+    let fillings: Vec<Vec<filling::Model>> = cakes
+        .load_many_to_many(filling::Entity, cake_filling::Entity, db)
+        .await?;
+
     println!();
-    for bb in both.iter() {
-        println!("{bb:?}\n");
+    for (left, right) in cakes_with_fillings
+        .into_iter()
+        .zip(cakes.into_iter().zip(fillings.into_iter()))
+    {
+        println!("{left:?}\n");
+        assert_eq!(left, right);
     }
+    println!();
 
     print!("find fillings for cheese cake: ");
 
