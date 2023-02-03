@@ -7,7 +7,7 @@ use sea_query::{
 use std::fmt::Debug;
 
 /// Defines the type of relationship
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RelationType {
     /// An Entity has one relationship
     HasOne,
