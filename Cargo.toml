@@ -16,7 +16,7 @@ keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 rust-version = "1.65"
 
 [package.metadata.docs.rs]
-features = ["default", "sqlx-all", "mock", "runtime-async-std-native-tls"]
+features = ["default", "sqlx-all", "mock", "runtime-async-std-native-tls", "postgres-array", "sea-orm-internal"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
