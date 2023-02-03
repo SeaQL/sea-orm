@@ -107,8 +107,8 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
     assert!(!manager.has_table("cake").await?);
     assert!(!manager.has_table("fruit").await?);
 
-    // Tests rolling back changes of "migrate up" when running migration on Postgres
-    if matches!(db.get_database_backend(), DbBackend::Postgres) {
+    {
+        // Tests rolling back changes of "migrate up" when running migration
         println!("\nRoll back changes when encounter errors");
 
         // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
@@ -146,8 +146,8 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
     assert!(manager.has_column("cake", "name").await?);
     assert!(manager.has_column("fruit", "cake_id").await?);
 
-    // Tests rolling back changes of "migrate down" when running migration on Postgres
-    if matches!(db.get_database_backend(), DbBackend::Postgres) {
+    // Tests rolling back changes of "migrate down" when running migration
+    {
         println!("\nRoll back changes when encounter errors");
 
         // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
