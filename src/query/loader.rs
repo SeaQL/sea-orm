@@ -387,17 +387,19 @@ where
 }
 
 fn prepare_condition(table: &TableRef, col: &Identity, keys: &[ValueTuple]) -> Condition {
+    // TODO when value is hashable, retain only unique values
+    let keys = keys.to_owned();
     match col {
         Identity::Unary(column_a) => {
             let column_a = table_column(table, column_a);
-            Condition::all().add(Expr::col(column_a).is_in(keys.iter().cloned().flatten()))
+            Condition::all().add(Expr::col(column_a).is_in(keys.into_iter().flatten()))
         }
         Identity::Binary(column_a, column_b) => Condition::all().add(
             Expr::tuple([
                 SimpleExpr::Column(table_column(table, column_a)),
                 SimpleExpr::Column(table_column(table, column_b)),
             ])
-            .in_tuples(keys.iter().cloned()),
+            .in_tuples(keys),
         ),
         Identity::Ternary(column_a, column_b, column_c) => Condition::all().add(
             Expr::tuple([
@@ -405,7 +407,7 @@ fn prepare_condition(table: &TableRef, col: &Identity, keys: &[ValueTuple]) -> C
                 SimpleExpr::Column(table_column(table, column_b)),
                 SimpleExpr::Column(table_column(table, column_c)),
             ])
-            .in_tuples(keys.iter().cloned()),
+            .in_tuples(keys),
         ),
     }
 }
