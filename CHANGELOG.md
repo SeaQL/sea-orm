@@ -8,12 +8,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## 0.11.0 - Finalizing
 
 + 2023-02-02: `0.11.0-rc.1`
++ 2023-02-04: `0.11.0-rc.2`
 
 ### New Features
 
 #### SeaORM Core
 
-* Simple data loader https://github.com/SeaQL/sea-orm/pull/1238
+* Simple data loader https://github.com/SeaQL/sea-orm/pull/1238, https://github.com/SeaQL/sea-orm/pull/1443
 * Transactions Isolation level and Access mode https://github.com/SeaQL/sea-orm/pull/1230
 * Support various UUID formats that are available in `uuid::fmt` module https://github.com/SeaQL/sea-orm/pull/1325
 * Support Vector of enum for Postgres https://github.com/SeaQL/sea-orm/pull/1210
