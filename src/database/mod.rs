@@ -3,6 +3,7 @@ use std::time::Duration;
 mod connection;
 mod db_connection;
 #[cfg(feature = "mock")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 mod mock;
 mod statement;
 mod stream;
@@ -11,6 +12,7 @@ mod transaction;
 pub use connection::*;
 pub use db_connection::*;
 #[cfg(feature = "mock")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 pub use mock::*;
 pub use statement::*;
 use std::borrow::Cow;
