@@ -100,8 +100,8 @@ impl TryGetable for XXX {
     }
 }
 ```
-* The `ActiveModelBehaviour` trait becomes async trait https://github.com/SeaQL/sea-orm/pull/1328.
-If you overridden the default `ActiveModelBehaviour` implementation:
+* The `ActiveModelBehavior` trait becomes async trait https://github.com/SeaQL/sea-orm/pull/1328.
+If you overridden the default `ActiveModelBehavior` implementation:
 ```rust
 #[async_trait::async_trait]
 impl ActiveModelBehavior for ActiveModel {
