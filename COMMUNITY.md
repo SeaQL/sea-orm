@@ -92,3 +92,4 @@ If you have an article, tutorial, podcast or video related to SeaORM and want to
 ### Tutorials
 
 - Async GraphQL with Rust: [Part 1](https://konkle.us/async-graphql-rust-1-introduction/), [Part 2](https://konkle.us/async-graphql-with-rust-part-two/), [Part 3](https://konkle.us/async-graphql-with-rust-part-three/) by [Brandon Konkle](https://github.com/bkonkle)
+- [Introduction to Axum](https://www.youtube.com/playlist?list=PLrmY5pVcnuE-_CP7XZ_44HN-mDrLQV4nS) [GitHub Code](https://github.com/brooks-builds/full-stack-todo-rust-course/tree/main/backend/rust/axum) | A course on Axum and SeaOrm | DB: Postgres
