@@ -576,9 +576,14 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_derive(FromQueryResult)]
 pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
-    let DeriveInput { ident, data, .. } = parse_macro_input!(input);
+    let DeriveInput {
+        ident,
+        data,
+        generics,
+        ..
+    } = parse_macro_input!(input);
 
-    match derives::expand_derive_from_query_result(ident, data) {
+    match derives::expand_derive_from_query_result(ident, data, generics) {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }
