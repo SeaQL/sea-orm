@@ -262,6 +262,17 @@ pub trait QuerySelect: Sized {
     ///         .to_string(),
     ///     r#"SELECT "cake"."name" FROM "cake" GROUP BY "cake"."name""#
     /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .column_as(cake::Column::Id.count(), "count")
+    ///         .column_as(cake::Column::Id.sum(), "sum_of_id")
+    ///         .group_by(cake::Column::Name)
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT COUNT("cake"."id") AS "count", SUM("cake"."id") AS "sum_of_id" FROM "cake" GROUP BY "cake"."name""#
+    /// );
     /// ```
     fn group_by<C>(mut self, col: C) -> Self
     where
@@ -282,6 +293,18 @@ pub trait QuerySelect: Sized {
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` HAVING `cake`.`id` = 4 AND `cake`.`id` = 5"
+    /// );
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .column_as(cake::Column::Id.count(), "count")
+    ///         .column_as(cake::Column::Id.sum(), "sum_of_id")
+    ///         .group_by(cake::Column::Name)
+    ///         .having(cake::Column::Id.gt(6))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT COUNT(`cake`.`id`) AS `count`, SUM(`cake`.`id`) AS `sum_of_id` FROM `cake` GROUP BY `cake`.`name` HAVING `cake`.`id` > 6"
     /// );
     /// ```
     fn having<F>(mut self, filter: F) -> Self
