@@ -1,6 +1,6 @@
 //! COPY FROM bin/main.rs
 
-use clap::StructOpt;
+use clap::Parser;
 use dotenvy::dotenv;
 use sea_orm_cli::{handle_error, run_generate_command, run_migrate_command, Cli, Commands};
 

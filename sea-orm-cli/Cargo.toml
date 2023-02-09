@@ -34,7 +34,7 @@ path = "src/bin/sea.rs"
 required-features = ["cli", "codegen"]
 
 [dependencies]
-clap = { version = "3.2", default-features = false, features = ["std", "env", "derive"], optional = true }
+clap = { version = "4.1.4", features = ["env", "derive", "deprecated"], optional = true }
 dotenvy = { version = "0.15", default-features = false, optional = true }
 async-std = { version = "1.9", default-features = false, features = ["attributes", "tokio1"], optional = true }
 sea-orm-codegen = { version = "=0.11.0", path = "../sea-orm-codegen", default-features = false, optional = true }
