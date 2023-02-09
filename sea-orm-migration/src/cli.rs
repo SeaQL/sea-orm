@@ -87,13 +87,12 @@ where
 }
 
 #[derive(Parser)]
-#[clap(version)]
+#[command(version)]
 pub struct Cli {
-    #[clap(action, short = 'v', long, global = true, help = "Show debug messages")]
+    #[arg(short = 'v', long, global = true, help = "Show debug messages")]
     verbose: bool,
 
-    #[clap(
-        value_parser,
+    #[arg(
         global = true,
         short = 's',
         long,
@@ -104,8 +103,7 @@ pub struct Cli {
     )]
     database_schema: Option<String>,
 
-    #[clap(
-        value_parser,
+    #[arg(
         global = true,
         short = 'u',
         long,
