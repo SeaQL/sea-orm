@@ -1,10 +1,37 @@
 use crate::{error::*, FromQueryResult, QueryResult};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv4Mask, Ipv6Mask};
 use serde_json::Map;
 pub use serde_json::Value as JsonValue;
+
+struct IPNet {
+    ip: IpAddr,
+    mask: Ipv4Mask,
+}
+
+impl IPNet {
+    fn from_query_result(query_result: &str) -> Self {
+        let parts: Vec<&str> = query_result.split('/').collect();
+        let ip_str = parts[0];
+        let mask_len = parts[1].parse::<u8>().unwrap();
+
+        let ip = match ip_str.parse::<Ipv4Addr>() {
+            Ok(ip) => IpAddr::V4(ip),
+            Err(_) => IpAddr::V6(ip_str.parse::<Ipv6Addr>().unwrap()),
+        };
+
+        let mask = match ip {
+            IpAddr::V4(ip) => Ipv4Mask::from_prefix_length(mask_len).unwrap(),
+            IpAddr::V6(ip) => Ipv6Mask::from_prefix_length(mask_len).unwrap(),
+        };
+
+        Self { ip, mask }
+    }
+}
 
 impl FromQueryResult for JsonValue {
     #[allow(unused_variables, unused_mut)]
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
+        let ip_net = IPNet::from_query_result(query_result);
         let mut map = Map::new();
         #[allow(unused_macros)]
         macro_rules! try_get_type {
