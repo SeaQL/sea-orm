@@ -9,13 +9,13 @@ use std::str::FromStr;
 pub use sea_query::ColumnType;
 
 /// Defines a Column for an Entity
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct ColumnDef {
     pub(crate) col_type: ColumnType,
     pub(crate) null: bool,
     pub(crate) unique: bool,
     pub(crate) indexed: bool,
-    pub(crate) default_value: Option<Value>,
+    pub(crate) default_value: Option<SimpleExpr>,
 }
 
 macro_rules! bind_oper {
@@ -338,7 +338,7 @@ impl ColumnDef {
     /// Set the default value
     pub fn default_value<T>(mut self, value: T) -> Self
     where
-        T: Into<Value>,
+        T: Into<SimpleExpr>,
     {
         self.default_value = Some(value.into());
         self
@@ -464,6 +464,7 @@ mod tests {
         mod hello {
             use crate as sea_orm;
             use crate::entity::prelude::*;
+            use sea_query::Expr;
 
             #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "hello")]
@@ -487,6 +488,8 @@ mod tests {
                 pub eight: u32,
                 #[sea_orm(unique, indexed, nullable)]
                 pub nine: u64,
+                #[sea_orm(default_expr = "Expr::current_timestamp()")]
+                pub ten: DateTimeUtc,
             }
 
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -527,6 +530,12 @@ mod tests {
         assert_eq!(
             hello::Column::Nine.def(),
             ColumnType::BigUnsigned.def().unique().indexed().nullable()
+        );
+        assert_eq!(
+            hello::Column::Ten.def(),
+            ColumnType::TimestampWithTimeZone
+                .def()
+                .default_value(Expr::current_timestamp())
         );
     }
 

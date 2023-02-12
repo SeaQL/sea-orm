@@ -152,7 +152,17 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                             } else if name == "default_value" {
                                                 default_value = Some(nv.lit.to_owned());
                                             } else if name == "default_expr" {
-                                                default_expr = Some(nv.lit.to_owned());
+                                                if let Lit::Str(litstr) = &nv.lit {
+                                                    let value_expr: TokenStream =
+                                                        syn::parse_str(&litstr.value())?;
+
+                                                    default_expr = Some(value_expr);
+                                                } else {
+                                                    return Err(Error::new(
+                                                        field.span(),
+                                                        "`default_expr` should be str",
+                                                    ));
+                                                }
                                             } else if name == "column_name" {
                                                 if let Lit::Str(litstr) = &nv.lit {
                                                     column_name = Some(litstr.value());
@@ -335,7 +345,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         match_row = quote! { #match_row.default_value(#default_value) };
                     }
                     if let Some(default_expr) = default_expr {
-                        match_row = quote! { #match_row.default_expr(#default_expr) };
+                        match_row = quote! { #match_row.default_value(#default_expr) };
                     }
                     columns_trait.push(match_row);
                 }
