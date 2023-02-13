@@ -4,6 +4,9 @@ use migrator::Migrator;
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DbBackend, DbErr, Statement};
 use sea_orm_migration::prelude::*;
 
+#[cfg(feature = "custom-migrations-table-name")]
+use sea_orm_migration::seaql_migrations::MIGRATIONS_TABLE_NAME;
+
 #[async_std::test]
 async fn main() -> Result<(), DbErr> {
     tracing_subscriber::fmt()
@@ -75,6 +78,9 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
     println!("\nMigrator::install");
     Migrator::install(db).await?;
 
+    #[cfg(feature = "custom-migrations-table-name")]
+    assert!(manager.has_table(&*MIGRATIONS_TABLE_NAME).await?);
+    #[cfg(not(feature = "custom-migrations-table-name"))]
     assert!(manager.has_table("seaql_migrations").await?);
 
     println!("\nMigrator::reset");
@@ -176,7 +182,11 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
     println!("\nMigrator::down");
     Migrator::down(db, None).await?;
 
+    #[cfg(feature = "custom-migrations-table-name")]
+    assert!(manager.has_table(&*MIGRATIONS_TABLE_NAME).await?);
+    #[cfg(not(feature = "custom-migrations-table-name"))]
     assert!(manager.has_table("seaql_migrations").await?);
+
     assert!(!manager.has_table("cake").await?);
     assert!(!manager.has_table("fruit").await?);
 
