@@ -9,7 +9,7 @@ use std::env::var;
 lazy_static! {
     pub static ref MIGRATIONS_TABLE_NAME: String = match var("SEA_ORM_MIGRATIONS_TABLE_NAME") {
         Ok(value) => value,
-        Err(_) => String::from("seaql_migrations")
+        Err(_) => String::from("seaql_migrations"),
     };
 }
 
