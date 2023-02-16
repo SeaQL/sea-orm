@@ -45,7 +45,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [KrakenPics](https://github.com/kraken-pics/backend) | A public file host written in rust using seaoRM & actix_web | DB: MySQL
 - [service_auth](https://github.com/shorii/service_auth) | A simple JWT authentication web-application | DB: Postgres
 - [SophyCore](https://github.com/FarDragi/SophyCore) | Main system that centralizes all rules, to be used by both the discord bot and the future site | DB: Postgres
-- [lldap](https://github.com/nitnelave/lldap) ![GitHub stars](https://img.shields.io/github/stars/nitnelave/lldap.svg?style=social) | Light LDAP implementation for authentication
+- [LLDAP](https://github.com/nitnelave/lldap) ![GitHub stars](https://img.shields.io/github/stars/nitnelave/lldap.svg?style=social) | A light LDAP server for user management | DB: MySQL, Postgres, SQLite
 - [nitro_repo](https://github.com/wyatt-herkamp/nitro_repo) | An OpenSource, lightweight, and fast artifact manager. | DB: MySQL, SQLite
 - [MoonRamp](https://github.com/MoonRamp/MoonRamp) | A free and open source crypto payment gateway | DB: MySQL, Postgres, SQLite
 - [url_shortener](https://github.com/michidk/url_shortener) | A simple self-hosted URL shortener written in Rust | DB: MySQL, Postgres, SQLite
