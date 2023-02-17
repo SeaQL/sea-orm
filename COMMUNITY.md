@@ -26,6 +26,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 #### Backend
 
+- [OctoBase](https://github.com/toeverything/OctoBase) ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend written in 🦀 | DB: MySQL, Postgres, SQLite
 - [Wikijump](https://github.com/scpwiki/wikijump) ([repository](https://github.com/scpwiki/wikijump/tree/develop/deepwell)) | API service for Wikijump, a fork of Wikidot | DB: Postgres
 - [aeroFans](https://github.com/naryand/aerofans) | Full stack forum-like social media platform in Rust and WebAssembly | DB: Postgres
 - [thrpg](https://github.com/thrpg/thrpg) | Touhou Project's secondary creative games | DB: Postgres
