@@ -338,7 +338,7 @@ impl ActiveEnum {
                 }
 
                 fn db_type() -> sea_orm::ColumnDef {
-                    sea_orm::ColumnType::#db_type.def()
+                    sea_orm::prelude::ColumnTypeTrait::def(sea_orm::ColumnType::#db_type)
                 }
             }
 
