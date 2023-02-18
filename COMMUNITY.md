@@ -18,7 +18,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 - [awto](https://github.com/awto-rs/awto) | Awtomate your 🦀 microservices with awto | DB: Postgres
 - [tardis](https://github.com/ideal-world/tardis) | Elegant, Clean Rust development framework🛸 | DB: MySQL, Postgres, SQLite
-- [Quasar](https://github.com/Technik97/Quasar) | Rust REST API using Actix-Web, SeaORM and Postgres with Svelte Typescript Frontend | DB: Postgres
+- [Quasar](https://github.com/Technik97/Quasar) | Rust REST API using Actix Web, SeaORM and Postgres with Svelte Typescript Frontend | DB: Postgres
 - [ZAPP](https://zapp.epics.dev) ([repository](https://github.com/EpicsDAO/zapp)) | ZAPP is a serverless framework made by Rust. Quickly build a scalable GraphQL API web server.
 - [poem_admin](https://github.com/lingdu1234/poem_admin) | An admin panel built with poems, **SeaORM** and Vue 3. | DB: MySQL, Postgres, SQLite
 
@@ -26,7 +26,6 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 #### Backend
 
-- [OctoBase](https://github.com/toeverything/OctoBase) ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend written in 🦀 | DB: MySQL, Postgres, SQLite
 - [Wikijump](https://github.com/scpwiki/wikijump) ([repository](https://github.com/scpwiki/wikijump/tree/develop/deepwell)) | API service for Wikijump, a fork of Wikidot | DB: Postgres
 - [aeroFans](https://github.com/naryand/aerofans) | Full stack forum-like social media platform in Rust and WebAssembly | DB: Postgres
 - [thrpg](https://github.com/thrpg/thrpg) | Touhou Project's secondary creative games | DB: Postgres
@@ -38,12 +37,12 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [mugen](https://github.com/koopa1338/mugen-dms) | DMS written in 🦀 | DB: Postgres
 - [JinShu](https://github.com/gengteng/jinshu) | A cross-platform **I**nstant **M**essaging system written in 🦀 | DB: MySQL, Postgres
 - [Oura Postgres Sink](https://github.com/dcSpark/oura-postgres-sink) | Sync a postgres database with the cardano blockchain using [Oura](https://github.com/txpipe/oura) | DB: Postgres
-- [Orca](https://github.com/workfoxes/orca) | An No-code Test Automation platform using actix, SeaORM, react. runs on the desktop and cloud | DB: Postgres
-- [suzuya](https://github.com/SH11235/suzuya) | A merchandise management application using SeaORM, Actix-Web, Tera | DB: Postgres
+- [Orca](https://github.com/workfoxes/orca) | An No-code Test Automation platform using Actix, SeaORM, React. runs on the desktop and cloud | DB: Postgres
+- [suzuya](https://github.com/SH11235/suzuya) | A merchandise management application using SeaORM, Actix Web, Tera | DB: Postgres
 - [snmp-sim-rust](https://github.com/sonalake/snmp-sim-rust) | SNMP Simulator | DB: SQLite
 - [template_flow](https://github.com/hilary888/template_flow) | An experiment exploring replacing placeholders in pre-prepared templates with their actual values | DB: Postgres
 - [VeryRezsi](https://github.com/szattila98/veryrezsi) | VeryRezsi is a subscription and expense calculator web-application. Powered by SvelteKit on client side, and Rust on server side. | DB: MySQL
-- [KrakenPics](https://github.com/kraken-pics/backend) | A public file host written in rust using seaoRM & actix_web | DB: MySQL
+- [KrakenPics](https://github.com/kraken-pics/backend) | A public file host written in rust using SeaORM & Actix Web | DB: MySQL
 - [service_auth](https://github.com/shorii/service_auth) | A simple JWT authentication web-application | DB: Postgres
 - [SophyCore](https://github.com/FarDragi/SophyCore) | Main system that centralizes all rules, to be used by both the discord bot and the future site | DB: Postgres
 - [LLDAP](https://github.com/nitnelave/lldap) ![GitHub stars](https://img.shields.io/github/stars/nitnelave/lldap.svg?style=social) | A light LDAP server for user management | DB: MySQL, Postgres, SQLite
@@ -52,16 +51,17 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [url_shortener](https://github.com/michidk/url_shortener) | A simple self-hosted URL shortener written in Rust | DB: MySQL, Postgres, SQLite
 - [RGB Lib](https://github.com/RGB-Tools/rgb-lib) | A library to manage wallets for RGB assets | DB: MySQL, Postgres, SQLite
 - [RCloud](https://github.com/p0rtL6/RCloud) | A self-hosted lightweight cloud drive alternative
-- [Music Player](https://github.com/tsirysndr/music-player) | An extensible music server written in Rust 🚀🎵✨ | DB: SQLite
+- [Music Player](https://github.com/tsirysndr/music-player) ![GitHub stars](https://img.shields.io/github/stars/tsirysndr/music-player.svg?style=social) | An extensible music server written in Rust 🚀🎵✨ | DB: SQLite
 - [Linx](https://github.com/whizzes/linx) | Headless URL Shortener written in Rust 🦀
 - [Ceobe Canteen Serve](https://github.com/Enraged-Dun-Cookie-Development-Team/Ceobe-Canteen-Serve) | A tool based on Arknights mobile game, using axum as web framework | DB: MySQL
 - [Fikabot](https://github.com/sousandrei/fikabot) | A slack bot to schedule coffee breaks (Fika in swedish) in slack channels | DB: MySQL
-- [RSS aggregator](https://github.com/fistons/rss-aggregator)| A small RSS aggregator and API using actix and SeaORM | DB: Postgres
+- [RSS aggregator](https://github.com/fistons/rss-aggregator)| A small RSS aggregator and API using Actix Web and SeaORM | DB: Postgres
 - [Dev Board](https://github.com/goto-eof/dev_board_api_rust)| A dashboard for organizing software development tasks implemented in Rust
 - [Wikipedia Speedrun](https://wikipediaspeedrun.com) ([repository](https://github.com/hut8/wikipedia-speedrun)) | Finds shortest paths between Wikipedia articles | DB: SQLite
 - [Dinoly](https://github.com/ippsav/Dinoly) | An url shortener using Axum web framework and SeaORM | DB: Postgres
 - [remindee-bot](https://github.com/magnickolas/remindee-bot) | Telegram bot for managing reminders | DB: SQLite
 - [SlashURL](https://github.com/henriquekirchheck/slashurl) | A url shortener using Rust designed to be implemented anywere | DB: PostgreSQL
+- [OctoBase](https://github.com/toeverything/OctoBase) ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend written in 🦀 | DB: MySQL, Postgres, SQLite
 
 #### Frontend (desktop / cli)
 
@@ -81,7 +81,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 ### Scaffolding
 
 - [Adta](https://github.com/aaronleopold/adta) | Adta is **A**nother **D**amn **T**odo **A**pp, fun little side project | DB: MySQL, Postgres, SQLite
-- [actix-react-starter-template](https://github.com/aslamplr/actix-react-starter-template) | Actix web + SeaORM + React + Redux + Redux Saga project starter template | DB: Postgres
+- [actix-react-starter-template](https://github.com/aslamplr/actix-react-starter-template) | Actix Web + SeaORM + React + Redux + Redux Saga project starter template | DB: Postgres
 - [Rust Async-GraphQL Example: Caster API](https://github.com/bkonkle/rust-example-caster-api) | A demo GraphQL API using Tokio, Warp, async-graphql, and SeaORM | DB: Postgres
 - [rust-juniper-playground](https://github.com/Yama-Tomo/rust-juniper-playground) | juniper with SeaORM example | DB: MySQL
 - [crud-rs](https://github.com/onichandame/crud-rs) | A framework combining async-graphql and SeaORM
