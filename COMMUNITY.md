@@ -105,7 +105,6 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 If you have an article, tutorial, podcast or video related to SeaORM and want to share it with the community, feel free to submit a PR and add it to the list below!
 
-### Tutorials
-
 - Async GraphQL with Rust: [Part 1](https://konkle.us/async-graphql-rust-1-introduction/), [Part 2](https://konkle.us/async-graphql-with-rust-part-two/), [Part 3](https://konkle.us/async-graphql-with-rust-part-three/) by [Brandon Konkle](https://github.com/bkonkle)
-- [Introduction to Axum](https://www.youtube.com/playlist?list=PLrmY5pVcnuE-_CP7XZ_44HN-mDrLQV4nS) [GitHub Code](https://github.com/brooks-builds/full-stack-todo-rust-course/tree/main/backend/rust/axum) | A course on Axum and SeaOrm | DB: Postgres
+- A video course on Axum and SeaORM: [Youtube Playlist](https://www.youtube.com/playlist?list=PLrmY5pVcnuE-_CP7XZ_44HN-mDrLQV4nS), [GitHub Code](https://github.com/brooks-builds/full-stack-todo-rust-course/tree/main/backend/rust/axum) by [
+Brooks Builds](https://github.com/brooks-builds)
