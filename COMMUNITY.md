@@ -60,6 +60,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Wikipedia Speedrun](https://wikipediaspeedrun.com) ([repository](https://github.com/hut8/wikipedia-speedrun)) | Finds shortest paths between Wikipedia articles | DB: SQLite
 - [Dinoly](https://github.com/ippsav/Dinoly) | An url shortener using Axum web framework and SeaORM | DB: Postgres
 - [remindee-bot](https://github.com/magnickolas/remindee-bot) | Telegram bot for managing reminders | DB: SQLite
+- [SlashURL](https://github.com/henriquekirchheck/slashurl) | A url shortener using Rust designed to be implemented anywere | DB: PostgreSQL
 
 #### Frontend (desktop / cli)
 
