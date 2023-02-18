@@ -16,6 +16,10 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 ### Open Source Projects
 
+#### Audio and Music
+
+- [Deaftone](https://deaftone.org) ([repository](https://github.com/Ortygia/Deaftone))  | Lightweight music server. With a clean and simple API  | DB: SQLite
+
 #### CMS
 
 - [Wikijump](https://github.com/scpwiki/wikijump) ([repository](https://github.com/scpwiki/wikijump/tree/develop/deepwell)) | API service for Wikijump, a fork of Wikidot | DB: Postgres
