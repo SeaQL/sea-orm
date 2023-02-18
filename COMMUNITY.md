@@ -45,7 +45,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [KrakenPics](https://github.com/kraken-pics/backend) | A public file host written in rust using seaoRM & actix_web | DB: MySQL
 - [service_auth](https://github.com/shorii/service_auth) | A simple JWT authentication web-application | DB: Postgres
 - [SophyCore](https://github.com/FarDragi/SophyCore) | Main system that centralizes all rules, to be used by both the discord bot and the future site | DB: Postgres
-- [lldap](https://github.com/nitnelave/lldap) ![GitHub stars](https://img.shields.io/github/stars/nitnelave/lldap.svg?style=social) | Light LDAP implementation for authentication
+- [LLDAP](https://github.com/nitnelave/lldap) ![GitHub stars](https://img.shields.io/github/stars/nitnelave/lldap.svg?style=social) | A light LDAP server for user management | DB: MySQL, Postgres, SQLite
 - [nitro_repo](https://github.com/wyatt-herkamp/nitro_repo) | An OpenSource, lightweight, and fast artifact manager. | DB: MySQL, SQLite
 - [MoonRamp](https://github.com/MoonRamp/MoonRamp) | A free and open source crypto payment gateway | DB: MySQL, Postgres, SQLite
 - [url_shortener](https://github.com/michidk/url_shortener) | A simple self-hosted URL shortener written in Rust | DB: MySQL, Postgres, SQLite
@@ -59,6 +59,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Dev Board](https://github.com/goto-eof/dev_board_api_rust)| A dashboard for organizing software development tasks implemented in Rust
 - [Wikipedia Speedrun](https://wikipediaspeedrun.com) ([repository](https://github.com/hut8/wikipedia-speedrun)) | Finds shortest paths between Wikipedia articles | DB: SQLite
 - [Dinoly](https://github.com/ippsav/Dinoly) | An url shortener using Axum web framework and SeaORM | DB: Postgres
+- [remindee-bot](https://github.com/magnickolas/remindee-bot) | Telegram bot for managing reminders | DB: SQLite
 - [SlashURL](https://github.com/henriquekirchheck/slashurl) | A url shortener using Rust designed to be implemented anywere | DB: PostgreSQL
 
 #### Frontend (desktop / cli)
