@@ -1,3 +1,6 @@
+# Workaround https://github.com/rust-lang/cargo/issues/5418#issuecomment-384999528
+[workspace]
+
 [package]
 name = "sea_community_file_sorter"
 version = "0.1.0"
