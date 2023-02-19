@@ -46,7 +46,10 @@
 #   - Jobs that will always run
 #   - `compile-postgres`
 #   - `postgres`
-
+#
+# Following jobs will be run if the `COMMUNITY.md` file was changed
+#
+#   - `community-file-sort-checker`
 
 name: tests
 
@@ -54,10 +57,12 @@ on:
   pull_request:
     paths-ignore:
       - '**.md'
+      - '!COMMUNITY.md'
       - '.github/ISSUE_TEMPLATE/**'
   push:
     paths-ignore:
       - '**.md'
+      - '!COMMUNITY.md'
       - '.github/ISSUE_TEMPLATE/**'
     branches:
       - master
@@ -284,6 +289,17 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --manifest-path ${{ matrix.path }}
       - run: cargo test --manifest-path ${{ matrix.path }}
+
+  community-file-sort-checker:
+    name: Community File Sort Checker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: tj-actions/changed-files@v35
+        with:
+          files: COMMUNITY.md
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo run -r -q --manifest-path build-tools/sea_community_file_sorter/Cargo.toml -- COMMUNITY.md --check
 
   sqlite:
     name: SQLite
