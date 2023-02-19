@@ -294,12 +294,17 @@ jobs:
     name: Community File Sort Checker
     runs-on: ubuntu-latest
     steps:
+      - uses: dtolnay/rust-toolchain@stable
       - uses: actions/checkout@v3
-      - uses: tj-actions/changed-files@v35
+      - name: Get changed files
+        id: changed-files-specific
+        uses: tj-actions/changed-files@v35
         with:
           files: COMMUNITY.md
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo run -r -q --manifest-path build-tools/sea_community_file_sorter/Cargo.toml -- COMMUNITY.md --check
+      - name: Check if community file sorted
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        run: |
+          cargo run -r -q --manifest-path build-tools/sea_community_file_sorter/Cargo.toml -- COMMUNITY.md --check
 
   sqlite:
     name: SQLite
