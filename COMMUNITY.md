@@ -19,7 +19,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 #### CMS
 
 - [Wikijump](https://github.com/scpwiki/wikijump) ([repository](https://github.com/scpwiki/wikijump/tree/develop/deepwell)) ![GitHub stars](https://img.shields.io/github/stars/scpwiki/wikijump.svg?style=social) | API service for Wikijump, a fork of Wikidot | DB: Postgres
-- [Axum-Book-Management](https://github.com/lz1998/axum-book-management) | CRUD system of book-management with ORM and JWT for educational purposes | DB: MySQL
+- [Axum Book Management](https://github.com/lz1998/axum-book-management) | CRUD system of book-management with ORM and JWT for educational purposes | DB: MySQL
 - [mugen](https://github.com/koopa1338/mugen-dms) | DMS written in 🦀 | DB: Postgres
 - [mediarepo](https://mediarepo.trivernis.dev) ([repository](https://github.com/Trivernis/mediarepo)) ![GitHub stars](https://img.shields.io/github/stars/Trivernis/mediarepo.svg?style=social) | A tag-based media management application | DB: SQLite
 - [Backpack](https://github.com/JSH32/Backpack) ![GitHub stars](https://img.shields.io/github/stars/JSH32/Backpack.svg?style=social) | Open source self hosted file sharing platform on crack | DB: MySQL, Postgres, SQLite
