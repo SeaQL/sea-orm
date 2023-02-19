@@ -25,7 +25,6 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Backpack](https://github.com/JSH32/Backpack) | Open source self hosted file sharing platform on crack | DB: MySQL, Postgres, SQLite
 - [suzuya](https://github.com/SH11235/suzuya) | A merchandise management application using SeaORM, Actix Web, Tera | DB: Postgres
 - [VeryRezsi](https://github.com/szattila98/veryrezsi) | VeryRezsi is a subscription and expense calculator web-application. Powered by SvelteKit on client side, and Rust on server side. | DB: MySQL
-- [KrakenPics](https://github.com/kraken-pics/backend) | A public file host written in rust using SeaORM & Actix Web | DB: MySQL
 - [RCloud](https://github.com/p0rtL6/RCloud) | A self-hosted lightweight cloud drive alternative
 - [Dev Board](https://github.com/goto-eof/dev_board_api_rust)| A dashboard for organizing software development tasks implemented in Rust
 - [OctoBase](https://github.com/toeverything/OctoBase) ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend written in 🦀 | DB: MySQL, Postgres, SQLite
