@@ -5,11 +5,11 @@
 If you have built an app using SeaORM and want to showcase it, feel free to open a PR and add it to the list below!
 
 ### Startups
-
+#### CMS
 - [Caido](https://caido.io/) | A lightweight web security auditing toolkit
-- [Svix](https://www.svix.com/) ([repository](https://github.com/svix/svix-webhooks)) ![GitHub stars](https://img.shields.io/github/stars/svix/svix-webhooks.svg?style=social) | The enterprise ready webhooks service | DB: Postgres
-- [Sensei](https://l2.technology/sensei) ([repository](https://github.com/L2-Technology/sensei)) ![GitHub stars](https://img.shields.io/github/stars/L2-Technology/sensei.svg?style=social) | A Bitcoin lightning node implementation | DB: MySQL, Postgres, SQLite
-- [Spyglass](https://www.spyglass.fyi/) ([repository](https://github.com/a5huynh/spyglass)) ![GitHub stars](https://img.shields.io/github/stars/a5huynh/spyglass.svg?style=social) | 🔭 A personal search engine that indexes what you want w/ a simple set of rules. | DB: SQLite
+- [Svix](https://www.svix.com/) ([repository](https://github.com/svix/svix-webhooks)) | The enterprise ready webhooks service | DB: Postgres
+- [Sensei](https://l2.technology/sensei) ([repository](https://github.com/L2-Technology/sensei)) | A Bitcoin lightning node implementation | DB: MySQL, Postgres, SQLite
+- [Spyglass](https://www.spyglass.fyi/) ([repository](https://github.com/a5huynh/spyglass)) | 🔭 A personal search engine that indexes what you want w/ a simple set of rules. | DB: SQLite
 - [My Data My Consent](https://mydatamyconsent.com/) | Online data sharing for people and businesses simplified
 - [CodeCTRL](https://codectrl.authentura.com) ([repository](https://github.com/Authentura/codectrl)) | A self-hostable code logging platform | DB: SQLite
 - [Prefix.dev](https://prefix.dev/) | Conda Package Search, Environment Management and Deployment built for [mamba](https://github.com/mamba-org/mamba)  | DB: Postgres, SQLite
@@ -23,13 +23,13 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [mugen](https://github.com/koopa1338/mugen-dms) | DMS written in 🦀 | DB: Postgres
 - [mediarepo](https://mediarepo.trivernis.dev) ([repository](https://github.com/Trivernis/mediarepo)) | A tag-based media management application | DB: SQLite
 - [Backpack](https://github.com/JSH32/Backpack) | Open source self hosted file sharing platform on crack | DB: MySQL, Postgres, SQLite
-- [Stump](https://github.com/aaronleopold/stump) ![GitHub stars](https://img.shields.io/github/stars/aaronleopold/stump.svg?style=social) | A free and open source comics server with OPDS support
+- [Stump](https://github.com/aaronleopold/stump) | A free and open source comics server with OPDS support
 - [suzuya](https://github.com/SH11235/suzuya) | A merchandise management application using SeaORM, Actix Web, Tera | DB: Postgres
 - [VeryRezsi](https://github.com/szattila98/veryrezsi) | VeryRezsi is a subscription and expense calculator web-application. Powered by SvelteKit on client side, and Rust on server side. | DB: MySQL
 - [KrakenPics](https://github.com/kraken-pics/backend) | A public file host written in rust using SeaORM & Actix Web | DB: MySQL
 - [RCloud](https://github.com/p0rtL6/RCloud) | A self-hosted lightweight cloud drive alternative
-- [Dev Board](https://github.com/goto-eof/dev_board_api_rust)| A dashboard for organizing software development tasks implemented in Rust
-- [OctoBase](https://github.com/toeverything/OctoBase) ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend written in 🦀 | DB: MySQL, Postgres, SQLite
+- [Dev Board](https://github.com/goto-eof/dev_board_api_rust) | A dashboard for organizing software development tasks implemented in Rust
+- [OctoBase](https://github.com/toeverything/OctoBase) | A light-weight, scalable, offline collaborative data backend written in 🦀 | DB: MySQL, Postgres, SQLite
 
 #### Game
 - [thrpg](https://github.com/thrpg/thrpg) | Touhou Project's secondary creative games | DB: Postgres
@@ -56,8 +56,8 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 #### System
 - [snmp-sim-rust](https://github.com/sonalake/snmp-sim-rust) | SNMP Simulator | DB: SQLite
-- [LLDAP](https://github.com/nitnelave/lldap) ![GitHub stars](https://img.shields.io/github/stars/nitnelave/lldap.svg?style=social) | A light LDAP server for user management | DB: MySQL, Postgres, SQLite
-- [RSS aggregator](https://github.com/fistons/rss-aggregator)| A small RSS aggregator and API using Actix Web and SeaORM | DB: Postgres
+- [LLDAP](https://github.com/nitnelave/lldap) | A light LDAP server for user management | DB: MySQL, Postgres, SQLite
+- [RSS aggregator](https://github.com/fistons/rss-aggregator) | A small RSS aggregator and API using Actix Web and SeaORM | DB: Postgres
 - [Wikipedia Speedrun](https://wikipediaspeedrun.com) ([repository](https://github.com/hut8/wikipedia-speedrun)) | Finds shortest paths between Wikipedia articles | DB: SQLite
 
 #### Url Shortener
@@ -69,21 +69,21 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 #### Desktop / CLI Apps
 
 - [pansy](https://github.com/niuhuan/pansy) | An illustration app using SeaORM, SQLite, flutter. runs on the desktop and mobile terminals | DB: SQLite
-- [Warpgate](https://github.com/warp-tech/warpgate) ![GitHub stars](https://img.shields.io/github/stars/warp-tech/warpgate.svg?style=social) | Smart SSH bastion that works with any SSH client | DB: SQLite
+- [Warpgate](https://github.com/warp-tech/warpgate) | Smart SSH bastion that works with any SSH client | DB: SQLite
 - [todo-rs](https://github.com/anshulxyz/todo-rs/) | A TUI ToDo-app written in Rust using Cursive library and SeaORM for SQLite | DB: SQLite
-- [Music Player](https://github.com/tsirysndr/music-player) ![GitHub stars](https://img.shields.io/github/stars/tsirysndr/music-player.svg?style=social) | An extensible music server written in Rust 🚀🎵✨ | DB: SQLite
+- [Music Player](https://github.com/tsirysndr/music-player) | An extensible music server written in Rust 🚀🎵✨ | DB: SQLite
 
 #### Embedded
 
 - [rj45less-server](https://github.com/pmnxis/rj45less-server) | A simple unique number allocator for custom router | DB: SQLite
 
-### Programming Libraries
+#### Programming Libraries
 
 - [symbols](https://github.com/nappa85/symbols) | A proc-macro utility to populates enum variants with primary keys values
 - [logic-lock](https://github.com/nappa85/logic-lock) | MySQL logic locks implemented over sea-orm | DB: MySQL
 - [template_flow](https://github.com/hilary888/template_flow) | An experiment exploring replacing placeholders in pre-prepared templates with their actual values | DB: Postgres
 
-### Frameworks
+#### Frameworks
 
 - [awto](https://github.com/awto-rs/awto) | Awtomate your 🦀 microservices with awto | DB: Postgres
 - [tardis](https://github.com/ideal-world/tardis) | Elegant, Clean Rust development framework🛸 | DB: MySQL, Postgres, SQLite
@@ -91,7 +91,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [ZAPP](https://zapp.epics.dev) ([repository](https://github.com/EpicsDAO/zapp)) | ZAPP is a serverless framework made by Rust. Quickly build a scalable GraphQL API web server.
 - [poem_admin](https://github.com/lingdu1234/poem_admin) | An admin panel built with poems, SeaORM and Vue 3. | DB: MySQL, Postgres, SQLite
 
-### Scaffolding
+#### Scaffolding
 
 - [Adta](https://github.com/aaronleopold/adta) | Adta is **A**nother **D**amn **T**odo **A**pp, fun little side project | DB: MySQL, Postgres, SQLite
 - [actix-react-starter-template](https://github.com/aslamplr/actix-react-starter-template) | Actix Web + SeaORM + React + Redux + Redux Saga project starter template | DB: Postgres
