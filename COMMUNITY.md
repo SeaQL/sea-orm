@@ -23,7 +23,6 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [mugen](https://github.com/koopa1338/mugen-dms) | DMS written in 🦀 | DB: Postgres
 - [mediarepo](https://mediarepo.trivernis.dev) ([repository](https://github.com/Trivernis/mediarepo)) | A tag-based media management application | DB: SQLite
 - [Backpack](https://github.com/JSH32/Backpack) | Open source self hosted file sharing platform on crack | DB: MySQL, Postgres, SQLite
-- [Stump](https://github.com/aaronleopold/stump) ![GitHub stars](https://img.shields.io/github/stars/aaronleopold/stump.svg?style=social) | A free and open source comics server with OPDS support
 - [suzuya](https://github.com/SH11235/suzuya) | A merchandise management application using SeaORM, Actix Web, Tera | DB: Postgres
 - [VeryRezsi](https://github.com/szattila98/veryrezsi) | VeryRezsi is a subscription and expense calculator web-application. Powered by SvelteKit on client side, and Rust on server side. | DB: MySQL
 - [KrakenPics](https://github.com/kraken-pics/backend) | A public file host written in rust using SeaORM & Actix Web | DB: MySQL
