@@ -57,7 +57,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [service_auth](https://github.com/shorii/service_auth) | A simple JWT authentication web-application | DB: Postgres
 #### Social
 - [JinShu](https://github.com/gengteng/jinshu) | A cross-platform **I**nstant **M**essaging system written in 🦀 | DB: MySQL, Postgres
-- [THUBurrow](https://thuburrow.com) ([repository](https://github.com/BobAnkh/THUBurrow)) | A campus forum built by Next.js and Rocket | DB: Postgres
+- [THUBurrow](https://thuburrow.com) | A campus forum built by Next.js and Rocket | DB: Postgres
 - [aeroFans](https://github.com/naryand/aerofans) | Full stack forum-like social media platform in Rust and WebAssembly | DB: Postgres
 #### System
 - [LLDAP](https://github.com/nitnelave/lldap) | A light LDAP server for user management | DB: MySQL, Postgres, SQLite
