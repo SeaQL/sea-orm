@@ -47,6 +47,10 @@ pub enum DbErr {
     /// if the record has been correctly updated, otherwise this error will occur
     #[error("Failed to get primary key from model")]
     UpdateGetPrimaryKey,
+    /// When deleting, a model should know its primary key to check
+    /// if the record has been correctly deleted, otherwise this error will occur
+    #[error("Failed to get primary key from model")]
+    DeleteGetPrimaryKey,
     /// The record was not found in the database
     #[error("RecordNotFound Error: {0}")]
     RecordNotFound(String),
