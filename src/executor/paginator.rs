@@ -194,12 +194,8 @@ where
     /// ```
     pub fn into_stream(mut self) -> PinBoxStream<'db, Result<Vec<S::Item>, DbErr>> {
         Box::pin(stream! {
-            loop {
-                if let Some(vec) = self.fetch_and_next().await? {
-                    yield Ok(vec);
-                } else {
-                    break
-                }
+            while let Some(vec) = self.fetch_and_next().await? {
+                yield Ok(vec);
             }
         })
     }
