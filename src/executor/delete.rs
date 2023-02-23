@@ -106,7 +106,9 @@ impl Deleter {
                 }
             }
             false => {
-                find_deleted_model_by_id(model, db).await
+                let deleted_item = find_deleted_model_by_id(model, db).await;
+                self.exec(db).await?;
+                deleted_item
             }
         }
     }
