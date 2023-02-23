@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.11.0 - Finalizing
+## 0.11.1 - Pending
+
+* Fixes `DeriveActiveEnum` (by qualifying `ColumnTypeTrait::def`)
+
+## 0.11.0 - 2023-02-07
 
 + 2023-02-02: `0.11.0-rc.1`
 + 2023-02-04: `0.11.0-rc.2`
@@ -167,6 +171,8 @@ impl ColumnTrait for Column {
 
 * Fixed a small typo https://github.com/SeaQL/sea-orm/pull/1391
 * `axum` example should use tokio runtime https://github.com/SeaQL/sea-orm/pull/1428
+
+Full Changelog: https://github.com/SeaQL/sea-orm/compare/0.10.0...0.11.0
 
 ## 0.10.7 - 2023-01-19
 
