@@ -25,6 +25,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Backpack](https://github.com/JSH32/Backpack) ![GitHub stars](https://img.shields.io/github/stars/JSH32/Backpack.svg?style=social) | Open source self hosted file sharing platform on crack | DB: MySQL, Postgres, SQLite
 - [Dev Board](https://github.com/goto-eof/dev_board_api_rust) | A dashboard for organizing software development tasks implemented in Rust
 - [OctoBase](https://github.com/toeverything/OctoBase) ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend written in 🦀 | DB: MySQL, Postgres, SQLite
+- [oxide_todo](https://github.com/TheAwiteb/oxide_todo) | RESTful Todo built with [Actix](https://github.com/actix/actix-web) and [SeaOrm](https://github.com/SeaQL/sea-orm). Documented by [swagger-ui](https://swagger.io/tools/swagger-ui/). Authenticated by [JWT](https://jwt.io). Rate limited by [actix_extensible_rate_limit](https://github.com/jacob-pro/actix-extensible-rate-limit). Tested by [rstest](https://github.com/la10736/rstest). | DB: SQLite
 
 #### Game
 - [thrpg](https://github.com/thrpg/thrpg) | Touhou Project's secondary creative games | DB: Postgres
