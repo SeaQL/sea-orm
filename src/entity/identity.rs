@@ -117,14 +117,14 @@ where
 }
 
 macro_rules! impl_into_identity {
-    ( $($idx:tt : $T:ident),+ $(,)? ) => {
+    ( $($T:ident : $N:tt),+ $(,)? ) => {
         impl< $($T),+ > IntoIdentity for ( $($T),+ )
         where
             $($T: IdenStatic),+
         {
             fn into_identity(self) -> Identity {
                 Identity::Many(vec![
-                    $(self.$idx.into_iden()),+
+                    $(self.$N.into_iden()),+
                 ])
             }
         }
@@ -135,15 +135,15 @@ macro_rules! impl_into_identity {
 mod impl_into_identity {
     use super::*;
 
-    impl_into_identity!(0:T0, 1:T1, 2:T2, 3:T3);
-    impl_into_identity!(0:T0, 1:T1, 2:T2, 3:T3, 4:T4);
-    impl_into_identity!(0:T0, 1:T1, 2:T2, 3:T3, 4:T4, 5:T5);
-    impl_into_identity!(0:T0, 1:T1, 2:T2, 3:T3, 4:T4, 5:T5, 6:T6);
-    impl_into_identity!(0:T0, 1:T1, 2:T2, 3:T3, 4:T4, 5:T5, 6:T6, 7:T7);
-    impl_into_identity!(0:T0, 1:T1, 2:T2, 3:T3, 4:T4, 5:T5, 6:T6, 7:T7, 8:T8);
-    impl_into_identity!(0:T0, 1:T1, 2:T2, 3:T3, 4:T4, 5:T5, 6:T6, 7:T7, 8:T8, 9:T9);
-    impl_into_identity!(0:T0, 1:T1, 2:T2, 3:T3, 4:T4, 5:T5, 6:T6, 7:T7, 8:T8, 9:T9, 10:T10);
-    impl_into_identity!(0:T0, 1:T1, 2:T2, 3:T3, 4:T4, 5:T5, 6:T6, 7:T7, 8:T8, 9:T9, 10:T10, 11:T11);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4, T5:5);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7, T8:8);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7, T8:8, T9:9);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7, T8:8, T9:9, T10:10);
+    impl_into_identity!(T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7, T8:8, T9:9, T10:10, T11:11);
 }
 
 impl<E, C> IdentityOf<E> for C

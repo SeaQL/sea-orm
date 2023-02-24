@@ -905,7 +905,7 @@ where
 }
 
 macro_rules! impl_try_get_many {
-    ( $LEN:expr, $($T:ident => $N:expr),+ $(,)? ) => {
+    ( $LEN:expr, $($T:ident : $N:expr),+ $(,)? ) => {
         impl< $($T),+ > TryGetableMany for ( $($T),+ )
         where
             $($T: TryGetable),+
@@ -930,17 +930,17 @@ macro_rules! impl_try_get_many {
 mod impl_try_get_many {
     use super::*;
 
-    impl_try_get_many!( 2, T0=>0, T1=>1);
-    impl_try_get_many!( 3, T0=>0, T1=>1, T2=>2);
-    impl_try_get_many!( 4, T0=>0, T1=>1, T2=>2, T3=>3);
-    impl_try_get_many!( 5, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4);
-    impl_try_get_many!( 6, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4, T5=>5);
-    impl_try_get_many!( 7, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4, T5=>5, T6=>6);
-    impl_try_get_many!( 8, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4, T5=>5, T6=>6, T7=>7);
-    impl_try_get_many!( 9, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4, T5=>5, T6=>6, T7=>7, T8=>8);
-    impl_try_get_many!(10, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4, T5=>5, T6=>6, T7=>7, T8=>8, T9=>9);
-    impl_try_get_many!(11, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4, T5=>5, T6=>6, T7=>7, T8=>8, T9=>9, T10=>10);
-    impl_try_get_many!(12, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4, T5=>5, T6=>6, T7=>7, T8=>8, T9=>9, T10=>10, T11=>11);
+    impl_try_get_many!( 2, T0:0, T1:1);
+    impl_try_get_many!( 3, T0:0, T1:1, T2:2);
+    impl_try_get_many!( 4, T0:0, T1:1, T2:2, T3:3);
+    impl_try_get_many!( 5, T0:0, T1:1, T2:2, T3:3, T4:4);
+    impl_try_get_many!( 6, T0:0, T1:1, T2:2, T3:3, T4:4, T5:5);
+    impl_try_get_many!( 7, T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6);
+    impl_try_get_many!( 8, T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7);
+    impl_try_get_many!( 9, T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7, T8:8);
+    impl_try_get_many!(10, T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7, T8:8, T9:9);
+    impl_try_get_many!(11, T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7, T8:8, T9:9, T10:10);
+    impl_try_get_many!(12, T0:0, T1:1, T2:2, T3:3, T4:4, T5:5, T6:6, T7:7, T8:8, T9:9, T10:10, T11:11);
 }
 
 fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), TryGetError> {
