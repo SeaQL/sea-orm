@@ -904,136 +904,43 @@ where
     }
 }
 
-impl<A, B> TryGetableMany for (A, B)
-where
-    A: TryGetable,
-    B: TryGetable,
-{
-    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
-        try_get_many_with_slice_len_of(2, cols)?;
-        Ok((
-            A::try_get(res, pre, &cols[0])?,
-            B::try_get(res, pre, &cols[1])?,
-        ))
-    }
+macro_rules! impl_try_get_many {
+    ( $LEN:expr, $($T:ident => $N:expr),+ $(,)? ) => {
+        impl< $($T),+ > TryGetableMany for ( $($T),+ )
+        where
+            $($T: TryGetable),+
+        {
+            fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
+                try_get_many_with_slice_len_of($LEN, cols)?;
+                Ok((
+                    $($T::try_get(res, pre, &cols[$N])?),+
+                ))
+            }
 
-    fn try_get_many_by_index(res: &QueryResult) -> Result<Self, TryGetError> {
-        Ok((A::try_get_by_index(res, 0)?, B::try_get_by_index(res, 1)?))
-    }
+            fn try_get_many_by_index(res: &QueryResult) -> Result<Self, TryGetError> {
+                Ok((
+                    $($T::try_get_by_index(res, $N)?),+
+                ))
+            }
+        }
+    };
 }
 
-impl<A, B, C> TryGetableMany for (A, B, C)
-where
-    A: TryGetable,
-    B: TryGetable,
-    C: TryGetable,
-{
-    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
-        try_get_many_with_slice_len_of(3, cols)?;
-        Ok((
-            A::try_get(res, pre, &cols[0])?,
-            B::try_get(res, pre, &cols[1])?,
-            C::try_get(res, pre, &cols[2])?,
-        ))
-    }
+#[rustfmt::skip]
+mod impl_try_get_many {
+    use super::*;
 
-    fn try_get_many_by_index(res: &QueryResult) -> Result<Self, TryGetError> {
-        Ok((
-            A::try_get_by_index(res, 0)?,
-            B::try_get_by_index(res, 1)?,
-            C::try_get_by_index(res, 2)?,
-        ))
-    }
-}
-
-impl<A, B, C, D> TryGetableMany for (A, B, C, D)
-where
-    A: TryGetable,
-    B: TryGetable,
-    C: TryGetable,
-    D: TryGetable,
-{
-    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
-        try_get_many_with_slice_len_of(4, cols)?;
-        Ok((
-            A::try_get(res, pre, &cols[0])?,
-            B::try_get(res, pre, &cols[1])?,
-            C::try_get(res, pre, &cols[2])?,
-            D::try_get(res, pre, &cols[3])?,
-        ))
-    }
-
-    fn try_get_many_by_index(res: &QueryResult) -> Result<Self, TryGetError> {
-        Ok((
-            A::try_get_by_index(res, 0)?,
-            B::try_get_by_index(res, 1)?,
-            C::try_get_by_index(res, 2)?,
-            D::try_get_by_index(res, 3)?,
-        ))
-    }
-}
-
-impl<A, B, C, D, E> TryGetableMany for (A, B, C, D, E)
-where
-    A: TryGetable,
-    B: TryGetable,
-    C: TryGetable,
-    D: TryGetable,
-    E: TryGetable,
-{
-    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
-        try_get_many_with_slice_len_of(5, cols)?;
-        Ok((
-            A::try_get(res, pre, &cols[0])?,
-            B::try_get(res, pre, &cols[1])?,
-            C::try_get(res, pre, &cols[2])?,
-            D::try_get(res, pre, &cols[3])?,
-            E::try_get(res, pre, &cols[4])?,
-        ))
-    }
-
-    fn try_get_many_by_index(res: &QueryResult) -> Result<Self, TryGetError> {
-        Ok((
-            A::try_get_by_index(res, 0)?,
-            B::try_get_by_index(res, 1)?,
-            C::try_get_by_index(res, 2)?,
-            D::try_get_by_index(res, 3)?,
-            E::try_get_by_index(res, 4)?,
-        ))
-    }
-}
-
-impl<A, B, C, D, E, F> TryGetableMany for (A, B, C, D, E, F)
-where
-    A: TryGetable,
-    B: TryGetable,
-    C: TryGetable,
-    D: TryGetable,
-    E: TryGetable,
-    F: TryGetable,
-{
-    fn try_get_many(res: &QueryResult, pre: &str, cols: &[String]) -> Result<Self, TryGetError> {
-        try_get_many_with_slice_len_of(6, cols)?;
-        Ok((
-            A::try_get(res, pre, &cols[0])?,
-            B::try_get(res, pre, &cols[1])?,
-            C::try_get(res, pre, &cols[2])?,
-            D::try_get(res, pre, &cols[3])?,
-            E::try_get(res, pre, &cols[4])?,
-            F::try_get(res, pre, &cols[5])?,
-        ))
-    }
-
-    fn try_get_many_by_index(res: &QueryResult) -> Result<Self, TryGetError> {
-        Ok((
-            A::try_get_by_index(res, 0)?,
-            B::try_get_by_index(res, 1)?,
-            C::try_get_by_index(res, 2)?,
-            D::try_get_by_index(res, 3)?,
-            E::try_get_by_index(res, 4)?,
-            F::try_get_by_index(res, 5)?,
-        ))
-    }
+    impl_try_get_many!( 2, T0=>0, T1=>1);
+    impl_try_get_many!( 3, T0=>0, T1=>1, T2=>2);
+    impl_try_get_many!( 4, T0=>0, T1=>1, T2=>2, T3=>3);
+    impl_try_get_many!( 5, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4);
+    impl_try_get_many!( 6, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4, T5=>5);
+    impl_try_get_many!( 7, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4, T5=>5, T6=>6);
+    impl_try_get_many!( 8, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4, T5=>5, T6=>6, T7=>7);
+    impl_try_get_many!( 9, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4, T5=>5, T6=>6, T7=>7, T8=>8);
+    impl_try_get_many!(10, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4, T5=>5, T6=>6, T7=>7, T8=>8, T9=>9);
+    impl_try_get_many!(11, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4, T5=>5, T6=>6, T7=>7, T8=>8, T9=>9, T10=>10);
+    impl_try_get_many!(12, T0=>0, T1=>1, T2=>2, T3=>3, T4=>4, T5=>5, T6=>6, T7=>7, T8=>8, T9=>9, T10=>10, T11=>11);
 }
 
 fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), TryGetError> {
@@ -1128,12 +1035,22 @@ macro_rules! try_from_u64_err {
     };
 }
 
-// impl TryFromU64 for tuples with generic types
-try_from_u64_err!(A, B);
-try_from_u64_err!(A, B, C);
-try_from_u64_err!(A, B, C, D);
-try_from_u64_err!(A, B, C, D, E);
-try_from_u64_err!(A, B, C, D, E, F);
+#[rustfmt::skip]
+mod try_from_u64_err {
+    use super::*;
+
+    try_from_u64_err!(T0, T1);
+    try_from_u64_err!(T0, T1, T2);
+    try_from_u64_err!(T0, T1, T2, T3);
+    try_from_u64_err!(T0, T1, T2, T3, T4);
+    try_from_u64_err!(T0, T1, T2, T3, T4, T5);
+    try_from_u64_err!(T0, T1, T2, T3, T4, T5, T6);
+    try_from_u64_err!(T0, T1, T2, T3, T4, T5, T6, T7);
+    try_from_u64_err!(T0, T1, T2, T3, T4, T5, T6, T7, T8);
+    try_from_u64_err!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9);
+    try_from_u64_err!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
+    try_from_u64_err!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
+}
 
 macro_rules! try_from_u64_numeric {
     ( $type: ty ) => {
