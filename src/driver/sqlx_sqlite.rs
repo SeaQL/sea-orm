@@ -4,7 +4,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 use sqlx::{
     pool::PoolConnection,
     sqlite::{SqliteConnectOptions, SqliteQueryResult, SqliteRow},
-    Sqlite, SqlitePool,
+    Executor, Sqlite, SqlitePool,
 };
 
 use sea_query_binder::SqlxValues;
@@ -24,7 +24,7 @@ pub struct SqlxSqliteConnector;
 /// Defines a sqlx SQLite pool
 #[derive(Clone)]
 pub struct SqlxSqlitePoolConnection {
-    pool: SqlitePool,
+    pub(crate) pool: SqlitePool,
     metric_callback: Option<crate::metric::Callback>,
 }
 
@@ -48,8 +48,8 @@ impl SqlxSqliteConnector {
             .url
             .parse::<SqliteConnectOptions>()
             .map_err(sqlx_error_to_conn_err)?;
-        if options.sqlcipher_key.is_some() {
-            opt = opt.pragma("key", options.sqlcipher_key.clone().unwrap());
+        if let Some(sqlcipher_key) = &options.sqlcipher_key {
+            opt = opt.pragma("key", sqlcipher_key.clone());
         }
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
@@ -96,6 +96,21 @@ impl SqlxSqlitePoolConnection {
                     Err(err) => Err(sqlx_error_to_exec_err(err)),
                 }
             })
+        } else {
+            Err(DbErr::ConnectionAcquire)
+        }
+    }
+
+    /// Execute an unprepared SQL statement on a SQLite backend
+    #[instrument(level = "trace")]
+    pub async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
+        debug_print!("{}", sql);
+
+        if let Ok(conn) = &mut self.pool.acquire().await {
+            match conn.execute(sql).await {
+                Ok(res) => Ok(res.into()),
+                Err(err) => Err(sqlx_error_to_exec_err(err)),
+            }
         } else {
             Err(DbErr::ConnectionAcquire)
         }
@@ -203,7 +218,7 @@ impl SqlxSqlitePoolConnection {
             .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
-            Err(TransactionError::Connection(DbErr::ConnectionAcquire))
+            Err(DbErr::ConnectionAcquire.into())
         }
     }
 
@@ -216,7 +231,8 @@ impl SqlxSqlitePoolConnection {
 
     /// Explicitly close the SQLite connection
     pub async fn close(self) -> Result<(), DbErr> {
-        Ok(self.pool.close().await)
+        self.pool.close().await;
+        Ok(())
     }
 }
 

@@ -1,5 +1,4 @@
 use sea_orm_migration::prelude::*;
-use sea_orm_migration::sea_orm::{entity::*, query::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -34,6 +33,5 @@ impl MigrationTrait for Migration {
 #[derive(Iden)]
 pub enum Cake {
     Table,
-    Id,
     Name,
 }

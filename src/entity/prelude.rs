@@ -1,8 +1,9 @@
 pub use crate::{
     error::*, ActiveEnum, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait,
-    ColumnType, CursorTrait, DatabaseConnection, DbConn, EntityName, EntityTrait, EnumIter,
-    ForeignKeyAction, Iden, IdenStatic, Linked, ModelTrait, PaginatorTrait, PrimaryKeyToColumn,
-    PrimaryKeyTrait, QueryFilter, QueryResult, Related, RelationDef, RelationTrait, Select, Value,
+    ColumnType, ColumnTypeTrait, ConnectionTrait, CursorTrait, DatabaseConnection, DbConn,
+    EntityName, EntityTrait, EnumIter, ForeignKeyAction, Iden, IdenStatic, Linked, LoaderTrait,
+    ModelTrait, PaginatorTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryResult,
+    Related, RelationDef, RelationTrait, Select, Value,
 };
 
 #[cfg(feature = "macros")]
@@ -11,6 +12,8 @@ pub use crate::{
     DeriveCustomColumn, DeriveEntity, DeriveEntityModel, DeriveIntoActiveModel, DeriveModel,
     DerivePrimaryKey, DeriveRelation, FromJsonQueryResult,
 };
+
+pub use async_trait;
 
 #[cfg(feature = "with-json")]
 pub use serde_json::Value as Json;

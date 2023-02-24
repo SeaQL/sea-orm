@@ -37,7 +37,7 @@ pub trait EntityName: IdenStatic + Default {
     }
 }
 
-/// An Entity implementing `EntityTrait` represents a table in a database.
+/// An abstract base class for defining Entities.
 ///
 /// This trait provides an API for you to inspect it's properties
 /// - Column (implemented [`ColumnTrait`])
@@ -102,7 +102,7 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![
+    /// #     .append_query_results([
     /// #         vec![
     /// #             cake::Model {
     /// #                 id: 1,
@@ -134,7 +134,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     cake::Entity::find().all(&db).await?,
-    ///     vec![
+    ///     [
     ///         cake::Model {
     ///             id: 1,
     ///             name: "New York Cheese".to_owned(),
@@ -148,16 +148,16 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![
+    ///     [
     ///         Transaction::from_sql_and_values(
     ///             DbBackend::Postgres,
     ///             r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
-    ///             vec![1u64.into()]
+    ///             [1u64.into()]
     ///         ),
     ///         Transaction::from_sql_and_values(
     ///             DbBackend::Postgres,
     ///             r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
-    ///             vec![]
+    ///             []
     ///         ),
     ///     ]
     /// );
@@ -181,8 +181,8 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![
-    /// #         vec![
+    /// #     .append_query_results([
+    /// #         [
     /// #             cake::Model {
     /// #                 id: 11,
     /// #                 name: "Sponge Cake".to_owned(),
@@ -195,7 +195,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     cake::Entity::find_by_id(11).all(&db).await?,
-    ///     vec![cake::Model {
+    ///     [cake::Model {
     ///         id: 11,
     ///         name: "Sponge Cake".to_owned(),
     ///     }]
@@ -203,10 +203,10 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = $1"#,
-    ///         vec![11i32.into()]
+    ///         [11i32.into()]
     ///     )]
     /// );
     /// #
@@ -222,8 +222,8 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![
-    /// #         vec![
+    /// #     .append_query_results([
+    /// #         [
     /// #             cake_filling::Model {
     /// #                 cake_id: 2,
     /// #                 filling_id: 3,
@@ -236,7 +236,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     cake_filling::Entity::find_by_id((2, 3)).all(&db).await?,
-    ///     vec![cake_filling::Model {
+    ///     [cake_filling::Model {
     ///         cake_id: 2,
     ///         filling_id: 3,
     ///     }]
@@ -244,22 +244,29 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         [
     ///             r#"SELECT "cake_filling"."cake_id", "cake_filling"."filling_id" FROM "cake_filling""#,
     ///             r#"WHERE "cake_filling"."cake_id" = $1 AND "cake_filling"."filling_id" = $2"#,
     ///         ].join(" ").as_str(),
-    ///         vec![2i32.into(), 3i32.into()]
+    ///         [2i32.into(), 3i32.into()]
     ///     )]);
     /// #
     /// # Ok(())
     /// # }
     /// ```
-    fn find_by_id(values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType) -> Select<Self> {
+    ///
+    /// # Panics
+    ///
+    /// Panics if arity of input values don't match arity of primary key
+    fn find_by_id<T>(values: T) -> Select<Self>
+    where
+        T: Into<<Self::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+    {
         let mut select = Self::find();
         let mut keys = Self::PrimaryKey::iter();
-        for v in values.into_value_tuple() {
+        for v in values.into().into_value_tuple() {
             if let Some(key) = keys.next() {
                 let col = key.into_column();
                 select = select.filter(col.eq(v));
@@ -285,7 +292,7 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![vec![maplit::btreemap! {
+    /// #     .append_query_results([[maplit::btreemap! {
     /// #         "id" => Into::<Value>::into(15),
     /// #     }]])
     /// #     .into_connection();
@@ -303,10 +310,10 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"INSERT INTO "cake" ("name") VALUES ($1) RETURNING "id""#,
-    ///         vec!["Apple Pie".into()]
+    ///         ["Apple Pie".into()]
     ///     )]
     /// );
     /// #
@@ -324,7 +331,7 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
-    /// #     .append_exec_results(vec![
+    /// #     .append_exec_results([
     /// #         MockExecResult {
     /// #             last_insert_id: 15,
     /// #             rows_affected: 1,
@@ -345,10 +352,10 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::MySql,
     ///         r#"INSERT INTO `cake` (`name`) VALUES (?)"#,
-    ///         vec!["Apple Pie".into()]
+    ///         ["Apple Pie".into()]
     ///     )]
     /// );
     /// #
@@ -374,7 +381,7 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![vec![maplit::btreemap! {
+    /// #     .append_query_results([[maplit::btreemap! {
     /// #         "id" => Into::<Value>::into(28),
     /// #     }]])
     /// #     .into_connection();
@@ -390,18 +397,16 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// let insert_result = cake::Entity::insert_many(vec![apple, orange])
-    ///     .exec(&db)
-    ///     .await?;
+    /// let insert_result = cake::Entity::insert_many([apple, orange]).exec(&db).await?;
     ///
     /// assert_eq!(insert_result.last_insert_id, 28);
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"INSERT INTO "cake" ("name") VALUES ($1), ($2) RETURNING "id""#,
-    ///         vec!["Apple Pie".into(), "Orange Scone".into()]
+    ///         ["Apple Pie".into(), "Orange Scone".into()]
     ///     )]
     /// );
     /// #
@@ -419,7 +424,7 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
-    /// #     .append_exec_results(vec![
+    /// #     .append_exec_results([
     /// #         MockExecResult {
     /// #             last_insert_id: 28,
     /// #             rows_affected: 2,
@@ -438,18 +443,16 @@ pub trait EntityTrait: EntityName {
     ///     ..Default::default()
     /// };
     ///
-    /// let insert_result = cake::Entity::insert_many(vec![apple, orange])
-    ///     .exec(&db)
-    ///     .await?;
+    /// let insert_result = cake::Entity::insert_many([apple, orange]).exec(&db).await?;
     ///
     /// assert_eq!(insert_result.last_insert_id, 28);
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::MySql,
     ///         r#"INSERT INTO `cake` (`name`) VALUES (?), (?)"#,
-    ///         vec!["Apple Pie".into(), "Orange Scone".into()]
+    ///         ["Apple Pie".into(), "Orange Scone".into()]
     ///     )]
     /// );
     /// #
@@ -478,8 +481,8 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![
-    /// #         vec![fruit::Model {
+    /// #     .append_query_results([
+    /// #         [fruit::Model {
     /// #             id: 1,
     /// #             name: "Orange".to_owned(),
     /// #             cake_id: None,
@@ -509,10 +512,10 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"UPDATE "fruit" SET "name" = $1 WHERE "fruit"."id" = $2 AND "fruit"."name" LIKE $3 RETURNING "id", "name", "cake_id""#,
-    ///         vec!["Orange".into(), 1i32.into(), "%orange%".into()]
+    ///         ["Orange".into(), 1i32.into(), "%orange%".into()]
     ///     )]);
     /// #
     /// # Ok(())
@@ -529,14 +532,14 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::MySql)
-    /// #     .append_exec_results(vec![
+    /// #     .append_exec_results([
     /// #         MockExecResult {
     /// #             last_insert_id: 0,
     /// #             rows_affected: 1,
     /// #         },
     /// #     ])
-    /// #     .append_query_results(vec![
-    /// #         vec![fruit::Model {
+    /// #     .append_query_results([
+    /// #         [fruit::Model {
     /// #             id: 1,
     /// #             name: "Orange".to_owned(),
     /// #             cake_id: None,
@@ -566,16 +569,16 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![
+    ///     [
     ///         Transaction::from_sql_and_values(
     ///             DbBackend::MySql,
     ///             r#"UPDATE `fruit` SET `name` = ? WHERE `fruit`.`id` = ? AND `fruit`.`name` LIKE ?"#,
-    ///             vec!["Orange".into(), 1i32.into(), "%orange%".into()]
+    ///             ["Orange".into(), 1i32.into(), "%orange%".into()]
     ///         ),
     ///         Transaction::from_sql_and_values(
     ///             DbBackend::MySql,
     ///             r#"SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`id` = ? LIMIT ?"#,
-    ///             vec![1i32.into(), 1u64.into()]
+    ///             [1i32.into(), 1u64.into()]
     ///         )]);
     /// #
     /// # Ok(())
@@ -602,7 +605,7 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_exec_results(vec![
+    /// #     .append_exec_results([
     /// #         MockExecResult {
     /// #             last_insert_id: 0,
     /// #             rows_affected: 5,
@@ -627,10 +630,10 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"UPDATE "fruit" SET "cake_id" = $1 WHERE "fruit"."name" LIKE $2"#,
-    ///         vec![Value::Int(None), "%Apple%".into()]
+    ///         [Value::Int(None), "%Apple%".into()]
     ///     )]
     /// );
     /// #
@@ -655,7 +658,7 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_exec_results(vec![
+    /// #     .append_exec_results([
     /// #         MockExecResult {
     /// #             last_insert_id: 0,
     /// #             rows_affected: 1,
@@ -676,10 +679,10 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"DELETE FROM "fruit" WHERE "fruit"."id" = $1"#,
-    ///         vec![3i32.into()]
+    ///         [3i32.into()]
     ///     )]
     /// );
     /// #
@@ -707,14 +710,14 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_exec_results(vec![
+    /// #     .append_exec_results([
     /// #         MockExecResult {
     /// #             last_insert_id: 0,
     /// #             rows_affected: 5,
     /// #         },
     /// #     ])
-    /// #     .append_query_results(vec![
-    /// #         vec![cake::Model {
+    /// #     .append_query_results([
+    /// #         [cake::Model {
     /// #             id: 15,
     /// #             name: "Apple Pie".to_owned(),
     /// #         }],
@@ -732,10 +735,10 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"DELETE FROM "fruit" WHERE "fruit"."name" LIKE $1"#,
-    ///         vec!["%Apple%".into()]
+    ///         ["%Apple%".into()]
     ///     )]
     /// );
     /// #
@@ -758,7 +761,7 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_exec_results(vec![
+    /// #     .append_exec_results([
     /// #         MockExecResult {
     /// #             last_insert_id: 0,
     /// #             rows_affected: 1,
@@ -774,10 +777,10 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"DELETE FROM "fruit" WHERE "fruit"."id" = $1"#,
-    ///         vec![1i32.into()]
+    ///         [1i32.into()]
     ///     )]
     /// );
     /// #
@@ -793,7 +796,7 @@ pub trait EntityTrait: EntityName {
     /// # pub async fn main() -> Result<(), DbErr> {
     ///
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_exec_results(vec![
+    /// #     .append_exec_results([
     /// #         MockExecResult {
     /// #             last_insert_id: 0,
     /// #             rows_affected: 1,
@@ -809,20 +812,27 @@ pub trait EntityTrait: EntityName {
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"DELETE FROM "cake_filling" WHERE "cake_filling"."cake_id" = $1 AND "cake_filling"."filling_id" = $2"#,
-    ///         vec![2i32.into(), 3i32.into()]
+    ///         [2i32.into(), 3i32.into()]
     ///     )]
     /// );
     /// #
     /// # Ok(())
     /// # }
     /// ```
-    fn delete_by_id(values: <Self::PrimaryKey as PrimaryKeyTrait>::ValueType) -> DeleteMany<Self> {
+    ///
+    /// # Panics
+    ///
+    /// Panics if arity of input values don't match arity of primary key
+    fn delete_by_id<T>(values: T) -> DeleteMany<Self>
+    where
+        T: Into<<Self::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+    {
         let mut delete = Self::delete_many();
         let mut keys = Self::PrimaryKey::iter();
-        for v in values.into_value_tuple() {
+        for v in values.into().into_value_tuple() {
             if let Some(key) = keys.next() {
                 let col = key.into_column();
                 delete = delete.filter(col.eq(v));
@@ -913,5 +923,46 @@ mod tests {
 
         assert_eq!(hello::Entity.table_name(), "hello");
         assert_eq!(hello::Entity.schema_name(), Some("world"));
+    }
+
+    #[test]
+    #[cfg(feature = "macros")]
+    fn entity_model_3() {
+        use crate::{entity::*, query::*, DbBackend};
+        use std::borrow::Cow;
+
+        mod hello {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "hello", schema_name = "world")]
+            pub struct Model {
+                #[sea_orm(primary_key, auto_increment = false)]
+                pub id: String,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        fn delete_by_id<T>(value: T)
+        where
+            T: Into<<<hello::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType>,
+        {
+            assert_eq!(
+                hello::Entity::delete_by_id(value)
+                    .build(DbBackend::Sqlite)
+                    .to_string(),
+                r#"DELETE FROM "world"."hello" WHERE "hello"."id" = 'UUID'"#
+            );
+        }
+
+        delete_by_id("UUID".to_string());
+        delete_by_id("UUID".to_string());
+        delete_by_id("UUID");
+        delete_by_id(Cow::from("UUID"));
     }
 }

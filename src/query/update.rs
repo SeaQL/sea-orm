@@ -1,5 +1,5 @@
 use crate::{
-    cast_text_as_enum, ActiveModelTrait, ColumnTrait, EntityTrait, Iterable, PrimaryKeyToColumn,
+    ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, Iterable, PrimaryKeyToColumn,
     QueryFilter, QueryTrait,
 };
 use core::marker::PhantomData;
@@ -92,11 +92,11 @@ where
     fn prepare_filters(mut self) -> Self {
         for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
-            let av = self.model.get(col);
-            if av.is_set() || av.is_unchanged() {
-                self = self.filter(col.eq(av.unwrap()));
-            } else {
-                panic!("PrimaryKey is not set");
+            match self.model.get(col) {
+                ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
+                    self = self.filter(col.eq(value));
+                }
+                ActiveValue::NotSet => panic!("PrimaryKey is not set"),
             }
         }
         self
@@ -107,10 +107,12 @@ where
             if <A::Entity as EntityTrait>::PrimaryKey::from_column(col).is_some() {
                 continue;
             }
-            let av = self.model.get(col);
-            if av.is_set() {
-                let expr = cast_text_as_enum(Expr::val(av.into_value().unwrap()), &col);
-                self.query.value(col, expr);
+            match self.model.get(col) {
+                ActiveValue::Set(value) => {
+                    let expr = col.save_as(Expr::val(value));
+                    self.query.value(col, expr);
+                }
+                ActiveValue::Unchanged(_) | ActiveValue::NotSet => {}
             }
         }
         self
@@ -187,10 +189,12 @@ where
         A: ActiveModelTrait<Entity = E>,
     {
         for col in E::Column::iter() {
-            let av = model.get(col);
-            if av.is_set() {
-                let expr = cast_text_as_enum(Expr::val(av.into_value().unwrap()), &col);
-                self.query.value(col, expr);
+            match model.get(col) {
+                ActiveValue::Set(value) => {
+                    let expr = col.save_as(Expr::val(value));
+                    self.query.value(col, expr);
+                }
+                ActiveValue::Unchanged(_) | ActiveValue::NotSet => {}
             }
         }
         self

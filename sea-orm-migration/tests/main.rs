@@ -35,31 +35,31 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
         DbBackend::MySql => {
             db.execute(Statement::from_string(
                 db.get_database_backend(),
-                format!("CREATE DATABASE IF NOT EXISTS `{}`;", db_name),
+                format!("CREATE DATABASE IF NOT EXISTS `{db_name}`;"),
             ))
             .await?;
 
-            let url = format!("{}/{}", url, db_name);
+            let url = format!("{url}/{db_name}");
             db_connect(url).await?
         }
         DbBackend::Postgres => {
             db.execute(Statement::from_string(
                 db.get_database_backend(),
-                format!("DROP DATABASE IF EXISTS \"{}\";", db_name),
+                format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
             ))
             .await?;
             db.execute(Statement::from_string(
                 db.get_database_backend(),
-                format!("CREATE DATABASE \"{}\";", db_name),
+                format!("CREATE DATABASE \"{db_name}\";"),
             ))
             .await?;
 
-            let url = format!("{}/{}", url, db_name);
+            let url = format!("{url}/{db_name}");
             let db = db_connect(url).await?;
 
             db.execute(Statement::from_string(
                 db.get_database_backend(),
-                format!("CREATE SCHEMA IF NOT EXISTS \"{}\";", schema),
+                format!("CREATE SCHEMA IF NOT EXISTS \"{schema}\";"),
             ))
             .await?;
 
@@ -107,6 +107,33 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
     assert!(!manager.has_table("cake").await?);
     assert!(!manager.has_table("fruit").await?);
 
+    // Tests rolling back changes of "migrate up" when running migration on Postgres
+    if matches!(db.get_database_backend(), DbBackend::Postgres) {
+        println!("\nRoll back changes when encounter errors");
+
+        // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
+        std::env::set_var("ABORT_MIGRATION", "YES");
+
+        // Should throw an error
+        println!("\nMigrator::up");
+        assert_eq!(
+            Migrator::up(db, None).await,
+            Err(DbErr::Migration(
+                "Abort migration and rollback changes".into()
+            ))
+        );
+
+        println!("\nMigrator::status");
+        Migrator::status(db).await?;
+
+        // Check migrations have been rolled back
+        assert!(!manager.has_table("cake").await?);
+        assert!(!manager.has_table("fruit").await?);
+
+        // Unset the flag
+        std::env::remove_var("ABORT_MIGRATION");
+    }
+
     println!("\nMigrator::up");
     Migrator::up(db, None).await?;
 
@@ -118,6 +145,33 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
 
     assert!(manager.has_column("cake", "name").await?);
     assert!(manager.has_column("fruit", "cake_id").await?);
+
+    // Tests rolling back changes of "migrate down" when running migration on Postgres
+    if matches!(db.get_database_backend(), DbBackend::Postgres) {
+        println!("\nRoll back changes when encounter errors");
+
+        // Set a flag to throw error inside `m20230109_000001_seed_cake_table.rs`
+        std::env::set_var("ABORT_MIGRATION", "YES");
+
+        // Should throw an error
+        println!("\nMigrator::down");
+        assert_eq!(
+            Migrator::down(db, None).await,
+            Err(DbErr::Migration(
+                "Abort migration and rollback changes".into()
+            ))
+        );
+
+        println!("\nMigrator::status");
+        Migrator::status(db).await?;
+
+        // Check migrations have been rolled back
+        assert!(manager.has_table("cake").await?);
+        assert!(manager.has_table("fruit").await?);
+
+        // Unset the flag
+        std::env::remove_var("ABORT_MIGRATION");
+    }
 
     println!("\nMigrator::down");
     Migrator::down(db, None).await?;

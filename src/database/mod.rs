@@ -3,6 +3,7 @@ use std::time::Duration;
 mod connection;
 mod db_connection;
 #[cfg(feature = "mock")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 mod mock;
 mod statement;
 mod stream;
@@ -11,6 +12,7 @@ mod transaction;
 pub use connection::*;
 pub use db_connection::*;
 #[cfg(feature = "mock")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 pub use mock::*;
 pub use statement::*;
 use std::borrow::Cow;
@@ -18,7 +20,7 @@ pub use stream::*;
 use tracing::instrument;
 pub use transaction::*;
 
-use crate::{DbErr, RuntimeErr};
+use crate::error::*;
 
 /// Defines a database
 #[derive(Debug, Default)]
@@ -77,10 +79,10 @@ impl Database {
         if crate::MockDatabaseConnector::accepts(&opt.url) {
             return crate::MockDatabaseConnector::connect(&opt.url).await;
         }
-        Err(DbErr::Conn(RuntimeErr::Internal(format!(
+        Err(conn_err(format!(
             "The connection string '{}' has no supporting driver.",
             opt.url
-        ))))
+        )))
     }
 }
 

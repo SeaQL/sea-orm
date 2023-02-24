@@ -27,7 +27,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
             let schema = Schema::new(db_backend);
             let enum_create_stmt = Type::create()
                 .as_enum(Alias::new("tea"))
-                .values(vec![Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
+                .values([Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
                 .to_owned();
             assert_eq!(
                 db_backend.build(&enum_create_stmt),
@@ -42,6 +42,9 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_active_enum_child_table(db).await?;
     create_insert_default_table(db).await?;
     create_pi_table(db).await?;
+    create_uuid_fmt_table(db).await?;
+    create_edit_log_table(db).await?;
+    create_teas_table(db).await?;
 
     if DbBackend::Postgres == db_backend {
         create_collection_table(db).await?;
@@ -334,6 +337,12 @@ pub async fn create_json_struct_table(db: &DbConn) -> Result<ExecResult, DbErr> 
 }
 
 pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    db.execute(sea_orm::Statement::from_string(
+        db.get_database_backend(),
+        "CREATE EXTENSION IF NOT EXISTS citext".into(),
+    ))
+    .await?;
+
     let stmt = sea_query::Table::create()
         .table(collection::Entity)
         .col(
@@ -344,14 +353,16 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .primary_key(),
         )
         .col(
-            ColumnDef::new(collection::Column::Integers)
-                .array(sea_query::ColumnType::Integer(None))
+            ColumnDef::new(collection::Column::Name)
+                .custom(Alias::new("citext"))
                 .not_null(),
         )
         .col(
-            ColumnDef::new(collection::Column::IntegersOpt)
-                .array(sea_query::ColumnType::Integer(None)),
+            ColumnDef::new(collection::Column::Integers)
+                .array(sea_query::ColumnType::Integer)
+                .not_null(),
         )
+        .col(ColumnDef::new(collection::Column::IntegersOpt).array(sea_query::ColumnType::Integer))
         .col(
             ColumnDef::new(collection::Column::Teas)
                 .array(sea_query::ColumnType::Enum {
@@ -374,12 +385,19 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(collection::Column::Colors)
-                .array(sea_query::ColumnType::Integer(None))
+                .array(sea_query::ColumnType::Integer)
+                .not_null(),
+        )
+        .col(ColumnDef::new(collection::Column::ColorsOpt).array(sea_query::ColumnType::Integer))
+        .col(
+            ColumnDef::new(collection::Column::Uuid)
+                .array(sea_query::ColumnType::Uuid)
                 .not_null(),
         )
         .col(
-            ColumnDef::new(collection::Column::ColorsOpt)
-                .array(sea_query::ColumnType::Integer(None)),
+            ColumnDef::new(collection::Column::UuidHyphenated)
+                .array(sea_query::ColumnType::Uuid)
+                .not_null(),
         )
         .to_owned();
 
@@ -431,4 +449,69 @@ pub async fn create_event_trigger_table(db: &DbConn) -> Result<ExecResult, DbErr
         .to_owned();
 
     create_table(db, &stmt, EventTrigger).await
+}
+
+pub async fn create_uuid_fmt_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(uuid_fmt::Entity)
+        .col(
+            ColumnDef::new(uuid_fmt::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(uuid_fmt::Column::Uuid).uuid().not_null())
+        .col(
+            ColumnDef::new(uuid_fmt::Column::UuidBraced)
+                .uuid()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(uuid_fmt::Column::UuidHyphenated)
+                .uuid()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(uuid_fmt::Column::UuidSimple)
+                .uuid()
+                .not_null(),
+        )
+        .col(ColumnDef::new(uuid_fmt::Column::UuidUrn).uuid().not_null())
+        .to_owned();
+
+    create_table(db, &stmt, UuidFmt).await
+}
+
+pub async fn create_edit_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(edit_log::Entity)
+        .col(
+            ColumnDef::new(edit_log::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(edit_log::Column::Action).string().not_null())
+        .col(ColumnDef::new(edit_log::Column::Values).json().not_null())
+        .to_owned();
+
+    create_table(db, &stmt, EditLog).await
+}
+
+pub async fn create_teas_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(teas::Entity.table_ref())
+        .col(
+            ColumnDef::new(teas::Column::Id)
+                .enumeration(TeaEnum, [TeaVariant::EverydayTea, TeaVariant::BreakfastTea])
+                .not_null()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(teas::Column::Category).string_len(1))
+        .col(ColumnDef::new(teas::Column::Color).integer())
+        .to_owned();
+
+    create_table(db, &create_table_stmt, Teas).await
 }

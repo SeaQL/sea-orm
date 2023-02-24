@@ -186,10 +186,11 @@ pub async fn run_generate_command(
 
             // Format each of the files
             for OutputFile { name, .. } in output.files.iter() {
-                Command::new("rustfmt")
-                    .arg(dir.join(name))
-                    .spawn()?
-                    .wait()?;
+                let exit_status = Command::new("rustfmt").arg(dir.join(name)).status()?; // Get the status code
+                if !exit_status.success() {
+                    // Propagate the error if any
+                    return Err(format!("Fail to format file `{name}`").into());
+                }
             }
         }
     }
@@ -210,7 +211,7 @@ where
     // Set search_path for Postgres, E.g. Some("public") by default
     // MySQL & SQLite connection initialize with schema `None`
     if let Some(schema) = schema {
-        let sql = format!("SET search_path = '{}'", schema);
+        let sql = format!("SET search_path = '{schema}'");
         pool_options = pool_options.after_connect(move |conn, _| {
             let sql = sql.clone();
             Box::pin(async move {
@@ -244,7 +245,7 @@ mod tests {
         expected = "called `Result::unwrap()` on an `Err` value: RelativeUrlWithoutBase"
     )]
     fn test_generate_entity_no_protocol() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",
@@ -265,7 +266,7 @@ mod tests {
         expected = "There is no database name as part of the url path: postgresql://root:root@localhost:3306"
     )]
     fn test_generate_entity_no_database_section() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",
@@ -286,7 +287,7 @@ mod tests {
         expected = "There is no database name as part of the url path: mysql://root:root@localhost:3306/"
     )]
     fn test_generate_entity_no_database_path() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",
@@ -305,7 +306,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: PoolTimedOut")]
     fn test_generate_entity_no_password() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",
@@ -324,7 +325,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: EmptyHost")]
     fn test_generate_entity_no_host() {
-        let cli = Cli::parse_from(vec![
+        let cli = Cli::parse_from([
             "sea-orm-cli",
             "generate",
             "entity",

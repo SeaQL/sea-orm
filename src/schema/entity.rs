@@ -4,7 +4,7 @@ use crate::{
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
-    ColumnDef, Iden, Index, IndexCreateStatement, TableCreateStatement,
+    ColumnDef, Iden, Index, IndexCreateStatement, SeaRc, TableCreateStatement,
 };
 
 impl Schema {
@@ -42,6 +42,7 @@ impl Schema {
     }
 
     /// Creates a column definition for example to update a table.
+    ///
     /// ```
     /// use crate::sea_orm::IdenStatic;
     /// use sea_orm::{
@@ -61,6 +62,7 @@ impl Schema {
     ///
     /// #[derive(Copy, Clone, Debug, EnumIter)]
     /// pub enum Relation {}
+    ///
     /// impl RelationTrait for Relation {
     ///     fn def(&self) -> RelationDef {
     ///         panic!("No RelationDef")
@@ -194,13 +196,12 @@ where
         ColumnType::Enum { name, variants } => match backend {
             DbBackend::MySql => {
                 let variants: Vec<String> = variants.iter().map(|v| v.to_string()).collect();
-                ColumnType::Custom(format!("ENUM('{}')", variants.join("', '")))
+                ColumnType::custom(format!("ENUM('{}')", variants.join("', '")).as_str())
             }
-            DbBackend::Postgres => ColumnType::Custom(name.to_string()),
+            DbBackend::Postgres => ColumnType::Custom(SeaRc::clone(&name)),
             DbBackend::Sqlite => ColumnType::Text,
-        }
-        .into(),
-        _ => orm_column_def.col_type.into(),
+        },
+        _ => orm_column_def.col_type,
     };
     let mut column_def = ColumnDef::new_with_type(column, types);
     if !orm_column_def.null {

@@ -1,6 +1,6 @@
 use crate::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, Iterable, PrimaryKeyToColumn,
-    QueryFilter, QueryTrait,
+    ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, IntoActiveModel, Iterable,
+    PrimaryKeyToColumn, QueryFilter, QueryTrait,
 };
 use core::marker::PhantomData;
 use sea_query::DeleteStatement;
@@ -109,10 +109,11 @@ where
         for key in <A::Entity as EntityTrait>::PrimaryKey::iter() {
             let col = key.into_column();
             let av = self.model.get(col);
-            if av.is_set() || av.is_unchanged() {
-                self = self.filter(col.eq(av.unwrap()));
-            } else {
-                panic!("PrimaryKey is not set");
+            match av {
+                ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
+                    self = self.filter(col.eq(value));
+                }
+                ActiveValue::NotSet => panic!("PrimaryKey is not set"),
             }
         }
         self

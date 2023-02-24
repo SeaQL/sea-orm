@@ -4,8 +4,8 @@ use crate::{
 use futures::Stream;
 use std::{future::Future, pin::Pin};
 
-/// Creates constraints for any structure that can create a database connection
-/// and execute SQL statements
+/// The generic API for a database connection that can perform query or execute statements.
+/// It abstracts database connection and transaction
 #[async_trait::async_trait]
 pub trait ConnectionTrait: Sync {
     /// Fetch the database backend as specified in [DbBackend].
@@ -14,6 +14,9 @@ pub trait ConnectionTrait: Sync {
 
     /// Execute a [Statement]
     async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr>;
+
+    /// Execute a unprepared [Statement]
+    async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr>;
 
     /// Execute a [Statement] and return a query
     async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr>;

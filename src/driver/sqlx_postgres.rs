@@ -24,7 +24,7 @@ pub struct SqlxPostgresConnector;
 /// Defines a sqlx PostgreSQL pool
 #[derive(Clone)]
 pub struct SqlxPostgresPoolConnection {
-    pool: PgPool,
+    pub(crate) pool: PgPool,
     metric_callback: Option<crate::metric::Callback>,
 }
 
@@ -56,7 +56,7 @@ impl SqlxPostgresConnector {
         let set_search_path_sql = options
             .schema_search_path
             .as_ref()
-            .map(|schema| format!("SET search_path = '{}'", schema));
+            .map(|schema| format!("SET search_path = '{schema}'"));
         let mut pool_options = options.pool_options();
         if let Some(sql) = set_search_path_sql {
             pool_options = pool_options.after_connect(move |conn, _| {
@@ -104,6 +104,21 @@ impl SqlxPostgresPoolConnection {
                     Err(err) => Err(sqlx_error_to_exec_err(err)),
                 }
             })
+        } else {
+            Err(DbErr::ConnectionAcquire)
+        }
+    }
+
+    /// Execute an unprepared SQL statement on a PostgreSQL backend
+    #[instrument(level = "trace")]
+    pub async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
+        debug_print!("{}", sql);
+
+        if let Ok(conn) = &mut self.pool.acquire().await {
+            match conn.execute(sql).await {
+                Ok(res) => Ok(res.into()),
+                Err(err) => Err(sqlx_error_to_exec_err(err)),
+            }
         } else {
             Err(DbErr::ConnectionAcquire)
         }
@@ -211,7 +226,7 @@ impl SqlxPostgresPoolConnection {
             .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
-            Err(TransactionError::Connection(DbErr::ConnectionAcquire))
+            Err(DbErr::ConnectionAcquire.into())
         }
     }
 
@@ -224,7 +239,8 @@ impl SqlxPostgresPoolConnection {
 
     /// Explicitly close the Postgres connection
     pub async fn close(self) -> Result<(), DbErr> {
-        Ok(self.pool.close().await)
+        self.pool.close().await;
+        Ok(())
     }
 }
 

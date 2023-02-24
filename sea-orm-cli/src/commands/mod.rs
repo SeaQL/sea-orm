@@ -12,6 +12,6 @@ pub fn handle_error<E>(error: E)
 where
     E: Display,
 {
-    eprintln!("{}", error);
+    eprintln!("{error}");
     ::std::process::exit(1);
 }

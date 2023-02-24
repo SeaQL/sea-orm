@@ -1,5 +1,5 @@
 use crate::{
-    cast_text_as_enum, ActiveModelTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
+    ActiveModelTrait, ActiveValue, ColumnTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
     PrimaryKeyTrait, QueryTrait,
 };
 use core::marker::PhantomData;
@@ -85,7 +85,7 @@ where
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
-    ///     Insert::many(vec![
+    ///     Insert::many([
     ///         cake::Model {
     ///             id: 1,
     ///             name: "Apple Pie".to_owned(),
@@ -109,6 +109,10 @@ where
     }
 
     /// Add a Model to Self
+    ///
+    /// # Panics
+    ///
+    /// Panics if the column value has discrepancy across rows
     #[allow(clippy::should_implement_trait)]
     pub fn add<M>(mut self, m: M) -> Self
     where
@@ -132,9 +136,12 @@ where
             } else if self.columns[idx] != av_has_val {
                 panic!("columns mismatch");
             }
-            if av_has_val {
-                columns.push(col);
-                values.push(cast_text_as_enum(Expr::val(av.into_value().unwrap()), &col));
+            match av {
+                ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
+                    columns.push(col);
+                    values.push(col.save_as(Expr::val(value)));
+                }
+                ActiveValue::NotSet => {}
             }
         }
         self.query.columns(columns);
@@ -227,7 +234,7 @@ mod tests {
     use sea_query::OnConflict;
 
     use crate::tests_cfg::cake;
-    use crate::{ActiveValue, DbBackend, EntityTrait, Insert, QueryTrait};
+    use crate::{ActiveValue, DbBackend, DbErr, EntityTrait, Insert, IntoActiveModel, QueryTrait};
 
     #[test]
     fn insert_1() {
@@ -275,7 +282,7 @@ mod tests {
     fn insert_4() {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
-                .add_many(vec![
+                .add_many([
                     cake::Model {
                         id: 1,
                         name: "Apple Pie".to_owned(),
@@ -304,7 +311,7 @@ mod tests {
         };
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
-                .add_many(vec![apple, orange])
+                .add_many([apple, orange])
                 .build(DbBackend::Postgres)
                 .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (NULL, 'Apple'), (2, 'Orange')"#,
@@ -349,5 +356,128 @@ mod tests {
                 .to_string(),
             r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO UPDATE SET "name" = "excluded"."name""#,
         );
+    }
+
+    #[smol_potat::test]
+    async fn insert_8() -> Result<(), DbErr> {
+        use crate::{DbBackend, MockDatabase, Statement, Transaction};
+
+        mod post {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "posts")]
+            pub struct Model {
+                #[sea_orm(primary_key, select_as = "INTEGER", save_as = "TEXT")]
+                pub id: i32,
+                pub title: String,
+                pub text: String,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        let model = post::Model {
+            id: 1,
+            title: "News wrap up 2022".into(),
+            text: "brbrbrrrbrbrbrr...".into(),
+        };
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[model.clone()]])
+            .into_connection();
+
+        post::Entity::insert(model.into_active_model())
+            .exec(&db)
+            .await?;
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                r#"INSERT INTO "posts" ("id", "title", "text") VALUES (CAST($1 AS TEXT), $2, $3) RETURNING CAST("id" AS INTEGER)"#,
+                [
+                    1.into(),
+                    "News wrap up 2022".into(),
+                    "brbrbrrrbrbrbrr...".into(),
+                ]
+            )])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn insert_9() -> Result<(), DbErr> {
+        use crate::{DbBackend, MockDatabase, MockExecResult, Statement, Transaction};
+
+        mod post {
+            use crate as sea_orm;
+            use crate::entity::prelude::*;
+
+            #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+            #[sea_orm(table_name = "posts")]
+            pub struct Model {
+                #[sea_orm(
+                    primary_key,
+                    auto_increment = false,
+                    select_as = "INTEGER",
+                    save_as = "TEXT"
+                )]
+                pub id_primary: i32,
+                #[sea_orm(
+                    primary_key,
+                    auto_increment = false,
+                    select_as = "INTEGER",
+                    save_as = "TEXT"
+                )]
+                pub id_secondary: i32,
+                pub title: String,
+                pub text: String,
+            }
+
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+            pub enum Relation {}
+
+            impl ActiveModelBehavior for ActiveModel {}
+        }
+
+        let model = post::Model {
+            id_primary: 1,
+            id_secondary: 1001,
+            title: "News wrap up 2022".into(),
+            text: "brbrbrrrbrbrbrr...".into(),
+        };
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_exec_results([MockExecResult {
+                last_insert_id: 1,
+                rows_affected: 1,
+            }])
+            .into_connection();
+
+        post::Entity::insert(model.into_active_model())
+            .exec(&db)
+            .await?;
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                r#"INSERT INTO "posts" ("id_primary", "id_secondary", "title", "text") VALUES (CAST($1 AS TEXT), CAST($2 AS TEXT), $3, $4) RETURNING CAST("id_primary" AS INTEGER), CAST("id_secondary" AS INTEGER)"#,
+                [
+                    1.into(),
+                    1001.into(),
+                    "News wrap up 2022".into(),
+                    "brbrbrrrbrbrbrr...".into(),
+                ]
+            )])]
+        );
+
+        Ok(())
     }
 }

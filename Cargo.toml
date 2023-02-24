@@ -3,7 +3,7 @@ members = [".", "sea-orm-macros", "sea-orm-codegen"]
 
 [package]
 name = "sea-orm"
-version = "0.10.3"
+version = "0.11.0"
 authors = ["Chris Tsang <chris.2y3@outlook.com>"]
 edition = "2021"
 description = "🐚 An async & dynamic ORM for Rust"
@@ -16,7 +16,7 @@ keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 rust-version = "1.65"
 
 [package.metadata.docs.rs]
-features = ["default", "sqlx-all", "mock", "runtime-async-std-native-tls"]
+features = ["default", "sqlx-all", "mock", "runtime-async-std-native-tls", "postgres-array", "sea-orm-internal"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
@@ -33,9 +33,9 @@ log = { version = "0.4", default-features = false }
 tracing = { version = "0.1", default-features = false, features = ["attributes", "log"] }
 rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.3", default-features = false, optional = true }
-sea-orm-macros = { version = "0.10.3", path = "sea-orm-macros", default-features = false, optional = true }
-sea-query = { version = "0.27.2", git = "https://github.com/billy1624/sea-query", branch = "value-tuple-many", features = ["thread-safe"] }
-sea-query-binder = { version = "0.2.2", git = "https://github.com/billy1624/sea-query", branch = "value-tuple-many", default-features = false, optional = true }
+sea-orm-macros = { version = "0.11.0", path = "sea-orm-macros", default-features = false, optional = true }
+sea-query = { version = "0.29", git = "https://github.com/SeaQL/sea-query", features = ["thread-safe"] }
+sea-query-binder = { version = "0.4", git = "https://github.com/SeaQL/sea-query", default-features = false, optional = true }
 sea-strum = { version = "0.23", default-features = false, features = ["derive", "sea-orm"] }
 serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false, optional = true }
@@ -55,7 +55,7 @@ actix-rt = { version = "2.2.0" }
 maplit = { version = "1" }
 rust_decimal_macros = { version = "1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-sea-orm = { path = ".", features = ["mock", "debug-print", "tests-cfg", "postgres-array"] }
+sea-orm = { path = ".", features = ["mock", "debug-print", "tests-cfg", "postgres-array", "sea-orm-internal"] }
 pretty_assertions = { version = "0.7" }
 time = { version = "0.3", features = ["macros"] }
 uuid = { version = "1", features = ["v4"] }
@@ -81,6 +81,7 @@ with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-binder?
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
 with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
 postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array", "sea-orm-macros?/postgres-array"]
+sea-orm-internal = []
 sqlx-dep = []
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-mysql = ["sqlx-dep", "sea-query-binder/sqlx-mysql", "sqlx/mysql"]

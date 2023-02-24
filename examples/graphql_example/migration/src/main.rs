@@ -12,11 +12,11 @@ async fn main() {
 
     match std::env::var("DATABASE_URL") {
         Ok(val) => {
-            println!("Using DATABASE_URL: {}", val);
+            println!("Using DATABASE_URL: {val}");
         }
         Err(_) => {
             std::env::set_var("DATABASE_URL", fallback);
-            println!("Set DATABASE_URL: {}", fallback);
+            println!("Set DATABASE_URL: {fallback}");
         }
     };
 
