@@ -16,10 +16,6 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 ### Open Source Projects
 
-#### Audio and Music
-
-- [Deaftone](https://deaftone.org) ([repository](https://github.com/Ortygia/Deaftone))  | Lightweight music server. With a clean and simple API  | DB: SQLite
-
 #### CMS
 
 - [Wikijump](https://github.com/scpwiki/wikijump) ([repository](https://github.com/scpwiki/wikijump/tree/develop/deepwell)) ![GitHub stars](https://img.shields.io/github/stars/scpwiki/wikijump.svg?style=social) | API service for Wikijump, a fork of Wikidot | DB: Postgres
@@ -49,7 +45,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [MoonRamp](https://github.com/MoonRamp/MoonRamp) | A free and open source crypto payment gateway | DB: MySQL, Postgres, SQLite
 - [RGB Lib](https://github.com/RGB-Tools/rgb-lib) | A library to manage wallets for RGB assets | DB: MySQL, Postgres, SQLite
 
-#### Dev tools
+#### Dev Tools
 - [Orca](https://github.com/workfoxes/orca) | An No-code Test Automation platform using Actix, SeaORM, React. runs on the desktop and cloud | DB: Postgres
 - [nitro_repo](https://github.com/wyatt-herkamp/nitro_repo) | An OpenSource, lightweight, and fast artifact manager. | DB: MySQL, SQLite
 
@@ -70,6 +66,10 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [pansy](https://github.com/niuhuan/pansy) | An illustration app using SeaORM, SQLite, flutter. runs on the desktop and mobile terminals | DB: SQLite
 - [Warpgate](https://github.com/warp-tech/warpgate) ![GitHub stars](https://img.shields.io/github/stars/warp-tech/warpgate.svg?style=social) | Smart SSH bastion that works with any SSH client | DB: SQLite
 - [todo-rs](https://github.com/anshulxyz/todo-rs/) | A TUI ToDo-app written in Rust using Cursive library and SeaORM for SQLite | DB: SQLite
+
+#### Audio and Music
+
+- [Deaftone](https://deaftone.org) ([repository](https://github.com/Ortygia/Deaftone)) | Lightweight music server. With a clean and simple API | DB: SQLite
 - [Music Player](https://github.com/tsirysndr/music-player) ![GitHub stars](https://img.shields.io/github/stars/tsirysndr/music-player.svg?style=social) | An extensible music server written in Rust 🚀🎵✨ | DB: SQLite
 
 #### Embedded
