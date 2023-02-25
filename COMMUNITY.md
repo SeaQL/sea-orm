@@ -25,6 +25,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Backpack](https://github.com/JSH32/Backpack) ![GitHub stars](https://img.shields.io/github/stars/JSH32/Backpack.svg?style=social) | Open source self hosted file sharing platform on crack | DB: MySQL, Postgres, SQLite
 - [Dev Board](https://github.com/goto-eof/dev_board_api_rust) | A dashboard for organizing software development tasks implemented in Rust
 - [OctoBase](https://github.com/toeverything/OctoBase) ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend written in 🦀 | DB: MySQL, Postgres, SQLite
+- [oxide_todo](https://github.com/TheAwiteb/oxide_todo) | RESTful Todo built with [Actix](https://github.com/actix/actix-web) and [SeaORM](https://github.com/SeaQL/sea-orm). Documented by [swagger-ui](https://swagger.io/tools/swagger-ui/). Authenticated by [JWT](https://jwt.io). Rate limited by [actix_extensible_rate_limit](https://github.com/jacob-pro/actix-extensible-rate-limit). Tested by [rstest](https://github.com/la10736/rstest). | DB: SQLite
 
 #### Game
 - [thrpg](https://github.com/thrpg/thrpg) | Touhou Project's secondary creative games | DB: Postgres
@@ -45,7 +46,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [MoonRamp](https://github.com/MoonRamp/MoonRamp) | A free and open source crypto payment gateway | DB: MySQL, Postgres, SQLite
 - [RGB Lib](https://github.com/RGB-Tools/rgb-lib) | A library to manage wallets for RGB assets | DB: MySQL, Postgres, SQLite
 
-#### Dev tools
+#### Dev Tools
 - [Orca](https://github.com/workfoxes/orca) | An No-code Test Automation platform using Actix, SeaORM, React. runs on the desktop and cloud | DB: Postgres
 - [nitro_repo](https://github.com/wyatt-herkamp/nitro_repo) | An OpenSource, lightweight, and fast artifact manager. | DB: MySQL, SQLite
 
@@ -66,6 +67,10 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [pansy](https://github.com/niuhuan/pansy) | An illustration app using SeaORM, SQLite, flutter. runs on the desktop and mobile terminals | DB: SQLite
 - [Warpgate](https://github.com/warp-tech/warpgate) ![GitHub stars](https://img.shields.io/github/stars/warp-tech/warpgate.svg?style=social) | Smart SSH bastion that works with any SSH client | DB: SQLite
 - [todo-rs](https://github.com/anshulxyz/todo-rs/) | A TUI ToDo-app written in Rust using Cursive library and SeaORM for SQLite | DB: SQLite
+
+#### Audio and Music
+
+- [Deaftone](https://deaftone.org) ([repository](https://github.com/Ortygia/Deaftone)) | Lightweight music server. With a clean and simple API | DB: SQLite
 - [Music Player](https://github.com/tsirysndr/music-player) ![GitHub stars](https://img.shields.io/github/stars/tsirysndr/music-player.svg?style=social) | An extensible music server written in Rust 🚀🎵✨ | DB: SQLite
 
 #### Embedded
