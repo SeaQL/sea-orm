@@ -102,7 +102,7 @@ impl Deleter {
                 // If we got `None` then we are updating a row that does not exist.
                 match found {
                     Some(model) => Ok(model),
-                    None => Err(DbErr::RecordNotUpdated),
+                    None => Err(DbErr::RecordNotDeleted),
                 }
             }
             false => {
@@ -147,7 +147,7 @@ where
         None => return Err(DbErr::DeleteGetPrimaryKey),
     };
     let found = Entity::<A>::find_by_id(primary_key_value).one(db).await?;
-    // If we cannot select the updated row from db by the cached primary key
+    // If we cannot select the deleted row from db by the cached primary key
     match found {
         Some(model) => Ok(model),
         None => Err(DbErr::RecordNotFound(
