@@ -2,8 +2,7 @@ use crate::{
     error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait,
     IntoActiveModel, Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement,
 };
-use sea_query::{DeleteStatement, Query};
-use sea_query::{Expr, FromValueTuple};
+use sea_query::{DeleteStatement, Expr, FromValueTuple, Query};
 use std::future::Future;
 
 /// Handles DELETE operations in a ActiveModel using [DeleteStatement]
