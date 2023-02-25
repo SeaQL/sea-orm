@@ -98,7 +98,7 @@ impl Deleter {
                 )
                 .one(db)
                 .await?;
-                // If we got `None` then we are updating a row that does not exist.
+                // If we got `None` then we are deleting a row that does not exist.
                 match found {
                     Some(model) => Ok(model),
                     None => Err(DbErr::RecordNotDeleted),
