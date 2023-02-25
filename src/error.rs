@@ -77,6 +77,10 @@ pub enum DbErr {
     /// May be the table is empty or the record does not exist
     #[error("None of the records are updated")]
     RecordNotUpdated,
+    /// None of the records are Deleted, that means a WHERE condition has no matches.
+    /// May be the table is empty or the record does not exist
+    #[error("None of the records are updated")]
+    RecordNotDeleted,
 }
 
 /// Runtime error
