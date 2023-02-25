@@ -64,7 +64,7 @@ pub async fn delete_one_with_returning_not_exist(db: &DatabaseConnection) -> Res
         .exec_with_returning(db)
         .await;
 
-    assert_eq!(deleted_model, Err(DbErr::RecordNotUpdated));
+    assert_eq!(deleted_model, Err(DbErr::RecordNotDeleted));
     assert_eq!(Applog::find().all(db).await.unwrap().len(), 1);
     Ok(())
 }
