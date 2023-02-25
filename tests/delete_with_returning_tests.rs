@@ -41,7 +41,6 @@ pub async fn delete_one_with_returning(db: &DatabaseConnection) -> Result<(), Db
     Ok(())
 }
 
-
 pub async fn delete_one_with_returning_not_exist(db: &DatabaseConnection) -> Result<(), DbErr> {
     let initial_model = applog::Model {
         id: 1,
