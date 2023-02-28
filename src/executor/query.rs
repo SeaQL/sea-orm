@@ -140,6 +140,7 @@ impl<T: TryGetable> TryGetable for Option<T> {
         match T::try_get_by(res, index) {
             Ok(v) => Ok(Some(v)),
             Err(TryGetError::Null(_)) => Ok(None),
+            Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::SqlxError(ColumnNotFound(_))))) => Ok(None),
             Err(e) => Err(e),
         }
     }
@@ -482,6 +483,7 @@ impl TryGetable for Decimal {
 
 #[cfg(feature = "with-bigdecimal")]
 use bigdecimal::BigDecimal;
+use sqlx::Error::ColumnNotFound;
 
 #[cfg(feature = "with-bigdecimal")]
 impl TryGetable for BigDecimal {
