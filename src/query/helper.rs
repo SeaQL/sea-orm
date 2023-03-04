@@ -355,10 +355,10 @@ pub trait QuerySelect: Sized {
     ///         .filter(
     ///             Condition::all().add_option(input.name.map(|n| cake::Column::Name.contains(&n)))
     ///         )
-    ///         .distinct_on([cake::Column::Name])
+    ///         .distinct_on([(cake::Entity, cake::Column::Name)])
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     "SELECT DISTINCT ON (\"name\") \"cake\".\"id\", \"cake\".\"name\" FROM \"cake\" WHERE \"cake\".\"name\" LIKE '%cheese%'"
+    ///     r#"SELECT DISTINCT ON ("cake"."name") "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."name" LIKE '%cheese%'"#
     /// );
     /// ```
     fn distinct_on<T, I>(mut self, cols: I) -> Self
