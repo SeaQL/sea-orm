@@ -1,5 +1,5 @@
 use crate::util::{escape_rust_keyword, trim_starting_raw_identifier};
-use heck::{ToUpperCamelCase, ToSnakeCase};
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{
