@@ -55,6 +55,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [LLDAP](https://github.com/nitnelave/lldap) ![GitHub stars](https://img.shields.io/github/stars/nitnelave/lldap.svg?style=social) | A light LDAP server for user management | DB: MySQL, Postgres, SQLite
 - [RSS aggregator](https://github.com/fistons/rss-aggregator)| A small RSS aggregator and API using Actix Web and SeaORM | DB: Postgres
 - [Wikipedia Speedrun](https://wikipediaspeedrun.com) ([repository](https://github.com/hut8/wikipedia-speedrun)) | Finds shortest paths between Wikipedia articles | DB: SQLite
+- [Email view tracker](https://github.com/friedemannsommer/email-view-tracker) | Simple web UI to create tracking URLs for HTML emails. | DB: MySQL, Postgres
 
 #### Url Shortener
 - [url_shortener](https://github.com/michidk/url_shortener) | A simple self-hosted URL shortener written in Rust | DB: MySQL, Postgres, SQLite
