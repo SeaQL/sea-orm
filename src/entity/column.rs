@@ -490,6 +490,10 @@ mod tests {
                 pub nine: u64,
                 #[sea_orm(default_expr = "Expr::current_timestamp()")]
                 pub ten: DateTimeUtc,
+                #[sea_orm(default_value = 7)]
+                pub eleven: u8,
+                #[sea_orm(default_value = "twelve_value")]
+                pub twelve: String,
             }
 
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -536,6 +540,14 @@ mod tests {
             ColumnType::TimestampWithTimeZone
                 .def()
                 .default_value(Expr::current_timestamp())
+        );
+        assert_eq!(
+            hello::Column::Eleven.def(),
+            ColumnType::TinyUnsigned.def().default_value(7)
+        );
+        assert_eq!(
+            hello::Column::Twelve.def(),
+            ColumnType::String(None).def().default_value("twelve_value")
         );
     }
 
