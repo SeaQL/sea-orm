@@ -280,6 +280,7 @@ pub struct GenerateSubCommandsEntity {
                         - For MySQL, this argument is ignored.\n \
                         - For PostgreSQL, this argument is optional with default value 'public'."
     )]
+    #[serde(skip)]
     pub database_schema: Option<String>,
 
 <<<<<<< HEAD
@@ -298,6 +299,7 @@ pub struct GenerateSubCommandsEntity {
         env = "DATABASE_URL",
         help = "Database URL"
     )]
+    #[serde(skip)]
     pub database_url: Option<String>,
 
     #[clap(
