@@ -6,7 +6,9 @@ use sea_orm::{
     error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName,
     ExecResult, Schema,
 };
-use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement, IntoIden};
+use sea_query::{
+    extension::postgres::Type, Alias, BlobSize, ColumnDef, ForeignKeyCreateStatement, IntoIden,
+};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     let db_backend = db.get_database_backend();
@@ -45,6 +47,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_uuid_fmt_table(db).await?;
     create_edit_log_table(db).await?;
     create_teas_table(db).await?;
+    create_binary_table(db).await?;
 
     if DbBackend::Postgres == db_backend {
         create_collection_table(db).await?;
@@ -514,4 +517,45 @@ pub async fn create_teas_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &create_table_stmt, Teas).await
+}
+
+pub async fn create_binary_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(binary::Entity.table_ref())
+        .col(
+            ColumnDef::new(binary::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(binary::Column::Binary).binary().not_null())
+        .col(
+            ColumnDef::new(binary::Column::Binary10)
+                .blob(BlobSize::Blob(Some(10)))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(binary::Column::BinaryTiny)
+                .blob(BlobSize::Tiny)
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(binary::Column::BinaryMedium)
+                .blob(BlobSize::Medium)
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(binary::Column::BinaryLong)
+                .blob(BlobSize::Long)
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(binary::Column::VarBinary)
+                .var_binary(10)
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &create_table_stmt, Binary).await
 }
