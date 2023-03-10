@@ -38,11 +38,10 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
 fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> {
     let fields = all_fields.filter(field_not_ignored);
 
-    let field: Vec<Ident> = fields.clone().into_iter().map(format_field_ident).collect();
+    let field: Vec<Ident> = fields.clone().map(format_field_ident).collect();
 
     let name: Vec<Ident> = fields
         .clone()
-        .into_iter()
         .map(|field| {
             let ident = field.ident.as_ref().unwrap().to_string();
             let ident = trim_starting_raw_identifier(ident).to_camel_case();
@@ -177,11 +176,7 @@ fn derive_into_model(model_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
         .into_iter()
         .map(format_field_ident)
         .collect();
-    let model_field: Vec<Ident> = model_fields
-        .clone()
-        .into_iter()
-        .map(format_field_ident)
-        .collect();
+    let model_field: Vec<Ident> = model_fields.clone().map(format_field_ident).collect();
 
     let ignore_attr: Vec<bool> = model_fields
         .map(|field| !field_not_ignored(&field))
