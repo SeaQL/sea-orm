@@ -7,7 +7,53 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.11.1 - Pending
 
-* Fixes `DeriveActiveEnum` (by qualifying `ColumnTypeTrait::def`)
+### Bug Fixes
+
+* Fixes `DeriveActiveEnum` (by qualifying `ColumnTypeTrait::def`) https://github.com/SeaQL/sea-orm/issues/1478
+
+* The CLI command `sea-orm-cli generate entity -u '<DB-URL>'` will now generate the following code for each `Binary` or `VarBinary` columns in compact format https://github.com/SeaQL/sea-orm/pull/1529
+
+```rs
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[sea_orm(table_name = "binary")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    #[sea_orm(column_type = "Binary(BlobSize::Blob(None))")]
+    pub binary: Vec<u8>,
+    #[sea_orm(column_type = "Binary(BlobSize::Blob(Some(10)))")]
+    pub binary_10: Vec<u8>,
+    #[sea_orm(column_type = "Binary(BlobSize::Tiny)")]
+    pub binary_tiny: Vec<u8>,
+    #[sea_orm(column_type = "Binary(BlobSize::Medium)")]
+    pub binary_medium: Vec<u8>,
+    #[sea_orm(column_type = "Binary(BlobSize::Long)")]
+    pub binary_long: Vec<u8>,
+    #[sea_orm(column_type = "VarBinary(10)")]
+    pub var_binary: Vec<u8>,
+}
+```
+
+* The CLI command `sea-orm-cli generate entity -u '<DB-URL>' --expanded-format` will now generate the following code for each `Binary` or `VarBinary` columns in expanded format https://github.com/SeaQL/sea-orm/pull/1529
+
+```rs
+impl ColumnTrait for Column {
+    type EntityName = Entity;
+    fn def(&self) -> ColumnDef {
+        match self {
+            Self::Id => ColumnType::Integer.def(),
+            Self::Binary => ColumnType::Binary(sea_orm::sea_query::BlobSize::Blob(None)).def(),
+            Self::Binary10 => {
+                ColumnType::Binary(sea_orm::sea_query::BlobSize::Blob(Some(10u32))).def()
+            }
+            Self::BinaryTiny => ColumnType::Binary(sea_orm::sea_query::BlobSize::Tiny).def(),
+            Self::BinaryMedium => ColumnType::Binary(sea_orm::sea_query::BlobSize::Medium).def(),
+            Self::BinaryLong => ColumnType::Binary(sea_orm::sea_query::BlobSize::Long).def(),
+            Self::VarBinary => ColumnType::VarBinary(10u32).def(),
+        }
+    }
+}
+```
 
 ## 0.11.0 - 2023-02-07
 
