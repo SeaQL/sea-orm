@@ -1,3 +1,5 @@
+//! Basic sea-orm example.
+#![deny(missing_docs)]
 use sea_orm::Database;
 
 mod entities;
