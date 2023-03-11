@@ -33,10 +33,10 @@ log = { version = "0.4", default-features = false }
 tracing = { version = "0.1", default-features = false, features = ["attributes", "log"] }
 rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.3", default-features = false, optional = true }
-sea-orm-macros = { version = "0.11.0", path = "sea-orm-macros", default-features = false, optional = true }
+sea-orm-macros = { version = "0.11.0", path = "sea-orm-macros", default-features = false, features = ["strum"] }
 sea-query = { version = "0.28.3", features = ["thread-safe"] }
 sea-query-binder = { version = "0.3", default-features = false, optional = true }
-sea-strum = { version = "0.23", default-features = false, features = ["derive", "sea-orm"] }
+strum = { version = "0.23", default-features = false }
 serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false, optional = true }
 sqlx = { version = "0.6", default-features = false, optional = true }
@@ -72,7 +72,7 @@ default = [
     "with-uuid",
     "with-time",
 ]
-macros = ["sea-orm-macros", "sea-query/derive"]
+macros = ["sea-orm-macros/derive", "sea-query/derive"]
 mock = []
 with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "time?/serde", "uuid?/serde", "sea-query-binder?/with-json", "sqlx?/json"]
 with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-binder?/with-chrono", "sqlx?/chrono"]
@@ -80,7 +80,7 @@ with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-b
 with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-binder?/with-bigdecimal", "sqlx?/bigdecimal"]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
 with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
-postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array", "sea-orm-macros?/postgres-array"]
+postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array", "sea-orm-macros/postgres-array"]
 sea-orm-internal = []
 sqlx-dep = []
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]

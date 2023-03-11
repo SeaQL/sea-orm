@@ -360,4 +360,4 @@ pub use sea_query::Iden;
 pub use sea_query::Iden as DeriveIden;
 
 pub use strum;
-pub use strum::EnumIter;
+pub use sea_orm_macros::EnumIter;
