@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.12.0 - Pending
 
+### New Features
+
+* Supports for partial select of `Option<T>` model field. A `None` value will be filled when the select result does not contain the `Option<T>` field without throwing an error. https://github.com/SeaQL/sea-orm/pull/1513
+```rs
+customer::ActiveModel {
+    name: Set("Alice".to_owned()),
+    notes: Set(Some("Want to communicate with Bob".to_owned())),
+    ..Default::default()
+}
+.save(db)
+.await?;
+
+// The `notes` field was intentionally leaved out
+let customer = Customer::find()
+    .select_only()
+    .column(customer::Column::Id)
+    .column(customer::Column::Name)
+    .one(db)
+    .await
+    .unwrap();
+
+// The select result does not contain `notes` field.
+// Since it's of type `Option<String>`, it'll be `None` and no error will be thrown.
+assert_eq!(customers.notes, None);
+```
+
 ### Enhancements
 
 * Added `Migration::name()` and `Migration::status()` getters for the name and status of `sea_orm_migration::Migration` https://github.com/SeaQL/sea-orm/pull/1519
@@ -22,6 +48,10 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
 ### Upgrades
 
 * Upgrade `heck` dependency in `sea-orm-macros` and `sea-orm-codegen` to 0.4 https://github.com/SeaQL/sea-orm/pull/1520, https://github.com/SeaQL/sea-orm/pull/1544
+
+### Breaking changes
+
+* Supports for partial select of `Option<T>` model field. A `None` value will be filled when the select result does not contain the `Option<T>` field without throwing an error. https://github.com/SeaQL/sea-orm/pull/1513
 
 ## 0.11.1 - 2023-03-10
 
@@ -142,7 +172,7 @@ impl ColumnTrait for Column {
 * Noop when update without providing any values https://github.com/SeaQL/sea-orm/pull/1384
     * Fixes Syntax Error when saving active model that sets nothing https://github.com/SeaQL/sea-orm/pull/1376
 
-### Breaking changes
+### Breaking Changes
 
 * [sea-orm-cli] Enable --universal-time by default https://github.com/SeaQL/sea-orm/pull/1420
 * Added `RecordNotInserted` and `RecordNotUpdated` to `DbErr` 
@@ -373,7 +403,7 @@ Full Changelog: https://github.com/SeaQL/sea-orm/compare/0.10.0...0.11.0
 
 * Trim spaces when paginating raw SQL https://github.com/SeaQL/sea-orm/pull/1094
 
-### Breaking changes
+### Breaking Changes
 
 * Replaced `usize` with `u64` in `PaginatorTrait` https://github.com/SeaQL/sea-orm/pull/789
 * Type signature of `DbErr` changed as a result of https://github.com/SeaQL/sea-orm/pull/1002
@@ -548,7 +578,7 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 
 * [sea-orm-cli] skip checking connection string for credentials https://github.com/SeaQL/sea-orm/pull/851
 
-### Breaking changes
+### Breaking Changes
 
 * `SelectTwoMany::one()` has been dropped https://github.com/SeaQL/sea-orm/pull/813, you can get `(Entity, Vec<RelatedEntity>)` by first querying a single model from Entity, then use [`ModelTrait::find_related`] on the model.
 * #### Feature flag revamp
@@ -575,7 +605,7 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 * Fix `DeriveEntityModel` macros override column name https://github.com/SeaQL/sea-orm/pull/695
 * Fix Insert with no value supplied using `DEFAULT` https://github.com/SeaQL/sea-orm/pull/589
 
-### Breaking changes
+### Breaking Changes
 * Migration utilities are moved from sea-schema to sea-orm repo, under a new sub-crate `sea-orm-migration`. `sea_schema::migration::prelude` should be replaced by `sea_orm_migration::prelude` in all migration files
 
 ### Upgrades
@@ -623,7 +653,7 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 * Fix codegen with Enum in expanded format by @billy1624 https://github.com/SeaQL/sea-orm/pull/624
 * Fixing and testing into_json of various field types by @billy1624 https://github.com/SeaQL/sea-orm/pull/539
 
-### Breaking changes
+### Breaking Changes
 * Exclude `mock` from default features by @billy1624 https://github.com/SeaQL/sea-orm/pull/562
 * `create_table_from_entity` will no longer create index for MySQL, please use the new method `create_index_from_entity`
 
