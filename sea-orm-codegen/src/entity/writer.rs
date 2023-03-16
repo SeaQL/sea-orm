@@ -1,5 +1,5 @@
 use crate::{util::escape_rust_keyword, ActiveEnum, Entity};
-use heck::CamelCase;
+use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use std::{collections::BTreeMap, str::FromStr};
@@ -449,7 +449,7 @@ impl EntityWriter {
             .iter()
             .fold(TokenStream::new(), |mut ts, col| {
                 if let sea_query::ColumnType::Enum { name, .. } = &col.col_type {
-                    let enum_name = format_ident!("{}", name.to_string().to_camel_case());
+                    let enum_name = format_ident!("{}", name.to_string().to_upper_camel_case());
                     ts.extend([quote! {
                         use super::sea_orm_active_enums::#enum_name;
                     }]);
@@ -612,16 +612,16 @@ impl EntityWriter {
         let table_name_camel_case = entity.get_table_name_camel_case_ident();
         let via_snake_case = entity.get_conjunct_relations_via_snake_case();
         let to_snake_case = entity.get_conjunct_relations_to_snake_case();
-        let to_camel_case = entity.get_conjunct_relations_to_camel_case();
+        let to_upper_camel_case = entity.get_conjunct_relations_to_upper_camel_case();
         via_snake_case
             .into_iter()
             .zip(to_snake_case)
-            .zip(to_camel_case)
-            .map(|((via_snake_case, to_snake_case), to_camel_case)| {
+            .zip(to_upper_camel_case)
+            .map(|((via_snake_case, to_snake_case), to_upper_camel_case)| {
                 quote! {
                     impl Related<super::#to_snake_case::Entity> for Entity {
                         fn to() -> RelationDef {
-                            super::#via_snake_case::Relation::#to_camel_case.def()
+                            super::#via_snake_case::Relation::#to_upper_camel_case.def()
                         }
 
                         fn via() -> Option<RelationDef> {

@@ -1,5 +1,5 @@
 use crate::{util::escape_rust_keyword, DateTimeCrate};
-use heck::{CamelCase, SnakeCase};
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{BlobSize, ColumnDef, ColumnSpec, ColumnType};
@@ -20,7 +20,7 @@ impl Column {
     }
 
     pub fn get_name_camel_case(&self) -> Ident {
-        format_ident!("{}", escape_rust_keyword(self.name.to_camel_case()))
+        format_ident!("{}", escape_rust_keyword(self.name.to_upper_camel_case()))
     }
 
     pub fn is_snake_case_name(&self) -> bool {
@@ -71,7 +71,7 @@ impl Column {
                 ColumnType::Uuid => "Uuid".to_owned(),
                 ColumnType::Binary(_) | ColumnType::VarBinary(_) => "Vec<u8>".to_owned(),
                 ColumnType::Boolean => "bool".to_owned(),
-                ColumnType::Enum { name, .. } => name.to_string().to_camel_case(),
+                ColumnType::Enum { name, .. } => name.to_string().to_upper_camel_case(),
                 ColumnType::Array(column_type) => {
                     format!("Vec<{}>", write_rs_type(column_type, date_time_crate))
                 }
@@ -173,7 +173,7 @@ impl Column {
                     quote! { ColumnType::custom(#s) }
                 }
                 ColumnType::Enum { name, .. } => {
-                    let enum_ident = format_ident!("{}", name.to_string().to_camel_case());
+                    let enum_ident = format_ident!("{}", name.to_string().to_upper_camel_case());
                     quote! { #enum_ident::db_type() }
                 }
                 ColumnType::Array(column_type) => {

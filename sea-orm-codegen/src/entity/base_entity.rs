@@ -1,4 +1,4 @@
-use heck::{CamelCase, SnakeCase};
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::format_ident;
 use quote::quote;
@@ -23,7 +23,7 @@ impl Entity {
     }
 
     pub fn get_table_name_camel_case(&self) -> String {
-        self.table_name.to_camel_case()
+        self.table_name.to_upper_camel_case()
     }
 
     pub fn get_table_name_snake_case_ident(&self) -> Ident {
@@ -144,10 +144,10 @@ impl Entity {
             .collect()
     }
 
-    pub fn get_conjunct_relations_to_camel_case(&self) -> Vec<Ident> {
+    pub fn get_conjunct_relations_to_upper_camel_case(&self) -> Vec<Ident> {
         self.conjunct_relations
             .iter()
-            .map(|con_rel| con_rel.get_to_camel_case())
+            .map(|con_rel| con_rel.get_to_upper_camel_case())
             .collect()
     }
 
@@ -447,15 +447,15 @@ mod tests {
     }
 
     #[test]
-    fn test_get_conjunct_relations_to_camel_case() {
+    fn test_get_conjunct_relations_to_upper_camel_case() {
         let entity = setup();
 
         for (i, elem) in entity
-            .get_conjunct_relations_to_camel_case()
+            .get_conjunct_relations_to_upper_camel_case()
             .into_iter()
             .enumerate()
         {
-            assert_eq!(elem, entity.conjunct_relations[i].get_to_camel_case());
+            assert_eq!(elem, entity.conjunct_relations[i].get_to_upper_camel_case());
         }
     }
 

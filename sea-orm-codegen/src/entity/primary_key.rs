@@ -1,4 +1,4 @@
-use heck::{CamelCase, SnakeCase};
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::Ident;
 use quote::format_ident;
 
@@ -13,7 +13,7 @@ impl PrimaryKey {
     }
 
     pub fn get_name_camel_case(&self) -> Ident {
-        format_ident!("{}", self.name.to_camel_case())
+        format_ident!("{}", self.name.to_upper_camel_case())
     }
 }
 
