@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.12.0 - Pending
 
+### Enhancements
+
+* Added `Migration::name()` and `Migration::status()` getters for the name and status of `sea_orm_migration::Migration` https://github.com/SeaQL/sea-orm/pull/1519
+```rs
+let migrations = Migrator::get_pending_migrations(db).await?;
+assert_eq!(migrations.len(), 5);
+
+let migration = migrations.get(0).unwrap();
+assert_eq!(migration.name(), "m20220118_000002_create_fruit_table");
+assert_eq!(migration.status(), MigrationStatus::Pending);
+```
+
 ### Upgrades
 
 * Upgrade `heck` dependency in `sea-orm-macros` and `sea-orm-codegen` to 0.4 https://github.com/SeaQL/sea-orm/pull/1520, https://github.com/SeaQL/sea-orm/pull/1544
