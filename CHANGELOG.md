@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Upgrades
 
-* Upgrade `heck` dependency in `sea-orm-macros` to 0.4 https://github.com/SeaQL/sea-orm/pull/1520
+* Upgrade `heck` dependency in `sea-orm-macros` and `sea-orm-codegen` to 0.4 https://github.com/SeaQL/sea-orm/pull/1520, https://github.com/SeaQL/sea-orm/pull/1544
 
 ## 0.11.1 - 2023-03-10
 
