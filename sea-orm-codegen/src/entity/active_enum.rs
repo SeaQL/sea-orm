@@ -1,4 +1,4 @@
-use heck::CamelCase;
+use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use sea_query::DynIden;
@@ -14,13 +14,13 @@ pub struct ActiveEnum {
 impl ActiveEnum {
     pub fn impl_active_enum(&self, with_serde: &WithSerde, with_copy_enums: bool) -> TokenStream {
         let enum_name = &self.enum_name.to_string();
-        let enum_iden = format_ident!("{}", enum_name.to_camel_case());
+        let enum_iden = format_ident!("{}", enum_name.to_upper_camel_case());
         let values: Vec<String> = self.values.iter().map(|v| v.to_string()).collect();
         let variants = values.iter().map(|v| v.trim()).map(|v| {
             if v.chars().next().map(char::is_numeric).unwrap_or(false) {
                 format_ident!("_{}", v)
             } else {
-                format_ident!("{}", v.to_camel_case())
+                format_ident!("{}", v.to_upper_camel_case())
             }
         });
 

@@ -1,5 +1,5 @@
 use crate::util::unpack_table_ref;
-use heck::{CamelCase, SnakeCase};
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{ForeignKeyAction, TableForeignKey};
@@ -31,7 +31,7 @@ impl Relation {
         let name = if self.self_referencing {
             format_ident!("SelfRef")
         } else {
-            format_ident!("{}", self.ref_table.to_camel_case())
+            format_ident!("{}", self.ref_table.to_upper_camel_case())
         };
         if self.num_suffix > 0 {
             format_ident!("{}{}", name, self.num_suffix)
@@ -140,11 +140,11 @@ impl Relation {
     }
 
     pub fn get_column_camel_case(&self) -> Ident {
-        format_ident!("{}", self.columns[0].to_camel_case())
+        format_ident!("{}", self.columns[0].to_upper_camel_case())
     }
 
     pub fn get_ref_column_camel_case(&self) -> Ident {
-        format_ident!("{}", self.ref_columns[0].to_camel_case())
+        format_ident!("{}", self.ref_columns[0].to_upper_camel_case())
     }
 
     pub fn get_foreign_key_action(action: &ForeignKeyAction) -> String {
