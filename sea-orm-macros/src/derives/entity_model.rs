@@ -88,8 +88,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
             for field in fields.named {
                 if let Some(ident) = &field.ident {
                     let original_field_name = trim_starting_raw_identifier(ident);
-                    let mut field_name =
-                        Ident::new(&original_field_name.to_upper_camel_case(), Span::call_site());
+                    let mut field_name = Ident::new(
+                        &original_field_name.to_upper_camel_case(),
+                        Span::call_site(),
+                    );
 
                     let mut nullable = false;
                     let mut default_value = None;
