@@ -1,5 +1,5 @@
 use crate::util::{escape_rust_keyword, trim_starting_raw_identifier};
-use heck::{CamelCase, SnakeCase};
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{
@@ -89,7 +89,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                 if let Some(ident) = &field.ident {
                     let original_field_name = trim_starting_raw_identifier(ident);
                     let mut field_name =
-                        Ident::new(&original_field_name.to_camel_case(), Span::call_site());
+                        Ident::new(&original_field_name.to_upper_camel_case(), Span::call_site());
 
                     let mut nullable = false;
                     let mut default_value = None;
@@ -101,7 +101,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut unique = false;
                     let mut sql_type = None;
                     let mut column_name = if original_field_name
-                        != original_field_name.to_camel_case().to_snake_case()
+                        != original_field_name.to_upper_camel_case().to_snake_case()
                     {
                         // `to_snake_case` was used to trim prefix and tailing underscore
                         Some(original_field_name.to_snake_case())

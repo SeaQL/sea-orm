@@ -1,7 +1,7 @@
 use crate::util::{
     escape_rust_keyword, field_not_ignored, format_field_ident, trim_starting_raw_identifier,
 };
-use heck::CamelCase;
+use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::{
@@ -44,7 +44,7 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
         .clone()
         .map(|field| {
             let ident = field.ident.as_ref().unwrap().to_string();
-            let ident = trim_starting_raw_identifier(ident).to_camel_case();
+            let ident = trim_starting_raw_identifier(ident).to_upper_camel_case();
             let ident = escape_rust_keyword(ident);
             let mut ident = format_ident!("{}", &ident);
             for attr in field.attrs.iter() {

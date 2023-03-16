@@ -1,4 +1,4 @@
-use heck::CamelCase;
+use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse, punctuated::Punctuated, token::Comma, Expr, Lit, LitInt, LitStr, Meta, UnOp};
@@ -29,7 +29,7 @@ impl ActiveEnum {
         let ident_span = input.ident.span();
         let ident = input.ident;
 
-        let mut enum_name = ident.to_string().to_camel_case();
+        let mut enum_name = ident.to_string().to_upper_camel_case();
         let mut rs_type = Err(Error::TT(quote_spanned! {
             ident_span => compile_error!("Missing macro attribute `rs_type`");
         }));
@@ -250,7 +250,7 @@ impl ActiveEnum {
                     if v.chars().next().map(char::is_numeric).unwrap_or(false) {
                         format_ident!("_{}", v)
                     } else {
-                        format_ident!("{}", v.to_camel_case())
+                        format_ident!("{}", v.to_upper_camel_case())
                     }
                 })
                 .collect();
