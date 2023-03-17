@@ -1,11 +1,16 @@
+//! Basic sea-orm example.
+
+#![deny(missing_docs)]
+
 use sea_orm::Database;
 
 mod entities;
-mod example_cake;
-mod example_cake_filling;
-mod example_filling;
-mod example_fruit;
+pub mod example_cake;
+pub mod example_cake_filling;
+pub mod example_filling;
+pub mod example_fruit;
 mod operation;
+pub mod sea_orm_active_enums;
 mod select;
 
 use entities::*;

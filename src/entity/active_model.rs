@@ -611,7 +611,7 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         <Self as ActiveModelTrait>::default()
     }
 
-    /// Will be called before saving
+    /// Will be called before `ActiveModel::insert`, `ActiveModel::update`, and `ActiveModel::save`
     async fn before_save<C>(self, db: &C, insert: bool) -> Result<Self, DbErr>
     where
         C: ConnectionTrait,
@@ -619,7 +619,7 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         Ok(self)
     }
 
-    /// Will be called after saving
+    /// Will be called after `ActiveModel::insert`, `ActiveModel::update`, and `ActiveModel::save`
     async fn after_save<C>(
         model: <Self::Entity as EntityTrait>::Model,
         db: &C,
@@ -631,7 +631,7 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         Ok(model)
     }
 
-    /// Will be called before deleting
+    /// Will be called before `ActiveModel::delete`
     async fn before_delete<C>(self, db: &C) -> Result<Self, DbErr>
     where
         C: ConnectionTrait,
@@ -639,7 +639,7 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         Ok(self)
     }
 
-    /// Will be called after deleting
+    /// Will be called after `ActiveModel::delete`
     async fn after_delete<C>(self, db: &C) -> Result<Self, DbErr>
     where
         C: ConnectionTrait,

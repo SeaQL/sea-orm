@@ -1,5 +1,8 @@
+//! The `cake_filling` entity.
+
 use sea_orm::entity::prelude::*;
 
+/// CakeFilling entity
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 pub struct Entity;
 
@@ -9,21 +12,30 @@ impl EntityName for Entity {
     }
 }
 
+/// CakeFilling model
 #[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
+    /// cake_id field
     pub cake_id: i32,
+    /// filling_id field
     pub filling_id: i32,
 }
 
+/// CakeFilling column
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
+    /// CakeId column
     CakeId,
+    /// FillingId column
     FillingId,
 }
 
+/// CakeFilling primary key
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
 pub enum PrimaryKey {
+    /// CakeId primary key
     CakeId,
+    /// FillingId primary key
     FillingId,
 }
 
@@ -35,9 +47,12 @@ impl PrimaryKeyTrait for PrimaryKey {
     }
 }
 
+/// CakeFilling relation
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
+    /// Cake relation
     Cake,
+    /// Filling relation
     Filling,
 }
 
