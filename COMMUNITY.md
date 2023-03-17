@@ -40,6 +40,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [SophyCore](https://github.com/FarDragi/SophyCore) | Main system that centralizes all rules, to be used by both the discord bot and the future site | DB: Postgres
 - [Fikabot](https://github.com/sousandrei/fikabot) | A slack bot to schedule coffee breaks (Fika in swedish) in slack channels | DB: MySQL
 - [remindee-bot](https://github.com/magnickolas/remindee-bot) | Telegram bot for managing reminders | DB: SQLite
+- [bulbbot-gw](https://github.com/TeamBulbbot/bulbbot-gw) | The gateway code for the Discord bot Bulbbot | DB: Postgres
 
 #### Crypto
 - [Oura Postgres Sink](https://github.com/dcSpark/oura-postgres-sink) | Sync a postgres database with the cardano blockchain using [Oura](https://github.com/txpipe/oura) | DB: Postgres
