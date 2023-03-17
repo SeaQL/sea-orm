@@ -143,19 +143,19 @@ impl Column {
                 ColumnType::Time => quote! { ColumnType::Time },
                 ColumnType::Date => quote! { ColumnType::Date },
                 ColumnType::Binary(BlobSize::Blob(None)) => {
-                    quote! { ColumnType::Binary(sea_orm::sea_query::BlobSize::Blob(None)) }
+                    quote! { ColumnType::Binary(BlobSize::Blob(None)) }
                 }
                 ColumnType::Binary(BlobSize::Blob(Some(s))) => {
-                    quote! { ColumnType::Binary(sea_orm::sea_query::BlobSize::Blob(Some(#s))) }
+                    quote! { ColumnType::Binary(BlobSize::Blob(Some(#s))) }
                 }
                 ColumnType::Binary(BlobSize::Tiny) => {
-                    quote! { ColumnType::Binary(sea_orm::sea_query::BlobSize::Tiny) }
+                    quote! { ColumnType::Binary(BlobSize::Tiny) }
                 }
                 ColumnType::Binary(BlobSize::Medium) => {
-                    quote! { ColumnType::Binary(sea_orm::sea_query::BlobSize::Medium) }
+                    quote! { ColumnType::Binary(BlobSize::Medium) }
                 }
                 ColumnType::Binary(BlobSize::Long) => {
-                    quote! { ColumnType::Binary(sea_orm::sea_query::BlobSize::Long) }
+                    quote! { ColumnType::Binary(BlobSize::Long) }
                 }
                 ColumnType::VarBinary(s) => {
                     quote! { ColumnType::VarBinary(#s) }
@@ -517,11 +517,11 @@ mod tests {
             "ColumnType::BigUnsigned.def()",
             "ColumnType::Float.def()",
             "ColumnType::Double.def()",
-            "ColumnType::Binary(sea_orm::sea_query::BlobSize::Blob(None)).def()",
-            "ColumnType::Binary(sea_orm::sea_query::BlobSize::Blob(Some(10u32))).def()",
-            "ColumnType::Binary(sea_orm::sea_query::BlobSize::Tiny).def()",
-            "ColumnType::Binary(sea_orm::sea_query::BlobSize::Medium).def()",
-            "ColumnType::Binary(sea_orm::sea_query::BlobSize::Long).def()",
+            "ColumnType::Binary(BlobSize::Blob(None)).def()",
+            "ColumnType::Binary(BlobSize::Blob(Some(10u32))).def()",
+            "ColumnType::Binary(BlobSize::Tiny).def()",
+            "ColumnType::Binary(BlobSize::Medium).def()",
+            "ColumnType::Binary(BlobSize::Long).def()",
             "ColumnType::VarBinary(10u32).def()",
             "ColumnType::Boolean.def()",
             "ColumnType::Date.def()",
