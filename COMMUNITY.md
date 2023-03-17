@@ -30,6 +30,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 #### Game
 - [thrpg](https://github.com/thrpg/thrpg) | Touhou Project's secondary creative games | DB: Postgres
 - [Ceobe Canteen Serve](https://github.com/Enraged-Dun-Cookie-Development-Team/Ceobe-Canteen-Serve) | A tool based on Arknights mobile game, using axum as web framework | DB: MySQL
+- [KongYing Tavern Backend](https://github.com/kongying-tavern/genshin-cloud-rust) | The community map navigation tool for Genshin Impact | DB: Postgres
 
 #### Social
 - [aeroFans](https://github.com/naryand/aerofans) | Full stack forum-like social media platform in Rust and WebAssembly | DB: Postgres
