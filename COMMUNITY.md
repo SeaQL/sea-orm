@@ -31,8 +31,8 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 #### Game
 - [Ceobe Canteen Serve](https://github.com/Enraged-Dun-Cookie-Development-Team/Ceobe-Canteen-Serve) | A tool based on Arknights mobile game, using axum as web framework | DB: MySQL
 - [KongYing Tavern Backend](https://github.com/kongying-tavern/genshin-cloud-rust) | The community map navigation tool for Genshin Impact | DB: Postgres
-- [thrpg](https://github.com/thrpg/thrpg) | Touhou Project's secondary creative games | DB: Postgres
 - [Pocket Relay](https://github.com/PocketRelay/Server) | Mass Effect 3 multiplayer private server emulator | DB: MySQL, SQLite
+- [thrpg](https://github.com/thrpg/thrpg) | Touhou Project's secondary creative games | DB: Postgres
 
 #### Social
 - [aeroFans](https://github.com/naryand/aerofans) | Full stack forum-like social media platform in Rust and WebAssembly | DB: Postgres
@@ -104,8 +104,8 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [http-api-rs](https://github.com/daniel-samson/http-api-rs) | Template project for creating REST API's in rust with swagger ui
 - [Rust Async-GraphQL Example: Caster API](https://github.com/bkonkle/rust-example-caster-api) | A demo GraphQL API using Tokio, Warp, async-graphql, and SeaORM | DB: Postgres
 - [rust-juniper-playground](https://github.com/Yama-Tomo/rust-juniper-playground) | juniper with SeaORM example | DB: MySQL
-- [service_auth](https://github.com/shorii/service_auth) | A simple JWT authentication web-application | DB: Postgres
 - [seichi-portal-backend](https://github.com/GiganticMinecraft/seichi-portal-backend) | Backend server(REST API) of [seichi-portal](https://github.com/GiganticMinecraft/seichi-portal) | DB: MySQL
+- [service_auth](https://github.com/shorii/service_auth) | A simple JWT authentication web-application | DB: Postgres
 
 ## Learning Resources
 
