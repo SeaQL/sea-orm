@@ -105,6 +105,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Rust Async-GraphQL Example: Caster API](https://github.com/bkonkle/rust-example-caster-api) | A demo GraphQL API using Tokio, Warp, async-graphql, and SeaORM | DB: Postgres
 - [rust-juniper-playground](https://github.com/Yama-Tomo/rust-juniper-playground) | juniper with SeaORM example | DB: MySQL
 - [service_auth](https://github.com/shorii/service_auth) | A simple JWT authentication web-application | DB: Postgres
+- [seichi-portal-backend](https://github.com/GiganticMinecraft/seichi-portal-backend) | Backend server(REST API) of [seichi-portal](https://github.com/GiganticMinecraft/seichi-portal) | DB: MySQL
 
 ## Learning Resources
 
