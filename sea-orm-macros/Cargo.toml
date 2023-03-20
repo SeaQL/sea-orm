@@ -19,7 +19,7 @@ proc-macro = true
 
 [dependencies]
 bae = { version = "0.1", default-features = false }
-syn = { version = "1", default-features = false }
+syn = { version = "1", default-features = false, features = ["parsing", "proc-macro", "derive", "printing"] }
 quote = { version = "1", default-features = false }
 heck = { version = "0.4", default-features = false }
 proc-macro2 = { version = "1", default-features = false }
