@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.11.2 - Pending
+
+### Enhancements
+
+* Enable required `syn` features https://github.com/SeaQL/sea-orm/pull/1556
+* Re-export `sea_query::BlobSize` in `sea_orm::entity::prelude` https://github.com/SeaQL/sea-orm/pull/1548
+
 ## 0.11.1 - 2023-03-10
 
 ### Bug Fixes
