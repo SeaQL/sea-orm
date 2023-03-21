@@ -2,7 +2,7 @@ mod migrator;
 use migrator::Migrator;
 
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DbBackend, DbErr, Statement};
-use sea_orm_migration::prelude::*;
+use sea_orm_migration::{migrator::MigrationStatus, prelude::*};
 
 #[async_std::test]
 async fn main() -> Result<(), DbErr> {
@@ -92,6 +92,14 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
     println!("\nMigrator::up");
     Migrator::up(db, Some(1)).await?;
 
+    println!("\nMigrator::get_pending_migrations");
+    let migrations = Migrator::get_pending_migrations(db).await?;
+    assert_eq!(migrations.len(), 5);
+
+    let migration = migrations.get(0).unwrap();
+    assert_eq!(migration.name(), "m20220118_000002_create_fruit_table");
+    assert_eq!(migration.status(), MigrationStatus::Pending);
+
     assert!(manager.has_table("cake").await?);
     assert!(!manager.has_table("fruit").await?);
 
@@ -136,6 +144,14 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
 
     println!("\nMigrator::up");
     Migrator::up(db, None).await?;
+
+    println!("\nMigrator::get_applied_migrations");
+    let migrations = Migrator::get_applied_migrations(db).await?;
+    assert_eq!(migrations.len(), 6);
+
+    let migration = migrations.get(0).unwrap();
+    assert_eq!(migration.name(), "m20220118_000001_create_cake_table");
+    assert_eq!(migration.status(), MigrationStatus::Applied);
 
     println!("\nMigrator::status");
     Migrator::status(db).await?;

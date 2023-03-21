@@ -20,6 +20,8 @@ if [ -d ./build-tools ]; then
         echo "cargo +nightly fmt --manifest-path ${example} --all"
         cargo +nightly fmt --manifest-path "${example}" --all
     done
+
+    slmd COMMUNITY.md -oi
 else
     echo "Please execute this script from the repository root."
 fi
