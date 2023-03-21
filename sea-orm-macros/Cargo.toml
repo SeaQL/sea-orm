@@ -23,6 +23,7 @@ syn = { version = "1", default-features = false, features = ["parsing", "proc-ma
 quote = { version = "1", default-features = false }
 heck = { version = "0.4", default-features = false }
 proc-macro2 = { version = "1", default-features = false }
+darling = { version = "0.14" }
 
 [dev-dependencies]
 sea-orm = { path = "../", features = ["macros"] }
