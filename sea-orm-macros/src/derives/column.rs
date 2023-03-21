@@ -1,7 +1,7 @@
 use heck::{ToLowerCamelCase, ToSnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Fields, Lit, Meta, Variant};
+use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Fields, Lit, Meta, Variant, Expr};
 
 /// Derive a Column name for an enum type
 pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
@@ -28,11 +28,7 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
         .map(|v| {
             let mut column_name = v.ident.to_string().to_snake_case();
             for attr in v.attrs.iter() {
-                if let Some(ident) = attr.path.get_ident() {
-                    if ident != "sea_orm" {
-                        continue;
-                    }
-                } else {
+                if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
                 if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
@@ -41,13 +37,17 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
                         if let Meta::NameValue(nv) = meta {
                             if let Some(name) = nv.path.get_ident() {
                                 if name == "column_name" {
-                                    if let Lit::Str(litstr) = &nv.lit {
-                                        column_name = litstr.value();
+                                    if let Expr::Lit(exprlit) = &nv.value {
+                                        if let Lit::Str(litstr) = &exprlit.lit {
+                                            column_name = litstr.value();
+                                        }
                                     }
                                 }
                                 if name == "table_name" {
-                                    if let Lit::Str(litstr) = &nv.lit {
-                                        column_name = litstr.value();
+                                    if let Expr::Lit(exprlit) = &nv.value {
+                                        if let Lit::Str(litstr) = &exprlit.lit {
+                                            column_name = litstr.value();
+                                        }
                                     }
                                 }
                             }

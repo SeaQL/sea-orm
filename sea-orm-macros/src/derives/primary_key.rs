@@ -1,7 +1,7 @@
 use heck::ToSnakeCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Fields, Lit, Meta, Variant};
+use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Fields, Lit, Meta, Variant, Expr};
 
 /// Method to derive a Primary Key for a Model using the [PrimaryKeyTrait](sea_orm::PrimaryKeyTrait)
 pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenStream> {
@@ -34,11 +34,7 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
         .map(|v| {
             let mut column_name = v.ident.to_string().to_snake_case();
             for attr in v.attrs.iter() {
-                if let Some(ident) = attr.path.get_ident() {
-                    if ident != "sea_orm" {
-                        continue;
-                    }
-                } else {
+                if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
                 if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
@@ -47,8 +43,10 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
                         if let Meta::NameValue(nv) = meta {
                             if let Some(name) = nv.path.get_ident() {
                                 if name == "column_name" {
-                                    if let Lit::Str(litstr) = &nv.lit {
-                                        column_name = litstr.value();
+                                    if let Expr::Lit(exprlit) = &nv.value {
+                                        if let Lit::Str(litstr) = &exprlit.lit {
+                                            column_name = litstr.value();
+                                        }
                                     }
                                 }
                             }

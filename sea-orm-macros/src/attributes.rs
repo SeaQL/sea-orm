@@ -1,5 +1,5 @@
 pub mod derive_attr {
-    use bae::FromAttributes;
+    use bae2::FromAttributes;
 
     /// Attributes for Models and ActiveModels
     #[derive(Default, FromAttributes)]
@@ -16,7 +16,7 @@ pub mod derive_attr {
 }
 
 pub mod field_attr {
-    use bae::FromAttributes;
+    use bae2::FromAttributes;
 
     /// Operations for Models and ActiveModels
     #[derive(Default, FromAttributes)]

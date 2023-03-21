@@ -6,7 +6,7 @@ use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use std::iter::FromIterator;
-use syn::{punctuated::Punctuated, token::Comma, Ident, Lit, Meta};
+use syn::{punctuated::Punctuated, token::Comma, Ident, Lit, Meta, Expr};
 
 enum Error {
     InputNotStruct,
@@ -51,11 +51,7 @@ impl DeriveModel {
                 let ident = escape_rust_keyword(ident);
                 let mut ident = format_ident!("{}", &ident);
                 for attr in field.attrs.iter() {
-                    if let Some(ident) = attr.path.get_ident() {
-                        if ident != "sea_orm" {
-                            continue;
-                        }
-                    } else {
+                    if !attr.path().is_ident("sea_orm") {
                         continue;
                     }
                     if let Ok(list) =
@@ -65,8 +61,10 @@ impl DeriveModel {
                             if let Meta::NameValue(nv) = meta {
                                 if let Some(name) = nv.path.get_ident() {
                                     if name == "enum_name" {
-                                        if let Lit::Str(litstr) = &nv.lit {
-                                            ident = syn::parse_str(&litstr.value()).unwrap();
+                                        if let Expr::Lit(exprlit) = &nv.value {
+                                            if let Lit::Str(litstr) = &exprlit.lit {
+                                                ident = syn::parse_str(&litstr.value()).unwrap();
+                                            }
                                         }
                                     }
                                 }

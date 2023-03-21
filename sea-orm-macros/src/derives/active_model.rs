@@ -4,11 +4,7 @@ use crate::util::{
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
-use syn::{
-    punctuated::{IntoIter, Punctuated},
-    token::Comma,
-    Data, DataStruct, Field, Fields, Lit, Meta, Type,
-};
+use syn::{punctuated::{IntoIter, Punctuated}, token::Comma, Data, DataStruct, Field, Fields, Lit, Meta, Type, Expr};
 
 /// Method to derive an [ActiveModel](sea_orm::ActiveModel)
 pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<TokenStream> {
@@ -48,11 +44,7 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
             let ident = escape_rust_keyword(ident);
             let mut ident = format_ident!("{}", &ident);
             for attr in field.attrs.iter() {
-                if let Some(ident) = attr.path.get_ident() {
-                    if ident != "sea_orm" {
-                        continue;
-                    }
-                } else {
+                if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
                 if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
@@ -61,8 +53,10 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
                         if let Meta::NameValue(nv) = meta {
                             if let Some(name) = nv.path.get_ident() {
                                 if name == "enum_name" {
-                                    if let Lit::Str(litstr) = &nv.lit {
-                                        ident = syn::parse_str(&litstr.value()).unwrap();
+                                    if let Expr::Lit(exprlit) = &nv.value {
+                                        if let Lit::Str(litstr) = &exprlit.lit {
+                                            ident = syn::parse_str(&litstr.value()).unwrap();
+                                        }
                                     }
                                 }
                             }
