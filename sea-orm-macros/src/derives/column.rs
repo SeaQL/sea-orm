@@ -1,7 +1,7 @@
 use heck::{ToLowerCamelCase, ToSnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{Data, DataEnum, Fields, LitStr, Variant};
+use syn::{Data, DataEnum, Expr, Fields, LitStr, Variant};
 
 /// Derive a Column name for an enum type
 pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
@@ -39,6 +39,11 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
                     } else if meta.path.is_ident("table_name") {
                         let litstr: LitStr = meta.value()?.parse()?;
                         column_name = litstr.value();
+                    } else {
+                        // Reads the value expression to advance the parse stream.
+                        // Some parameters, such as `primary_key`, do not have any value,
+                        // so ignoring an error occurred here.
+                        let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
                     }
 
                     Ok(())

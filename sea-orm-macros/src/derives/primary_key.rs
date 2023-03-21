@@ -1,7 +1,7 @@
 use heck::ToSnakeCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{Data, DataEnum, Fields, LitStr, Variant};
+use syn::{Data, DataEnum, Expr, Fields, LitStr, Variant};
 
 /// Method to derive a Primary Key for a Model using the [PrimaryKeyTrait](sea_orm::PrimaryKeyTrait)
 pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenStream> {
@@ -41,6 +41,11 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
                 attr.parse_nested_meta(|meta| {
                     if meta.path.is_ident("column_name") {
                         column_name = meta.value()?.parse::<LitStr>()?.value();
+                    } else {
+                        // Reads the value expression to advance the parse stream.
+                        // Some parameters, such as `primary_key`, do not have any value,
+                        // so ignoring an error occurred here.
+                        let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
                     }
 
                     Ok(())

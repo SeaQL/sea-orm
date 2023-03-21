@@ -66,7 +66,7 @@ impl ActiveEnum {
                 } else {
                     return Err(meta.error(format!(
                         "Unknown attribute parameter found: {:?}",
-                        &meta.path
+                        meta.path.get_ident()
                     )));
                 }
 
@@ -99,6 +99,11 @@ impl ActiveEnum {
                     } else if meta.path.is_ident("num_value") {
                         is_int = true;
                         num_value = Some(meta.value()?.parse::<LitInt>()?);
+                    } else {
+                        return Err(meta.error(format!(
+                            "Unknown attribute parameter found: {:?}",
+                            meta.path.get_ident()
+                        )));
                     }
 
                     Ok(())

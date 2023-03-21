@@ -3,8 +3,8 @@ use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{
-    punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, Fields, Lit, LitStr,
-    Type,
+    punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, Expr, Fields, Lit,
+    LitStr, Type,
 };
 
 /// Method to derive an Model
@@ -25,6 +25,11 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     schema_name = quote! { Some(#name) };
                 } else if meta.path.is_ident("table_iden") {
                     table_iden = true;
+                } else {
+                    // Reads the value expression to advance the parse stream.
+                    // Some parameters, such as `primary_key`, do not have any value,
+                    // so ignoring an error occurred here.
+                    let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
                 }
 
                 Ok(())
@@ -177,6 +182,11 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 indexed = true;
                             } else if meta.path.is_ident("unique") {
                                 unique = true;
+                            } else {
+                                // Reads the value expression to advance the parse stream.
+                                // Some parameters, such as `primary_key`, do not have any value,
+                                // so ignoring an error occurred here.
+                                let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
                             }
 
                             Ok(())
