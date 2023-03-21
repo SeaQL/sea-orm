@@ -1,197 +1,163 @@
-use crate::{
-    attributes::derive_attr,
-    util::{escape_rust_keyword, field_not_ignored, trim_starting_raw_identifier},
-};
+use crate::util::{escape_rust_keyword, trim_starting_raw_identifier};
+use darling::{ast, FromDeriveInput, FromField};
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, quote_spanned};
-use std::iter::FromIterator;
-use syn::{punctuated::Punctuated, token::Comma, Ident, Lit, Meta};
+use quote::{format_ident, quote, ToTokens};
 
-enum Error {
-    InputNotStruct,
-    Syn(syn::Error),
-}
-
-struct DeriveModel {
-    column_idents: Vec<syn::Ident>,
-    entity_ident: syn::Ident,
-    field_idents: Vec<syn::Ident>,
+#[derive(Debug, FromDeriveInput)]
+#[darling(attributes(sea_orm), supports(struct_named), allow_unknown_fields)]
+pub struct DeriveModel {
     ident: syn::Ident,
-    ignore_attrs: Vec<bool>,
+    #[darling(default = "default_entity_ident")]
+    entity: syn::Ident,
+    data: ast::Data<(), DeriveModelField>,
 }
 
-impl DeriveModel {
-    fn new(input: syn::DeriveInput) -> Result<Self, Error> {
-        let fields = match input.data {
-            syn::Data::Struct(syn::DataStruct {
-                fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
-                ..
-            }) => named,
-            _ => return Err(Error::InputNotStruct),
-        };
+#[derive(Debug, FromField)]
+#[darling(attributes(sea_orm), allow_unknown_fields)]
+struct DeriveModelField {
+    ident: Option<syn::Ident>,
+    enum_name: Option<syn::Ident>,
+    #[darling(default)]
+    ignore: bool,
+}
 
-        let sea_attr = derive_attr::SeaOrm::try_from_attributes(&input.attrs)
-            .map_err(Error::Syn)?
-            .unwrap_or_default();
+fn default_entity_ident() -> syn::Ident {
+    format_ident!("Entity")
+}
 
-        let ident = input.ident;
-        let entity_ident = sea_attr.entity.unwrap_or_else(|| format_ident!("Entity"));
+impl ToTokens for DeriveModel {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let DeriveModel {
+            ident,
+            data,
+            entity,
+        } = self;
 
-        let field_idents = fields
-            .iter()
-            .map(|field| field.ident.as_ref().unwrap().clone())
+        let fields: Vec<_> = data
+            .as_ref()
+            .take_struct()
+            .expect("Should never be enum")
+            .fields
+            .into_iter()
             .collect();
 
-        let column_idents = fields
+        let field_idents: Vec<_> = fields
             .iter()
-            .map(|field| {
-                let ident = field.ident.as_ref().unwrap().to_string();
-                let ident = trim_starting_raw_identifier(ident).to_upper_camel_case();
-                let ident = escape_rust_keyword(ident);
-                let mut ident = format_ident!("{}", &ident);
-                for attr in field.attrs.iter() {
-                    if let Some(ident) = attr.path.get_ident() {
-                        if ident != "sea_orm" {
-                            continue;
+            .map(|field| field.ident.as_ref().unwrap())
+            .collect();
+        let field_enum_names: Vec<_> = fields
+            .iter()
+            .map(|field| match field.enum_name.as_ref() {
+                Some(enum_name) => enum_name.clone(),
+                None => {
+                    let ident = field.ident.as_ref().unwrap().to_string();
+                    let ident = trim_starting_raw_identifier(ident).to_upper_camel_case();
+                    let ident = escape_rust_keyword(ident);
+                    format_ident!("{}", &ident)
+                }
+            })
+            .collect();
+        let field_ignores: Vec<_> = fields.iter().map(|field| field.ignore).collect();
+
+        let field_values: Vec<_> = field_enum_names.iter()
+                .zip(&field_ignores)
+                .map(|(enum_name, ignore)| {
+                    if *ignore {
+                        quote! {
+                            Default::default()
                         }
                     } else {
-                        continue;
-                    }
-                    if let Ok(list) =
-                        attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                    {
-                        for meta in list.iter() {
-                            if let Meta::NameValue(nv) = meta {
-                                if let Some(name) = nv.path.get_ident() {
-                                    if name == "enum_name" {
-                                        if let Lit::Str(litstr) = &nv.lit {
-                                            ident = syn::parse_str(&litstr.value()).unwrap();
-                                        }
-                                    }
-                                }
-                            }
+                        quote! {
+                            row.try_get(pre, sea_orm::IdenStatic::as_str(&<<Self as sea_orm::ModelTrait>::Entity as sea_orm::entity::EntityTrait>::Column::#enum_name).into())?
                         }
                     }
-                }
-                ident
-            })
-            .collect();
+                })
+                .collect();
 
-        let ignore_attrs = fields
-            .iter()
-            .map(|field| !field_not_ignored(field))
-            .collect();
-
-        Ok(DeriveModel {
-            column_idents,
-            entity_ident,
-            field_idents,
-            ident,
-            ignore_attrs,
-        })
-    }
-
-    fn expand(&self) -> syn::Result<TokenStream> {
-        let expanded_impl_from_query_result = self.impl_from_query_result();
-        let expanded_impl_model_trait = self.impl_model_trait();
-
-        Ok(TokenStream::from_iter([
-            expanded_impl_from_query_result,
-            expanded_impl_model_trait,
-        ]))
-    }
-
-    fn impl_from_query_result(&self) -> TokenStream {
-        let ident = &self.ident;
-        let field_idents = &self.field_idents;
-        let column_idents = &self.column_idents;
-        let field_values: Vec<TokenStream> = column_idents
-            .iter()
-            .zip(&self.ignore_attrs)
-            .map(|(column_ident, ignore)| {
-                if *ignore {
-                    quote! {
-                        Default::default()
-                    }
-                } else {
-                    quote! {
-                        row.try_get(pre, sea_orm::IdenStatic::as_str(&<<Self as sea_orm::ModelTrait>::Entity as sea_orm::entity::EntityTrait>::Column::#column_ident).into())?
-                    }
-                }
-            })
-            .collect();
-
-        quote!(
+        tokens.extend([quote!(
             #[automatically_derived]
             impl sea_orm::FromQueryResult for #ident {
                 fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
                     Ok(Self {
-                        #(#field_idents: #field_values),*
+                        #(#field_idents: #field_values,)*
                     })
                 }
             }
-        )
-    }
+        )]);
 
-    fn impl_model_trait<'a>(&'a self) -> TokenStream {
-        let ident = &self.ident;
-        let entity_ident = &self.entity_ident;
-        let ignore_attrs = &self.ignore_attrs;
-        let ignore = |(ident, ignore): (&'a Ident, &bool)| -> Option<&'a Ident> {
-            if *ignore {
-                None
-            } else {
-                Some(ident)
-            }
-        };
-        let field_idents: Vec<&Ident> = self
-            .field_idents
+        let field_idents: Vec<_> = field_idents
             .iter()
-            .zip(ignore_attrs)
-            .filter_map(ignore)
+            .zip(&field_ignores)
+            .filter_map(|(ident, ignore)| if *ignore { None } else { Some(ident) })
             .collect();
-        let column_idents: Vec<&Ident> = self
-            .column_idents
+        let field_enum_names: Vec<_> = field_enum_names
             .iter()
-            .zip(ignore_attrs)
-            .filter_map(ignore)
+            .zip(&field_ignores)
+            .filter_map(|(ident, ignore)| if *ignore { None } else { Some(ident) })
             .collect();
 
         let missing_field_msg = format!("field does not exist on {ident}");
 
-        quote!(
+        tokens.extend([quote!(
             #[automatically_derived]
             impl sea_orm::ModelTrait for #ident {
-                type Entity = #entity_ident;
+                type Entity = #entity;
 
                 fn get(&self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column) -> sea_orm::Value {
                     match c {
-                        #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_idents => self.#field_idents.clone().into(),)*
+                        #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#field_enum_names => self.#field_idents.clone().into(),)*
                         _ => panic!(#missing_field_msg),
                     }
                 }
 
                 fn set(&mut self, c: <Self::Entity as sea_orm::entity::EntityTrait>::Column, v: sea_orm::Value) {
                     match c {
-                        #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#column_idents => self.#field_idents = v.unwrap(),)*
+                        #(<Self::Entity as sea_orm::entity::EntityTrait>::Column::#field_enum_names => self.#field_idents = v.unwrap(),)*
                         _ => panic!(#missing_field_msg),
                     }
                 }
             }
-        )
+        )]);
     }
 }
 
 /// Method to derive an ActiveModel
 pub fn expand_derive_model(input: syn::DeriveInput) -> syn::Result<TokenStream> {
-    let ident_span = input.ident.span();
+    let token = DeriveModel::from_derive_input(&input)
+        .map(|derive_model| quote!(#derive_model))
+        .unwrap();
+    Ok(token)
+}
 
-    match DeriveModel::new(input) {
-        Ok(model) => model.expand(),
-        Err(Error::InputNotStruct) => Ok(quote_spanned! {
-            ident_span => compile_error!("you can only derive DeriveModel on structs");
-        }),
-        Err(Error::Syn(err)) => Err(err),
-    }
+#[test]
+fn parse_derive_model() {
+    let input = r#"
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "hello")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            #[sea_orm(enum_name = "One1")]
+            pub one: i32,
+            pub two: i32,
+            #[sea_orm(enum_name = "Three3")]
+            pub three: i32,
+            #[sea_orm(ignore)]
+            pub cake_id: Option<i32>,
+        }
+    "#;
+
+    let parsed = syn::parse_str(input).unwrap();
+    let derive_model = DeriveModel::from_derive_input(&parsed).unwrap();
+    let tokens = quote!(#derive_model);
+
+    println!("INPUT:\n");
+    println!("{input:#?}\n");
+    println!("PARSED AS:\n");
+    println!("{derive_model:#?}\n");
+    println!("EMITS:\n");
+    println!("{tokens}\n");
+
+    // panic!() // UNCOMMENT this to force it panic and print above to console
 }
