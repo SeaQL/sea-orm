@@ -1,7 +1,7 @@
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse, punctuated::Punctuated, token::Comma, Expr, Lit, LitInt, LitStr, Meta, UnOp};
+use syn::{parse, Expr, Lit, LitInt, LitStr, UnOp};
 
 enum Error {
     InputNotEnum,
@@ -91,30 +91,19 @@ impl ActiveEnum {
                 if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
-                if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                {
-                    for meta in list {
-                        if let Meta::NameValue(nv) = meta {
-                            if let Some(name) = nv.path.get_ident() {
-                                if name == "string_value" {
-                                    if let Expr::Lit(exprlit) = nv.value {
-                                        if let Lit::Str(lit) = exprlit.lit {
-                                            is_string = true;
-                                            string_value = Some(lit);
-                                        }
-                                    }
-                                } else if name == "num_value" {
-                                    if let Expr::Lit(exprlit) = nv.value {
-                                        if let Lit::Int(lit) = exprlit.lit {
-                                            is_int = true;
-                                            num_value = Some(lit);
-                                        }
-                                    }
-                                }
-                            }
-                        }
+
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("string_value") {
+                        is_string = true;
+                        string_value = Some(meta.value()?.parse::<LitStr>()?);
+                    } else if meta.path.is_ident("num_value") {
+                        is_int = true;
+                        num_value = Some(meta.value()?.parse::<LitInt>()?);
                     }
-                }
+
+                    Ok(())
+                })
+                .map_err(Error::Syn)?;
             }
 
             if is_string && is_int {

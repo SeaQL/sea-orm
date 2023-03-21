@@ -1,7 +1,7 @@
 use heck::ToSnakeCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Expr, Fields, Lit, Meta, Variant};
+use syn::{Data, DataEnum, Fields, LitStr, Variant};
 
 /// Method to derive a Primary Key for a Model using the [PrimaryKeyTrait](sea_orm::PrimaryKeyTrait)
 pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenStream> {
@@ -37,26 +37,18 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
                 if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
-                if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                {
-                    for meta in list.iter() {
-                        if let Meta::NameValue(nv) = meta {
-                            if let Some(name) = nv.path.get_ident() {
-                                if name == "column_name" {
-                                    if let Expr::Lit(exprlit) = &nv.value {
-                                        if let Lit::Str(litstr) = &exprlit.lit {
-                                            column_name = litstr.value();
-                                        }
-                                    }
-                                }
-                            }
-                        }
+
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("column_name") {
+                        column_name = meta.value()?.parse::<LitStr>()?.value();
                     }
-                }
+
+                    Ok(())
+                })?;
             }
-            quote! { #column_name }
+            Ok::<TokenStream, syn::Error>(quote! { #column_name })
         })
-        .collect();
+        .collect::<Result<_, _>>()?;
 
     Ok(quote!(
         #[automatically_derived]

@@ -6,7 +6,7 @@ use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use std::iter::FromIterator;
-use syn::{punctuated::Punctuated, token::Comma, Expr, Ident, Lit, Meta};
+use syn::{Expr, Ident, LitStr};
 
 enum Error {
     InputNotStruct,
@@ -54,27 +54,25 @@ impl DeriveModel {
                     if !attr.path().is_ident("sea_orm") {
                         continue;
                     }
-                    if let Ok(list) =
-                        attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                    {
-                        for meta in list.iter() {
-                            if let Meta::NameValue(nv) = meta {
-                                if let Some(name) = nv.path.get_ident() {
-                                    if name == "enum_name" {
-                                        if let Expr::Lit(exprlit) = &nv.value {
-                                            if let Lit::Str(litstr) = &exprlit.lit {
-                                                ident = syn::parse_str(&litstr.value()).unwrap();
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+
+                    attr.parse_nested_meta(|meta| {
+                        if meta.path.is_ident("enum_name") {
+                            ident =
+                                syn::parse_str(&meta.value()?.parse::<LitStr>()?.value()).unwrap();
+                        } else {
+                            // Reads the value expression to advance the parse stream.
+                            // Some parameters, such as `primary_key`, do not have any value,
+                            // so ignoring an error occurred here.
+                            let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
                         }
-                    }
+
+                        Ok(())
+                    })
+                    .map_err(Error::Syn)?;
                 }
-                ident
+                Ok(ident)
             })
-            .collect();
+            .collect::<Result<_, _>>()?;
 
         let ignore_attrs = fields
             .iter()

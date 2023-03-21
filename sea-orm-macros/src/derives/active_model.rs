@@ -4,11 +4,7 @@ use crate::util::{
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
-use syn::{
-    punctuated::{IntoIter, Punctuated},
-    token::Comma,
-    Data, DataStruct, Expr, Field, Fields, Lit, Meta, Type,
-};
+use syn::{punctuated::IntoIter, Data, DataStruct, Expr, Field, Fields, LitStr, Type};
 
 /// Method to derive an [ActiveModel](sea_orm::ActiveModel)
 pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<TokenStream> {
@@ -51,26 +47,24 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
                 if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
-                if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                {
-                    for meta in list.iter() {
-                        if let Meta::NameValue(nv) = meta {
-                            if let Some(name) = nv.path.get_ident() {
-                                if name == "enum_name" {
-                                    if let Expr::Lit(exprlit) = &nv.value {
-                                        if let Lit::Str(litstr) = &exprlit.lit {
-                                            ident = syn::parse_str(&litstr.value()).unwrap();
-                                        }
-                                    }
-                                }
-                            }
-                        }
+
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("enum_name") {
+                        let litstr: LitStr = meta.value()?.parse()?;
+                        ident = syn::parse_str(&litstr.value()).unwrap();
+                    } else {
+                        // Reads the value expression to advance the parse stream.
+                        // Some parameters, such as `primary_key`, do not have any value,
+                        // so ignoring an error occurred here.
+                        let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
                     }
-                }
+
+                    Ok(())
+                })?;
             }
-            ident
+            Ok::<Ident, syn::Error>(ident)
         })
-        .collect();
+        .collect::<Result<_, _>>()?;
 
     let ty: Vec<Type> = fields.into_iter().map(|Field { ty, .. }| ty).collect();
 

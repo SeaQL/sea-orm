@@ -1,5 +1,5 @@
 use quote::format_ident;
-use syn::{punctuated::Punctuated, token::Comma, Field, Ident, Meta};
+use syn::{Expr, Field, Ident};
 
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
     for attr in field.attrs.iter() {
@@ -7,16 +7,23 @@ pub(crate) fn field_not_ignored(field: &Field) -> bool {
             continue;
         }
 
-        if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
-            for meta in list.iter() {
-                if let Meta::Path(path) = meta {
-                    if let Some(name) = path.get_ident() {
-                        if name == "ignore" {
-                            return false;
-                        }
-                    }
-                }
+        let mut ignored = false;
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("ignore") {
+                ignored = true;
+            } else {
+                // Reads the value expression to advance the parse stream.
+                // Some parameters, such as `primary_key`, do not have any value,
+                // so ignoring an error occurred here.
+                let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
             }
+
+            Ok(())
+        })
+        .ok();
+
+        if ignored {
+            return false;
         }
     }
     true
