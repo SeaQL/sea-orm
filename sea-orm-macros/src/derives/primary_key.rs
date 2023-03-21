@@ -1,7 +1,7 @@
 use heck::ToSnakeCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Fields, Lit, Meta, Variant, Expr};
+use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Expr, Fields, Lit, Meta, Variant};
 
 /// Method to derive a Primary Key for a Model using the [PrimaryKeyTrait](sea_orm::PrimaryKeyTrait)
 pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenStream> {

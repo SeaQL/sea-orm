@@ -4,7 +4,11 @@ use crate::util::{
 use heck::ToUpperCamelCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
-use syn::{punctuated::{IntoIter, Punctuated}, token::Comma, Data, DataStruct, Field, Fields, Lit, Meta, Type, Expr};
+use syn::{
+    punctuated::{IntoIter, Punctuated},
+    token::Comma,
+    Data, DataStruct, Expr, Field, Fields, Lit, Meta, Type,
+};
 
 /// Method to derive an [ActiveModel](sea_orm::ActiveModel)
 pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<TokenStream> {

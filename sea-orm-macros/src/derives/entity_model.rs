@@ -2,7 +2,10 @@ use crate::util::{escape_rust_keyword, trim_starting_raw_identifier};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{parse::Error, punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, Fields, Lit, LitStr, Meta, Type, Expr};
+use syn::{
+    parse::Error, punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, Expr,
+    Fields, Lit, LitStr, Meta, Type,
+};
 
 /// Method to derive an Model
 pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {

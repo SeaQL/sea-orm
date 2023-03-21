@@ -6,7 +6,7 @@ use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use std::iter::FromIterator;
-use syn::{punctuated::Punctuated, token::Comma, Ident, Lit, Meta, Expr};
+use syn::{punctuated::Punctuated, token::Comma, Expr, Ident, Lit, Meta};
 
 enum Error {
     InputNotStruct,

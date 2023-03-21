@@ -58,11 +58,11 @@ impl ActiveEnum {
                                         match s.as_ref() {
                                             "Enum" => {
                                                 db_type = Ok(quote! {
-                                                Enum {
-                                                    name: Self::name(),
-                                                    variants: Self::iden_values(),
-                                                }
-                                            })
+                                                    Enum {
+                                                        name: Self::name(),
+                                                        variants: Self::iden_values(),
+                                                    }
+                                                })
                                             }
                                             _ => {
                                                 db_type = syn::parse_str::<TokenStream>(&s)

@@ -1,7 +1,7 @@
 use heck::{ToLowerCamelCase, ToSnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Fields, Lit, Meta, Variant, Expr};
+use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Expr, Fields, Lit, Meta, Variant};
 
 /// Derive a Column name for an enum type
 pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream> {
