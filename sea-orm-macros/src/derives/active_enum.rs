@@ -40,48 +40,39 @@ impl ActiveEnum {
             if !attr.path().is_ident("sea_orm") {
                 continue;
             }
-            if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
-                for meta in list.iter() {
-                    if let Meta::NameValue(nv) = meta {
-                        if let Some(name) = nv.path.get_ident() {
-                            if name == "rs_type" {
-                                if let Expr::Lit(exprlit) = &nv.value {
-                                    if let Lit::Str(litstr) = &exprlit.lit {
-                                        rs_type = syn::parse_str::<TokenStream>(&litstr.value())
-                                            .map_err(Error::Syn);
-                                    }
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("rs_type") {
+                    let litstr: LitStr = meta.value()?.parse()?;
+                    rs_type = syn::parse_str::<TokenStream>(&litstr.value()).map_err(Error::Syn);
+                } else if meta.path.is_ident("db_type") {
+                    let litstr: LitStr = meta.value()?.parse()?;
+                    let s = litstr.value();
+                    match s.as_ref() {
+                        "Enum" => {
+                            db_type = Ok(quote! {
+                                Enum {
+                                    name: Self::name(),
+                                    variants: Self::iden_values(),
                                 }
-                            } else if name == "db_type" {
-                                if let Expr::Lit(exprlit) = &nv.value {
-                                    if let Lit::Str(litstr) = &exprlit.lit {
-                                        let s = litstr.value();
-                                        match s.as_ref() {
-                                            "Enum" => {
-                                                db_type = Ok(quote! {
-                                                    Enum {
-                                                        name: Self::name(),
-                                                        variants: Self::iden_values(),
-                                                    }
-                                                })
-                                            }
-                                            _ => {
-                                                db_type = syn::parse_str::<TokenStream>(&s)
-                                                    .map_err(Error::Syn);
-                                            }
-                                        }
-                                    }
-                                }
-                            } else if name == "enum_name" {
-                                if let Expr::Lit(exprlit) = &nv.value {
-                                    if let Lit::Str(litstr) = &exprlit.lit {
-                                        enum_name = litstr.value();
-                                    }
-                                }
-                            }
+                            })
+                        }
+                        _ => {
+                            db_type = syn::parse_str::<TokenStream>(&s).map_err(Error::Syn);
                         }
                     }
+                } else if meta.path.is_ident("enum_name") {
+                    let litstr: LitStr = meta.value()?.parse()?;
+                    enum_name = litstr.value();
+                } else {
+                    return Err(meta.error(format!(
+                        "Unknown attribute parameter found: {:?}",
+                        &meta.path
+                    )));
                 }
-            }
+
+                Ok(())
+            })
+            .map_err(Error::Syn)?;
         }
 
         let variant_vec = match input.data {
