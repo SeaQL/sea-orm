@@ -33,12 +33,8 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
                 }
 
                 attr.parse_nested_meta(|meta| {
-                    if meta.path.is_ident("column_name") {
-                        let litstr: LitStr = meta.value()?.parse()?;
-                        column_name = litstr.value();
-                    } else if meta.path.is_ident("table_name") {
-                        let litstr: LitStr = meta.value()?.parse()?;
-                        column_name = litstr.value();
+                    if meta.path.is_ident("column_name") || meta.path.is_ident("table_name") {
+                        column_name = meta.value()?.parse::<LitStr>()?.value();
                     } else {
                         // Reads the value expression to advance the parse stream.
                         // Some parameters, such as `primary_key`, do not have any value,

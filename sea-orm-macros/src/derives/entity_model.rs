@@ -16,10 +16,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
     attrs
         .iter()
         .filter(|attr| attr.path().is_ident("sea_orm"))
-        .map(|attr| {
+        .try_for_each(|attr| {
             attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("table_name") {
-                    table_name = Some(meta.value()?.parse::<Lit>()?.clone());
+                    table_name = Some(meta.value()?.parse::<Lit>()?);
                 } else if meta.path.is_ident("schema_name") {
                     let name: Lit = meta.value()?.parse()?;
                     schema_name = quote! { Some(#name) };
@@ -34,8 +34,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
                 Ok(())
             })
-        })
-        .collect::<Result<_, _>>()?;
+        })?;
     let entity_def = table_name
         .as_ref()
         .map(|table_name| {
