@@ -32,6 +32,7 @@ let customer = Customer::find()
 // Since it's of type `Option<String>`, it'll be `None` and no error will be thrown.
 assert_eq!(customers.notes, None);
 ```
+* Added `sea_orm_macros::EnumIter` to implement `strum::IntoEnumIterator` trait for the derived enum (source code adapted from https://github.com/Peternator7/strum)
 
 ### Enhancements
 
@@ -48,10 +49,14 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
 ### Upgrades
 
 * Upgrade `heck` dependency in `sea-orm-macros` and `sea-orm-codegen` to 0.4 https://github.com/SeaQL/sea-orm/pull/1520, https://github.com/SeaQL/sea-orm/pull/1544
+* Upgrade `strum` to 0.24
 
 ### Breaking changes
 
 * Supports for partial select of `Option<T>` model field. A `None` value will be filled when the select result does not contain the `Option<T>` field without throwing an error. https://github.com/SeaQL/sea-orm/pull/1513
+* Added `derive` and `strum` features to `sea-orm-macros`
+* Replaced `sea-strum` dependency with `strum` in `sea-orm`
+* Re-exported `sea_orm_macros::EnumIter` instead of `strum::EnumIter` on the root of `sea-orm`
 
 ## 0.11.2 - Pending
 
