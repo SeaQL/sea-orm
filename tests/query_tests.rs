@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
 pub use sea_orm::entity::*;
-pub use sea_orm::{ConnectionTrait, QueryFilter};
+pub use sea_orm::{ConnectionTrait, QueryFilter, QuerySelect};
 
 // Run the test locally:
 // DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std --test query_tests
@@ -219,6 +219,49 @@ pub async fn find_all_filter_with_results() {
         .unwrap();
 
     assert_eq!(bakeries.len(), 2);
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
+pub async fn select_only_exclude_option_fields() {
+    let ctx = TestContext::new("select_only_exclude_option_fields").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    let _ = customer::ActiveModel {
+        name: Set("Alice".to_owned()),
+        notes: Set(Some("Want to communicate with Bob".to_owned())),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert customer");
+
+    let _ = customer::ActiveModel {
+        name: Set("Bob".to_owned()),
+        notes: Set(Some("Just listening".to_owned())),
+        ..Default::default()
+    }
+    .save(&ctx.db)
+    .await
+    .expect("could not insert customer");
+
+    let customers = Customer::find()
+        .select_only()
+        .column(customer::Column::Id)
+        .column(customer::Column::Name)
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    assert_eq!(customers.len(), 2);
+    assert_eq!(customers[0].notes, None);
+    assert_eq!(customers[1].notes, None);
 
     ctx.delete().await;
 }

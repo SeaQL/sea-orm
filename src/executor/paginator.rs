@@ -129,7 +129,7 @@ where
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![
+    /// #     .append_query_results([
     /// #         vec![cake::Model {
     /// #             id: 1,
     /// #             name: "Cake".to_owned(),
@@ -168,7 +168,7 @@ where
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let owned_db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![
+    /// #     .append_query_results([
     /// #         vec![cake::Model {
     /// #             id: 1,
     /// #             name: "Cake".to_owned(),
@@ -194,12 +194,8 @@ where
     /// ```
     pub fn into_stream(mut self) -> PinBoxStream<'db, Result<Vec<S::Item>, DbErr>> {
         Box::pin(stream! {
-            loop {
-                if let Some(vec) = self.fetch_and_next().await? {
-                    yield Ok(vec);
-                } else {
-                    break
-                }
+            while let Some(vec) = self.fetch_and_next().await? {
+                yield Ok(vec);
             }
         })
     }
@@ -253,7 +249,7 @@ where
     type Selector = S;
     fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, S> {
         assert!(page_size != 0, "page_size should not be zero");
-        let sql = &self.stmt.sql.trim()[6..].trim();
+        let sql = self.stmt.sql.trim()[6..].trim();
         let mut query = SelectStatement::new();
         query.expr(if let Some(values) = self.stmt.values {
             Expr::cust_with_values(sql, values.0)
@@ -315,7 +311,7 @@ mod tests {
         Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
-            vec![],
+            [],
         )
     });
 
@@ -342,7 +338,7 @@ mod tests {
         let page3 = Vec::<fruit::Model>::new();
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![page1.clone(), page2.clone(), page3.clone()])
+            .append_query_results([page1.clone(), page2.clone(), page3.clone()])
             .into_connection();
 
         (db, vec![page1, page2, page3])
@@ -351,7 +347,7 @@ mod tests {
     fn setup_num_items() -> (DatabaseConnection, i64) {
         let num_items = 3;
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![maplit::btreemap! {
+            .append_query_results([[maplit::btreemap! {
                 "num_items" => Into::<Value>::into(num_items),
             }]])
             .into_connection();
@@ -370,16 +366,16 @@ mod tests {
         assert_eq!(paginator.fetch_page(2).await?, pages[2].clone());
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -402,16 +398,16 @@ mod tests {
         assert_eq!(paginator.fetch_page(2).await?, pages[2].clone());
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -436,16 +432,16 @@ mod tests {
         assert_eq!(paginator.fetch().await?, pages[2].clone());
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -472,16 +468,16 @@ mod tests {
         assert_eq!(paginator.fetch().await?, pages[2].clone());
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -503,10 +499,10 @@ mod tests {
         assert_eq!(paginator.num_pages().await?, num_pages);
 
         let sub_query = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
@@ -517,7 +513,7 @@ mod tests {
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![query_builder.build(&select)];
+        let stmts = [query_builder.build(&select)];
 
         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
@@ -537,10 +533,10 @@ mod tests {
         assert_eq!(paginator.num_pages().await?, num_pages);
 
         let sub_query = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
@@ -551,7 +547,7 @@ mod tests {
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![query_builder.build(&select)];
+        let stmts = [query_builder.build(&select)];
 
         assert_eq!(db.into_transaction_log(), Transaction::wrap(stmts));
         Ok(())
@@ -607,16 +603,16 @@ mod tests {
         assert_eq!(paginator.fetch_and_next().await?, None);
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -644,16 +640,16 @@ mod tests {
         assert_eq!(paginator.fetch_and_next().await?, None);
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -676,16 +672,16 @@ mod tests {
         drop(fruit_stream);
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -711,16 +707,16 @@ mod tests {
         drop(fruit_stream);
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),
@@ -737,7 +733,7 @@ mod tests {
         let raw_stmt = Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"  SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit"  "#,
-            vec![],
+            [],
         );
 
         let mut fruit_stream = fruit::Entity::find()
@@ -752,16 +748,16 @@ mod tests {
         drop(fruit_stream);
 
         let mut select = SelectStatement::new()
-            .exprs(vec![
-                Expr::tbl(fruit::Entity, fruit::Column::Id),
-                Expr::tbl(fruit::Entity, fruit::Column::Name),
-                Expr::tbl(fruit::Entity, fruit::Column::CakeId),
+            .exprs([
+                Expr::col((fruit::Entity, fruit::Column::Id)),
+                Expr::col((fruit::Entity, fruit::Column::Name)),
+                Expr::col((fruit::Entity, fruit::Column::CakeId)),
             ])
             .from(fruit::Entity)
             .to_owned();
 
         let query_builder = db.get_database_backend();
-        let stmts = vec![
+        let stmts = [
             query_builder.build(select.clone().offset(0).limit(2)),
             query_builder.build(select.clone().offset(2).limit(2)),
             query_builder.build(select.offset(4).limit(2)),

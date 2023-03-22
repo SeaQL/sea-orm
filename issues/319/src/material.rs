@@ -10,8 +10,8 @@ pub struct Model {
     pub updated_at: DateTimeWithTimeZone,
     pub name: String,
     #[sea_orm(column_type = "Text", nullable)]
-    pub description: Option<String>,
-    pub tag_ids: Vec<u8>,
+    pub description: Option<String> ,
+    pub tag_ids: Vec<u8> ,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

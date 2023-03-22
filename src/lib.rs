@@ -2,6 +2,8 @@
 #![warn(missing_docs)]
 #![deny(
     missing_debug_implementations,
+    clippy::missing_panics_doc,
+    clippy::unwrap_used,
     clippy::print_stderr,
     clippy::print_stdout
 )]
@@ -182,7 +184,7 @@
 //! # };
 //!
 //! // insert many
-//! Fruit::insert_many(vec![apple, pear]).exec(db).await?;
+//! Fruit::insert_many([apple, pear]).exec(db).await?;
 //! # Ok(())
 //! # }
 //! ```
@@ -306,6 +308,12 @@
 //! A big shout out to our contributors:
 //!
 //! [![Contributors](https://opencollective.com/sea-orm/contributors.svg?width=1000&button=false)](https://github.com/SeaQL/sea-orm/graphs/contributors)
+//!
+//! ## Mascot
+//!
+//! A friend of Ferris, Terres the hermit crab is the official mascot of SeaORM. His hobby is collecting shells.
+//!
+//! <img alt="Terres" src="https://www.sea-ql.org/SeaORM/img/Terres.png" width="400"/>
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/SeaQL/sea-query/master/docs/SeaQL icon dark.png"
 )]
@@ -351,5 +359,5 @@ pub use sea_query::Iden;
 #[cfg(feature = "macros")]
 pub use sea_query::Iden as DeriveIden;
 
+pub use sea_orm_macros::EnumIter;
 pub use strum;
-pub use strum::EnumIter;

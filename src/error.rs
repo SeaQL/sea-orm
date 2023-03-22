@@ -1,5 +1,15 @@
-#[cfg(feature = "sqlx-dep")]
-use sqlx::error::Error as SqlxError;
+#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-dep"))]
+pub use sqlx::error::Error as SqlxError;
+
+#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-mysql"))]
+pub use sqlx::mysql::MySqlDatabaseError as SqlxMySqlError;
+
+#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-postgres"))]
+pub use sqlx::postgres::PgDatabaseError as SqlxPostgresError;
+
+#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-sqlite"))]
+pub use sqlx::sqlite::SqliteError as SqlxSqliteError;
+
 use thiserror::Error;
 
 /// An error from unsuccessful database operations
@@ -55,6 +65,14 @@ pub enum DbErr {
     /// A migration error
     #[error("Migration Error: {0}")]
     Migration(String),
+    /// None of the records are inserted,
+    /// that probably means all of them conflict with existing records in the table
+    #[error("None of the records are inserted")]
+    RecordNotInserted,
+    /// None of the records are updated, that means a WHERE condition has no matches.
+    /// May be the table is empty or the record does not exist
+    #[error("None of the records are updated")]
+    RecordNotUpdated,
 }
 
 /// Runtime error
@@ -63,7 +81,7 @@ pub enum RuntimeErr {
     /// SQLx Error
     #[cfg(feature = "sqlx-dep")]
     #[error("{0}")]
-    SqlxError(SqlxError),
+    SqlxError(sqlx::error::Error),
     /// Error generated from within SeaORM
     #[error("{0}")]
     Internal(String),
@@ -81,3 +99,43 @@ impl Eq for DbErr {}
 #[derive(Error, Debug)]
 #[error("Failed to match \"{0}\" as Column")]
 pub struct ColumnFromStrErr(pub String);
+
+#[allow(dead_code)]
+pub(crate) fn conn_err<T>(s: T) -> DbErr
+where
+    T: ToString,
+{
+    DbErr::Conn(RuntimeErr::Internal(s.to_string()))
+}
+
+#[allow(dead_code)]
+pub(crate) fn exec_err<T>(s: T) -> DbErr
+where
+    T: ToString,
+{
+    DbErr::Exec(RuntimeErr::Internal(s.to_string()))
+}
+
+#[allow(dead_code)]
+pub(crate) fn query_err<T>(s: T) -> DbErr
+where
+    T: ToString,
+{
+    DbErr::Query(RuntimeErr::Internal(s.to_string()))
+}
+
+#[allow(dead_code)]
+pub(crate) fn type_err<T>(s: T) -> DbErr
+where
+    T: ToString,
+{
+    DbErr::Type(s.to_string())
+}
+
+#[allow(dead_code)]
+pub(crate) fn json_err<T>(s: T) -> DbErr
+where
+    T: ToString,
+{
+    DbErr::Json(s.to_string())
+}

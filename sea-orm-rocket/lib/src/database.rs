@@ -131,7 +131,7 @@ pub trait Database:
         }
 
         let dbtype = std::any::type_name::<Self>();
-        let fairing = Paint::default(format!("{}::init()", dbtype)).bold();
+        let fairing = Paint::default(format!("{dbtype}::init()")).bold();
         error!(
             "Attempted to fetch unattached database `{}`.",
             Paint::default(dbtype).bold()

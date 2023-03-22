@@ -74,7 +74,7 @@ async fn seed_data(db: &DatabaseConnection) {
         .expect("could not insert cake");
 
     let cake_baker = cakes_bakers::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id as i32),
+        cake_id: Set(cake_insert_res.last_insert_id),
         baker_id: Set(baker_1.id.clone().unwrap()),
     };
 
@@ -108,7 +108,7 @@ async fn seed_data(db: &DatabaseConnection) {
     .expect("could not insert order");
 
     let _lineitem = lineitem::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id as i32),
+        cake_id: Set(cake_insert_res.last_insert_id),
         price: Set(dec!(10.00)),
         quantity: Set(12),
         order_id: Set(kate_order_1.id.clone().unwrap()),
@@ -119,7 +119,7 @@ async fn seed_data(db: &DatabaseConnection) {
     .expect("could not insert order");
 
     let _lineitem2 = lineitem::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id as i32),
+        cake_id: Set(cake_insert_res.last_insert_id),
         price: Set(dec!(50.00)),
         quantity: Set(2),
         order_id: Set(kate_order_1.id.clone().unwrap()),
@@ -210,7 +210,7 @@ async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cak
         .expect("could not insert cake");
 
     let cake_baker = cakes_bakers::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id as i32),
+        cake_id: Set(cake_insert_res.last_insert_id),
         baker_id: Set(baker.id),
     };
 

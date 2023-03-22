@@ -1,21 +1,19 @@
 #![allow(missing_docs)]
 
 use std::{ops::DerefMut, pin::Pin, task::Poll};
+use tracing::instrument;
 
-use futures::Stream;
 #[cfg(feature = "sqlx-dep")]
 use futures::TryStreamExt;
+use futures::{lock::MutexGuard, Stream};
 
 #[cfg(feature = "sqlx-dep")]
 use sqlx::Executor;
 
-use futures::lock::MutexGuard;
-
-use tracing::instrument;
-
-use crate::{DbErr, InnerConnection, QueryResult, Statement};
-
 use super::metric::MetricStream;
+#[cfg(feature = "sqlx-dep")]
+use crate::driver::*;
+use crate::{DbErr, InnerConnection, QueryResult, Statement};
 
 /// `TransactionStream` cannot be used in a `transaction` closure as it does not impl `Send`.
 /// It seems to be a Rust limitation right now, and solution to work around this deemed to be extremely hard.
@@ -55,7 +53,7 @@ impl<'a> TransactionStream<'a> {
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
-                        .map_err(crate::sqlx_error_to_query_err);
+                        .map_err(sqlx_error_to_query_err);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
@@ -66,7 +64,7 @@ impl<'a> TransactionStream<'a> {
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
-                        .map_err(crate::sqlx_error_to_query_err);
+                        .map_err(sqlx_error_to_query_err);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }
@@ -77,7 +75,7 @@ impl<'a> TransactionStream<'a> {
                     let stream = c
                         .fetch(query)
                         .map_ok(Into::into)
-                        .map_err(crate::sqlx_error_to_query_err);
+                        .map_err(sqlx_error_to_query_err);
                     let elapsed = _start.map(|s| s.elapsed().unwrap_or_default());
                     MetricStream::new(_metric_callback, stmt, elapsed, stream)
                 }

@@ -85,12 +85,7 @@ pub async fn create_and_update_metadata(db: &DatabaseConnection) -> Result<(), D
     .exec(db)
     .await;
 
-    assert_eq!(
-        update_res,
-        Err(DbErr::RecordNotFound(
-            "None of the database rows are affected".to_owned()
-        ))
-    );
+    assert_eq!(update_res, Err(DbErr::RecordNotUpdated));
 
     Ok(())
 }
