@@ -316,31 +316,17 @@ where
 
 macro_rules! set_foreign_key_stmt {
     ( $relation: ident, $foreign_key: ident ) => {
-        let from_cols: Vec<String> = match $relation.from_col {
-            Identity::Unary(o1) => vec![o1],
-            Identity::Binary(o1, o2) => vec![o1, o2],
-            Identity::Ternary(o1, o2, o3) => vec![o1, o2, o3],
-        }
-        .into_iter()
-        .map(|col| {
-            let col_name = col.to_string();
-            $foreign_key.from_col(col);
-            col_name
-        })
-        .collect();
-        match $relation.to_col {
-            Identity::Unary(o1) => {
-                $foreign_key.to_col(o1);
-            }
-            Identity::Binary(o1, o2) => {
-                $foreign_key.to_col(o1);
-                $foreign_key.to_col(o2);
-            }
-            Identity::Ternary(o1, o2, o3) => {
-                $foreign_key.to_col(o1);
-                $foreign_key.to_col(o2);
-                $foreign_key.to_col(o3);
-            }
+        let from_cols: Vec<String> = $relation
+            .from_col
+            .into_iter()
+            .map(|col| {
+                let col_name = col.to_string();
+                $foreign_key.from_col(col);
+                col_name
+            })
+            .collect();
+        for col in $relation.to_col.into_iter() {
+            $foreign_key.to_col(col);
         }
         if let Some(action) = $relation.on_delete {
             $foreign_key.on_delete(action);

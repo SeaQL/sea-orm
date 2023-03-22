@@ -250,8 +250,8 @@ mod tests {
                 r#"SELECT "cake_filling_price"."cake_id", "cake_filling_price"."filling_id", "cake_filling_price"."price""#,
                 r#"FROM "public"."cake_filling_price""#,
                 r#"INNER JOIN "cake_filling" ON"#,
-                r#"("cake_filling"."cake_id" = "cake_filling_price"."cake_id") AND"#,
-                r#"("cake_filling"."filling_id" = "cake_filling_price"."filling_id")"#,
+                r#""cake_filling"."cake_id" = "cake_filling_price"."cake_id" AND"#,
+                r#""cake_filling"."filling_id" = "cake_filling_price"."filling_id""#,
             ]
             .join(" ")
         );
@@ -269,8 +269,8 @@ mod tests {
                 r#"SELECT "cake_filling"."cake_id", "cake_filling"."filling_id""#,
                 r#"FROM "cake_filling""#,
                 r#"INNER JOIN "public"."cake_filling_price" ON"#,
-                r#"("cake_filling_price"."cake_id" = "cake_filling"."cake_id") AND"#,
-                r#"("cake_filling_price"."filling_id" = "cake_filling"."filling_id")"#,
+                r#""cake_filling_price"."cake_id" = "cake_filling"."cake_id" AND"#,
+                r#""cake_filling_price"."filling_id" = "cake_filling"."filling_id""#,
             ]
             .join(" ")
         );
