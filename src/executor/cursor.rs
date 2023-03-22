@@ -3,8 +3,8 @@ use crate::{
     Select, SelectModel, SelectorTrait,
 };
 use sea_query::{
-    Condition, DynIden, Expr, IntoValueTuple, Order, OrderedStatement, SeaRc, SelectStatement,
-    SimpleExpr, Value, ValueTuple,
+    Condition, DynIden, Expr, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr, Value,
+    ValueTuple,
 };
 use std::marker::PhantomData;
 
