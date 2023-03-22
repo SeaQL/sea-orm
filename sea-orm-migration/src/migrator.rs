@@ -322,7 +322,7 @@ where
             let type_name: String = row.try_get("", "typname")?;
             info!("Dropping type '{}'", type_name);
             let mut stmt = Type::drop();
-            stmt.name(Alias::new(&type_name as &str));
+            stmt.name(Alias::new(type_name));
             db.execute(db_backend.build(&stmt)).await?;
             info!("Type '{}' has been dropped", type_name);
         }
