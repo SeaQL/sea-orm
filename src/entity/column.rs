@@ -270,7 +270,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         cast_enum_as(val, self, |col, enum_name, col_type| {
             let type_name = match col_type {
                 ColumnType::Array(_) => {
-                    Alias::new(&format!("{}[]", enum_name.to_string())).into_iden()
+                    Alias::new(format!("{}[]", enum_name.to_string())).into_iden()
                 }
                 _ => enum_name,
             };
