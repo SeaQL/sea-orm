@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 
-use crate::attributes::{derive_attr, field_attr};
+use super::attributes::{derive_attr, field_attr};
 
 enum Error {
     InputNotEnum,
