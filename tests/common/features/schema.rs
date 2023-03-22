@@ -342,7 +342,7 @@ pub async fn create_json_struct_table(db: &DbConn) -> Result<ExecResult, DbErr> 
 pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     db.execute(sea_orm::Statement::from_string(
         db.get_database_backend(),
-        "CREATE EXTENSION IF NOT EXISTS citext".into(),
+        "CREATE EXTENSION IF NOT EXISTS citext",
     ))
     .await?;
 
