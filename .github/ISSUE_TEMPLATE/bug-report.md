@@ -9,41 +9,61 @@ assignees: ''
 
 <!--
 
-Welcome! Thanks for reporting bugs!
+Welcome! Thank you for reporting bugs!
 
-Do you want to ask a question? Are you looking for support?
-Please ask us on
+First of all, please star our repo. Your support is vital to the continued maintenance of SeaORM.
+
+Want to ask a question? You can reach us via:
+
 - Discord: https://discord.com/invite/uCPdDXzbdv
-- GitHub Discussion
+- GitHub Discussions: https://github.com/SeaQL/sea-orm/discussions/new
+
+Please make sure that you are not asking for a missing feature; a bug is incorrect behavior -
+either in the feature specification or implementation.
+
+Please also make sure your description is clear and precise - maintainers don't have access to your
+code and can't see what you have seen. Please avoid vague descriptions like "they are different"
+or "the program crashes" - in either case, provide exact information.
+
+If you are certain there is a bug, please provide a reproducible example, which helps the investigator
+to pin-point the bug and the implementor to verify that a solution is satisfactory. Bug reports without 
+reproducible example may be closed immediately or dangle forever.
+
+Finally, please search for existing issues and discussions before submission. Feel free to revive old
+threads if you have new information to add, but please don't ask for ETA or "+1".
 
 -->
 
 ## Description
 
-<!-- describe the bug -->
+<!-- Briefly describe the bug -->
 
 ## Steps to Reproduce
 
-1. <!-- first step -->
-2. <!-- then -->
-3. <!-- and so on -->
+1. <!-- First step -->
+2. <!-- Then -->
+3. <!-- And so on -->
 
 ### Expected Behavior
 
-<!-- what is expected to happen? -->
+<!-- What is expected to happen? -->
 
 ### Actual Behavior
 
-<!-- what actually happened? -->
+<!-- What actually happened? -->
 
 ### Reproduces How Often
 
-<!-- is it always reproducible? -->
+<!-- Is it always reproducible? -->
+
+### Workarounds
+
+<!-- What experiments have you done to understand / workaround the bug? -->
+
+## Reproducible Example
+
+<!-- Please add a minimal reproducible example under https://github.com/SeaQL/sea-orm/tree/master/issues, and open a PR subsequently. -->
 
 ## Versions
 
-<!-- you can get this information from copy and pasting the output of `cargo tree | grep sea-` from the console. Also, please include the database and OS that you are running. -->
-
-## Additional Information
-
-<!-- please provide a minimal reproducible example, if possible. Any other additional information that might be helpful. -->
+<!-- You can get this information from the output of `cargo tree | grep sea-` from the console. Also, please include the database and OS that you are running. -->

@@ -1,7 +1,4 @@
-use crate::{
-    cast_enum_as_text, ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySelect,
-    QueryTrait,
-};
+use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySelect, QueryTrait};
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
@@ -129,7 +126,7 @@ where
 
     fn column_list(&self) -> Vec<SimpleExpr> {
         E::Column::iter()
-            .map(|col| cast_enum_as_text(col.into_expr(), &col))
+            .map(|col| col.select_as(col.into_expr()))
             .collect()
     }
 

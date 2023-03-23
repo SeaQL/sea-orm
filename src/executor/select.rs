@@ -70,7 +70,7 @@ where
     model: PhantomData<M>,
 }
 
-/// Defines a type to get two Modelss
+/// Defines a type to get two Models
 #[derive(Clone, Debug)]
 pub struct SelectTwoModel<M, N>
 where
@@ -171,7 +171,7 @@ where
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![vec![
+    /// #     .append_query_results([[
     /// #         maplit::btreemap! {
     /// #             "cake_name" => Into::<Value>::into("Chocolate Forest"),
     /// #         },
@@ -197,15 +197,15 @@ where
     ///
     /// assert_eq!(
     ///     res,
-    ///     vec!["Chocolate Forest".to_owned(), "New York Cheese".to_owned()]
+    ///     ["Chocolate Forest".to_owned(), "New York Cheese".to_owned()]
     /// );
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."name" AS "cake_name" FROM "cake""#,
-    ///         vec![]
+    ///         []
     ///     )]
     /// );
     /// #
@@ -221,7 +221,7 @@ where
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![vec![
+    /// #     .append_query_results([[
     /// #         maplit::btreemap! {
     /// #             "cake_name" => Into::<Value>::into("Chocolate Forest"),
     /// #             "num_of_cakes" => Into::<Value>::into(2i64),
@@ -246,19 +246,19 @@ where
     ///     .all(&db)
     ///     .await?;
     ///
-    /// assert_eq!(res, vec![("Chocolate Forest".to_owned(), 2i64)]);
+    /// assert_eq!(res, [("Chocolate Forest".to_owned(), 2i64)]);
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
-    ///         vec![
+    ///         [
     ///             r#"SELECT "cake"."name" AS "cake_name", COUNT("cake"."id") AS "num_of_cakes""#,
     ///             r#"FROM "cake" GROUP BY "cake"."name""#,
     ///         ]
     ///         .join(" ")
     ///         .as_str(),
-    ///         vec![]
+    ///         []
     ///     )]
     /// );
     /// #
@@ -629,7 +629,7 @@ where
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![vec![
+    /// #     .append_query_results([[
     /// #         maplit::btreemap! {
     /// #             "name" => Into::<Value>::into("Chocolate Forest"),
     /// #             "num_of_cakes" => Into::<Value>::into(1),
@@ -653,7 +653,7 @@ where
     ///     .from_raw_sql(Statement::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#,
-    ///         vec![],
+    ///         [],
     ///     ))
     ///     .into_model::<SelectResult>()
     ///     .all(&db)
@@ -661,7 +661,7 @@ where
     ///
     /// assert_eq!(
     ///     res,
-    ///     vec![
+    ///     [
     ///         SelectResult {
     ///             name: "Chocolate Forest".to_owned(),
     ///             num_of_cakes: 1,
@@ -675,10 +675,10 @@ where
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."name", count("cake"."id") AS "num_of_cakes" FROM "cake""#,
-    ///         vec![]
+    ///         []
     ///     ),]
     /// );
     /// #
@@ -703,7 +703,7 @@ where
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![vec![
+    /// #     .append_query_results([[
     /// #         maplit::btreemap! {
     /// #             "name" => Into::<Value>::into("Chocolate Forest"),
     /// #             "num_of_cakes" => Into::<Value>::into(1),
@@ -719,7 +719,7 @@ where
     ///
     /// let res: Vec<serde_json::Value> = cake::Entity::find().from_raw_sql(
     ///     Statement::from_sql_and_values(
-    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
+    ///         DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, []
     ///     )
     /// )
     /// .into_json()
@@ -728,7 +728,7 @@ where
     ///
     /// assert_eq!(
     ///     res,
-    ///     vec![
+    ///     [
     ///         serde_json::json!({
     ///             "name": "Chocolate Forest",
     ///             "num_of_cakes": 1,
@@ -742,9 +742,9 @@ where
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![
+    ///     [
     ///     Transaction::from_sql_and_values(
-    ///             DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, vec![]
+    ///             DbBackend::Postgres, r#"SELECT "cake"."id", "cake"."name" FROM "cake""#, []
     ///     ),
     /// ]);
     /// #
@@ -768,8 +768,8 @@ where
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![
-    /// #         vec![cake::Model {
+    /// #     .append_query_results([
+    /// #         [cake::Model {
     /// #             id: 1,
     /// #             name: "Cake".to_owned(),
     /// #         }],
@@ -782,17 +782,17 @@ where
     ///     .from_raw_sql(Statement::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#,
-    ///         vec![1.into()],
+    ///         [1.into()],
     ///     ))
     ///     .one(&db)
     ///     .await?;
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "id" = $1"#,
-    ///         vec![1.into()]
+    ///         [1.into()]
     ///     ),]
     /// );
     /// #
@@ -819,8 +819,8 @@ where
     /// # pub async fn main() -> Result<(), DbErr> {
     /// #
     /// # let db = MockDatabase::new(DbBackend::Postgres)
-    /// #     .append_query_results(vec![
-    /// #         vec![cake::Model {
+    /// #     .append_query_results([
+    /// #         [cake::Model {
     /// #             id: 1,
     /// #             name: "Cake".to_owned(),
     /// #         }],
@@ -833,17 +833,17 @@ where
     ///     .from_raw_sql(Statement::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
-    ///         vec![],
+    ///         [],
     ///     ))
     ///     .all(&db)
     ///     .await?;
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
-    ///     vec![Transaction::from_sql_and_values(
+    ///     [Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
-    ///         vec![]
+    ///         []
     ///     ),]
     /// );
     /// #
@@ -906,11 +906,11 @@ where
                 }
             }
         }
-        if r.is_some() {
-            acc.push((l, vec![r.unwrap()]));
-        } else {
-            acc.push((l, vec![]));
-        }
+        let rows = match r {
+            Some(r) => vec![r],
+            None => vec![],
+        };
+        acc.push((l, rows));
     }
     acc
 }

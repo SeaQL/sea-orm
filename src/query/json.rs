@@ -1,4 +1,4 @@
-use crate::{DbErr, FromQueryResult, QueryResult};
+use crate::{error::*, FromQueryResult, QueryResult};
 use serde_json::Map;
 pub use serde_json::Value as JsonValue;
 
@@ -211,7 +211,7 @@ mod tests {
     #[smol_potat::test]
     async fn to_json_1() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results(vec![vec![maplit::btreemap! {
+            .append_query_results([[maplit::btreemap! {
                 "id" => Into::<Value>::into(128), "name" => Into::<Value>::into("apple")
             }]])
             .into_connection();

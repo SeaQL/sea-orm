@@ -3,7 +3,7 @@ use std::iter::FromIterator;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::attributes::derive_attr;
+use super::attributes::derive_attr;
 
 struct DeriveEntity {
     column_ident: syn::Ident,

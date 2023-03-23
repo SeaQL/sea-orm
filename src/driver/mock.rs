@@ -115,7 +115,10 @@ impl MockDatabaseConnection {
 
     /// Get the [DatabaseBackend](crate::DatabaseBackend) being used by the [MockDatabase]
     pub fn get_database_backend(&self) -> DbBackend {
-        self.mocker.lock().unwrap().get_database_backend()
+        self.mocker
+            .lock()
+            .expect("Fail to acquire mocker")
+            .get_database_backend()
     }
 
     /// Execute the SQL statement in the [MockDatabase]
@@ -123,7 +126,10 @@ impl MockDatabaseConnection {
     pub fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", statement);
         let counter = self.execute_counter.fetch_add(1, Ordering::SeqCst);
-        self.mocker.lock().unwrap().execute(counter, statement)
+        self.mocker
+            .lock()
+            .map_err(exec_err)?
+            .execute(counter, statement)
     }
 
     /// Return one [QueryResult] if the query was successful
@@ -131,7 +137,11 @@ impl MockDatabaseConnection {
     pub fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let counter = self.query_counter.fetch_add(1, Ordering::SeqCst);
-        let result = self.mocker.lock().unwrap().query(counter, statement)?;
+        let result = self
+            .mocker
+            .lock()
+            .map_err(query_err)?
+            .query(counter, statement)?;
         Ok(result.into_iter().next())
     }
 
@@ -140,7 +150,10 @@ impl MockDatabaseConnection {
     pub fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let counter = self.query_counter.fetch_add(1, Ordering::SeqCst);
-        self.mocker.lock().unwrap().query(counter, statement)
+        self.mocker
+            .lock()
+            .map_err(query_err)?
+            .query(counter, statement)
     }
 
     /// Return [QueryResult]s  from a multi-query operation
@@ -158,18 +171,27 @@ impl MockDatabaseConnection {
     /// Create a statement block  of SQL statements that execute together.
     #[instrument(level = "trace")]
     pub fn begin(&self) {
-        self.mocker.lock().unwrap().begin()
+        self.mocker
+            .lock()
+            .expect("Failed to acquire mocker")
+            .begin()
     }
 
     /// Commit a transaction atomically to the database
     #[instrument(level = "trace")]
     pub fn commit(&self) {
-        self.mocker.lock().unwrap().commit()
+        self.mocker
+            .lock()
+            .expect("Failed to acquire mocker")
+            .commit()
     }
 
     /// Roll back a faulty transaction
     #[instrument(level = "trace")]
     pub fn rollback(&self) {
-        self.mocker.lock().unwrap().rollback()
+        self.mocker
+            .lock()
+            .expect("Failed to acquire mocker")
+            .rollback()
     }
 }

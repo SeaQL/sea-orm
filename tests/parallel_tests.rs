@@ -20,7 +20,7 @@ async fn main() -> Result<(), DbErr> {
 }
 
 pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
-    let metadata = vec![
+    let metadata = [
         metadata::Model {
             uuid: Uuid::new_v4(),
             ty: "Type".to_owned(),
@@ -94,12 +94,12 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
     )?;
 
     assert_eq!(
-        vec![
+        [
             active_models.0.bytes.clone().unwrap(),
             active_models.1.bytes.clone().unwrap(),
             active_models.2.bytes.clone().unwrap(),
         ],
-        vec![
+        [
             find_res.0.clone().unwrap().bytes,
             find_res.1.clone().unwrap().bytes,
             find_res.2.clone().unwrap().bytes,
@@ -112,7 +112,7 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
         active_models.2.delete(db),
     )?;
 
-    assert_eq!(Metadata::find().all(db).await?, vec![]);
+    assert_eq!(Metadata::find().all(db).await?, []);
 
     Ok(())
 }

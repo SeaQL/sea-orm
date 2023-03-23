@@ -1,5 +1,5 @@
 use crate::{util::escape_rust_keyword, DateTimeCrate};
-use heck::{CamelCase, SnakeCase};
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{BlobSize, ColumnDef, ColumnSpec, ColumnType};
@@ -20,7 +20,7 @@ impl Column {
     }
 
     pub fn get_name_camel_case(&self) -> Ident {
-        format_ident!("{}", escape_rust_keyword(self.name.to_camel_case()))
+        format_ident!("{}", escape_rust_keyword(self.name.to_upper_camel_case()))
     }
 
     pub fn is_snake_case_name(&self) -> bool {
@@ -71,7 +71,7 @@ impl Column {
                 ColumnType::Uuid => "Uuid".to_owned(),
                 ColumnType::Binary(_) | ColumnType::VarBinary(_) => "Vec<u8>".to_owned(),
                 ColumnType::Boolean => "bool".to_owned(),
-                ColumnType::Enum { name, .. } => name.to_string().to_camel_case(),
+                ColumnType::Enum { name, .. } => name.to_string().to_upper_camel_case(),
                 ColumnType::Array(column_type) => {
                     format!("Vec<{}>", write_rs_type(column_type, date_time_crate))
                 }
@@ -91,12 +91,19 @@ impl Column {
         let col_type = match &self.col_type {
             ColumnType::Float => Some("Float".to_owned()),
             ColumnType::Double => Some("Double".to_owned()),
-            ColumnType::Decimal(Some((p, s))) => Some(format!("Decimal(Some(({}, {})))", p, s)),
-            ColumnType::Money(Some((p, s))) => Some(format!("Money(Some({}, {}))", p, s)),
+            ColumnType::Decimal(Some((p, s))) => Some(format!("Decimal(Some(({p}, {s})))")),
+            ColumnType::Money(Some((p, s))) => Some(format!("Money(Some({p}, {s}))")),
             ColumnType::Text => Some("Text".to_owned()),
-            ColumnType::Custom(iden) => {
-                Some(format!("Custom(\"{}\".to_owned())", iden.to_string()))
+            ColumnType::JsonBinary => Some("JsonBinary".to_owned()),
+            ColumnType::Custom(iden) => Some(format!("custom(\"{}\")", iden.to_string())),
+            ColumnType::Binary(BlobSize::Blob(None)) => Some("Binary(BlobSize::Blob(None))".into()),
+            ColumnType::Binary(BlobSize::Blob(Some(s))) => {
+                Some(format!("Binary(BlobSize::Blob(Some({s})))"))
             }
+            ColumnType::Binary(BlobSize::Tiny) => Some("Binary(BlobSize::Tiny)".into()),
+            ColumnType::Binary(BlobSize::Medium) => Some("Binary(BlobSize::Medium)".into()),
+            ColumnType::Binary(BlobSize::Long) => Some("Binary(BlobSize::Long)".into()),
+            ColumnType::VarBinary(s) => Some(format!("VarBinary({s})")),
             _ => None,
         };
         col_type.map(|ty| quote! { column_type = #ty })
@@ -135,12 +142,24 @@ impl Column {
                 }
                 ColumnType::Time => quote! { ColumnType::Time },
                 ColumnType::Date => quote! { ColumnType::Date },
-                ColumnType::Binary(BlobSize::Blob(_)) | ColumnType::VarBinary(_) => {
-                    quote! { ColumnType::Binary }
+                ColumnType::Binary(BlobSize::Blob(None)) => {
+                    quote! { ColumnType::Binary(BlobSize::Blob(None)) }
                 }
-                ColumnType::Binary(BlobSize::Tiny) => quote! { ColumnType::TinyBinary },
-                ColumnType::Binary(BlobSize::Medium) => quote! { ColumnType::MediumBinary },
-                ColumnType::Binary(BlobSize::Long) => quote! { ColumnType::LongBinary },
+                ColumnType::Binary(BlobSize::Blob(Some(s))) => {
+                    quote! { ColumnType::Binary(BlobSize::Blob(Some(#s))) }
+                }
+                ColumnType::Binary(BlobSize::Tiny) => {
+                    quote! { ColumnType::Binary(BlobSize::Tiny) }
+                }
+                ColumnType::Binary(BlobSize::Medium) => {
+                    quote! { ColumnType::Binary(BlobSize::Medium) }
+                }
+                ColumnType::Binary(BlobSize::Long) => {
+                    quote! { ColumnType::Binary(BlobSize::Long) }
+                }
+                ColumnType::VarBinary(s) => {
+                    quote! { ColumnType::VarBinary(#s) }
+                }
                 ColumnType::Boolean => quote! { ColumnType::Boolean },
                 ColumnType::Money(s) => match s {
                     Some((s1, s2)) => quote! { ColumnType::Money(Some((#s1, #s2))) },
@@ -151,10 +170,10 @@ impl Column {
                 ColumnType::Uuid => quote! { ColumnType::Uuid },
                 ColumnType::Custom(s) => {
                     let s = s.to_string();
-                    quote! { ColumnType::Custom(#s.to_owned()) }
+                    quote! { ColumnType::custom(#s) }
                 }
                 ColumnType::Enum { name, .. } => {
-                    let enum_ident = format_ident!("{}", name.to_string().to_camel_case());
+                    let enum_ident = format_ident!("{}", name.to_string().to_upper_camel_case());
                     quote! { #enum_ident::db_type() }
                 }
                 ColumnType::Array(column_type) => {
@@ -303,6 +322,13 @@ mod tests {
             make_col!("cake-filling-id", ColumnType::Float),
             make_col!("CAKE_FILLING_ID", ColumnType::Double),
             make_col!("CAKE-FILLING-ID", ColumnType::Binary(BlobSize::Blob(None))),
+            make_col!(
+                "CAKE-FILLING-ID",
+                ColumnType::Binary(BlobSize::Blob(Some(10)))
+            ),
+            make_col!("CAKE-FILLING-ID", ColumnType::Binary(BlobSize::Tiny)),
+            make_col!("CAKE-FILLING-ID", ColumnType::Binary(BlobSize::Medium)),
+            make_col!("CAKE-FILLING-ID", ColumnType::Binary(BlobSize::Long)),
             make_col!("CAKE-FILLING-ID", ColumnType::VarBinary(10)),
             make_col!("CAKE", ColumnType::Boolean),
             make_col!("date", ColumnType::Date),
@@ -325,6 +351,10 @@ mod tests {
             "cake_id",
             "cake_id",
             "cake_id",
+            "cake_filling_id",
+            "cake_filling_id",
+            "cake_filling_id",
+            "cake_filling_id",
             "cake_filling_id",
             "cake_filling_id",
             "cake_filling_id",
@@ -361,6 +391,10 @@ mod tests {
             "CakeFillingId",
             "CakeFillingId",
             "CakeFillingId",
+            "CakeFillingId",
+            "CakeFillingId",
+            "CakeFillingId",
+            "CakeFillingId",
             "Cake",
             "Date",
             "Time",
@@ -390,6 +424,10 @@ mod tests {
             "u64",
             "f32",
             "f64",
+            "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
             "Vec<u8>",
             "Vec<u8>",
             "bool",
@@ -435,6 +473,10 @@ mod tests {
             "f64",
             "Vec<u8>",
             "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
             "bool",
             "TimeDate",
             "TimeTime",
@@ -464,7 +506,7 @@ mod tests {
         let columns = setup();
         let col_defs = vec![
             "ColumnType::String(Some(255u32)).def()",
-            "ColumnType::Custom(\"cus_col\".to_owned()).def()",
+            "ColumnType::custom(\"cus_col\").def()",
             "ColumnType::TinyInteger.def()",
             "ColumnType::TinyUnsigned.def()",
             "ColumnType::SmallInteger.def()",
@@ -475,8 +517,12 @@ mod tests {
             "ColumnType::BigUnsigned.def()",
             "ColumnType::Float.def()",
             "ColumnType::Double.def()",
-            "ColumnType::Binary.def()",
-            "ColumnType::Binary.def()",
+            "ColumnType::Binary(BlobSize::Blob(None)).def()",
+            "ColumnType::Binary(BlobSize::Blob(Some(10u32))).def()",
+            "ColumnType::Binary(BlobSize::Tiny).def()",
+            "ColumnType::Binary(BlobSize::Medium).def()",
+            "ColumnType::Binary(BlobSize::Long).def()",
+            "ColumnType::VarBinary(10u32).def()",
             "ColumnType::Boolean.def()",
             "ColumnType::Date.def()",
             "ColumnType::Time.def()",

@@ -1,5 +1,5 @@
 use crate::{
-    cast_enum_as_text, join_tbl_on_condition, unpack_table_ref, EntityTrait, IdenStatic, Iterable,
+    join_tbl_on_condition, unpack_table_ref, ColumnTrait, EntityTrait, IdenStatic, Iterable,
     Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
 };
 pub use sea_query::JoinType;
@@ -70,9 +70,9 @@ where
     {
         let mut slf = self;
         for (i, mut rel) in l.link().into_iter().enumerate() {
-            let to_tbl = Alias::new(&format!("r{}", i)).into_iden();
+            let to_tbl = Alias::new(format!("r{i}")).into_iden();
             let from_tbl = if i > 0 {
-                Alias::new(&format!("r{}", i - 1)).into_iden()
+                Alias::new(format!("r{}", i - 1)).into_iden()
             } else {
                 unpack_table_ref(&rel.from_tbl)
             };
@@ -96,12 +96,12 @@ where
         for col in <T::Column as Iterable>::iter() {
             let alias = format!("{}{}", SelectB.as_str(), col.as_str());
             let expr = Expr::col((
-                Alias::new(&format!("r{}", l.link().len() - 1)).into_iden(),
+                Alias::new(format!("r{}", l.link().len() - 1)).into_iden(),
                 col.into_iden(),
             ));
             select_two.query().expr(SelectExpr {
-                expr: cast_enum_as_text(expr, &col),
-                alias: Some(SeaRc::new(Alias::new(&alias))),
+                expr: col.select_as(expr),
+                alias: Some(SeaRc::new(Alias::new(alias))),
                 window: None,
             });
         }

@@ -44,7 +44,7 @@ impl PrimaryKeyTrait for PrimaryKey {
     }
 }
 
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
 
 impl ColumnTrait for Column {
@@ -57,12 +57,6 @@ impl ColumnTrait for Column {
             Self::Index1Attr => ColumnType::Integer.def().indexed(),
             Self::Index2Attr => ColumnType::Integer.def().indexed().unique(),
         }
-    }
-}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        panic!()
     }
 }
 

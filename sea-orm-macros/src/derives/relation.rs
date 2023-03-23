@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 
-use crate::attributes::{derive_attr, field_attr};
+use super::attributes::{derive_attr, field_attr};
 
 enum Error {
     InputNotEnum,
@@ -44,7 +44,7 @@ impl DeriveRelation {
     fn impl_relation_trait(&self) -> syn::Result<TokenStream> {
         let ident = &self.ident;
         let entity_ident = &self.entity_ident;
-        let no_relation_def_msg = format!("No RelationDef for {}", ident);
+        let no_relation_def_msg = format!("No RelationDef for {ident}");
 
         let variant_relation_defs: Vec<TokenStream> = self
             .variants

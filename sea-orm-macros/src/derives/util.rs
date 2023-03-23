@@ -1,4 +1,4 @@
-use heck::CamelCase;
+use heck::ToUpperCamelCase;
 use quote::format_ident;
 use syn::{punctuated::Punctuated, token::Comma, Field, Ident, Meta};
 
@@ -47,9 +47,9 @@ where
 {
     let string = string.to_string();
     if RUST_KEYWORDS.iter().any(|s| s.eq(&string)) {
-        format!("r#{}", string)
+        format!("r#{string}")
     } else if RUST_SPECIAL_KEYWORDS.iter().any(|s| s.eq(&string)) {
-        format!("{}_", string)
+        format!("{string}_")
     } else {
         string
     }
@@ -132,7 +132,7 @@ where
             // what guarantees this being special case avoiding
             // all potential conflicts.
             String::from("__Empty"),
-            |s| s.to_camel_case(),
+            |s| s.to_upper_camel_case(),
         );
 
     if rebuilt

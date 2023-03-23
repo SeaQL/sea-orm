@@ -2,6 +2,8 @@
 #![warn(missing_docs)]
 #![deny(
     missing_debug_implementations,
+    clippy::missing_panics_doc,
+    clippy::unwrap_used,
     clippy::print_stderr,
     clippy::print_stdout
 )]
@@ -357,5 +359,5 @@ pub use sea_query::Iden;
 #[cfg(feature = "macros")]
 pub use sea_query::Iden as DeriveIden;
 
+pub use sea_orm_macros::EnumIter;
 pub use strum;
-pub use strum::EnumIter;

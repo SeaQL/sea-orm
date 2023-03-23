@@ -1,12 +1,13 @@
 #[cfg(feature = "cli")]
-pub use super::cli;
+pub use crate::cli;
 
-pub use super::manager::SchemaManager;
-pub use super::migrator::MigratorTrait;
-pub use super::{MigrationName, MigrationTrait};
+pub use crate::{
+    IntoSchemaManagerConnection, MigrationName, MigrationTrait, MigratorTrait, SchemaManager,
+    SchemaManagerConnection,
+};
 pub use async_trait;
-pub use sea_orm;
-pub use sea_orm::sea_query;
-pub use sea_orm::sea_query::*;
-pub use sea_orm::DbErr;
-pub use sea_orm::DeriveMigrationName;
+pub use sea_orm::{
+    self,
+    sea_query::{self, *},
+    DbErr, DeriveMigrationName,
+};

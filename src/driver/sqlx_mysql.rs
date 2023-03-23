@@ -211,7 +211,7 @@ impl SqlxMySqlPoolConnection {
             .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
-            Err(TransactionError::Connection(DbErr::ConnectionAcquire))
+            Err(DbErr::ConnectionAcquire.into())
         }
     }
 
@@ -224,7 +224,8 @@ impl SqlxMySqlPoolConnection {
 
     /// Explicitly close the MySQL connection
     pub async fn close(self) -> Result<(), DbErr> {
-        Ok(self.pool.close().await)
+        self.pool.close().await;
+        Ok(())
     }
 }
 

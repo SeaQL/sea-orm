@@ -1,6 +1,5 @@
 use crate::{
-    cast_enum_as_text, ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select,
-    SelectTwo, SelectTwoMany,
+    ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectTwo, SelectTwoMany,
 };
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
@@ -38,7 +37,7 @@ where
             match &sel.alias {
                 Some(alias) => {
                     let alias = format!("{}{}", pre, alias.to_string().as_str());
-                    sel.alias = Some(SeaRc::new(Alias::new(&alias)));
+                    sel.alias = Some(SeaRc::new(Alias::new(alias)));
                 }
                 None => {
                     let col = match &sel.expr {
@@ -66,7 +65,7 @@ where
                         _ => panic!("cannot apply alias for expr other than Column or AsEnum"),
                     };
                     let alias = format!("{}{}", pre, col.to_string().as_str());
-                    sel.alias = Some(SeaRc::new(Alias::new(&alias)));
+                    sel.alias = Some(SeaRc::new(Alias::new(alias)));
                 }
             };
         });
@@ -149,8 +148,8 @@ where
     for col in <F::Column as Iterable>::iter() {
         let alias = format!("{}{}", SelectB.as_str(), col.as_str());
         selector.query().expr(SelectExpr {
-            expr: cast_enum_as_text(col.into_expr(), &col),
-            alias: Some(SeaRc::new(Alias::new(&alias))),
+            expr: col.select_as(col.into_expr()),
+            alias: Some(SeaRc::new(Alias::new(alias))),
             window: None,
         });
     }

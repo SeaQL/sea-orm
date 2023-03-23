@@ -75,7 +75,7 @@ fn cors() -> Cors {
     let allowed_origins =
         AllowedOrigins::some_exact(&["http://localhost:8000", "http://127.0.0.1:8000"]);
 
-    let cors = rocket_cors::CorsOptions {
+    rocket_cors::CorsOptions {
         allowed_origins,
         allowed_methods: vec![Method::Get, Method::Post, Method::Delete]
             .into_iter()
@@ -86,8 +86,7 @@ fn cors() -> Cors {
         ..Default::default()
     }
     .to_cors()
-    .unwrap();
-    cors
+    .unwrap()
 }
 
 fn custom_openapi_spec() -> OpenApi {
@@ -134,6 +133,6 @@ pub fn main() {
     println!("Rocket: deorbit.");
 
     if let Some(err) = result.err() {
-        println!("Error: {}", err);
+        println!("Error: {err}");
     }
 }
