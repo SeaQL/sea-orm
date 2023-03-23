@@ -106,7 +106,6 @@ where
     let mut rebuilt = string
         .to_string()
         .chars()
-        .into_iter()
         .enumerate()
         .map(|(pos, char_)| {
             if !additional_chars_to_replace.contains(&char_)
