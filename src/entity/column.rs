@@ -459,12 +459,11 @@ mod tests {
     #[test]
     #[cfg(feature = "macros")]
     fn entity_model_column_1() {
-        use crate::entity::*;
+        use crate::prelude::*;
 
         mod hello {
             use crate as sea_orm;
             use crate::entity::prelude::*;
-            use sea_query::Expr;
 
             #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "hello")]

@@ -1,9 +1,11 @@
 pub use crate::{
-    error::*, sea_query::BlobSize, ActiveEnum, ActiveModelBehavior, ActiveModelTrait, ColumnDef,
-    ColumnTrait, ColumnType, ColumnTypeTrait, ConnectionTrait, CursorTrait, DatabaseConnection,
-    DbConn, EntityName, EntityTrait, EnumIter, ForeignKeyAction, Iden, IdenStatic, Linked,
-    LoaderTrait, ModelTrait, PaginatorTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter,
-    QueryResult, Related, RelationDef, RelationTrait, Select, Value,
+    error::*,
+    sea_query::{BlobSize, Expr},
+    ActiveEnum, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait, ColumnType,
+    ColumnTypeTrait, ConnectionTrait, CursorTrait, DatabaseConnection, DbConn, EntityName,
+    EntityTrait, EnumIter, ForeignKeyAction, Iden, IdenStatic, Linked, LoaderTrait, ModelTrait,
+    PaginatorTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, QueryResult, Related,
+    RelationDef, RelationTrait, Select, Value,
 };
 
 #[cfg(feature = "macros")]
