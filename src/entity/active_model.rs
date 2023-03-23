@@ -155,31 +155,14 @@ pub trait ActiveModelTrait: Clone + Debug {
                 let s3 = next!();
                 Some(ValueTuple::Three(s1, s2, s3))
             }
-            4 => {
-                let s1 = next!();
-                let s2 = next!();
-                let s3 = next!();
-                let s4 = next!();
-                Some(ValueTuple::Four(s1, s2, s3, s4))
+            len => {
+                let mut vec = Vec::with_capacity(len);
+                for _ in 0..len {
+                    let s = next!();
+                    vec.push(s);
+                }
+                Some(ValueTuple::Many(vec))
             }
-            5 => {
-                let s1 = next!();
-                let s2 = next!();
-                let s3 = next!();
-                let s4 = next!();
-                let s5 = next!();
-                Some(ValueTuple::Five(s1, s2, s3, s4, s5))
-            }
-            6 => {
-                let s1 = next!();
-                let s2 = next!();
-                let s3 = next!();
-                let s4 = next!();
-                let s5 = next!();
-                let s6 = next!();
-                Some(ValueTuple::Six(s1, s2, s3, s4, s5, s6))
-            }
-            _ => panic!("The arity cannot be larger than 6"),
         }
     }
 
@@ -611,7 +594,7 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         <Self as ActiveModelTrait>::default()
     }
 
-    /// Will be called before saving
+    /// Will be called before `ActiveModel::insert`, `ActiveModel::update`, and `ActiveModel::save`
     async fn before_save<C>(self, db: &C, insert: bool) -> Result<Self, DbErr>
     where
         C: ConnectionTrait,
@@ -619,7 +602,7 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         Ok(self)
     }
 
-    /// Will be called after saving
+    /// Will be called after `ActiveModel::insert`, `ActiveModel::update`, and `ActiveModel::save`
     async fn after_save<C>(
         model: <Self::Entity as EntityTrait>::Model,
         db: &C,
@@ -631,7 +614,7 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         Ok(model)
     }
 
-    /// Will be called before deleting
+    /// Will be called before `ActiveModel::delete`
     async fn before_delete<C>(self, db: &C) -> Result<Self, DbErr>
     where
         C: ConnectionTrait,
@@ -639,7 +622,7 @@ pub trait ActiveModelBehavior: ActiveModelTrait {
         Ok(self)
     }
 
-    /// Will be called after deleting
+    /// Will be called after `ActiveModel::delete`
     async fn after_delete<C>(self, db: &C) -> Result<Self, DbErr>
     where
         C: ConnectionTrait,

@@ -1,4 +1,4 @@
-use heck::SnakeCase;
+use heck::ToSnakeCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Fields, Lit, Meta, Variant};

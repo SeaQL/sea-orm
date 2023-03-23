@@ -1,4 +1,4 @@
-use heck::{MixedCase, SnakeCase};
+use heck::{ToLowerCamelCase, ToSnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Fields, Lit, Meta, Variant};
@@ -85,7 +85,7 @@ pub fn impl_col_from_str(ident: &Ident, data: &Data) -> syn::Result<TokenStream>
     let columns = data_enum.variants.iter().map(|column| {
         let column_iden = column.ident.clone();
         let column_str_snake = column_iden.to_string().to_snake_case();
-        let column_str_mixed = column_iden.to_string().to_mixed_case();
+        let column_str_mixed = column_iden.to_string().to_lower_camel_case();
         quote!(
             #column_str_snake | #column_str_mixed => Ok(#ident::#column_iden)
         )

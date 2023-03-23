@@ -37,7 +37,7 @@ where
             match &sel.alias {
                 Some(alias) => {
                     let alias = format!("{}{}", pre, alias.to_string().as_str());
-                    sel.alias = Some(SeaRc::new(Alias::new(&alias)));
+                    sel.alias = Some(SeaRc::new(Alias::new(alias)));
                 }
                 None => {
                     let col = match &sel.expr {
@@ -65,7 +65,7 @@ where
                         _ => panic!("cannot apply alias for expr other than Column or AsEnum"),
                     };
                     let alias = format!("{}{}", pre, col.to_string().as_str());
-                    sel.alias = Some(SeaRc::new(Alias::new(&alias)));
+                    sel.alias = Some(SeaRc::new(Alias::new(alias)));
                 }
             };
         });
@@ -149,7 +149,7 @@ where
         let alias = format!("{}{}", SelectB.as_str(), col.as_str());
         selector.query().expr(SelectExpr {
             expr: col.select_as(col.into_expr()),
-            alias: Some(SeaRc::new(Alias::new(&alias))),
+            alias: Some(SeaRc::new(Alias::new(alias))),
             window: None,
         });
     }

@@ -1,6 +1,6 @@
 [package]
 name = "sea-orm-macros"
-version = "0.11.0"
+version = "0.12.0"
 authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
 edition = "2021"
 description = "Derive macros for SeaORM"
@@ -18,15 +18,19 @@ path = "src/lib.rs"
 proc-macro = true
 
 [dependencies]
-bae = { version = "0.1", default-features = false }
-syn = { version = "1", default-features = false }
+bae = { version = "0.1", default-features = false, optional = true }
+syn = { version = "1", default-features = false, features = ["parsing", "proc-macro", "derive", "printing"] }
 quote = { version = "1", default-features = false }
-heck = { version = "0.3", default-features = false }
+heck = { version = "0.4", default-features = false }
 proc-macro2 = { version = "1", default-features = false }
+unicode-ident = { version = "1" }
 
 [dev-dependencies]
-sea-orm = { path = "../", features = ["macros"] }
+sea-orm = { path = "../", features = ["macros", "tests-cfg"] }
 serde = { version = "1.0", features = ["derive"] }
 
 [features]
+default = ["derive"]
 postgres-array = []
+derive = ["bae"]
+strum = []

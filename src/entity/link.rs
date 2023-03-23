@@ -21,9 +21,9 @@ pub trait Linked {
     fn find_linked(&self) -> Select<Self::ToEntity> {
         let mut select = Select::new();
         for (i, mut rel) in self.link().into_iter().rev().enumerate() {
-            let from_tbl = Alias::new(&format!("r{i}")).into_iden();
+            let from_tbl = Alias::new(format!("r{i}")).into_iden();
             let to_tbl = if i > 0 {
-                Alias::new(&format!("r{}", i - 1)).into_iden()
+                Alias::new(format!("r{}", i - 1)).into_iden()
             } else {
                 unpack_table_ref(&rel.to_tbl)
             };

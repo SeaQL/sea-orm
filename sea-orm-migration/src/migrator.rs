@@ -17,18 +17,13 @@ use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::S
 
 use super::{seaql_migrations, IntoSchemaManagerConnection, MigrationTrait, SchemaManager};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /// Status of migration
 pub enum MigrationStatus {
     /// Not yet applied
     Pending,
     /// Applied
     Applied,
-}
-
-pub struct Migration {
-    migration: Box<dyn MigrationTrait>,
-    status: MigrationStatus,
 }
 
 impl Display for MigrationStatus {
@@ -38,6 +33,23 @@ impl Display for MigrationStatus {
             MigrationStatus::Applied => "Applied",
         };
         write!(f, "{status}")
+    }
+}
+
+pub struct Migration {
+    migration: Box<dyn MigrationTrait>,
+    status: MigrationStatus,
+}
+
+impl Migration {
+    /// Get migration name from MigrationName trait implementation
+    pub fn name(&self) -> &str {
+        self.migration.name()
+    }
+
+    /// Get migration status
+    pub fn status(&self) -> MigrationStatus {
+        self.status
     }
 }
 
@@ -310,7 +322,7 @@ where
             let type_name: String = row.try_get("", "typname")?;
             info!("Dropping type '{}'", type_name);
             let mut stmt = Type::drop();
-            stmt.name(Alias::new(&type_name as &str));
+            stmt.name(Alias::new(&type_name));
             db.execute(db_backend.build(&stmt)).await?;
             info!("Type '{}' has been dropped", type_name);
         }

@@ -3,9 +3,11 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, DeriveInput, Error};
 
-mod attributes;
+#[cfg(feature = "derive")]
 mod derives;
-mod util;
+
+#[cfg(feature = "strum")]
+mod strum;
 
 /// Create an Entity
 ///
@@ -70,6 +72,7 @@ mod util;
 /// #
 /// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
+#[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveEntity, attributes(sea_orm))]
 pub fn derive_entity(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -129,6 +132,7 @@ pub fn derive_entity(input: TokenStream) -> TokenStream {
 /// #
 /// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
+#[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveEntityModel, attributes(sea_orm))]
 pub fn derive_entity_model(input: TokenStream) -> TokenStream {
     let input_ts = input.clone();
@@ -216,6 +220,7 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
 /// #
 /// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
+#[cfg(feature = "derive")]
 #[proc_macro_derive(DerivePrimaryKey, attributes(sea_orm))]
 pub fn derive_primary_key(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
@@ -241,6 +246,7 @@ pub fn derive_primary_key(input: TokenStream) -> TokenStream {
 ///     FillingId,
 /// }
 /// ```
+#[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveColumn, attributes(sea_orm))]
 pub fn derive_column(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
@@ -274,6 +280,7 @@ pub fn derive_column(input: TokenStream) -> TokenStream {
 ///     }
 /// }
 /// ```
+#[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveCustomColumn)]
 pub fn derive_custom_column(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
@@ -349,6 +356,7 @@ pub fn derive_custom_column(input: TokenStream) -> TokenStream {
 /// #
 /// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
+#[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveModel, attributes(sea_orm))]
 pub fn derive_model(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -421,6 +429,7 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 /// #
 /// # impl ActiveModelBehavior for ActiveModel {}
 /// ```
+#[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveActiveModel, attributes(sea_orm))]
 pub fn derive_active_model(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
@@ -432,6 +441,7 @@ pub fn derive_active_model(input: TokenStream) -> TokenStream {
 }
 
 /// Derive into an active model
+#[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveIntoActiveModel, attributes(sea_orm))]
 pub fn derive_into_active_model(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -503,6 +513,7 @@ pub fn derive_into_active_model(input: TokenStream) -> TokenStream {
 /// #     }
 /// # }
 /// ```
+#[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveActiveModelBehavior)]
 pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
@@ -537,6 +548,9 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 /// - For enum variant
 ///     - `string_value` or `num_value`:
 ///         - For `string_value`, value should be passed as string, i.e. `string_value = "A"`
+///             - Due to the way internal Enums are automatically derived, the following restrictions apply:
+///                 - members cannot share identical `string_value`, case-insensitive.
+///                 - in principle, any future Titlecased Rust keywords are not valid `string_value`.
 ///         - For `num_value`, value should be passed as integer, i.e. `num_value = 1` or `num_value = 1i32`
 ///         - Note that only one of it can be specified, and all variants of an enum have to annotate with the same `*_value` macro attribute
 ///
@@ -552,6 +566,7 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 ///     White = 1,
 /// }
 /// ```
+#[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveActiveEnum, attributes(sea_orm))]
 pub fn derive_active_enum(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -574,6 +589,7 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 ///     num_of_fruits: i32,
 /// }
 /// ```
+#[cfg(feature = "derive")]
 #[proc_macro_derive(FromQueryResult)]
 pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
@@ -608,6 +624,7 @@ pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
 ///     CakeExpanded,
 /// }
 /// ```
+#[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveRelation, attributes(sea_orm))]
 pub fn derive_relation(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -635,6 +652,7 @@ pub fn derive_relation(input: TokenStream) -> TokenStream {
 ///     }
 /// }
 /// ```
+#[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveMigrationName)]
 pub fn derive_migration_name(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -643,6 +661,7 @@ pub fn derive_migration_name(input: TokenStream) -> TokenStream {
         .into()
 }
 
+#[cfg(feature = "derive")]
 #[proc_macro_derive(FromJsonQueryResult)]
 pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, .. } = parse_macro_input!(input);
@@ -654,6 +673,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 }
 
 #[doc(hidden)]
+#[cfg(feature = "derive")]
 #[proc_macro_attribute]
 pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::ItemFn);
@@ -675,4 +695,20 @@ pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
         }
     )
     .into()
+}
+
+/// Creates a new type that iterates of the variants of an enum.
+///
+/// Iterate over the variants of an Enum. Any additional data on your variants will be set to `Default::default()`.
+/// The macro implements `strum::IntoEnumIterator` on your enum and creates a new type called `YourEnumIter` that is the iterator object.
+/// You cannot derive `EnumIter` on any type with a lifetime bound (`<'a>`) because the iterator would surely
+/// create [unbounded lifetimes](https://doc.rust-lang.org/nightly/nomicon/unbounded-lifetimes.html).
+#[cfg(feature = "strum")]
+#[proc_macro_derive(EnumIter, attributes(strum))]
+pub fn enum_iter(input: TokenStream) -> TokenStream {
+    let ast = parse_macro_input!(input as DeriveInput);
+
+    strum::enum_iter::enum_iter_inner(&ast)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
 }

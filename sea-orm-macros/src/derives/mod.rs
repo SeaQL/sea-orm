@@ -1,6 +1,7 @@
 mod active_enum;
 mod active_model;
 mod active_model_behavior;
+mod attributes;
 mod column;
 mod entity;
 mod entity_model;
@@ -11,6 +12,7 @@ mod model;
 mod primary_key;
 mod relation;
 mod try_getable_from_json;
+mod util;
 
 pub use active_enum::*;
 pub use active_model::*;
