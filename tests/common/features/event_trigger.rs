@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 use sea_orm::{
-    sea_query::{ArrayType, ColumnType, SeaRc, ValueType},
+    sea_query::{ArrayType, ColumnType, RcOrArc, ValueType},
     TryGetError, TryGetable,
 };
 
@@ -65,6 +65,6 @@ impl ValueType for Events {
     }
 
     fn column_type() -> ColumnType {
-        ColumnType::Array(SeaRc::new(ColumnType::String(None)))
+        ColumnType::Array(RcOrArc::new(ColumnType::String(None)))
     }
 }
