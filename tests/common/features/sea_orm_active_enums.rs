@@ -53,36 +53,3 @@ pub enum MediaType {
     #[sea_orm(string_value = "3D")]
     _3D,
 }
-
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "pop_os_names_typos")]
-pub enum PopOSTypos {
-    #[sea_orm(string_value = "Pop!_OS")]
-    PopOSCorrect,
-    #[sea_orm(string_value = "Pop\u{2757}_OS")]
-    PopOSEmoji,
-    #[sea_orm(string_value = "Pop!_操作系统")]
-    PopOSChinese,
-    #[sea_orm(string_value = "PopOS")]
-    PopOSASCIIOnly,
-    #[sea_orm(string_value = "Pop OS")]
-    PopOSASCIIOnlyWithSpace,
-    #[sea_orm(string_value = "Pop!OS")]
-    PopOSNoUnderscore,
-    #[sea_orm(string_value = "Pop_OS")]
-    PopOSNoExclaimation,
-    #[sea_orm(string_value = "!PopOS_")]
-    PopOSAllOverThePlace,
-    #[sea_orm(string_value = "Pop!_OS22.04LTS")]
-    PopOSWithVersion,
-    #[sea_orm(string_value = "22.04LTSPop!_OS")]
-    PopOSWithVersionPrefix,
-    #[sea_orm(string_value = "!_")]
-    PopOSJustTheSymbols,
-    #[sea_orm(string_value = "")]
-    Nothing,
-    // This WILL fail:
-    // Both PopOs and PopOS will create identifier "Popos"
-    // #[sea_orm(string_value = "PopOs")]
-    // PopOSLowerCase,
-}
