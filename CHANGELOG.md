@@ -33,6 +33,7 @@ let customer = Customer::find()
 assert_eq!(customers.notes, None);
 ```
 * Added `sea_orm_macros::EnumIter` to implement `strum::IntoEnumIterator` trait for the derived enum (source code adapted from https://github.com/Peternator7/strum)
+* [sea-orm-cli] the `migrate init` command will create a `.gitignore` file when the migration folder reside in a Git repository https://github.com/SeaQL/sea-orm/pull/1334
 
 ### Enhancements
 
