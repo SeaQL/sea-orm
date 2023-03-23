@@ -9,7 +9,7 @@ use std::str::FromStr;
 pub use sea_query::ColumnType;
 
 /// Defines a Column for an Entity
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ColumnDef {
     pub(crate) col_type: ColumnType,
     pub(crate) null: bool,
