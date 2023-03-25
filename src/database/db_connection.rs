@@ -410,6 +410,7 @@ impl DatabaseConnection {
 }
 
 #[cfg(feature = "sea-orm-internal")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sea-orm-internal")))]
 impl DatabaseConnection {
     /// Get [sqlx::MySqlPool]
     ///
