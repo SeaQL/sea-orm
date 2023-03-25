@@ -3,7 +3,7 @@ members = [".", "sea-orm-macros", "sea-orm-codegen"]
 
 [package]
 name = "sea-orm"
-version = "0.11.1"
+version = "0.11.2"
 authors = ["Chris Tsang <chris.2y3@outlook.com>"]
 edition = "2021"
 description = "🐚 An async & dynamic ORM for Rust"
@@ -33,7 +33,7 @@ log = { version = "0.4", default-features = false }
 tracing = { version = "0.1", default-features = false, features = ["attributes", "log"] }
 rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.3", default-features = false, optional = true }
-sea-orm-macros = { version = "0.11.1", path = "sea-orm-macros", default-features = false, optional = true }
+sea-orm-macros = { version = "0.11.2", path = "sea-orm-macros", default-features = false, optional = true }
 sea-query = { version = "0.28.3", features = ["thread-safe"] }
 sea-query-binder = { version = "0.3", default-features = false, optional = true }
 sea-strum = { version = "0.23", default-features = false, features = ["derive", "sea-orm"] }
