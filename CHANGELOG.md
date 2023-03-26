@@ -46,6 +46,7 @@ let migration = migrations.get(0).unwrap();
 assert_eq!(migration.name(), "m20220118_000002_create_fruit_table");
 assert_eq!(migration.status(), MigrationStatus::Pending);
 ```
+* The `postgres-array` feature will be enabled when `sqlx-postgres` backend is selected https://github.com/SeaQL/sea-orm/pull/1565
 
 ### Upgrades
 
