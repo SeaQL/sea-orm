@@ -38,6 +38,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 #### Social
 - [aeroFans](https://github.com/naryand/aerofans) | Full stack forum-like social media platform in Rust and WebAssembly | DB: Postgres
 - [JinShu](https://github.com/gengteng/jinshu) | A cross-platform **I**nstant **M**essaging system written in 🦀 | DB: MySQL, Postgres
+- [Kitsune](https://github.com/kitsune-soc/kitsune) | 🦊 ActivityPub-federated microblogging | DB: Postgres, SQLite
 - [THUBurrow](https://github.com/BobAnkh/THUBurrow) | A campus forum built by Next.js and Rocket | DB: Postgres
 
 #### Bots
