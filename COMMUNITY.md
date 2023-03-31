@@ -26,8 +26,8 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [mugen](https://github.com/koopa1338/mugen-dms) | DMS written in 🦀 | DB: Postgres
 - [OctoBase](https://github.com/toeverything/OctoBase) ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend written in 🦀 | DB: MySQL, Postgres, SQLite
 - [oxide_todo](https://github.com/TheAwiteb/oxide_todo) | RESTful Todo built with [Actix](https://github.com/actix/actix-web) and [SeaORM](https://github.com/SeaQL/sea-orm). Documented by [swagger-ui](https://swagger.io/tools/swagger-ui/). Authenticated by [JWT](https://jwt.io). Rate limited by [actix_extensible_rate_limit](https://github.com/jacob-pro/actix-extensible-rate-limit). Tested by [rstest](https://github.com/la10736/rstest). | DB: SQLite
-- [Wikijump](https://github.com/scpwiki/wikijump) ([repository](https://github.com/scpwiki/wikijump/tree/develop/deepwell)) ![GitHub stars](https://img.shields.io/github/stars/scpwiki/wikijump.svg?style=social) | API service for Wikijump, a fork of Wikidot | DB: Postgres
 - [Super Toolbox](https://github.com/atopx/toolbox) | micro-service best practices: use go-gin and rust-tonic | DB: mysql
+- [Wikijump](https://github.com/scpwiki/wikijump) ([repository](https://github.com/scpwiki/wikijump/tree/develop/deepwell)) ![GitHub stars](https://img.shields.io/github/stars/scpwiki/wikijump.svg?style=social) | API service for Wikijump, a fork of Wikidot | DB: Postgres
 
 #### Game
 - [Ceobe Canteen Serve](https://github.com/Enraged-Dun-Cookie-Development-Team/Ceobe-Canteen-Serve) | A tool based on Arknights mobile game, using axum as web framework | DB: MySQL
