@@ -20,6 +20,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 - [Axum Book Management](https://github.com/lz1998/axum-book-management) | CRUD system of book-management with ORM and JWT for educational purposes | DB: MySQL
 - [Backpack](https://github.com/JSH32/Backpack) ![GitHub stars](https://img.shields.io/github/stars/JSH32/Backpack.svg?style=social) | Open source self hosted file sharing platform on crack | DB: MySQL, Postgres, SQLite
+- [BookStore](https://github.com/AfaanBilal/bookstore) | A bookstore manegement system HTTP REST API using Rocket, SeaORM and JWT. | DB: MySQL
 - [Dev Board](https://github.com/goto-eof/dev_board_api_rust) | A dashboard for organizing software development tasks implemented in Rust
 - [Iron Guard](https://github.com/AfaanBilal/iron-guard-server) | An inventory management system HTTP REST API server built with Rocket and SeaORM | DB: MySQL
 - [mediarepo](https://mediarepo.trivernis.dev) ([repository](https://github.com/Trivernis/mediarepo)) ![GitHub stars](https://img.shields.io/github/stars/Trivernis/mediarepo.svg?style=social) | A tag-based media management application | DB: SQLite
@@ -28,7 +29,6 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [oxide_todo](https://github.com/TheAwiteb/oxide_todo) | RESTful Todo built with [Actix](https://github.com/actix/actix-web) and [SeaORM](https://github.com/SeaQL/sea-orm). Documented by [swagger-ui](https://swagger.io/tools/swagger-ui/). Authenticated by [JWT](https://jwt.io). Rate limited by [actix_extensible_rate_limit](https://github.com/jacob-pro/actix-extensible-rate-limit). Tested by [rstest](https://github.com/la10736/rstest). | DB: SQLite
 - [Super Toolbox](https://github.com/atopx/toolbox) | micro-service best practices: use go-gin and rust-tonic | DB: mysql
 - [Wikijump](https://github.com/scpwiki/wikijump) ([repository](https://github.com/scpwiki/wikijump/tree/develop/deepwell)) ![GitHub stars](https://img.shields.io/github/stars/scpwiki/wikijump.svg?style=social) | API service for Wikijump, a fork of Wikidot | DB: Postgres
-- [BookStore](https://github.com/AfaanBilal/bookstore) | A bookstore manegement system HTTP REST API using Rocket, SeaORM and JWT. | DB: MySQL
 
 #### Game
 - [Ceobe Canteen Serve](https://github.com/Enraged-Dun-Cookie-Development-Team/Ceobe-Canteen-Serve) | A tool based on Arknights mobile game, using axum as web framework | DB: MySQL
@@ -88,9 +88,9 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 ### Programming Libraries
 
 - [logic-lock](https://github.com/nappa85/logic-lock) | MySQL logic locks implemented over sea-orm | DB: MySQL
+- [sea-orm-adapter](https://github.com/ZihanType/sea-orm-adapter) | Sea ORM adapter for casbin-rs | DB: MySQL, Postgres, SQLite
 - [symbols](https://github.com/nappa85/symbols) | A proc-macro utility to populates enum variants with primary keys values
 - [template_flow](https://github.com/hilary888/template_flow) | An experiment exploring replacing placeholders in pre-prepared templates with their actual values | DB: Postgres
-- [sea-orm-adapter](https://github.com/ZihanType/sea-orm-adapter) | Sea ORM adapter for casbin-rs | DB: MySQL, Postgres, SQLite
 
 ### Frameworks
 
