@@ -89,6 +89,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [logic-lock](https://github.com/nappa85/logic-lock) | MySQL logic locks implemented over sea-orm | DB: MySQL
 - [symbols](https://github.com/nappa85/symbols) | A proc-macro utility to populates enum variants with primary keys values
 - [template_flow](https://github.com/hilary888/template_flow) | An experiment exploring replacing placeholders in pre-prepared templates with their actual values | DB: Postgres
+- [sea-orm-adapter](https://github.com/ZihanType/sea-orm-adapter) | Sea ORM adapter for casbin-rs | DB: MySQL, Postgres, SQLite
 
 ### Frameworks
 
