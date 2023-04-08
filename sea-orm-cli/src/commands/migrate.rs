@@ -147,9 +147,9 @@ pub fn run_migrate_generate(
     } else {
         Local::now().format(FMT)
     };
-    
+
     let migration_name = migration_name.replace(' ', "_");
-    
+
     let migration_name = format!("m{formatted_now}_{migration_name}");
 
     create_new_migration(&migration_name, migration_dir)?;
