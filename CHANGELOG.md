@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.11.3 - Pending
+
+### Enhancements
+
+* Re-export `sea_orm::ConnectionTrait` in `sea_orm_migration::prelude` https://github.com/SeaQL/sea-orm/pull/1577
+
 ## 0.11.2 - 2023-03-25
 
 ### Enhancements
