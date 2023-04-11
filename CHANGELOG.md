@@ -107,6 +107,7 @@ pub enum StringValueVariant {
 ### Enhancements
 
 * Re-export `sea_orm::ConnectionTrait` in `sea_orm_migration::prelude` https://github.com/SeaQL/sea-orm/pull/1577
+* Support generic structs in `FromQueryResult` derive macro https://github.com/SeaQL/sea-orm/pull/1464
 
 ## 0.11.2 - 2023-03-25
 
