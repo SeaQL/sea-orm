@@ -260,9 +260,10 @@ where
 #[cfg(feature = "mock")]
 mod tests {
     use super::*;
-    use crate::entity::prelude::*;
-    use crate::tests_cfg::*;
-    use crate::{DbBackend, MockDatabase, Statement, Transaction};
+    use crate::{
+        entity::prelude::*, sea_query::IntoIden, tests_cfg::*, DbBackend, MockDatabase, Statement,
+        Transaction,
+    };
     use pretty_assertions::assert_eq;
 
     #[smol_potat::test]
@@ -296,21 +297,31 @@ mod tests {
             models
         );
 
+        let stmt = Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            [
+                r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
+                r#"FROM "fruit""#,
+                r#"WHERE "fruit"."id" < $1"#,
+                r#"ORDER BY "fruit"."id" ASC"#,
+                r#"LIMIT $2"#,
+            ]
+            .join(" ")
+            .as_str(),
+            [10_i32.into(), 2_u64.into()],
+        );
+
+        assert_eq!(db.into_transaction_log(), [Transaction::one(stmt.clone())]);
+
         assert_eq!(
-            db.into_transaction_log(),
-            [Transaction::many([Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                [
-                    r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
-                    r#"FROM "fruit""#,
-                    r#"WHERE "fruit"."id" < $1"#,
-                    r#"ORDER BY "fruit"."id" ASC"#,
-                    r#"LIMIT $2"#,
-                ]
-                .join(" ")
-                .as_str(),
-                [10_i32.into(), 2_u64.into()]
-            ),])]
+            DbBackend::Postgres.build(
+                &Entity::find()
+                    .cursor_by(Identity::Many(vec![Column::Id.into_iden()]))
+                    .before(ValueTuple::Many(vec![10.into()]))
+                    .first(2)
+                    .query
+            ),
+            stmt
         );
 
         Ok(())
@@ -356,21 +367,31 @@ mod tests {
             ]
         );
 
+        let stmt = Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            [
+                r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
+                r#"FROM "fruit""#,
+                r#"WHERE "fruit"."id" > $1"#,
+                r#"ORDER BY "fruit"."id" DESC"#,
+                r#"LIMIT $2"#,
+            ]
+            .join(" ")
+            .as_str(),
+            [10_i32.into(), 2_u64.into()],
+        );
+
+        assert_eq!(db.into_transaction_log(), [Transaction::one(stmt.clone())]);
+
         assert_eq!(
-            db.into_transaction_log(),
-            [Transaction::many([Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                [
-                    r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
-                    r#"FROM "fruit""#,
-                    r#"WHERE "fruit"."id" > $1"#,
-                    r#"ORDER BY "fruit"."id" DESC"#,
-                    r#"LIMIT $2"#,
-                ]
-                .join(" ")
-                .as_str(),
-                [10_i32.into(), 2_u64.into()]
-            ),])]
+            DbBackend::Postgres.build(
+                &Entity::find()
+                    .cursor_by(Identity::Many(vec![Column::Id.into_iden()]))
+                    .after(ValueTuple::Many(vec![10.into()]))
+                    .last(2)
+                    .query
+            ),
+            stmt
         );
 
         Ok(())
@@ -417,22 +438,33 @@ mod tests {
             ]
         );
 
+        let stmt = Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            [
+                r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
+                r#"FROM "fruit""#,
+                r#"WHERE "fruit"."id" > $1"#,
+                r#"AND "fruit"."id" < $2"#,
+                r#"ORDER BY "fruit"."id" DESC"#,
+                r#"LIMIT $3"#,
+            ]
+            .join(" ")
+            .as_str(),
+            [25_i32.into(), 30_i32.into(), 2_u64.into()],
+        );
+
+        assert_eq!(db.into_transaction_log(), [Transaction::one(stmt.clone())]);
+
         assert_eq!(
-            db.into_transaction_log(),
-            [Transaction::many([Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                [
-                    r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
-                    r#"FROM "fruit""#,
-                    r#"WHERE "fruit"."id" > $1"#,
-                    r#"AND "fruit"."id" < $2"#,
-                    r#"ORDER BY "fruit"."id" DESC"#,
-                    r#"LIMIT $3"#,
-                ]
-                .join(" ")
-                .as_str(),
-                [25_i32.into(), 30_i32.into(), 2_u64.into()]
-            ),])]
+            DbBackend::Postgres.build(
+                &Entity::find()
+                    .cursor_by(Identity::Many(vec![Column::Id.into_iden()]))
+                    .after(ValueTuple::Many(vec![25.into()]))
+                    .before(ValueTuple::Many(vec![30.into()]))
+                    .last(2)
+                    .query
+            ),
+            stmt
         );
 
         Ok(())
@@ -534,27 +566,40 @@ mod tests {
             .await?
             .is_empty());
 
+        let stmt = Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            [
+                r#"SELECT "example"."id", "example"."category""#,
+                r#"FROM "example""#,
+                r#"WHERE ("example"."category" = $1 AND "example"."id" > $2)"#,
+                r#"OR "example"."category" > $3"#,
+                r#"ORDER BY "example"."category" ASC, "example"."id" ASC"#,
+                r#"LIMIT $4"#,
+            ]
+            .join(" ")
+            .as_str(),
+            [
+                "A".to_string().into(),
+                2i32.into(),
+                "A".to_string().into(),
+                3_u64.into(),
+            ],
+        );
+
+        assert_eq!(db.into_transaction_log(), [Transaction::one(stmt.clone())]);
+
         assert_eq!(
-            db.into_transaction_log(),
-            [Transaction::many([Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                [
-                    r#"SELECT "example"."id", "example"."category""#,
-                    r#"FROM "example""#,
-                    r#"WHERE ("example"."category" = $1 AND "example"."id" > $2)"#,
-                    r#"OR "example"."category" > $3"#,
-                    r#"ORDER BY "example"."category" ASC, "example"."id" ASC"#,
-                    r#"LIMIT $4"#,
-                ]
-                .join(" ")
-                .as_str(),
-                [
-                    "A".to_string().into(),
-                    2i32.into(),
-                    "A".to_string().into(),
-                    3_u64.into(),
-                ]
-            )])]
+            DbBackend::Postgres.build(
+                &Entity::find()
+                    .cursor_by(Identity::Many(vec![
+                        Column::Category.into_iden(),
+                        Column::Id.into_iden()
+                    ]))
+                    .after(ValueTuple::Many(vec!["A".into(), 2.into()]))
+                    .first(3)
+                    .query
+            ),
+            stmt
         );
 
         Ok(())
@@ -579,27 +624,40 @@ mod tests {
             .await?
             .is_empty());
 
+        let stmt = Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            [
+                r#"SELECT "example"."id", "example"."category""#,
+                r#"FROM "example""#,
+                r#"WHERE ("example"."category" = $1 AND "example"."id" < $2)"#,
+                r#"OR "example"."category" < $3"#,
+                r#"ORDER BY "example"."category" DESC, "example"."id" DESC"#,
+                r#"LIMIT $4"#,
+            ]
+            .join(" ")
+            .as_str(),
+            [
+                "A".to_string().into(),
+                2i32.into(),
+                "A".to_string().into(),
+                3_u64.into(),
+            ],
+        );
+
+        assert_eq!(db.into_transaction_log(), [Transaction::one(stmt.clone())]);
+
         assert_eq!(
-            db.into_transaction_log(),
-            [Transaction::many([Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                [
-                    r#"SELECT "example"."id", "example"."category""#,
-                    r#"FROM "example""#,
-                    r#"WHERE ("example"."category" = $1 AND "example"."id" < $2)"#,
-                    r#"OR "example"."category" < $3"#,
-                    r#"ORDER BY "example"."category" DESC, "example"."id" DESC"#,
-                    r#"LIMIT $4"#,
-                ]
-                .join(" ")
-                .as_str(),
-                [
-                    "A".to_string().into(),
-                    2i32.into(),
-                    "A".to_string().into(),
-                    3_u64.into(),
-                ]
-            )])]
+            DbBackend::Postgres.build(
+                &Entity::find()
+                    .cursor_by(Identity::Many(vec![
+                        Column::Category.into_iden(),
+                        Column::Id.into_iden()
+                    ]))
+                    .before(ValueTuple::Many(vec!["A".into(), 2.into()]))
+                    .last(3)
+                    .query
+            ),
+            stmt
         );
 
         Ok(())
@@ -663,31 +721,49 @@ mod tests {
             .await?
             .is_empty());
 
+        let stmt = Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            [
+                r#"SELECT "m"."x", "m"."y", "m"."z""#,
+                r#"FROM "m""#,
+                r#"WHERE ("m"."x" = $1 AND "m"."y" = $2 AND "m"."z" > $3)"#,
+                r#"OR ("m"."x" = $4 AND "m"."y" > $5)"#,
+                r#"OR "m"."x" > $6"#,
+                r#"ORDER BY "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
+                r#"LIMIT $7"#,
+            ]
+            .join(" ")
+            .as_str(),
+            [
+                ('x' as i32).into(),
+                "y".into(),
+                ('z' as i64).into(),
+                ('x' as i32).into(),
+                "y".into(),
+                ('x' as i32).into(),
+                4_u64.into(),
+            ],
+        );
+
+        assert_eq!(db.into_transaction_log(), [Transaction::one(stmt.clone())]);
+
         assert_eq!(
-            db.into_transaction_log(),
-            [Transaction::many([Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                [
-                    r#"SELECT "m"."x", "m"."y", "m"."z""#,
-                    r#"FROM "m""#,
-                    r#"WHERE ("m"."x" = $1 AND "m"."y" = $2 AND "m"."z" > $3)"#,
-                    r#"OR ("m"."x" = $4 AND "m"."y" > $5)"#,
-                    r#"OR "m"."x" > $6"#,
-                    r#"ORDER BY "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
-                    r#"LIMIT $7"#,
-                ]
-                .join(" ")
-                .as_str(),
-                [
-                    ('x' as i32).into(),
-                    "y".into(),
-                    ('z' as i64).into(),
-                    ('x' as i32).into(),
-                    "y".into(),
-                    ('x' as i32).into(),
-                    4_u64.into(),
-                ]
-            ),])]
+            DbBackend::Postgres.build(
+                &Entity::find()
+                    .cursor_by(Identity::Many(vec![
+                        Column::X.into_iden(),
+                        Column::Y.into_iden(),
+                        Column::Z.into_iden()
+                    ]))
+                    .after(ValueTuple::Many(vec![
+                        ('x' as i32).into(),
+                        "y".into(),
+                        ('z' as i64).into()
+                    ]))
+                    .first(4)
+                    .query
+            ),
+            stmt
         );
 
         Ok(())
