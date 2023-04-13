@@ -677,7 +677,6 @@ pub trait QueryFilter: Sized {
     }
 }
 
-
 /// Select specific column for partial model queries
 pub trait SelectColumns {
     /// Add a select column
