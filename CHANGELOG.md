@@ -117,6 +117,53 @@ assert_eq!(
     .join(" ")
 );
 ```
+* Implemented `IntoIdentity` for `Identity` https://github.com/SeaQL/sea-orm/pull/1508
+* `Identity` supports up to identity tuple of `DynIden` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
+* Implemented `IntoIdentity` for tuple of `IdenStatic` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
+* Implemented `IdentityOf` for tuple of `ColumnTrait` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
+* Implemented `TryGetableMany` for tuple of `TryGetable` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
+* Implemented `TryFromU64` for tuple of `TryFromU64` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
+* Supports entity with composite primary key of length 12 https://github.com/SeaQL/sea-orm/pull/1508
+```rs
+use sea_orm::entity::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[sea_orm(table_name = "primary_key_of_12")]
+pub struct Model {
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id_1: String,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id_2: i8,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id_3: u8,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id_4: i16,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id_5: u16,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id_6: i32,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id_7: u32,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id_8: i64,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id_9: u64,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id_10: f32,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id_11: f64,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id_12: bool,
+    pub owner: String,
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {}
+
+impl ActiveModelBehavior for ActiveModel {}
+```
 
 ### Enhancements
 
@@ -225,6 +272,7 @@ CREATE TABLE users_saved_bills
 * Changed the parameter of method `Transaction::from_sql_and_values(DbBackend, T, I) where I: IntoIterator<Item = Value>, T: Into<String>` to takes any string SQL https://github.com/SeaQL/sea-orm/pull/1439
 * Changed the parameter of method `ConnectOptions::set_schema_search_path(T) where T: Into<String>` to takes any string https://github.com/SeaQL/sea-orm/pull/1439
 * Changed the parameter of method `ColumnTrait::like()`, `ColumnTrait::not_like()`, `ColumnTrait::starts_with()`, `ColumnTrait::ends_with()` and `ColumnTrait::contains()` to takes any string https://github.com/SeaQL/sea-orm/pull/1439
+* Added `Identity::Many` https://github.com/SeaQL/sea-orm/pull/1508
 
 ## 0.11.3 - Pending
 
