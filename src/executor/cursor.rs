@@ -288,10 +288,9 @@ where
 #[cfg(feature = "mock")]
 mod tests {
     use super::*;
-    use crate::{
-        entity::prelude::*, sea_query::IntoIden, tests_cfg::*, DbBackend, MockDatabase, Statement,
-        Transaction,
-    };
+    use crate::entity::prelude::*;
+    use crate::tests_cfg::*;
+    use crate::{DbBackend, MockDatabase, Statement, Transaction};
     use pretty_assertions::assert_eq;
 
     #[smol_potat::test]
@@ -325,31 +324,21 @@ mod tests {
             models
         );
 
-        let stmt = Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            [
-                r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
-                r#"FROM "fruit""#,
-                r#"WHERE "fruit"."id" < $1"#,
-                r#"ORDER BY "fruit"."id" ASC"#,
-                r#"LIMIT $2"#,
-            ]
-            .join(" ")
-            .as_str(),
-            [10_i32.into(), 2_u64.into()],
-        );
-
-        assert_eq!(db.into_transaction_log(), [Transaction::one(stmt.clone())]);
-
         assert_eq!(
-            DbBackend::Postgres.build(
-                &Entity::find()
-                    .cursor_by(Identity::Many(vec![Column::Id.into_iden()]))
-                    .before(ValueTuple::Many(vec![10.into()]))
-                    .first(2)
-                    .query
-            ),
-            stmt
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
+                    r#"FROM "fruit""#,
+                    r#"WHERE "fruit"."id" < $1"#,
+                    r#"ORDER BY "fruit"."id" ASC"#,
+                    r#"LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
         );
 
         Ok(())
@@ -395,31 +384,21 @@ mod tests {
             ]
         );
 
-        let stmt = Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            [
-                r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
-                r#"FROM "fruit""#,
-                r#"WHERE "fruit"."id" > $1"#,
-                r#"ORDER BY "fruit"."id" DESC"#,
-                r#"LIMIT $2"#,
-            ]
-            .join(" ")
-            .as_str(),
-            [10_i32.into(), 2_u64.into()],
-        );
-
-        assert_eq!(db.into_transaction_log(), [Transaction::one(stmt.clone())]);
-
         assert_eq!(
-            DbBackend::Postgres.build(
-                &Entity::find()
-                    .cursor_by(Identity::Many(vec![Column::Id.into_iden()]))
-                    .after(ValueTuple::Many(vec![10.into()]))
-                    .last(2)
-                    .query
-            ),
-            stmt
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
+                    r#"FROM "fruit""#,
+                    r#"WHERE "fruit"."id" > $1"#,
+                    r#"ORDER BY "fruit"."id" DESC"#,
+                    r#"LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
         );
 
         Ok(())
@@ -466,33 +445,22 @@ mod tests {
             ]
         );
 
-        let stmt = Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            [
-                r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
-                r#"FROM "fruit""#,
-                r#"WHERE "fruit"."id" > $1"#,
-                r#"AND "fruit"."id" < $2"#,
-                r#"ORDER BY "fruit"."id" DESC"#,
-                r#"LIMIT $3"#,
-            ]
-            .join(" ")
-            .as_str(),
-            [25_i32.into(), 30_i32.into(), 2_u64.into()],
-        );
-
-        assert_eq!(db.into_transaction_log(), [Transaction::one(stmt.clone())]);
-
         assert_eq!(
-            DbBackend::Postgres.build(
-                &Entity::find()
-                    .cursor_by(Identity::Many(vec![Column::Id.into_iden()]))
-                    .after(ValueTuple::Many(vec![25.into()]))
-                    .before(ValueTuple::Many(vec![30.into()]))
-                    .last(2)
-                    .query
-            ),
-            stmt
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
+                    r#"FROM "fruit""#,
+                    r#"WHERE "fruit"."id" > $1"#,
+                    r#"AND "fruit"."id" < $2"#,
+                    r#"ORDER BY "fruit"."id" DESC"#,
+                    r#"LIMIT $3"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [25_i32.into(), 30_i32.into(), 2_u64.into()]
+            ),])]
         );
 
         Ok(())
@@ -594,40 +562,27 @@ mod tests {
             .await?
             .is_empty());
 
-        let stmt = Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            [
-                r#"SELECT "example"."id", "example"."category""#,
-                r#"FROM "example""#,
-                r#"WHERE ("example"."category" = $1 AND "example"."id" > $2)"#,
-                r#"OR "example"."category" > $3"#,
-                r#"ORDER BY "example"."category" ASC, "example"."id" ASC"#,
-                r#"LIMIT $4"#,
-            ]
-            .join(" ")
-            .as_str(),
-            [
-                "A".to_string().into(),
-                2i32.into(),
-                "A".to_string().into(),
-                3_u64.into(),
-            ],
-        );
-
-        assert_eq!(db.into_transaction_log(), [Transaction::one(stmt.clone())]);
-
         assert_eq!(
-            DbBackend::Postgres.build(
-                &Entity::find()
-                    .cursor_by(Identity::Many(vec![
-                        Column::Category.into_iden(),
-                        Column::Id.into_iden()
-                    ]))
-                    .after(ValueTuple::Many(vec!["A".into(), 2.into()]))
-                    .first(3)
-                    .query
-            ),
-            stmt
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "example"."id", "example"."category""#,
+                    r#"FROM "example""#,
+                    r#"WHERE ("example"."category" = $1 AND "example"."id" > $2)"#,
+                    r#"OR "example"."category" > $3"#,
+                    r#"ORDER BY "example"."category" ASC, "example"."id" ASC"#,
+                    r#"LIMIT $4"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [
+                    "A".to_string().into(),
+                    2i32.into(),
+                    "A".to_string().into(),
+                    3_u64.into(),
+                ]
+            )])]
         );
 
         Ok(())
@@ -652,40 +607,27 @@ mod tests {
             .await?
             .is_empty());
 
-        let stmt = Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            [
-                r#"SELECT "example"."id", "example"."category""#,
-                r#"FROM "example""#,
-                r#"WHERE ("example"."category" = $1 AND "example"."id" < $2)"#,
-                r#"OR "example"."category" < $3"#,
-                r#"ORDER BY "example"."category" DESC, "example"."id" DESC"#,
-                r#"LIMIT $4"#,
-            ]
-            .join(" ")
-            .as_str(),
-            [
-                "A".to_string().into(),
-                2i32.into(),
-                "A".to_string().into(),
-                3_u64.into(),
-            ],
-        );
-
-        assert_eq!(db.into_transaction_log(), [Transaction::one(stmt.clone())]);
-
         assert_eq!(
-            DbBackend::Postgres.build(
-                &Entity::find()
-                    .cursor_by(Identity::Many(vec![
-                        Column::Category.into_iden(),
-                        Column::Id.into_iden()
-                    ]))
-                    .before(ValueTuple::Many(vec!["A".into(), 2.into()]))
-                    .last(3)
-                    .query
-            ),
-            stmt
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "example"."id", "example"."category""#,
+                    r#"FROM "example""#,
+                    r#"WHERE ("example"."category" = $1 AND "example"."id" < $2)"#,
+                    r#"OR "example"."category" < $3"#,
+                    r#"ORDER BY "example"."category" DESC, "example"."id" DESC"#,
+                    r#"LIMIT $4"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [
+                    "A".to_string().into(),
+                    2i32.into(),
+                    "A".to_string().into(),
+                    3_u64.into(),
+                ]
+            )])]
         );
 
         Ok(())
@@ -749,292 +691,28 @@ mod tests {
             .await?
             .is_empty());
 
-        let stmt = Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            [
-                r#"SELECT "m"."x", "m"."y", "m"."z""#,
-                r#"FROM "m""#,
-                r#"WHERE ("m"."x" = $1 AND "m"."y" = $2 AND "m"."z" > $3)"#,
-                r#"OR ("m"."x" = $4 AND "m"."y" > $5)"#,
-                r#"OR "m"."x" > $6"#,
-                r#"ORDER BY "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
-                r#"LIMIT $7"#,
-            ]
-            .join(" ")
-            .as_str(),
-            [
-                ('x' as i32).into(),
-                "y".into(),
-                ('z' as i64).into(),
-                ('x' as i32).into(),
-                "y".into(),
-                ('x' as i32).into(),
-                4_u64.into(),
-            ],
-        );
-
-        assert_eq!(db.into_transaction_log(), [Transaction::one(stmt.clone())]);
-
-        assert_eq!(
-            DbBackend::Postgres.build(
-                &Entity::find()
-                    .cursor_by(Identity::Many(vec![
-                        Column::X.into_iden(),
-                        Column::Y.into_iden(),
-                        Column::Z.into_iden()
-                    ]))
-                    .after(ValueTuple::Many(vec![
-                        ('x' as i32).into(),
-                        "y".into(),
-                        ('z' as i64).into()
-                    ]))
-                    .first(4)
-                    .query
-            ),
-            stmt
-        );
-
-        Ok(())
-    }
-
-    mod wxyz_entity {
-        use crate as sea_orm;
-        use crate::entity::prelude::*;
-
-        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-        #[sea_orm(table_name = "m")]
-        pub struct Model {
-            #[sea_orm(primary_key)]
-            pub w: bool,
-            #[sea_orm(primary_key)]
-            pub x: i32,
-            #[sea_orm(primary_key)]
-            pub y: String,
-            #[sea_orm(primary_key)]
-            pub z: i64,
-        }
-
-        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-        pub enum Relation {}
-
-        impl ActiveModelBehavior for ActiveModel {}
-    }
-
-    #[smol_potat::test]
-    async fn composite_keys_6() -> Result<(), DbErr> {
-        use wxyz_entity::*;
-
-        let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[Model {
-                w: true,
-                x: 'x' as i32,
-                y: "y".into(),
-                z: 'z' as i64,
-            }]])
-            .into_connection();
-
-        assert!(!Entity::find()
-            .cursor_by((Column::W, Column::X, Column::Y, Column::Z))
-            .first(4)
-            .all(&db)
-            .await?
-            .is_empty());
-
         assert_eq!(
             db.into_transaction_log(),
             [Transaction::many([Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 [
-                    r#"SELECT "m"."w", "m"."x", "m"."y", "m"."z""#,
+                    r#"SELECT "m"."x", "m"."y", "m"."z""#,
                     r#"FROM "m""#,
-                    r#"ORDER BY "m"."w" ASC, "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
-                    r#"LIMIT $1"#,
-                ]
-                .join(" ")
-                .as_str(),
-                [4_u64.into()]
-            ),])]
-        );
-
-        Ok(())
-    }
-
-    #[smol_potat::test]
-    async fn composite_keys_7() -> Result<(), DbErr> {
-        use wxyz_entity::*;
-
-        let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[Model {
-                w: true,
-                x: 'x' as i32,
-                y: "y".into(),
-                z: 'z' as i64,
-            }]])
-            .into_connection();
-
-        assert!(!Entity::find()
-            .cursor_by((Column::W, Column::X, Column::Y, Column::Z))
-            .after((true, 'x' as i32, "y".to_owned(), 'z' as i64))
-            .first(4)
-            .all(&db)
-            .await?
-            .is_empty());
-
-        assert_eq!(
-            db.into_transaction_log(),
-            [Transaction::many([Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                [
-                    r#"SELECT "m"."w", "m"."x", "m"."y", "m"."z""#,
-                    r#"FROM "m""#,
-                    r#"WHERE ("m"."w" = $1 AND "m"."x" = $2 AND "m"."y" = $3 AND "m"."z" > $4)"#,
-                    r#"OR ("m"."w" = $5 AND "m"."x" = $6 AND "m"."y" > $7)"#,
-                    r#"OR ("m"."w" = $8 AND "m"."x" > $9)"#,
-                    r#"OR "m"."w" > $10"#,
-                    r#"ORDER BY "m"."w" ASC, "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
-                    r#"LIMIT $11"#,
+                    r#"WHERE ("m"."x" = $1 AND "m"."y" = $2 AND "m"."z" > $3)"#,
+                    r#"OR ("m"."x" = $4 AND "m"."y" > $5)"#,
+                    r#"OR "m"."x" > $6"#,
+                    r#"ORDER BY "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
+                    r#"LIMIT $7"#,
                 ]
                 .join(" ")
                 .as_str(),
                 [
-                    true.into(),
                     ('x' as i32).into(),
                     "y".into(),
                     ('z' as i64).into(),
-                    true.into(),
                     ('x' as i32).into(),
                     "y".into(),
-                    true.into(),
                     ('x' as i32).into(),
-                    true.into(),
-                    4_u64.into(),
-                ]
-            ),])]
-        );
-
-        Ok(())
-    }
-
-    mod vwxyz_entity {
-        use crate as sea_orm;
-        use crate::entity::prelude::*;
-
-        #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-        #[sea_orm(table_name = "m")]
-        pub struct Model {
-            #[sea_orm(primary_key)]
-            pub v: f32,
-            #[sea_orm(primary_key)]
-            pub w: bool,
-            #[sea_orm(primary_key)]
-            pub x: i32,
-            #[sea_orm(primary_key)]
-            pub y: String,
-            #[sea_orm(primary_key)]
-            pub z: i64,
-        }
-
-        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-        pub enum Relation {}
-
-        impl ActiveModelBehavior for ActiveModel {}
-    }
-
-    #[smol_potat::test]
-    async fn composite_keys_8() -> Result<(), DbErr> {
-        use vwxyz_entity::*;
-
-        let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[Model {
-                v: 16.24,
-                w: true,
-                x: 'x' as i32,
-                y: "y".into(),
-                z: 'z' as i64,
-            }]])
-            .into_connection();
-
-        assert!(!Entity::find()
-            .cursor_by((Column::V, Column::W, Column::X, Column::Y, Column::Z))
-            .first(4)
-            .all(&db)
-            .await?
-            .is_empty());
-
-        assert_eq!(
-            db.into_transaction_log(),
-            [Transaction::many([Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                [
-                    r#"SELECT "m"."v", "m"."w", "m"."x", "m"."y", "m"."z""#,
-                    r#"FROM "m""#,
-                    r#"ORDER BY "m"."v" ASC, "m"."w" ASC, "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
-                    r#"LIMIT $1"#,
-                ]
-                .join(" ")
-                .as_str(),
-                [4_u64.into()]
-            ),])]
-        );
-
-        Ok(())
-    }
-
-    #[smol_potat::test]
-    async fn composite_keys_9() -> Result<(), DbErr> {
-        use vwxyz_entity::*;
-
-        let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[Model {
-                v: 16.24,
-                w: true,
-                x: 'x' as i32,
-                y: "y".into(),
-                z: 'z' as i64,
-            }]])
-            .into_connection();
-
-        assert!(!Entity::find()
-            .cursor_by((Column::V, Column::W, Column::X, Column::Y, Column::Z))
-            .after((16.24, true, 'x' as i32, "y".to_owned(), 'z' as i64))
-            .first(4)
-            .all(&db)
-            .await?
-            .is_empty());
-
-        assert_eq!(
-            db.into_transaction_log(),
-            [Transaction::many([Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                [
-                    r#"SELECT "m"."v", "m"."w", "m"."x", "m"."y", "m"."z""#,
-                    r#"FROM "m""#,
-                    r#"WHERE ("m"."v" = $1 AND "m"."w" = $2 AND "m"."x" = $3 AND "m"."y" = $4 AND "m"."z" > $5)"#,
-                    r#"OR ("m"."v" = $6 AND "m"."w" = $7 AND "m"."x" = $8 AND "m"."y" > $9)"#,
-                    r#"OR ("m"."v" = $10 AND "m"."w" = $11 AND "m"."x" > $12)"#,
-                    r#"OR ("m"."v" = $13 AND "m"."w" > $14)"#,
-                    r#"OR "m"."v" > $15"#,
-                    r#"ORDER BY "m"."v" ASC, "m"."w" ASC, "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
-                    r#"LIMIT $16"#,
-                ]
-                .join(" ")
-                .as_str(),
-                [
-                    16.24.into(),
-                    true.into(),
-                    ('x' as i32).into(),
-                    "y".into(),
-                    ('z' as i64).into(),
-                    16.24.into(),
-                    true.into(),
-                    ('x' as i32).into(),
-                    "y".into(),
-                    16.24.into(),
-                    true.into(),
-                    ('x' as i32).into(),
-                    16.24.into(),
-                    true.into(),
-                    16.24.into(),
                     4_u64.into(),
                 ]
             ),])]
