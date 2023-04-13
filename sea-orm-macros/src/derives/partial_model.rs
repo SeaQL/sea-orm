@@ -105,15 +105,15 @@ impl DerivePartialModel {
             ColumnAs::Col(ident) => {
                 let entity = entity_ident.as_ref().unwrap();
                 let col_value = quote!( <<#entity as sea_orm::EntityTrait>::Column as sea_orm::ColumnTrait>:: #ident);
-                quote!(let #select_ident =  sea_orm::SelectColumns::column(#select_ident, #col_value);)
+                quote!(let #select_ident =  sea_orm::SelectColumns::select_column(#select_ident, #col_value);)
             },
             ColumnAs::ColAlias { col, field } => {
                 let entity = entity_ident.as_ref().unwrap();
                 let col_value = quote!( <<#entity as sea_orm::EntityTrait>::Column as sea_orm::ColumnTrait>:: #col);
-                quote!(let #select_ident =  sea_orm::SelectColumns::column_as(#select_ident, #col_value, #field);)
+                quote!(let #select_ident =  sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, #field);)
             },
             ColumnAs::Expr { expr, field_name } => {
-                quote!(let #select_ident =  sea_orm::SelectColumns::column_as(#select_ident, #expr, #field_name);)
+                quote!(let #select_ident =  sea_orm::SelectColumns::select_column_as(#select_ident, #expr, #field_name);)
             },
         });
 

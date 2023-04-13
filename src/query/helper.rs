@@ -682,12 +682,12 @@ pub trait SelectColumns {
     /// Add a select column
     ///
     /// For more detail, please visit [QuerySelect::column]
-    fn column<C: ColumnTrait>(self, col: C) -> Self;
+    fn select_column<C: ColumnTrait>(self, col: C) -> Self;
 
     /// Add a select column with alias
     ///
     /// For more detail, please visit [QuerySelect::column_as]
-    fn column_as<C, I>(self, col: C, alias: I) -> Self
+    fn select_column_as<C, I>(self, col: C, alias: I) -> Self
     where
         C: ColumnTrait,
         I: IntoIdentity;
@@ -697,11 +697,11 @@ impl<S> SelectColumns for S
 where
     S: QuerySelect,
 {
-    fn column<C: ColumnTrait>(self, col: C) -> Self {
+    fn select_column<C: ColumnTrait>(self, col: C) -> Self {
         QuerySelect::column(self, col)
     }
 
-    fn column_as<C, I>(self, col: C, alias: I) -> Self
+    fn select_column_as<C, I>(self, col: C, alias: I) -> Self
     where
         C: ColumnTrait,
         I: IntoIdentity,
