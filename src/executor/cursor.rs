@@ -720,4 +720,160 @@ mod tests {
 
         Ok(())
     }
+
+    mod composite_entity {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "t")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub col_1: String,
+            #[sea_orm(primary_key)]
+            pub col_2: String,
+            #[sea_orm(primary_key)]
+            pub col_3: String,
+            #[sea_orm(primary_key)]
+            pub col_4: String,
+            #[sea_orm(primary_key)]
+            pub col_5: String,
+            #[sea_orm(primary_key)]
+            pub col_6: String,
+            #[sea_orm(primary_key)]
+            pub col_7: String,
+            #[sea_orm(primary_key)]
+            pub col_8: String,
+            #[sea_orm(primary_key)]
+            pub col_9: String,
+            #[sea_orm(primary_key)]
+            pub col_10: String,
+            #[sea_orm(primary_key)]
+            pub col_11: String,
+            #[sea_orm(primary_key)]
+            pub col_12: String,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    #[smol_potat::test]
+    async fn cursor_by_many() -> Result<(), DbErr> {
+        use composite_entity::*;
+
+        let base_sql = [
+            r#"SELECT "t"."col_1", "t"."col_2", "t"."col_3", "t"."col_4", "t"."col_5", "t"."col_6", "t"."col_7", "t"."col_8", "t"."col_9", "t"."col_10", "t"."col_11", "t"."col_12""#,
+            r#"FROM "t" WHERE"#,
+        ].join(" ");
+
+        assert_eq!(
+            DbBackend::Postgres.build(&
+                Entity::find()
+                .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4))
+                .after(("val_1", "val_2", "val_3", "val_4"))
+                .query
+            ).to_string(),
+            format!("{base_sql} {}", [
+                r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" > 'val_4')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" > 'val_3')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" > 'val_2')"#,
+                r#"OR "t"."col_1" > 'val_1'"#,
+            ].join(" "))
+        );
+
+        assert_eq!(
+            DbBackend::Postgres.build(&
+                Entity::find()
+                .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5))
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5"))
+                .query
+            ).to_string(),
+            format!("{base_sql} {}", [
+                r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" > 'val_5')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" > 'val_4')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" > 'val_3')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" > 'val_2')"#,
+                r#"OR "t"."col_1" > 'val_1'"#,
+            ].join(" "))
+        );
+
+        assert_eq!(
+            DbBackend::Postgres.build(&
+                Entity::find()
+                .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6))
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6"))
+                .query
+            ).to_string(),
+            format!("{base_sql} {}", [
+                r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" > 'val_6')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" > 'val_5')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" > 'val_4')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" > 'val_3')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" > 'val_2')"#,
+                r#"OR "t"."col_1" > 'val_1'"#,
+            ].join(" "))
+        );
+
+        assert_eq!(
+            DbBackend::Postgres.build(&
+                Entity::find()
+                .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7))
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7"))
+                .query
+            ).to_string(),
+            format!("{base_sql} {}", [
+                r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" = 'val_6' AND "t"."col_7" < 'val_7')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" < 'val_6')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" < 'val_5')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" < 'val_4')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" < 'val_3')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" < 'val_2')"#,
+                r#"OR "t"."col_1" < 'val_1'"#,
+            ].join(" "))
+        );
+
+        assert_eq!(
+            DbBackend::Postgres.build(&
+                Entity::find()
+                .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7, Column::Col8))
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8"))
+                .query
+            ).to_string(),
+            format!("{base_sql} {}", [
+                r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" = 'val_6' AND "t"."col_7" = 'val_7' AND "t"."col_8" < 'val_8')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" = 'val_6' AND "t"."col_7" < 'val_7')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" < 'val_6')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" < 'val_5')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" < 'val_4')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" < 'val_3')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" < 'val_2')"#,
+                r#"OR "t"."col_1" < 'val_1'"#,
+            ].join(" "))
+        );
+
+        assert_eq!(
+            DbBackend::Postgres.build(&
+                Entity::find()
+                .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7, Column::Col8, Column::Col9))
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8", "val_9"))
+                .query
+            ).to_string(),
+            format!("{base_sql} {}", [
+                r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" = 'val_6' AND "t"."col_7" = 'val_7' AND "t"."col_8" = 'val_8' AND "t"."col_9" < 'val_9')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" = 'val_6' AND "t"."col_7" = 'val_7' AND "t"."col_8" < 'val_8')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" = 'val_6' AND "t"."col_7" < 'val_7')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" < 'val_6')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" < 'val_5')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" < 'val_4')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" < 'val_3')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" < 'val_2')"#,
+                r#"OR "t"."col_1" < 'val_1'"#,
+            ].join(" "))
+        );
+
+        Ok(())
+    }
 }
