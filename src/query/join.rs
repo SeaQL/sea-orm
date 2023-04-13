@@ -117,7 +117,7 @@ mod tests {
         RelationTrait,
     };
     use pretty_assertions::assert_eq;
-    use sea_query::{Alias, Expr, IntoCondition, JoinType};
+    use sea_query::{Alias, ConditionType, Expr, IntoCondition, JoinType};
 
     #[test]
     fn join_1() {
@@ -555,6 +555,38 @@ mod tests {
                 "SELECT `cake`.`id`, `cake`.`name`, `cake_filling_alias`.`cake_id` AS `cake_filling_cake_id` FROM `cake`",
                 "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id` AND `fruit`.`name` LIKE '%tropical%'",
                 "LEFT JOIN `cake_filling` AS `cake_filling_alias` ON `cake_filling_alias`.`cake_id` = `cake`.`id` AND `cake_filling_alias`.`cake_id` > 10",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_22() {
+        assert_eq!(
+            cake::Entity::find()
+                .column_as(
+                    Expr::col((Alias::new("cake_filling_alias"), cake_filling::Column::CakeId)),
+                    "cake_filling_cake_id"
+                )
+                .join(JoinType::LeftJoin, cake::Relation::OrTropicalFruit.def())
+                .join_as_rev(
+                    JoinType::LeftJoin,
+                    cake_filling::Relation::Cake
+                        .def()
+                        .condition_type(ConditionType::Any)
+                        .on_condition(|left, _right| {
+                            Expr::col((left, cake_filling::Column::CakeId))
+                                .gt(10)
+                                .into_condition()
+                        }),
+                    Alias::new("cake_filling_alias")
+                )
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name`, `cake_filling_alias`.`cake_id` AS `cake_filling_cake_id` FROM `cake`",
+                "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id` OR `fruit`.`name` LIKE '%tropical%'",
+                "LEFT JOIN `cake_filling` AS `cake_filling_alias` ON `cake_filling_alias`.`cake_id` = `cake`.`id` OR `cake_filling_alias`.`cake_id` > 10",
             ]
             .join(" ")
         );

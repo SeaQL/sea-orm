@@ -1,8 +1,8 @@
 use crate::{unpack_table_ref, EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select};
 use core::marker::PhantomData;
 use sea_query::{
-    Alias, Condition, DynIden, ForeignKeyCreateStatement, JoinType, SeaRc, TableForeignKey,
-    TableRef,
+    Alias, Condition, ConditionType, DynIden, ForeignKeyCreateStatement, JoinType, SeaRc,
+    TableForeignKey, TableRef,
 };
 use std::fmt::Debug;
 
@@ -68,6 +68,8 @@ pub struct RelationDef {
     pub on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
     /// The name of foreign key constraint
     pub fk_name: Option<String>,
+    /// Condition type of join on expression
+    pub condition_type: ConditionType,
 }
 
 impl std::fmt::Debug for RelationDef {
@@ -123,6 +125,7 @@ where
     on_update: Option<ForeignKeyAction>,
     on_condition: Option<Box<dyn Fn(DynIden, DynIden) -> Condition + Send + Sync>>,
     fk_name: Option<String>,
+    condition_type: ConditionType,
 }
 
 impl<E, R> std::fmt::Debug for RelationBuilder<E, R>
@@ -160,6 +163,7 @@ impl RelationDef {
             on_update: self.on_update,
             on_condition: self.on_condition,
             fk_name: None,
+            condition_type: self.condition_type,
         }
     }
 
@@ -205,6 +209,42 @@ impl RelationDef {
         self.on_condition = Some(Box::new(f));
         self
     }
+
+    /// Set the condition type of join on expression
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, DbBackend, tests_cfg::{cake, cake_filling}};
+    /// use sea_query::{Expr, IntoCondition, ConditionType};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .join(
+    ///             JoinType::LeftJoin,
+    ///             cake_filling::Relation::Cake
+    ///                 .def()
+    ///                 .rev()
+    ///                 .condition_type(ConditionType::Any)
+    ///                 .on_condition(|_left, right| {
+    ///                     Expr::col((right, cake_filling::Column::CakeId))
+    ///                         .gt(10i32)
+    ///                         .into_condition()
+    ///                 })
+    ///         )
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     [
+    ///         "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+    ///         "LEFT JOIN `cake_filling` ON `cake`.`id` = `cake_filling`.`cake_id` OR `cake_filling`.`cake_id` > 10",
+    ///     ]
+    ///     .join(" ")
+    /// );
+    /// ```
+    pub fn condition_type(mut self, condition_type: ConditionType) -> Self {
+        self.condition_type = condition_type;
+        self
+    }
 }
 
 impl<E, R> RelationBuilder<E, R>
@@ -225,6 +265,7 @@ where
             on_update: None,
             on_condition: None,
             fk_name: None,
+            condition_type: ConditionType::All,
         }
     }
 
@@ -241,6 +282,7 @@ where
             on_update: None,
             on_condition: None,
             fk_name: None,
+            condition_type: ConditionType::All,
         }
     }
 
@@ -291,6 +333,12 @@ where
         self.fk_name = Some(fk_name.to_owned());
         self
     }
+
+    /// Set the condition type of join on expression
+    pub fn condition_type(mut self, condition_type: ConditionType) -> Self {
+        self.condition_type = condition_type;
+        self
+    }
 }
 
 impl<E, R> From<RelationBuilder<E, R>> for RelationDef
@@ -310,6 +358,7 @@ where
             on_update: b.on_update,
             on_condition: b.on_condition,
             fk_name: b.fk_name,
+            condition_type: b.condition_type,
         }
     }
 }
@@ -371,7 +420,7 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
 
 /// Creates a column definition for example to update a table.
 /// ```
-/// use sea_query::{Alias, IntoIden, MysqlQueryBuilder, TableAlterStatement, TableRef};
+/// use sea_query::{Alias, IntoIden, MysqlQueryBuilder, TableAlterStatement, TableRef, ConditionType};
 /// use sea_orm::{EnumIter, Iden, Identity, PrimaryKeyTrait, RelationDef, RelationTrait, RelationType};
 ///
 /// let relation = RelationDef {
@@ -385,6 +434,7 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
 ///     on_update: None,
 ///     on_condition: None,
 ///     fk_name: Some("foo-bar".to_string()),
+///     condition_type: ConditionType::All,
 /// };
 ///
 /// let mut alter_table = TableAlterStatement::new()
