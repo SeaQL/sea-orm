@@ -112,6 +112,39 @@ pub enum StringValueVariant {
     _0x300x20123,
 }
 ```
+* [sea-orm-cli] The implementation of `Related<R>` with `via` and `to` methods will not be generated if there exists multiple paths via an intermediate table. Like in the schema defined below - Path 1. `users <-> users_votes <-> bills`, Path 2. `users <-> users_saved_bills <-> bills` https://github.com/SeaQL/sea-orm/pull/1435
+```sql
+CREATE TABLE users
+(
+  id uuid  PRIMARY KEY  DEFAULT uuid_generate_v1mc(),
+  email TEXT UNIQUE NOT NULL,
+  ...
+);
+```
+```sql
+CREATE TABLE bills
+(
+  id uuid  PRIMARY KEY  DEFAULT uuid_generate_v1mc(),
+  ...
+);
+```
+```sql
+CREATE TABLE users_votes
+(
+  user_id uuid REFERENCES users (id) ON UPDATE CASCADE ON DELETE CASCADE,
+  bill_id uuid REFERENCES bills (id) ON UPDATE CASCADE ON DELETE CASCADE,
+  vote boolean NOT NULL,
+  CONSTRAINT users_bills_pkey PRIMARY KEY (user_id, bill_id)
+);
+```
+```sql
+CREATE TABLE users_saved_bills
+(
+  user_id uuid REFERENCES users (id) ON UPDATE CASCADE ON DELETE CASCADE,
+  bill_id uuid REFERENCES bills (id) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT users_saved_bills_pkey PRIMARY KEY (user_id, bill_id)
+);
+```
 
 ### Breaking changes
 
