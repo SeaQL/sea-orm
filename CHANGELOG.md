@@ -34,6 +34,23 @@ assert_eq!(customers.notes, None);
 ```
 * Added `sea_orm_macros::EnumIter` to implement `strum::IntoEnumIterator` trait for the derived enum (source code adapted from https://github.com/Peternator7/strum)
 * [sea-orm-cli] the `migrate init` command will create a `.gitignore` file when the migration folder reside in a Git repository https://github.com/SeaQL/sea-orm/pull/1334
+* Added `MigratorTrait::migration_table_name()` method to configure the name of migration table https://github.com/SeaQL/sea-orm/pull/1511
+```rs
+#[async_trait::async_trait]
+impl MigratorTrait for Migrator {
+    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+        vec![
+            Box::new(m20220118_000001_create_cake_table::Migration),
+            Box::new(m20220118_000002_create_fruit_table::Migration),
+        ]
+    }
+
+    // Override the name of migration table
+    fn migration_table_name() -> sea_orm::DynIden {
+        Alias::new("override_migration_table_name").into_iden()
+    }
+}
+```
 
 ### Enhancements
 
