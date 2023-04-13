@@ -364,7 +364,7 @@ impl ConnectionTrait for DatabaseTransaction {
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => {
                 let db_backend = conn.get_database_backend();
-                let stmt = Statement::from_string(db_backend, sql.into());
+                let stmt = Statement::from_string(db_backend, sql);
                 conn.execute(stmt)
             }
             #[allow(unreachable_patterns)]

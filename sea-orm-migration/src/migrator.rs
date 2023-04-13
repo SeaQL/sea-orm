@@ -6,12 +6,12 @@ use std::time::SystemTime;
 use tracing::info;
 
 use sea_orm::sea_query::{
-    self, extension::postgres::Type, Alias, Expr, ForeignKey, Iden, JoinType, Query,
-    SelectStatement, SimpleExpr, Table,
+    self, extension::postgres::Type, Alias, Expr, ForeignKey, Iden, IntoIden, JoinType, Order,
+    Query, SelectStatement, SimpleExpr, Table,
 };
 use sea_orm::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, Condition, ConnectionTrait, DbBackend, DbErr,
-    EntityTrait, QueryFilter, QueryOrder, Schema, Statement, TransactionTrait,
+    ActiveModelTrait, ActiveValue, Condition, ConnectionTrait, DbBackend, DbErr, DynIden,
+    EntityTrait, FromQueryResult, Iterable, QueryFilter, Schema, Statement, TransactionTrait,
 };
 use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
 
@@ -59,6 +59,11 @@ pub trait MigratorTrait: Send {
     /// Vector of migrations in time sequence
     fn migrations() -> Vec<Box<dyn MigrationTrait>>;
 
+    /// Name of the migration table, it is `seaql_migrations` by default
+    fn migration_table_name() -> DynIden {
+        seaql_migrations::Entity.into_iden()
+    }
+
     /// Get list of migrations wrapped in `Migration` struct
     fn get_migration_files() -> Vec<Migration> {
         Self::migrations()
@@ -76,8 +81,13 @@ pub trait MigratorTrait: Send {
         C: ConnectionTrait,
     {
         Self::install(db).await?;
-        seaql_migrations::Entity::find()
-            .order_by_asc(seaql_migrations::Column::Version)
+        let stmt = Query::select()
+            .table_name(Self::migration_table_name())
+            .columns(seaql_migrations::Column::iter().map(IntoIden::into_iden))
+            .order_by(seaql_migrations::Column::Version, Order::Asc)
+            .to_owned();
+        let builder = db.get_database_backend();
+        seaql_migrations::Model::find_by_statement(builder.build(&stmt))
             .all(db)
             .await
     }
@@ -154,7 +164,9 @@ pub trait MigratorTrait: Send {
     {
         let builder = db.get_database_backend();
         let schema = Schema::new(builder);
-        let mut stmt = schema.create_table_from_entity(seaql_migrations::Entity);
+        let mut stmt = schema
+            .create_table_from_entity(seaql_migrations::Entity)
+            .table_name(Self::migration_table_name());
         stmt.if_not_exists();
         db.execute(builder.build(&stmt)).await.map(|_| ())
     }
@@ -374,11 +386,12 @@ where
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .expect("SystemTime before UNIX EPOCH!");
-        seaql_migrations::ActiveModel {
+        seaql_migrations::Entity::insert(seaql_migrations::ActiveModel {
             version: ActiveValue::Set(migration.name().to_owned()),
             applied_at: ActiveValue::Set(now.as_secs() as i64),
-        }
-        .insert(db)
+        })
+        .table_name(M::migration_table_name())
+        .exec(db)
         .await?;
     }
 
@@ -414,7 +427,8 @@ where
         migration.down(manager).await?;
         info!("Migration '{}' has been rollbacked", migration.name());
         seaql_migrations::Entity::delete_many()
-            .filter(seaql_migrations::Column::Version.eq(migration.name()))
+            .filter(Expr::col(seaql_migrations::Column::Version).eq(migration.name()))
+            .table_name(M::migration_table_name())
             .exec(db)
             .await?;
     }
@@ -524,4 +538,52 @@ where
                 .add(Expr::col((PgType::Table, PgType::Typelem)).eq(0)),
         );
     stmt
+}
+
+trait QueryTable {
+    type Statement;
+
+    fn table_name(self, table_name: DynIden) -> Self::Statement;
+}
+
+impl QueryTable for SelectStatement {
+    type Statement = SelectStatement;
+
+    fn table_name(mut self, table_name: DynIden) -> SelectStatement {
+        self.from(table_name);
+        self
+    }
+}
+
+impl QueryTable for sea_query::TableCreateStatement {
+    type Statement = sea_query::TableCreateStatement;
+
+    fn table_name(mut self, table_name: DynIden) -> sea_query::TableCreateStatement {
+        self.table(table_name);
+        self
+    }
+}
+
+impl<A> QueryTable for sea_orm::Insert<A>
+where
+    A: ActiveModelTrait,
+{
+    type Statement = sea_orm::Insert<A>;
+
+    fn table_name(mut self, table_name: DynIden) -> sea_orm::Insert<A> {
+        sea_orm::QueryTrait::query(&mut self).into_table(table_name);
+        self
+    }
+}
+
+impl<E> QueryTable for sea_orm::DeleteMany<E>
+where
+    E: EntityTrait,
+{
+    type Statement = sea_orm::DeleteMany<E>;
+
+    fn table_name(mut self, table_name: DynIden) -> sea_orm::DeleteMany<E> {
+        sea_orm::QueryTrait::query(&mut self).from_table(table_name);
+        self
+    }
 }

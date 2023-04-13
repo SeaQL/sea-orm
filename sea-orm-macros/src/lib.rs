@@ -548,6 +548,9 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 /// - For enum variant
 ///     - `string_value` or `num_value`:
 ///         - For `string_value`, value should be passed as string, i.e. `string_value = "A"`
+///             - Due to the way internal Enums are automatically derived, the following restrictions apply:
+///                 - members cannot share identical `string_value`, case-insensitive.
+///                 - in principle, any future Titlecased Rust keywords are not valid `string_value`.
 ///         - For `num_value`, value should be passed as integer, i.e. `num_value = 1` or `num_value = 1i32`
 ///         - Note that only one of it can be specified, and all variants of an enum have to annotate with the same `*_value` macro attribute
 ///
@@ -589,9 +592,14 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 #[cfg(feature = "derive")]
 #[proc_macro_derive(FromQueryResult)]
 pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
-    let DeriveInput { ident, data, .. } = parse_macro_input!(input);
+    let DeriveInput {
+        ident,
+        data,
+        generics,
+        ..
+    } = parse_macro_input!(input);
 
-    match derives::expand_derive_from_query_result(ident, data) {
+    match derives::expand_derive_from_query_result(ident, data, generics) {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }

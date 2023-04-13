@@ -138,7 +138,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => {
                 let db_backend = conn.get_database_backend();
-                let stmt = Statement::from_string(db_backend, sql.into());
+                let stmt = Statement::from_string(db_backend, sql);
                 conn.execute(stmt)
             }
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
@@ -410,6 +410,7 @@ impl DatabaseConnection {
 }
 
 #[cfg(feature = "sea-orm-internal")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sea-orm-internal")))]
 impl DatabaseConnection {
     /// Get [sqlx::MySqlPool]
     ///

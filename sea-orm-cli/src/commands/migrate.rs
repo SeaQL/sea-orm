@@ -89,6 +89,10 @@ pub fn run_migrate_init(migration_dir: &str) -> Result<(), Box<dyn Error>> {
             let fn_content = |content: String| content;
             write_file!($filename, $filename, fn_content);
         };
+        ($filename: literal, $template: literal) => {
+            let fn_content = |content: String| content;
+            write_file!($filename, $template, fn_content);
+        };
         ($filename: literal, $template: literal, $fn_content: expr) => {
             let filepath = [&migration_dir, $filename].join("");
             println!("Creating file `{}`", filepath);
@@ -113,6 +117,9 @@ pub fn run_migrate_init(migration_dir: &str) -> Result<(), Box<dyn Error>> {
         content.replace("<sea-orm-migration-version>", &ver)
     });
     write_file!("README.md");
+    if git2::Repository::discover(Path::new(&migration_dir)).is_ok() {
+        write_file!(".gitignore", "_gitignore");
+    }
     println!("Done!");
 
     Ok(())

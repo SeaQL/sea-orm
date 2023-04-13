@@ -10,7 +10,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [CodeCTRL](https://codectrl.authentura.com) ([repository](https://github.com/Authentura/codectrl)) | A self-hostable code logging platform | DB: SQLite
 - [My Data My Consent](https://mydatamyconsent.com/) | Online data sharing for people and businesses simplified
 - [Prefix.dev](https://prefix.dev/) | Conda Package Search, Environment Management and Deployment built for [mamba](https://github.com/mamba-org/mamba)  | DB: Postgres, SQLite
-- [Sensei](https://l2.technology/sensei) ([repository](https://github.com/L2-Technology/sensei)) ![GitHub stars](https://img.shields.io/github/stars/L2-Technology/sensei.svg?style=social) | A Bitcoin lightning node implementation | DB: MySQL, Postgres, SQLite
+- [Sensei](https://l2.technology/sensei) ([repository](https://github.com/L2-Technology/sensei)) | A Bitcoin lightning node implementation | DB: MySQL, Postgres, SQLite
 - [Spyglass](https://www.spyglass.fyi/) ([repository](https://github.com/a5huynh/spyglass)) ![GitHub stars](https://img.shields.io/github/stars/a5huynh/spyglass.svg?style=social) | 🔭 A personal search engine that indexes what you want w/ a simple set of rules. | DB: SQLite
 - [Svix](https://www.svix.com/) ([repository](https://github.com/svix/svix-webhooks)) ![GitHub stars](https://img.shields.io/github/stars/svix/svix-webhooks.svg?style=social) | The enterprise ready webhooks service | DB: Postgres
 
@@ -18,25 +18,25 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 #### CMS
 
-- [Axum Book Management](https://github.com/lz1998/axum-book-management) | CRUD system of book-management with ORM and JWT for educational purposes | DB: MySQL
-- [Backpack](https://github.com/JSH32/Backpack) ![GitHub stars](https://img.shields.io/github/stars/JSH32/Backpack.svg?style=social) | Open source self hosted file sharing platform on crack | DB: MySQL, Postgres, SQLite
+- [Backpack](https://github.com/JSH32/Backpack) | Open source self hosted file sharing platform on crack | DB: MySQL, Postgres, SQLite
 - [Dev Board](https://github.com/goto-eof/dev_board_api_rust) | A dashboard for organizing software development tasks implemented in Rust
 - [Iron Guard](https://github.com/AfaanBilal/iron-guard-server) | An inventory management system HTTP REST API server built with Rocket and SeaORM | DB: MySQL
 - [mediarepo](https://mediarepo.trivernis.dev) ([repository](https://github.com/Trivernis/mediarepo)) ![GitHub stars](https://img.shields.io/github/stars/Trivernis/mediarepo.svg?style=social) | A tag-based media management application | DB: SQLite
 - [mugen](https://github.com/koopa1338/mugen-dms) | DMS written in 🦀 | DB: Postgres
 - [OctoBase](https://github.com/toeverything/OctoBase) ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend written in 🦀 | DB: MySQL, Postgres, SQLite
-- [oxide_todo](https://github.com/TheAwiteb/oxide_todo) | RESTful Todo built with [Actix](https://github.com/actix/actix-web) and [SeaORM](https://github.com/SeaQL/sea-orm). Documented by [swagger-ui](https://swagger.io/tools/swagger-ui/). Authenticated by [JWT](https://jwt.io). Rate limited by [actix_extensible_rate_limit](https://github.com/jacob-pro/actix-extensible-rate-limit). Tested by [rstest](https://github.com/la10736/rstest). | DB: SQLite
 - [Wikijump](https://github.com/scpwiki/wikijump) ([repository](https://github.com/scpwiki/wikijump/tree/develop/deepwell)) ![GitHub stars](https://img.shields.io/github/stars/scpwiki/wikijump.svg?style=social) | API service for Wikijump, a fork of Wikidot | DB: Postgres
 
 #### Game
 - [Ceobe Canteen Serve](https://github.com/Enraged-Dun-Cookie-Development-Team/Ceobe-Canteen-Serve) | A tool based on Arknights mobile game, using axum as web framework | DB: MySQL
 - [KongYing Tavern Backend](https://github.com/kongying-tavern/genshin-cloud-rust) | The community map navigation tool for Genshin Impact | DB: Postgres
 - [Pocket Relay](https://github.com/PocketRelay/Server) | Mass Effect 3 multiplayer private server emulator | DB: MySQL, SQLite
+- [seichi-portal-backend](https://github.com/GiganticMinecraft/seichi-portal-backend) | Backend server(REST API) of [seichi-portal](https://github.com/GiganticMinecraft/seichi-portal) | DB: MySQL
 - [thrpg](https://github.com/thrpg/thrpg) | Touhou Project's secondary creative games | DB: Postgres
 
 #### Social
 - [aeroFans](https://github.com/naryand/aerofans) | Full stack forum-like social media platform in Rust and WebAssembly | DB: Postgres
 - [JinShu](https://github.com/gengteng/jinshu) | A cross-platform **I**nstant **M**essaging system written in 🦀 | DB: MySQL, Postgres
+- [Kitsune](https://github.com/kitsune-soc/kitsune) | 🦊 ActivityPub-federated microblogging | DB: Postgres, SQLite
 - [THUBurrow](https://github.com/BobAnkh/THUBurrow) | A campus forum built by Next.js and Rocket | DB: Postgres
 
 #### Bots
@@ -85,8 +85,8 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 ### Programming Libraries
 
 - [logic-lock](https://github.com/nappa85/logic-lock) | MySQL logic locks implemented over sea-orm | DB: MySQL
+- [sea-orm-adapter](https://github.com/ZihanType/sea-orm-adapter) | Sea ORM adapter for casbin-rs | DB: MySQL, Postgres, SQLite
 - [symbols](https://github.com/nappa85/symbols) | A proc-macro utility to populates enum variants with primary keys values
-- [template_flow](https://github.com/hilary888/template_flow) | An experiment exploring replacing placeholders in pre-prepared templates with their actual values | DB: Postgres
 
 ### Frameworks
 
@@ -98,14 +98,17 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 ### Scaffolding
 
+- [Axum Book Management](https://github.com/lz1998/axum-book-management) | CRUD system of book-management with ORM and JWT for educational purposes | DB: MySQL
 - [actix-react-starter-template](https://github.com/aslamplr/actix-react-starter-template) | Actix Web + SeaORM + React + Redux + Redux Saga project starter template | DB: Postgres
 - [Adta](https://github.com/aaronleopold/adta) | Adta is **A**nother **D**amn **T**odo **A**pp, fun little side project | DB: MySQL, Postgres, SQLite
+- [BookStore](https://github.com/AfaanBilal/bookstore) | A bookstore manegement system HTTP REST API using Rocket, SeaORM and JWT. | DB: MySQL
 - [crud-rs](https://github.com/onichandame/crud-rs) | A framework combining async-graphql and SeaORM
 - [http-api-rs](https://github.com/daniel-samson/http-api-rs) | Template project for creating REST API's in rust with swagger ui
+- [oxide_todo](https://github.com/TheAwiteb/oxide_todo) | RESTful Todo built with Actix, swagger-ui and SeaORM, tested by rstest. | DB: SQLite
 - [Rust Async-GraphQL Example: Caster API](https://github.com/bkonkle/rust-example-caster-api) | A demo GraphQL API using Tokio, Warp, async-graphql, and SeaORM | DB: Postgres
 - [rust-juniper-playground](https://github.com/Yama-Tomo/rust-juniper-playground) | juniper with SeaORM example | DB: MySQL
-- [seichi-portal-backend](https://github.com/GiganticMinecraft/seichi-portal-backend) | Backend server(REST API) of [seichi-portal](https://github.com/GiganticMinecraft/seichi-portal) | DB: MySQL
 - [service_auth](https://github.com/shorii/service_auth) | A simple JWT authentication web-application | DB: Postgres
+- [Super Toolbox](https://github.com/atopx/toolbox) | micro-service best practices: use go-gin and rust-tonic | DB: mysql
 
 ## Learning Resources
 

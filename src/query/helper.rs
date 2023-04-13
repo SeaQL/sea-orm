@@ -3,8 +3,8 @@ use crate::{
     PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
-    Alias, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr, SelectStatement,
-    TableRef,
+    Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr,
+    SelectStatement, TableRef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -690,7 +690,12 @@ pub(crate) fn join_condition(mut rel: RelationDef) -> Condition {
     let owner_keys = rel.from_col;
     let foreign_keys = rel.to_col;
 
-    let mut condition = Condition::all().add(join_tbl_on_condition(
+    let mut condition = match rel.condition_type {
+        ConditionType::All => Condition::all(),
+        ConditionType::Any => Condition::any(),
+    };
+
+    condition = condition.add(join_tbl_on_condition(
         SeaRc::clone(&from_tbl),
         SeaRc::clone(&to_tbl),
         owner_keys,
