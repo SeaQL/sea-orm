@@ -26,3 +26,4 @@ tracing = { version = "0.1", default-features = false, features = ["log"] }
 
 [dev-dependencies]
 pretty_assertions = { version = "0.7" }
+sea-orm = { path = "../", default-features = false, features = ["macros"] }
