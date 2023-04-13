@@ -677,6 +677,40 @@ pub trait QueryFilter: Sized {
     }
 }
 
+
+/// Select specific column for partial model queries
+pub trait SelectColumns {
+    /// Add a select column
+    ///
+    /// For more detail, please visit [QuerySelect::column]
+    fn column<C: ColumnTrait>(self, col: C) -> Self;
+
+    /// Add a select column with alias
+    ///
+    /// For more detail, please visit [QuerySelect::column_as]
+    fn column_as<C, I>(self, col: C, alias: I) -> Self
+    where
+        C: ColumnTrait,
+        I: IntoIdentity;
+}
+
+impl<S> SelectColumns for S
+where
+    S: QuerySelect,
+{
+    fn column<C: ColumnTrait>(self, col: C) -> Self {
+        QuerySelect::column(self, col)
+    }
+
+    fn column_as<C, I>(self, col: C, alias: I) -> Self
+    where
+        C: ColumnTrait,
+        I: IntoIdentity,
+    {
+        QuerySelect::column_as(self, col, alias)
+    }
+}
+
 pub(crate) fn join_condition(mut rel: RelationDef) -> Condition {
     // Use table alias (if any) to construct the join condition
     let from_tbl = match unpack_table_alias(&rel.from_tbl) {
