@@ -1,3 +1,4 @@
+mod partial_model;
 mod active_enum;
 mod active_model;
 mod active_model_behavior;
@@ -24,6 +25,7 @@ pub use from_query_result::*;
 pub use into_active_model::*;
 pub use migration::*;
 pub use model::*;
+pub use partial_model::*;
 pub use primary_key::*;
 pub use relation::*;
 pub use try_getable_from_json::*;

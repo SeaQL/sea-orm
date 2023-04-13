@@ -31,5 +31,7 @@ pub mod field_attr {
         pub to: Option<syn::Lit>,
         pub fk_name: Option<syn::Lit>,
         pub condition_type: Option<syn::Lit>,
+        pub from_col:Option<syn::Ident>,
+        pub from_expr:Option<syn::Expr>
     }
 }
