@@ -12,7 +12,6 @@ use syn::Expr;
 use syn::Lit;
 use syn::Meta;
 
-
 enum Error {
     InputNotStruct,
     EntityNotSpecific,
@@ -41,21 +40,27 @@ impl DerivePartialModel {
             return Err(Error::InputNotStruct);
         };
 
+        let mut entity_ident = None;
 
-        let mut  entity_ident = None;
+        for attr in input.attrs.iter() {
+            if let Some(ident) = attr.path.get_ident() {
+                if ident != "sea_orm" {
+                    continue;
+                }
+            } else {
+                continue;
+            }
 
-        for attr in input.attrs.iter(){
-            if let Some(ident) = attr.path.get_ident(){
-                if ident != "sea_orm"{continue;}
-            }else{continue;}
-
-            if let Ok(list) = attr.parse_args_with(Punctuated::<Meta,Comma>::parse_terminated){
-                for meta in list{
-                    if let Meta::NameValue(nv) = meta{
-                        if let Some(name) = nv.path.get_ident(){
-                            if name == "entity"{
-                                if let Lit::Str(s) = nv.lit{
-                                    entity_ident = Some(syn::parse_str::<syn::Ident>(&s.value()).map_err(Error::Syn)?);
+            if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
+                for meta in list {
+                    if let Meta::NameValue(nv) = meta {
+                        if let Some(name) = nv.path.get_ident() {
+                            if name == "entity" {
+                                if let Lit::Str(s) = nv.lit {
+                                    entity_ident = Some(
+                                        syn::parse_str::<syn::Ident>(&s.value())
+                                            .map_err(Error::Syn)?,
+                                    );
                                 }
                             }
                         }
@@ -63,7 +68,6 @@ impl DerivePartialModel {
                 }
             }
         }
-
 
         let mut column_as_list = Vec::with_capacity(fields.len());
 

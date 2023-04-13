@@ -683,7 +683,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// ## Usage
 ///
 /// ```rust
-/// use sea_orm::{entity::prelude::*, FromQueryResult, DerivePartialModel, sea_query::Expr};
+/// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
 /// use serde::{Deserialize, Serialize};
 ///
 /// #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
@@ -713,18 +713,18 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///     #[sea_orm(from_col = "text")]
 ///     content: String,
 ///     #[sea_orm(from_expr = "Expr::val(1).add(1)")]
-///     sum: i32
+///     sum: i32,
 /// }
 /// ```
 ///
 /// If all fields in the partial model is `from_expr`, the `entity` can be ignore.
 /// ```
-/// use sea_orm::{entity::prelude::*, FromQueryResult, DerivePartialModel, sea_query::Expr};
+/// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
 ///
 /// #[derive(Debug, FromQueryResult, DerivePartialModel)]
 /// struct SelectResult {
 ///     #[sea_orm(from_expr = "Expr::val(1).add(1)")]
-///     sum: i32
+///     sum: i32,
 /// }
 /// ```
 ///

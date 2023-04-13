@@ -1,4 +1,3 @@
-mod partial_model;
 mod active_enum;
 mod active_model;
 mod active_model_behavior;
@@ -10,6 +9,7 @@ mod from_query_result;
 mod into_active_model;
 mod migration;
 mod model;
+mod partial_model;
 mod primary_key;
 mod relation;
 mod try_getable_from_json;
