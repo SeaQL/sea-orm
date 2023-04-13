@@ -683,7 +683,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// ## Usage
 ///
 /// ```rust
-/// use sea_orm::{entity::prelude::*, FromQueryResult, sea_query::Expr};
+/// use sea_orm::{entity::prelude::*, FromQueryResult, DerivePartialModel, sea_query::Expr};
 /// use serde::{Deserialize, Serialize};
 ///
 /// #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
@@ -719,6 +719,8 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///
 /// If all fields in the partial model is `from_expr`, the `entity` can be ignore.
 /// ```
+/// use sea_orm::{entity::prelude::*, FromQueryResult, DerivePartialModel, sea_query::Expr};
+///
 /// #[derive(Debug, FromQueryResult, DerivePartialModel)]
 /// struct SelectResult {
 ///     #[sea_orm(from_expr = "Expr::val(1).add(1)")]
@@ -730,6 +732,8 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// Or, it will result in a compile error.
 ///
 /// ```compile_fail
+/// use sea_orm::{entity::prelude::*, FromQueryResult, DerivePartialModel, sea_query::Expr};
+///
 /// #[derive(Debug, FromQueryResult, DerivePartialModel)]
 /// #[sea_orm(entity = "Entity")]
 /// struct SelectResult {
@@ -738,7 +742,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 #[cfg(feature = "derive")]
-#[proc_macro_derive(DerivePartialModel)]
+#[proc_macro_derive(DerivePartialModel, attributes(sea_orm))]
 pub fn derive_partial_model(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input);
 

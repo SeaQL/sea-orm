@@ -5,9 +5,13 @@ use proc_macro2::TokenStream;
 use quote::format_ident;
 use quote::quote;
 use quote::quote_spanned;
+use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
+use syn::token::Comma;
+use syn::Expr;
+use syn::Lit;
+use syn::Meta;
 
-use crate::derives::attributes::{derive_attr, field_attr};
 
 enum Error {
     InputNotStruct,
@@ -37,21 +41,74 @@ impl DerivePartialModel {
             return Err(Error::InputNotStruct);
         };
 
-        let sea_attrs = derive_attr::SeaOrm::try_from_attributes(&input.attrs)
-            .map_err(Error::Syn)?
-            .unwrap_or_default();
 
-        let entity_ident = sea_attrs.entity;
+        let mut  entity_ident = None;
+
+        for attr in input.attrs.iter(){
+            if let Some(ident) = attr.path.get_ident(){
+                if ident != "sea_orm"{continue;}
+            }else{continue;}
+
+            if let Ok(list) = attr.parse_args_with(Punctuated::<Meta,Comma>::parse_terminated){
+                for meta in list{
+                    if let Meta::NameValue(nv) = meta{
+                        if let Some(name) = nv.path.get_ident(){
+                            if name == "entity"{
+                                if let Lit::Str(s) = nv.lit{
+                                    entity_ident = Some(syn::parse_str::<syn::Ident>(&s.value()).map_err(Error::Syn)?);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
 
         let mut column_as_list = Vec::with_capacity(fields.len());
 
         for field in fields {
             let field_span = field.span();
-            let sea_attr = field_attr::SeaOrm::try_from_attributes(&field.attrs)
-                .map_err(Error::Syn)?
-                .unwrap_or_default();
-            let from_col = sea_attr.from_col;
-            let from_expr = sea_attr.from_expr;
+
+            let mut from_col = None;
+            let mut from_expr = None;
+
+            for attr in field.attrs.iter() {
+                if let Some(ident) = attr.path.get_ident() {
+                    if ident != "sea_orm" {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+
+                if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
+                {
+                    for meta in list.iter() {
+                        if let Meta::NameValue(nv) = meta {
+                            if let Some(name) = nv.path.get_ident() {
+                                if name == "from_col" {
+                                    if let Lit::Str(s) = &nv.lit {
+                                        from_col = Some(format_ident!(
+                                            "{}",
+                                            s.value().to_upper_camel_case()
+                                        ));
+                                    }
+                                }
+                                if name == "from_expr" {
+                                    if let Lit::Str(s) = &nv.lit {
+                                        from_expr = Some(
+                                            syn::parse_str::<Expr>(&s.value())
+                                                .map_err(Error::Syn)?,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             let field_name = field.ident.unwrap();
 
             let col_as = match (from_col, from_expr) {
@@ -72,11 +129,9 @@ impl DerivePartialModel {
                     if entity_ident.is_none() {
                         return Err(Error::EntityNotSpecific);
                     }
+
                     let field = field_name.to_string().to_snake_case();
-                    ColumnAs::ColAlias {
-                        col,
-                        field,
-                    }
+                    ColumnAs::ColAlias { col, field }
                 }
                 (Some(_), Some(_)) => return Err(Error::BothFromColAndFromExpr(field_span)),
             };
@@ -95,7 +150,7 @@ impl DerivePartialModel {
     }
 
     fn impl_partial_model_trait(&self) -> TokenStream {
-        let select_ident =format_ident!("select");
+        let select_ident = format_ident!("select");
         let DerivePartialModel {
             entity_ident,
             ident,
@@ -104,12 +159,12 @@ impl DerivePartialModel {
         let select_col_code_gen = fields.iter().map(|col_as| match col_as {
             ColumnAs::Col(ident) => {
                 let entity = entity_ident.as_ref().unwrap();
-                let col_value = quote!( <<#entity as sea_orm::EntityTrait>::Column as sea_orm::ColumnTrait>:: #ident);
+                let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #ident);
                 quote!(let #select_ident =  sea_orm::SelectColumns::select_column(#select_ident, #col_value);)
             },
             ColumnAs::ColAlias { col, field } => {
                 let entity = entity_ident.as_ref().unwrap();
-                let col_value = quote!( <<#entity as sea_orm::EntityTrait>::Column as sea_orm::ColumnTrait>:: #col);
+                let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #col);
                 quote!(let #select_ident =  sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, #field);)
             },
             ColumnAs::Expr { expr, field_name } => {
@@ -117,8 +172,7 @@ impl DerivePartialModel {
             },
         });
 
-        
-        quote!{
+        quote! {
             #[automatically_derived]
             impl sea_orm::PartialModelTrait for #ident{
                 fn select_cols<S: sea_orm::SelectColumns>(#select_ident: S) -> S{

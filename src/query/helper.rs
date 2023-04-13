@@ -689,7 +689,7 @@ pub trait SelectColumns {
     /// For more detail, please visit [QuerySelect::column_as]
     fn select_column_as<C, I>(self, col: C, alias: I) -> Self
     where
-        C: ColumnTrait,
+        C: IntoSimpleExpr,
         I: IntoIdentity;
 }
 
@@ -703,7 +703,7 @@ where
 
     fn select_column_as<C, I>(self, col: C, alias: I) -> Self
     where
-        C: ColumnTrait,
+        C: IntoSimpleExpr,
         I: IntoIdentity,
     {
         QuerySelect::column_as(self, col, alias)
