@@ -116,6 +116,7 @@ pub use column::*;
 pub use identity::*;
 pub use link::*;
 pub use model::*;
+pub use partial_model::*;
 // pub use prelude::*;
 pub use primary_key::*;
 pub use relation::*;
