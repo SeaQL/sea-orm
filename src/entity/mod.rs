@@ -103,6 +103,7 @@ mod column;
 mod identity;
 mod link;
 mod model;
+mod partial_model;
 /// Re-export common types from the entity
 pub mod prelude;
 mod primary_key;
