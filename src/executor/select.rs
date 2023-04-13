@@ -1,7 +1,7 @@
 use crate::{
     error::*, ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, ModelTrait,
-    PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement,
-    StreamTrait, TryGetableMany,
+    PartialModelTrait, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo,
+    SelectTwoMany, Statement, StreamTrait, TryGetableMany,
 };
 use futures::{Stream, TryStreamExt};
 use sea_query::SelectStatement;
@@ -152,6 +152,14 @@ where
             query: self.query,
             selector: SelectModel { model: PhantomData },
         }
+    }
+
+    /// Return a [Selector] from `Self` that wraps a [SelectModel] with a [PartialModel](PartialModelTrait)
+    pub fn into_partial_model<M>(self) -> Selector<SelectModel<M>>
+    where
+        M: PartialModelTrait,
+    {
+        M::select_cols(crate::QuerySelect::select_only(self)).into_model::<M>()
     }
 
     /// Get a selectable Model as a [JsonValue] for SQL JSON operations
@@ -414,6 +422,18 @@ where
             query: self.query,
             selector: SelectTwoModel { model: PhantomData },
         }
+    }
+
+    /// Perform a conversion into a [SelectTwoModel] with [PartialModel](PartialModelTrait)
+    pub fn into_partial_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
+    where
+        M: PartialModelTrait,
+        N: PartialModelTrait,
+    {
+        let select = crate::QuerySelect::select_only(self);
+        let select = M::select_cols(select);
+        let select = N::select_cols(select);
+        select.into_model::<M, N>()
     }
 
     /// Convert the Models into JsonValue
