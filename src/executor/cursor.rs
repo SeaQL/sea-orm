@@ -101,27 +101,55 @@ where
                         .add(f(c2, v2)),
                 )
                 .add(f(c1, v1)),
-            (Identity::Many(col_vec), ValueTuple::Many(value_vec))
-                if col_vec.len() == value_vec.len() =>
+            (Identity::Many(col_vec), ValueTuple::Many(val_vec))
+                if col_vec.len() == val_vec.len() =>
             {
-                let len = col_vec.len();
-                let mut cond_any = Condition::any();
-                for n in (1..=len).rev() {
-                    let mut cond_all = Condition::all();
-                    for (i, (col, value)) in
-                        col_vec.iter().zip(value_vec.iter()).enumerate().take(n)
-                    {
-                        let v = value.clone();
-                        let expr = if i != (n - 1) {
-                            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(col))).eq(v)
-                        } else {
-                            f(col, v)
-                        };
-                        cond_all = cond_all.add(expr);
-                    }
-                    cond_any = cond_any.add(cond_all);
-                }
-                cond_any
+                // The length of `col_vec` and `val_vec` should be equal and is denoted by "n".
+                //
+                // The elements of `col_vec` and `val_vec` are denoted by:
+                //   - `col_vec`: "col_1", "col_2", ..., "col_n-1", "col_n"
+                //   - `val_vec`: "val_1", "val_2", ..., "val_n-1", "val_n"
+                //
+                // The general form of the where condition should have "n" number of inner-AND-condition chained by an outer-OR-condition.
+                // The "n"-th inner-AND-condition should have exactly "n" number of column value expressions,
+                // to construct the expression we take the first "n" number of column and value from the respected vector.
+                //   - if it's not the last element, then we construct a "col_1 = val_1" equal expression
+                //   - otherwise, for the last element, we should construct a "col_n > val_n" greater than or "col_n < val_n" less than expression.
+                // i.e.
+                // WHERE
+                //   (col_1 = val_1 AND col_2 = val_2 AND ... AND col_n > val_n)
+                //   OR (col_1 = val_1 AND col_2 = val_2 AND ... AND col_n-1 > val_n-1)
+                //   OR (col_1 = val_1 AND col_2 = val_2 AND ... AND col_n-2 > val_n-2)
+                //   OR ...
+                //   OR (col_1 = val_1 AND col_2 > val_2)
+                //   OR (col_1 > val_1)
+
+                // Counting from 1 to "n" (inclusive) but in reverse, i.e. n, n-1, ..., 2, 1
+                (1..=col_vec.len())
+                    .rev()
+                    .fold(Condition::any(), |cond_any, n| {
+                        // Construct the inner-AND-condition
+                        let inner_cond_all =
+                            // Take the first "n" elements from the column and value vector respectively
+                            col_vec.iter().zip(val_vec.iter()).enumerate().take(n).fold(
+                                Condition::all(),
+                                |inner_cond_all, (i, (col, val))| {
+                                    let val = val.clone();
+                                    // Construct a equal expression,
+                                    // except for the last one being greater than or less than expression
+                                    let expr = if i != (n - 1) {
+                                        Expr::col((SeaRc::clone(&self.table), SeaRc::clone(col)))
+                                            .eq(val)
+                                    } else {
+                                        f(col, val)
+                                    };
+                                    // Chain it with AND operator
+                                    inner_cond_all.add(expr)
+                                },
+                            );
+                        // Chain inner-AND-condition with OR operator
+                        cond_any.add(inner_cond_all)
+                    })
             }
             _ => panic!("column arity mismatch"),
         }
