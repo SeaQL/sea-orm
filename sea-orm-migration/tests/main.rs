@@ -1,6 +1,6 @@
-mod migrator;
-use migrator::Migrator;
+mod common;
 
+use common::migrator::*;
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DbBackend, DbErr, Statement};
 use sea_orm_migration::{migrator::MigrationStatus, prelude::*};
 
@@ -13,14 +13,42 @@ async fn main() -> Result<(), DbErr> {
 
     let url = &std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
 
-    run_migration(url, "sea_orm_migration", "public").await?;
+    run_migration(url, default::Migrator, "sea_orm_migration", "public").await?;
+    run_migration(
+        url,
+        default::Migrator,
+        "sea_orm_migration_schema",
+        "my_schema",
+    )
+    .await?;
 
-    run_migration(url, "sea_orm_migration_schema", "my_schema").await?;
+    run_migration(
+        url,
+        override_migration_table_name::Migrator,
+        "sea_orm_migration_table_name",
+        "public",
+    )
+    .await?;
+    run_migration(
+        url,
+        override_migration_table_name::Migrator,
+        "sea_orm_migration_table_name_schema",
+        "my_schema",
+    )
+    .await?;
 
     Ok(())
 }
 
-async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbErr> {
+async fn run_migration<Migrator>(
+    url: &str,
+    _: Migrator,
+    db_name: &str,
+    schema: &str,
+) -> Result<(), DbErr>
+where
+    Migrator: MigratorTrait,
+{
     let db_connect = |url: String| async {
         let connect_options = ConnectOptions::new(url)
             .set_schema_search_path(schema.to_owned())
@@ -75,7 +103,12 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
     println!("\nMigrator::install");
     Migrator::install(db).await?;
 
-    assert!(manager.has_table("seaql_migrations").await?);
+    let migration_table_name = Migrator::migration_table_name().to_string();
+    let migration_table_name = migration_table_name.as_str();
+    assert!(manager.has_table(migration_table_name).await?);
+    if migration_table_name != "seaql_migrations" {
+        assert!(!manager.has_table("seaql_migrations").await?);
+    }
 
     println!("\nMigrator::reset");
     Migrator::reset(db).await?;
@@ -192,7 +225,11 @@ async fn run_migration(url: &str, db_name: &str, schema: &str) -> Result<(), DbE
     println!("\nMigrator::down");
     Migrator::down(db, None).await?;
 
-    assert!(manager.has_table("seaql_migrations").await?);
+    assert!(manager.has_table(migration_table_name).await?);
+    if migration_table_name != "seaql_migrations" {
+        assert!(!manager.has_table("seaql_migrations").await?);
+    }
+
     assert!(!manager.has_table("cake").await?);
     assert!(!manager.has_table("fruit").await?);
 
