@@ -321,6 +321,14 @@ pub enum GenerateSubcommands {
             help = r#"Add extra attributes to generated model struct, no need for `#[]` (comma separated), e.g. `--model-extra-attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
         )]
         model_extra_attributes: Vec<String>,
+
+        #[clap(
+            action,
+            long,
+            default_value = "false",
+            long_help = "Generate helper Enumerations and Traits that are used by Seaography."
+        )]
+        seaography: bool,
     },
 }
 
