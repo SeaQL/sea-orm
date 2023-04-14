@@ -131,6 +131,21 @@ impl Relation {
         }
     }
 
+    pub fn get_related_attrs(&self) -> TokenStream {
+        let enum_name = self.get_enum_name();
+
+        let entity = match self.get_module_name() {
+            Some(module_name) => format!("super::{}::Entity", module_name),
+            None => String::from("Entity"),
+        }.to_string();
+
+        let to = format!("Relation::{}.def()", enum_name);
+
+        quote! {
+            #[sea_orm(entity = #entity, to = #to)]
+        }
+    }
+
     pub fn get_rel_type(&self) -> Ident {
         match self.rel_type {
             RelationType::HasOne => format_ident!("has_one"),
