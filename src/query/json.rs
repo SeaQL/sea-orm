@@ -151,6 +151,8 @@ impl FromQueryResult for JsonValue {
                     match_postgres_type!(rust_decimal::Decimal);
                     #[cfg(feature = "with-json")]
                     try_get_type!(serde_json::Value, col);
+                    #[cfg(feature = "with-json")]
+                    try_get_type!(Vec<serde_json::Value>, col);
                     try_get_type!(String, col);
                     #[cfg(feature = "postgres-array")]
                     try_get_type!(Vec<String>, col);
