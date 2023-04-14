@@ -642,23 +642,26 @@ pub fn derive_relation(input: TokenStream) -> TokenStream {
 ///
 /// ### Usage
 ///
-/// ```
-/// use sea_orm::tests_cfg::cake_expanded::Entity;
+/// ```ignore
 /// use sea_orm::entity::prelude::*;
+///
+/// // ...
+/// // Model, Relation enum, etc.
+/// // ...
 ///
 /// #[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
 /// pub enum RelatedEntity {
 ///     #[sea_orm(
-///         entity = "super::fruit::Entity",
-///         to = "Relation::Fruit.def()",
+///         entity = "sea_orm::tests_cfg::fruit::Entity",
+///         to = "sea_orm::tests_cfg::cake_expanded::Relation::Fruit.def()"
 ///     )]
 ///     Fruit,
 ///     #[sea_orm(
-///         entity = "super::filling::Entity",
-///         to = "super::cake_filling::Relation::Filling.def()",
-///         via = "Some(super::cake_filling::Relation::Cake.def().rev())",
+///         entity = "sea_orm::tests_cfg::filling::Entity",
+///         to = "sea_orm::tests_cfg::cake_filling::Relation::Filling.def()",
+///         via = "Some(sea_orm::tests_cfg::cake_filling::Relation::Cake.def().rev())"
 ///     )]
-///     Filling,
+///     Filling
 /// }
 /// ```
 #[cfg(feature = "derive")]
