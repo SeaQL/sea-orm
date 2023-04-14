@@ -23,16 +23,12 @@ pub enum Relation {
     Vendor,
 }
 
-impl Related<super::cake::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Cake.def()
-    }
-}
-
-impl Related<super::vendor::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Vendor.def()
-    }
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+pub enum RelatedEntity {
+    #[sea_orm (entity = "super::cake::Entity", to = "Relation::Cake.def()")]
+    Cake,
+    #[sea_orm (entity = "super::vendor::Entity", to = "Relation::Vendor.def()")]
+    Vendor
 }
 
 impl ActiveModelBehavior for ActiveModel {}

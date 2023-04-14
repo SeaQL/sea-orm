@@ -19,19 +19,12 @@ pub enum Relation {
     Fruit,
 }
 
-impl Related<super::fruit::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Fruit.def()
-    }
-}
-
-impl Related<super::filling::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::cake_filling::Relation::Filling.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(super::cake_filling::Relation::Cake.def().rev())
-    }
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+pub enum RelatedEntity {
+    #[sea_orm(entity = "super::fruit::Entity", to = "Relation::Fruit.def()")]
+    Fruit,
+    #[sea_orm (entity = "super::filling::Entity", to = "super::cake_filling::Relation::Filling.def()", via = "Some(super::cake_filling::Relation::Cake.def().rev())")]
+    Filling
 }
 
 impl ActiveModelBehavior for ActiveModel {}
