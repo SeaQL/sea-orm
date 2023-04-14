@@ -32,3 +32,15 @@ pub mod field_attr {
         pub fk_name: Option<syn::Lit>,
     }
 }
+
+pub mod related_attr {
+    use bae::FromAttributes;
+
+    /// Operations for Related traits
+    #[derive(Default, FromAttributes)]
+    pub struct SeaOrm {
+        pub entity: Option<syn::Lit>,
+        pub to: Option<syn::Lit>,
+        pub via: Option<syn::Lit>,
+    }
+}

@@ -638,6 +638,38 @@ pub fn derive_relation(input: TokenStream) -> TokenStream {
         .into()
 }
 
+/// The DeriveRelatedEntity derive macro will implement Related for Entity.
+///
+/// ### Usage
+///
+/// ```
+/// use sea_orm::tests_cfg::cake_expanded::Entity;
+/// use sea_orm::entity::prelude::*;
+///
+/// #[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+/// pub enum RelatedEntity {
+///     #[sea_orm(
+///         entity = "super::fruit::Entity",
+///         to = "Relation::Fruit.def()",
+///     )]
+///     Fruit,
+///     #[sea_orm(
+///         entity = "super::filling::Entity",
+///         to = "super::cake_filling::Relation::Filling.def()",
+///         via = "Some(super::cake_filling::Relation::Cake.def().rev())",
+///     )]
+///     Filling,
+/// }
+/// ```
+#[cfg(feature = "derive")]
+#[proc_macro_derive(DeriveRelatedEntity, attributes(sea_orm))]
+pub fn derive_related_entity(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    derives::expand_derive_related_entity(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
 /// The DeriveMigrationName derive macro will implement `sea_orm_migration::MigrationName` for a migration.
 ///
 /// ### Usage
