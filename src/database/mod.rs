@@ -2,6 +2,7 @@ use std::time::Duration;
 
 mod connection;
 mod db_connection;
+mod event;
 #[cfg(feature = "mock")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 mod mock;
@@ -11,6 +12,7 @@ mod transaction;
 
 pub use connection::*;
 pub use db_connection::*;
+pub use event::*;
 #[cfg(feature = "mock")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 pub use mock::*;

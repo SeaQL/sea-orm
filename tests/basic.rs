@@ -10,7 +10,18 @@ pub use sea_orm::{entity::*, error::*, query::*, sea_query, tests_cfg::*, Databa
 async fn main() -> Result<(), DbErr> {
     let base_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_owned());
 
-    let db: DbConn = Database::connect(&base_url).await?;
+    let mut db: DbConn = Database::connect(&base_url).await?;
+
+    let mut tokio_receiver = db.set_event_stream(async_broadcast::broadcast(10));
+
+    while let Ok(event) = tokio_receiver.recv().await {
+        if event.of_entity::<cake::Entity>() {
+            if let Some(val) = event.values.get(cake::Column::Name.as_str()) {
+                todo!()
+            }
+        }
+    }
+
     setup_schema(&db).await?;
     crud_cake(&db).await?;
 

@@ -1,6 +1,7 @@
 use crate::{
-    error::*, AccessMode, ConnectionTrait, DatabaseTransaction, ExecResult, IsolationLevel,
-    QueryResult, Statement, StatementBuilder, StreamTrait, TransactionError, TransactionTrait,
+    error::*, AccessMode, ConnectionTrait, DatabaseTransaction, EventStream, ExecResult,
+    IsolationLevel, QueryResult, Statement, StatementBuilder, StreamTrait, TransactionError,
+    TransactionTrait,
 };
 use sea_query::{MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SqliteQueryBuilder};
 use std::{future::Future, pin::Pin};
@@ -406,6 +407,15 @@ impl DatabaseConnection {
             }
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
+    }
+
+    pub fn set_event_stream<E>(&mut self, event_stream: E) -> E::Receiver
+    where
+        E: EventStream,
+    {
+        let (sender, receiver) = event_stream.subscribe();
+        // TODO: Save the `sender` in `DatabaseConnection`
+        receiver
     }
 }
 
