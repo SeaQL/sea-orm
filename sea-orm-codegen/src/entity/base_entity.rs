@@ -149,7 +149,7 @@ impl Entity {
             .iter()
             .map(|rel| {
                 let enum_name = rel.get_enum_name();
-                let name = format_ident!("{}", enum_name.to_string().to_snake_case());
+                let name = format!("{}", enum_name.to_string().to_snake_case());
 
                 let path = match rel.get_module_name() {
                     Some(module_name) => quote!{ super::#module_name::Entity },
@@ -166,7 +166,7 @@ impl Entity {
         let to_snake_case = self.get_conjunct_relations_to_snake_case();
         let to_upper_camel_case = self.get_conjunct_relations_to_upper_camel_case();
 
-        to_snake_case
+        let conj_related = to_snake_case
             .into_iter()
             .zip(to_upper_camel_case)
             .map(|(to_snake_case, to_upper_camel_case)| {
@@ -174,7 +174,26 @@ impl Entity {
                 quote! {
                     Self::#to_upper_camel_case => builder.get_relation::<Entity, super::#to_snake_case::Entity>(#name)
                 }
-            }).collect()
+            });
+
+        self.relations
+            .iter()
+            .filter(|rel| !rel.self_referencing && rel.num_suffix == 0 && rel.impl_related)
+            .map(|rel| {
+                let enum_name = rel.get_enum_name();
+                let name = format!("{}", enum_name.to_string().to_snake_case());
+
+                let path = match rel.get_module_name() {
+                    Some(module_name) => quote!{ super::#module_name::Entity },
+                    None => quote!{ Entity },
+                };
+
+                quote! {
+                    Self::#enum_name => builder.get_relation::<Entity, #path>(#name)
+                }
+            })
+            .chain(conj_related)
+            .collect()
     }
 
     pub fn get_primary_key_auto_increment(&self) -> Ident {
