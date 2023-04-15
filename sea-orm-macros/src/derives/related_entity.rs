@@ -46,7 +46,9 @@ impl DeriveRelatedEntity {
 
                 let via = match attr.via {
                     Some(via) => {
-                        let via = Self::parse_lit_string(&via).map_err(|_| syn::Error::new_spanned(variant, "Missing value for 'via'"))?;
+                        let via = Self::parse_lit_string(&via).map_err(|_| {
+                            syn::Error::new_spanned(variant, "Missing value for 'via'")
+                        })?;
 
                         quote! {
                             fn via() -> Option<RelationDef> {
