@@ -1726,6 +1726,47 @@ mod tests {
     }
 
     #[test]
+    fn test_gen_with_seaography() -> io::Result<()> {
+        let cake_entity = setup().get(0).unwrap().clone();
+
+        assert_eq!(cake_entity.get_table_name_snake_case(), "cake");
+
+        // Compact code blocks
+        assert_eq!(
+            comparable_file_string(include_str!("../../tests/with_seaography/cake.rs"))?,
+            generated_to_string(EntityWriter::gen_compact_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                true,
+            ))
+        );
+
+        // Expanded code blocks
+        assert_eq!(
+            comparable_file_string(include_str!("../../tests/with_seaography/cake_expanded.rs"))?,
+            generated_to_string(EntityWriter::gen_expanded_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                true,
+            ))
+        );
+
+        Ok(())
+    }
+
+    #[test]
     fn test_gen_with_derives() -> io::Result<()> {
         let mut cake_entity = setup().get_mut(0).unwrap().clone();
 
