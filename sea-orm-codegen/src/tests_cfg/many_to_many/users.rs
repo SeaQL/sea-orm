@@ -29,7 +29,7 @@ pub enum RelatedEntity {
         to = "super::users_votes::Relation::Bills.def()",
         via = "Some(super::users_votes::Relation::Users.def().rev())"
     )]
-    Bills,
+    Bills
 }
 
 impl ActiveModelBehavior for ActiveModel {}

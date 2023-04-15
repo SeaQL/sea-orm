@@ -32,7 +32,7 @@ pub enum RelatedEntity {
         entity = "super::users_votes::Entity",
         to = "Relation::UsersVotes.def()"
     )]
-    UsersVotes,
+    UsersVotes
 }
 
 impl ActiveModelBehavior for ActiveModel {}
