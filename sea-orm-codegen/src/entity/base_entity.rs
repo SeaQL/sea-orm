@@ -154,7 +154,7 @@ impl Entity {
             .iter()
             .map(|rel| {
                 let enum_name = rel.get_enum_name();
-                let name = format!("{}", enum_name.to_string().to_snake_case());
+                let name = enum_name.to_string().to_snake_case();
 
                 let path = match rel.get_module_name() {
                     Some(module_name) => quote!{ super::#module_name::Entity },
@@ -186,7 +186,7 @@ impl Entity {
             .filter(|rel| !rel.self_referencing && rel.num_suffix == 0 && rel.impl_related)
             .map(|rel| {
                 let enum_name = rel.get_enum_name();
-                let name = format!("{}", enum_name.to_string().to_snake_case());
+                let name = enum_name.to_string().to_snake_case();
 
                 let path = match rel.get_module_name() {
                     Some(module_name) => quote! { super::#module_name::Entity },

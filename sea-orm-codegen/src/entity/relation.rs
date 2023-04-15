@@ -137,8 +137,7 @@ impl Relation {
         let entity = match self.get_module_name() {
             Some(module_name) => format!("super::{}::Entity", module_name),
             None => String::from("Entity"),
-        }
-        .to_string();
+        };
 
         let to = format!("Relation::{}.def()", enum_name);
 
