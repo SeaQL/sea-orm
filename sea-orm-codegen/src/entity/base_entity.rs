@@ -117,14 +117,19 @@ impl Entity {
         let to_snake_case = self.get_conjunct_relations_to_snake_case();
         let to_upper_camel_case = self.get_conjunct_relations_to_upper_camel_case();
 
-
         let conjunct_related = via_snake_case
             .into_iter()
             .zip(to_snake_case)
             .zip(to_upper_camel_case)
             .map(|((via_snake_case, to_snake_case), to_upper_camel_case)| {
-                let to = format!("super::{}::Relation::{}.def()", via_snake_case, to_upper_camel_case);
-                let via = format!("Some(super::{}::Relation::{}.def().rev())", via_snake_case, table_name_camel_case);
+                let to = format!(
+                    "super::{}::Relation::{}.def()",
+                    via_snake_case, to_upper_camel_case
+                );
+                let via = format!(
+                    "Some(super::{}::Relation::{}.def().rev())",
+                    via_snake_case, table_name_camel_case
+                );
                 let entity = format!("super::{}::Entity", to_snake_case);
 
                 quote! {
@@ -184,8 +189,8 @@ impl Entity {
                 let name = format!("{}", enum_name.to_string().to_snake_case());
 
                 let path = match rel.get_module_name() {
-                    Some(module_name) => quote!{ super::#module_name::Entity },
-                    None => quote!{ Entity },
+                    Some(module_name) => quote! { super::#module_name::Entity },
+                    None => quote! { Entity },
                 };
 
                 quote! {
