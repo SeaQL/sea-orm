@@ -19,22 +19,20 @@ pub enum Relation {
     UsersVotes,
 }
 
-impl Related<super::bills::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Bills.def()
-    }
-}
-
-impl Related<super::users_saved_bills::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::UsersSavedBills.def()
-    }
-}
-
-impl Related<super::users_votes::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::UsersVotes.def()
-    }
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+pub enum RelatedEntity {
+    #[sea_orm(entity = "super::bills::Entity", to = "Relation::Bills.def()")]
+    Bills,
+    #[sea_orm(
+        entity = "super::users_saved_bills::Entity",
+        to = "Relation::UsersSavedBills.def()"
+    )]
+    UsersSavedBills,
+    #[sea_orm(
+        entity = "super::users_votes::Entity",
+        to = "Relation::UsersVotes.def()"
+    )]
+    UsersVotes,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

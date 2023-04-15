@@ -16,7 +16,7 @@ pub enum Relation {
         from = "Column::BillId",
         to = "super::bills::Column::Id",
         on_update = "Cascade",
-        on_delete = "Cascade",
+        on_delete = "Cascade"
     )]
     Bills,
     #[sea_orm(
@@ -24,21 +24,17 @@ pub enum Relation {
         from = "Column::UserId",
         to = "super::users::Column::Id",
         on_update = "Cascade",
-        on_delete = "Cascade",
+        on_delete = "Cascade"
     )]
     Users,
 }
 
-impl Related<super::bills::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Bills.def()
-    }
-}
-
-impl Related<super::users::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Users.def()
-    }
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+pub enum RelatedEntity {
+    #[sea_orm(entity = "super::bills::Entity", to = "Relation::Bills.def()")]
+    Bills,
+    #[sea_orm(entity = "super::users::Entity", to = "Relation::Users.def()")]
+    Users,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
