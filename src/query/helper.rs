@@ -3,8 +3,8 @@ use crate::{
     PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
-    Alias, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr, SelectStatement,
-    SimpleExpr, TableRef,
+    Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr,
+    SelectStatement, TableRef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -690,7 +690,12 @@ pub(crate) fn join_condition(mut rel: RelationDef) -> Condition {
     let owner_keys = rel.from_col;
     let foreign_keys = rel.to_col;
 
-    let mut condition = Condition::all().add(join_tbl_on_condition(
+    let mut condition = match rel.condition_type {
+        ConditionType::All => Condition::all(),
+        ConditionType::Any => Condition::any(),
+    };
+
+    condition = condition.add(join_tbl_on_condition(
         SeaRc::clone(&from_tbl),
         SeaRc::clone(&to_tbl),
         owner_keys,
@@ -708,24 +713,15 @@ pub(crate) fn join_tbl_on_condition(
     to_tbl: SeaRc<dyn Iden>,
     owner_keys: Identity,
     foreign_keys: Identity,
-) -> SimpleExpr {
-    match (owner_keys, foreign_keys) {
-        (Identity::Unary(o1), Identity::Unary(f1)) => {
-            Expr::col((SeaRc::clone(&from_tbl), o1)).equals((SeaRc::clone(&to_tbl), f1))
-        }
-        (Identity::Binary(o1, o2), Identity::Binary(f1, f2)) => {
-            Expr::col((SeaRc::clone(&from_tbl), o1))
-                .equals((SeaRc::clone(&to_tbl), f1))
-                .and(Expr::col((SeaRc::clone(&from_tbl), o2)).equals((SeaRc::clone(&to_tbl), f2)))
-        }
-        (Identity::Ternary(o1, o2, o3), Identity::Ternary(f1, f2, f3)) => {
-            Expr::col((SeaRc::clone(&from_tbl), o1))
-                .equals((SeaRc::clone(&to_tbl), f1))
-                .and(Expr::col((SeaRc::clone(&from_tbl), o2)).equals((SeaRc::clone(&to_tbl), f2)))
-                .and(Expr::col((SeaRc::clone(&from_tbl), o3)).equals((SeaRc::clone(&to_tbl), f3)))
-        }
-        _ => panic!("Owner key and foreign key mismatch"),
+) -> Condition {
+    let mut cond = Condition::all();
+    for (owner_key, foreign_key) in owner_keys.into_iter().zip(foreign_keys.into_iter()) {
+        cond = cond.add(
+            Expr::col((SeaRc::clone(&from_tbl), owner_key))
+                .equals((SeaRc::clone(&to_tbl), foreign_key)),
+        );
     }
+    cond
 }
 
 pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> DynIden {

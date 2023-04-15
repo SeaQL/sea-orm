@@ -163,6 +163,28 @@ impl DeriveRelation {
                     result = quote! { #result.fk_name(#fk_name) };
                 }
 
+                if attr.condition_type.is_some() {
+                    let condition_type = attr
+                        .condition_type
+                        .as_ref()
+                        .map(|lit| {
+                            match lit {
+                                syn::Lit::Str(lit_str) => {
+                                    match lit_str.value().to_ascii_lowercase().as_str() {
+                                        "all" => Ok(quote!( sea_orm::sea_query::ConditionType::All )),
+                                        "any" => Ok(quote!( sea_orm::sea_query::ConditionType::Any )),
+                                        _ => Err(syn::Error::new_spanned(lit, "Condition type must be one of `all` or `any`")),
+                                    }
+                                },
+                                _ => Err(syn::Error::new_spanned(lit, "attribute must be a string")),
+                            }
+                        })
+                        .ok_or_else(|| {
+                            syn::Error::new_spanned(variant, "Missing value for 'condition_type'")
+                        })??;
+                    result = quote! { #result.condition_type(#condition_type) };
+                }
+
                 result = quote! { #result.into() };
 
                 Result::<_, syn::Error>::Ok(result)

@@ -30,6 +30,7 @@ pub mod field_attr {
         pub from: Option<syn::Lit>,
         pub to: Option<syn::Lit>,
         pub fk_name: Option<syn::Lit>,
+        pub condition_type: Option<syn::Lit>,
     }
 }
 
