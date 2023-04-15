@@ -682,7 +682,8 @@ impl EntityWriter {
                 fn get_relation(&self, context: &'static seaography::BuilderContext) -> async_graphql::dynamic::Field {
                     let builder = seaography::EntityObjectRelationBuilder { context };
                     match self {
-                        #(#basic_relations),*
+                        #(#basic_relations,)*
+                        _ => panic!("No relations for this entity")
                     }
                 }
             }
@@ -691,7 +692,8 @@ impl EntityWriter {
                 fn get_relation(&self, context: &'static seaography::BuilderContext) -> async_graphql::dynamic::Field {
                     let builder = seaography::EntityObjectViaRelationBuilder { context };
                     match self {
-                        #(#related_relations),*
+                        #(#related_relations,)*
+                        _ => panic!("No relations for this entity")
                     }
                 }
             }

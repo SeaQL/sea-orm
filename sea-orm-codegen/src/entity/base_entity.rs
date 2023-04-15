@@ -162,7 +162,7 @@ impl Entity {
                 };
 
                 quote! {
-                    Self::#enum_name => builder.get_relation::<Entity, #path>(#name, Self::#enum_name.def(),)
+                    Self::#enum_name => builder.get_relation::<Entity, #path>(#name, Self::#enum_name.def())
                 }
             }).collect()
     }

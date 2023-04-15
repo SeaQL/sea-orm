@@ -86,7 +86,8 @@ impl seaography::RelationBuilder for Relation {
     fn get_relation(&self, context: & 'static seaography::BuilderContext) -> async_graphql::dynamic::Field {
         let builder = seaography::EntityObjectRelationBuilder { context };
         match self {
-            Self::Fruit => builder.get_relation:: <Entity, super::fruit::Entity>("fruit", Self::Fruit.def(),)
+            Self::Fruit => builder.get_relation:: <Entity, super::fruit::Entity>("fruit", Self::Fruit.def()),
+            _ => panic!("No relations for this entity")
         }
     }
 }
@@ -96,7 +97,8 @@ impl seaography::RelationBuilder for RelatedEntity {
         let builder = seaography::EntityObjectViaRelationBuilder { context };
         match self {
             Self::Fruit => builder.get_relation:: <Entity, super::fruit::Entity>("fruit"),
-            Self::Filling => builder.get_relation:: <Entity, super::filling::Entity>("filling")
+            Self::Filling => builder.get_relation:: <Entity, super::filling::Entity>("filling"),
+            _ => panic!("No relations for this entity")
         }
     }
 }
