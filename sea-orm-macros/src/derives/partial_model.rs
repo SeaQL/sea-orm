@@ -39,7 +39,7 @@ struct DerivePartialModel {
 
 impl DerivePartialModel {
     fn new(input: syn::DeriveInput) -> Result<Self, Error> {
-        if ! input.generics.params.is_empty(){
+        if !input.generics.params.is_empty() {
             return Err(Error::NotSupportGeneric(input.generics.params.span()));
         }
 
@@ -175,7 +175,7 @@ pub fn expand_derive_partial_model(input: syn::DeriveInput) -> syn::Result<Token
 
     match DerivePartialModel::new(input) {
         Ok(partial_model) => partial_model.expand(),
-        Err(Error::NotSupportGeneric(span))=>Ok(quote_spanned! {
+        Err(Error::NotSupportGeneric(span)) => Ok(quote_spanned! {
             span => compile_error!("you can only derive `DerivePartialModel` on named struct");
         }),
         Err(Error::BothFromColAndFromExpr(span)) => Ok(quote_spanned! {
