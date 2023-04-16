@@ -117,7 +117,7 @@ impl DerivePartialModel {
                         return Err(Error::EntityNotSpecific);
                     }
 
-                    let field = field_name.to_string().to_snake_case();
+                    let field = field_name.to_string();
                     ColumnAs::ColAlias { col, field }
                 }
                 (Some(_), Some(_)) => return Err(Error::BothFromColAndFromExpr(field_span)),
