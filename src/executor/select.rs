@@ -1,7 +1,7 @@
 use crate::{
     error::*, ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, ModelTrait,
-    PartialModelTrait, PrimaryKeyToColumn, QueryResult, Select, SelectA, SelectB, SelectTwo,
-    SelectTwoMany, Statement, StreamTrait, TryGetableMany,
+    PartialModelTrait, PrimaryKeyToColumn, QueryResult, QuerySelect, Select, SelectA, SelectB,
+    SelectTwo, SelectTwoMany, Statement, StreamTrait, TryGetableMany,
 };
 use futures::{Stream, TryStreamExt};
 use sea_query::SelectStatement;
@@ -489,6 +489,17 @@ where
             selector: SelectTwoModel { model: PhantomData },
         }
     }
+    /// Performs a conversion to [Selector] with partial model
+    fn into_partial_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
+    where
+        M: PartialModelTrait,
+        N: PartialModelTrait,
+    {
+        let select = self.select_only();
+        let select = M::select_cols(select);
+        let select = N::select_cols(select);
+        select.into_model()
+    }
 
     /// Convert the results to JSON
     #[cfg(feature = "with-json")]
@@ -508,6 +519,19 @@ where
         C: ConnectionTrait + StreamTrait + Send,
     {
         self.into_model().stream(db).await
+    }
+
+    /// Stream the result of the operation with PartialModel
+    pub async fn stream_partial_model<'a: 'b, 'b, C, M, N>(
+        self,
+        db: &'a C,
+    ) -> Result<impl Stream<Item = Result<(M, Option<N>), DbErr>> + 'b + Send, DbErr>
+    where
+        C: ConnectionTrait + StreamTrait + Send,
+        M: PartialModelTrait + Send + 'b,
+        N: PartialModelTrait + Send + 'b,
+    {
+        self.into_partial_model().stream(db).await
     }
 
     /// Get all Models from the select operation
