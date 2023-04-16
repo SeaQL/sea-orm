@@ -677,8 +677,6 @@ pub trait QueryFilter: Sized {
     }
 }
 
-
-
 pub(crate) fn join_condition(mut rel: RelationDef) -> Condition {
     // Use table alias (if any) to construct the join condition
     let from_tbl = match unpack_table_alias(&rel.from_tbl) {

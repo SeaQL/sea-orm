@@ -1,4 +1,4 @@
-use crate::{DbBackend, Statement, ColumnTrait, IntoSimpleExpr, IntoIdentity, QuerySelect};
+use crate::{ColumnTrait, DbBackend, IntoIdentity, IntoSimpleExpr, QuerySelect, Statement};
 use sea_query::QueryStatementBuilder;
 
 /// A Trait for any type performing queries on a Model or ActiveModel
