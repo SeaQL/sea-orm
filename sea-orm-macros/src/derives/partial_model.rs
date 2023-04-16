@@ -18,6 +18,7 @@ use self::util::GetAsKVMeta;
 enum Error {
     InputNotStruct,
     EntityNotSpecific,
+    NotSupportGeneric(Span),
     BothFromColAndFromExpr(Span),
     Syn(syn::Error),
 }
@@ -39,6 +40,10 @@ struct DerivePartialModel {
 
 impl DerivePartialModel {
     fn new(input: syn::DeriveInput) -> Result<Self, Error> {
+        if ! input.generics.params.is_empty(){
+            return Err(Error::NotSupportGeneric(input.generics.params.span()));
+        }
+
         let syn::Data::Struct(syn::DataStruct{fields:syn::Fields::Named(syn::FieldsNamed{named:fields,..}),..},..)= input.data else{
             return Err(Error::InputNotStruct);
         };
@@ -171,14 +176,17 @@ pub fn expand_derive_partial_model(input: syn::DeriveInput) -> syn::Result<Token
 
     match DerivePartialModel::new(input) {
         Ok(partial_model) => partial_model.expand(),
+        Err(Error::NotSupportGeneric(span))=>Ok(quote_spanned! {
+            span => compile_error!("you can only derive `DerivePartialModel` on named struct");
+        }),
         Err(Error::BothFromColAndFromExpr(span)) => Ok(quote_spanned! {
             span => compile_error!("you can only use one of `from_col` or `from_expr`");
         }),
         Err(Error::EntityNotSpecific) => Ok(quote_spanned! {
-            ident_span => compile_error!("you need specific witch entity you are using")
+            ident_span => compile_error!("you need specific which entity you are using")
         }),
         Err(Error::InputNotStruct) => Ok(quote_spanned! {
-            ident_span => compile_error!("you can only derive DeriveModel on structs");
+            ident_span => compile_error!("you can only derive `DerivePartialModel` on named struct");
         }),
         Err(Error::Syn(err)) => Err(err),
     }
@@ -193,7 +201,7 @@ mod util {
 
     impl GetAsKVMeta for Meta {
         fn get_as_kv(&self, k: &str) -> Option<String> {
-            let Meta::NameValue(MetaNameValue{path,lit:Lit::Str(lit),..}) = self else {
+            let Meta::NameValue(MetaNameValue{path, lit:Lit::Str(lit), ..}) = self else {
                 return  None;
             };
 
