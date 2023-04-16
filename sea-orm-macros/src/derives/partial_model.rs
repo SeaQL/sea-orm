@@ -9,8 +9,10 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::Expr;
-use syn::Lit;
+
 use syn::Meta;
+
+use self::util::GetAsKVMeta;
 
 enum Error {
     InputNotStruct,
@@ -53,18 +55,10 @@ impl DerivePartialModel {
 
             if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
                 for meta in list {
-                    if let Meta::NameValue(nv) = meta {
-                        if let Some(name) = nv.path.get_ident() {
-                            if name == "entity" {
-                                if let Lit::Str(s) = nv.lit {
-                                    entity_ident = Some(
-                                        syn::parse_str::<syn::Ident>(&s.value())
-                                            .map_err(Error::Syn)?,
-                                    );
-                                }
-                            }
-                        }
-                    }
+                    entity_ident = meta
+                        .get_as_kv("entity")
+                        .map(|s| syn::parse_str::<syn::Ident>(&s).map_err(Error::Syn))
+                        .transpose()?;
                 }
             }
         }
@@ -78,37 +72,20 @@ impl DerivePartialModel {
             let mut from_expr = None;
 
             for attr in field.attrs.iter() {
-                if let Some(ident) = attr.path.get_ident() {
-                    if ident != "sea_orm" {
-                        continue;
-                    }
-                } else {
+                if !attr.path.is_ident("sea_orm") {
                     continue;
                 }
 
                 if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
                 {
                     for meta in list.iter() {
-                        if let Meta::NameValue(nv) = meta {
-                            if let Some(name) = nv.path.get_ident() {
-                                if name == "from_col" {
-                                    if let Lit::Str(s) = &nv.lit {
-                                        from_col = Some(format_ident!(
-                                            "{}",
-                                            s.value().to_upper_camel_case()
-                                        ));
-                                    }
-                                }
-                                if name == "from_expr" {
-                                    if let Lit::Str(s) = &nv.lit {
-                                        from_expr = Some(
-                                            syn::parse_str::<Expr>(&s.value())
-                                                .map_err(Error::Syn)?,
-                                        );
-                                    }
-                                }
-                            }
-                        }
+                        from_col = meta
+                            .get_as_kv("from_col")
+                            .map(|s| format_ident!("{}", s.to_upper_camel_case()));
+                        from_expr = meta
+                            .get_as_kv("from_expr")
+                            .map(|s| syn::parse_str::<Expr>(&s).map_err(Error::Syn))
+                            .transpose()?;
                     }
                 }
             }
@@ -203,5 +180,27 @@ pub fn expand_derive_partial_model(input: syn::DeriveInput) -> syn::Result<Token
             ident_span => compile_error!("you can only derive DeriveModel on structs");
         }),
         Err(Error::Syn(err)) => Err(err),
+    }
+}
+
+mod util {
+    use syn::{Lit, Meta, MetaNameValue};
+
+    pub(super) trait GetAsKVMeta {
+        fn get_as_kv(&self, k: &str) -> Option<String>;
+    }
+
+    impl GetAsKVMeta for Meta {
+        fn get_as_kv(&self, k: &str) -> Option<String> {
+            let Meta::NameValue(MetaNameValue{path,lit:Lit::Str(lit),..}) = self else {
+                return  None;
+            };
+
+            if path.is_ident(k) {
+                Some(lit.value())
+            } else {
+                None
+            }
+        }
     }
 }
