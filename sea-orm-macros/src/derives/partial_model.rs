@@ -1,4 +1,3 @@
-use heck::ToSnakeCase;
 use heck::ToUpperCamelCase;
 use proc_macro2::Span;
 use proc_macro2::TokenStream;
