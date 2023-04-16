@@ -14,13 +14,14 @@ use syn::Meta;
 
 use self::util::GetAsKVMeta;
 
+#[derive(Debug)]
 enum Error {
     InputNotStruct,
     EntityNotSpecific,
     BothFromColAndFromExpr(Span),
     Syn(syn::Error),
 }
-
+#[derive(Debug, PartialEq, Eq)]
 enum ColumnAs {
     /// column in the model
     Col(syn::Ident),
@@ -202,5 +203,60 @@ mod util {
                 None
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use quote::format_ident;
+    use syn::DeriveInput;
+
+    use crate::derives::partial_model::ColumnAs;
+
+    use super::DerivePartialModel;
+
+    #[cfg(test)]
+    type StdResult<T> = Result<T, Box<dyn std::error::Error>>;
+
+    #[cfg(test)]
+    const CODE_SNIPPET: &str = r#"
+#[sea_orm(entity = "Entity")]
+struct PartialModel{
+    default_field: i32,
+    #[sea_orm(from_col = "bar")]
+    alias_field: i32,
+    #[sea_orm(from_expr = "Expr::val(1).add(1)")]
+    expr_field : i32
+}
+"#;
+    #[test]
+    fn test_load_macro_input() -> StdResult<()> {
+        let input = syn::parse_str::<DeriveInput>(CODE_SNIPPET)?;
+
+        let middle = DerivePartialModel::new(input).unwrap();
+
+        assert_eq!(middle.entity_ident, Some(format_ident!("Entity")));
+        assert_eq!(middle.ident, format_ident!("PartialModel"));
+        assert_eq!(middle.fields.len(), 3);
+        assert_eq!(
+            middle.fields[0],
+            ColumnAs::Col(format_ident!("DefaultField"))
+        );
+        assert_eq!(
+            middle.fields[1],
+            ColumnAs::ColAlias {
+                col: format_ident!("Bar"),
+                field: "alias_field".to_string()
+            },
+        );
+        assert_eq!(
+            middle.fields[2],
+            ColumnAs::Expr {
+                expr: syn::parse_str("Expr::val(1).add(1)").unwrap(),
+                field_name: "expr_field".to_string()
+            }
+        );
+
+        Ok(())
     }
 }
