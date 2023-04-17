@@ -167,53 +167,30 @@ impl ActiveModelBehavior for ActiveModel {}
 
 * Add `seaography` flag to `sea-orm-cli` https://github.com/SeaQL/sea-orm/pull/1599
 * Add generation of `seaography` related information to `sea-orm-codegen` https://github.com/SeaQL/sea-orm/pull/1599
-```rust
-/// ... Entity File ...
 
-/// the following information is added by `sea-orm-cli` when flag `seaography` is `true`
-impl seaography::RelationBuilder for Relation {
-    fn get_relation(&self, context: & 'static seaography::BuilderContext) -> async_graphql::dynamic::Field {
-        let builder = seaography::EntityObjectRelationBuilder { context };
-        match self {
-            Self::Fruit => builder.get_relation:: <Entity, super::fruit::Entity>("fruit", Self::Fruit.def()),
-            _ => panic!("No relations for this entity")
-        }
+    The following information is added in entities files by `sea-orm-cli` when flag `seaography` is `true`
+    ```rust
+    /// ... Entity File ...
+
+    #[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+    pub enum RelatedEntity {
+        #[sea_orm(entity = "super::address::Entity")]
+        Address,
+        #[sea_orm(entity = "super::payment::Entity")]
+        Payment,
+        #[sea_orm(entity = "super::rental::Entity")]
+        Rental,
+        #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
+        SelfRef,
+        #[sea_orm(entity = "super::store::Entity")]
+        Store,
+        #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
+        SelfRefRev,
     }
-}
+    ```
+* Add `DeriveEntityRelated`  macro https://github.com/SeaQL/sea-orm/pull/1599
 
-impl seaography::RelationBuilder for RelatedEntity {
-    fn get_relation(&self, context: & 'static seaography::BuilderContext) -> async_graphql::dynamic::Field {
-        let builder = seaography::EntityObjectViaRelationBuilder { context };
-        match self {
-            Self::Fruit => builder.get_relation:: <Entity, super::fruit::Entity>("fruit"),
-            Self::Filling => builder.get_relation:: <Entity, super::filling::Entity>("filling"),
-            _ => panic!("No relations for this entity")
-        }
-    }
-}
-
-```
-* Add `DeriveEntityRelated` macro https://github.com/SeaQL/sea-orm/pull/1599
-```rust
-/// when generating SeaORM entities on compact format the generator will output
-/// instead of many blocks of `impl Related` trait
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
-pub enum RelatedEntity {
-    #[sea_orm(
-        entity = "sea_orm::tests_cfg::fruit::Entity",
-        to = "sea_orm::tests_cfg::cake_expanded::Relation::Fruit.def()"
-    )]
-    Fruit,
-    #[sea_orm(
-        entity = "sea_orm::tests_cfg::filling::Entity",
-        to = "sea_orm::tests_cfg::cake_filling::Relation::Filling.def()",
-        via = "Some(sea_orm::tests_cfg::cake_filling::Relation::Cake.def().rev())"
-    )]
-    Filling
-}
-```
-* When generating **compact** entities with `sea-orm-cli` the `sea-orm-codegen` uses `DeriveEntityRelated` macro instead of generating the `impl Related` code https://github.com/SeaQL/sea-orm/pull/1599
+    The DeriveRelatedEntity derive macro will implement seaography::RelationBuilder for RelatedEntity enumeration
 
 ### Enhancements
 

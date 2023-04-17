@@ -92,15 +92,19 @@ impl Entity {
             .collect()
     }
 
+    /// Used to generate the names for the `enum RelatedEntity` that is useful to the Seaography project
     pub fn get_related_entity_enum_name(&self) -> Vec<Ident> {
+        // 1st step get conjunct relations data
         let conjunct_related_names = self.get_conjunct_relations_to_upper_camel_case();
 
+        // 2nd step get reverse self relations data
         let self_relations_reverse = self
             .relations
             .iter()
             .filter(|rel| rel.self_referencing)
             .map(|rel| format_ident!("{}Rev", rel.get_enum_name()));
 
+        // 3rd step get normal relations data
         self.get_relation_enum_name()
             .into_iter()
             .chain(self_relations_reverse)
@@ -116,7 +120,9 @@ impl Entity {
         self.relations.iter().map(|rel| rel.get_attrs()).collect()
     }
 
+    /// Used to generate the attributes for the `enum RelatedEntity` that is useful to the Seaography project
     pub fn get_related_entity_attrs(&self) -> Vec<TokenStream> {
+        // 1st step get conjunct relations data
         let conjunct_related_attrs = self.conjunct_relations.iter().map(|conj| {
             let entity = format!("super::{}::Entity", conj.get_to_snake_case());
 
@@ -127,6 +133,7 @@ impl Entity {
             }
         });
 
+        // helper function that generates attributes for `Relation` data
         let produce_relation_attrs = |rel: &Relation, reverse: bool| {
             let entity = match rel.get_module_name() {
                 Some(module_name) => format!("super::{}::Entity", module_name),
@@ -155,12 +162,14 @@ impl Entity {
             }
         };
 
+        // 2nd step get reverse self relations data
         let self_relations_reverse_attrs = self
             .relations
             .iter()
             .filter(|rel| rel.self_referencing)
             .map(|rel| produce_relation_attrs(rel, true));
 
+        // 3rd step get normal relations data
         self.relations
             .iter()
             .map(|rel| produce_relation_attrs(rel, false))

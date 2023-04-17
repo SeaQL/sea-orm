@@ -638,7 +638,7 @@ pub fn derive_relation(input: TokenStream) -> TokenStream {
         .into()
 }
 
-/// The DeriveRelatedEntity derive macro will implement Related for Entity.
+/// The DeriveRelatedEntity derive macro will implement seaography::RelationBuilder for RelatedEntity enumeration.
 ///
 /// ### Usage
 ///
@@ -651,17 +651,18 @@ pub fn derive_relation(input: TokenStream) -> TokenStream {
 ///
 /// #[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
 /// pub enum RelatedEntity {
-///     #[sea_orm(
-///         entity = "sea_orm::tests_cfg::fruit::Entity",
-///         to = "sea_orm::tests_cfg::cake_expanded::Relation::Fruit.def()"
-///     )]
-///     Fruit,
-///     #[sea_orm(
-///         entity = "sea_orm::tests_cfg::filling::Entity",
-///         to = "sea_orm::tests_cfg::cake_filling::Relation::Filling.def()",
-///         via = "Some(sea_orm::tests_cfg::cake_filling::Relation::Cake.def().rev())"
-///     )]
-///     Filling
+///     #[sea_orm(entity = "super::address::Entity")]
+///     Address,
+///     #[sea_orm(entity = "super::payment::Entity")]
+///     Payment,
+///     #[sea_orm(entity = "super::rental::Entity")]
+///     Rental,
+///     #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
+///     SelfRef,
+///     #[sea_orm(entity = "super::store::Entity")]
+///     Store,
+///     #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
+///     SelfRefRev,
 /// }
 /// ```
 #[cfg(feature = "derive")]

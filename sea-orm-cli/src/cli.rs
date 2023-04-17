@@ -326,7 +326,7 @@ pub enum GenerateSubcommands {
             action,
             long,
             default_value = "false",
-            long_help = "Generate helper Enumerations and Traits that are used by Seaography."
+            long_help = "Generate helper Enumerations that are used by Seaography."
         )]
         seaography: bool,
     },

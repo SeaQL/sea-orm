@@ -621,6 +621,7 @@ impl EntityWriter {
             .collect()
     }
 
+    /// Used to generate `enum RelatedEntity` that is useful to the Seaography project
     pub fn gen_related_entity(entity: &Entity) -> TokenStream {
         let related_enum_name = entity.get_related_entity_enum_name();
         let related_attrs = entity.get_related_entity_attrs();
