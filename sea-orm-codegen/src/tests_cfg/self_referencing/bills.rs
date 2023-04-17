@@ -10,11 +10,12 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(belongs_to = "Entity", from = "Column::SelfId", to = "Column::Id",)]
+    #[sea_orm(
+        belongs_to = "Entity",
+        from = "Column::SelfId",
+        to = "Column::Id",
+    )]
     SelfRef,
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
-pub enum RelatedEntity {}
 
 impl ActiveModelBehavior for ActiveModel {}

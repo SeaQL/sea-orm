@@ -9,41 +9,42 @@ pub struct Model {
     pub id: i32,
     #[sea_orm(column_type = "Text", nullable)]
     pub name: Option<String> ,
+    pub base_id: Option<i32> ,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(has_many = "super::fruit::Entity")]
     Fruit,
+    #[sea_orm(has_one = "Entity")]
+    SelfRef ,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
-pub enum RelatedEntity {
-    #[sea_orm(entity = "super::fruit::Entity", to = "Relation::Fruit.def()")]
-    Fruit,
-    #[sea_orm (entity = "super::filling::Entity", to = "super::cake_filling::Relation::Filling.def()", via = "Some(super::cake_filling::Relation::Cake.def().rev())")]
-    Filling
+impl Related<super::fruit::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Fruit.def()
+    }
+}
+
+impl Related<super::filling::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::cake_filling::Relation::Filling.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::cake_filling::Relation::Cake.def().rev())
+    }
 }
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl seaography::RelationBuilder for Relation {
-    fn get_relation(&self, context: & 'static seaography::BuilderContext) -> async_graphql::dynamic::Field {
-        let builder = seaography::EntityObjectRelationBuilder { context };
-        match self {
-            Self::Fruit => builder.get_relation:: <Entity, super::fruit::Entity>("fruit", Self::Fruit.def()),
-            _ => panic!("No relations for this entity")
-        }
-    }
-}
-
-impl seaography::RelationBuilder for RelatedEntity {
-    fn get_relation(&self, context: & 'static seaography::BuilderContext) -> async_graphql::dynamic::Field {
-        let builder = seaography::EntityObjectViaRelationBuilder { context };
-        match self {
-            Self::Fruit => builder.get_relation:: <Entity, super::fruit::Entity>("fruit"),
-            Self::Filling => builder.get_relation:: <Entity, super::filling::Entity>("filling"),
-            _ => panic!("No relations for this entity")
-        }
-    }
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+pub enum RelatedEntity {
+    #[sea_orm(entity = "super::fruit::Entity")]
+    Fruit,
+    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
+    SelfRef,
+    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
+    SelfRefRev,
+    #[sea_orm(entity = "super::filling::Entity")]
+    Filling
 }

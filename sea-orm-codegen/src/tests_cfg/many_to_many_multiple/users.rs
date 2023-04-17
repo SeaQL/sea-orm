@@ -15,10 +15,10 @@ pub enum Relation {
     Bills,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
-pub enum RelatedEntity {
-    #[sea_orm(entity = "super::bills::Entity", to = "Relation::Bills.def()")]
-    Bills
+impl Related<super::bills::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Bills.def()
+    }
 }
 
 impl ActiveModelBehavior for ActiveModel {}

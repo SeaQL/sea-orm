@@ -15,12 +15,14 @@ impl EntityName for Entity {
 pub struct Model {
     pub id: i32,
     pub name: Option<String> ,
+    pub base_id: Option<i32> ,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
     Name,
+    BaseId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -39,6 +41,7 @@ impl PrimaryKeyTrait for PrimaryKey {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Fruit,
+    SelfRef ,
 }
 
 impl ColumnTrait for Column {
@@ -47,6 +50,7 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Name => ColumnType::Text.def().null(),
+            Self::BaseId => ColumnType::Integer.def().null(),
         }
     }
 }
@@ -55,6 +59,7 @@ impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
             Self::Fruit => Entity::has_many(super::fruit::Entity).into(),
+            Self::SelfRef => Entity::has_one(Entity).into(),
         }
     }
 }
@@ -76,29 +81,14 @@ impl Related<super::filling::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive (Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
 pub enum RelatedEntity {
-   Fruit,
-   Filling
-}
-
-impl seaography::RelationBuilder for Relation {
-    fn get_relation(&self, context: & 'static seaography::BuilderContext) -> async_graphql::dynamic::Field {
-        let builder = seaography::EntityObjectRelationBuilder { context };
-        match self {
-            Self::Fruit => builder.get_relation:: <Entity, super::fruit::Entity>("fruit", Self::Fruit.def()),
-            _ => panic!("No relations for this entity")
-        }
-    }
-}
-
-impl seaography::RelationBuilder for RelatedEntity {
-    fn get_relation(&self, context: & 'static seaography::BuilderContext) -> async_graphql::dynamic::Field {
-        let builder = seaography::EntityObjectViaRelationBuilder { context };
-        match self {
-            Self::Fruit => builder.get_relation:: <Entity, super::fruit::Entity>("fruit"),
-            Self::Filling => builder.get_relation:: <Entity, super::filling::Entity>("filling"),
-            _ => panic!("No relations for this entity")
-        }
-    }
+    #[sea_orm(entity = "super::fruit::Entity")]
+    Fruit,
+    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
+    SelfRef,
+    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
+    SelfRefRev,
+    #[sea_orm(entity = "super::filling::Entity")]
+    Filling
 }

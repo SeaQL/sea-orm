@@ -13,11 +13,13 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
-pub enum RelatedEntity {
-    #[sea_orm (entity = "super::cake::Entity", to = "super::cake_filling::Relation::Cake.def()", via = "Some(super::cake_filling::Relation::Filling.def().rev())")]
-    Cake
+impl Related<super::cake::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::cake_filling::Relation::Cake.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::cake_filling::Relation::Filling.def().rev())
+    }
 }
-
 
 impl ActiveModelBehavior for ActiveModel {}

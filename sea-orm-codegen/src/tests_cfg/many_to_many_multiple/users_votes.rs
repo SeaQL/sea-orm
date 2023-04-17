@@ -40,7 +40,4 @@ pub enum Relation {
     Users1,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
-pub enum RelatedEntity {}
-
 impl ActiveModelBehavior for ActiveModel {}

@@ -55,10 +55,10 @@ pub enum Relation {
     Cake,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
-pub enum RelatedEntity {
-    #[sea_orm(entity = "super::cake::Entity", to = "Relation::Cake.def()")]
-    Cake
+impl Related<super::cake::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Cake.def()
+    }
 }
 
 impl ActiveModelBehavior for ActiveModel {}
