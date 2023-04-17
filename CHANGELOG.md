@@ -169,28 +169,28 @@ impl ActiveModelBehavior for ActiveModel {}
 * Add generation of `seaography` related information to `sea-orm-codegen` https://github.com/SeaQL/sea-orm/pull/1599
 
     The following information is added in entities files by `sea-orm-cli` when flag `seaography` is `true`
-    ```rust
-    /// ... Entity File ...
+```rust
+/// ... Entity File ...
 
-    #[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
-    pub enum RelatedEntity {
-        #[sea_orm(entity = "super::address::Entity")]
-        Address,
-        #[sea_orm(entity = "super::payment::Entity")]
-        Payment,
-        #[sea_orm(entity = "super::rental::Entity")]
-        Rental,
-        #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
-        SelfRef,
-        #[sea_orm(entity = "super::store::Entity")]
-        Store,
-        #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
-        SelfRefRev,
-    }
-    ```
-* Add `DeriveEntityRelated`  macro https://github.com/SeaQL/sea-orm/pull/1599
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+pub enum RelatedEntity {
+    #[sea_orm(entity = "super::address::Entity")]
+    Address,
+    #[sea_orm(entity = "super::payment::Entity")]
+    Payment,
+    #[sea_orm(entity = "super::rental::Entity")]
+    Rental,
+    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
+    SelfRef,
+    #[sea_orm(entity = "super::store::Entity")]
+    Store,
+    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
+    SelfRefRev,
+}
+```
+* Add `DeriveEntityRelated` macro https://github.com/SeaQL/sea-orm/pull/1599
 
-    The DeriveRelatedEntity derive macro will implement seaography::RelationBuilder for RelatedEntity enumeration
+    The DeriveRelatedEntity derive macro will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration
 
 ### Enhancements
 
