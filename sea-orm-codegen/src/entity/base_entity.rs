@@ -92,14 +92,19 @@ impl Entity {
             .collect()
     }
 
-    pub fn get_related_enum_name(&self) -> Vec<Ident> {
-        let conjunct_related = self.get_conjunct_relations_to_upper_camel_case();
+    pub fn get_related_entity_enum_name(&self) -> Vec<Ident> {
+        let conjunct_related_names = self.get_conjunct_relations_to_upper_camel_case();
 
-        self.relations
+        let self_relations_reverse = self
+            .relations
             .iter()
-            .filter(|rel| !rel.self_referencing && rel.num_suffix == 0 && rel.impl_related)
-            .map(|rel| rel.get_enum_name())
-            .chain(conjunct_related.into_iter())
+            .filter(|rel| rel.self_referencing)
+            .map(|rel| format_ident!("{}Rev", rel.get_enum_name()));
+
+        self.get_relation_enum_name()
+            .into_iter()
+            .chain(self_relations_reverse)
+            .chain(conjunct_related_names.into_iter())
             .collect()
     }
 
@@ -111,93 +116,56 @@ impl Entity {
         self.relations.iter().map(|rel| rel.get_attrs()).collect()
     }
 
-    pub fn get_related_attrs(&self) -> Vec<TokenStream> {
-        let table_name_camel_case = self.get_table_name_camel_case_ident();
-        let via_snake_case = self.get_conjunct_relations_via_snake_case();
-        let to_snake_case = self.get_conjunct_relations_to_snake_case();
-        let to_upper_camel_case = self.get_conjunct_relations_to_upper_camel_case();
+    pub fn get_related_entity_attrs(&self) -> Vec<TokenStream> {
+        let conjunct_related_attrs = self.conjunct_relations.iter().map(|conj| {
+            let entity = format!("super::{}::Entity", conj.get_to_snake_case());
 
-        let conjunct_related = via_snake_case
-            .into_iter()
-            .zip(to_snake_case)
-            .zip(to_upper_camel_case)
-            .map(|((via_snake_case, to_snake_case), to_upper_camel_case)| {
-                let to = format!(
-                    "super::{}::Relation::{}.def()",
-                    via_snake_case, to_upper_camel_case
-                );
-                let via = format!(
-                    "Some(super::{}::Relation::{}.def().rev())",
-                    via_snake_case, table_name_camel_case
-                );
-                let entity = format!("super::{}::Entity", to_snake_case);
+            quote! {
+                #[sea_orm(
+                    entity = #entity
+                )]
+            }
+        });
+
+        let produce_relation_attrs = |rel: &Relation, reverse: bool| {
+            let entity = match rel.get_module_name() {
+                Some(module_name) => format!("super::{}::Entity", module_name),
+                None => String::from("Entity"),
+            };
+
+            if rel.self_referencing || !rel.impl_related {
+                let def = if reverse {
+                    format!("Relation::{}.def().rev()", rel.get_enum_name())
+                } else {
+                    format!("Relation::{}.def()", rel.get_enum_name())
+                };
 
                 quote! {
                     #[sea_orm(
                         entity = #entity,
-                        to = #to,
-                        via = #via
+                        def = #def
                     )]
                 }
-            });
+            } else {
+                quote! {
+                    #[sea_orm(
+                        entity = #entity
+                    )]
+                }
+            }
+        };
+
+        let self_relations_reverse_attrs = self
+            .relations
+            .iter()
+            .filter(|rel| rel.self_referencing)
+            .map(|rel| produce_relation_attrs(rel, true));
 
         self.relations
             .iter()
-            .filter(|rel| !rel.self_referencing && rel.num_suffix == 0 && rel.impl_related)
-            .map(|rel| rel.get_related_attrs())
-            .chain(conjunct_related)
-            .collect()
-    }
-
-    pub fn get_basic_relations(&self) -> Vec<TokenStream> {
-        self.relations
-            .iter()
-            .map(|rel| {
-                let enum_name = rel.get_enum_name();
-                let name = enum_name.to_string().to_snake_case();
-
-                let path = match rel.get_module_name() {
-                    Some(module_name) => quote!{ super::#module_name::Entity },
-                    None => quote!{ Entity },
-                };
-
-                quote! {
-                    Self::#enum_name => builder.get_relation::<Entity, #path>(#name, Self::#enum_name.def())
-                }
-            }).collect()
-    }
-
-    pub fn get_related_relations(&self) -> Vec<TokenStream> {
-        let to_snake_case = self.get_conjunct_relations_to_snake_case();
-        let to_upper_camel_case = self.get_conjunct_relations_to_upper_camel_case();
-
-        let conj_related = to_snake_case
-            .into_iter()
-            .zip(to_upper_camel_case)
-            .map(|(to_snake_case, to_upper_camel_case)| {
-                let name = to_snake_case.to_string();
-                quote! {
-                    Self::#to_upper_camel_case => builder.get_relation::<Entity, super::#to_snake_case::Entity>(#name)
-                }
-            });
-
-        self.relations
-            .iter()
-            .filter(|rel| !rel.self_referencing && rel.num_suffix == 0 && rel.impl_related)
-            .map(|rel| {
-                let enum_name = rel.get_enum_name();
-                let name = enum_name.to_string().to_snake_case();
-
-                let path = match rel.get_module_name() {
-                    Some(module_name) => quote! { super::#module_name::Entity },
-                    None => quote! { Entity },
-                };
-
-                quote! {
-                    Self::#enum_name => builder.get_relation::<Entity, #path>(#name)
-                }
-            })
-            .chain(conj_related)
+            .map(|rel| produce_relation_attrs(rel, false))
+            .chain(self_relations_reverse_attrs)
+            .chain(conjunct_related_attrs)
             .collect()
     }
 

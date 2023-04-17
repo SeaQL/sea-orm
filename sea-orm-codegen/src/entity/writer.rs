@@ -356,8 +356,7 @@ impl EntityWriter {
         code_blocks.extend(Self::gen_impl_conjunct_related(entity));
         code_blocks.extend([Self::gen_impl_active_model_behavior()]);
         if seaography {
-            code_blocks.extend([Self::gen_related(entity)]);
-            code_blocks.extend([Self::gen_seaography_relations(entity)]);
+            code_blocks.extend([Self::gen_related_entity(entity)]);
         }
         code_blocks
     }
@@ -390,10 +389,11 @@ impl EntityWriter {
             ),
             Self::gen_compact_relation_enum(entity),
         ];
-        code_blocks.extend([Self::gen_related_compact(entity)]);
+        code_blocks.extend(Self::gen_impl_related(entity));
+        code_blocks.extend(Self::gen_impl_conjunct_related(entity));
         code_blocks.extend([Self::gen_impl_active_model_behavior()]);
         if seaography {
-            code_blocks.extend([Self::gen_seaography_relations(entity)]);
+            code_blocks.extend([Self::gen_related_entity(entity)]);
         }
         code_blocks
     }
@@ -621,20 +621,9 @@ impl EntityWriter {
             .collect()
     }
 
-    pub fn gen_related(entity: &Entity) -> TokenStream {
-        let related_enum_name = entity.get_related_enum_name();
-
-        quote! {
-            #[derive(Copy, Clone, Debug, EnumIter)]
-            pub enum RelatedEntity {
-                #(#related_enum_name),*
-            }
-        }
-    }
-
-    pub fn gen_related_compact(entity: &Entity) -> TokenStream {
-        let related_enum_name = entity.get_related_enum_name();
-        let related_attrs = entity.get_related_attrs();
+    pub fn gen_related_entity(entity: &Entity) -> TokenStream {
+        let related_enum_name = entity.get_related_entity_enum_name();
+        let related_attrs = entity.get_related_entity_attrs();
 
         quote! {
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
@@ -670,34 +659,6 @@ impl EntityWriter {
                 }
             })
             .collect()
-    }
-
-    pub fn gen_seaography_relations(entity: &Entity) -> TokenStream {
-        let basic_relations = entity.get_basic_relations();
-
-        let related_relations = entity.get_related_relations();
-
-        quote! {
-            impl seaography::RelationBuilder for Relation {
-                fn get_relation(&self, context: &'static seaography::BuilderContext) -> async_graphql::dynamic::Field {
-                    let builder = seaography::EntityObjectRelationBuilder { context };
-                    match self {
-                        #(#basic_relations,)*
-                        _ => panic!("No relations for this entity")
-                    }
-                }
-            }
-
-            impl seaography::RelationBuilder for RelatedEntity {
-                fn get_relation(&self, context: &'static seaography::BuilderContext) -> async_graphql::dynamic::Field {
-                    let builder = seaography::EntityObjectViaRelationBuilder { context };
-                    match self {
-                        #(#related_relations,)*
-                        _ => panic!("No relations for this entity")
-                    }
-                }
-            }
-        }
     }
 
     pub fn gen_impl_active_model_behavior() -> TokenStream {
@@ -1729,7 +1690,63 @@ mod tests {
 
     #[test]
     fn test_gen_with_seaography() -> io::Result<()> {
-        let cake_entity = setup().get(0).unwrap().clone();
+        let cake_entity = Entity {
+            table_name: "cake".to_owned(),
+            columns: vec![
+                Column {
+                    name: "id".to_owned(),
+                    col_type: ColumnType::Integer,
+                    auto_increment: true,
+                    not_null: true,
+                    unique: false,
+                },
+                Column {
+                    name: "name".to_owned(),
+                    col_type: ColumnType::Text,
+                    auto_increment: false,
+                    not_null: false,
+                    unique: false,
+                },
+                Column {
+                    name: "base_id".to_owned(),
+                    col_type: ColumnType::Integer,
+                    auto_increment: false,
+                    not_null: false,
+                    unique: false,
+                },
+            ],
+            relations: vec![
+                Relation {
+                    ref_table: "fruit".to_owned(),
+                    columns: vec![],
+                    ref_columns: vec![],
+                    rel_type: RelationType::HasMany,
+                    on_delete: None,
+                    on_update: None,
+                    self_referencing: false,
+                    num_suffix: 0,
+                    impl_related: true,
+                },
+                Relation {
+                    ref_table: "cake".to_owned(),
+                    columns: vec![],
+                    ref_columns: vec![],
+                    rel_type: RelationType::HasOne,
+                    on_delete: None,
+                    on_update: None,
+                    self_referencing: true,
+                    num_suffix: 0,
+                    impl_related: true,
+                },
+            ],
+            conjunct_relations: vec![ConjunctRelation {
+                via: "cake_filling".to_owned(),
+                to: "filling".to_owned(),
+            }],
+            primary_keys: vec![PrimaryKey {
+                name: "id".to_owned(),
+            }],
+        };
 
         assert_eq!(cake_entity.get_table_name_snake_case(), "cake");
 

@@ -41,7 +41,6 @@ pub mod related_attr {
     #[derive(Default, FromAttributes)]
     pub struct SeaOrm {
         pub entity: Option<syn::Lit>,
-        pub to: Option<syn::Lit>,
-        pub via: Option<syn::Lit>,
+        pub def: Option<syn::Lit>,
     }
 }
