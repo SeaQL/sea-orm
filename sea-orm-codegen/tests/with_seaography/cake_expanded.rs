@@ -88,7 +88,7 @@ pub enum RelatedEntity {
     #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
     SelfRef,
     #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
-    SelfRefRev,
+    SelfRefReverse,
     #[sea_orm(entity = "super::filling::Entity")]
     Filling
 }
