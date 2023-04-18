@@ -102,7 +102,7 @@ impl Entity {
             .relations
             .iter()
             .filter(|rel| rel.self_referencing)
-            .map(|rel| format_ident!("{}Rev", rel.get_enum_name()));
+            .map(|rel| format_ident!("{}Reverse", rel.get_enum_name()));
 
         // 3rd step get normal relations data
         self.get_relation_enum_name()
@@ -140,7 +140,7 @@ impl Entity {
                 None => String::from("Entity"),
             };
 
-            if rel.self_referencing || !rel.impl_related {
+            if rel.self_referencing || !rel.impl_related || rel.num_suffix > 0 {
                 let def = if reverse {
                     format!("Relation::{}.def().rev()", rel.get_enum_name())
                 } else {

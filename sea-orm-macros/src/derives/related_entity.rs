@@ -1,4 +1,4 @@
-use heck::ToSnakeCase;
+use heck::ToLowerCamelCase;
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 
@@ -67,15 +67,15 @@ impl DeriveRelatedEntity {
                     None => None,
                 };
 
-                let name = enum_name.to_string().to_snake_case();
+                let name = enum_name.to_string().to_lower_camel_case();
 
                 if let Some(def) = def {
                     Result::<_, syn::Error>::Ok(quote! {
-                        #enum_name => builder.get_relation::<#entity_ident, #target_entity>(#name, #def)
+                        Self::#enum_name => builder.get_relation::<#entity_ident, #target_entity>(#name, #def)
                     })
                 } else {
                     Result::<_, syn::Error>::Ok(quote! {
-                        #enum_name => via_builder.get_relation::<#entity_ident, #target_entity>(#name)
+                        Self::#enum_name => via_builder.get_relation::<#entity_ident, #target_entity>(#name)
                     })
                 }
 
