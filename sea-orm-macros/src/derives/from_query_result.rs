@@ -1,6 +1,6 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
-use syn::{ext::IdentExt, parse_quote, Data, DataStruct, Field, Fields, GenericParam, Generics};
+use syn::{ext::IdentExt, Data, DataStruct, Field, Fields, Generics};
 
 /// Method to derive a [QueryResult](sea_orm::QueryResult)
 pub fn expand_derive_from_query_result(
