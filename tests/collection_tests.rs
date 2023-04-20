@@ -2,7 +2,9 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{
+    entity::prelude::*, entity::*, DatabaseConnection, DerivePartialModel, FromQueryResult,
+};
 
 #[sea_orm_macros::test]
 #[cfg(all(feature = "sqlx-postgres", feature = "postgres-array"))]
@@ -11,6 +13,7 @@ async fn main() -> Result<(), DbErr> {
     create_tables(&ctx.db).await?;
     insert_collection(&ctx.db).await?;
     update_collection(&ctx.db).await?;
+    select_collection(&ctx.db).await?;
     ctx.delete().await;
 
     Ok(())
@@ -146,6 +149,30 @@ pub async fn update_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
     }
     .update(db)
     .await?;
+
+    Ok(())
+}
+
+pub async fn select_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
+    use collection::*;
+
+    #[derive(DerivePartialModel, FromQueryResult, Debug, PartialEq)]
+    #[sea_orm(entity = "Entity")]
+    struct PartialSelectResult {
+        name: String,
+    }
+
+    let result = Entity::find_by_id(1)
+        .into_partial_model::<PartialSelectResult>()
+        .one(db)
+        .await?;
+
+    assert_eq!(
+        result,
+        Some(PartialSelectResult {
+            name: "Collection 1".into(),
+        })
+    );
 
     Ok(())
 }

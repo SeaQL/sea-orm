@@ -159,7 +159,7 @@ where
     where
         M: PartialModelTrait,
     {
-        M::select_cols(crate::QuerySelect::select_only(self)).into_model::<M>()
+        M::select_cols(QuerySelect::select_only(self)).into_model::<M>()
     }
 
     /// Get a selectable Model as a [JsonValue] for SQL JSON operations
@@ -405,6 +405,18 @@ where
     {
         self.into_model().stream(db).await
     }
+
+    /// Stream the result of the operation with PartialModel
+    pub async fn stream_partial_model<'a: 'b, 'b, C, M>(
+        self,
+        db: &'a C,
+    ) -> Result<impl Stream<Item = Result<M, DbErr>> + 'b + Send, DbErr>
+    where
+        C: ConnectionTrait + StreamTrait + Send,
+        M: PartialModelTrait + Send + 'b,
+    {
+        self.into_partial_model().stream(db).await
+    }
 }
 
 impl<E, F> SelectTwo<E, F>
@@ -430,7 +442,7 @@ where
         M: PartialModelTrait,
         N: PartialModelTrait,
     {
-        let select = crate::QuerySelect::select_only(self);
+        let select = QuerySelect::select_only(self);
         let select = M::select_cols(select);
         let select = N::select_cols(select);
         select.into_model::<M, N>()
@@ -471,6 +483,19 @@ where
     {
         self.into_model().stream(db).await
     }
+
+    /// Stream the result of the operation with PartialModel
+    pub async fn stream_partial_model<'a: 'b, 'b, C, M, N>(
+        self,
+        db: &'a C,
+    ) -> Result<impl Stream<Item = Result<(M, Option<N>), DbErr>> + 'b + Send, DbErr>
+    where
+        C: ConnectionTrait + StreamTrait + Send,
+        M: PartialModelTrait + Send + 'b,
+        N: PartialModelTrait + Send + 'b,
+    {
+        self.into_partial_model().stream(db).await
+    }
 }
 
 impl<E, F> SelectTwoMany<E, F>
@@ -489,6 +514,7 @@ where
             selector: SelectTwoModel { model: PhantomData },
         }
     }
+
     /// Performs a conversion to [Selector] with partial model
     fn into_partial_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
     where
