@@ -202,7 +202,7 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     // Fetch custom struct
 
-    #[derive(FromQueryResult, Debug, PartialEq)]
+    #[derive(FromQueryResult, Debug, PartialEq, Clone)]
     struct Row {
         id: i32,
     }
@@ -219,7 +219,21 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
         [Row { id: 6 }, Row { id: 7 }]
     );
 
-    #[derive(DerivePartialModel, FromQueryResult, Debug, PartialEq)]
+    // Fetch JSON value
+
+    let mut cursor = cursor.into_json();
+
+    assert_eq!(
+        cursor.first(2).all(db).await?,
+        [json!({ "id": 6 }), json!({ "id": 7 })]
+    );
+
+    assert_eq!(
+        cursor.first(3).all(db).await?,
+        [json!({ "id": 6 }), json!({ "id": 7 })]
+    );
+
+    #[derive(DerivePartialModel, FromQueryResult, Debug, PartialEq, Clone)]
     #[sea_orm(entity = "Entity")]
     struct PartialRow {
         #[sea_orm(from_col = "id")]
@@ -256,20 +270,6 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
                 id_shifted: 1007,
             }
         ]
-    );
-
-    // Fetch JSON value
-
-    let mut cursor = cursor.into_json();
-
-    assert_eq!(
-        cursor.first(2).all(db).await?,
-        [json!({ "id": 6 }), json!({ "id": 7 })]
-    );
-
-    assert_eq!(
-        cursor.first(3).all(db).await?,
-        [json!({ "id": 6 }), json!({ "id": 7 })]
     );
 
     Ok(())
