@@ -159,7 +159,7 @@ where
     where
         M: PartialModelTrait,
     {
-        M::select_cols(crate::QuerySelect::select_only(self)).into_model::<M>()
+        M::select_cols(QuerySelect::select_only(self)).into_model::<M>()
     }
 
     /// Get a selectable Model as a [JsonValue] for SQL JSON operations
@@ -442,7 +442,7 @@ where
         M: PartialModelTrait,
         N: PartialModelTrait,
     {
-        let select = crate::QuerySelect::select_only(self);
+        let select = QuerySelect::select_only(self);
         let select = M::select_cols(select);
         let select = N::select_cols(select);
         select.into_model::<M, N>()
@@ -514,6 +514,7 @@ where
             selector: SelectTwoModel { model: PhantomData },
         }
     }
+
     /// Performs a conversion to [Selector] with partial model
     fn into_partial_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
     where
