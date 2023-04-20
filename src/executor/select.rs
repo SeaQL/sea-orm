@@ -405,6 +405,18 @@ where
     {
         self.into_model().stream(db).await
     }
+
+    /// Stream the result of the operation with PartialModel
+    pub async fn stream_partial_model<'a: 'b, 'b, C, M>(
+        self,
+        db: &'a C,
+    ) -> Result<impl Stream<Item = Result<M, DbErr>> + 'b + Send, DbErr>
+    where
+        C: ConnectionTrait + StreamTrait + Send,
+        M: PartialModelTrait + Send + 'b,
+    {
+        self.into_partial_model().stream(db).await
+    }
 }
 
 impl<E, F> SelectTwo<E, F>
@@ -470,6 +482,19 @@ where
         C: ConnectionTrait + StreamTrait + Send,
     {
         self.into_model().stream(db).await
+    }
+
+    /// Stream the result of the operation with PartialModel
+    pub async fn stream_partial_model<'a: 'b, 'b, C, M, N>(
+        self,
+        db: &'a C,
+    ) -> Result<impl Stream<Item = Result<(M, Option<N>), DbErr>> + 'b + Send, DbErr>
+    where
+        C: ConnectionTrait + StreamTrait + Send,
+        M: PartialModelTrait + Send + 'b,
+        N: PartialModelTrait + Send + 'b,
+    {
+        self.into_partial_model().stream(db).await
     }
 }
 
