@@ -43,7 +43,7 @@ impl DerivePartialModel {
             return Err(Error::NotSupportGeneric(input.generics.params.span()));
         }
 
-        let syn::Data::Struct(syn::DataStruct{fields:syn::Fields::Named(syn::FieldsNamed{named:fields,..}),..},..)= input.data else{
+        let syn::Data::Struct(syn::DataStruct{fields:syn::Fields::Named(syn::FieldsNamed{named:fields,..}),..},..) = input.data else{
             return Err(Error::InputNotStruct);
         };
 
