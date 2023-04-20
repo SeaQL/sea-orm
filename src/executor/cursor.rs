@@ -1,6 +1,6 @@
 use crate::{
-    ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IntoIdentity, QueryOrder,
-    Select, SelectModel, SelectorTrait,
+    ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IntoIdentity,
+    PartialModelTrait, QueryOrder, QuerySelect, Select, SelectModel, SelectorTrait,
 };
 use sea_query::{
     Condition, DynIden, Expr, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr, Value,
@@ -234,6 +234,14 @@ where
         }
     }
 
+    /// Return a [Selector] from `Self` that wraps a [SelectModel] with a [PartialModel](PartialModelTrait)
+    pub fn into_partial_model<M>(self) -> Cursor<SelectModel<M>>
+    where
+        M: PartialModelTrait,
+    {
+        M::select_cols(QuerySelect::select_only(self)).into_model::<M>()
+    }
+
     /// Construct a [Cursor] that fetch JSON value
     #[cfg(feature = "with-json")]
     pub fn into_json(self) -> Cursor<SelectModel<JsonValue>> {
@@ -244,6 +252,17 @@ where
             last: self.last,
             phantom: PhantomData,
         }
+    }
+}
+
+impl<S> QuerySelect for Cursor<S>
+where
+    S: SelectorTrait,
+{
+    type QueryStatement = SelectStatement;
+
+    fn query(&mut self) -> &mut SelectStatement {
+        &mut self.query
     }
 }
 
