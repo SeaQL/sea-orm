@@ -6,7 +6,7 @@ use syn::{ext::IdentExt, parse_quote, Data, DataStruct, Field, Fields, GenericPa
 pub fn expand_derive_from_query_result(
     ident: Ident,
     data: Data,
-    mut generics: Generics,
+    generics: Generics,
 ) -> syn::Result<TokenStream> {
     let fields = match data {
         Data::Struct(DataStruct {
@@ -33,11 +33,6 @@ pub fn expand_derive_from_query_result(
         })
         .collect();
 
-    for param in &mut generics.params {
-        if let GenericParam::Type(type_param) = param {
-            type_param.bounds.push(parse_quote!(sea_orm::TryGetable));
-        }
-    }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     Ok(quote!(
