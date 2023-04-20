@@ -51,11 +51,9 @@ mod partial_model {
     use entity::{Column, Entity};
     use sea_orm::{ColumnTrait, DerivePartialModel, FromQueryResult};
     use sea_query::Expr;
+
     mod entity {
-        use sea_orm::{
-            ActiveModelBehavior, DeriveEntityModel, DerivePrimaryKey, DeriveRelation, EntityTrait,
-            EnumIter, PrimaryKeyTrait,
-        };
+        use sea_orm::prelude::*;
 
         #[derive(Debug, Clone, DeriveEntityModel)]
         #[sea_orm(table_name = "foo_table")]
