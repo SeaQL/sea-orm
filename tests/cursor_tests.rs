@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, FromQueryResult};
+use sea_orm::{entity::prelude::*, DerivePartialModel, FromQueryResult};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -217,6 +217,45 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(
         cursor.first(3).all(db).await?,
         [Row { id: 6 }, Row { id: 7 }]
+    );
+
+    #[derive(DerivePartialModel, FromQueryResult, Debug, PartialEq)]
+    #[sea_orm(entity = "Entity")]
+    struct PartialRow {
+        #[sea_orm(from_col = "id")]
+        id: i32,
+        #[sea_orm(from_expr = "sea_query::Expr::col(Column::Id).add(1000)")]
+        id_shifted: i32,
+    }
+
+    let mut cursor = cursor.into_partial_model::<PartialRow>();
+
+    assert_eq!(
+        cursor.first(2).all(db).await?,
+        [
+            PartialRow {
+                id: 6,
+                id_shifted: 1006,
+            },
+            PartialRow {
+                id: 7,
+                id_shifted: 1007,
+            }
+        ]
+    );
+
+    assert_eq!(
+        cursor.first(3).all(db).await?,
+        [
+            PartialRow {
+                id: 6,
+                id_shifted: 1006,
+            },
+            PartialRow {
+                id: 7,
+                id_shifted: 1007,
+            }
+        ]
     );
 
     // Fetch JSON value
