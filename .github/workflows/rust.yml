@@ -108,8 +108,8 @@ jobs:
           components: clippy
       - run: cargo clippy --all -- -D warnings
       - run: cargo clippy --all --features runtime-async-std-native-tls,sqlx-all -- -D warnings
-      # Do not deny warnings until we upgraded `clap` to v4. https://github.com/clap-rs/clap/issues/4849
-      - run: cargo clippy --manifest-path sea-orm-cli/Cargo.toml
+      # Disable clippy checks on `sea-orm-cli` until we upgraded `clap` to v4. https://github.com/clap-rs/clap/issues/4849
+      # - run: cargo clippy --manifest-path sea-orm-cli/Cargo.toml -- -D warnings
       - run: cargo clippy --manifest-path sea-orm-migration/Cargo.toml -- -D warnings
 
   rustfmt:
