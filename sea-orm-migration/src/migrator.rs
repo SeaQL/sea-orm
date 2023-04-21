@@ -192,7 +192,7 @@ pub trait MigratorTrait: Send {
     where
         C: IntoSchemaManagerConnection<'c>,
     {
-        exec_with_connection::<'_, _, _, Self>(db, move |manager| {
+        exec_with_connection::<'_, _, _>(db, move |manager| {
             Box::pin(async move { exec_fresh::<Self>(manager).await })
         })
         .await
@@ -203,7 +203,7 @@ pub trait MigratorTrait: Send {
     where
         C: IntoSchemaManagerConnection<'c>,
     {
-        exec_with_connection::<'_, _, _, Self>(db, move |manager| {
+        exec_with_connection::<'_, _, _>(db, move |manager| {
             Box::pin(async move {
                 exec_down::<Self>(manager, None).await?;
                 exec_up::<Self>(manager, None).await
@@ -217,7 +217,7 @@ pub trait MigratorTrait: Send {
     where
         C: IntoSchemaManagerConnection<'c>,
     {
-        exec_with_connection::<'_, _, _, Self>(db, move |manager| {
+        exec_with_connection::<'_, _, _>(db, move |manager| {
             Box::pin(async move { exec_down::<Self>(manager, None).await })
         })
         .await
@@ -228,7 +228,7 @@ pub trait MigratorTrait: Send {
     where
         C: IntoSchemaManagerConnection<'c>,
     {
-        exec_with_connection::<'_, _, _, Self>(db, move |manager| {
+        exec_with_connection::<'_, _, _>(db, move |manager| {
             Box::pin(async move { exec_up::<Self>(manager, steps).await })
         })
         .await
@@ -239,20 +239,19 @@ pub trait MigratorTrait: Send {
     where
         C: IntoSchemaManagerConnection<'c>,
     {
-        exec_with_connection::<'_, _, _, Self>(db, move |manager| {
+        exec_with_connection::<'_, _, _>(db, move |manager| {
             Box::pin(async move { exec_down::<Self>(manager, steps).await })
         })
         .await
     }
 }
 
-async fn exec_with_connection<'c, C, F, M>(db: C, f: F) -> Result<(), DbErr>
+async fn exec_with_connection<'c, C, F>(db: C, f: F) -> Result<(), DbErr>
 where
     C: IntoSchemaManagerConnection<'c>,
     F: for<'b> Fn(
         &'b SchemaManager<'_>,
     ) -> Pin<Box<dyn Future<Output = Result<(), DbErr>> + Send + 'b>>,
-    M: MigratorTrait + ?Sized,
 {
     let db = db.into_schema_manager_connection();
 
