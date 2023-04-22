@@ -7,6 +7,8 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub contact_details: Json,
+    /// This column is not supposed to test datetime behavior,
+    /// but typecasting as declared with select_as and save_as
     #[cfg_attr(
         feature = "sqlx-postgres",
         sea_orm(
