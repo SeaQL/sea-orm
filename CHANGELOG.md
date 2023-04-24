@@ -32,6 +32,10 @@ where
 }
 ```
 
+### Upgrades
+
+* Upgrade `tracing-subscriber` dependency to 0.3.17
+
 ## 0.11.2 - 2023-03-25
 
 ### Enhancements
