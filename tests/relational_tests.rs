@@ -655,8 +655,8 @@ pub async fn linked() -> Result<(), DbErr> {
         name: String,
     }
 
-    let baker_query = Baker::find().find_also_linked(baker::BakedForCustomer);
-    let baked_for_customers: Vec<(BakerLite, Option<CustomerLite>)> = baker_query
+    let baked_for_customers: Vec<(BakerLite, Option<CustomerLite>)> = Baker::find()
+        .find_also_linked(baker::BakedForCustomer)
         .select_only()
         .column_as(baker::Column::Name, (SelectA, baker::Column::Name))
         .column_as(
