@@ -7,26 +7,26 @@ struct SimpleTest {
 }
 
 #[derive(FromQueryResult)]
-struct GenericTest<T> {
+struct GenericTest<T: TryGetable> {
     _foo: i32,
     _bar: T,
 }
 
 #[derive(FromQueryResult)]
-struct DoubleGenericTest<T, F> {
+struct DoubleGenericTest<T: TryGetable, F: TryGetable> {
     _foo: T,
     _bar: F,
 }
 
 #[derive(FromQueryResult)]
-struct BoundsGenericTest<T: Copy + Clone + 'static> {
+struct BoundsGenericTest<T: TryGetable + Copy + Clone + 'static> {
     _foo: T,
 }
 
 #[derive(FromQueryResult)]
 struct WhereGenericTest<T>
 where
-    T: Copy + Clone + 'static,
+    T: TryGetable + Copy + Clone + 'static,
 {
     _foo: T,
 }
@@ -37,10 +37,22 @@ struct AlreadySpecifiedBoundsGenericTest<T: TryGetable> {
 }
 
 #[derive(FromQueryResult)]
-struct MixedGenericTest<T: Clone, F>
+struct MixedGenericTest<T: TryGetable + Clone, F>
 where
-    F: Copy + Clone + 'static,
+    F: TryGetable + Copy + Clone + 'static,
 {
     _foo: T,
     _bar: F,
+}
+
+trait MyTrait {
+    type Item: TryGetable;
+}
+
+#[derive(FromQueryResult)]
+struct TraitAssociateTypeTest<T>
+where
+    T: MyTrait,
+{
+    _foo: T::Item,
 }
