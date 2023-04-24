@@ -132,7 +132,7 @@ where
                     SimpleExpr::FunctionCall(_) => {
                         expr.binary(BinOper::As, Expr::col(SeaRc::new(col) as DynIden))
                     }
-                    _ => expr.into(),
+                    _ => expr,
                 }
             })
             .collect()
