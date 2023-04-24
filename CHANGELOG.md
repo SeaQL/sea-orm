@@ -274,7 +274,7 @@ CREATE TABLE users_saved_bills
 * Changed the parameter of method `ColumnTrait::like()`, `ColumnTrait::not_like()`, `ColumnTrait::starts_with()`, `ColumnTrait::ends_with()` and `ColumnTrait::contains()` to takes any string https://github.com/SeaQL/sea-orm/pull/1439
 * Added `Identity::Many` https://github.com/SeaQL/sea-orm/pull/1508
 
-## 0.11.3 - Pending
+## 0.11.3 - 2023-04-24
 
 ### Enhancements
 
