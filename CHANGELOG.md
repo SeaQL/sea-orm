@@ -301,9 +301,9 @@ where
 }
 ```
 
-### Bug Fixes
+### Upgrades
 
-* [sea-orm-cli] `regex` dependency should have `unicode` feature enabled https://github.com/SeaQL/sea-orm/pull/1605
+* Upgrade `tracing-subscriber` dependency to 0.3.17
 
 ## 0.11.2 - 2023-03-25
 
