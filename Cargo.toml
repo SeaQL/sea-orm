@@ -54,7 +54,7 @@ tokio = { version = "1.6", features = ["full"] }
 actix-rt = { version = "2.2.0" }
 maplit = { version = "1" }
 rust_decimal_macros = { version = "1" }
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 sea-orm = { path = ".", features = ["mock", "debug-print", "tests-cfg", "postgres-array", "sea-orm-internal"] }
 pretty_assertions = { version = "0.7" }
 time = { version = "0.3", features = ["macros"] }
