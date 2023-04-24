@@ -32,9 +32,9 @@ where
 }
 ```
 
-### Upgrades
+### Bug Fixes
 
-* Upgrade `tracing-subscriber` dependency to 0.3.17
+* Fixed https://github.com/SeaQL/sea-orm/issues/1608 by pinning the version of `tracing-subscriber` dependency to 0.3.17
 
 ## 0.11.2 - 2023-03-25
 
