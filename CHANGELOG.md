@@ -279,7 +279,27 @@ CREATE TABLE users_saved_bills
 ### Enhancements
 
 * Re-export `sea_orm::ConnectionTrait` in `sea_orm_migration::prelude` https://github.com/SeaQL/sea-orm/pull/1577
-* Support generic structs in `FromQueryResult` derive macro https://github.com/SeaQL/sea-orm/pull/1464
+* Support generic structs in `FromQueryResult` derive macro https://github.com/SeaQL/sea-orm/pull/1464, https://github.com/SeaQL/sea-orm/pull/1603
+```rs
+#[derive(FromQueryResult)]
+struct GenericTest<T: TryGetable> {
+    foo: i32,
+    bar: T,
+}
+```
+```rs
+trait MyTrait {
+    type Item: TryGetable;
+}
+
+#[derive(FromQueryResult)]
+struct TraitAssociateTypeTest<T>
+where
+    T: MyTrait,
+{
+    foo: T::Item,
+}
+```
 
 ### Bug Fixes
 
