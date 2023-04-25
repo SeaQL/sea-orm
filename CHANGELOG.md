@@ -258,6 +258,7 @@ CREATE TABLE users_saved_bills
   CONSTRAINT users_saved_bills_pkey PRIMARY KEY (user_id, bill_id)
 );
 ```
+* [sea-orm-cli] fixed entity generation includes partitioned tables https://github.com/SeaQL/sea-orm/issues/1582, https://github.com/SeaQL/sea-schema/pull/105
 
 ### Breaking changes
 
