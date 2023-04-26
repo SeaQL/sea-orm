@@ -159,8 +159,13 @@ where
     /// ```
     /// # #[cfg(feature = "macros")]
     /// # {
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake::{self, Entity as Cake}, DbBackend, DerivePartialModel, FromQueryResult};
-    /// use sea_query::{SimpleExpr, Expr, Func};
+    /// use sea_orm::{
+    ///     entity::*,
+    ///     query::*,
+    ///     tests_cfg::cake::{self, Entity as Cake},
+    ///     DbBackend, DerivePartialModel, FromQueryResult,
+    /// };
+    /// use sea_query::{Expr, Func, SimpleExpr};
     ///
     /// #[derive(DerivePartialModel, FromQueryResult)]
     /// #[sea_orm(entity = "Cake")]
