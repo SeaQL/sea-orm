@@ -164,6 +164,26 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 ```
+* Added macro `DerivePartialModel` https://github.com/SeaQL/sea-orm/pull/1597
+```rs
+#[derive(DerivePartialModel, FromQueryResult)]
+#[sea_orm(entity = "Cake")]
+struct PartialCake {
+    name: String,
+    #[sea_orm(
+        from_expr = r#"SimpleExpr::FunctionCall(Func::upper(Expr::col((Cake, cake::Column::Name))))"#
+    )]
+    name_upper: String,
+}
+
+assert_eq!(
+    cake::Entity::find()
+        .into_partial_model::<PartialCake>()
+        .into_statement(DbBackend::Sqlite)
+        .to_string(),
+    r#"SELECT "cake"."name", UPPER("cake"."name") AS "name_upper" FROM "cake""#
+);
+```
 
 ### Enhancements
 

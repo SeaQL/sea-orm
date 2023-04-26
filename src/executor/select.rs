@@ -1,7 +1,7 @@
 use crate::{
-    error::*, ConnectionTrait, EntityTrait, FromQueryResult, IdenStatic, Iterable, ModelTrait,
-    PartialModelTrait, PrimaryKeyToColumn, QueryResult, QuerySelect, Select, SelectA, SelectB,
-    SelectTwo, SelectTwoMany, Statement, StreamTrait, TryGetableMany,
+    error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, Iterable,
+    ModelTrait, PartialModelTrait, PrimaryKeyToColumn, QueryResult, QuerySelect, Select, SelectA,
+    SelectB, SelectTwo, SelectTwoMany, Statement, StreamTrait, TryGetableMany,
 };
 use futures::{Stream, TryStreamExt};
 use sea_query::SelectStatement;
@@ -155,6 +155,32 @@ where
     }
 
     /// Return a [Selector] from `Self` that wraps a [SelectModel] with a [PartialModel](PartialModelTrait)
+    ///
+    /// ```
+    /// # #[cfg(feature = "macros")]
+    /// # {
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake::{self, Entity as Cake}, DbBackend, DerivePartialModel, FromQueryResult};
+    /// use sea_query::{SimpleExpr, Expr, Func};
+    ///
+    /// #[derive(DerivePartialModel, FromQueryResult)]
+    /// #[sea_orm(entity = "Cake")]
+    /// struct PartialCake {
+    ///     name: String,
+    ///     #[sea_orm(
+    ///         from_expr = r#"SimpleExpr::FunctionCall(Func::upper(Expr::col((Cake, cake::Column::Name))))"#
+    ///     )]
+    ///     name_upper: String,
+    /// }
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .into_partial_model::<PartialCake>()
+    ///         .into_statement(DbBackend::Sqlite)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."name", UPPER("cake"."name") AS "name_upper" FROM "cake""#
+    /// );
+    /// # }
+    /// ```
     pub fn into_partial_model<M>(self) -> Selector<SelectModel<M>>
     where
         M: PartialModelTrait,
@@ -629,6 +655,11 @@ where
         }
     }
 
+    /// Get the SQL statement
+    pub fn into_statement(self, builder: DbBackend) -> Statement {
+        builder.build(&self.query)
+    }
+
     /// Get an item from the Select query
     pub async fn one<'a, C>(mut self, db: &C) -> Result<Option<S::Item>, DbErr>
     where
@@ -827,6 +858,11 @@ where
             stmt: self.stmt,
             selector: SelectModel { model: PhantomData },
         }
+    }
+
+    /// Get the SQL statement
+    pub fn into_statement(self) -> Statement {
+        self.stmt
     }
 
     /// Get an item from the Select query
