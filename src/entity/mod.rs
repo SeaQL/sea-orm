@@ -103,6 +103,7 @@ mod column;
 mod identity;
 mod link;
 mod model;
+mod partial_model;
 /// Re-export common types from the entity
 pub mod prelude;
 mod primary_key;
@@ -115,6 +116,7 @@ pub use column::*;
 pub use identity::*;
 pub use link::*;
 pub use model::*;
+pub use partial_model::*;
 // pub use prelude::*;
 pub use primary_key::*;
 pub use relation::*;
