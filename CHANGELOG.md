@@ -289,7 +289,7 @@ CREATE TABLE users_saved_bills
 ### Breaking changes
 
 * Supports for partial select of `Option<T>` model field. A `None` value will be filled when the select result does not contain the `Option<T>` field instead of throwing an error. https://github.com/SeaQL/sea-orm/pull/1513
-* Replaced `sea-strum` dependency with upstream `strum` in `sea-orm`
+* Replaced `sea-strum` dependency with upstream `strum` in `sea-orm` https://github.com/SeaQL/sea-orm/pull/1535
     * Added `derive` and `strum` features to `sea-orm-macros`
     * The derive macro `EnumIter` is now shipped by `sea-orm-macros`
 * Added a new variant `Many` to `Identity` https://github.com/SeaQL/sea-orm/pull/1508
