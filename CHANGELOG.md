@@ -32,7 +32,6 @@ let customer = Customer::find()
 // Since it's of type `Option<String>`, it'll be `None` and no error will be thrown.
 assert_eq!(customers.notes, None);
 ```
-* Added `sea_orm_macros::EnumIter` to implement `strum::IntoEnumIterator` trait for the derived enum (source code adapted from https://github.com/Peternator7/strum)
 * [sea-orm-cli] the `migrate init` command will create a `.gitignore` file when the migration folder reside in a Git repository https://github.com/SeaQL/sea-orm/pull/1334
 * Added `MigratorTrait::migration_table_name()` method to configure the name of migration table https://github.com/SeaQL/sea-orm/pull/1511
 ```rs
