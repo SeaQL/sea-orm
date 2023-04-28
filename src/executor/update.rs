@@ -258,9 +258,7 @@ mod tests {
         );
 
         assert_eq!(
-            cake::Entity::update(updated_cake.clone().into_active_model())
-                .exec(&db)
-                .await?,
+            cake::Entity::update(updated_cake.clone()).exec(&db).await?,
             updated_cake
         );
 

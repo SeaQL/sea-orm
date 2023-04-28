@@ -114,9 +114,7 @@ pub async fn create_and_update_repository(db: &DatabaseConnection) -> Result<(),
         description: None,
     };
 
-    let res = Repository::insert(repository.clone().into_active_model())
-        .exec(db)
-        .await?;
+    let res = Repository::insert(repository.clone()).exec(db).await?;
 
     assert_eq!(Repository::find().one(db).await?, Some(repository.clone()));
 
