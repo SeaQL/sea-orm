@@ -1,6 +1,6 @@
 use crate::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, Iterable, PrimaryKeyToColumn,
-    QueryFilter, QueryTrait,
+    ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, IntoActiveModel, Iterable,
+    PrimaryKeyToColumn, QueryFilter, QueryTrait,
 };
 use core::marker::PhantomData;
 use sea_query::{Expr, IntoIden, SimpleExpr, UpdateStatement};
@@ -45,16 +45,17 @@ impl Update {
     ///     r#"UPDATE "cake" SET "name" = 'Apple Pie' WHERE "cake"."id" = 1"#,
     /// );
     /// ```
-    pub fn one<E, A>(model: A) -> UpdateOne<A>
+    pub fn one<E, A, M>(model: M) -> UpdateOne<A>
     where
         E: EntityTrait,
         A: ActiveModelTrait<Entity = E>,
+        M: IntoActiveModel<A>,
     {
         UpdateOne {
             query: UpdateStatement::new()
                 .table(A::Entity::default().table_ref())
                 .to_owned(),
-            model,
+            model: model.into_active_model(),
         }
         .prepare_filters()
         .prepare_values()
@@ -184,12 +185,14 @@ where
     E: EntityTrait,
 {
     /// Add the models to update to Self
-    pub fn set<A>(mut self, model: A) -> Self
+    pub fn set<A, M>(mut self, model: M) -> Self
     where
         A: ActiveModelTrait<Entity = E>,
+        M: IntoActiveModel<A>,
     {
+        let active_model = model.into_active_model();
         for col in E::Column::iter() {
-            match model.get(col) {
+            match active_model.get(col) {
                 ActiveValue::Set(value) => {
                     let expr = col.save_as(Expr::val(value));
                     self.query.value(col, expr);
