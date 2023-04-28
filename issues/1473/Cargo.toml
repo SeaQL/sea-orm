@@ -1,0 +1,13 @@
+[workspace]
+# A separate workspace
+
+[package]
+name = "sea-orm-issues-1473"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies.sea-orm]
+path = "../../"
+default-features = false
+features = ["macros", "runtime-tokio-native-tls", "sqlx-sqlite"]

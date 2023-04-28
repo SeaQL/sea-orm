@@ -24,6 +24,7 @@ quote = { version = "1", default-features = false }
 heck = { version = "0.4", default-features = false }
 proc-macro2 = { version = "1", default-features = false }
 unicode-ident = { version = "1" }
+sea-query-derive-internal = { version = "0.3", git = "https://github.com/SeaQL/sea-query", branch = "reusable-derive-internal" }
 
 [dev-dependencies]
 sea-orm = { path = "../", features = ["macros", "tests-cfg"] }

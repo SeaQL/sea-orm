@@ -792,3 +792,5 @@ pub fn enum_iter(input: TokenStream) -> TokenStream {
         .unwrap_or_else(Error::into_compile_error)
         .into()
 }
+
+sea_query_derive_internal::impl_proc_macro_derives!(sea_orm::sea_query);

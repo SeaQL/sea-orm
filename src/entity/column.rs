@@ -1,6 +1,6 @@
-use crate::{EntityName, IdenStatic, IntoSimpleExpr, Iterable};
+use crate::{self as sea_orm, EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable};
 use sea_query::{
-    Alias, BinOper, DynIden, Expr, Iden, IntoIden, SeaRc, SelectStatement, SimpleExpr, Value,
+    Alias, BinOper, DynIden, Expr, IntoIden, SeaRc, SelectStatement, SimpleExpr, Value,
 };
 use std::str::FromStr;
 
