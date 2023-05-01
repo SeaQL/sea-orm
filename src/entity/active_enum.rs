@@ -276,6 +276,64 @@ mod tests {
     }
 
     #[test]
+    fn display_mode() {
+        // Completely default -> All print values
+        #[derive(PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+        #[sea_orm(rs_type = "i32", db_type = "Integer")]
+        enum DefaultDisplay {
+            One = 1,
+            Two = 2,
+            Three = 3,
+        }
+
+        assert_eq!(format!("{}", DefaultDisplay::One), "1");
+        assert_eq!(format!("{}", DefaultDisplay::Two), "2");
+        assert_eq!(format!("{}", DefaultDisplay::Three), "3");
+
+        // All `label` -> All print label
+        #[derive(PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+        #[sea_orm(rs_type = "i32", db_type = "Integer", display = "label")]
+        enum LabelDisplay {
+            One = 1,
+            Two = 2,
+            Three = 3,
+        }
+
+        assert_eq!(format!("{}", LabelDisplay::One), "'One'");
+        assert_eq!(format!("{}", LabelDisplay::Two), "'Two'");
+        assert_eq!(format!("{}", LabelDisplay::Three), "'Three'");
+
+        // Default with override
+        #[derive(PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+        #[sea_orm(rs_type = "i32", db_type = "Integer")]
+        enum DefaultDisplayOverride {
+            #[sea_orm(display = "label")]
+            One = 1,
+            Two = 2,
+            #[sea_orm(display = "label")]
+            Three = 3,
+        }
+
+        assert_eq!(format!("{}", DefaultDisplayOverride::One), "'One'");
+        assert_eq!(format!("{}", DefaultDisplayOverride::Two), "2");
+        assert_eq!(format!("{}", DefaultDisplayOverride::Three), "'Three'");
+
+        #[derive(PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+        #[sea_orm(rs_type = "i32", db_type = "Integer", display = "label")]
+        enum DisplayOverride {
+            #[sea_orm(display = "value")]
+            One = 1,
+            Two = 2,
+            #[sea_orm(display = "value")]
+            Three = 3,
+        }
+
+        assert_eq!(format!("{}", DisplayOverride::One), "1");
+        assert_eq!(format!("{}", DisplayOverride::Two), "'Two'");
+        assert_eq!(format!("{}", DisplayOverride::Three), "3");
+    }
+
+    #[test]
     fn active_enum_derive_signed_integers() {
         macro_rules! test_num_value_int {
             ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {

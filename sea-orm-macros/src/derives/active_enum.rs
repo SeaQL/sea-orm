@@ -17,12 +17,14 @@ struct ActiveEnum {
     db_type: TokenStream,
     is_string: bool,
     variants: Vec<ActiveEnumVariant>,
+    display: bool,
 }
 
 struct ActiveEnumVariant {
     ident: syn::Ident,
     string_value: Option<LitStr>,
     num_value: Option<LitInt>,
+    display: Option<bool>,
 }
 
 impl ActiveEnum {
@@ -37,6 +39,7 @@ impl ActiveEnum {
         let mut db_type = Err(Error::TT(quote_spanned! {
             ident_span => compile_error!("Missing macro attribute `db_type`");
         }));
+        let mut display = false;
         for attr in input.attrs.iter() {
             if let Some(ident) = attr.path.get_ident() {
                 if ident != "sea_orm" {
@@ -76,6 +79,10 @@ impl ActiveEnum {
                                 if let Lit::Str(litstr) = &nv.lit {
                                     enum_name = litstr.value();
                                 }
+                            } else if name == "display" {
+                                if let Lit::Str(litstr) = &nv.lit {
+                                        display = litstr.value() == "label";
+                                }
                             }
                         }
                     }
@@ -95,6 +102,8 @@ impl ActiveEnum {
             let variant_span = variant.ident.span();
             let mut string_value = None;
             let mut num_value = None;
+            let mut display = None;
+
             for attr in variant.attrs.iter() {
                 if let Some(ident) = attr.path.get_ident() {
                     if ident != "sea_orm" {
@@ -117,6 +126,14 @@ impl ActiveEnum {
                                     if let Lit::Int(lit) = nv.lit {
                                         is_int = true;
                                         num_value = Some(lit);
+                                    }
+                                } else if name == "display" {
+                                    if let Lit::Str(lit) = nv.lit {
+                                        display = match lit.value().as_ref() {
+                                            "label" => Some(true),
+                                            "value" => Some(false),
+                                            _ => None,
+                                        }
                                     }
                                 }
                             }
@@ -173,6 +190,7 @@ impl ActiveEnum {
                 ident: variant.ident,
                 string_value,
                 num_value,
+                display,
             });
         }
 
@@ -183,6 +201,7 @@ impl ActiveEnum {
             db_type: db_type?,
             is_string,
             variants,
+            display,
         })
     }
 
@@ -200,6 +219,7 @@ impl ActiveEnum {
             db_type,
             is_string,
             variants,
+            display,
         } = self;
 
         let variant_idents: Vec<syn::Ident> = variants
@@ -221,6 +241,19 @@ impl ActiveEnum {
                     quote_spanned! {
                         variant_span => compile_error!("Missing macro attribute, either `string_value` or `num_value` should be specified");
                     }
+                }
+            })
+            .collect();
+
+        let displays: Vec<TokenStream> = variants
+            .iter()
+            .map(|variant| {
+                let enum_ident = variant.ident.clone().to_string();
+                let enum_ident = enum_ident.as_str();
+                match variant.display {
+                    None if *display => quote!(#enum_ident.into()),
+                    Some(true) => quote!(#enum_ident.into()),
+                    Some(false) | None => quote!(self.to_value().into()),
                 }
             })
             .collect();
@@ -394,7 +427,9 @@ impl ActiveEnum {
             #[automatically_derived]
             impl std::fmt::Display for #ident {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    let v: sea_orm::sea_query::Value = <Self as sea_orm::ActiveEnum>::to_value(&self).into();
+                    let v: sea_orm::sea_query::Value = match self {
+                        #( Self::#variant_idents => #displays, )*
+                    };
                     write!(f, "{}", v)
                 }
             }
