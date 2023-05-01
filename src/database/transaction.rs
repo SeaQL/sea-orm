@@ -4,10 +4,11 @@ use crate::{
     TransactionTrait,
 };
 #[cfg(feature = "sqlx-dep")]
-use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
+use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err, sqlx_error_to_conn_err};
 use futures::lock::Mutex;
+
 #[cfg(feature = "sqlx-dep")]
-use sqlx::{pool::PoolConnection, TransactionManager};
+use sqlx::{pool::PoolConnection, TransactionManager, Connection};
 use std::{future::Future, pin::Pin, sync::Arc};
 use tracing::instrument;
 
@@ -453,6 +454,23 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_all(stmt),
+            #[allow(unreachable_patterns)]
+            _ => Err(conn_err("Disconnected")),
+        }
+    }
+
+    #[allow(unused_variables)]
+    async fn ping(&self) -> Result<(), DbErr> {
+
+        match &mut *self.conn.lock().await {
+            #[cfg(feature = "sqlx-mysql")]
+            InnerConnection::MySql(conn) => conn.ping().await.map_err(sqlx_error_to_conn_err),
+            #[cfg(feature = "sqlx-postgres")]
+            InnerConnection::Postgres(conn) => conn.ping().await.map_err(sqlx_error_to_conn_err),
+            #[cfg(feature = "sqlx-sqlite")]
+            InnerConnection::Sqlite(conn) => conn.ping().await.map_err(sqlx_error_to_conn_err),
+            #[cfg(feature = "mock")]
+            InnerConnection::Mock(conn) => return conn.ping(),
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
         }

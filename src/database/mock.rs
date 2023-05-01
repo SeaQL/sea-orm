@@ -203,6 +203,14 @@ impl MockDatabaseTrait for MockDatabase {
     fn get_database_backend(&self) -> DbBackend {
         self.db_backend
     }
+
+    fn ping(&self) -> Result<(), DbErr> {
+        match self.query_results.first() {
+            Some(Ok(_)) => Ok(()),
+            Some(Err(_)) => Err(conn_err("Disconnected")),
+            None => Err(query_err("`query_results` buffer is empty.")),
+        }
+    }
 }
 
 impl MockRow {

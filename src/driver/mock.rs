@@ -47,6 +47,9 @@ pub trait MockDatabaseTrait: Send + Debug {
 
     /// Get the backend being used in the [MockDatabase]
     fn get_database_backend(&self) -> DbBackend;
+
+    /// Ping the [MockDatabase]
+    fn ping(&self) -> Result<(), DbErr>;
 }
 
 impl MockDatabaseConnector {
@@ -193,5 +196,15 @@ impl MockDatabaseConnection {
             .lock()
             .expect("Failed to acquire mocker")
             .rollback()
+    }
+
+    /// Checks if a connection to the database is still valid.
+    #[instrument(level = "trace")]
+    pub fn ping(&self) -> Result<(), DbErr> {
+        self
+            .mocker
+            .lock()
+            .map_err(query_err)?
+            .ping()
     }
 }

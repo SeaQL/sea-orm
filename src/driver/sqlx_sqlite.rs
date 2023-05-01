@@ -4,7 +4,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 use sqlx::{
     pool::PoolConnection,
     sqlite::{SqliteConnectOptions, SqliteQueryResult, SqliteRow},
-    Executor, Sqlite, SqlitePool,
+    Executor, Sqlite, SqlitePool, Connection,
 };
 
 use sea_query_binder::SqlxValues;
@@ -227,6 +227,19 @@ impl SqlxSqlitePoolConnection {
         F: Fn(&crate::metric::Info<'_>) + Send + Sync + 'static,
     {
         self.metric_callback = Some(Arc::new(callback));
+    }
+
+    /// Checks if a connection to the database is still valid.
+    /// Checks if a connection to the database is still valid.
+    pub async fn ping(&self) -> Result<(), DbErr> {
+        if let Ok(conn) = &mut self.pool.acquire().await {
+            match conn.ping().await {
+                Ok(_) => Ok(()),
+                Err(err) => Err(sqlx_error_to_conn_err(err)),
+            }
+        } else {
+            Err(DbErr::ConnectionAcquire)
+        }
     }
 
     /// Explicitly close the SQLite connection
