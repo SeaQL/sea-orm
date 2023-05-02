@@ -3,7 +3,8 @@ use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
 use sea_query::{
-    ColumnRef, Expr, FunctionCall, IntoColumnRef, Keyword, SelectStatement, SimpleExpr,
+    CaseStatement, ColumnRef, Expr, FunctionCall, IntoColumnRef, Keyword, SelectStatement,
+    SimpleExpr,
 };
 
 /// Defines a structure to perform select operations
@@ -121,6 +122,12 @@ impl IntoSimpleExpr for ColumnRef {
 }
 
 impl IntoSimpleExpr for Keyword {
+    fn into_simple_expr(self) -> SimpleExpr {
+        self.into()
+    }
+}
+
+impl IntoSimpleExpr for CaseStatement {
     fn into_simple_expr(self) -> SimpleExpr {
         self.into()
     }
