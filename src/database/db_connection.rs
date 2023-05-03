@@ -182,7 +182,6 @@ impl ConnectionTrait for DatabaseConnection {
         matches!(self, DatabaseConnection::MockDatabaseConnection(_))
     }
 
-    #[allow(unused_variables)]
     async fn ping(&self) -> Result<(), DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
