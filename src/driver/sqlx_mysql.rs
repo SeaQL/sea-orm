@@ -4,7 +4,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 use sqlx::{
     mysql::{MySqlConnectOptions, MySqlQueryResult, MySqlRow},
     pool::PoolConnection,
-    Executor, MySql, MySqlPool, Connection,
+    Connection, Executor, MySql, MySqlPool,
 };
 
 use sea_query_binder::SqlxValues;

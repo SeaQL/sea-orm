@@ -4,7 +4,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 use sqlx::{
     pool::PoolConnection,
     postgres::{PgConnectOptions, PgQueryResult, PgRow},
-    Executor, PgPool, Postgres, Connection,
+    Connection, Executor, PgPool, Postgres,
 };
 
 use sea_query_binder::SqlxValues;

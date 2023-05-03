@@ -59,10 +59,7 @@ pub async fn transaction() {
 pub async fn transaction_ping() {
     let ctx = TestContext::new("transaction_ping").await;
 
-    ctx.db
-        .transaction(|txn| txn.ping())
-        .await
-        .unwrap();
+    ctx.db.transaction(|txn| txn.ping()).await.unwrap();
 
     ctx.delete().await;
 }

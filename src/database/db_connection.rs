@@ -196,7 +196,6 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
-    
 }
 
 #[async_trait::async_trait]

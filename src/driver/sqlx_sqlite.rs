@@ -4,7 +4,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 use sqlx::{
     pool::PoolConnection,
     sqlite::{SqliteConnectOptions, SqliteQueryResult, SqliteRow},
-    Executor, Sqlite, SqlitePool, Connection,
+    Connection, Executor, Sqlite, SqlitePool,
 };
 
 use sea_query_binder::SqlxValues;
