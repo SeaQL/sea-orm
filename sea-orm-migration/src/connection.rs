@@ -53,6 +53,13 @@ impl<'c> ConnectionTrait for SchemaManagerConnection<'c> {
             SchemaManagerConnection::Transaction(trans) => trans.is_mock_connection(),
         }
     }
+
+    async fn ping(&self) -> Result<(), DbErr> {
+        match self {
+            SchemaManagerConnection::Connection(conn) => conn.ping().await,
+            SchemaManagerConnection::Transaction(trans) => trans.ping().await,
+        }
+    }
 }
 
 #[async_trait::async_trait]
