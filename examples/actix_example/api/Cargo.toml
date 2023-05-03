@@ -16,6 +16,6 @@ tera = "1.15.0"
 dotenvy = "0.15"
 listenfd = "0.5"
 serde = "1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 entity = { path = "../entity" }
 migration = { path = "../migration" }

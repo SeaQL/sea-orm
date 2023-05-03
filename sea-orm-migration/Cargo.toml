@@ -27,7 +27,7 @@ sea-orm = { version = "0.12.0", path = "../", default-features = false, features
 sea-orm-cli = { version = "0.12.0", path = "../sea-orm-cli", default-features = false, optional = true }
 sea-schema = { version = "0.12.0-rc.1" }
 tracing = { version = "0.1", default-features = false, features = ["log"] }
-tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
 futures = { version = "0.3", default-features = false, features = ["std"] }
 
 [dev-dependencies]
