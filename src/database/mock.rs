@@ -205,11 +205,7 @@ impl MockDatabaseTrait for MockDatabase {
     }
 
     fn ping(&self) -> Result<(), DbErr> {
-        match self.query_results.first() {
-            Some(Ok(_)) => Ok(()),
-            Some(Err(_)) => Err(conn_err("Disconnected")),
-            None => Err(query_err("`query_results` buffer is empty.")),
-        }
+        Ok(())
     }
 }
 
