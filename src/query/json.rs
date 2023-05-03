@@ -76,10 +76,7 @@ impl FromQueryResult for JsonValue {
             #[cfg(feature = "sqlx-postgres")]
             crate::QueryResultRow::SqlxPostgres(row) => {
                 use serde_json::json;
-                use sqlx::{
-                    postgres::{types::Oid, PgTypeKind},
-                    Column, Postgres, Row, Type,
-                };
+                use sqlx::{postgres::types::Oid, Column, Postgres, Row, Type};
 
                 for column in row.columns() {
                     let col = if !column.name().starts_with(pre) {
@@ -89,20 +86,11 @@ impl FromQueryResult for JsonValue {
                     };
                     let col_type = column.type_info();
 
-                    #[cfg(not(feature = "postgres-array"))]
-                    macro_rules! match_postgres_type {
-                        ( $type: ty ) => {
-                            if <$type as Type<Postgres>>::type_info().eq(col_type) {
-                                try_get_type!($type, col)
-                            }
-                        };
-                    }
-
-                    #[cfg(feature = "postgres-array")]
                     macro_rules! match_postgres_type {
                         ( $type: ty ) => {
                             match col_type.kind() {
-                                PgTypeKind::Array(_) => {
+                                #[cfg(feature = "postgres-array")]
+                                sqlx::postgres::PgTypeKind::Array(_) => {
                                     if <Vec<$type> as Type<Postgres>>::type_info().eq(col_type) {
                                         try_get_type!(Vec<$type>, col);
                                     }
