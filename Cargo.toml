@@ -60,6 +60,7 @@ pretty_assertions = { version = "0.7" }
 time = { version = "0.3", features = ["macros"] }
 uuid = { version = "1", features = ["v4"] }
 once_cell = "1.8"
+arraystring = "0.3"
 
 [features]
 debug-print = []
