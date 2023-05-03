@@ -271,11 +271,11 @@ impl From<&ColumnDef> for Column {
         let not_null = col_def
             .get_column_spec()
             .iter()
-            .any(|spec| matches!(spec, ColumnSpec::NotNull));
+            .any(|spec| matches!(spec, ColumnSpec::NotNull) || matches!(spec, ColumnSpec::PrimaryKey));
         let unique = col_def
             .get_column_spec()
             .iter()
-            .any(|spec| matches!(spec, ColumnSpec::UniqueKey));
+            .any(|spec| matches!(spec, ColumnSpec::UniqueKey) || matches!(spec, ColumnSpec::PrimaryKey));
         Self {
             name,
             col_type,
