@@ -20,7 +20,7 @@ pub async fn connection_ping() {
 }
 
 #[sea_orm_macros::test]
-#[cfg(any(feature = "sqlx-mysql",))]
+#[cfg(feature = "sqlx-mysql")]
 pub async fn connection_ping_closed_mysql() {
     let ctx = std::rc::Rc::new(Box::new(TestContext::new("connection_ping_closed").await));
     let ctx_ping = std::rc::Rc::clone(&ctx);
@@ -29,9 +29,9 @@ pub async fn connection_ping_closed_mysql() {
     assert_eq!(ctx_ping.db.ping().await, Err(DbErr::ConnectionAcquire));
     ctx.delete().await;
 }
-#[sea_orm_macros::test]
-#[cfg(any(feature = "sqlx-sqlite",))]
 
+#[sea_orm_macros::test]
+#[cfg(feature = "sqlx-sqlite")]
 pub async fn connection_ping_closed_sqlite() {
     let ctx = std::rc::Rc::new(Box::new(TestContext::new("connection_ping_closed").await));
     let ctx_ping = std::rc::Rc::clone(&ctx);
@@ -42,7 +42,7 @@ pub async fn connection_ping_closed_sqlite() {
 }
 
 #[sea_orm_macros::test]
-#[cfg(any(feature = "sqlx-postgres",))]
+#[cfg(feature = "sqlx-postgres")]
 pub async fn connection_ping_closed_postgres() {
     let ctx = std::rc::Rc::new(Box::new(TestContext::new("connection_ping_closed").await));
     let ctx_ping = std::rc::Rc::clone(&ctx);
