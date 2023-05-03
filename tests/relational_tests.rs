@@ -4,7 +4,8 @@ pub use chrono::offset::Utc;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 pub use rust_decimal::prelude::*;
 pub use rust_decimal_macros::dec;
-pub use sea_orm::{entity::*, query::*, DbErr, FromQueryResult};
+pub use sea_orm::{entity::*, query::*, DbErr, DerivePartialModel, FromQueryResult};
+pub use sea_query::{Alias, Expr, Func, SimpleExpr};
 pub use uuid::Uuid;
 
 // Run the test locally:
@@ -66,6 +67,7 @@ pub async fn left_join() {
         .filter(baker::Column::Name.contains("Baker 1"));
 
     let result = select
+        .clone()
         .into_model::<SelectResult>()
         .one(&ctx.db)
         .await
@@ -73,6 +75,28 @@ pub async fn left_join() {
         .unwrap();
     assert_eq!(result.name.as_str(), "Baker 1");
     assert_eq!(result.bakery_name, Some("SeaSide Bakery".to_string()));
+
+    #[derive(DerivePartialModel, FromQueryResult, Debug, PartialEq)]
+    #[sea_orm(entity = "Baker")]
+    struct PartialSelectResult {
+        name: String,
+        #[sea_orm(from_expr = "Expr::col((bakery::Entity, bakery::Column::Name))")]
+        bakery_name: Option<String>,
+        #[sea_orm(
+            from_expr = r#"SimpleExpr::FunctionCall(Func::upper(Expr::col((bakery::Entity, bakery::Column::Name))))"#
+        )]
+        bakery_name_upper: Option<String>,
+    }
+
+    let result = select
+        .into_partial_model::<PartialSelectResult>()
+        .one(&ctx.db)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(result.name.as_str(), "Baker 1");
+    assert_eq!(result.bakery_name, Some("SeaSide Bakery".to_string()));
+    assert_eq!(result.bakery_name_upper, Some("SEASIDE BAKERY".to_string()));
 
     let select = baker::Entity::find()
         .left_join(bakery::Entity)

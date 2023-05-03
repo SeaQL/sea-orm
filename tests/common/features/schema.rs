@@ -49,6 +49,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_teas_table(db).await?;
     create_binary_table(db).await?;
     create_bits_table(db).await?;
+    create_dyn_table_name_lazy_static_table(db).await?;
 
     if DbBackend::Postgres == db_backend {
         create_collection_table(db).await?;
@@ -604,4 +605,34 @@ pub async fn create_bits_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &create_table_stmt, Bits).await
+}
+
+pub async fn create_dyn_table_name_lazy_static_table(db: &DbConn) -> Result<(), DbErr> {
+    use dyn_table_name_lazy_static::*;
+
+    let entities = [
+        Entity {
+            table_name: TableName::from_str_truncate("dyn_table_name_lazy_static_1"),
+        },
+        Entity {
+            table_name: TableName::from_str_truncate("dyn_table_name_lazy_static_2"),
+        },
+    ];
+    for entity in entities {
+        let create_table_stmt = sea_query::Table::create()
+            .table(entity.table_ref())
+            .col(
+                ColumnDef::new(Column::Id)
+                    .integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .col(ColumnDef::new(Column::Name).string().not_null())
+            .to_owned();
+
+        create_table(db, &create_table_stmt, entity).await?;
+    }
+
+    Ok(())
 }
