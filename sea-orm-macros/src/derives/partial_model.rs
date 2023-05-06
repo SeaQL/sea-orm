@@ -4,11 +4,11 @@ use proc_macro2::TokenStream;
 use quote::format_ident;
 use quote::quote;
 use quote::quote_spanned;
-use syn::Generics;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::Expr;
+use syn::Generics;
 
 use syn::Meta;
 
@@ -35,7 +35,7 @@ struct DerivePartialModel {
     entity_ident: Option<syn::Ident>,
     ident: syn::Ident,
     fields: Vec<ColumnAs>,
-    generic:Generics
+    generic: Generics,
 }
 
 impl DerivePartialModel {
@@ -125,7 +125,7 @@ impl DerivePartialModel {
             entity_ident,
             ident: input.ident,
             fields: column_as_list,
-            generic:input.generics
+            generic: input.generics,
         })
     }
 
@@ -139,7 +139,7 @@ impl DerivePartialModel {
             entity_ident,
             ident,
             fields,
-            generic
+            generic,
         } = self;
         let select_col_code_gen = fields.iter().map(|col_as| match col_as {
             ColumnAs::Col(ident) => {
@@ -157,7 +157,7 @@ impl DerivePartialModel {
             },
         });
 
-        let (impl_generic,type_generic,where_clause) = generic.split_for_impl();
+        let (impl_generic, type_generic, where_clause) = generic.split_for_impl();
 
         quote! {
             #[automatically_derived]
