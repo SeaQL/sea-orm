@@ -2,8 +2,8 @@ use crate::{
     error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn, Value,
 };
 use async_trait::async_trait;
-use serde::{Serialize, Deserialize};
 use sea_query::{Nullable, ValueTuple};
+use serde::{Deserialize, Serialize};
 
 use std::fmt::Debug;
 
