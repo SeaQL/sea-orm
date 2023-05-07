@@ -1,6 +1,6 @@
 use crate::{
     join_tbl_on_condition, unpack_table_ref, ColumnTrait, EntityTrait, IdenStatic, Iterable,
-    Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
+    Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectBoth, SelectTwo, SelectTwoMany,
 };
 pub use sea_query::JoinType;
 use sea_query::{Alias, Condition, Expr, IntoIden, SeaRc, SelectExpr};
@@ -106,6 +106,15 @@ where
             });
         }
         select_two
+    }
+
+    /// Inner Join with a Related Entity and select both Entity.
+    pub fn inner_join_and_select<R>(self, r: R) -> SelectBoth<E, R>
+    where
+        R: EntityTrait,
+        E: Related<R>,
+    {
+        self.inner_join(r).select_both(r)
     }
 }
 

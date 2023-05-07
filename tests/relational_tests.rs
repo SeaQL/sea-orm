@@ -295,6 +295,84 @@ pub async fn inner_join() {
     feature = "sqlx-sqlite",
     feature = "sqlx-postgres"
 ))]
+pub async fn inner_join_and_select() {
+    let ctx = TestContext::new("test_inner_join_and_select").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    let bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await
+    .expect("could not insert bakery");
+
+    let customer_kate = customer::ActiveModel {
+        name: Set("Kate".to_owned()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await
+    .expect("could not insert customer");
+
+    let _customer_jim = customer::ActiveModel {
+        name: Set("Jim".to_owned()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await
+    .expect("could not insert customer");
+
+    let kate_order_1 = order::ActiveModel {
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
+        total: Set(dec!(15.10)),
+        placed_at: Set(Utc::now().naive_utc()),
+
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await
+    .expect("could not insert order");
+
+    let kate_order_2 = order::ActiveModel {
+        bakery_id: Set(bakery.id),
+        customer_id: Set(customer_kate.id),
+        total: Set(dec!(100.00)),
+        placed_at: Set(Utc::now().naive_utc()),
+
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await
+    .expect("could not insert order");
+
+    let results: Vec<(order::Model, customer::Model)> = order::Entity::find()
+        .inner_join_and_select(customer::Entity)
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    assert_eq!(results.len(), 2);
+    assert!(results
+        .iter()
+        .any(|result| result.1.name == customer_kate.name.clone()
+            && result.0.total == kate_order_1.total));
+    assert!(results
+        .iter()
+        .any(|result| result.1.name == customer_kate.name.clone()
+            && result.0.total == kate_order_2.total));
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 pub async fn group_by() {
     let ctx = TestContext::new("test_group_by").await;
     create_tables(&ctx.db).await.unwrap();

@@ -1,5 +1,6 @@
 use crate::{
-    ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectTwo, SelectTwoMany,
+    ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectBoth, SelectTwo,
+    SelectTwoMany,
 };
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
@@ -72,7 +73,7 @@ where
         self
     }
 
-    /// Selects and Entity and returns it together with the Entity from `Self`
+    /// Selects an optional Entity and returns it together with the Entity from `Self`
     pub fn select_also<F>(mut self, _: F) -> SelectTwo<E, F>
     where
         F: EntityTrait,
@@ -88,6 +89,15 @@ where
     {
         self = self.apply_alias(SelectA.as_str());
         SelectTwoMany::new(self.into_query())
+    }
+
+    /// Selects an Entity and returns it together with the Entity from `Self`
+    pub fn select_both<F>(mut self, _: F) -> SelectBoth<E, F>
+    where
+        F: EntityTrait,
+    {
+        self = self.apply_alias(SelectA.as_str());
+        SelectBoth::new(self.into_query())
     }
 }
 
@@ -136,6 +146,28 @@ where
         for col in <E::PrimaryKey as Iterable>::iter() {
             self.query.order_by((E::default(), col), Order::Asc);
         }
+        self
+    }
+}
+
+impl<E, F> SelectBoth<E, F>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+{
+    pub(crate) fn new(query: SelectStatement) -> Self {
+        Self::new_without_prepare(query).prepare_select()
+    }
+
+    pub(crate) fn new_without_prepare(query: SelectStatement) -> Self {
+        Self {
+            query,
+            entity: PhantomData,
+        }
+    }
+
+    fn prepare_select(mut self) -> Self {
+        prepare_select_two::<F, Self>(&mut self);
         self
     }
 }
