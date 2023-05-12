@@ -268,14 +268,12 @@ impl From<&ColumnDef> for Column {
             .get_column_spec()
             .iter()
             .any(|spec| matches!(spec, ColumnSpec::AutoIncrement));
-        let not_null = col_def
-            .get_column_spec()
-            .iter()
-            .any(|spec| matches!(spec, ColumnSpec::NotNull) || matches!(spec, ColumnSpec::PrimaryKey));
-        let unique = col_def
-            .get_column_spec()
-            .iter()
-            .any(|spec| matches!(spec, ColumnSpec::UniqueKey) || matches!(spec, ColumnSpec::PrimaryKey));
+        let not_null = col_def.get_column_spec().iter().any(|spec| {
+            matches!(spec, ColumnSpec::NotNull) || matches!(spec, ColumnSpec::PrimaryKey)
+        });
+        let unique = col_def.get_column_spec().iter().any(|spec| {
+            matches!(spec, ColumnSpec::UniqueKey) || matches!(spec, ColumnSpec::PrimaryKey)
+        });
         Self {
             name,
             col_type,
