@@ -199,7 +199,6 @@ impl MockDatabaseConnection {
     }
 
     /// Checks if a connection to the database is still valid.
-    #[instrument(level = "trace")]
     pub fn ping(&self) -> Result<(), DbErr> {
         self.mocker.lock().map_err(query_err)?.ping()
     }
