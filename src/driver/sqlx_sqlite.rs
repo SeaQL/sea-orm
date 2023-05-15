@@ -230,7 +230,6 @@ impl SqlxSqlitePoolConnection {
     }
 
     /// Checks if a connection to the database is still valid.
-    /// Checks if a connection to the database is still valid.
     pub async fn ping(&self) -> Result<(), DbErr> {
         if let Ok(conn) = &mut self.pool.acquire().await {
             match conn.ping().await {
