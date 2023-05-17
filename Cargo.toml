@@ -121,3 +121,4 @@ runtime-tokio-rustls = [
     "runtime-tokio",
 ]
 tests-cfg = ["serde/derive"]
+seaography = ["sea-orm-macros/seaography"]
