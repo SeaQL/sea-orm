@@ -1326,7 +1326,6 @@ mod tests {
         assert!(ActiveValue::Set(2) != Some(3));
         assert!(ActiveValue::<u8>::NotSet != Some(3));
         assert!(ActiveValue::<u8>::NotSet == None::<u8>);
-    
         assert!(ActiveValue::Unchanged(String::from("hi")) == Some("hi"));
         assert!(ActiveValue::Unchanged(String::from("hi")) != Some("bye"));
     }
