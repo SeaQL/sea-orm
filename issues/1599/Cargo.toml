@@ -1,24 +1,2 @@
 [workspace]
-# A separate workspace
-
-[package]
-name = "sea-orm-issues-1599"
-version = "0.1.0"
-edition = "2021"
-publish = false
-
-[dependencies]
-anyhow = "1"
-serde = "1"
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
-seaography = { path = "../../../seaography", optional = true }
-async-graphql = { version = "5", optional = true }
-
-[dependencies.sea-orm]
-path = "../../"
-default-features = false
-features = ["macros"]
-
-[features]
-default = ["seaography"]
-seaography = ["dep:seaography", "async-graphql", "sea-orm/seaography"]
+members = ["entity", "graphql"]
