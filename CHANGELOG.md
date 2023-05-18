@@ -183,6 +183,7 @@ assert_eq!(
     r#"SELECT "cake"."name", UPPER("cake"."name") AS "name_upper" FROM "cake""#
 );
 ```
+* [sea-orm-cli] Added support for generating migration of space separated name, for example executing `sea-orm-cli migrate generate "create accounts table"` command will create `m20230503_000000_create_accounts_table.rs` for you https://github.com/SeaQL/sea-orm/pull/1570
 
 ### Enhancements
 

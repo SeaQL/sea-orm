@@ -1,0 +1,22 @@
+name: Release Bot
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: billy1624/release-comment-on-pr@master
+        with:
+          token: ${{ github.token }}
+          message: |
+            ### :tada: Released In [${releaseTag}](${releaseUrl}) :tada:
+            
+            Your participation is what makes us unique; your adoption is what drives us forward.  
+            Thank you all in the Rust community for making SeaQL what it is today. :crab:  
+            You are also invited to shape it's future! Please star our repos, every ⭐ counts!
