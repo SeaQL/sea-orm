@@ -15,9 +15,9 @@ pub fn schema(
     let mut builder = Builder::new(&CONTEXT);
 
     // Register entity including relations
-    seaography::register_related_entities!(builder, [cake]);
+    seaography::register_entities!(builder, [cake]);
     // Register entity only, no relations
-    seaography::register_entities!(builder, [cake_filling, filling, fruit]);
+    seaography::register_entities_without_relation!(builder, [cake_filling, filling, fruit]);
 
     let schema = builder.schema_builder();
     let schema = if let Some(depth) = depth {
