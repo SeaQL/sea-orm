@@ -178,7 +178,7 @@ impl Column {
                 }
                 ColumnType::Array(column_type) => {
                     let column_type = write_col_def(column_type);
-                    quote! { ColumnType::Array(sea_orm::sea_query::SeaRc::new(#column_type)) }
+                    quote! { ColumnType::Array(RcOrArc::new(#column_type)) }
                 }
                 #[allow(unreachable_patterns)]
                 _ => unimplemented!(),
