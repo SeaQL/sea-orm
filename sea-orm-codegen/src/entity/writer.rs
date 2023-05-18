@@ -785,7 +785,7 @@ mod tests {
     };
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
-    use sea_query::{ColumnType, ForeignKeyAction, SeaRc};
+    use sea_query::{ColumnType, ForeignKeyAction, RcOrArc};
     use std::io::{self, BufRead, BufReader, Read};
 
     fn setup() -> Vec<Entity> {
@@ -1258,14 +1258,14 @@ mod tests {
                     },
                     Column {
                         name: "integers".to_owned(),
-                        col_type: ColumnType::Array(SeaRc::new(ColumnType::Integer)),
+                        col_type: ColumnType::Array(RcOrArc::new(ColumnType::Integer)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "integers_opt".to_owned(),
-                        col_type: ColumnType::Array(SeaRc::new(ColumnType::Integer)),
+                        col_type: ColumnType::Array(RcOrArc::new(ColumnType::Integer)),
                         auto_increment: false,
                         not_null: false,
                         unique: false,
@@ -1289,14 +1289,14 @@ mod tests {
                     },
                     Column {
                         name: "floats".to_owned(),
-                        col_type: ColumnType::Array(SeaRc::new(ColumnType::Float)),
+                        col_type: ColumnType::Array(RcOrArc::new(ColumnType::Float)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
                     },
                     Column {
                         name: "doubles".to_owned(),
-                        col_type: ColumnType::Array(SeaRc::new(ColumnType::Double)),
+                        col_type: ColumnType::Array(RcOrArc::new(ColumnType::Double)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
