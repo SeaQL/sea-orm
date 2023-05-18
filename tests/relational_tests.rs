@@ -295,8 +295,8 @@ pub async fn inner_join() {
     feature = "sqlx-sqlite",
     feature = "sqlx-postgres"
 ))]
-pub async fn inner_join_and_select() {
-    let ctx = TestContext::new("test_inner_join_and_select").await;
+pub async fn find_both_related() {
+    let ctx = TestContext::new("test_find_both_related").await;
     create_tables(&ctx.db).await.unwrap();
 
     let bakery = bakery::ActiveModel {
@@ -349,7 +349,7 @@ pub async fn inner_join_and_select() {
     .expect("could not insert order");
 
     let results: Vec<(order::Model, customer::Model)> = order::Entity::find()
-        .inner_join_and_select(customer::Entity)
+        .find_both_related(customer::Entity)
         .all(&ctx.db)
         .await
         .unwrap();

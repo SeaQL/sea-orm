@@ -109,7 +109,7 @@ where
     }
 
     /// Inner Join with a Related Entity and select both Entity.
-    pub fn inner_join_and_select<R>(self, r: R) -> SelectBoth<E, R>
+    pub fn find_both_related<R>(self, r: R) -> SelectBoth<E, R>
     where
         R: EntityTrait,
         E: Related<R>,
