@@ -185,7 +185,7 @@ assert_eq!(
 ```
 * [sea-orm-cli] Added support for generating migration of space separated name, for example executing `sea-orm-cli migrate generate "create accounts table"` command will create `m20230503_000000_create_accounts_table.rs` for you https://github.com/SeaQL/sea-orm/pull/1570
 
-* Add `seaography` flag to `sea-orm-cli` https://github.com/SeaQL/sea-orm/pull/1599
+* Add `seaography` flag to `sea-orm`, `sea-orm-orm-macros` and `sea-orm-cli` https://github.com/SeaQL/sea-orm/pull/1599
 * Add generation of `seaography` related information to `sea-orm-codegen` https://github.com/SeaQL/sea-orm/pull/1599
 
     The following information is added in entities files by `sea-orm-cli` when flag `seaography` is `true`
@@ -210,7 +210,7 @@ pub enum RelatedEntity {
 ```
 * Add `DeriveEntityRelated` macro https://github.com/SeaQL/sea-orm/pull/1599
 
-    The DeriveRelatedEntity derive macro will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration
+    The DeriveRelatedEntity derive macro will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration when the `seaography` feature is enabled
 
 ### Enhancements
 
