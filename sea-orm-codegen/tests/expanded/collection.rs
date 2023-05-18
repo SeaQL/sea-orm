@@ -45,8 +45,8 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::Id => ColumnType::Integer.def(),
-            Self::Integers => ColumnType::Array(sea_orm::sea_query::SeaRc::new(ColumnType::Integer)).def(),
-            Self::IntegersOpt => ColumnType::Array(sea_orm::sea_query::SeaRc::new(ColumnType::Integer)).def().null(),
+            Self::Integers => ColumnType::Array(RcOrArc::new(ColumnType::Integer)).def(),
+            Self::IntegersOpt => ColumnType::Array(RcOrArc::new(ColumnType::Integer)).def().null(),
         }
     }
 }
