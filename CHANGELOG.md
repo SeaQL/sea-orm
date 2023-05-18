@@ -206,6 +206,7 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
     * Changed the parameter of method `Transaction::from_sql_and_values(DbBackend, T, I) where I: IntoIterator<Item = Value>, T: Into<String>` to takes any string SQL
     * Changed the parameter of method `ConnectOptions::set_schema_search_path(T) where T: Into<String>` to takes any string
     * Changed the parameter of method `ColumnTrait::like()`, `ColumnTrait::not_like()`, `ColumnTrait::starts_with()`, `ColumnTrait::ends_with()` and `ColumnTrait::contains()` to takes any string
+* Re-export `sea_query::{DynIden, RcOrArc, SeaRc}` in `sea_orm::entity::prelude` module https://github.com/SeaQL/sea-orm/pull/1661
 
 ### Upgrades
 
@@ -294,6 +295,7 @@ CREATE TABLE users_saved_bills
     * Added `derive` and `strum` features to `sea-orm-macros`
     * The derive macro `EnumIter` is now shipped by `sea-orm-macros`
 * Added a new variant `Many` to `Identity` https://github.com/SeaQL/sea-orm/pull/1508
+* Replace the use of `SeaRc<T>` where `T` isn't `dyn Iden` with `RcOrArc<T>` https://github.com/SeaQL/sea-orm/pull/1661
 
 ## 0.11.3 - 2023-04-24
 
