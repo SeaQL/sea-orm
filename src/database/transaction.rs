@@ -458,22 +458,6 @@ impl ConnectionTrait for DatabaseTransaction {
             _ => Err(conn_err("Disconnected")),
         }
     }
-
-    #[allow(unused_variables)]
-    async fn ping(&self) -> Result<(), DbErr> {
-        match &mut *self.conn.lock().await {
-            #[cfg(feature = "sqlx-mysql")]
-            InnerConnection::MySql(conn) => conn.ping().await.map_err(sqlx_error_to_conn_err),
-            #[cfg(feature = "sqlx-postgres")]
-            InnerConnection::Postgres(conn) => conn.ping().await.map_err(sqlx_error_to_conn_err),
-            #[cfg(feature = "sqlx-sqlite")]
-            InnerConnection::Sqlite(conn) => conn.ping().await.map_err(sqlx_error_to_conn_err),
-            #[cfg(feature = "mock")]
-            InnerConnection::Mock(conn) => return conn.ping(),
-            #[allow(unreachable_patterns)]
-            _ => Err(conn_err("Disconnected")),
-        }
-    }
 }
 
 impl StreamTrait for DatabaseTransaction {

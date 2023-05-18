@@ -181,20 +181,6 @@ impl ConnectionTrait for DatabaseConnection {
     fn is_mock_connection(&self) -> bool {
         matches!(self, DatabaseConnection::MockDatabaseConnection(_))
     }
-
-    async fn ping(&self) -> Result<(), DbErr> {
-        match self {
-            #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.ping().await,
-            #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.ping().await,
-            #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.ping().await,
-            #[cfg(feature = "mock")]
-            DatabaseConnection::MockDatabaseConnection(conn) => conn.ping(),
-            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
-        }
-    }
 }
 
 #[async_trait::async_trait]
@@ -401,6 +387,21 @@ impl DatabaseConnection {
                 conn.set_metric_callback(_callback)
             }
             _ => {}
+        }
+    }
+
+    /// Checks if a connection to the database is still valid.
+    pub async fn ping(&self) -> Result<(), DbErr> {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.ping().await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.ping().await,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.ping().await,
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(conn) => conn.ping(),
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 

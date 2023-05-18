@@ -34,9 +34,6 @@ pub trait ConnectionTrait: Sync {
     fn is_mock_connection(&self) -> bool {
         false
     }
-
-    /// Checks if a connection to the database is still valid.
-    async fn ping(&self) -> Result<(), DbErr>;
 }
 
 /// Stream query results

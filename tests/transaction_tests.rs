@@ -56,20 +56,6 @@ pub async fn transaction() {
     feature = "sqlx-sqlite",
     feature = "sqlx-postgres"
 ))]
-pub async fn transaction_ping() {
-    let ctx = TestContext::new("transaction_ping").await;
-
-    ctx.db.transaction(|txn| txn.ping()).await.unwrap();
-
-    ctx.delete().await;
-}
-
-#[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 pub async fn transaction_with_reference() {
     let ctx = TestContext::new("transaction_with_reference_test").await;
     create_tables(&ctx.db).await.unwrap();
