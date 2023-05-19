@@ -4,11 +4,11 @@ use crate::{
     TransactionTrait,
 };
 #[cfg(feature = "sqlx-dep")]
-use crate::{sqlx_error_to_conn_err, sqlx_error_to_exec_err, sqlx_error_to_query_err};
+use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 use futures::lock::Mutex;
 
 #[cfg(feature = "sqlx-dep")]
-use sqlx::{pool::PoolConnection, Connection, TransactionManager};
+use sqlx::{pool::PoolConnection, TransactionManager};
 use std::{future::Future, pin::Pin, sync::Arc};
 use tracing::instrument;
 
