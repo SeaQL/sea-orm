@@ -47,6 +47,7 @@ pub struct EntityWriterContext {
     pub(crate) serde_skip_deserializing_primary_key: bool,
     pub(crate) model_extra_derives: TokenStream,
     pub(crate) model_extra_attributes: TokenStream,
+    pub(crate) seaography: bool,
 }
 
 impl WithSerde {
@@ -142,6 +143,7 @@ impl EntityWriterContext {
         serde_skip_hidden_column: bool,
         model_extra_derives: Vec<String>,
         model_extra_attributes: Vec<String>,
+        seaography: bool,
     ) -> Self {
         Self {
             expanded_format,
@@ -154,6 +156,7 @@ impl EntityWriterContext {
             serde_skip_hidden_column,
             model_extra_derives: bonus_derive(model_extra_derives),
             model_extra_attributes: bonus_attributes(model_extra_attributes),
+            seaography,
         }
     }
 }
@@ -209,6 +212,7 @@ impl EntityWriter {
                         serde_skip_hidden_column,
                         &context.model_extra_derives,
                         &context.model_extra_attributes,
+                        context.seaography,
                     )
                 } else {
                     Self::gen_compact_code_blocks(
@@ -220,6 +224,7 @@ impl EntityWriter {
                         serde_skip_hidden_column,
                         &context.model_extra_derives,
                         &context.model_extra_attributes,
+                        context.seaography,
                     )
                 };
                 Self::write(&mut lines, code_blocks);
@@ -323,6 +328,7 @@ impl EntityWriter {
         serde_skip_hidden_column: bool,
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
+        seaography: bool,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
@@ -349,6 +355,9 @@ impl EntityWriter {
         code_blocks.extend(Self::gen_impl_related(entity));
         code_blocks.extend(Self::gen_impl_conjunct_related(entity));
         code_blocks.extend([Self::gen_impl_active_model_behavior()]);
+        if seaography {
+            code_blocks.extend([Self::gen_related_entity(entity)]);
+        }
         code_blocks
     }
 
@@ -362,6 +371,7 @@ impl EntityWriter {
         serde_skip_hidden_column: bool,
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
+        seaography: bool,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
@@ -382,6 +392,9 @@ impl EntityWriter {
         code_blocks.extend(Self::gen_impl_related(entity));
         code_blocks.extend(Self::gen_impl_conjunct_related(entity));
         code_blocks.extend([Self::gen_impl_active_model_behavior()]);
+        if seaography {
+            code_blocks.extend([Self::gen_related_entity(entity)]);
+        }
         code_blocks
     }
 
@@ -606,6 +619,22 @@ impl EntityWriter {
                 }
             })
             .collect()
+    }
+
+    /// Used to generate `enum RelatedEntity` that is useful to the Seaography project
+    pub fn gen_related_entity(entity: &Entity) -> TokenStream {
+        let related_enum_name = entity.get_related_entity_enum_name();
+        let related_attrs = entity.get_related_entity_attrs();
+
+        quote! {
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+            pub enum RelatedEntity {
+                #(
+                    #related_attrs
+                    #related_enum_name
+                ),*
+            }
+        }
     }
 
     pub fn gen_impl_conjunct_related(entity: &Entity) -> Vec<TokenStream> {
@@ -1371,6 +1400,7 @@ mod tests {
                     false,
                     &TokenStream::new(),
                     &TokenStream::new(),
+                    false
                 )
                 .into_iter()
                 .skip(1)
@@ -1391,6 +1421,7 @@ mod tests {
                     false,
                     &TokenStream::new(),
                     &TokenStream::new(),
+                    false,
                 )
                 .into_iter()
                 .skip(1)
@@ -1411,6 +1442,7 @@ mod tests {
                     false,
                     &TokenStream::new(),
                     &TokenStream::new(),
+                    false,
                 )
                 .into_iter()
                 .skip(1)
@@ -1467,6 +1499,7 @@ mod tests {
                     false,
                     &TokenStream::new(),
                     &TokenStream::new(),
+                    false,
                 )
                 .into_iter()
                 .skip(1)
@@ -1487,6 +1520,7 @@ mod tests {
                     false,
                     &TokenStream::new(),
                     &TokenStream::new(),
+                    false,
                 )
                 .into_iter()
                 .skip(1)
@@ -1507,6 +1541,7 @@ mod tests {
                     false,
                     &TokenStream::new(),
                     &TokenStream::new(),
+                    false,
                 )
                 .into_iter()
                 .skip(1)
@@ -1539,6 +1574,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                false,
             ))
         );
         assert_eq!(
@@ -1554,6 +1590,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                false,
             ))
         );
         assert_eq!(
@@ -1569,6 +1606,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                false,
             ))
         );
         assert_eq!(
@@ -1582,6 +1620,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                false,
             ))
         );
 
@@ -1597,6 +1636,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                false,
             ))
         );
         assert_eq!(
@@ -1612,6 +1652,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                false,
             ))
         );
         assert_eq!(
@@ -1627,6 +1668,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                false,
             ))
         );
         assert_eq!(
@@ -1640,6 +1682,104 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                false,
+            ))
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_gen_with_seaography() -> io::Result<()> {
+        let cake_entity = Entity {
+            table_name: "cake".to_owned(),
+            columns: vec![
+                Column {
+                    name: "id".to_owned(),
+                    col_type: ColumnType::Integer,
+                    auto_increment: true,
+                    not_null: true,
+                    unique: false,
+                },
+                Column {
+                    name: "name".to_owned(),
+                    col_type: ColumnType::Text,
+                    auto_increment: false,
+                    not_null: false,
+                    unique: false,
+                },
+                Column {
+                    name: "base_id".to_owned(),
+                    col_type: ColumnType::Integer,
+                    auto_increment: false,
+                    not_null: false,
+                    unique: false,
+                },
+            ],
+            relations: vec![
+                Relation {
+                    ref_table: "fruit".to_owned(),
+                    columns: vec![],
+                    ref_columns: vec![],
+                    rel_type: RelationType::HasMany,
+                    on_delete: None,
+                    on_update: None,
+                    self_referencing: false,
+                    num_suffix: 0,
+                    impl_related: true,
+                },
+                Relation {
+                    ref_table: "cake".to_owned(),
+                    columns: vec![],
+                    ref_columns: vec![],
+                    rel_type: RelationType::HasOne,
+                    on_delete: None,
+                    on_update: None,
+                    self_referencing: true,
+                    num_suffix: 0,
+                    impl_related: true,
+                },
+            ],
+            conjunct_relations: vec![ConjunctRelation {
+                via: "cake_filling".to_owned(),
+                to: "filling".to_owned(),
+            }],
+            primary_keys: vec![PrimaryKey {
+                name: "id".to_owned(),
+            }],
+        };
+
+        assert_eq!(cake_entity.get_table_name_snake_case(), "cake");
+
+        // Compact code blocks
+        assert_eq!(
+            comparable_file_string(include_str!("../../tests/with_seaography/cake.rs"))?,
+            generated_to_string(EntityWriter::gen_compact_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                true,
+            ))
+        );
+
+        // Expanded code blocks
+        assert_eq!(
+            comparable_file_string(include_str!("../../tests/with_seaography/cake_expanded.rs"))?,
+            generated_to_string(EntityWriter::gen_expanded_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                true,
             ))
         );
 
@@ -1666,6 +1806,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                false,
             ))
         );
         assert_eq!(
@@ -1679,6 +1820,7 @@ mod tests {
                 false,
                 &bonus_derive(["ts_rs::TS"]),
                 &TokenStream::new(),
+                false,
             ))
         );
         assert_eq!(
@@ -1694,6 +1836,7 @@ mod tests {
                 false,
                 &bonus_derive(["ts_rs::TS", "utoipa::ToSchema"]),
                 &TokenStream::new(),
+                false,
             ))
         );
 
@@ -1711,6 +1854,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                false,
             ))
         );
         assert_eq!(
@@ -1726,6 +1870,7 @@ mod tests {
                 false,
                 &bonus_derive(["ts_rs::TS"]),
                 &TokenStream::new(),
+                false,
             ))
         );
         assert_eq!(
@@ -1741,6 +1886,7 @@ mod tests {
                 false,
                 &bonus_derive(["ts_rs::TS", "utoipa::ToSchema"]),
                 &TokenStream::new(),
+                false,
             ))
         );
 
@@ -1785,6 +1931,7 @@ mod tests {
                 bool,
                 &TokenStream,
                 &TokenStream,
+                bool,
             ) -> Vec<TokenStream>,
         >,
     ) -> io::Result<()> {
@@ -1815,6 +1962,7 @@ mod tests {
             serde_skip_hidden_column,
             &TokenStream::new(),
             &TokenStream::new(),
+            false,
         )
         .into_iter()
         .fold(TokenStream::new(), |mut acc, tok| {
@@ -1846,6 +1994,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                false,
             ))
         );
         assert_eq!(
@@ -1861,6 +2010,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
+                false,
             ))
         );
         assert_eq!(
@@ -1876,6 +2026,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
+                false,
             ))
         );
 
@@ -1893,6 +2044,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                false,
             ))
         );
         assert_eq!(
@@ -1908,6 +2060,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
+                false,
             ))
         );
         assert_eq!(
@@ -1923,6 +2076,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
+                false,
             ))
         );
 
@@ -2015,6 +2169,7 @@ mod tests {
                     false,
                     &TokenStream::new(),
                     &TokenStream::new(),
+                    false,
                 )
                 .into_iter()
                 .skip(1)
@@ -2035,6 +2190,7 @@ mod tests {
                     false,
                     &TokenStream::new(),
                     &TokenStream::new(),
+                    false,
                 )
                 .into_iter()
                 .skip(1)
@@ -2055,6 +2211,7 @@ mod tests {
                     false,
                     &TokenStream::new(),
                     &TokenStream::new(),
+                    false,
                 )
                 .into_iter()
                 .skip(1)

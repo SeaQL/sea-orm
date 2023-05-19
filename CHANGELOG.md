@@ -185,6 +185,33 @@ assert_eq!(
 ```
 * [sea-orm-cli] Added support for generating migration of space separated name, for example executing `sea-orm-cli migrate generate "create accounts table"` command will create `m20230503_000000_create_accounts_table.rs` for you https://github.com/SeaQL/sea-orm/pull/1570
 
+* Add `seaography` flag to `sea-orm`, `sea-orm-orm-macros` and `sea-orm-cli` https://github.com/SeaQL/sea-orm/pull/1599
+* Add generation of `seaography` related information to `sea-orm-codegen` https://github.com/SeaQL/sea-orm/pull/1599
+
+    The following information is added in entities files by `sea-orm-cli` when flag `seaography` is `true`
+```rust
+/// ... Entity File ...
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+pub enum RelatedEntity {
+    #[sea_orm(entity = "super::address::Entity")]
+    Address,
+    #[sea_orm(entity = "super::payment::Entity")]
+    Payment,
+    #[sea_orm(entity = "super::rental::Entity")]
+    Rental,
+    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
+    SelfRef,
+    #[sea_orm(entity = "super::store::Entity")]
+    Store,
+    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
+    SelfRefRev,
+}
+```
+* Add `DeriveEntityRelated` macro https://github.com/SeaQL/sea-orm/pull/1599
+
+    The DeriveRelatedEntity derive macro will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration when the `seaography` feature is enabled
+
 ### Enhancements
 
 * Added `Migration::name()` and `Migration::status()` getters for the name and status of `sea_orm_migration::Migration` https://github.com/SeaQL/sea-orm/pull/1519
@@ -457,7 +484,7 @@ impl ColumnTrait for Column {
 ### Breaking Changes
 
 * [sea-orm-cli] Enable --universal-time by default https://github.com/SeaQL/sea-orm/pull/1420
-* Added `RecordNotInserted` and `RecordNotUpdated` to `DbErr` 
+* Added `RecordNotInserted` and `RecordNotUpdated` to `DbErr`
 * Added `ConnectionTrait::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
 * As part of https://github.com/SeaQL/sea-orm/pull/1311, the required method of `TryGetable` changed:
 ```rust
