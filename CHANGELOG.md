@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.12.0 - Pending
 
++ 2023-05-19: `0.12.0-rc.2`
+
 ### New Features
 
 * Supports for partial select of `Option<T>` model field. A `None` value will be filled when the select result does not contain the `Option<T>` field without throwing an error. https://github.com/SeaQL/sea-orm/pull/1513
