@@ -1,7 +1,7 @@
 use async_graphql::{Context, Object, Result};
 use entity::async_graphql::{self, InputObject, SimpleObject};
 use entity::note;
-use graphql_example_core::Mutation;
+use graphql_example_service::Mutation;
 
 use crate::db::Database;
 

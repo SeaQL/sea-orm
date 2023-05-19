@@ -6,7 +6,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-axum-example-core = { path = "../core" }
+axum-example-service = { path = "../service" }
 tokio = { version = "1.23.0", features = ["full"] }
 axum = "0.6.1"
 tower = "0.4.13"

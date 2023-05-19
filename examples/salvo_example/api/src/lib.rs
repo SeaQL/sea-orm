@@ -6,7 +6,7 @@ use salvo::extra::affix;
 use salvo::extra::serve_static::DirHandler;
 use salvo::prelude::*;
 use salvo::writer::Text;
-use salvo_example_core::{
+use salvo_example_service::{
     sea_orm::{Database, DatabaseConnection},
     Mutation, Query,
 };

@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-tonic-example-core = { path = "../core" }
+tonic-example-service = { path = "../service" }
 tonic = "0.7"
 tokio = { version = "1.17", features = ["macros", "rt-multi-thread", "full"] }
 entity = { path = "../entity" }
