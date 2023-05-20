@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 jsonrpsee-example-service = { path = "../service" }
 jsonrpsee = { version = "0.8.0", features = ["full"] }
-jsonrpsee-service = "0.9.0"
+jsonrpsee-core = "0.9.0"
 tokio = { version = "1.8.0", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 dotenvy = "0.15"
