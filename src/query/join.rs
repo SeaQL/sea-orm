@@ -52,6 +52,15 @@ where
     {
         self.left_join(r).select_also(r)
     }
+    
+     /// Inner Join with a Related Entity and select both Entity.
+    pub fn find_both_related<R>(self, r: R) -> SelectBoth<E, R>
+    where
+        R: EntityTrait,
+        E: Related<R>,
+    {
+        self.inner_join(r).select_both(r)
+    }
 
     /// Left Join with a Related Entity and select the related Entity as a `Vec`
     pub fn find_with_related<R>(self, r: R) -> SelectTwoMany<E, R>
@@ -106,15 +115,6 @@ where
             });
         }
         select_two
-    }
-
-    /// Inner Join with a Related Entity and select both Entity.
-    pub fn find_both_related<R>(self, r: R) -> SelectBoth<E, R>
-    where
-        R: EntityTrait,
-        E: Related<R>,
-    {
-        self.inner_join(r).select_both(r)
     }
 }
 
