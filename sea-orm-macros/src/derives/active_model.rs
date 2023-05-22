@@ -95,8 +95,8 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
         }
 
         #[automatically_derived]
-        impl std::convert::From<<Entity as EntityTrait>::Model> for ActiveModel {
-            fn from(m: <Entity as EntityTrait>::Model) -> Self {
+        impl std::convert::From<<Entity as sea_orm::EntityTrait>::Model> for ActiveModel {
+            fn from(m: <Entity as sea_orm::EntityTrait>::Model) -> Self {
                 Self {
                     #(#field: sea_orm::ActiveValue::unchanged(m.#field)),*
                 }
@@ -104,7 +104,7 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
         }
 
         #[automatically_derived]
-        impl sea_orm::IntoActiveModel<ActiveModel> for <Entity as EntityTrait>::Model {
+        impl sea_orm::IntoActiveModel<ActiveModel> for <Entity as sea_orm::EntityTrait>::Model {
             fn into_active_model(self) -> ActiveModel {
                 self.into()
             }
@@ -114,9 +114,9 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
         impl sea_orm::ActiveModelTrait for ActiveModel {
             type Entity = Entity;
 
-            fn take(&mut self, c: <Self::Entity as EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
+            fn take(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => {
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#name => {
                         let mut value = sea_orm::ActiveValue::not_set();
                         std::mem::swap(&mut value, &mut self.#field);
                         value.into_wrapped_value()
@@ -125,30 +125,30 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
                 }
             }
 
-            fn get(&self, c: <Self::Entity as EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
+            fn get(&self, c: <Self::Entity as sea_orm::EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.clone().into_wrapped_value(),)*
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#name => self.#field.clone().into_wrapped_value(),)*
                     _ => sea_orm::ActiveValue::not_set(),
                 }
             }
 
-            fn set(&mut self, c: <Self::Entity as EntityTrait>::Column, v: sea_orm::Value) {
+            fn set(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column, v: sea_orm::Value) {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::set(v.unwrap()),)*
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::set(v.unwrap()),)*
                     _ => panic!("This ActiveModel does not have this field"),
                 }
             }
 
-            fn not_set(&mut self, c: <Self::Entity as EntityTrait>::Column) {
+            fn not_set(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column) {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::not_set(),)*
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::not_set(),)*
                     _ => {},
                 }
             }
 
-            fn is_not_set(&self, c: <Self::Entity as EntityTrait>::Column) -> bool {
+            fn is_not_set(&self, c: <Self::Entity as sea_orm::EntityTrait>::Column) -> bool {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.is_not_set(),)*
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#name => self.#field.is_not_set(),)*
                     _ => panic!("This ActiveModel does not have this field"),
                 }
             }
@@ -159,9 +159,9 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
                 }
             }
 
-            fn reset(&mut self, c: <Self::Entity as EntityTrait>::Column) {
+            fn reset(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column) {
                 match c {
-                    #(<Self::Entity as EntityTrait>::Column::#name => self.#field.reset(),)*
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#name => self.#field.reset(),)*
                     _ => panic!("This ActiveModel does not have this field"),
                 }
             }
