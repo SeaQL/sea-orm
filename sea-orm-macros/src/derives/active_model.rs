@@ -200,7 +200,7 @@ fn derive_into_model(model_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
 
     Ok(quote!(
         #[automatically_derived]
-        impl std::convert::TryFrom<ActiveModel> for <Entity as EntityTrait>::Model {
+        impl std::convert::TryFrom<ActiveModel> for <Entity as sea_orm::EntityTrait>::Model {
             type Error = sea_orm::DbErr;
             fn try_from(a: ActiveModel) -> Result<Self, sea_orm::DbErr> {
                 #(if matches!(a.#active_model_field, sea_orm::ActiveValue::NotSet) {
@@ -215,8 +215,8 @@ fn derive_into_model(model_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
         }
 
         #[automatically_derived]
-        impl sea_orm::TryIntoModel<<Entity as EntityTrait>::Model> for ActiveModel {
-            fn try_into_model(self) -> Result<<Entity as EntityTrait>::Model, sea_orm::DbErr> {
+        impl sea_orm::TryIntoModel<<Entity as sea_orm::EntityTrait>::Model> for ActiveModel {
+            fn try_into_model(self) -> Result<<Entity as sea_orm::EntityTrait>::Model, sea_orm::DbErr> {
                 self.try_into()
             }
         }
