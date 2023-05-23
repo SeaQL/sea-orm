@@ -6,7 +6,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-graphql-example-core = { path = "../core" }
+graphql-example-service = { path = "../service" }
 tokio = { version = "1.0", features = ["full"] }
 axum = "0.5.1"
 dotenvy = "0.15.0"

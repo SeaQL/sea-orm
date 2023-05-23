@@ -5,7 +5,7 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
-members = [".", "api", "core", "entity", "migration"]
+members = [".", "api", "service", "entity", "migration"]
 
 [dependencies]
 salvo-example-api = { path = "api" }
