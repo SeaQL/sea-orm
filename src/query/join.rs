@@ -52,8 +52,8 @@ where
     {
         self.left_join(r).select_also(r)
     }
-    
-     /// Inner Join with a Related Entity and select both Entity.
+
+    /// Inner Join with a Related Entity and select both Entity.
     pub fn find_both_related<R>(self, r: R) -> SelectBoth<E, R>
     where
         R: EntityTrait,
