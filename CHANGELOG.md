@@ -316,6 +316,20 @@ CREATE TABLE users_saved_bills
 );
 ```
 * [sea-orm-cli] fixed entity generation includes partitioned tables https://github.com/SeaQL/sea-orm/issues/1582, https://github.com/SeaQL/sea-schema/pull/105
+* Fixed `ActiveEnum::db_type()` return type does not implement `ColumnTypeTrait` https://github.com/SeaQL/sea-orm/pull/1576
+```rs
+impl ColumnTrait for Column {
+    type EntityName = Entity;
+    fn def(&self) -> ColumnDef {
+        match self {
+...
+            // `db_type()` returns `ColumnDef`; now it implements `ColumnTypeTrait`
+            Self::Thing => AnActiveEnumThing::db_type().def(),
+...
+        }
+    }
+}
+```
 
 ### Breaking changes
 
