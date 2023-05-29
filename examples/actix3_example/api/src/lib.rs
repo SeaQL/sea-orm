@@ -1,4 +1,4 @@
-use actix3_example_core::{
+use actix3_example_service::{
     sea_orm::{Database, DatabaseConnection},
     Mutation, Query,
 };

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.12.0 - Pending
 
++ 2023-05-19: `0.12.0-rc.2`
+
 ### New Features
 
 * Supports for partial select of `Option<T>` model field. A `None` value will be filled when the select result does not contain the `Option<T>` field without throwing an error. https://github.com/SeaQL/sea-orm/pull/1513
@@ -183,6 +185,34 @@ assert_eq!(
     r#"SELECT "cake"."name", UPPER("cake"."name") AS "name_upper" FROM "cake""#
 );
 ```
+* [sea-orm-cli] Added support for generating migration of space separated name, for example executing `sea-orm-cli migrate generate "create accounts table"` command will create `m20230503_000000_create_accounts_table.rs` for you https://github.com/SeaQL/sea-orm/pull/1570
+
+* Add `seaography` flag to `sea-orm`, `sea-orm-orm-macros` and `sea-orm-cli` https://github.com/SeaQL/sea-orm/pull/1599
+* Add generation of `seaography` related information to `sea-orm-codegen` https://github.com/SeaQL/sea-orm/pull/1599
+
+    The following information is added in entities files by `sea-orm-cli` when flag `seaography` is `true`
+```rust
+/// ... Entity File ...
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+pub enum RelatedEntity {
+    #[sea_orm(entity = "super::address::Entity")]
+    Address,
+    #[sea_orm(entity = "super::payment::Entity")]
+    Payment,
+    #[sea_orm(entity = "super::rental::Entity")]
+    Rental,
+    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
+    SelfRef,
+    #[sea_orm(entity = "super::store::Entity")]
+    Store,
+    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
+    SelfRefRev,
+}
+```
+* Add `DeriveEntityRelated` macro https://github.com/SeaQL/sea-orm/pull/1599
+
+    The DeriveRelatedEntity derive macro will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration when the `seaography` feature is enabled
 
 ### Enhancements
 
@@ -205,6 +235,7 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
     * Changed the parameter of method `Transaction::from_sql_and_values(DbBackend, T, I) where I: IntoIterator<Item = Value>, T: Into<String>` to takes any string SQL
     * Changed the parameter of method `ConnectOptions::set_schema_search_path(T) where T: Into<String>` to takes any string
     * Changed the parameter of method `ColumnTrait::like()`, `ColumnTrait::not_like()`, `ColumnTrait::starts_with()`, `ColumnTrait::ends_with()` and `ColumnTrait::contains()` to takes any string
+* Re-export `sea_query::{DynIden, RcOrArc, SeaRc}` in `sea_orm::entity::prelude` module https://github.com/SeaQL/sea-orm/pull/1661
 
 ### Upgrades
 
@@ -293,6 +324,7 @@ CREATE TABLE users_saved_bills
     * Added `derive` and `strum` features to `sea-orm-macros`
     * The derive macro `EnumIter` is now shipped by `sea-orm-macros`
 * Added a new variant `Many` to `Identity` https://github.com/SeaQL/sea-orm/pull/1508
+* Replace the use of `SeaRc<T>` where `T` isn't `dyn Iden` with `RcOrArc<T>` https://github.com/SeaQL/sea-orm/pull/1661
 
 ## 0.11.3 - 2023-04-24
 
@@ -454,7 +486,7 @@ impl ColumnTrait for Column {
 ### Breaking Changes
 
 * [sea-orm-cli] Enable --universal-time by default https://github.com/SeaQL/sea-orm/pull/1420
-* Added `RecordNotInserted` and `RecordNotUpdated` to `DbErr` 
+* Added `RecordNotInserted` and `RecordNotUpdated` to `DbErr`
 * Added `ConnectionTrait::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
 * As part of https://github.com/SeaQL/sea-orm/pull/1311, the required method of `TryGetable` changed:
 ```rust
