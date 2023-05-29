@@ -92,12 +92,90 @@ impl Entity {
             .collect()
     }
 
+    /// Used to generate the names for the `enum RelatedEntity` that is useful to the Seaography project
+    pub fn get_related_entity_enum_name(&self) -> Vec<Ident> {
+        // 1st step get conjunct relations data
+        let conjunct_related_names = self.get_conjunct_relations_to_upper_camel_case();
+
+        // 2nd step get reverse self relations data
+        let self_relations_reverse = self
+            .relations
+            .iter()
+            .filter(|rel| rel.self_referencing)
+            .map(|rel| format_ident!("{}Reverse", rel.get_enum_name()));
+
+        // 3rd step get normal relations data
+        self.get_relation_enum_name()
+            .into_iter()
+            .chain(self_relations_reverse)
+            .chain(conjunct_related_names.into_iter())
+            .collect()
+    }
+
     pub fn get_relation_defs(&self) -> Vec<TokenStream> {
         self.relations.iter().map(|rel| rel.get_def()).collect()
     }
 
     pub fn get_relation_attrs(&self) -> Vec<TokenStream> {
         self.relations.iter().map(|rel| rel.get_attrs()).collect()
+    }
+
+    /// Used to generate the attributes for the `enum RelatedEntity` that is useful to the Seaography project
+    pub fn get_related_entity_attrs(&self) -> Vec<TokenStream> {
+        // 1st step get conjunct relations data
+        let conjunct_related_attrs = self.conjunct_relations.iter().map(|conj| {
+            let entity = format!("super::{}::Entity", conj.get_to_snake_case());
+
+            quote! {
+                #[sea_orm(
+                    entity = #entity
+                )]
+            }
+        });
+
+        // helper function that generates attributes for `Relation` data
+        let produce_relation_attrs = |rel: &Relation, reverse: bool| {
+            let entity = match rel.get_module_name() {
+                Some(module_name) => format!("super::{}::Entity", module_name),
+                None => String::from("Entity"),
+            };
+
+            if rel.self_referencing || !rel.impl_related || rel.num_suffix > 0 {
+                let def = if reverse {
+                    format!("Relation::{}.def().rev()", rel.get_enum_name())
+                } else {
+                    format!("Relation::{}.def()", rel.get_enum_name())
+                };
+
+                quote! {
+                    #[sea_orm(
+                        entity = #entity,
+                        def = #def
+                    )]
+                }
+            } else {
+                quote! {
+                    #[sea_orm(
+                        entity = #entity
+                    )]
+                }
+            }
+        };
+
+        // 2nd step get reverse self relations data
+        let self_relations_reverse_attrs = self
+            .relations
+            .iter()
+            .filter(|rel| rel.self_referencing)
+            .map(|rel| produce_relation_attrs(rel, true));
+
+        // 3rd step get normal relations data
+        self.relations
+            .iter()
+            .map(|rel| produce_relation_attrs(rel, false))
+            .chain(self_relations_reverse_attrs)
+            .chain(conjunct_related_attrs)
+            .collect()
     }
 
     pub fn get_primary_key_auto_increment(&self) -> Ident {

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.12.0 - Pending
 
++ 2023-05-19: `0.12.0-rc.2`
+
 ### New Features
 
 * Supports for partial select of `Option<T>` model field. A `None` value will be filled when the select result does not contain the `Option<T>` field without throwing an error. https://github.com/SeaQL/sea-orm/pull/1513
@@ -32,7 +34,6 @@ let customer = Customer::find()
 // Since it's of type `Option<String>`, it'll be `None` and no error will be thrown.
 assert_eq!(customers.notes, None);
 ```
-* Added `sea_orm_macros::EnumIter` to implement `strum::IntoEnumIterator` trait for the derived enum (source code adapted from https://github.com/Peternator7/strum)
 * [sea-orm-cli] the `migrate init` command will create a `.gitignore` file when the migration folder reside in a Git repository https://github.com/SeaQL/sea-orm/pull/1334
 * Added `MigratorTrait::migration_table_name()` method to configure the name of migration table https://github.com/SeaQL/sea-orm/pull/1511
 ```rs
@@ -117,13 +118,13 @@ assert_eq!(
     .join(" ")
 );
 ```
-* Implemented `IntoIdentity` for `Identity` https://github.com/SeaQL/sea-orm/pull/1508
-* `Identity` supports up to identity tuple of `DynIden` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
-* Implemented `IntoIdentity` for tuple of `IdenStatic` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
-* Implemented `IdentityOf` for tuple of `ColumnTrait` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
-* Implemented `TryGetableMany` for tuple of `TryGetable` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
-* Implemented `TryFromU64` for tuple of `TryFromU64` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
 * Supports entity with composite primary key of length 12 https://github.com/SeaQL/sea-orm/pull/1508
+    * Implemented `IntoIdentity` for `Identity` https://github.com/SeaQL/sea-orm/pull/1508
+    * `Identity` supports up to identity tuple of `DynIden` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
+    * Implemented `IntoIdentity` for tuple of `IdenStatic` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
+    * Implemented `IdentityOf` for tuple of `ColumnTrait` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
+    * Implemented `TryGetableMany` for tuple of `TryGetable` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
+    * Implemented `TryFromU64` for tuple of `TryFromU64` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
 ```rs
 use sea_orm::entity::prelude::*;
 
@@ -164,6 +165,54 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 ```
+* Added macro `DerivePartialModel` https://github.com/SeaQL/sea-orm/pull/1597
+```rs
+#[derive(DerivePartialModel, FromQueryResult)]
+#[sea_orm(entity = "Cake")]
+struct PartialCake {
+    name: String,
+    #[sea_orm(
+        from_expr = r#"SimpleExpr::FunctionCall(Func::upper(Expr::col((Cake, cake::Column::Name))))"#
+    )]
+    name_upper: String,
+}
+
+assert_eq!(
+    cake::Entity::find()
+        .into_partial_model::<PartialCake>()
+        .into_statement(DbBackend::Sqlite)
+        .to_string(),
+    r#"SELECT "cake"."name", UPPER("cake"."name") AS "name_upper" FROM "cake""#
+);
+```
+* [sea-orm-cli] Added support for generating migration of space separated name, for example executing `sea-orm-cli migrate generate "create accounts table"` command will create `m20230503_000000_create_accounts_table.rs` for you https://github.com/SeaQL/sea-orm/pull/1570
+
+* Add `seaography` flag to `sea-orm`, `sea-orm-orm-macros` and `sea-orm-cli` https://github.com/SeaQL/sea-orm/pull/1599
+* Add generation of `seaography` related information to `sea-orm-codegen` https://github.com/SeaQL/sea-orm/pull/1599
+
+    The following information is added in entities files by `sea-orm-cli` when flag `seaography` is `true`
+```rust
+/// ... Entity File ...
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+pub enum RelatedEntity {
+    #[sea_orm(entity = "super::address::Entity")]
+    Address,
+    #[sea_orm(entity = "super::payment::Entity")]
+    Payment,
+    #[sea_orm(entity = "super::rental::Entity")]
+    Rental,
+    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
+    SelfRef,
+    #[sea_orm(entity = "super::store::Entity")]
+    Store,
+    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
+    SelfRefRev,
+}
+```
+* Add `DeriveEntityRelated` macro https://github.com/SeaQL/sea-orm/pull/1599
+
+    The DeriveRelatedEntity derive macro will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration when the `seaography` feature is enabled
 
 ### Enhancements
 
@@ -177,8 +226,16 @@ assert_eq!(migration.name(), "m20220118_000002_create_fruit_table");
 assert_eq!(migration.status(), MigrationStatus::Pending);
 ```
 * The `postgres-array` feature will be enabled when `sqlx-postgres` backend is selected https://github.com/SeaQL/sea-orm/pull/1565
-* Implements `IntoMockRow` for any `BTreeMap` that is indexed by string `impl IntoMockRow for BTreeMap<T, Value> where T: Into<String>` https://github.com/SeaQL/sea-orm/pull/1439
-* Converts any string value into `ConnectOptions` - `impl From<T> for ConnectOptions where T: Into<String>` https://github.com/SeaQL/sea-orm/pull/1439
+* Replace `String` parameters in API with `Into<String>` https://github.com/SeaQL/sea-orm/pull/1439
+    * Implements `IntoMockRow` for any `BTreeMap` that is indexed by string `impl IntoMockRow for BTreeMap<T, Value> where T: Into<String>`
+    * Converts any string value into `ConnectOptions` - `impl From<T> for ConnectOptions where T: Into<String>`
+    * Changed the parameter of method `ConnectOptions::new(T) where T: Into<String>` to takes any string SQL
+    * Changed the parameter of method `Statement::from_string(DbBackend, T) where T: Into<String>` to takes any string SQL
+    * Changed the parameter of method `Statement::from_sql_and_values(DbBackend, T, I) where I: IntoIterator<Item = Value>, T: Into<String>` to takes any string SQL
+    * Changed the parameter of method `Transaction::from_sql_and_values(DbBackend, T, I) where I: IntoIterator<Item = Value>, T: Into<String>` to takes any string SQL
+    * Changed the parameter of method `ConnectOptions::set_schema_search_path(T) where T: Into<String>` to takes any string
+    * Changed the parameter of method `ColumnTrait::like()`, `ColumnTrait::not_like()`, `ColumnTrait::starts_with()`, `ColumnTrait::ends_with()` and `ColumnTrait::contains()` to takes any string
+* Re-export `sea_query::{DynIden, RcOrArc, SeaRc}` in `sea_orm::entity::prelude` module https://github.com/SeaQL/sea-orm/pull/1661
 
 ### Upgrades
 
@@ -259,21 +316,29 @@ CREATE TABLE users_saved_bills
 );
 ```
 * [sea-orm-cli] fixed entity generation includes partitioned tables https://github.com/SeaQL/sea-orm/issues/1582, https://github.com/SeaQL/sea-schema/pull/105
+* Fixed `ActiveEnum::db_type()` return type does not implement `ColumnTypeTrait` https://github.com/SeaQL/sea-orm/pull/1576
+```rs
+impl ColumnTrait for Column {
+    type EntityName = Entity;
+    fn def(&self) -> ColumnDef {
+        match self {
+...
+            // `db_type()` returns `ColumnDef`; now it implements `ColumnTypeTrait`
+            Self::Thing => AnActiveEnumThing::db_type().def(),
+...
+        }
+    }
+}
+```
 
 ### Breaking changes
 
-* Supports for partial select of `Option<T>` model field. A `None` value will be filled when the select result does not contain the `Option<T>` field without throwing an error. https://github.com/SeaQL/sea-orm/pull/1513
-* Added `derive` and `strum` features to `sea-orm-macros`
-* Replaced `sea-strum` dependency with `strum` in `sea-orm`
-* Re-exported `sea_orm_macros::EnumIter` instead of `strum::EnumIter` on the root of `sea-orm`
-* The Variant Enum generated by `DeriveActiveEnum` will properly escape non-UAX#31 compliant characters
-* Changed the parameter of method `ConnectOptions::new(T) where T: Into<String>` to takes any string SQL https://github.com/SeaQL/sea-orm/pull/1439
-* Changed the parameter of method `Statement::from_string(DbBackend, T) where T: Into<String>` to takes any string SQL https://github.com/SeaQL/sea-orm/pull/1439
-* Changed the parameter of method `Statement::from_sql_and_values(DbBackend, T, I) where I: IntoIterator<Item = Value>, T: Into<String>` to takes any string SQL https://github.com/SeaQL/sea-orm/pull/1439
-* Changed the parameter of method `Transaction::from_sql_and_values(DbBackend, T, I) where I: IntoIterator<Item = Value>, T: Into<String>` to takes any string SQL https://github.com/SeaQL/sea-orm/pull/1439
-* Changed the parameter of method `ConnectOptions::set_schema_search_path(T) where T: Into<String>` to takes any string https://github.com/SeaQL/sea-orm/pull/1439
-* Changed the parameter of method `ColumnTrait::like()`, `ColumnTrait::not_like()`, `ColumnTrait::starts_with()`, `ColumnTrait::ends_with()` and `ColumnTrait::contains()` to takes any string https://github.com/SeaQL/sea-orm/pull/1439
-* Added `Identity::Many` https://github.com/SeaQL/sea-orm/pull/1508
+* Supports for partial select of `Option<T>` model field. A `None` value will be filled when the select result does not contain the `Option<T>` field instead of throwing an error. https://github.com/SeaQL/sea-orm/pull/1513
+* Replaced `sea-strum` dependency with upstream `strum` in `sea-orm` https://github.com/SeaQL/sea-orm/pull/1535
+    * Added `derive` and `strum` features to `sea-orm-macros`
+    * The derive macro `EnumIter` is now shipped by `sea-orm-macros`
+* Added a new variant `Many` to `Identity` https://github.com/SeaQL/sea-orm/pull/1508
+* Replace the use of `SeaRc<T>` where `T` isn't `dyn Iden` with `RcOrArc<T>` https://github.com/SeaQL/sea-orm/pull/1661
 
 ## 0.11.3 - 2023-04-24
 
@@ -435,7 +500,7 @@ impl ColumnTrait for Column {
 ### Breaking Changes
 
 * [sea-orm-cli] Enable --universal-time by default https://github.com/SeaQL/sea-orm/pull/1420
-* Added `RecordNotInserted` and `RecordNotUpdated` to `DbErr` 
+* Added `RecordNotInserted` and `RecordNotUpdated` to `DbErr`
 * Added `ConnectionTrait::execute_unprepared` method https://github.com/SeaQL/sea-orm/pull/1327
 * As part of https://github.com/SeaQL/sea-orm/pull/1311, the required method of `TryGetable` changed:
 ```rust
