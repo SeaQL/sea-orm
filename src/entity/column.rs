@@ -404,9 +404,10 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests_cfg::*, ColumnTrait, Condition, DbBackend, EntityTrait, QueryFilter, QueryTrait,
+        tests_cfg::*, ColumnTrait, Condition, DbBackend, EntityTrait, QueryFilter, QuerySelect,
+        QueryTrait,
     };
-    use sea_query::Query;
+    use sea_query::{CaseStatement, Expr, Func, Keyword, Query};
 
     #[test]
     fn test_in_subquery_1() {
@@ -1304,5 +1305,46 @@ mod tests {
             two: ActiveValue::set(2),
             three: ActiveValue::set(3),
         });
+    }
+
+    #[test]
+    fn test_into_simple_expr() {
+        assert_eq!(
+            cake::Entity::find()
+                .select_only()
+                .column_as(Func::max(Expr::col(cake::Column::Id)), "max_id")
+                .build(DbBackend::MySql)
+                .to_string(),
+            "SELECT MAX(`id`) AS `max_id` FROM `cake`"
+        );
+        assert_eq!(
+            cake::Entity::find()
+                .select_only()
+                .column_as(Expr::col(cake::Column::Id), "my_id")
+                .build(DbBackend::MySql)
+                .to_string(),
+            "SELECT `id` AS `my_id` FROM `cake`"
+        );
+        assert_eq!(
+            cake::Entity::find()
+                .select_only()
+                .column_as(Keyword::CurrentTimestamp, "current_timestamp")
+                .build(DbBackend::MySql)
+                .to_string(),
+            "SELECT CURRENT_TIMESTAMP AS `current_timestamp` FROM `cake`"
+        );
+        assert_eq!(
+            cake::Entity::find()
+                .select_only()
+                .column_as(
+                    CaseStatement::new()
+                        .case(Expr::col(cake::Column::Id).is_in([2, 4]), true)
+                        .finally(false),
+                    "is_even"
+                )
+                .build(DbBackend::MySql)
+                .to_string(),
+            "SELECT (CASE WHEN (`id` IN (2, 4)) THEN TRUE ELSE FALSE END) AS `is_even` FROM `cake`"
+        );
     }
 }
