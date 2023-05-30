@@ -1,8 +1,9 @@
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
-use sea_orm::entity::prelude::*;
-use sea_query::Query;
+pub use sea_orm::{entity::prelude::*, *};
+pub use sea_query::{Expr, Query};
+use serde_json::json;
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -65,4 +66,122 @@ async fn main() -> Result<(), DbErr> {
     ctx.delete().await;
 
     Ok(())
+}
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
+#[cfg_attr(
+    any(feature = "sqlx-mysql", feature = "sqlx-sqlite"),
+    should_panic(expected = "Database backend doesn't support RETURNING")
+)]
+async fn update_many() {
+    pub use common::{features::*, setup::*, TestContext};
+    use edit_log::*;
+
+    let run = || async {
+        let ctx = TestContext::new("returning_tests_update_many").await;
+        let db = &ctx.db;
+
+        create_tables(db).await?;
+
+        Entity::insert(
+            Model {
+                id: 1,
+                action: "before_save".into(),
+                values: json!({ "id": "unique-id-001" }),
+            }
+            .into_active_model(),
+        )
+        .exec(db)
+        .await?;
+
+        Entity::insert(
+            Model {
+                id: 2,
+                action: "before_save".into(),
+                values: json!({ "id": "unique-id-002" }),
+            }
+            .into_active_model(),
+        )
+        .exec(db)
+        .await?;
+
+        Entity::insert(
+            Model {
+                id: 3,
+                action: "before_save".into(),
+                values: json!({ "id": "unique-id-003" }),
+            }
+            .into_active_model(),
+        )
+        .exec(db)
+        .await?;
+
+        assert_eq!(
+            Entity::find().all(db).await?,
+            [
+                Model {
+                    id: 1,
+                    action: "before_save".into(),
+                    values: json!({ "id": "unique-id-001" }),
+                },
+                Model {
+                    id: 2,
+                    action: "before_save".into(),
+                    values: json!({ "id": "unique-id-002" }),
+                },
+                Model {
+                    id: 3,
+                    action: "before_save".into(),
+                    values: json!({ "id": "unique-id-003" }),
+                },
+            ]
+        );
+
+        // Update many with returning
+        assert_eq!(
+            Entity::update_many()
+                .col_expr(
+                    Column::Values,
+                    Expr::value(json!({ "remarks": "save log" }))
+                )
+                .filter(Column::Action.eq("before_save"))
+                .exec_with_returning(db)
+                .await?,
+            [
+                Model {
+                    id: 1,
+                    action: "before_save".into(),
+                    values: json!({ "remarks": "save log" }),
+                },
+                Model {
+                    id: 2,
+                    action: "before_save".into(),
+                    values: json!({ "remarks": "save log" }),
+                },
+                Model {
+                    id: 3,
+                    action: "before_save".into(),
+                    values: json!({ "remarks": "save log" }),
+                },
+            ]
+        );
+
+        // No-op
+        assert_eq!(
+            Entity::update_many()
+                .filter(Column::Action.eq("before_save"))
+                .exec_with_returning(db)
+                .await?,
+            []
+        );
+
+        Result::<(), DbErr>::Ok(())
+    };
+
+    run().await.unwrap();
 }
