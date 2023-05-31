@@ -1157,4 +1157,74 @@ mod tests {
         let expected = "A null value was encountered while decoding column".to_owned();
         assert_eq!(DbErr::from(try_get_error), DbErr::Type(expected));
     }
+
+    #[test]
+    fn build_with_query() {
+        use sea_orm::{DbBackend, Statement};
+        use sea_query::*;
+
+        let base_query = SelectStatement::new()
+            .column(Alias::new("id"))
+            .expr(1i32)
+            .column(Alias::new("next"))
+            .column(Alias::new("value"))
+            .from(Alias::new("table"))
+            .to_owned();
+
+        let cte_referencing = SelectStatement::new()
+            .column(Alias::new("id"))
+            .expr(Expr::col(Alias::new("depth")).add(1i32))
+            .column(Alias::new("next"))
+            .column(Alias::new("value"))
+            .from(Alias::new("table"))
+            .join(
+                JoinType::InnerJoin,
+                Alias::new("cte_traversal"),
+                Expr::col((Alias::new("cte_traversal"), Alias::new("next")))
+                    .equals((Alias::new("table"), Alias::new("id"))),
+            )
+            .to_owned();
+
+        let common_table_expression = CommonTableExpression::new()
+            .query(
+                base_query
+                    .clone()
+                    .union(UnionType::All, cte_referencing)
+                    .to_owned(),
+            )
+            .columns([
+                Alias::new("id"),
+                Alias::new("depth"),
+                Alias::new("next"),
+                Alias::new("value"),
+            ])
+            .table_name(Alias::new("cte_traversal"))
+            .to_owned();
+
+        let select = SelectStatement::new()
+            .column(ColumnRef::Asterisk)
+            .from(Alias::new("cte_traversal"))
+            .to_owned();
+
+        let with_clause = WithClause::new()
+            .recursive(true)
+            .cte(common_table_expression)
+            .cycle(Cycle::new_from_expr_set_using(
+                SimpleExpr::Column(ColumnRef::Column(Alias::new("id").into_iden())),
+                Alias::new("looped"),
+                Alias::new("traversal_path"),
+            ))
+            .to_owned();
+
+        let with_query = select.with(with_clause).to_owned();
+
+        assert_eq!(
+            DbBackend::MySql.build(&with_query),
+            Statement::from_sql_and_values(
+                DbBackend::MySql,
+                r#"WITH RECURSIVE `cte_traversal` (`id`, `depth`, `next`, `value`) AS (SELECT `id`, ?, `next`, `value` FROM `table` UNION ALL (SELECT `id`, `depth` + ?, `next`, `value` FROM `table` INNER JOIN `cte_traversal` ON `cte_traversal`.`next` = `table`.`id`)) SELECT * FROM `cte_traversal`"#,
+                [1.into(), 1.into()]
+            )
+        );
+    }
 }

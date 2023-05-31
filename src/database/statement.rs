@@ -109,6 +109,18 @@ build_query_stmt!(sea_query::SelectStatement);
 build_query_stmt!(sea_query::UpdateStatement);
 build_query_stmt!(sea_query::DeleteStatement);
 
+impl StatementBuilder for sea_query::WithQuery {
+    fn build(&self, db_backend: &DbBackend) -> Statement {
+        use sea_query::QueryStatementWriter;
+        let stmt = match db_backend {
+            DbBackend::MySql => QueryStatementWriter::build(self, MysqlQueryBuilder),
+            DbBackend::Postgres => QueryStatementWriter::build(self, PostgresQueryBuilder),
+            DbBackend::Sqlite => QueryStatementWriter::build(self, SqliteQueryBuilder),
+        };
+        Statement::from_string_values_tuple(*db_backend, stmt)
+    }
+}
+
 macro_rules! build_schema_stmt {
     ($stmt: ty) => {
         impl StatementBuilder for $stmt {
