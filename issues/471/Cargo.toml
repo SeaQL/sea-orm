@@ -14,7 +14,7 @@ anyhow = "1"
 dotenvy = "0.15"
 futures-util = "0.3"
 serde = "1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 
 [dependencies.sea-orm]
 path = "../../" # remove this line in your own project

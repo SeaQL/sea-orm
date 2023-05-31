@@ -108,7 +108,8 @@ jobs:
           components: clippy
       - run: cargo clippy --all -- -D warnings
       - run: cargo clippy --all --features runtime-async-std-native-tls,sqlx-all -- -D warnings
-      - run: cargo clippy --manifest-path sea-orm-cli/Cargo.toml -- -D warnings
+      # Disable clippy checks on `sea-orm-cli` until we upgraded `clap` to v4. https://github.com/clap-rs/clap/issues/4849
+      # - run: cargo clippy --manifest-path sea-orm-cli/Cargo.toml -- -D warnings
       - run: cargo clippy --manifest-path sea-orm-migration/Cargo.toml -- -D warnings
 
   rustfmt:
@@ -250,11 +251,15 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt
-      - run: cargo fmt --manifest-path ${{ matrix.path }} --all -- --check
       - run: cargo build --manifest-path ${{ matrix.path }}
       - run: cargo test --manifest-path ${{ matrix.path }}
       - if: ${{ contains(matrix.path, 'core/Cargo.toml') }}
         run: cargo test --manifest-path ${{ matrix.path }} --features mock
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: rustfmt
+      - run: cargo fmt --manifest-path ${{ matrix.path }} --all -- --check
 
   issues-matrix:
     name: Issues Matrix

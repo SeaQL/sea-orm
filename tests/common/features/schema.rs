@@ -48,6 +48,8 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_edit_log_table(db).await?;
     create_teas_table(db).await?;
     create_binary_table(db).await?;
+    create_bits_table(db).await?;
+    create_dyn_table_name_lazy_static_table(db).await?;
 
     if DbBackend::Postgres == db_backend {
         create_collection_table(db).await?;
@@ -342,7 +344,7 @@ pub async fn create_json_struct_table(db: &DbConn) -> Result<ExecResult, DbErr> 
 pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     db.execute(sea_orm::Statement::from_string(
         db.get_database_backend(),
-        "CREATE EXTENSION IF NOT EXISTS citext".into(),
+        "CREATE EXTENSION IF NOT EXISTS citext",
     ))
     .await?;
 
@@ -558,4 +560,79 @@ pub async fn create_binary_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &create_table_stmt, Binary).await
+}
+
+pub async fn create_bits_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(bits::Entity.table_ref())
+        .col(
+            ColumnDef::new(bits::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(bits::Column::Bit0)
+                .custom(Alias::new("BIT"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(bits::Column::Bit1)
+                .custom(Alias::new("BIT(1)"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(bits::Column::Bit8)
+                .custom(Alias::new("BIT(8)"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(bits::Column::Bit16)
+                .custom(Alias::new("BIT(16)"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(bits::Column::Bit32)
+                .custom(Alias::new("BIT(32)"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(bits::Column::Bit64)
+                .custom(Alias::new("BIT(64)"))
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &create_table_stmt, Bits).await
+}
+
+pub async fn create_dyn_table_name_lazy_static_table(db: &DbConn) -> Result<(), DbErr> {
+    use dyn_table_name_lazy_static::*;
+
+    let entities = [
+        Entity {
+            table_name: TableName::from_str_truncate("dyn_table_name_lazy_static_1"),
+        },
+        Entity {
+            table_name: TableName::from_str_truncate("dyn_table_name_lazy_static_2"),
+        },
+    ];
+    for entity in entities {
+        let create_table_stmt = sea_query::Table::create()
+            .table(entity.table_ref())
+            .col(
+                ColumnDef::new(Column::Id)
+                    .integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .col(ColumnDef::new(Column::Name).string().not_null())
+            .to_owned();
+
+        create_table(db, &create_table_stmt, entity).await?;
+    }
+
+    Ok(())
 }

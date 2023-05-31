@@ -1,6 +1,6 @@
 pub use crate::{
     error::*,
-    sea_query::{BlobSize, Expr},
+    sea_query::{BlobSize, DynIden, Expr, RcOrArc, SeaRc},
     ActiveEnum, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait, ColumnType,
     ColumnTypeTrait, ConnectionTrait, CursorTrait, DatabaseConnection, DbConn, EntityName,
     EntityTrait, EnumIter, ForeignKeyAction, Iden, IdenStatic, Linked, LoaderTrait, ModelTrait,
@@ -12,7 +12,7 @@ pub use crate::{
 pub use crate::{
     DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn,
     DeriveCustomColumn, DeriveEntity, DeriveEntityModel, DeriveIntoActiveModel, DeriveModel,
-    DerivePrimaryKey, DeriveRelation, FromJsonQueryResult,
+    DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, FromJsonQueryResult,
 };
 
 pub use async_trait;

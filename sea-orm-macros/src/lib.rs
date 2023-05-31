@@ -1,6 +1,7 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
+
 use syn::{parse_macro_input, DeriveInput, Error};
 
 #[cfg(feature = "derive")]
@@ -592,9 +593,14 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 #[cfg(feature = "derive")]
 #[proc_macro_derive(FromQueryResult)]
 pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
-    let DeriveInput { ident, data, .. } = parse_macro_input!(input);
+    let DeriveInput {
+        ident,
+        data,
+        generics,
+        ..
+    } = parse_macro_input!(input);
 
-    match derives::expand_derive_from_query_result(ident, data) {
+    match derives::expand_derive_from_query_result(ident, data, generics) {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }
@@ -633,6 +639,46 @@ pub fn derive_relation(input: TokenStream) -> TokenStream {
         .into()
 }
 
+/// The DeriveRelatedEntity derive macro will implement seaography::RelationBuilder for RelatedEntity enumeration.
+///
+/// ### Usage
+///
+/// ```ignore
+/// use sea_orm::entity::prelude::*;
+///
+/// // ...
+/// // Model, Relation enum, etc.
+/// // ...
+///
+/// #[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+/// pub enum RelatedEntity {
+///     #[sea_orm(entity = "super::address::Entity")]
+///     Address,
+///     #[sea_orm(entity = "super::payment::Entity")]
+///     Payment,
+///     #[sea_orm(entity = "super::rental::Entity")]
+///     Rental,
+///     #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
+///     SelfRef,
+///     #[sea_orm(entity = "super::store::Entity")]
+///     Store,
+///     #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
+///     SelfRefRev,
+/// }
+/// ```
+#[cfg(feature = "derive")]
+#[proc_macro_derive(DeriveRelatedEntity, attributes(sea_orm))]
+pub fn derive_related_entity(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    if cfg!(feature = "seaography") {
+        derives::expand_derive_related_entity(input)
+            .unwrap_or_else(Error::into_compile_error)
+            .into()
+    } else {
+        TokenStream::new()
+    }
+}
+
 /// The DeriveMigrationName derive macro will implement `sea_orm_migration::MigrationName` for a migration.
 ///
 /// ### Usage
@@ -668,6 +714,80 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 
     match derives::expand_derive_from_json_query_result(ident) {
         Ok(ts) => ts.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
+/// The DerivePartialModel derive macro will implement `sea_orm::PartialModelTrait` for simplify partial model queries.
+///
+/// ## Usage
+///
+/// ```rust
+/// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
+/// use serde::{Deserialize, Serialize};
+///
+/// #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
+/// #[sea_orm(table_name = "posts")]
+/// pub struct Model {
+///     #[sea_orm(primary_key)]
+///     pub id: i32,
+///     pub title: String,
+///     #[sea_orm(column_type = "Text")]
+///     pub text: String,
+/// }
+/// # #[derive(Copy, Clone, Debug, EnumIter)]
+/// # pub enum Relation {}
+/// #
+/// # impl RelationTrait for Relation {
+/// #     fn def(&self) -> RelationDef {
+/// #         panic!("No Relation");
+/// #     }
+/// # }
+/// #
+/// # impl ActiveModelBehavior for ActiveModel {}
+///
+/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// #[sea_orm(entity = "Entity")]
+/// struct SelectResult {
+///     title: String,
+///     #[sea_orm(from_col = "text")]
+///     content: String,
+///     #[sea_orm(from_expr = "Expr::val(1).add(1)")]
+///     sum: i32,
+/// }
+/// ```
+///
+/// If all fields in the partial model is `from_expr`, the `entity` can be ignore.
+/// ```
+/// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
+///
+/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// struct SelectResult {
+///     #[sea_orm(from_expr = "Expr::val(1).add(1)")]
+///     sum: i32,
+/// }
+/// ```
+///
+/// A field cannot have attributes `from_col` and `from_expr` at the same time.
+/// Or, it will result in a compile error.
+///
+/// ```compile_fail
+/// use sea_orm::{entity::prelude::*, FromQueryResult, DerivePartialModel, sea_query::Expr};
+///
+/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// #[sea_orm(entity = "Entity")]
+/// struct SelectResult {
+///     #[sea_orm(from_expr = "Expr::val(1).add(1)", from_col = "foo")]
+///     sum: i32
+/// }
+/// ```
+#[cfg(feature = "derive")]
+#[proc_macro_derive(DerivePartialModel, attributes(sea_orm))]
+pub fn derive_partial_model(input: TokenStream) -> TokenStream {
+    let derive_input = parse_macro_input!(input);
+
+    match derives::expand_derive_partial_model(derive_input) {
+        Ok(token_stream) => token_stream.into(),
         Err(e) => e.to_compile_error().into(),
     }
 }

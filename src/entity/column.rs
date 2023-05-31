@@ -149,7 +149,10 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE 'cheese'"
     /// );
     /// ```
-    fn like(&self, s: &str) -> SimpleExpr {
+    fn like<T>(&self, s: T) -> SimpleExpr
+    where
+        T: Into<String>,
+    {
         Expr::col((self.entity_name(), *self)).like(s)
     }
 
@@ -164,7 +167,10 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` NOT LIKE 'cheese'"
     /// );
     /// ```
-    fn not_like(&self, s: &str) -> SimpleExpr {
+    fn not_like<T>(&self, s: T) -> SimpleExpr
+    where
+        T: Into<String>,
+    {
         Expr::col((self.entity_name(), *self)).not_like(s)
     }
 
@@ -179,8 +185,11 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE 'cheese%'"
     /// );
     /// ```
-    fn starts_with(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("{s}%");
+    fn starts_with<T>(&self, s: T) -> SimpleExpr
+    where
+        T: Into<String>,
+    {
+        let pattern = format!("{}%", s.into());
         Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
@@ -195,8 +204,11 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese'"
     /// );
     /// ```
-    fn ends_with(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("%{s}");
+    fn ends_with<T>(&self, s: T) -> SimpleExpr
+    where
+        T: Into<String>,
+    {
+        let pattern = format!("%{}", s.into());
         Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
@@ -211,8 +223,11 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`name` LIKE '%cheese%'"
     /// );
     /// ```
-    fn contains(&self, s: &str) -> SimpleExpr {
-        let pattern = format!("%{s}%");
+    fn contains<T>(&self, s: T) -> SimpleExpr
+    where
+        T: Into<String>,
+    {
+        let pattern = format!("%{}%", s.into());
         Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
@@ -300,14 +315,25 @@ impl ColumnTypeTrait for ColumnType {
     }
 
     fn get_enum_name(&self) -> Option<&DynIden> {
-        fn enum_name(col_type: &ColumnType) -> Option<&DynIden> {
-            match col_type {
-                ColumnType::Enum { name, .. } => Some(name),
-                ColumnType::Array(col_type) => enum_name(col_type),
-                _ => None,
-            }
-        }
         enum_name(self)
+    }
+}
+
+impl ColumnTypeTrait for ColumnDef {
+    fn def(self) -> ColumnDef {
+        self
+    }
+
+    fn get_enum_name(&self) -> Option<&DynIden> {
+        enum_name(&self.col_type)
+    }
+}
+
+fn enum_name(col_type: &ColumnType) -> Option<&DynIden> {
+    match col_type {
+        ColumnType::Enum { name, .. } => Some(name),
+        ColumnType::Array(col_type) => enum_name(col_type),
+        _ => None,
     }
 }
 

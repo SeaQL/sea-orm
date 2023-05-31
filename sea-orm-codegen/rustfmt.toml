@@ -1,4 +1,5 @@
 ignore = [
     "tests/compact/*.rs",
     "tests/expanded/*.rs",
+    "tests_cfg",
 ]

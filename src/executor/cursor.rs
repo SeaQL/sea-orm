@@ -1,6 +1,6 @@
 use crate::{
-    ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IntoIdentity, QueryOrder,
-    Select, SelectModel, SelectorTrait,
+    ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IntoIdentity,
+    PartialModelTrait, QueryOrder, QuerySelect, Select, SelectModel, SelectorTrait,
 };
 use sea_query::{
     Condition, DynIden, Expr, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr, Value,
@@ -101,6 +101,56 @@ where
                         .add(f(c2, v2)),
                 )
                 .add(f(c1, v1)),
+            (Identity::Many(col_vec), ValueTuple::Many(val_vec))
+                if col_vec.len() == val_vec.len() =>
+            {
+                // The length of `col_vec` and `val_vec` should be equal and is denoted by "n".
+                //
+                // The elements of `col_vec` and `val_vec` are denoted by:
+                //   - `col_vec`: "col_1", "col_2", ..., "col_n-1", "col_n"
+                //   - `val_vec`: "val_1", "val_2", ..., "val_n-1", "val_n"
+                //
+                // The general form of the where condition should have "n" number of inner-AND-condition chained by an outer-OR-condition.
+                // The "n"-th inner-AND-condition should have exactly "n" number of column value expressions,
+                // to construct the expression we take the first "n" number of column and value from the respected vector.
+                //   - if it's not the last element, then we construct a "col_1 = val_1" equal expression
+                //   - otherwise, for the last element, we should construct a "col_n > val_n" greater than or "col_n < val_n" less than expression.
+                // i.e.
+                // WHERE
+                //   (col_1 = val_1 AND col_2 = val_2 AND ... AND col_n > val_n)
+                //   OR (col_1 = val_1 AND col_2 = val_2 AND ... AND col_n-1 > val_n-1)
+                //   OR (col_1 = val_1 AND col_2 = val_2 AND ... AND col_n-2 > val_n-2)
+                //   OR ...
+                //   OR (col_1 = val_1 AND col_2 > val_2)
+                //   OR (col_1 > val_1)
+
+                // Counting from 1 to "n" (inclusive) but in reverse, i.e. n, n-1, ..., 2, 1
+                (1..=col_vec.len())
+                    .rev()
+                    .fold(Condition::any(), |cond_any, n| {
+                        // Construct the inner-AND-condition
+                        let inner_cond_all =
+                            // Take the first "n" elements from the column and value vector respectively
+                            col_vec.iter().zip(val_vec.iter()).enumerate().take(n).fold(
+                                Condition::all(),
+                                |inner_cond_all, (i, (col, val))| {
+                                    let val = val.clone();
+                                    // Construct a equal expression,
+                                    // except for the last one being greater than or less than expression
+                                    let expr = if i != (n - 1) {
+                                        Expr::col((SeaRc::clone(&self.table), SeaRc::clone(col)))
+                                            .eq(val)
+                                    } else {
+                                        f(col, val)
+                                    };
+                                    // Chain it with AND operator
+                                    inner_cond_all.add(expr)
+                                },
+                            );
+                        // Chain inner-AND-condition with OR operator
+                        cond_any.add(inner_cond_all)
+                    })
+            }
             _ => panic!("column arity mismatch"),
         }
     }
@@ -145,6 +195,11 @@ where
                 f(query, c2);
                 f(query, c3);
             }
+            Identity::Many(vec) => {
+                for col in vec.iter() {
+                    f(query, col);
+                }
+            }
         }
     }
 
@@ -179,6 +234,14 @@ where
         }
     }
 
+    /// Return a [Selector] from `Self` that wraps a [SelectModel] with a [PartialModel](PartialModelTrait)
+    pub fn into_partial_model<M>(self) -> Cursor<SelectModel<M>>
+    where
+        M: PartialModelTrait,
+    {
+        M::select_cols(QuerySelect::select_only(self)).into_model::<M>()
+    }
+
     /// Construct a [Cursor] that fetch JSON value
     #[cfg(feature = "with-json")]
     pub fn into_json(self) -> Cursor<SelectModel<JsonValue>> {
@@ -189,6 +252,17 @@ where
             last: self.last,
             phantom: PhantomData,
         }
+    }
+}
+
+impl<S> QuerySelect for Cursor<S>
+where
+    S: SelectorTrait,
+{
+    type QueryStatement = SelectStatement;
+
+    fn query(&mut self) -> &mut SelectStatement {
+        &mut self.query
     }
 }
 
@@ -661,6 +735,162 @@ mod tests {
                     4_u64.into(),
                 ]
             ),])]
+        );
+
+        Ok(())
+    }
+
+    mod composite_entity {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "t")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub col_1: String,
+            #[sea_orm(primary_key)]
+            pub col_2: String,
+            #[sea_orm(primary_key)]
+            pub col_3: String,
+            #[sea_orm(primary_key)]
+            pub col_4: String,
+            #[sea_orm(primary_key)]
+            pub col_5: String,
+            #[sea_orm(primary_key)]
+            pub col_6: String,
+            #[sea_orm(primary_key)]
+            pub col_7: String,
+            #[sea_orm(primary_key)]
+            pub col_8: String,
+            #[sea_orm(primary_key)]
+            pub col_9: String,
+            #[sea_orm(primary_key)]
+            pub col_10: String,
+            #[sea_orm(primary_key)]
+            pub col_11: String,
+            #[sea_orm(primary_key)]
+            pub col_12: String,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    #[smol_potat::test]
+    async fn cursor_by_many() -> Result<(), DbErr> {
+        use composite_entity::*;
+
+        let base_sql = [
+            r#"SELECT "t"."col_1", "t"."col_2", "t"."col_3", "t"."col_4", "t"."col_5", "t"."col_6", "t"."col_7", "t"."col_8", "t"."col_9", "t"."col_10", "t"."col_11", "t"."col_12""#,
+            r#"FROM "t" WHERE"#,
+        ].join(" ");
+
+        assert_eq!(
+            DbBackend::Postgres.build(&
+                Entity::find()
+                .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4))
+                .after(("val_1", "val_2", "val_3", "val_4"))
+                .query
+            ).to_string(),
+            format!("{base_sql} {}", [
+                r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" > 'val_4')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" > 'val_3')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" > 'val_2')"#,
+                r#"OR "t"."col_1" > 'val_1'"#,
+            ].join(" "))
+        );
+
+        assert_eq!(
+            DbBackend::Postgres.build(&
+                Entity::find()
+                .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5))
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5"))
+                .query
+            ).to_string(),
+            format!("{base_sql} {}", [
+                r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" > 'val_5')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" > 'val_4')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" > 'val_3')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" > 'val_2')"#,
+                r#"OR "t"."col_1" > 'val_1'"#,
+            ].join(" "))
+        );
+
+        assert_eq!(
+            DbBackend::Postgres.build(&
+                Entity::find()
+                .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6))
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6"))
+                .query
+            ).to_string(),
+            format!("{base_sql} {}", [
+                r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" > 'val_6')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" > 'val_5')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" > 'val_4')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" > 'val_3')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" > 'val_2')"#,
+                r#"OR "t"."col_1" > 'val_1'"#,
+            ].join(" "))
+        );
+
+        assert_eq!(
+            DbBackend::Postgres.build(&
+                Entity::find()
+                .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7))
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7"))
+                .query
+            ).to_string(),
+            format!("{base_sql} {}", [
+                r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" = 'val_6' AND "t"."col_7" < 'val_7')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" < 'val_6')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" < 'val_5')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" < 'val_4')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" < 'val_3')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" < 'val_2')"#,
+                r#"OR "t"."col_1" < 'val_1'"#,
+            ].join(" "))
+        );
+
+        assert_eq!(
+            DbBackend::Postgres.build(&
+                Entity::find()
+                .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7, Column::Col8))
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8"))
+                .query
+            ).to_string(),
+            format!("{base_sql} {}", [
+                r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" = 'val_6' AND "t"."col_7" = 'val_7' AND "t"."col_8" < 'val_8')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" = 'val_6' AND "t"."col_7" < 'val_7')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" < 'val_6')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" < 'val_5')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" < 'val_4')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" < 'val_3')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" < 'val_2')"#,
+                r#"OR "t"."col_1" < 'val_1'"#,
+            ].join(" "))
+        );
+
+        assert_eq!(
+            DbBackend::Postgres.build(&
+                Entity::find()
+                .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7, Column::Col8, Column::Col9))
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8", "val_9"))
+                .query
+            ).to_string(),
+            format!("{base_sql} {}", [
+                r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" = 'val_6' AND "t"."col_7" = 'val_7' AND "t"."col_8" = 'val_8' AND "t"."col_9" < 'val_9')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" = 'val_6' AND "t"."col_7" = 'val_7' AND "t"."col_8" < 'val_8')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" = 'val_6' AND "t"."col_7" < 'val_7')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" = 'val_5' AND "t"."col_6" < 'val_6')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" = 'val_4' AND "t"."col_5" < 'val_5')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" < 'val_4')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" < 'val_3')"#,
+                r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" < 'val_2')"#,
+                r#"OR "t"."col_1" < 'val_1'"#,
+            ].join(" "))
         );
 
         Ok(())
