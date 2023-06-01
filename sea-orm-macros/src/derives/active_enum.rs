@@ -17,14 +17,21 @@ struct ActiveEnum {
     db_type: TokenStream,
     is_string: bool,
     variants: Vec<ActiveEnumVariant>,
-    display: bool,
+    display: Option<bool>,
+}
+
+enum VariantDisplayMode {
+    Unmodified,
+    Label,
+    Value,
+    Custom(String),
 }
 
 struct ActiveEnumVariant {
     ident: syn::Ident,
     string_value: Option<LitStr>,
     num_value: Option<LitInt>,
-    display: Option<bool>,
+    display: VariantDisplayMode,
 }
 
 impl ActiveEnum {
@@ -39,7 +46,7 @@ impl ActiveEnum {
         let mut db_type = Err(Error::TT(quote_spanned! {
             ident_span => compile_error!("Missing macro attribute `db_type`");
         }));
-        let mut display = false;
+        let mut display = None;
         for attr in input.attrs.iter() {
             if let Some(ident) = attr.path.get_ident() {
                 if ident != "sea_orm" {
@@ -81,8 +88,17 @@ impl ActiveEnum {
                                 }
                             } else if name == "display" {
                                 if let Lit::Str(litstr) = &nv.lit {
-                                        display = litstr.value() == "label";
+                                    display = Some(litstr.value() == "label");
                                 }
+                            }
+                        }
+                    }
+                    if let Meta::Path(path) = meta {
+                        if let Some(name) = path.get_ident() {
+                            if name == "display" || name == "display_label" {
+                                display = Some(true);
+                            } else if name == "display_value" {
+                                display = Some(false);
                             }
                         }
                     }
@@ -102,7 +118,7 @@ impl ActiveEnum {
             let variant_span = variant.ident.span();
             let mut string_value = None;
             let mut num_value = None;
-            let mut display = None;
+            let mut display = VariantDisplayMode::Unmodified;
 
             for attr in variant.attrs.iter() {
                 if let Some(ident) = attr.path.get_ident() {
@@ -129,12 +145,16 @@ impl ActiveEnum {
                                     }
                                 } else if name == "display" {
                                     if let Lit::Str(lit) = nv.lit {
-                                        display = match lit.value().as_ref() {
-                                            "label" => Some(true),
-                                            "value" => Some(false),
-                                            _ => None,
-                                        }
+                                        display = VariantDisplayMode::Custom(lit.value());
                                     }
+                                }
+                            }
+                        } else if let Meta::Path(path) = meta {
+                            if let Some(name) = path.get_ident() {
+                                if name == "display_label" {
+                                    display = VariantDisplayMode::Label;
+                                } else if name == "display_value" {
+                                    display = VariantDisplayMode::Value;
                                 }
                             }
                         }
@@ -250,10 +270,15 @@ impl ActiveEnum {
             .map(|variant| {
                 let enum_ident = variant.ident.clone().to_string();
                 let enum_ident = enum_ident.as_str();
-                match variant.display {
-                    None if *display => quote!(#enum_ident.into()),
-                    Some(true) => quote!(#enum_ident.into()),
-                    Some(false) | None => quote!(self.to_value().into()),
+                match &variant.display {
+                    VariantDisplayMode::Unmodified if *display == Some(true) => {
+                        quote!(#enum_ident.into())
+                    }
+                    VariantDisplayMode::Label => quote!(#enum_ident.into()),
+                    VariantDisplayMode::Value | VariantDisplayMode::Unmodified => {
+                        quote!(self.to_value())
+                    }
+                    VariantDisplayMode::Custom(x) => quote!(#x.clone()),
                 }
             })
             .collect();

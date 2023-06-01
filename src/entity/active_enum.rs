@@ -305,7 +305,7 @@ mod tests {
 
         // Default with override
         #[derive(PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-        #[sea_orm(rs_type = "i32", db_type = "Integer")]
+        #[sea_orm(rs_type = "i32", db_type = "Integer", display)]
         enum DefaultDisplayOverride {
             #[sea_orm(display = "label")]
             One = 1,
