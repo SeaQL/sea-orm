@@ -203,6 +203,10 @@ impl MockDatabaseTrait for MockDatabase {
     fn get_database_backend(&self) -> DbBackend {
         self.db_backend
     }
+
+    fn ping(&self) -> Result<(), DbErr> {
+        Ok(())
+    }
 }
 
 impl MockRow {
