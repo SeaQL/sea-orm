@@ -229,6 +229,132 @@ where
     }
 }
 
+/// The Insert struct but with fallback for empty iterator. Can be constructed through Insert::fallback
+#[derive(Debug)]
+pub struct InsertWithFallback<A, F, R>
+where
+    A: ActiveModelTrait,
+    F: FnOnce() -> R,
+{
+    pub(crate) insert: Insert<A>,
+    pub(crate) fallback: F,
+}
+
+impl<A> Insert<A>
+where
+    A: ActiveModelTrait,
+{
+    /// Add a fallback function to your insert in case the given iterator is empty.
+    pub fn fallback<F, R>(self, fallback: F) -> InsertWithFallback<A, F, R>
+    where
+        A: ActiveModelTrait,
+        F: FnOnce() -> R,
+    {
+        InsertWithFallback {
+            insert: self,
+            fallback,
+        }
+    }
+}
+
+impl<A, F, R> QueryTrait for InsertWithFallback<A, F, R>
+where
+    A: ActiveModelTrait,
+    F: FnOnce() -> R,
+{
+    type QueryStatement = InsertStatement;
+
+    fn query(&mut self) -> &mut Self::QueryStatement {
+        self.insert.query()
+    }
+
+    fn as_query(&self) -> &Self::QueryStatement {
+        self.insert.as_query()
+    }
+
+    fn into_query(self) -> Self::QueryStatement {
+        self.insert.into_query()
+    }
+}
+
+impl<A, F, R> InsertWithFallback<A, F, R>
+where
+    A: ActiveModelTrait,
+    F: FnOnce() -> R,
+{
+    /// Add a Model to Self
+    ///
+    /// # Panics
+    ///
+    /// Panics if the column value has discrepancy across rows
+    #[allow(clippy::should_implement_trait)]
+    pub fn add<M>(mut self, m: M) -> Self
+    where
+        M: IntoActiveModel<A>,
+    {
+        self.insert = self.insert.add(m);
+        self
+    }
+
+    /// Add many Models to Self
+    pub fn add_many<M, I>(mut self, models: I) -> Self
+    where
+        M: IntoActiveModel<A>,
+        I: IntoIterator<Item = M>,
+    {
+        self.insert = self.insert.add_many(models);
+        self
+    }
+
+    /// On conflict
+    ///
+    /// on conflict do nothing
+    /// ```
+    /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
+    ///
+    /// let orange = cake::ActiveModel {
+    ///     id: ActiveValue::set(2),
+    ///     name: ActiveValue::set("Orange".to_owned()),
+    /// };
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange)
+    ///         .on_conflict(
+    ///             OnConflict::column(cake::Column::Name)
+    ///                 .do_nothing()
+    ///                 .to_owned()
+    ///         )
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO NOTHING"#,
+    /// );
+    /// ```
+    ///
+    /// on conflict do update
+    /// ```
+    /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
+    ///
+    /// let orange = cake::ActiveModel {
+    ///     id: ActiveValue::set(2),
+    ///     name: ActiveValue::set("Orange".to_owned()),
+    /// };
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange)
+    ///         .on_conflict(
+    ///             OnConflict::column(cake::Column::Name)
+    ///                 .update_column(cake::Column::Name)
+    ///                 .to_owned()
+    ///         )
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO UPDATE SET "name" = "excluded"."name""#,
+    /// );
+    /// ```
+    pub fn on_conflict(mut self, on_conflict: OnConflict) -> Self {
+        self.insert = self.insert.on_conflict(on_conflict);
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use sea_query::OnConflict;

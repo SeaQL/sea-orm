@@ -1,6 +1,7 @@
 use crate::{
-    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert, IntoActiveModel,
-    Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
+    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert,
+    InsertWithFallback, IntoActiveModel, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait,
+    SelectModel, SelectorRaw, Statement, TryFromU64,
 };
 use sea_query::{Expr, FromValueTuple, Iden, InsertStatement, IntoColumnRef, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};
@@ -74,6 +75,76 @@ where
         A: 'a,
     {
         Inserter::<A>::new(self.primary_key, self.query).exec_with_returning(db)
+    }
+}
+
+/// Types of results returned in a InsertWithFallback execution
+#[derive(Debug)]
+pub enum FallbackResult<A, B> {
+    /// The fallback function was called, meaning the provided iterator is empty
+    Fallback(A),
+    /// The fallback function was not triggered, so the provided iterator is not empty and the expected result is wrapped in this enum
+    NoFallback(B),
+}
+
+impl<A, F, R> InsertWithFallback<A, F, R>
+where
+    A: ActiveModelTrait,
+    F: FnOnce() -> R,
+{
+    /// Execute an insert operation
+    #[allow(unused_mut)]
+    pub fn exec<'a, C>(
+        self,
+        db: &'a C,
+    ) -> FallbackResult<R, impl Future<Output = Result<InsertResult<A>, DbErr>> + '_>
+    where
+        C: ConnectionTrait,
+        A: 'a,
+    {
+        if self.insert.columns.is_empty() {
+            FallbackResult::Fallback((self.fallback)())
+        } else {
+            FallbackResult::NoFallback(self.insert.exec(db))
+        }
+    }
+
+    /// Execute an insert operation without returning (don't use `RETURNING` syntax)
+    /// Number of rows affected is returned
+    pub fn exec_without_returning<'a, C>(
+        self,
+        db: &'a C,
+    ) -> FallbackResult<R, impl Future<Output = Result<u64, DbErr>> + '_>
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: 'a,
+    {
+        if self.insert.columns.is_empty() {
+            FallbackResult::Fallback((self.fallback)())
+        } else {
+            FallbackResult::NoFallback(self.insert.exec_without_returning(db))
+        }
+    }
+
+    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
+    pub fn exec_with_returning<'a, C>(
+        self,
+        db: &'a C,
+    ) -> FallbackResult<
+        R,
+        impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + '_,
+    >
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: 'a,
+    {
+        if self.insert.columns.is_empty() {
+            FallbackResult::Fallback((self.fallback)())
+        } else {
+            FallbackResult::NoFallback(self.insert.exec_with_returning(db))
+        }
     }
 }
 
