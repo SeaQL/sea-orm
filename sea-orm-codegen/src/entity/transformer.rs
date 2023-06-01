@@ -58,13 +58,8 @@ impl EntityTransformer {
                     col
                 })
                 .map(|col| {
-                    let col_type =
-                        if let sea_query::ColumnType::Array(inner_col_type) = &col.col_type {
-                            inner_col_type.as_ref()
-                        } else {
-                            &col.col_type
-                        };
-                    if let sea_query::ColumnType::Enum { name, variants } = col_type {
+                    if let sea_query::ColumnType::Enum { name, variants } = col.get_inner_col_type()
+                    {
                         enums.insert(
                             name.to_string(),
                             ActiveEnum {
