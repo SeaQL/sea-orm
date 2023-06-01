@@ -60,6 +60,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [RSS aggregator](https://github.com/fistons/rss-aggregator)| A small RSS aggregator and API using Actix Web and SeaORM | DB: Postgres
 - [snmp-sim-rust](https://github.com/sonalake/snmp-sim-rust) | SNMP Simulator | DB: SQLite
 - [Wikipedia Speedrun](https://wikipediaspeedrun.com) ([repository](https://github.com/hut8/wikipedia-speedrun)) | Finds shortest paths between Wikipedia articles | DB: SQLite
+- [ruuth](https://github.com/outurnate/ruuth) ([repository](https://github.com/outurnate/ruuth)) | A simple nginx auth_request backend providing MFA and lockout mechanisms | DB: MySQL, Postgres, SQLite
 
 #### Url Shortener
 - [Dinoly](https://github.com/ippsav/Dinoly) | An url shortener using Axum web framework and SeaORM | DB: Postgres
