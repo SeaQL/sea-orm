@@ -236,6 +236,14 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
     * Changed the parameter of method `ConnectOptions::set_schema_search_path(T) where T: Into<String>` to takes any string
     * Changed the parameter of method `ColumnTrait::like()`, `ColumnTrait::not_like()`, `ColumnTrait::starts_with()`, `ColumnTrait::ends_with()` and `ColumnTrait::contains()` to takes any string
 * Re-export `sea_query::{DynIden, RcOrArc, SeaRc}` in `sea_orm::entity::prelude` module https://github.com/SeaQL/sea-orm/pull/1661
+* Added `DatabaseConnection::ping` https://github.com/SeaQL/sea-orm/pull/1627
+```rust
+|db: DatabaseConnection| {
+    assert!(db.ping().await.is_ok());
+    db.clone().close().await;
+    assert!(matches!(db.ping().await, Err(DbErr::ConnectionAcquire)));
+}
+```
 
 ### Upgrades
 
