@@ -46,7 +46,11 @@ pub struct Cli {
 
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum Commands {
-    #[command(about = "Codegen related commands", display_order = 10)]
+    #[command(
+        about = "Codegen related commands",
+        arg_required_else_help = true,
+        display_order = 10
+    )]
     Generate {
         #[command(subcommand)]
         command: GenerateSubcommands,
@@ -104,7 +108,7 @@ pub enum MigrateSubcommands {
             long,
             default_value = "true",
             help = "Generate migration file based on Utc time",
-            conflicts_with = "local-time",
+            conflicts_with = "local_time",
             display_order = 1001
         )]
         universal_time: bool,
@@ -112,7 +116,7 @@ pub enum MigrateSubcommands {
         #[arg(
             long,
             help = "Generate migration file based on Local time",
-            conflicts_with = "universal-time",
+            conflicts_with = "universal_time",
             display_order = 1002
         )]
         local_time: bool,
@@ -273,8 +277,7 @@ pub enum GenerateSubcommands {
         )]
         model_extra_attributes: Vec<String>,
 
-        #[clap(
-            action,
+        #[arg(
             long,
             default_value = "false",
             long_help = "Generate helper Enumerations that are used by Seaography."

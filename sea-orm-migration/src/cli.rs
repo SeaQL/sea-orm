@@ -112,7 +112,7 @@ pub struct Cli {
     )]
     database_url: Option<String>,
 
-    #[clap(subcommand)]
+    #[command(subcommand)]
     command: Option<MigrateSubcommands>,
 }
 
