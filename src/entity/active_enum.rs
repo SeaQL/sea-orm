@@ -223,7 +223,8 @@ mod tests {
         #[sea_orm(
             rs_type = "String",
             db_type = "String(Some(1))",
-            enum_name = "category"
+            enum_name = "category",
+            display_value
         )]
         pub enum DeriveCategory {
             #[sea_orm(string_value = "B")]
@@ -338,7 +339,7 @@ mod tests {
         macro_rules! test_num_value_int {
             ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
                 #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-                #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
+                #[sea_orm(rs_type = $rs_type, db_type = $db_type, display_value)]
                 pub enum $ident {
                     #[sea_orm(num_value = -10)]
                     Negative,
@@ -355,7 +356,7 @@ mod tests {
         macro_rules! test_fallback_int {
             ($ident: ident, $fallback_type: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
                 #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-                #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
+                #[sea_orm(rs_type = $rs_type, db_type = $db_type, display_value)]
                 #[repr(i32)]
                 pub enum $ident {
                     Big = 1,
@@ -408,7 +409,7 @@ mod tests {
         macro_rules! test_num_value_uint {
             ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
                 #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-                #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
+                #[sea_orm(rs_type = $rs_type, db_type = $db_type, display_value)]
                 pub enum $ident {
                     #[sea_orm(num_value = 1)]
                     Big,
@@ -423,7 +424,7 @@ mod tests {
         macro_rules! test_fallback_uint {
             ($ident: ident, $fallback_type: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
                 #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-                #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
+                #[sea_orm(rs_type = $rs_type, db_type = $db_type, display_value)]
                 #[repr($fallback_type)]
                 pub enum $ident {
                     Big = 1,
@@ -470,7 +471,12 @@ mod tests {
     #[test]
     fn escaped_non_uax31() {
         #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
-        #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "pop_os_names_typos")]
+        #[sea_orm(
+            rs_type = "String",
+            db_type = "Enum",
+            enum_name = "pop_os_names_typos",
+            display_value
+        )]
         pub enum PopOSTypos {
             #[sea_orm(string_value = "Pop!_OS")]
             PopOSCorrect,
@@ -524,7 +530,8 @@ mod tests {
         #[sea_orm(
             rs_type = "String",
             db_type = "String(None)",
-            enum_name = "conflicting_string_values"
+            enum_name = "conflicting_string_values",
+            display_value
         )]
         pub enum ConflictingStringValues {
             #[sea_orm(string_value = "")]
