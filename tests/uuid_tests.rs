@@ -69,9 +69,7 @@ pub async fn create_and_update_metadata(db: &DatabaseConnection) -> Result<(), D
         time: Some(Time::from_hms_opt(11, 32, 55).unwrap()),
     };
 
-    let res = Metadata::insert(metadata.clone().into_active_model())
-        .exec(db)
-        .await?;
+    let res = Metadata::insert(metadata.clone()).exec(db).await?;
 
     assert_eq!(Metadata::find().one(db).await?, Some(metadata.clone()));
 

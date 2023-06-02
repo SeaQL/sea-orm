@@ -1,7 +1,7 @@
 use crate::{
     ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne, FromQueryResult, Insert,
-    ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related, RelationBuilder,
-    RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
+    IntoActiveModel, ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related,
+    RelationBuilder, RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
 };
 use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 use std::fmt::Debug;
@@ -362,9 +362,10 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
-    fn insert<A>(model: A) -> Insert<A>
+    fn insert<A, M>(model: M) -> Insert<A>
     where
         A: ActiveModelTrait<Entity = Self>,
+        M: IntoActiveModel<A>,
     {
         Insert::one(model)
     }
@@ -459,10 +460,11 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
-    fn insert_many<A, I>(models: I) -> Insert<A>
+    fn insert_many<A, I, M>(models: I) -> Insert<A>
     where
         A: ActiveModelTrait<Entity = Self>,
-        I: IntoIterator<Item = A>,
+        I: IntoIterator<Item = M>,
+        M: IntoActiveModel<A>,
     {
         Insert::many(models)
     }
@@ -584,9 +586,10 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
-    fn update<A>(model: A) -> UpdateOne<A>
+    fn update<A, M>(model: M) -> UpdateOne<A>
     where
         A: ActiveModelTrait<Entity = Self>,
+        M: IntoActiveModel<A>,
     {
         Update::one(model)
     }
@@ -689,9 +692,10 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
-    fn delete<A>(model: A) -> DeleteOne<A>
+    fn delete<A, M>(model: M) -> DeleteOne<A>
     where
         A: ActiveModelTrait<Entity = Self>,
+        M: IntoActiveModel<A>,
     {
         Delete::one(model)
     }

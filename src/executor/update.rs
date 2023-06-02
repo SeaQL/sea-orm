@@ -81,14 +81,15 @@ impl Updater {
         })
     }
 
-    async fn exec_update_and_return_updated<A, C>(
+    async fn exec_update_and_return_updated<A, C, M>(
         mut self,
-        model: A,
+        model: M,
         db: &C,
     ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
         A: ActiveModelTrait,
         C: ConnectionTrait,
+        M: IntoActiveModel<A>,
     {
         type Entity<A> = <A as ActiveModelTrait>::Entity;
         type Model<A> = <Entity<A> as EntityTrait>::Model;
@@ -128,18 +129,20 @@ impl Updater {
     }
 }
 
-async fn find_updated_model_by_id<A, C>(
-    model: A,
+async fn find_updated_model_by_id<A, C, M>(
+    model: M,
     db: &C,
 ) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
 where
     A: ActiveModelTrait,
     C: ConnectionTrait,
+    M: IntoActiveModel<A>,
 {
     type Entity<A> = <A as ActiveModelTrait>::Entity;
     type ValueType<A> = <<Entity<A> as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType;
 
-    let primary_key_value = match model.get_primary_key_value() {
+    let active_model = model.into_active_model();
+    let primary_key_value = match active_model.get_primary_key_value() {
         Some(val) => ValueType::<A>::from_value_tuple(val),
         None => return Err(DbErr::UpdateGetPrimaryKey),
     };
@@ -255,9 +258,7 @@ mod tests {
         );
 
         assert_eq!(
-            cake::Entity::update(updated_cake.clone().into_active_model())
-                .exec(&db)
-                .await?,
+            cake::Entity::update(updated_cake.clone()).exec(&db).await?,
             updated_cake
         );
 

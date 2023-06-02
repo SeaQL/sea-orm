@@ -1,6 +1,6 @@
 pub mod common;
 pub use common::{features::*, setup::*, TestContext};
-use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
+use sea_orm::{entity::prelude::*, DatabaseConnection};
 use serde_json::json;
 use time::macros::{date, time};
 
@@ -29,7 +29,7 @@ pub async fn create_transaction_log(db: &DatabaseConnection) -> Result<(), DbErr
             .assume_utc(),
     };
 
-    let res = TransactionLog::insert(transaction_log.clone().into_active_model())
+    let res = TransactionLog::insert(transaction_log.clone())
         .exec(db)
         .await?;
 

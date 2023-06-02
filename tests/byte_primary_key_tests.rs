@@ -27,9 +27,7 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
         value: "First Row".to_owned(),
     };
 
-    let res = Entity::insert(model.clone().into_active_model())
-        .exec(db)
-        .await?;
+    let res = Entity::insert(model.clone()).exec(db).await?;
 
     assert_eq!(Entity::find().one(db).await?, Some(model.clone()));
 

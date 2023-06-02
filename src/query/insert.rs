@@ -234,7 +234,7 @@ mod tests {
     use sea_query::OnConflict;
 
     use crate::tests_cfg::cake;
-    use crate::{ActiveValue, DbBackend, DbErr, EntityTrait, Insert, IntoActiveModel, QueryTrait};
+    use crate::{ActiveValue, DbBackend, DbErr, EntityTrait, Insert, QueryTrait};
 
     #[test]
     fn insert_1() {
@@ -391,9 +391,7 @@ mod tests {
             .append_query_results([[model.clone()]])
             .into_connection();
 
-        post::Entity::insert(model.into_active_model())
-            .exec(&db)
-            .await?;
+        post::Entity::insert(model).exec(&db).await?;
 
         assert_eq!(
             db.into_transaction_log(),
@@ -460,9 +458,7 @@ mod tests {
             }])
             .into_connection();
 
-        post::Entity::insert(model.into_active_model())
-            .exec(&db)
-            .await?;
+        post::Entity::insert(model).exec(&db).await?;
 
         assert_eq!(
             db.into_transaction_log(),
