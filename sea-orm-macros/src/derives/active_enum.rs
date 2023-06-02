@@ -1,3 +1,4 @@
+use super::util::camel_case_with_escaped_non_uax31;
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
@@ -247,11 +248,9 @@ impl ActiveEnum {
             let enum_variants: Vec<syn::Ident> = str_variants
                 .iter()
                 .map(|v| {
-                    if v.chars().next().map(char::is_numeric).unwrap_or(false) {
-                        format_ident!("_{}", v)
-                    } else {
-                        format_ident!("{}", v.to_upper_camel_case())
-                    }
+                    let v_cleaned = camel_case_with_escaped_non_uax31(v);
+
+                    format_ident!("{}", v_cleaned)
                 })
                 .collect();
 

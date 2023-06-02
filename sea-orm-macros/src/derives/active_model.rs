@@ -1,4 +1,4 @@
-use crate::util::{
+use super::util::{
     escape_rust_keyword, field_not_ignored, format_field_ident, trim_starting_raw_identifier,
 };
 use heck::ToUpperCamelCase;

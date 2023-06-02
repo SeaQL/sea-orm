@@ -383,6 +383,18 @@ where
                 model.get(column_c),
             )
         }
+        Identity::Many(cols) => {
+            let values = cols.iter().map(|col| {
+                let col_name = col.to_string();
+                let column = <<<Model as ModelTrait>::Entity as EntityTrait>::Column as FromStr>::from_str(
+                    &col_name,
+                )
+                .unwrap_or_else(|_| panic!("Failed at mapping '{}' to column", col_name));
+                model.get(column)
+            })
+            .collect();
+            ValueTuple::Many(values)
+        }
     }
 }
 
@@ -409,6 +421,12 @@ fn prepare_condition(table: &TableRef, col: &Identity, keys: &[ValueTuple]) -> C
             ])
             .in_tuples(keys),
         ),
+        Identity::Many(cols) => {
+            let columns = cols
+                .iter()
+                .map(|col| SimpleExpr::Column(table_column(table, col)));
+            Condition::all().add(Expr::tuple(columns).in_tuples(keys))
+        }
     }
 }
 

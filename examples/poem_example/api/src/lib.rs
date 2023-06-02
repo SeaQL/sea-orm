@@ -8,7 +8,7 @@ use poem::http::StatusCode;
 use poem::listener::TcpListener;
 use poem::web::{Data, Form, Html, Path, Query};
 use poem::{get, handler, post, EndpointExt, Error, IntoResponse, Result, Route, Server};
-use poem_example_core::{
+use poem_example_service::{
     sea_orm::{Database, DatabaseConnection},
     Mutation as MutationCore, Query as QueryCore,
 };

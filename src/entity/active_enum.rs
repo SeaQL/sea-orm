@@ -14,10 +14,7 @@ use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 /// > See [DeriveActiveEnum](sea_orm_macros::DeriveActiveEnum) for the full specification of macro attributes.
 ///
 /// ```rust
-/// use sea_orm::{
-///     entity::prelude::*,
-///     sea_query::{DynIden, SeaRc},
-/// };
+/// use sea_orm::entity::prelude::*;
 ///
 /// // Using the derive macro
 /// #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
@@ -407,5 +404,90 @@ mod tests {
         test_fallback_uint!(U16Fallback, u16, "u16", "SmallInteger", SmallInteger);
         test_fallback_uint!(U32Fallback, u32, "u32", "Integer", Integer);
         test_fallback_uint!(U64Fallback, u64, "u64", "BigInteger", BigInteger);
+    }
+
+    #[test]
+    fn escaped_non_uax31() {
+        #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
+        #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "pop_os_names_typos")]
+        pub enum PopOSTypos {
+            #[sea_orm(string_value = "Pop!_OS")]
+            PopOSCorrect,
+            #[sea_orm(string_value = "Pop\u{2757}_OS")]
+            PopOSEmoji,
+            #[sea_orm(string_value = "Pop!_操作系统")]
+            PopOSChinese,
+            #[sea_orm(string_value = "PopOS")]
+            PopOSASCIIOnly,
+            #[sea_orm(string_value = "Pop OS")]
+            PopOSASCIIOnlyWithSpace,
+            #[sea_orm(string_value = "Pop!OS")]
+            PopOSNoUnderscore,
+            #[sea_orm(string_value = "Pop_OS")]
+            PopOSNoExclaimation,
+            #[sea_orm(string_value = "!PopOS_")]
+            PopOSAllOverThePlace,
+            #[sea_orm(string_value = "Pop!_OS22.04LTS")]
+            PopOSWithVersion,
+            #[sea_orm(string_value = "22.04LTSPop!_OS")]
+            PopOSWithVersionPrefix,
+            #[sea_orm(string_value = "!_")]
+            PopOSJustTheSymbols,
+            #[sea_orm(string_value = "")]
+            Nothing,
+            // This WILL fail:
+            // Both PopOs and PopOS will create identifier "Popos"
+            // #[sea_orm(string_value = "PopOs")]
+            // PopOSLowerCase,
+        }
+        let values = [
+            "Pop!_OS",
+            "Pop\u{2757}_OS",
+            "Pop!_操作系统",
+            "PopOS",
+            "Pop OS",
+            "Pop!OS",
+            "Pop_OS",
+            "!PopOS_",
+            "Pop!_OS22.04LTS",
+            "22.04LTSPop!_OS",
+            "!_",
+            "",
+        ];
+        for (variant, val) in PopOSTypos::iter().zip(values) {
+            assert_eq!(variant.to_value(), val);
+            assert_eq!(PopOSTypos::try_from_value(&val.to_owned()), Ok(variant));
+        }
+
+        #[derive(Clone, Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+        #[sea_orm(
+            rs_type = "String",
+            db_type = "String(None)",
+            enum_name = "conflicting_string_values"
+        )]
+        pub enum ConflictingStringValues {
+            #[sea_orm(string_value = "")]
+            Member1,
+            #[sea_orm(string_value = "$")]
+            Member2,
+            #[sea_orm(string_value = "$$")]
+            Member3,
+            #[sea_orm(string_value = "AB")]
+            Member4,
+            #[sea_orm(string_value = "A_B")]
+            Member5,
+            #[sea_orm(string_value = "A$B")]
+            Member6,
+            #[sea_orm(string_value = "0 123")]
+            Member7,
+        }
+        type EnumVariant = ConflictingStringValuesVariant;
+        assert_eq!(EnumVariant::__Empty.to_string(), "");
+        assert_eq!(EnumVariant::_0x24.to_string(), "$");
+        assert_eq!(EnumVariant::_0x240x24.to_string(), "$$");
+        assert_eq!(EnumVariant::Ab.to_string(), "AB");
+        assert_eq!(EnumVariant::A0x5Fb.to_string(), "A_B");
+        assert_eq!(EnumVariant::A0x24B.to_string(), "A$B");
+        assert_eq!(EnumVariant::_0x300x20123.to_string(), "0 123");
     }
 }

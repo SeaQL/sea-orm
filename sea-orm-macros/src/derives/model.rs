@@ -1,4 +1,4 @@
-use crate::{
+use super::{
     attributes::derive_attr,
     util::{escape_rust_keyword, field_not_ignored, trim_starting_raw_identifier},
 };

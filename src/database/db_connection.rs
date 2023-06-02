@@ -138,7 +138,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => {
                 let db_backend = conn.get_database_backend();
-                let stmt = Statement::from_string(db_backend, sql.into());
+                let stmt = Statement::from_string(db_backend, sql);
                 conn.execute(stmt)
             }
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
@@ -390,6 +390,21 @@ impl DatabaseConnection {
         }
     }
 
+    /// Checks if a connection to the database is still valid.
+    pub async fn ping(&self) -> Result<(), DbErr> {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.ping().await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.ping().await,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.ping().await,
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(conn) => conn.ping(),
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
+        }
+    }
+
     /// Explicitly close the database connection
     pub async fn close(self) -> Result<(), DbErr> {
         match self {
@@ -410,6 +425,7 @@ impl DatabaseConnection {
 }
 
 #[cfg(feature = "sea-orm-internal")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sea-orm-internal")))]
 impl DatabaseConnection {
     /// Get [sqlx::MySqlPool]
     ///

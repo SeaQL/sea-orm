@@ -6,7 +6,7 @@
 
 1. Modify the `DATABASE_URL` var in `.env` to point to your chosen database
 
-1. Turn on the appropriate database feature for your chosen db in `core/Cargo.toml` (the `"sqlx-mysql",` line)
+1. Turn on the appropriate database feature for your chosen db in `service/Cargo.toml` (the `"sqlx-mysql",` line)
 
 1. Execute `cargo run` to start the server
 
@@ -19,9 +19,9 @@ cargo install systemfd
 systemfd --no-pid -s http::8000 -- cargo watch -x run
 ```
 
-Run mock test on the core logic crate:
+Run mock test on the service logic crate:
 
 ```bash
-cd core
+cd service
 cargo test --features mock
 ```
