@@ -277,60 +277,60 @@ mod tests {
 
     #[test]
     fn display_mode() {
-        // Completely default -> All print values
+        // Completely default -> All print labels
         #[derive(PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-        #[sea_orm(rs_type = "i32", db_type = "Integer")]
+        #[sea_orm(rs_type = "i32", db_type = "Integer", display)]
         enum DefaultDisplay {
             One = 1,
             Two = 2,
             Three = 3,
         }
 
-        assert_eq!(format!("{}", DefaultDisplay::One), "1");
-        assert_eq!(format!("{}", DefaultDisplay::Two), "2");
-        assert_eq!(format!("{}", DefaultDisplay::Three), "3");
+        assert_eq!(format!("{}", DefaultDisplay::One), "'One'");
+        assert_eq!(format!("{}", DefaultDisplay::Two), "'Two'");
+        assert_eq!(format!("{}", DefaultDisplay::Three), "'Three'");
 
-        // All `label` -> All print label
+        // `display_value` -> All print value
         #[derive(PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-        #[sea_orm(rs_type = "i32", db_type = "Integer", display = "label")]
+        #[sea_orm(rs_type = "i32", db_type = "Integer", display_value)]
         enum LabelDisplay {
             One = 1,
             Two = 2,
             Three = 3,
         }
 
-        assert_eq!(format!("{}", LabelDisplay::One), "'One'");
-        assert_eq!(format!("{}", LabelDisplay::Two), "'Two'");
-        assert_eq!(format!("{}", LabelDisplay::Three), "'Three'");
+        assert_eq!(format!("{}", LabelDisplay::One), "1");
+        assert_eq!(format!("{}", LabelDisplay::Two), "2");
+        assert_eq!(format!("{}", LabelDisplay::Three), "3");
 
         // Default with override
         #[derive(PartialEq, Eq, EnumIter, DeriveActiveEnum)]
         #[sea_orm(rs_type = "i32", db_type = "Integer", display)]
         enum DefaultDisplayOverride {
-            #[sea_orm(display = "label")]
+            #[sea_orm(display = "asdfasdf")]
             One = 1,
             Two = 2,
-            #[sea_orm(display = "label")]
+            #[sea_orm(display_value)]
             Three = 3,
         }
 
-        assert_eq!(format!("{}", DefaultDisplayOverride::One), "'One'");
-        assert_eq!(format!("{}", DefaultDisplayOverride::Two), "2");
-        assert_eq!(format!("{}", DefaultDisplayOverride::Three), "'Three'");
+        assert_eq!(format!("{}", DefaultDisplayOverride::One), "'asdfasdf'");
+        assert_eq!(format!("{}", DefaultDisplayOverride::Two), "'Two'");
+        assert_eq!(format!("{}", DefaultDisplayOverride::Three), "3");
 
         #[derive(PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-        #[sea_orm(rs_type = "i32", db_type = "Integer", display = "label")]
+        #[sea_orm(rs_type = "i32", db_type = "Integer", display_value)]
         enum DisplayOverride {
-            #[sea_orm(display = "value")]
+            #[sea_orm(display_label)]
             One = 1,
             Two = 2,
-            #[sea_orm(display = "value")]
+            #[sea_orm(display = "asdfasdfasdf")]
             Three = 3,
         }
 
-        assert_eq!(format!("{}", DisplayOverride::One), "1");
-        assert_eq!(format!("{}", DisplayOverride::Two), "'Two'");
-        assert_eq!(format!("{}", DisplayOverride::Three), "3");
+        assert_eq!(format!("{}", DisplayOverride::One), "'One'");
+        assert_eq!(format!("{}", DisplayOverride::Two), "2");
+        assert_eq!(format!("{}", DisplayOverride::Three), "'asdfasdfasdf'");
     }
 
     #[test]

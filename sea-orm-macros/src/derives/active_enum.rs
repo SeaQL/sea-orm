@@ -276,9 +276,9 @@ impl ActiveEnum {
                     }
                     VariantDisplayMode::Label => quote!(#enum_ident.into()),
                     VariantDisplayMode::Value | VariantDisplayMode::Unmodified => {
-                        quote!(self.to_value())
+                        quote!(self.to_value().into())
                     }
-                    VariantDisplayMode::Custom(x) => quote!(#x.clone()),
+                    VariantDisplayMode::Custom(x) => quote!(#x.into()),
                 }
             })
             .collect();
