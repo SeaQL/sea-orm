@@ -252,6 +252,7 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
 * Upgrade `sea-query` to `0.29` https://github.com/SeaQL/sea-orm/pull/1562
 * Upgrade `sea-query-binder` to `0.4` https://github.com/SeaQL/sea-orm/pull/1562
 * Upgrade `sea-schema` to `0.12` https://github.com/SeaQL/sea-orm/pull/1562
+* Upgrade `clap` to `4.3` https://github.com/SeaQL/sea-orm/pull/1468
 
 ### Bug Fixes
 
