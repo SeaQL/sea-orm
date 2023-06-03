@@ -237,7 +237,7 @@ impl From<DateTimeCrate> for CodegenDateTimeCrate {
 
 #[cfg(test)]
 mod tests {
-    use clap::StructOpt;
+    use clap::Parser;
 
     use super::*;
     use crate::{Cli, Commands};
