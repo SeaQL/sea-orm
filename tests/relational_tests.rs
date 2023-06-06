@@ -4,8 +4,8 @@ pub use chrono::offset::Utc;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 pub use rust_decimal::prelude::*;
 pub use rust_decimal_macros::dec;
-pub use sea_orm::{entity::*, query::*, DbErr, DerivePartialModel, FromQueryResult};
-pub use sea_query::{Alias, Expr, Func, SimpleExpr};
+use sea_orm::{entity::*, query::*, DbErr, DerivePartialModel, FromQueryResult};
+use sea_query::{Expr, Func, SimpleExpr};
 pub use uuid::Uuid;
 
 // Run the test locally:

@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, *};
+use sea_orm::{entity::prelude::*, IntoActiveModel, QueryOrder};
 
 #[sea_orm_macros::test]
 #[cfg(any(
