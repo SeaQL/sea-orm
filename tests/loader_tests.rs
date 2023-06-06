@@ -1,7 +1,7 @@
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
-pub use sea_orm::{entity::*, query::*, DbConn, DbErr, FromQueryResult};
+use sea_orm::{entity::*, query::*, DbConn, DbErr};
 
 #[sea_orm_macros::test]
 #[cfg(any(

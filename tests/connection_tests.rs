@@ -2,8 +2,7 @@ pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-pub use sea_orm::entity::*;
-pub use sea_orm::*;
+use sea_orm::prelude::*;
 
 #[sea_orm_macros::test]
 #[cfg(any(
