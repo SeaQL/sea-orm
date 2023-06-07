@@ -1,4 +1,10 @@
+<<<<<<< HEAD
 use clap::{ArgGroup, Parser, Subcommand, ValueEnum};
+=======
+use clap::{ArgEnum, ArgGroup, Args, Parser, Subcommand};
+use merge::Merge;
+use serde::Deserialize;
+>>>>>>> 9e15e4fa (First implementation of config for generate entity)
 
 #[derive(Parser, Debug)]
 #[command(
@@ -155,6 +161,7 @@ pub enum MigrateSubcommands {
 
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum GenerateSubcommands {
+<<<<<<< HEAD
     #[command(about = "Generate entity")]
     #[command(group(ArgGroup::new("formats").args(&["compact_format", "expanded_format"])))]
     #[command(group(ArgGroup::new("group-tables").args(&["tables", "include_hidden_tables"])))]
@@ -208,11 +215,74 @@ pub enum GenerateSubcommands {
             env = "DATABASE_SCHEMA",
             default_value = "public",
             long_help = "Database schema\n \
+=======
+    #[clap(about = "Generate entity")]
+    #[clap(arg_required_else_help = true)]
+    #[clap(group(ArgGroup::new("formats").args(&["compact-format", "expanded-format"])))]
+    #[clap(group(ArgGroup::new("group-tables").args(&["tables", "include-hidden-tables"])))]
+    Entity(GenerateSubCommandsEntity),
+}
+
+#[derive(PartialEq, Eq, Debug, Args, Merge, Deserialize, Default)]
+pub struct GenerateSubCommandsEntity {
+    #[clap(action, long, help = "Generate entity file of compact format")]
+    pub compact_format: Option<bool>,
+
+    #[clap(action, short, long, help = "Generate entity file of compact format")]
+    pub config: Option<String>,
+
+    #[clap(action, long, help = "Generate entity file of expanded format")]
+    pub expanded_format: Option<bool>,
+
+    #[clap(
+        action,
+        long,
+        help = "Generate entity file for hidden tables (i.e. table name starts with an underscore)"
+    )]
+    pub include_hidden_tables: Option<bool>,
+
+    #[clap(
+        value_parser,
+        short = 't',
+        long,
+        use_value_delimiter = true,
+        takes_value = true,
+        help = "Generate entity file for specified tables only (comma separated)"
+    )]
+    pub tables: Option<Vec<String>>,
+
+    #[clap(
+        value_parser,
+        long,
+        use_value_delimiter = true,
+        takes_value = true,
+        help = "Skip generating entity file for specified tables (comma separated)"
+    )]
+    pub ignore_tables: Option<Vec<String>>,
+
+    #[clap(
+        value_parser,
+        long,
+        help = "The maximum amount of connections to use when connecting to the database."
+    )]
+    pub max_connections: Option<u32>,
+
+    #[clap(value_parser, short = 'o', long, help = "Entity file output directory")]
+    pub output_dir: Option<String>,
+
+    #[clap(
+        value_parser,
+        short = 's',
+        long,
+        env = "DATABASE_SCHEMA",
+        long_help = "Database schema\n \
+>>>>>>> 9e15e4fa (First implementation of config for generate entity)
                         - For MySQL, this argument is ignored.\n \
                         - For PostgreSQL, this argument is optional with default value 'public'."
-        )]
-        database_schema: String,
+    )]
+    pub database_schema: Option<String>,
 
+<<<<<<< HEAD
         #[arg(short = 'u', long, env = "DATABASE_URL", help = "Database URL")]
         database_url: String,
 
@@ -220,10 +290,26 @@ pub enum GenerateSubcommands {
             long,
             default_value = "none",
             help = "Automatically derive serde Serialize / Deserialize traits for the entity (none, \
-                serialize, deserialize, both)"
-        )]
-        with_serde: String,
+=======
+    #[clap(
+        value_parser,
+        short = 'u',
+        long,
+        env = "DATABASE_URL",
+        help = "Database URL"
+    )]
+    pub database_url: Option<String>,
 
+    #[clap(
+        value_parser,
+        long,
+        help = "Automatically derive serde Serialize / Deserialize traits for the entity (none, \
+>>>>>>> 9e15e4fa (First implementation of config for generate entity)
+                serialize, deserialize, both)"
+    )]
+    pub with_serde: Option<String>,
+
+<<<<<<< HEAD
         #[arg(
             long,
             help = "Generate a serde field attribute, '#[serde(skip_deserializing)]', for the primary key fields to skip them during deserialization, this flag will be affective only when '--with-serde' is 'both' or 'deserialize'"
@@ -241,12 +327,33 @@ pub enum GenerateSubcommands {
             long,
             default_value = "false",
             long_help = "Automatically derive the Copy trait on generated enums.\n\
+=======
+    #[clap(
+        action,
+        long,
+        help = "Generate a serde field attribute, '#[serde(skip_deserializing)]', for the primary key fields to skip them during deserialization, this flag will be affective only when '--with-serde' is 'both' or 'deserialize'"
+    )]
+    pub serde_skip_deserializing_primary_key: Option<bool>,
+
+    #[clap(
+        action,
+        long,
+        help = "Opt-in to add skip attributes to hidden columns (i.e. when 'with-serde' enabled and column name starts with an underscore)"
+    )]
+    pub serde_skip_hidden_column: Option<bool>,
+
+    #[clap(
+        action,
+        long,
+        long_help = "Automatically derive the Copy trait on generated enums.\n\
+>>>>>>> 9e15e4fa (First implementation of config for generate entity)
             Enums generated from a database don't have associated data by default, and as such can \
             derive Copy.
             "
-        )]
-        with_copy_enums: bool,
+    )]
+    pub with_copy_enums: Option<bool>,
 
+<<<<<<< HEAD
         #[arg(
             long,
             default_value_t,
@@ -287,6 +394,44 @@ pub enum GenerateSubcommands {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Default)]
+=======
+    #[clap(
+        arg_enum,
+        value_parser,
+        long,
+        help = "The datetime crate to use for generating entities."
+    )]
+    pub date_time_crate: Option<DateTimeCrate>,
+
+    #[clap(
+        action,
+        long,
+        short = 'l',
+        help = "Generate index file as `lib.rs` instead of `mod.rs`."
+    )]
+    pub lib: Option<bool>,
+
+    #[clap(
+        value_parser,
+        long,
+        use_value_delimiter = true,
+        takes_value = true,
+        help = "Add extra derive macros to generated model structs (comma separated), ex. `--derives 'ts_rs::Ts'`"
+    )]
+    pub model_extra_derives: Option<Vec<String>>,
+
+    #[clap(
+        value_parser,
+        long,
+        use_value_delimiter = true,
+        takes_value = true,
+        help = r#"Add extra attributes to generated model struct, no need for `#[]` (comma separated), ex. `--attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
+    )]
+    pub model_extra_attributes: Option<Vec<String>>,
+}
+
+#[derive(ArgEnum, Copy, Clone, Debug, PartialEq, Eq, Deserialize, Default)]
+>>>>>>> 9e15e4fa (First implementation of config for generate entity)
 pub enum DateTimeCrate {
     #[default]
     Chrono,

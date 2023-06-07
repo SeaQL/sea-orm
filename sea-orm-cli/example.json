@@ -1,0 +1,19 @@
+{
+        "compact_format": true,
+        "expanded_format": true,
+        "include_hidden_tables": true,
+        "tables": [
+                "my_table"
+        ],
+        "ignore_tables": [
+                "seaql_migrations"
+        ],
+        "max_connections": 1,
+        "output_dir": "out",
+        "database_schema": "public",
+        "database_url": "postgres://root:root@localhost/database",
+        "with_serde": "none",
+        "with_copy_enums": true,
+        "date_time_crate": "Chrono",
+        "lib": true
+}

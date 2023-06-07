@@ -1,3 +1,4 @@
+use merge::Merge;
 use sea_orm_codegen::{
     DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
     WithSerde,
@@ -6,13 +7,14 @@ use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromSt
 use tracing_subscriber::{prelude::*, EnvFilter};
 use url::Url;
 
-use crate::{DateTimeCrate, GenerateSubcommands};
+use crate::{parse_config, DateTimeCrate, GenerateSubCommandsEntity, GenerateSubcommands};
 
 pub async fn run_generate_command(
     command: GenerateSubcommands,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
     match command {
+<<<<<<< HEAD
         GenerateSubcommands::Entity {
             compact_format: _,
             expanded_format,
@@ -33,6 +35,78 @@ pub async fn run_generate_command(
             model_extra_attributes,
             seaography,
         } => {
+=======
+        GenerateSubcommands::Entity(mut command) => {
+            let default_values = GenerateSubCommandsEntity {
+                compact_format: Some(false),
+                expanded_format: Some(false),
+                config: None,
+                include_hidden_tables: Some(false),
+                tables: Some(vec![]),
+                ignore_tables: Some(vec!["seaql_migrations".to_string()]),
+                max_connections: Some(1),
+                output_dir: Some("./".to_string()),
+                database_schema: Some("public".to_string()),
+                database_url: None,
+                with_serde: Some("none".to_string()),
+                serde_skip_deserializing_primary_key: Some(false),
+                serde_skip_hidden_column: Some(false),
+                with_copy_enums: Some(false),
+                date_time_crate: Some(DateTimeCrate::Chrono),
+                lib: Some(false),
+                model_extra_derives: Some(vec![]),
+                model_extra_attributes: Some(vec![]),
+            };
+            if let Some(ref config_path) = command.config {
+                let mut config_values =
+                    parse_config::<GenerateSubCommandsEntity>(config_path.to_string())?;
+                if Option::is_some(&config_values.database_url) {
+                    panic!("Database Url is set in the config which is not recommended");
+                }
+                if Option::is_some(&config_values.max_connections) {
+                    panic!("Max Connections is set in the config which is not recommended");
+                }
+                config_values.merge(default_values);
+                command.merge(config_values);
+            } else {
+                command.merge(default_values);
+            }
+            let (
+                expanded_format,
+                include_hidden_tables,
+                tables,
+                ignore_tables,
+                max_connections,
+                output_dir,
+                database_schema,
+                database_url,
+                with_serde,
+                serde_skip_deserializing_primary_key,
+                serde_skip_hidden_column,
+                with_copy_enums,
+                date_time_crate,
+                lib,
+                model_extra_derives,
+                model_extra_attributes,
+            ) = (
+                command.expanded_format.unwrap(),
+                command.include_hidden_tables.unwrap(),
+                command.tables.unwrap(),
+                command.ignore_tables.unwrap(),
+                command.max_connections.unwrap(),
+                command.output_dir.unwrap(),
+                command.database_schema.unwrap(),
+                command.database_url.unwrap(),
+                command.with_serde.unwrap(),
+                command.serde_skip_deserializing_primary_key.unwrap(),
+                command.serde_skip_hidden_column.unwrap(),
+                command.with_copy_enums.unwrap(),
+                command.date_time_crate.unwrap(),
+                command.lib.unwrap(),
+                command.model_extra_derives.unwrap(),
+                command.model_extra_attributes.unwrap(),
+            );
+>>>>>>> 9e15e4fa (First implementation of config for generate entity)
             if verbose {
                 let _ = tracing_subscriber::fmt()
                     .with_max_level(tracing::Level::DEBUG)
