@@ -113,10 +113,11 @@ impl Relation {
                 let map_ref_column =
                     |ref_column: &Ident| format!("{module_name}Column::{ref_column}");
                 let map_punctuated = |punctuated: Vec<String>| {
-                    let joined = punctuated.join(", ");
-                    match punctuated.len() {
-                        0..=1 => format!("{joined}"),
-                        _ => format!("({joined})"),
+                    let len = punctuated.len();
+                    let punctuated = punctuated.join(", ");
+                    match len {
+                        0..=1 => punctuated,
+                        _ => format!("({})", punctuated),
                     }
                 };
                 let (from, to) =
