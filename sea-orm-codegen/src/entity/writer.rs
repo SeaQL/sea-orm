@@ -909,6 +909,52 @@ mod tests {
                 ],
             },
             Entity {
+                table_name: "cake_filling_price".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "cake_id".to_owned(),
+                        col_type: ColumnType::Integer,
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "filling_id".to_owned(),
+                        col_type: ColumnType::Integer,
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "price".to_owned(),
+                        col_type: ColumnType::Decimal(None),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                ],
+                relations: vec![Relation {
+                    ref_table: "cake_filling".to_owned(),
+                    columns: vec!["cake_id".to_owned(), "filling_id".to_owned()],
+                    ref_columns: vec!["cake_id".to_owned(), "filling_id".to_owned()],
+                    rel_type: RelationType::BelongsTo,
+                    on_delete: None,
+                    on_update: None,
+                    self_referencing: false,
+                    num_suffix: 0,
+                    impl_related: true,
+                }],
+                conjunct_relations: vec![],
+                primary_keys: vec![
+                    PrimaryKey {
+                        name: "cake_id".to_owned(),
+                    },
+                    PrimaryKey {
+                        name: "filling_id".to_owned(),
+                    },
+                ],
+            },
+            Entity {
                 table_name: "filling".to_owned(),
                 columns: vec![
                     Column {
@@ -1361,9 +1407,10 @@ mod tests {
     #[test]
     fn test_gen_expanded_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 10] = [
+        const ENTITY_FILES: [&str; 11] = [
             include_str!("../../tests/expanded/cake.rs"),
             include_str!("../../tests/expanded/cake_filling.rs"),
+            include_str!("../../tests/expanded/cake_filling_price.rs"),
             include_str!("../../tests/expanded/filling.rs"),
             include_str!("../../tests/expanded/fruit.rs"),
             include_str!("../../tests/expanded/vendor.rs"),
@@ -1373,9 +1420,10 @@ mod tests {
             include_str!("../../tests/expanded/collection.rs"),
             include_str!("../../tests/expanded/collection_float.rs"),
         ];
-        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 10] = [
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 11] = [
             include_str!("../../tests/expanded_with_schema_name/cake.rs"),
             include_str!("../../tests/expanded_with_schema_name/cake_filling.rs"),
+            include_str!("../../tests/expanded_with_schema_name/cake_filling_price.rs"),
             include_str!("../../tests/expanded_with_schema_name/filling.rs"),
             include_str!("../../tests/expanded_with_schema_name/fruit.rs"),
             include_str!("../../tests/expanded_with_schema_name/vendor.rs"),
@@ -1460,9 +1508,10 @@ mod tests {
     #[test]
     fn test_gen_compact_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 10] = [
+        const ENTITY_FILES: [&str; 11] = [
             include_str!("../../tests/compact/cake.rs"),
             include_str!("../../tests/compact/cake_filling.rs"),
+            include_str!("../../tests/compact/cake_filling_price.rs"),
             include_str!("../../tests/compact/filling.rs"),
             include_str!("../../tests/compact/fruit.rs"),
             include_str!("../../tests/compact/vendor.rs"),
@@ -1472,9 +1521,10 @@ mod tests {
             include_str!("../../tests/compact/collection.rs"),
             include_str!("../../tests/compact/collection_float.rs"),
         ];
-        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 10] = [
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 11] = [
             include_str!("../../tests/compact_with_schema_name/cake.rs"),
             include_str!("../../tests/compact_with_schema_name/cake_filling.rs"),
+            include_str!("../../tests/compact_with_schema_name/cake_filling_price.rs"),
             include_str!("../../tests/compact_with_schema_name/filling.rs"),
             include_str!("../../tests/compact_with_schema_name/fruit.rs"),
             include_str!("../../tests/compact_with_schema_name/vendor.rs"),

@@ -3,6 +3,7 @@ use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use sea_query::{ForeignKeyAction, TableForeignKey};
+use syn::{punctuated::Punctuated, token::Comma};
 
 use crate::util::escape_rust_keyword;
 
@@ -66,17 +67,27 @@ impl Relation {
                 }
             }
             RelationType::BelongsTo => {
-                let column_camel_case = self.get_column_camel_case();
-                let ref_column_camel_case = self.get_ref_column_camel_case();
-                let to_col = if module_name.is_some() {
-                    quote! { super::#module_name::Column::#ref_column_camel_case }
-                } else {
-                    quote! { Column::#ref_column_camel_case }
+                let map_src_column = |src_column: &Ident| {
+                    quote! { Column::#src_column }
                 };
+                let map_ref_column = |ref_column: &Ident| {
+                    if module_name.is_some() {
+                        quote! { super::#module_name::Column::#ref_column }
+                    } else {
+                        quote! { Column::#ref_column }
+                    }
+                };
+                let map_punctuated =
+                    |punctuated: Punctuated<TokenStream, Comma>| match punctuated.len() {
+                        0..=1 => quote! { #punctuated },
+                        _ => quote! { (#punctuated) },
+                    };
+                let (from, to) =
+                    self.get_src_ref_columns(map_src_column, map_ref_column, map_punctuated);
                 quote! {
                     Entity::#rel_type(#ref_entity)
-                        .from(Column::#column_camel_case)
-                        .to(#to_col)
+                        .from(#from)
+                        .to(#to)
                         .into()
                 }
             }
@@ -98,10 +109,19 @@ impl Relation {
                 }
             }
             RelationType::BelongsTo => {
-                let column_camel_case = self.get_column_camel_case();
-                let ref_column_camel_case = self.get_ref_column_camel_case();
-                let from = format!("Column::{column_camel_case}");
-                let to = format!("{module_name}Column::{ref_column_camel_case}");
+                let map_src_column = |src_column: &Ident| format!("Column::{src_column}");
+                let map_ref_column =
+                    |ref_column: &Ident| format!("{module_name}Column::{ref_column}");
+                let map_punctuated = |punctuated: Vec<String>| {
+                    let joined = punctuated.join(", ");
+                    match punctuated.len() {
+                        0..=1 => format!("{joined}"),
+                        _ => format!("({joined})"),
+                    }
+                };
+                let (from, to) =
+                    self.get_src_ref_columns(map_src_column, map_ref_column, map_punctuated);
+
                 let on_update = if let Some(action) = &self.on_update {
                     let action = Self::get_foreign_key_action(action);
                     quote! {
@@ -139,12 +159,18 @@ impl Relation {
         }
     }
 
-    pub fn get_column_camel_case(&self) -> Ident {
-        format_ident!("{}", self.columns[0].to_upper_camel_case())
+    pub fn get_column_camel_case(&self) -> Vec<Ident> {
+        self.columns
+            .iter()
+            .map(|col| format_ident!("{}", col.to_upper_camel_case()))
+            .collect()
     }
 
-    pub fn get_ref_column_camel_case(&self) -> Ident {
-        format_ident!("{}", self.ref_columns[0].to_upper_camel_case())
+    pub fn get_ref_column_camel_case(&self) -> Vec<Ident> {
+        self.ref_columns
+            .iter()
+            .map(|col| format_ident!("{}", col.to_upper_camel_case()))
+            .collect()
     }
 
     pub fn get_foreign_key_action(action: &ForeignKeyAction) -> String {
@@ -156,6 +182,36 @@ impl Relation {
             ForeignKeyAction::SetDefault => "SetDefault",
         }
         .to_owned()
+    }
+
+    pub fn get_src_ref_columns<F1, F2, F3, T, I>(
+        &self,
+        map_src_column: F1,
+        map_ref_column: F2,
+        map_punctuated: F3,
+    ) -> (T, T)
+    where
+        F1: Fn(&Ident) -> T,
+        F2: Fn(&Ident) -> T,
+        F3: Fn(I) -> T,
+        I: Extend<T> + Default,
+    {
+        let from: I =
+            self.get_column_camel_case()
+                .iter()
+                .fold(I::default(), |mut acc, src_column| {
+                    acc.extend([map_src_column(src_column)]);
+                    acc
+                });
+        let to: I =
+            self.get_ref_column_camel_case()
+                .iter()
+                .fold(I::default(), |mut acc, ref_column| {
+                    acc.extend([map_ref_column(ref_column)]);
+                    acc
+                });
+
+        (map_punctuated(from), map_punctuated(to))
     }
 }
 
@@ -278,7 +334,7 @@ mod tests {
         let relations = setup();
         let cols = vec!["Id", "FillingId", "FillingId"];
         for (rel, col) in relations.into_iter().zip(cols) {
-            assert_eq!(rel.get_column_camel_case(), col);
+            assert_eq!(rel.get_column_camel_case(), [col]);
         }
     }
 
@@ -287,7 +343,7 @@ mod tests {
         let relations = setup();
         let ref_cols = vec!["CakeId", "Id", "Id"];
         for (rel, ref_col) in relations.into_iter().zip(ref_cols) {
-            assert_eq!(rel.get_ref_column_camel_case(), ref_col);
+            assert_eq!(rel.get_ref_column_camel_case(), [ref_col]);
         }
     }
 }
