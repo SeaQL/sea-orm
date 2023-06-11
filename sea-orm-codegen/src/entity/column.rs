@@ -1,4 +1,4 @@
-use crate::{util::escape_rust_keyword, DateTimeCrate};
+use crate::{util::escape_rust_keyword, DateTimeCrate, DecimalCrate};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
@@ -27,8 +27,16 @@ impl Column {
         self.name.to_snake_case() == self.name
     }
 
-    pub fn get_rs_type(&self, date_time_crate: &DateTimeCrate) -> TokenStream {
-        fn write_rs_type(col_type: &ColumnType, date_time_crate: &DateTimeCrate) -> String {
+    pub fn get_rs_type(
+        &self,
+        date_time_crate: &DateTimeCrate,
+        decimal_crate: &DecimalCrate,
+    ) -> TokenStream {
+        fn write_rs_type(
+            col_type: &ColumnType,
+            date_time_crate: &DateTimeCrate,
+            decimal_crate: &DecimalCrate,
+        ) -> String {
             #[allow(unreachable_patterns)]
             match col_type {
                 ColumnType::Char(_)
@@ -67,18 +75,25 @@ impl Column {
                     DateTimeCrate::Chrono => "DateTimeWithTimeZone".to_owned(),
                     DateTimeCrate::Time => "TimeDateTimeWithTimeZone".to_owned(),
                 },
-                ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal".to_owned(),
+                ColumnType::Decimal(_) | ColumnType::Money(_) => match decimal_crate {
+                    DecimalCrate::Decimal => "Decimal".to_owned(),
+                    DecimalCrate::BigDecimal => "BigDecimal".to_owned(),
+                },
+
                 ColumnType::Uuid => "Uuid".to_owned(),
                 ColumnType::Binary(_) | ColumnType::VarBinary(_) => "Vec<u8>".to_owned(),
                 ColumnType::Boolean => "bool".to_owned(),
                 ColumnType::Enum { name, .. } => name.to_string().to_upper_camel_case(),
                 ColumnType::Array(column_type) => {
-                    format!("Vec<{}>", write_rs_type(column_type, date_time_crate))
+                    format!(
+                        "Vec<{}>",
+                        write_rs_type(column_type, date_time_crate, decimal_crate)
+                    )
                 }
                 _ => unimplemented!(),
             }
         }
-        let ident: TokenStream = write_rs_type(&self.col_type, date_time_crate)
+        let ident: TokenStream = write_rs_type(&self.col_type, date_time_crate, decimal_crate)
             .parse()
             .unwrap();
         match self.not_null {
@@ -201,10 +216,14 @@ impl Column {
         col_def
     }
 
-    pub fn get_info(&self, date_time_crate: &DateTimeCrate) -> String {
+    pub fn get_info(
+        &self,
+        date_time_crate: &DateTimeCrate,
+        decimal_crate: &DecimalCrate,
+    ) -> String {
         let mut info = String::new();
         let type_info = self
-            .get_rs_type(date_time_crate)
+            .get_rs_type(date_time_crate, decimal_crate)
             .to_string()
             .replace(' ', "");
         let col_info = self.col_info();
@@ -288,7 +307,7 @@ impl From<&ColumnDef> for Column {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Column, DateTimeCrate};
+    use crate::{Column, DateTimeCrate, DecimalCrate};
     use proc_macro2::TokenStream;
     use quote::quote;
     use sea_query::{Alias, BlobSize, ColumnDef, ColumnType, SeaRc};
@@ -336,6 +355,11 @@ mod tests {
             make_col!("date_time", ColumnType::DateTime),
             make_col!("timestamp", ColumnType::Timestamp),
             make_col!("timestamp_tz", ColumnType::TimestampWithTimeZone),
+            make_col!("price_money", ColumnType::Money(Some((u32::MIN, u32::MIN)))),
+            make_col!(
+                "price_big_decimal",
+                ColumnType::Decimal(Some((u32::MIN, u32::MIN)))
+            ),
         ]
     }
 
@@ -442,13 +466,15 @@ mod tests {
 
             col.not_null = true;
             assert_eq!(
-                col.get_rs_type(&chrono_crate).to_string(),
+                col.get_rs_type(&chrono_crate, &DecimalCrate::Decimal)
+                    .to_string(),
                 quote!(#rs_type).to_string()
             );
 
             col.not_null = false;
             assert_eq!(
-                col.get_rs_type(&chrono_crate).to_string(),
+                col.get_rs_type(&chrono_crate, &DecimalCrate::Decimal)
+                    .to_string(),
                 quote!(Option<#rs_type>).to_string()
             );
         }
@@ -489,13 +515,117 @@ mod tests {
 
             col.not_null = true;
             assert_eq!(
-                col.get_rs_type(&time_crate).to_string(),
+                col.get_rs_type(&time_crate, &DecimalCrate::Decimal)
+                    .to_string(),
                 quote!(#rs_type).to_string()
             );
 
             col.not_null = false;
             assert_eq!(
-                col.get_rs_type(&time_crate).to_string(),
+                col.get_rs_type(&time_crate, &DecimalCrate::Decimal)
+                    .to_string(),
+                quote!(Option<#rs_type>).to_string()
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_rs_type_with_decimal() {
+        let columns = setup();
+        let chrono_crate = DateTimeCrate::Chrono;
+        let rs_types = vec![
+            "String",
+            "String",
+            "i8",
+            "u8",
+            "i16",
+            "u16",
+            "i32",
+            "u32",
+            "i64",
+            "u64",
+            "f32",
+            "f64",
+            "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
+            "bool",
+            "Date",
+            "Time",
+            "DateTime",
+            "DateTimeUtc",
+            "DateTimeWithTimeZone",
+            "Decimal",
+            "Decimal",
+        ];
+        for (mut col, rs_type) in columns.into_iter().zip(rs_types) {
+            let rs_type: TokenStream = rs_type.parse().unwrap();
+
+            col.not_null = true;
+            assert_eq!(
+                col.get_rs_type(&chrono_crate, &DecimalCrate::Decimal)
+                    .to_string(),
+                quote!(#rs_type).to_string()
+            );
+
+            col.not_null = false;
+            assert_eq!(
+                col.get_rs_type(&chrono_crate, &DecimalCrate::Decimal)
+                    .to_string(),
+                quote!(Option<#rs_type>).to_string()
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_rs_type_with_big_decimal() {
+        let columns = setup();
+        let chrono_crate = DateTimeCrate::Chrono;
+        let rs_types = vec![
+            "String",
+            "String",
+            "i8",
+            "u8",
+            "i16",
+            "u16",
+            "i32",
+            "u32",
+            "i64",
+            "u64",
+            "f32",
+            "f64",
+            "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
+            "Vec<u8>",
+            "bool",
+            "Date",
+            "Time",
+            "DateTime",
+            "DateTimeUtc",
+            "DateTimeWithTimeZone",
+            "BigDecimal",
+            "BigDecimal",
+        ];
+        for (mut col, rs_type) in columns.into_iter().zip(rs_types) {
+            let rs_type: TokenStream = rs_type.parse().unwrap();
+
+            col.not_null = true;
+            assert_eq!(
+                col.get_rs_type(&chrono_crate, &DecimalCrate::BigDecimal)
+                    .to_string(),
+                quote!(#rs_type).to_string()
+            );
+
+            col.not_null = false;
+            assert_eq!(
+                col.get_rs_type(&chrono_crate, &DecimalCrate::BigDecimal)
+                    .to_string(),
                 quote!(Option<#rs_type>).to_string()
             );
         }
@@ -550,7 +680,9 @@ mod tests {
     fn test_get_info() {
         let column: Column = ColumnDef::new(Alias::new("id")).string().to_owned().into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column
+                .get_info(&DateTimeCrate::Chrono, &DecimalCrate::Decimal)
+                .as_str(),
             "Column `id`: Option<String>"
         );
 
@@ -560,7 +692,9 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column
+                .get_info(&DateTimeCrate::Chrono, &DecimalCrate::Decimal)
+                .as_str(),
             "Column `id`: String, not_null"
         );
 
@@ -571,7 +705,9 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column
+                .get_info(&DateTimeCrate::Chrono, &DecimalCrate::Decimal)
+                .as_str(),
             "Column `id`: String, not_null, unique"
         );
 
@@ -583,7 +719,9 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column
+                .get_info(&DateTimeCrate::Chrono, &DecimalCrate::Decimal)
+                .as_str(),
             "Column `id`: String, auto_increment, not_null, unique"
         );
 
@@ -593,7 +731,9 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column
+                .get_info(&DateTimeCrate::Chrono, &DecimalCrate::Decimal)
+                .as_str(),
             "Column `date_field`: Date, not_null"
         );
 
@@ -603,7 +743,9 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column
+                .get_info(&DateTimeCrate::Time, &DecimalCrate::Decimal)
+                .as_str(),
             "Column `date_field`: TimeDate, not_null"
         );
 
@@ -613,7 +755,9 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column
+                .get_info(&DateTimeCrate::Chrono, &DecimalCrate::Decimal)
+                .as_str(),
             "Column `time_field`: Time, not_null"
         );
 
@@ -623,7 +767,9 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column
+                .get_info(&DateTimeCrate::Time, &DecimalCrate::Decimal)
+                .as_str(),
             "Column `time_field`: TimeTime, not_null"
         );
 
@@ -633,7 +779,9 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column
+                .get_info(&DateTimeCrate::Chrono, &DecimalCrate::Decimal)
+                .as_str(),
             "Column `date_time_field`: DateTime, not_null"
         );
 
@@ -643,7 +791,9 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column
+                .get_info(&DateTimeCrate::Time, &DecimalCrate::Decimal)
+                .as_str(),
             "Column `date_time_field`: TimeDateTime, not_null"
         );
 
@@ -653,7 +803,9 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column
+                .get_info(&DateTimeCrate::Chrono, &DecimalCrate::Decimal)
+                .as_str(),
             "Column `timestamp_field`: DateTimeUtc, not_null"
         );
 
@@ -663,7 +815,9 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column
+                .get_info(&DateTimeCrate::Time, &DecimalCrate::Decimal)
+                .as_str(),
             "Column `timestamp_field`: TimeDateTime, not_null"
         );
 
@@ -673,7 +827,9 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Chrono).as_str(),
+            column
+                .get_info(&DateTimeCrate::Chrono, &DecimalCrate::Decimal)
+                .as_str(),
             "Column `timestamp_with_timezone_field`: DateTimeWithTimeZone, not_null"
         );
 
@@ -683,7 +839,9 @@ mod tests {
             .to_owned()
             .into();
         assert_eq!(
-            column.get_info(&DateTimeCrate::Time).as_str(),
+            column
+                .get_info(&DateTimeCrate::Time, &DecimalCrate::Decimal)
+                .as_str(),
             "Column `timestamp_with_timezone_field`: TimeDateTimeWithTimeZone, not_null"
         );
     }

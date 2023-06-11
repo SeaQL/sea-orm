@@ -4,6 +4,7 @@ use quote::format_ident;
 use quote::quote;
 use sea_query::ColumnType;
 
+use crate::DecimalCrate;
 use crate::{
     util::escape_rust_keyword, Column, ConjunctRelation, DateTimeCrate, PrimaryKey, Relation,
 };
@@ -48,11 +49,15 @@ impl Entity {
             .collect()
     }
 
-    pub fn get_column_rs_types(&self, date_time_crate: &DateTimeCrate) -> Vec<TokenStream> {
+    pub fn get_column_rs_types(
+        &self,
+        date_time_crate: &DateTimeCrate,
+        decimal_crate: &DecimalCrate,
+    ) -> Vec<TokenStream> {
         self.columns
             .clone()
             .into_iter()
-            .map(|col| col.get_rs_type(date_time_crate))
+            .map(|col| col.get_rs_type(date_time_crate, decimal_crate))
             .collect()
     }
 
@@ -183,7 +188,11 @@ impl Entity {
         format_ident!("{}", auto_increment)
     }
 
-    pub fn get_primary_key_rs_type(&self, date_time_crate: &DateTimeCrate) -> TokenStream {
+    pub fn get_primary_key_rs_type(
+        &self,
+        date_time_crate: &DateTimeCrate,
+        decimal_crate: &DecimalCrate,
+    ) -> TokenStream {
         let types = self
             .primary_keys
             .iter()
@@ -192,7 +201,7 @@ impl Entity {
                     .iter()
                     .find(|col| col.name.eq(&primary_key.name))
                     .unwrap()
-                    .get_rs_type(date_time_crate)
+                    .get_rs_type(date_time_crate, decimal_crate)
                     .to_string()
             })
             .collect::<Vec<_>>();
@@ -269,7 +278,7 @@ mod tests {
     use quote::{format_ident, quote};
     use sea_query::{ColumnType, ForeignKeyAction};
 
-    use crate::{Column, DateTimeCrate, Entity, PrimaryKey, Relation, RelationType};
+    use crate::{Column, DateTimeCrate, DecimalCrate, Entity, PrimaryKey, Relation, RelationType};
 
     fn setup() -> Entity {
         Entity {
@@ -381,14 +390,14 @@ mod tests {
         let entity = setup();
 
         for (i, elem) in entity
-            .get_column_rs_types(&DateTimeCrate::Chrono)
+            .get_column_rs_types(&DateTimeCrate::Chrono, &crate::DecimalCrate::Decimal)
             .into_iter()
             .enumerate()
         {
             assert_eq!(
                 elem.to_string(),
                 entity.columns[i]
-                    .get_rs_type(&DateTimeCrate::Chrono)
+                    .get_rs_type(&DateTimeCrate::Chrono, &DecimalCrate::Decimal)
                     .to_string()
             );
         }
@@ -490,10 +499,10 @@ mod tests {
 
         assert_eq!(
             entity
-                .get_primary_key_rs_type(&DateTimeCrate::Chrono)
+                .get_primary_key_rs_type(&DateTimeCrate::Chrono, &DecimalCrate::Decimal)
                 .to_string(),
             entity.columns[0]
-                .get_rs_type(&DateTimeCrate::Chrono)
+                .get_rs_type(&DateTimeCrate::Chrono, &DecimalCrate::Decimal)
                 .to_string()
         );
     }
