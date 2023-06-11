@@ -1,7 +1,6 @@
 use sea_orm_codegen::{
-    DateTimeCrate as CodegenDateTimeCrate, DecimalCrate as CodegenDecimalCrate, EntityTransformer,
-    EntityWriterContext, OutputFile, WithSerde,
-};
+    DateTimeCrate as CodegenDateTimeCrate, DecimalCrate as CodegenDecimalCrate, EntityTransformer, EntityWriterContext, OutputFile,
+    WithSerde};
 use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
 use url::Url;

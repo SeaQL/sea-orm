@@ -254,7 +254,7 @@ pub enum GenerateSubcommands {
             help = "The datetime crate to use for generating entities."
         )]
         date_time_crate: DateTimeCrate,
-
+        
         #[arg(
             long,
             default_value_t,

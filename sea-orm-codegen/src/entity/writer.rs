@@ -486,7 +486,6 @@ impl EntityWriter {
             })
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn gen_model_struct(
         entity: &Entity,
         with_serde: &WithSerde,
