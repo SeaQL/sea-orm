@@ -5,5 +5,5 @@ edition = "2021"
 publish = false
 
 [dependencies]
-core = { path = "../core" }
+service = { path = "../service" }
 sea-orm = { path = "../../../", default-features = false, features = ["macros", "tests-cfg", "sqlx-sqlite", "runtime-async-std-native-tls"] }

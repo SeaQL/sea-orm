@@ -38,6 +38,8 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [JinShu](https://github.com/gengteng/jinshu) | A cross-platform **I**nstant **M**essaging system written in 🦀 | DB: MySQL, Postgres
 - [Kitsune](https://github.com/kitsune-soc/kitsune) | 🦊 ActivityPub-federated microblogging | DB: Postgres, SQLite
 - [THUBurrow](https://github.com/BobAnkh/THUBurrow) | A campus forum built by Next.js and Rocket | DB: Postgres
+- [Portfolio](https://github.com/admisio/Portfolio) | Encrypted high school 🏫 admissions service | DB: Postgres, SQLite
+- [Crab Fit](https://crab.fit) [![GitHub stars](https://img.shields.io/github/stars/GRA0007/crab.fit.svg?style=social)](https://github.com/GRA0007/crab.fit) | Align your schedules to find the perfect time that works for everyone. | DB: MySQL, Postgres, SQLite
 
 #### Bots
 - [bulbbot-gw](https://github.com/TeamBulbbot/bulbbot-gw) | The gateway code for the Discord bot Bulbbot | DB: Postgres
@@ -60,6 +62,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [RSS aggregator](https://github.com/fistons/rss-aggregator)| A small RSS aggregator and API using Actix Web and SeaORM | DB: Postgres
 - [snmp-sim-rust](https://github.com/sonalake/snmp-sim-rust) | SNMP Simulator | DB: SQLite
 - [Wikipedia Speedrun](https://wikipediaspeedrun.com) ([repository](https://github.com/hut8/wikipedia-speedrun)) | Finds shortest paths between Wikipedia articles | DB: SQLite
+- [ruuth](https://github.com/outurnate/ruuth) ([repository](https://github.com/outurnate/ruuth)) | A simple nginx auth_request backend providing MFA and lockout mechanisms | DB: MySQL, Postgres, SQLite
 
 #### Url Shortener
 - [Dinoly](https://github.com/ippsav/Dinoly) | An url shortener using Axum web framework and SeaORM | DB: Postgres

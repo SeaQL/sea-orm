@@ -236,6 +236,14 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
     * Changed the parameter of method `ConnectOptions::set_schema_search_path(T) where T: Into<String>` to takes any string
     * Changed the parameter of method `ColumnTrait::like()`, `ColumnTrait::not_like()`, `ColumnTrait::starts_with()`, `ColumnTrait::ends_with()` and `ColumnTrait::contains()` to takes any string
 * Re-export `sea_query::{DynIden, RcOrArc, SeaRc}` in `sea_orm::entity::prelude` module https://github.com/SeaQL/sea-orm/pull/1661
+* Added `DatabaseConnection::ping` https://github.com/SeaQL/sea-orm/pull/1627
+```rust
+|db: DatabaseConnection| {
+    assert!(db.ping().await.is_ok());
+    db.clone().close().await;
+    assert!(matches!(db.ping().await, Err(DbErr::ConnectionAcquire)));
+}
+```
 
 ### Upgrades
 
@@ -244,6 +252,7 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
 * Upgrade `sea-query` to `0.29` https://github.com/SeaQL/sea-orm/pull/1562
 * Upgrade `sea-query-binder` to `0.4` https://github.com/SeaQL/sea-orm/pull/1562
 * Upgrade `sea-schema` to `0.12` https://github.com/SeaQL/sea-orm/pull/1562
+* Upgrade `clap` to `4.3` https://github.com/SeaQL/sea-orm/pull/1468
 
 ### Bug Fixes
 
@@ -316,6 +325,20 @@ CREATE TABLE users_saved_bills
 );
 ```
 * [sea-orm-cli] fixed entity generation includes partitioned tables https://github.com/SeaQL/sea-orm/issues/1582, https://github.com/SeaQL/sea-schema/pull/105
+* Fixed `ActiveEnum::db_type()` return type does not implement `ColumnTypeTrait` https://github.com/SeaQL/sea-orm/pull/1576
+```rs
+impl ColumnTrait for Column {
+    type EntityName = Entity;
+    fn def(&self) -> ColumnDef {
+        match self {
+...
+            // `db_type()` returns `ColumnDef`; now it implements `ColumnTypeTrait`
+            Self::Thing => AnActiveEnumThing::db_type().def(),
+...
+        }
+    }
+}
+```
 
 ### Breaking changes
 
