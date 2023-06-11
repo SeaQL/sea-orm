@@ -39,6 +39,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Kitsune](https://github.com/kitsune-soc/kitsune) | 🦊 ActivityPub-federated microblogging | DB: Postgres, SQLite
 - [THUBurrow](https://github.com/BobAnkh/THUBurrow) | A campus forum built by Next.js and Rocket | DB: Postgres
 - [Portfolio](https://github.com/admisio/Portfolio) | Encrypted high school 🏫 admissions service | DB: Postgres, SQLite
+- [Crab Fit](https://crab.fit) [![GitHub stars](https://img.shields.io/github/stars/GRA0007/crab.fit.svg?style=social)](https://github.com/GRA0007/crab.fit) | Align your schedules to find the perfect time that works for everyone. | DB: MySQL, Postgres, SQLite
 
 #### Bots
 - [bulbbot-gw](https://github.com/TeamBulbbot/bulbbot-gw) | The gateway code for the Discord bot Bulbbot | DB: Postgres
