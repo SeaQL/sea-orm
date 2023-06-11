@@ -460,15 +460,18 @@ impl EntityWriter {
         entity
             .columns
             .iter()
-            .fold(TokenStream::new(), |mut ts, col| {
+            .fold((TokenStream::new(), Vec::new()), |(mut ts, mut enums), col| {
                 if let sea_query::ColumnType::Enum { name, .. } = &col.col_type {
-                    let enum_name = format_ident!("{}", name.to_string().to_upper_camel_case());
-                    ts.extend([quote! {
-                        use super::sea_orm_active_enums::#enum_name;
-                    }]);
+                    if !enums.contains(&name) {
+                        enums.push(name);
+                        let enum_name = format_ident!("{}", name.to_string().to_upper_camel_case());
+                        ts.extend([quote! {
+                            use super::sea_orm_active_enums::#enum_name;
+                        }]);
+                    }
                 }
-                ts
-            })
+                (ts, enums)
+            }).0
     }
 
     pub fn gen_model_struct(
