@@ -36,11 +36,18 @@ pub enum DateTimeCrate {
 }
 
 #[derive(Debug)]
+pub enum DecimalCrate {
+    Decimal,
+    BigDecimal,
+}
+
+#[derive(Debug)]
 pub struct EntityWriterContext {
     pub(crate) expanded_format: bool,
     pub(crate) with_serde: WithSerde,
     pub(crate) with_copy_enums: bool,
     pub(crate) date_time_crate: DateTimeCrate,
+    pub(crate) decimal_crate : DecimalCrate,
     pub(crate) schema_name: Option<String>,
     pub(crate) lib: bool,
     pub(crate) serde_skip_hidden_column: bool,
@@ -137,6 +144,7 @@ impl EntityWriterContext {
         with_serde: WithSerde,
         with_copy_enums: bool,
         date_time_crate: DateTimeCrate,
+        decimal_crate : DecimalCrate,
         schema_name: Option<String>,
         lib: bool,
         serde_skip_deserializing_primary_key: bool,
@@ -150,6 +158,7 @@ impl EntityWriterContext {
             with_serde,
             with_copy_enums,
             date_time_crate,
+            decimal_crate,
             schema_name,
             lib,
             serde_skip_deserializing_primary_key,

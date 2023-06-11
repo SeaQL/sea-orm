@@ -1,12 +1,11 @@
 use sea_orm_codegen::{
-    DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
-    WithSerde,
-};
+    DateTimeCrate as CodegenDateTimeCrate, DecimalCrate as CodegenDecimalCrate, EntityTransformer, EntityWriterContext, OutputFile,
+    WithSerde};
 use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
 use url::Url;
 
-use crate::{DateTimeCrate, GenerateSubcommands};
+use crate::{DateTimeCrate, DecimalCrate, GenerateSubcommands};
 
 pub async fn run_generate_command(
     command: GenerateSubcommands,
@@ -28,6 +27,7 @@ pub async fn run_generate_command(
             serde_skip_hidden_column,
             with_copy_enums,
             date_time_crate,
+            decimal_crate,
             lib,
             model_extra_derives,
             model_extra_attributes,
@@ -167,6 +167,7 @@ pub async fn run_generate_command(
                 WithSerde::from_str(&with_serde).expect("Invalid serde derive option"),
                 with_copy_enums,
                 date_time_crate.into(),
+                decimal_crate.into(),
                 schema_name,
                 lib,
                 serde_skip_deserializing_primary_key,
@@ -231,6 +232,15 @@ impl From<DateTimeCrate> for CodegenDateTimeCrate {
         match date_time_crate {
             DateTimeCrate::Chrono => CodegenDateTimeCrate::Chrono,
             DateTimeCrate::Time => CodegenDateTimeCrate::Time,
+        }
+    }
+}
+
+impl From<DecimalCrate> for CodegenDecimalCrate {
+    fn from(decimal_crate: DecimalCrate) -> CodegenDecimalCrate {
+        match decimal_crate {
+            DecimalCrate::Decimal => CodegenDecimalCrate::Decimal,
+            DecimalCrate::BigDecimal => CodegenDecimalCrate::BigDecimal,
         }
     }
 }
