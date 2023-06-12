@@ -448,8 +448,8 @@ pub trait QuerySelect: Sized {
     }
 
     /// Add an expression to the select expression list.
-    fn expr<T>(&mut self, expr: T) -> &mut Self 
-    where 
+    fn expr<T>(&mut self, expr: T) -> &mut Self
+    where
         T: Into<SelectExpr>,
     {
         self.query().expr(expr);
