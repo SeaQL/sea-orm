@@ -448,7 +448,21 @@ pub trait QuerySelect: Sized {
     }
 
     /// Add an expression to the select expression list.
-    fn expr<T>(&mut self, expr: T) -> &mut Self
+    /// ```
+    /// use sea_orm::QueryTrait;
+    /// use sea_orm::{entity::*, query::QuerySelect, tests_cfg::cake, DbBackend};
+    /// use sea_query::{Alias, Expr};
+    /// let mut find = cake::Entity::find();
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .expr(Expr::col(Alias::new("some_column")))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name`, `some_column` FROM `cake`"
+    /// );
+    /// ```
+    fn expr<T>(mut self, expr: T) -> Self
     where
         T: Into<SelectExpr>,
     {
@@ -457,7 +471,25 @@ pub trait QuerySelect: Sized {
     }
 
     /// Add select expressions from vector of [`SelectExpr`].
-    fn exprs<T, I>(&mut self, exprs: I) -> &mut Self
+    /// ```
+    /// use sea_orm::QueryTrait;
+    /// use sea_orm::{entity::*, query::QuerySelect, tests_cfg::cake, DbBackend};
+    /// use sea_query::{Alias, Expr};
+    /// let mut find = cake::Entity::find();
+    ///
+    /// assert_eq!(
+    ///     // new method
+    ///     cake::Entity::find()
+    ///         .exprs([
+    ///             Expr::col(Alias::new("some_column")),
+    ///             Expr::col(Alias::new("some_other_column")),
+    ///         ])
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name`, `some_column`, `some_other_column` FROM `cake`"
+    /// );
+    /// ```
+    fn exprs<T, I>(mut self, exprs: I) -> Self
     where
         T: Into<SelectExpr>,
         I: IntoIterator<Item = T>,
