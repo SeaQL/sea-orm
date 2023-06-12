@@ -446,6 +446,25 @@ pub trait QuerySelect: Sized {
         self.query().lock_exclusive();
         self
     }
+
+    /// Add an expression to the select expression list.
+    fn expr<T>(&mut self, expr: T) -> &mut Self 
+    where 
+        T: Into<SelectExpr>,
+    {
+        self.query().expr(expr);
+        self
+    }
+
+    /// Add select expressions from vector of [`SelectExpr`].
+    fn exprs<T, I>(&mut self, exprs: I) -> &mut Self
+    where
+        T: Into<SelectExpr>,
+        I: IntoIterator<Item = T>,
+    {
+        self.query().exprs(exprs);
+        self
+    }
 }
 
 // LINT: when the column does not appear in tables selected from
