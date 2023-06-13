@@ -514,9 +514,9 @@ pub trait QuerySelect: Sized {
     fn expr_as<T, A>(&mut self, expr: T, alias: A) -> &mut Self
     where
         T: Into<SimpleExpr>,
-        A: IntoIden,
+        A: IntoIdentity,
     {
-        self.query().expr_as(expr, alias);
+        self.query().expr_as(expr, alias.into_identity());
         self
     }
 }
