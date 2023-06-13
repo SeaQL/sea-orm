@@ -4,7 +4,7 @@ use crate::{
 };
 use sea_query::{
     Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr,
-    SelectStatement, TableRef,
+    SelectStatement, SimpleExpr, TableRef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -449,17 +449,16 @@ pub trait QuerySelect: Sized {
 
     /// Add an expression to the select expression list.
     /// ```
-    /// use sea_orm::QueryTrait;
-    /// use sea_orm::{entity::*, query::QuerySelect, tests_cfg::cake, DbBackend};
-    /// use sea_query::{Alias, Expr};
-    /// let mut find = cake::Entity::find();
+    /// use sea_orm::sea_query::Expr;
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
-    ///         .expr(Expr::col(Alias::new("price")))
+    ///         .select_only()
+    ///         .expr(Expr::col((cake::Entity, cake::Column::Id)))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name`, `price` FROM `cake`"
+    ///     "SELECT `cake`.`id` FROM `cake`"
     /// );
     /// ```
     fn expr<T>(mut self, expr: T) -> Self
@@ -472,20 +471,19 @@ pub trait QuerySelect: Sized {
 
     /// Add select expressions from vector of [`SelectExpr`].
     /// ```
-    /// use sea_orm::QueryTrait;
-    /// use sea_orm::{entity::*, query::QuerySelect, tests_cfg::cake, DbBackend};
-    /// use sea_query::{Alias, Expr};
-    /// let mut find = cake::Entity::find();
+    /// use sea_orm::sea_query::Expr;
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
+    ///         .select_only()
     ///         .exprs([
-    ///             Expr::col(Alias::new("price")),
-    ///             Expr::col(Alias::new("stock")),
+    ///             Expr::col((cake::Entity, cake::Column::Id)),
+    ///             Expr::col((cake::Entity, cake::Column::Name)),
     ///         ])
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name`, `price`, `stock` FROM `cake`"
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
     /// );
     /// ```
     fn exprs<T, I>(mut self, exprs: I) -> Self
@@ -494,6 +492,31 @@ pub trait QuerySelect: Sized {
         I: IntoIterator<Item = T>,
     {
         self.query().exprs(exprs);
+        self
+    }
+
+    /// Select column.
+    /// ```
+    /// use sea_orm::sea_query::{Alias, Expr, Func};
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .expr_as(
+    ///             Func::upper(Expr::col((cake::Entity, cake::Column::Name))),
+    ///             Alias::new("name_upper")
+    ///         )
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
+    /// );
+    /// ```
+    fn expr_as<T, A>(&mut self, expr: T, alias: A) -> &mut Self
+    where
+        T: Into<SimpleExpr>,
+        A: IntoIden,
+    {
+        self.query().expr_as(expr, alias);
         self
     }
 }
