@@ -139,3 +139,60 @@ where
 {
     DbErr::Json(s.to_string())
 }
+
+/// An error from unsuccessful SQL query
+#[derive(Error, Debug)]
+#[non_exhaustive]
+pub enum SqlErr{
+    /// error for inserting a record with a key that already exists in the table
+    #[error("Cannot have record with same key")]
+    UniqueConstraintViolation(),
+    /// error for Foreign key is not primary key
+    #[error("Cannot add non-primary key")]
+    ForeignKeyConstraintViolation,
+}
+
+impl DbErr {
+    /// converting generic DbErr from mysql to SqlErr
+    #[cfg(feature = "sqlx-mysql")]
+    pub fn sql_err(self) -> Option<SqlErr>{
+        match self {
+            DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(e)))
+            if e.code().unwrap().eq("1062") =>
+                {
+                    Some(SqlErr::UniqueConstraintViolation())
+                }
+            _ => None,
+        }
+    }
+    #[cfg(feature = "sqlx-postgres")]
+    pub fn sql_err(self) -> Option<SqlErr>{
+        match self {
+            DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(e)))
+            if e.code().unwrap().eq("23505") =>
+                {
+                    Some(SqlErr::UniqueConstraintViolation())
+                }
+            _ => None,
+        }
+    }
+    #[cfg(feature = "sqlx-sqlite")]
+    pub fn sql_err(self) -> Option<SqlErr>{
+        match self {
+            DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(e)))
+            if e.code().unwrap().eq("2067") =>
+                {
+                    Some(SqlErr::UniqueConstraintViolation())
+                }
+            _ => None,
+        }
+    }
+}
+
+impl PartialEq for SqlErr {
+    fn eq(&self, other: &Self) -> bool {
+        self.to_string() == other.to_string()
+    }
+}
+
+impl Eq for SqlErr {}
