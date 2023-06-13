@@ -504,7 +504,7 @@ pub trait QuerySelect: Sized {
     ///     cake::Entity::find()
     ///         .expr_as(
     ///             Func::upper(Expr::col((cake::Entity, cake::Column::Name))),
-    ///             Alias::new("name_upper")
+    ///             "name_upper"
     ///         )
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
