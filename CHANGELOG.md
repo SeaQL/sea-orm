@@ -214,6 +214,44 @@ pub enum RelatedEntity {
 
     The DeriveRelatedEntity derive macro will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration when the `seaography` feature is enabled
 
+* Add `expr`, `exprs` and `expr_as` methods to `QuerySelect` trait
+```rs
+use sea_orm::sea_query::Expr;
+use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+
+assert_eq!(
+    cake::Entity::find()
+        .select_only()
+        .expr(Expr::col((cake::Entity, cake::Column::Id)))
+        .build(DbBackend::MySql)
+        .to_string(),
+    "SELECT `cake`.`id` FROM `cake`"
+);
+
+assert_eq!(
+    cake::Entity::find()
+        .select_only()
+        .exprs([
+            Expr::col((cake::Entity, cake::Column::Id)),
+            Expr::col((cake::Entity, cake::Column::Name)),
+        ])
+        .build(DbBackend::MySql)
+        .to_string(),
+    "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+);
+
+assert_eq!(
+    cake::Entity::find()
+        .expr_as(
+            Func::upper(Expr::col((cake::Entity, cake::Column::Name))),
+            "name_upper"
+        )
+        .build(DbBackend::MySql)
+        .to_string(),
+    "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
+);
+```
+
 ### Enhancements
 
 * Added `Migration::name()` and `Migration::status()` getters for the name and status of `sea_orm_migration::Migration` https://github.com/SeaQL/sea-orm/pull/1519
