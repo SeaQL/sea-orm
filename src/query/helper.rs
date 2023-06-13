@@ -478,7 +478,6 @@ pub trait QuerySelect: Sized {
     /// let mut find = cake::Entity::find();
     ///
     /// assert_eq!(
-    ///     // new method
     ///     cake::Entity::find()
     ///         .exprs([
     ///             Expr::col(Alias::new("some_column")),
