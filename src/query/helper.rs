@@ -4,7 +4,7 @@ use crate::{
 };
 use sea_query::{
     Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr,
-    SelectStatement, TableRef,
+    SelectStatement, SimpleExpr, TableRef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -444,6 +444,79 @@ pub trait QuerySelect: Sized {
     /// Select lock exclusive
     fn lock_exclusive(mut self) -> Self {
         self.query().lock_exclusive();
+        self
+    }
+
+    /// Add an expression to the select expression list.
+    /// ```
+    /// use sea_orm::sea_query::Expr;
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .expr(Expr::col((cake::Entity, cake::Column::Id)))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id` FROM `cake`"
+    /// );
+    /// ```
+    fn expr<T>(mut self, expr: T) -> Self
+    where
+        T: Into<SelectExpr>,
+    {
+        self.query().expr(expr);
+        self
+    }
+
+    /// Add select expressions from vector of [`SelectExpr`].
+    /// ```
+    /// use sea_orm::sea_query::Expr;
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .exprs([
+    ///             Expr::col((cake::Entity, cake::Column::Id)),
+    ///             Expr::col((cake::Entity, cake::Column::Name)),
+    ///         ])
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    /// );
+    /// ```
+    fn exprs<T, I>(mut self, exprs: I) -> Self
+    where
+        T: Into<SelectExpr>,
+        I: IntoIterator<Item = T>,
+    {
+        self.query().exprs(exprs);
+        self
+    }
+
+    /// Select column.
+    /// ```
+    /// use sea_orm::sea_query::{Alias, Expr, Func};
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .expr_as(
+    ///             Func::upper(Expr::col((cake::Entity, cake::Column::Name))),
+    ///             "name_upper"
+    ///         )
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
+    /// );
+    /// ```
+    fn expr_as<T, A>(&mut self, expr: T, alias: A) -> &mut Self
+    where
+        T: Into<SimpleExpr>,
+        A: IntoIdentity,
+    {
+        self.query().expr_as(expr, alias.into_identity());
         self
     }
 }
