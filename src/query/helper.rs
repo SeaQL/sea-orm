@@ -456,10 +456,10 @@ pub trait QuerySelect: Sized {
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
-    ///         .expr(Expr::col(Alias::new("some_column")))
+    ///         .expr(Expr::col(Alias::new("price")))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name`, `some_column` FROM `cake`"
+    ///     "SELECT `cake`.`id`, `cake`.`name`, `price` FROM `cake`"
     /// );
     /// ```
     fn expr<T>(mut self, expr: T) -> Self
@@ -480,12 +480,12 @@ pub trait QuerySelect: Sized {
     /// assert_eq!(
     ///     cake::Entity::find()
     ///         .exprs([
-    ///             Expr::col(Alias::new("some_column")),
-    ///             Expr::col(Alias::new("some_other_column")),
+    ///             Expr::col(Alias::new("price")),
+    ///             Expr::col(Alias::new("stock")),
     ///         ])
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
-    ///     "SELECT `cake`.`id`, `cake`.`name`, `some_column`, `some_other_column` FROM `cake`"
+    ///     "SELECT `cake`.`id`, `cake`.`name`, `price`, `stock` FROM `cake`"
     /// );
     /// ```
     fn exprs<T, I>(mut self, exprs: I) -> Self
