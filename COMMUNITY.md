@@ -35,11 +35,11 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 #### Social
 - [aeroFans](https://github.com/naryand/aerofans) | Full stack forum-like social media platform in Rust and WebAssembly | DB: Postgres
+- [Crab Fit](https://crab.fit) [![GitHub stars](https://img.shields.io/github/stars/GRA0007/crab.fit.svg?style=social)](https://github.com/GRA0007/crab.fit) | Align your schedules to find the perfect time that works for everyone. | DB: MySQL, Postgres, SQLite
 - [JinShu](https://github.com/gengteng/jinshu) | A cross-platform **I**nstant **M**essaging system written in 🦀 | DB: MySQL, Postgres
 - [Kitsune](https://github.com/kitsune-soc/kitsune) | 🦊 ActivityPub-federated microblogging | DB: Postgres, SQLite
-- [THUBurrow](https://github.com/BobAnkh/THUBurrow) | A campus forum built by Next.js and Rocket | DB: Postgres
 - [Portfolio](https://github.com/admisio/Portfolio) | Encrypted high school 🏫 admissions service | DB: Postgres, SQLite
-- [Crab Fit](https://crab.fit) [![GitHub stars](https://img.shields.io/github/stars/GRA0007/crab.fit.svg?style=social)](https://github.com/GRA0007/crab.fit) | Align your schedules to find the perfect time that works for everyone. | DB: MySQL, Postgres, SQLite
+- [THUBurrow](https://github.com/BobAnkh/THUBurrow) | A campus forum built by Next.js and Rocket | DB: Postgres
 
 #### Bots
 - [bulbbot-gw](https://github.com/TeamBulbbot/bulbbot-gw) | The gateway code for the Discord bot Bulbbot | DB: Postgres
@@ -60,9 +60,9 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Email view tracker](https://github.com/friedemannsommer/email-view-tracker) | Simple web UI to create tracking URLs for HTML emails. | DB: MySQL, Postgres
 - [LLDAP](https://github.com/nitnelave/lldap) ![GitHub stars](https://img.shields.io/github/stars/nitnelave/lldap.svg?style=social) | A light LDAP server for user management | DB: MySQL, Postgres, SQLite
 - [RSS aggregator](https://github.com/fistons/rss-aggregator)| A small RSS aggregator and API using Actix Web and SeaORM | DB: Postgres
+- [ruuth](https://github.com/outurnate/ruuth) ([repository](https://github.com/outurnate/ruuth)) | A simple nginx auth_request backend providing MFA and lockout mechanisms | DB: MySQL, Postgres, SQLite
 - [snmp-sim-rust](https://github.com/sonalake/snmp-sim-rust) | SNMP Simulator | DB: SQLite
 - [Wikipedia Speedrun](https://wikipediaspeedrun.com) ([repository](https://github.com/hut8/wikipedia-speedrun)) | Finds shortest paths between Wikipedia articles | DB: SQLite
-- [ruuth](https://github.com/outurnate/ruuth) ([repository](https://github.com/outurnate/ruuth)) | A simple nginx auth_request backend providing MFA and lockout mechanisms | DB: MySQL, Postgres, SQLite
 
 #### Url Shortener
 - [Dinoly](https://github.com/ippsav/Dinoly) | An url shortener using Axum web framework and SeaORM | DB: Postgres
@@ -101,9 +101,9 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 ### Scaffolding
 
-- [Axum Book Management](https://github.com/lz1998/axum-book-management) | CRUD system of book-management with ORM and JWT for educational purposes | DB: MySQL
 - [actix-react-starter-template](https://github.com/aslamplr/actix-react-starter-template) | Actix Web + SeaORM + React + Redux + Redux Saga project starter template | DB: Postgres
 - [Adta](https://github.com/aaronleopold/adta) | Adta is **A**nother **D**amn **T**odo **A**pp, fun little side project | DB: MySQL, Postgres, SQLite
+- [Axum Book Management](https://github.com/lz1998/axum-book-management) | CRUD system of book-management with ORM and JWT for educational purposes | DB: MySQL
 - [BookStore](https://github.com/AfaanBilal/bookstore) | A bookstore manegement system HTTP REST API using Rocket, SeaORM and JWT. | DB: MySQL
 - [crud-rs](https://github.com/onichandame/crud-rs) | A framework combining async-graphql and SeaORM
 - [http-api-rs](https://github.com/daniel-samson/http-api-rs) | Template project for creating REST API's in rust with swagger ui
