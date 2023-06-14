@@ -152,7 +152,6 @@ pub enum SqlErr {
     ForeignKeyConstraintViolation(),
 }
 
-
 #[allow(dead_code)]
 impl DbErr {
     /// convert generic DbErr by sqlx to SqlErr
@@ -178,7 +177,7 @@ impl DbErr {
                         "23000" => return Some(SqlErr::UniqueConstraintViolation()),
                         "1586" => return Some(SqlErr::UniqueConstraintViolation()),
                         "1452" => return Some(SqlErr::ForeignKeyConstraintViolation()),
-                        _ => return None
+                        _ => return None,
                     }
                 }
                 #[cfg(feature = "sqlx-postgres")]
@@ -188,7 +187,7 @@ impl DbErr {
                     match error_code_expanded {
                         "23505" => return Some(SqlErr::UniqueConstraintViolation()),
                         "23503" => return Some(SqlErr::ForeignKeyConstraintViolation()),
-                        _ => return None
+                        _ => return None,
                     }
                 }
                 #[cfg(feature = "sqlx-sqlite")]
@@ -196,7 +195,7 @@ impl DbErr {
                     match error_code_expanded {
                         "1555" => return Some(SqlErr::UniqueConstraintViolation()),
                         "787" => return Some(SqlErr::ForeignKeyConstraintViolation()),
-                        _ => return None
+                        _ => return None,
                     }
                 }
             }

@@ -1,9 +1,9 @@
 pub mod common;
 mod crud;
-pub use sea_orm::entity::*;
-pub use sea_orm::{ConnectionTrait, QueryFilter, QuerySelect, sea_query, tests_cfg, EntityName};
 use rust_decimal_macros::dec;
+pub use sea_orm::entity::*;
 use sea_orm::error::*;
+pub use sea_orm::{sea_query, tests_cfg, ConnectionTrait, EntityName, QueryFilter, QuerySelect};
 // use sea_query::ForeignKey;
 use uuid::Uuid;
 
@@ -57,7 +57,5 @@ pub async fn test_error(db: &DatabaseConnection) {
 }
 
 // pub async fn test_error_foreign(db1: &DatabaseConnection, db2: &DatabaseConnection) {
-    
 
-    
 // }
