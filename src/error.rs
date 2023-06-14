@@ -185,7 +185,7 @@ impl DbErr {
                         return Some(SqlErr::ForeignKeyConstraintViolation());
                     };
                 }
-            } 
+            }
             #[cfg(feature = "sqlx-sqlite")]
             {
                 if e.try_downcast_ref::<SqlxSqliteError>().is_some() {
