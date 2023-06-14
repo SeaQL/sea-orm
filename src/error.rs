@@ -152,9 +152,11 @@ pub enum SqlErr {
     ForeignKeyConstraintViolation(),
 }
 
+use std::ops::Deref;
 #[allow(dead_code)]
 impl DbErr {
-    /// converting generic DbErr from mysql to SqlErr
+    /// convert generic DbErr by sqlx to SqlErr
+    /// return none if input is not any of SqlErr
     #[cfg(any(
         feature = "sqlx-mysql",
         feature = "sqlx-postgres",
@@ -164,37 +166,36 @@ impl DbErr {
         if let DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(e)))
         | DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(e))) = self
         {
+            let error_code = e.code().unwrap_or_default();
+            let error_code_expanded = error_code.deref();
             #[cfg(feature = "sqlx-mysql")]
             if e.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>()
                 .is_some()
             {
-                if e.code().unwrap_or_default().eq("1062") | e.code().unwrap_or_default().eq("1586")
-                {
-                    return Some(SqlErr::UniqueConstraintViolation());
-                };
-                if e.code().unwrap_or_default().eq("1452") {
-                    return Some(SqlErr::ForeignKeyConstraintViolation());
-                };
+                match error_code_expanded {
+                    "1062" => return Some(SqlErr::UniqueConstraintViolation()),
+                    "1586" => return Some(SqlErr::UniqueConstraintViolation()),
+                    "1452" => return Some(SqlErr::ForeignKeyConstraintViolation()),
+                    _ => return None
+                }
             }
             #[cfg(feature = "sqlx-postgres")]
             if e.try_downcast_ref::<sqlx::postgres::PgDatabaseError>()
                 .is_some()
             {
-                if e.code().unwrap_or_default().eq("23505") {
-                    return Some(SqlErr::UniqueConstraintViolation());
-                };
-                if e.code().unwrap_or_default().eq("23503") {
-                    return Some(SqlErr::ForeignKeyConstraintViolation());
-                };
+                match error_code_expanded {
+                    "23505" => return Some(SqlErr::UniqueConstraintViolation()),
+                    "23503" => return Some(SqlErr::ForeignKeyConstraintViolation()),
+                    _ => return None
+                }
             }
             #[cfg(feature = "sqlx-sqlite")]
             if e.try_downcast_ref::<sqlx::sqlite::SqliteError>().is_some() {
-                if e.code().unwrap_or_default().eq("2067") {
-                    return Some(SqlErr::UniqueConstraintViolation());
-                };
-                if e.code().unwrap_or_default().eq("787") {
-                    return Some(SqlErr::ForeignKeyConstraintViolation());
-                };
+                match error_code_expanded {
+                    "2067" => return Some(SqlErr::UniqueConstraintViolation()),
+                    "787" => return Some(SqlErr::ForeignKeyConstraintViolation()),
+                    _ => return None
+                }
             }
         }
         None
