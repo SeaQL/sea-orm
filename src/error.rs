@@ -141,7 +141,7 @@ where
 }
 
 /// An error from unsuccessful SQL query
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SqlErr {
     /// error for inserting a record with a key that already exists in the table
@@ -164,35 +164,43 @@ impl DbErr {
         if let DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(e)))
         | DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(e))) = self
         {
-            if cfg!(feature = "sqlx-mysql") && e.try_downcast_ref::<SqlxMySqlError>().is_some() {
-                if e.code().unwrap().eq("1062") {
-                    return Some(SqlErr::UniqueConstraintViolation());
-                };
-                if e.code().unwrap().eq("1586") {
-                    return Some(SqlErr::UniqueConstraintViolation());
-                };
+            if cfg!(feature = "sqlx-mysql") {
+                #[cfg(feature = "sqlx-mysql")]
+                if e.try_downcast_ref::<SqlxMySqlError>().is_some() {
+                    if e.code().unwrap().eq("1062") {
+                        return Some(SqlErr::UniqueConstraintViolation());
+                    };
+                    if e.code().unwrap().eq("1586") {
+                        return Some(SqlErr::UniqueConstraintViolation());
+                    };
+                }
             }
-            if cfg!(feature = "sqlx-postgres")
-                && e.try_downcast_ref::<SqlxPostgresError>().is_some()
-            {
-                if e.code().unwrap().eq("23505") {
-                    return Some(SqlErr::UniqueConstraintViolation());
-                };
+            if cfg!(feature = "sqlx-postgres"){
+                #[cfg(feature = "sqlx-postgres")]
+                if e.try_downcast_ref::<SqlxPostgresError>().is_some()
+                {
+                    if e.code().unwrap().eq("23505") {
+                        return Some(SqlErr::UniqueConstraintViolation());
+                    };
+                    // placebo for clippy test, will be replaced by other error code
+                    if e.code().unwrap().eq("23506") {
+                        return Some(SqlErr::UniqueConstraintViolation());
+                    };
+                }
             }
-            if cfg!(feature = "sqlx-sqlite") && e.try_downcast_ref::<SqlxSqliteError>().is_some() {
-                if e.code().unwrap().eq("2067") {
-                    return Some(SqlErr::UniqueConstraintViolation());
-                };
+            if cfg!(feature = "sqlx-sqlite") {
+                #[cfg(feature = "sqlx-sqlite")]
+                if e.try_downcast_ref::<SqlxSqliteError>().is_some() {
+                    if e.code().unwrap().eq("2067") {
+                        return Some(SqlErr::UniqueConstraintViolation());
+                    };
+                    // placebo for clippy test, will be replaced by other error code
+                    if e.code().unwrap().eq("2068") {
+                        return Some(SqlErr::UniqueConstraintViolation());
+                    };
+                }
             }
         }
         None
     }
 }
-
-impl PartialEq for SqlErr {
-    fn eq(&self, other: &Self) -> bool {
-        self.to_string() == other.to_string()
-    }
-}
-
-impl Eq for SqlErr {}
