@@ -152,40 +152,40 @@ pub enum SqlErr {
     ForeignKeyConstraintViolation,
 }
 
+#[allow(dead_code)]
 impl DbErr {
     /// converting generic DbErr from mysql to SqlErr
-    #[cfg(feature = "sqlx-mysql")]
-    pub fn sql_err(self) -> Option<SqlErr> {
-        match self {
-            DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(e)))
-                if e.code().unwrap().eq("1062") =>
-            {
-                Some(SqlErr::UniqueConstraintViolation())
+    #[cfg(any(
+        feature = "sqlx-mysql",
+        feature = "sqlx-postgres",
+        feature = "sqlx-sqlite"
+    ))]
+    fn sql_err(&self) -> Option<SqlErr> {
+        if let DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(e)))
+        | DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(e))) = self
+        {
+            if cfg!(feature = "sqlx-mysql") && e.try_downcast_ref::<SqlxMySqlError>().is_some() {
+                if e.code().unwrap().eq("1062") {
+                    return Some(SqlErr::UniqueConstraintViolation());
+                };
+                if e.code().unwrap().eq("1586") {
+                    return Some(SqlErr::UniqueConstraintViolation());
+                };
             }
-            _ => None,
-        }
-    }
-    #[cfg(feature = "sqlx-postgres")]
-    pub fn sql_err(self) -> Option<SqlErr> {
-        match self {
-            DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(e)))
-                if e.code().unwrap().eq("23505") =>
+            if cfg!(feature = "sqlx-postgres")
+                && e.try_downcast_ref::<SqlxPostgresError>().is_some()
             {
-                Some(SqlErr::UniqueConstraintViolation())
+                if e.code().unwrap().eq("23505") {
+                    return Some(SqlErr::UniqueConstraintViolation());
+                };
             }
-            _ => None,
-        }
-    }
-    #[cfg(feature = "sqlx-sqlite")]
-    pub fn sql_err(self) -> Option<SqlErr> {
-        match self {
-            DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(e)))
-                if e.code().unwrap().eq("2067") =>
-            {
-                Some(SqlErr::UniqueConstraintViolation())
+            if cfg!(feature = "sqlx-sqlite") && e.try_downcast_ref::<SqlxSqliteError>().is_some() {
+                if e.code().unwrap().eq("2067") {
+                    return Some(SqlErr::UniqueConstraintViolation());
+                };
             }
-            _ => None,
         }
+        None
     }
 }
 
