@@ -165,37 +165,36 @@ impl DbErr {
         | DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(e))) = self
         {
             #[cfg(feature = "sqlx-mysql")]
+            if e.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>()
+                .is_some()
             {
-                if e.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>().is_some() {
-                    if e.code().unwrap_or_default().eq("1062") | e.code().unwrap_or_default().eq("1586") {
-                        return Some(SqlErr::UniqueConstraintViolation());
-                    };
-                    if e.code().unwrap_or_default().eq("1452") {
-                        return Some(SqlErr::ForeignKeyConstraintViolation());
-                    };
-                }
+                if e.code().unwrap_or_default().eq("1062") | e.code().unwrap_or_default().eq("1586")
+                {
+                    return Some(SqlErr::UniqueConstraintViolation());
+                };
+                if e.code().unwrap_or_default().eq("1452") {
+                    return Some(SqlErr::ForeignKeyConstraintViolation());
+                };
             }
             #[cfg(feature = "sqlx-postgres")]
+            if e.try_downcast_ref::<sqlx::postgres::PgDatabaseError>()
+                .is_some()
             {
-                if e.try_downcast_ref::<sqlx::postgres::PgDatabaseError>().is_some() {
-                    if e.code().unwrap_or_default().eq("23505") {
-                        return Some(SqlErr::UniqueConstraintViolation());
-                    };
-                    if e.code().unwrap_or_default().eq("23503") {
-                        return Some(SqlErr::ForeignKeyConstraintViolation());
-                    };
-                }
+                if e.code().unwrap_or_default().eq("23505") {
+                    return Some(SqlErr::UniqueConstraintViolation());
+                };
+                if e.code().unwrap_or_default().eq("23503") {
+                    return Some(SqlErr::ForeignKeyConstraintViolation());
+                };
             }
             #[cfg(feature = "sqlx-sqlite")]
-            {
-                if e.try_downcast_ref::<sqlx::sqlite::SqliteError>().is_some() {
-                    if e.code().unwrap_or_default().eq("2067") {
-                        return Some(SqlErr::UniqueConstraintViolation());
-                    };
-                    if e.code().unwrap_or_default().eq("787") {
-                        return Some(SqlErr::ForeignKeyConstraintViolation());
-                    };
-                }
+            if e.try_downcast_ref::<sqlx::sqlite::SqliteError>().is_some() {
+                if e.code().unwrap_or_default().eq("2067") {
+                    return Some(SqlErr::UniqueConstraintViolation());
+                };
+                if e.code().unwrap_or_default().eq("787") {
+                    return Some(SqlErr::ForeignKeyConstraintViolation());
+                };
             }
         }
         None
