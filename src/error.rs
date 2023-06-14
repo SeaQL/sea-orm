@@ -160,7 +160,7 @@ impl DbErr {
         feature = "sqlx-postgres",
         feature = "sqlx-sqlite"
     ))]
-    fn sql_err(&self) -> Option<SqlErr> {
+    fn sql_err<E: sqlx::error::DatabaseError>(&self) -> Option<SqlErr> {
         if let DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(e)))
         | DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(e))) = self
         {
