@@ -144,11 +144,11 @@ where
 #[derive(Error, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SqlErr {
-    /// error for inserting a record with a key that already exists in the table
-    #[error("Cannot have record with same key")]
+    /// error for duplicate record in unique field or primary key field
+    #[error("Unique Constraint Violated")]
     UniqueConstraintViolation,
-    /// error for Foreign key is not primary key
-    #[error("Cannot add non-primary key from other table")]
+    /// error for Foreign key constraint
+    #[error("Foreign Key Constraint Violated")]
     ForeignKeyConstraintViolation,
 }
 
