@@ -146,16 +146,15 @@ where
 pub enum SqlErr {
     /// error for inserting a record with a key that already exists in the table
     #[error("Cannot have record with same key")]
-    UniqueConstraintViolation(),
+    UniqueConstraintViolation,
     /// error for Foreign key is not primary key
     #[error("Cannot add non-primary key from other table")]
-    ForeignKeyConstraintViolation(),
+    ForeignKeyConstraintViolation,
 }
 
 #[allow(dead_code)]
 impl DbErr {
-    /// convert generic DbErr by sqlx to SqlErr
-    /// return none if input is not any of SqlErr
+    /// Convert generic DbErr by sqlx to SqlErr, return none if the error is not any type of SqlErr
     pub fn sql_err(&self) -> Option<SqlErr> {
         #[cfg(any(
             feature = "sqlx-mysql",
@@ -168,15 +167,32 @@ impl DbErr {
             | DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(e))) = self
             {
                 let error_code = e.code().unwrap_or_default();
-                let error_code_expanded = error_code.deref();
+                let _error_code_expanded = error_code.deref();
                 #[cfg(feature = "sqlx-mysql")]
                 if e.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>()
                     .is_some()
                 {
-                    match error_code_expanded {
-                        "23000" => return Some(SqlErr::UniqueConstraintViolation()),
-                        "1586" => return Some(SqlErr::UniqueConstraintViolation()),
-                        "1452" => return Some(SqlErr::ForeignKeyConstraintViolation()),
+                    let error_number = e
+                        .try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>()?
+                        .number();
+                    match error_number {
+                        // 1022 Can't write; duplicate key in table '%s'
+                        // 1062 Duplicate entry '%s' for key %d
+                        // 1169 Can't write, because of unique constraint, to table '%s'
+                        // 1586 Duplicate entry '%s' for key '%s'
+                        1022 | 1062 | 1169 | 1586 => {
+                            return Some(SqlErr::UniqueConstraintViolation)
+                        }
+                        // 1216 Cannot add or update a child row: a foreign key constraint fails
+                        // 1217 Cannot delete or update a parent row: a foreign key constraint fails
+                        // 1451 Cannot delete or update a parent row: a foreign key constraint fails (%s)
+                        // 1452 Cannot add or update a child row: a foreign key constraint fails (%s)
+                        // 1557 Upholding foreign key constraints for table '%s', entry '%s', key %d would lead to a duplicate entry
+                        // 1761 Foreign key constraint for table '%s', record '%s' would lead to a duplicate entry in table '%s', key '%s'
+                        // 1762 Foreign key constraint for table '%s', record '%s' would lead to a duplicate entry in a child table
+                        1216 | 1217 | 1451 | 1452 | 1557 | 1761 | 1762 => {
+                            return Some(SqlErr::ForeignKeyConstraintViolation)
+                        }
                         _ => return None,
                     }
                 }
@@ -184,17 +200,19 @@ impl DbErr {
                 if e.try_downcast_ref::<sqlx::postgres::PgDatabaseError>()
                     .is_some()
                 {
-                    match error_code_expanded {
-                        "23505" => return Some(SqlErr::UniqueConstraintViolation()),
-                        "23503" => return Some(SqlErr::ForeignKeyConstraintViolation()),
+                    match _error_code_expanded {
+                        "23505" => return Some(SqlErr::UniqueConstraintViolation),
+                        "23503" => return Some(SqlErr::ForeignKeyConstraintViolation),
                         _ => return None,
                     }
                 }
                 #[cfg(feature = "sqlx-sqlite")]
                 if e.try_downcast_ref::<sqlx::sqlite::SqliteError>().is_some() {
-                    match error_code_expanded {
-                        "1555" => return Some(SqlErr::UniqueConstraintViolation()),
-                        "787" => return Some(SqlErr::ForeignKeyConstraintViolation()),
+                    match _error_code_expanded {
+                        // error code 1555 refers to the primary key's unique constraint violation
+                        // error code 2067 refers to the UNIQUE unique constraint violation
+                        "1555" | "2067" => return Some(SqlErr::UniqueConstraintViolation),
+                        "787" => return Some(SqlErr::ForeignKeyConstraintViolation),
                         _ => return None,
                     }
                 }
