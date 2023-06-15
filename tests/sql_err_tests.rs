@@ -2,9 +2,7 @@ pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
 use rust_decimal_macros::dec;
-pub use sea_orm::{
-    entity::*, error::*, tests_cfg, DatabaseConnection, EntityName, ExecResult,
-};
+pub use sea_orm::{entity::*, error::*, tests_cfg, DatabaseConnection, EntityName, ExecResult};
 use uuid::Uuid;
 
 #[sea_orm_macros::test]
