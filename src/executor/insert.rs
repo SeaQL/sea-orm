@@ -221,3 +221,50 @@ where
         )),
     }
 }
+
+#[derive(Debug)]
+/// show if the
+pub enum InsertReturn<T> {
+    Empty,
+    Conflicted,
+    Inserted(T),
+}
+
+#[derive(Debug)]
+/// struct for safe insert
+pub struct InsertAttempt<A, T>
+where
+    A: ActiveModelTrait,
+{
+    pub(crate) insert: Insert<A>,
+    pub(crate) State: InsertReturn<T>,
+}
+
+impl<A, T> InsertAttempt<A, T>
+where
+    A: ActiveModelTrait,
+{
+    /// Add a Model to Self
+    ///
+    /// # Panics
+    ///
+    /// Panics if the column value has discrepancy across rows
+    #[allow(clippy::should_implement_trait)]
+    pub fn add<M>(mut self, m: M) -> Self
+    where
+        M: IntoActiveModel<A>,
+    {
+        self.insert = self.insert.add(m);
+        self
+    }
+
+    /// Add many Models to Self
+    pub fn add_many<M, I>(mut self, models: I) -> Self
+    where
+        M: IntoActiveModel<A>,
+        I: IntoIterator<Item = M>,
+    {
+        self.insert = self.insert.add_many(models);
+        self
+    }
+}
