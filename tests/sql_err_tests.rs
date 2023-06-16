@@ -39,7 +39,21 @@ pub async fn test_error(db: &DatabaseConnection) {
         .await
         .expect_err("inserting should fail due to duplicate primary key");
 
-    assert_eq!(error.sql_err(), Some(SqlErr::UniqueConstraintViolation("UCV")));
+    let mut error_message: &str = "";
+    if cfg!(feature = "sqlx-mysql") {
+        error_message = "Duplicate entry '1' for key 'cake.PRIMARY'"
+    } else if cfg!(feature = "sqlx-postgres") {
+        error_message = "duplicate key value violates unique constraint \"cake_pkey\""
+    } else if cfg!(feature = "sqlx-sqlite") {
+        error_message = "UNIQUE constraint failed: cake.id"
+    }
+
+    assert_eq!(
+        error.sql_err(),
+        Some(SqlErr::UniqueConstraintViolation(String::from(
+            error_message
+        )))
+    );
 
     let fk_cake = cake::ActiveModel {
         name: Set("fk error Cake".to_owned()),
@@ -55,8 +69,18 @@ pub async fn test_error(db: &DatabaseConnection) {
         .await
         .expect_err("create foreign key should fail with non-primary key");
 
+    if cfg!(feature = "sqlx-mysql") {
+        error_message = "Cannot add or update a child row: a foreign key constraint fails (`bakery_chain_sql_err_tests`.`cake`, CONSTRAINT `fk-cake-bakery_id` FOREIGN KEY (`bakery_id`) REFERENCES `bakery` (`id`) ON DELETE CASCADE ON UPDATE CASCADE)"
+    } else if cfg!(feature = "sqlx-postgres") {
+        error_message = "insert or update on table \"cake\" violates foreign key constraint \"fk-cake-bakery_id\""
+    } else if cfg!(feature = "sqlx-sqlite") {
+        error_message = "FOREIGN KEY constraint failed"
+    }
+
     assert_eq!(
         fk_error.sql_err(),
-        Some(SqlErr::ForeignKeyConstraintViolation("FKCV"))
+        Some(SqlErr::ForeignKeyConstraintViolation(String::from(
+            error_message
+        )))
     );
 }
