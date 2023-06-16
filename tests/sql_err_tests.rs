@@ -39,7 +39,7 @@ pub async fn test_error(db: &DatabaseConnection) {
         .await
         .expect_err("inserting should fail due to duplicate primary key");
 
-    assert_eq!(error.sql_err(), Some(SqlErr::UniqueConstraintViolation));
+    assert_eq!(error.sql_err(), Some(SqlErr::UniqueConstraintViolation("UCV")));
 
     let fk_cake = cake::ActiveModel {
         name: Set("fk error Cake".to_owned()),
@@ -57,6 +57,6 @@ pub async fn test_error(db: &DatabaseConnection) {
 
     assert_eq!(
         fk_error.sql_err(),
-        Some(SqlErr::ForeignKeyConstraintViolation)
+        Some(SqlErr::ForeignKeyConstraintViolation("FKCV"))
     );
 }

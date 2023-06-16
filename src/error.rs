@@ -144,12 +144,13 @@ where
 #[derive(Error, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SqlErr {
+    // string stored in error is a placebo, 
     /// error for duplicate record in unique field or primary key field
-    #[error("Unique Constraint Violated")]
-    UniqueConstraintViolation,
+    #[error("Unique Constraint Violated: {0}")]
+    UniqueConstraintViolation(&'static str),
     /// error for Foreign key constraint
-    #[error("Foreign Key Constraint Violated")]
-    ForeignKeyConstraintViolation,
+    #[error("Foreign Key Constraint Violated: {0}")]
+    ForeignKeyConstraintViolation(&'static str),
 }
 
 #[allow(dead_code)]
@@ -181,7 +182,7 @@ impl DbErr {
                         // 1169 Can't write, because of unique constraint, to table '%s'
                         // 1586 Duplicate entry '%s' for key '%s'
                         1022 | 1062 | 1169 | 1586 => {
-                            return Some(SqlErr::UniqueConstraintViolation)
+                            return Some(SqlErr::UniqueConstraintViolation("UCV"))
                         }
                         // 1216 Cannot add or update a child row: a foreign key constraint fails
                         // 1217 Cannot delete or update a parent row: a foreign key constraint fails
@@ -191,7 +192,7 @@ impl DbErr {
                         // 1761 Foreign key constraint for table '%s', record '%s' would lead to a duplicate entry in table '%s', key '%s'
                         // 1762 Foreign key constraint for table '%s', record '%s' would lead to a duplicate entry in a child table
                         1216 | 1217 | 1451 | 1452 | 1557 | 1761 | 1762 => {
-                            return Some(SqlErr::ForeignKeyConstraintViolation)
+                            return Some(SqlErr::ForeignKeyConstraintViolation("FKCV"))
                         }
                         _ => return None,
                     }
@@ -201,8 +202,8 @@ impl DbErr {
                     .is_some()
                 {
                     match _error_code_expanded {
-                        "23505" => return Some(SqlErr::UniqueConstraintViolation),
-                        "23503" => return Some(SqlErr::ForeignKeyConstraintViolation),
+                        "23505" => return Some(SqlErr::UniqueConstraintViolation("UCV")),
+                        "23503" => return Some(SqlErr::ForeignKeyConstraintViolation("FKCV")),
                         _ => return None,
                     }
                 }
@@ -211,8 +212,8 @@ impl DbErr {
                     match _error_code_expanded {
                         // error code 1555 refers to the primary key's unique constraint violation
                         // error code 2067 refers to the UNIQUE unique constraint violation
-                        "1555" | "2067" => return Some(SqlErr::UniqueConstraintViolation),
-                        "787" => return Some(SqlErr::ForeignKeyConstraintViolation),
+                        "1555" | "2067" => return Some(SqlErr::UniqueConstraintViolation("UCV")),
+                        "787" => return Some(SqlErr::ForeignKeyConstraintViolation("FKCV")),
                         _ => return None,
                     }
                 }
