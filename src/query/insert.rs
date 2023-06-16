@@ -1,6 +1,6 @@
 use crate::{
     ActiveModelTrait, ActiveValue, ColumnTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
-    PrimaryKeyTrait, QueryTrait,
+    PrimaryKeyTrait, QueryTrait, InsertTrait,
 };
 use core::marker::PhantomData;
 use sea_query::{Expr, InsertStatement, OnConflict, ValueTuple};
@@ -26,11 +26,11 @@ where
     }
 }
 
-impl<A> Insert<A>
+impl<A> InsertTrait<A> for Insert<A>
 where
     A: ActiveModelTrait,
 {
-    pub(crate) fn new() -> Self {
+    fn new() -> Self {
         Self {
             query: InsertStatement::new()
                 .into_table(A::Entity::default().table_ref())
@@ -42,79 +42,13 @@ where
         }
     }
 
-    /// Insert one Model or ActiveModel
-    ///
-    /// Model
-    /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
-    ///
-    /// assert_eq!(
-    ///     Insert::one(cake::Model {
-    ///         id: 1,
-    ///         name: "Apple Pie".to_owned(),
-    ///     })
-    ///     .build(DbBackend::Postgres)
-    ///     .to_string(),
-    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#,
-    /// );
-    /// ```
-    /// ActiveModel
-    /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
-    ///
-    /// assert_eq!(
-    ///     Insert::one(cake::ActiveModel {
-    ///         id: NotSet,
-    ///         name: Set("Apple Pie".to_owned()),
-    ///     })
-    ///     .build(DbBackend::Postgres)
-    ///     .to_string(),
-    ///     r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie')"#,
-    /// );
-    /// ```
-    pub fn one<M>(m: M) -> Insert<A>
-    where
-        M: IntoActiveModel<A>,
-    {
-        Self::new().add(m)
-    }
-
-    /// Insert many Model or ActiveModel
-    ///
-    /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
-    ///
-    /// assert_eq!(
-    ///     Insert::many([
-    ///         cake::Model {
-    ///             id: 1,
-    ///             name: "Apple Pie".to_owned(),
-    ///         },
-    ///         cake::Model {
-    ///             id: 2,
-    ///             name: "Orange Scone".to_owned(),
-    ///         }
-    ///     ])
-    ///     .build(DbBackend::Postgres)
-    ///     .to_string(),
-    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie'), (2, 'Orange Scone')"#,
-    /// );
-    /// ```
-    pub fn many<M, I>(models: I) -> Self
-    where
-        M: IntoActiveModel<A>,
-        I: IntoIterator<Item = M>,
-    {
-        Self::new().add_many(models)
-    }
-
     /// Add a Model to Self
     ///
     /// # Panics
     ///
     /// Panics if the column value has discrepancy across rows
     #[allow(clippy::should_implement_trait)]
-    pub fn add<M>(mut self, m: M) -> Self
+    fn add<M>(mut self, m: M) -> Self
     where
         M: IntoActiveModel<A>,
     {
@@ -148,19 +82,12 @@ where
         self.query.values_panic(values);
         self
     }
+}
 
-    /// Add many Models to Self
-    pub fn add_many<M, I>(mut self, models: I) -> Self
-    where
-        M: IntoActiveModel<A>,
-        I: IntoIterator<Item = M>,
-    {
-        for model in models.into_iter() {
-            self = self.add(model);
-        }
-        self
-    }
-
+impl<A> Insert<A>
+where
+    A: ActiveModelTrait,
+{
     /// On conflict
     ///
     /// on conflict do nothing
