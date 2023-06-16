@@ -1,7 +1,7 @@
 use crate::{
     ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne, FromQueryResult, Insert,
     ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related, RelationBuilder,
-    RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne, query::traits
+    RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne, InsertTrait
 };
 use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 use std::fmt::Debug;

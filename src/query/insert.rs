@@ -135,6 +135,15 @@ where
         self.query.on_conflict(on_conflict);
         self
     }
+
+    /// Allow insert statement return safely if inserting nothing.
+    /// The database will not be affected.
+    pub fn on_empty_do_nothing(self) -> InsertAttempt<A>
+    where 
+        A: ActiveModelTrait,
+    {
+        InsertAttempt::from_insert(self)
+    }
 }
 
 impl<A> QueryTrait for Insert<A>
@@ -156,12 +165,128 @@ where
     }
 }
 
+/// Performs INSERT operations on a ActiveModel, will do nothing if input is empty.
+#[derive(Debug)]
+pub struct InsertAttempt<A>
+where 
+    A: ActiveModelTrait
+{
+    pub(crate) insert_struct: Insert<A>,
+    pub(crate) on_empty_do_nothing: bool,
+}
+
+impl<A> InsertTrait<A> for InsertAttempt<A>
+where
+    A: ActiveModelTrait,
+{
+    fn new() -> Self {
+        Self {
+            insert_struct : Insert::new(),
+            on_empty_do_nothing : true,
+        }
+    }
+
+    /// Add a Model to Self
+    ///
+    /// # Panics
+    ///
+    /// Panics if the column value has discrepancy across rows
+    #[allow(clippy::should_implement_trait)]
+    fn add<M>(mut self, m: M) -> Self
+    where
+        M: IntoActiveModel<A>,
+    {
+        self.insert_struct = self.insert_struct.add(m);
+        self
+    }
+}
+
+impl<A> InsertAttempt<A>
+where
+    A: ActiveModelTrait,
+{
+    /// helper function for conversion 
+    pub fn from_insert(insert: Insert<A>) -> Self{
+        Self {
+            insert_struct : insert,
+            on_empty_do_nothing : true,
+        }
+    }
+
+    /// On conflict
+    ///
+    /// on conflict do nothing
+    /// ```
+    /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
+    ///
+    /// let orange = cake::ActiveModel {
+    ///     id: ActiveValue::set(2),
+    ///     name: ActiveValue::set("Orange".to_owned()),
+    /// };
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange)
+    ///         .on_conflict(
+    ///             OnConflict::column(cake::Column::Name)
+    ///                 .do_nothing()
+    ///                 .to_owned()
+    ///         )
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO NOTHING"#,
+    /// );
+    /// ```
+    ///
+    /// on conflict do update
+    /// ```
+    /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
+    ///
+    /// let orange = cake::ActiveModel {
+    ///     id: ActiveValue::set(2),
+    ///     name: ActiveValue::set("Orange".to_owned()),
+    /// };
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange)
+    ///         .on_conflict(
+    ///             OnConflict::column(cake::Column::Name)
+    ///                 .update_column(cake::Column::Name)
+    ///                 .to_owned()
+    ///         )
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO UPDATE SET "name" = "excluded"."name""#,
+    /// );
+    /// ```
+    pub fn on_conflict(mut self, on_conflict: OnConflict) -> Self {
+        self.insert_struct.query.on_conflict(on_conflict);
+        self
+    }
+}
+
+impl<A> QueryTrait for InsertAttempt<A>
+where
+    A: ActiveModelTrait,
+{
+    type QueryStatement = InsertStatement;
+
+    fn query(&mut self) -> &mut InsertStatement {
+        &mut self.insert_struct.query
+    }
+
+    fn as_query(&self) -> &InsertStatement {
+        &self.insert_struct.query
+    }
+
+    fn into_query(self) -> InsertStatement {
+        self.insert_struct.query
+    }
+} 
+
 #[cfg(test)]
 mod tests {
     use sea_query::OnConflict;
 
     use crate::tests_cfg::cake;
-    use crate::{ActiveValue, DbBackend, DbErr, EntityTrait, Insert, IntoActiveModel, QueryTrait};
+    use crate::{ActiveValue, DbBackend, DbErr, EntityTrait, Insert, IntoActiveModel, QueryTrait, InsertTrait};
 
     #[test]
     fn insert_1() {
