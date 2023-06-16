@@ -172,7 +172,6 @@ where
     A: ActiveModelTrait
 {
     pub(crate) insert_struct: Insert<A>,
-    pub(crate) on_empty_do_nothing: bool,
 }
 
 impl<A> InsertTrait<A> for InsertAttempt<A>
@@ -182,7 +181,6 @@ where
     fn new() -> Self {
         Self {
             insert_struct : Insert::new(),
-            on_empty_do_nothing : true,
         }
     }
 
@@ -209,7 +207,6 @@ where
     pub fn from_insert(insert: Insert<A>) -> Self{
         Self {
             insert_struct : insert,
-            on_empty_do_nothing : true,
         }
     }
 
