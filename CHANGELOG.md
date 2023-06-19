@@ -251,6 +251,27 @@ assert_eq!(
     "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
 );
 ```
+* Add `DbErr::sql_err()` method to convert error into common database errors `SqlErr`, such as unique constraint or foreign key violation errors. https://github.com/SeaQL/sea-orm/pull/1707
+```rs
+assert!(matches!(
+    cake
+        .into_active_model()
+        .insert(db)
+        .await
+        .expect_err("Insert a row with duplicated primary key")
+        .sql_err(),
+    Some(SqlErr::UniqueConstraintViolation(_))
+));
+
+assert!(matches!(
+    fk_cake
+        .insert(db)
+        .await
+        .expect_err("Insert a row with invalid foreign key")
+        .sql_err(),
+    Some(SqlErr::ForeignKeyConstraintViolation(_))
+));
+```
 
 ### Enhancements
 
