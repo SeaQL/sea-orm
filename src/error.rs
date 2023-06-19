@@ -181,9 +181,7 @@ impl DbErr {
                         // 1169 Can't write, because of unique constraint, to table '%s'
                         // 1586 Duplicate entry '%s' for key '%s'
                         1022 | 1062 | 1169 | 1586 => {
-                            return Some(SqlErr::UniqueConstraintViolation(String::from(
-                                e.message(),
-                            )))
+                            return Some(SqlErr::UniqueConstraintViolation(e.message().into()))
                         }
                         // 1216 Cannot add or update a child row: a foreign key constraint fails
                         // 1217 Cannot delete or update a parent row: a foreign key constraint fails
@@ -193,9 +191,7 @@ impl DbErr {
                         // 1761 Foreign key constraint for table '%s', record '%s' would lead to a duplicate entry in table '%s', key '%s'
                         // 1762 Foreign key constraint for table '%s', record '%s' would lead to a duplicate entry in a child table
                         1216 | 1217 | 1451 | 1452 | 1557 | 1761 | 1762 => {
-                            return Some(SqlErr::ForeignKeyConstraintViolation(String::from(
-                                e.message(),
-                            )))
+                            return Some(SqlErr::ForeignKeyConstraintViolation(e.message().into()))
                         }
                         _ => return None,
                     }
@@ -206,14 +202,10 @@ impl DbErr {
                 {
                     match _error_code_expanded {
                         "23505" => {
-                            return Some(SqlErr::UniqueConstraintViolation(String::from(
-                                e.message(),
-                            )))
+                            return Some(SqlErr::UniqueConstraintViolation(e.message().into()))
                         }
                         "23503" => {
-                            return Some(SqlErr::ForeignKeyConstraintViolation(String::from(
-                                e.message(),
-                            )))
+                            return Some(SqlErr::ForeignKeyConstraintViolation(e.message().into()))
                         }
                         _ => return None,
                     }
@@ -224,14 +216,10 @@ impl DbErr {
                         // error code 1555 refers to the primary key's unique constraint violation
                         // error code 2067 refers to the UNIQUE unique constraint violation
                         "1555" | "2067" => {
-                            return Some(SqlErr::UniqueConstraintViolation(String::from(
-                                e.message(),
-                            )))
+                            return Some(SqlErr::UniqueConstraintViolation(e.message().into()))
                         }
                         "787" => {
-                            return Some(SqlErr::ForeignKeyConstraintViolation(String::from(
-                                e.message(),
-                            )))
+                            return Some(SqlErr::ForeignKeyConstraintViolation(e.message().into()))
                         }
                         _ => return None,
                     }
