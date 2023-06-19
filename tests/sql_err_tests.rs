@@ -2,7 +2,8 @@ pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 use rust_decimal_macros::dec;
 pub use sea_orm::{
-    entity::*, error::DbErr, error::SqlErr, tests_cfg, DatabaseConnection, DbBackend, EntityName, ExecResult,
+    entity::*, error::DbErr, error::SqlErr, tests_cfg, DatabaseConnection, DbBackend, EntityName,
+    ExecResult,
 };
 use uuid::Uuid;
 
@@ -40,7 +41,10 @@ pub async fn test_error(db: &DatabaseConnection) {
         .await
         .expect_err("inserting should fail due to duplicate primary key");
 
-    assert!(matches!(error.sql_err(), Some(SqlErr::UniqueConstraintViolation(_))));
+    assert!(matches!(
+        error.sql_err(),
+        Some(SqlErr::UniqueConstraintViolation(_))
+    ));
 
     let fk_cake = cake::ActiveModel {
         name: Set("fk error Cake".to_owned()),
@@ -56,5 +60,8 @@ pub async fn test_error(db: &DatabaseConnection) {
         .await
         .expect_err("create foreign key should fail with non-primary key");
 
-    assert!(matches!(fk_error.sql_err(), Some(SqlErr::ForeignKeyConstraintViolation(_))));
+    assert!(matches!(
+        fk_error.sql_err(),
+        Some(SqlErr::ForeignKeyConstraintViolation(_))
+    ));
 }
