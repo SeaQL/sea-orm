@@ -141,7 +141,7 @@ where
 }
 
 /// An error from unsuccessful SQL query
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SqlErr {
     /// Error for duplicate record in unique field or primary key field
