@@ -1,7 +1,4 @@
-use crate::{
-    ActiveModelTrait, ColumnTrait, DbBackend, IntoActiveModel, IntoIdentity, IntoSimpleExpr,
-    QuerySelect, Statement,
-};
+use crate::{ColumnTrait, DbBackend, IntoIdentity, IntoSimpleExpr, QuerySelect, Statement};
 use sea_query::QueryStatementBuilder;
 
 /// A Trait for any type performing queries on a Model or ActiveModel
@@ -89,97 +86,5 @@ where
         I: IntoIdentity,
     {
         QuerySelect::column_as(self, col, alias)
-    }
-}
-
-/// Insert query Trait
-pub trait InsertTrait<A>: Sized
-where
-    A: ActiveModelTrait,
-{
-    /// required function for new self
-    fn new() -> Self;
-
-    /// required function for add value
-    fn add<M>(self, m: M) -> Self
-    where
-        M: IntoActiveModel<A>;
-
-    /// Insert one Model or ActiveModel
-    ///
-    /// Model
-    /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
-    ///
-    /// assert_eq!(
-    ///     Insert::one(cake::Model {
-    ///         id: 1,
-    ///         name: "Apple Pie".to_owned(),
-    ///     })
-    ///     .build(DbBackend::Postgres)
-    ///     .to_string(),
-    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie')"#,
-    /// );
-    /// ```
-    /// ActiveModel
-    /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
-    ///
-    /// assert_eq!(
-    ///     Insert::one(cake::ActiveModel {
-    ///         id: NotSet,
-    ///         name: Set("Apple Pie".to_owned()),
-    ///     })
-    ///     .build(DbBackend::Postgres)
-    ///     .to_string(),
-    ///     r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie')"#,
-    /// );
-    /// ```
-    fn one<M>(m: M) -> Self
-    where
-        M: IntoActiveModel<A>,
-    {
-        Self::new().add(m)
-    }
-
-    /// Insert many Model or ActiveModel
-    ///
-    /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
-    ///
-    /// assert_eq!(
-    ///     Insert::many([
-    ///         cake::Model {
-    ///             id: 1,
-    ///             name: "Apple Pie".to_owned(),
-    ///         },
-    ///         cake::Model {
-    ///             id: 2,
-    ///             name: "Orange Scone".to_owned(),
-    ///         }
-    ///     ])
-    ///     .build(DbBackend::Postgres)
-    ///     .to_string(),
-    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (1, 'Apple Pie'), (2, 'Orange Scone')"#,
-    /// );
-    /// ```
-    fn many<M, I>(models: I) -> Self
-    where
-        M: IntoActiveModel<A>,
-        I: IntoIterator<Item = M>,
-    {
-        Self::new().add_many(models)
-    }
-
-    /// Add many Models to Self
-    fn add_many<M, I>(mut self, models: I) -> Self
-    where
-        M: IntoActiveModel<A>,
-        I: IntoIterator<Item = M>,
-    {
-        for model in models.into_iter() {
-            self = self.add(model);
-        }
-        self
     }
 }
