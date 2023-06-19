@@ -8,7 +8,7 @@ pub use sea_orm::{
 
 pub use crud::*;
 // use common::bakery_chain::*;
-use sea_orm::{DbConn, InsertAttemptResultType};
+use sea_orm::{DbConn, TryInsertResult};
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -35,7 +35,7 @@ pub async fn test(db: &DbConn) {
         .exec(db)
         .await;
 
-    assert!(matches!(res, InsertAttemptResultType::Inserted(_)));
+    assert!(matches!(res, TryInsertResult::Inserted(_)));
 
     let empty_iterator = [bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
@@ -50,5 +50,5 @@ pub async fn test(db: &DbConn) {
         .exec(db)
         .await;
 
-    assert!(matches!(empty_insert, InsertAttemptResultType::Empty));
+    assert!(matches!(empty_insert, TryInsertResult::Empty));
 }

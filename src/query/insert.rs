@@ -138,11 +138,11 @@ where
 
     /// Allow insert statement return safely if inserting nothing.
     /// The database will not be affected.
-    pub fn on_empty_do_nothing(self) -> InsertAttempt<A>
+    pub fn on_empty_do_nothing(self) -> TryInsert<A>
     where
         A: ActiveModelTrait,
     {
-        InsertAttempt::from_insert(self)
+        TryInsert::from_insert(self)
     }
 }
 
@@ -167,14 +167,14 @@ where
 
 /// Performs INSERT operations on a ActiveModel, will do nothing if input is empty.
 #[derive(Debug)]
-pub struct InsertAttempt<A>
+pub struct TryInsert<A>
 where
     A: ActiveModelTrait,
 {
     pub(crate) insert_struct: Insert<A>,
 }
 
-impl<A> InsertTrait<A> for InsertAttempt<A>
+impl<A> InsertTrait<A> for TryInsert<A>
 where
     A: ActiveModelTrait,
 {
@@ -199,11 +199,11 @@ where
     }
 }
 
-impl<A> InsertAttempt<A>
+impl<A> TryInsert<A>
 where
     A: ActiveModelTrait,
 {
-    /// The conversion function from insert to InsertAttempt
+    /// The conversion function from insert to TryInsert
     pub fn from_insert(insert: Insert<A>) -> Self {
         Self {
             insert_struct: insert,
@@ -261,7 +261,7 @@ where
     }
 }
 
-impl<A> QueryTrait for InsertAttempt<A>
+impl<A> QueryTrait for TryInsert<A>
 where
     A: ActiveModelTrait,
 {
