@@ -1,6 +1,6 @@
 use crate::{
-    ActiveModelTrait, ActiveValue, ColumnTrait, EntityName, EntityTrait, IntoActiveModel, Iterable,
-    PrimaryKeyTrait, QueryTrait, InsertTrait,
+    ActiveModelTrait, ActiveValue, ColumnTrait, EntityName, EntityTrait, InsertTrait,
+    IntoActiveModel, Iterable, PrimaryKeyTrait, QueryTrait,
 };
 use core::marker::PhantomData;
 use sea_query::{Expr, InsertStatement, OnConflict, ValueTuple};
@@ -139,7 +139,7 @@ where
     /// Allow insert statement return safely if inserting nothing.
     /// The database will not be affected.
     pub fn on_empty_do_nothing(self) -> InsertAttempt<A>
-    where 
+    where
         A: ActiveModelTrait,
     {
         InsertAttempt::from_insert(self)
@@ -168,8 +168,8 @@ where
 /// Performs INSERT operations on a ActiveModel, will do nothing if input is empty.
 #[derive(Debug)]
 pub struct InsertAttempt<A>
-where 
-    A: ActiveModelTrait
+where
+    A: ActiveModelTrait,
 {
     pub(crate) insert_struct: Insert<A>,
 }
@@ -180,7 +180,7 @@ where
 {
     fn new() -> Self {
         Self {
-            insert_struct : Insert::new(),
+            insert_struct: Insert::new(),
         }
     }
 
@@ -203,10 +203,10 @@ impl<A> InsertAttempt<A>
 where
     A: ActiveModelTrait,
 {
-    /// helper function for conversion 
-    pub fn from_insert(insert: Insert<A>) -> Self{
+    /// The conversion function from insert to InsertAttempt
+    pub fn from_insert(insert: Insert<A>) -> Self {
         Self {
-            insert_struct : insert,
+            insert_struct: insert,
         }
     }
 
@@ -222,6 +222,7 @@ where
     /// };
     /// assert_eq!(
     ///     cake::Entity::insert(orange)
+    ///         .on_empty_do_nothing()
     ///         .on_conflict(
     ///             OnConflict::column(cake::Column::Name)
     ///                 .do_nothing()
@@ -243,6 +244,7 @@ where
     /// };
     /// assert_eq!(
     ///     cake::Entity::insert(orange)
+    ///         .on_empty_do_nothing()
     ///         .on_conflict(
     ///             OnConflict::column(cake::Column::Name)
     ///                 .update_column(cake::Column::Name)
@@ -276,14 +278,17 @@ where
     fn into_query(self) -> InsertStatement {
         self.insert_struct.query
     }
-} 
+}
 
 #[cfg(test)]
 mod tests {
     use sea_query::OnConflict;
 
-    use crate::tests_cfg::cake;
-    use crate::{ActiveValue, DbBackend, DbErr, EntityTrait, Insert, IntoActiveModel, QueryTrait, InsertTrait};
+    use crate::tests_cfg::cake::{self, ActiveModel};
+    use crate::{
+        ActiveValue, DbBackend, DbErr, EntityTrait, Insert, InsertTrait, IntoActiveModel,
+        QueryTrait,
+    };
 
     #[test]
     fn insert_1() {

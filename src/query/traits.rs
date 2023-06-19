@@ -1,4 +1,7 @@
-use crate::{ColumnTrait, DbBackend, IntoIdentity, IntoSimpleExpr, QuerySelect, Statement, ActiveModelTrait, IntoActiveModel};
+use crate::{
+    ActiveModelTrait, ColumnTrait, DbBackend, IntoActiveModel, IntoIdentity, IntoSimpleExpr,
+    QuerySelect, Statement,
+};
 use sea_query::QueryStatementBuilder;
 
 /// A Trait for any type performing queries on a Model or ActiveModel
@@ -89,15 +92,15 @@ where
     }
 }
 
-/// Insert query Trait 
-pub trait InsertTrait<A> : Sized
+/// Insert query Trait
+pub trait InsertTrait<A>: Sized
 where
     A: ActiveModelTrait,
 {
     /// required function for new self
     fn new() -> Self;
 
-    /// required function for add value 
+    /// required function for add value
     fn add<M>(self, m: M) -> Self
     where
         M: IntoActiveModel<A>;
@@ -168,7 +171,6 @@ where
         Self::new().add_many(models)
     }
 
-    
     /// Add many Models to Self
     fn add_many<M, I>(mut self, models: I) -> Self
     where

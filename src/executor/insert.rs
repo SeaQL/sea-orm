@@ -1,7 +1,7 @@
 use crate::{
-    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert, IntoActiveModel,
-    Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
-    InsertAttempt,
+    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert, InsertAttempt,
+    IntoActiveModel, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, SelectorRaw,
+    Statement, TryFromU64,
 };
 use sea_query::{Expr, FromValueTuple, Iden, InsertStatement, IntoColumnRef, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};
@@ -29,12 +29,11 @@ where
 
 /// The types of results for an INSERT operation
 #[derive(Debug)]
-pub enum InsertAttemptResultType<T>
-{
+pub enum InsertAttemptResultType<T> {
     /// The INSERT operation did not insert any value
     Empty,
     /// Reserved
-    Conflicted, 
+    Conflicted,
     /// Successfully inserted
     Inserted(T),
 }
@@ -45,45 +44,54 @@ where
 {
     /// Execute an insert operation
     #[allow(unused_mut)]
-    pub async fn exec<'a, C>(self, db: &'a C) -> InsertAttemptResultType<Result<InsertResult<A>, DbErr>>
+    pub async fn exec<'a, C>(
+        self,
+        db: &'a C,
+    ) -> InsertAttemptResultType<Result<InsertResult<A>, DbErr>>
     where
         C: ConnectionTrait,
         A: 'a,
     {
         if self.insert_struct.columns.is_empty() {
-            return InsertAttemptResultType::Empty
-        }
-        else{
-            return InsertAttemptResultType::Inserted(self.insert_struct.exec(db).await)
+            InsertAttemptResultType::Empty
+        } else {
+            InsertAttemptResultType::Inserted(self.insert_struct.exec(db).await)
         }
     }
 
     /// Execute an insert operation without returning (don't use `RETURNING` syntax)
     /// Number of rows affected is returned
-    pub fn exec_without_returning<'a, C>(
+    pub async fn exec_without_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<u64, DbErr>> + '_
+    ) -> InsertAttemptResultType<Result<u64, DbErr>>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
-        Inserter::<A>::new(self.insert_struct.primary_key, self.insert_struct.query).exec_without_returning(db)
+        if self.insert_struct.columns.is_empty() {
+            InsertAttemptResultType::Empty
+        } else {
+            InsertAttemptResultType::Inserted(self.insert_struct.exec_without_returning(db).await)
+        }
     }
 
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
-    pub fn exec_with_returning<'a, C>(
+    pub async fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + '_
+    ) -> InsertAttemptResultType<Result<<A::Entity as EntityTrait>::Model, DbErr>>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
-        
-        Inserter::<A>::new(self.insert_struct.primary_key, self.insert_struct.query).exec_with_returning(db)
+        if self.insert_struct.columns.is_empty() {
+            InsertAttemptResultType::Empty
+        } else {
+            InsertAttemptResultType::Inserted(self.insert_struct.exec_with_returning(db).await)
+        }
     }
 }
 
