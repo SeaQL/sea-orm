@@ -144,11 +144,10 @@ where
 #[derive(Error, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SqlErr {
-    // string stored in error is a placebo,
-    /// error for duplicate record in unique field or primary key field
+    /// Error for duplicate record in unique field or primary key field
     #[error("Unique Constraint Violated: {0}")]
     UniqueConstraintViolation(String),
-    /// error for Foreign key constraint
+    /// Error for Foreign key constraint
     #[error("Foreign Key Constraint Violated: {0}")]
     ForeignKeyConstraintViolation(String),
 }
