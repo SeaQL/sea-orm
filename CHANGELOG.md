@@ -214,6 +214,65 @@ pub enum RelatedEntity {
 
     The DeriveRelatedEntity derive macro will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration when the `seaography` feature is enabled
 
+* Add `expr`, `exprs` and `expr_as` methods to `QuerySelect` trait
+```rs
+use sea_orm::sea_query::Expr;
+use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+
+assert_eq!(
+    cake::Entity::find()
+        .select_only()
+        .expr(Expr::col((cake::Entity, cake::Column::Id)))
+        .build(DbBackend::MySql)
+        .to_string(),
+    "SELECT `cake`.`id` FROM `cake`"
+);
+
+assert_eq!(
+    cake::Entity::find()
+        .select_only()
+        .exprs([
+            Expr::col((cake::Entity, cake::Column::Id)),
+            Expr::col((cake::Entity, cake::Column::Name)),
+        ])
+        .build(DbBackend::MySql)
+        .to_string(),
+    "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+);
+
+assert_eq!(
+    cake::Entity::find()
+        .expr_as(
+            Func::upper(Expr::col((cake::Entity, cake::Column::Name))),
+            "name_upper"
+        )
+        .build(DbBackend::MySql)
+        .to_string(),
+    "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
+);
+```
+* Add `DbErr::sql_err()` method to convert error into common database errors `SqlErr`, such as unique constraint or foreign key violation errors. https://github.com/SeaQL/sea-orm/pull/1707
+```rs
+assert!(matches!(
+    cake
+        .into_active_model()
+        .insert(db)
+        .await
+        .expect_err("Insert a row with duplicated primary key")
+        .sql_err(),
+    Some(SqlErr::UniqueConstraintViolation(_))
+));
+
+assert!(matches!(
+    fk_cake
+        .insert(db)
+        .await
+        .expect_err("Insert a row with invalid foreign key")
+        .sql_err(),
+    Some(SqlErr::ForeignKeyConstraintViolation(_))
+));
+```
+
 ### Enhancements
 
 * Added `Migration::name()` and `Migration::status()` getters for the name and status of `sea_orm_migration::Migration` https://github.com/SeaQL/sea-orm/pull/1519
@@ -236,6 +295,14 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
     * Changed the parameter of method `ConnectOptions::set_schema_search_path(T) where T: Into<String>` to takes any string
     * Changed the parameter of method `ColumnTrait::like()`, `ColumnTrait::not_like()`, `ColumnTrait::starts_with()`, `ColumnTrait::ends_with()` and `ColumnTrait::contains()` to takes any string
 * Re-export `sea_query::{DynIden, RcOrArc, SeaRc}` in `sea_orm::entity::prelude` module https://github.com/SeaQL/sea-orm/pull/1661
+* Added `DatabaseConnection::ping` https://github.com/SeaQL/sea-orm/pull/1627
+```rust
+|db: DatabaseConnection| {
+    assert!(db.ping().await.is_ok());
+    db.clone().close().await;
+    assert!(matches!(db.ping().await, Err(DbErr::ConnectionAcquire)));
+}
+```
 
 ### Upgrades
 
@@ -244,6 +311,7 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
 * Upgrade `sea-query` to `0.29` https://github.com/SeaQL/sea-orm/pull/1562
 * Upgrade `sea-query-binder` to `0.4` https://github.com/SeaQL/sea-orm/pull/1562
 * Upgrade `sea-schema` to `0.12` https://github.com/SeaQL/sea-orm/pull/1562
+* Upgrade `clap` to `4.3` https://github.com/SeaQL/sea-orm/pull/1468
 
 ### Bug Fixes
 
