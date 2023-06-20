@@ -37,15 +37,7 @@ pub async fn test(db: &DbConn) {
 
     assert!(matches!(res, TryInsertResult::Inserted(_)));
 
-    let empty_iterator = [bakery::ActiveModel {
-        name: Set("SeaSide Bakery".to_owned()),
-        profit_margin: Set(10.4),
-        ..Default::default()
-    }]
-    .into_iter()
-    .filter(|_| false);
-
-    let empty_insert = Bakery::insert_many(empty_iterator)
+    let empty_insert = Bakery::insert_many(std::iter::empty())
         .on_empty_do_nothing()
         .exec(db)
         .await;
