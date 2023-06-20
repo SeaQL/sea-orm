@@ -362,9 +362,13 @@ impl ColumnDef {
     }
 
     /// Set the default value
+    #[deprecated(
+        since = "0.12.0",
+        note = "Please use [`ColumnDef::default`]"
+    )]
     pub fn default_value<T>(mut self, value: T) -> Self
     where
-        T: Into<SimpleExpr>,
+        T: Into<Value>,
     {
         self.default_value = Some(value.into());
         self
