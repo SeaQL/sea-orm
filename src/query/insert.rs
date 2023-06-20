@@ -211,6 +211,14 @@ where
 
     /// Allow insert statement return safely if inserting nothing.
     /// The database will not be affected.
+    pub fn do_nothing(self) -> TryInsert<A>
+    where
+        A: ActiveModelTrait,
+    {
+        TryInsert::from_insert(self)
+    }
+
+    /// alias to do_nothing
     pub fn on_empty_do_nothing(self) -> TryInsert<A>
     where
         A: ActiveModelTrait,
@@ -309,7 +317,7 @@ where
         self
     }
 
-    // helper function for on_empty_do_nothing in Insert<A>
+    // helper function for do_nothing in Insert<A>
     pub fn from_insert(insert: Insert<A>) -> Self {
         Self {
             insert_struct: insert,

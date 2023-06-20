@@ -30,9 +30,9 @@ where
 /// The types of results for an INSERT operation
 #[derive(Debug)]
 pub enum TryInsertResult<T> {
-    /// The INSERT operation did not insert any value
+    /// The INSERT statement did not have any value to insert
     Empty,
-    /// Reserved
+    /// The INSERT operation did not insert any valid value
     Conflicted,
     /// Successfully inserted
     Inserted(T),
@@ -52,7 +52,12 @@ where
         if self.insert_struct.columns.is_empty() {
             TryInsertResult::Empty
         } else {
-            TryInsertResult::Inserted(self.insert_struct.exec(db).await)
+            let temp = self.insert_struct.exec(db).await;
+            if matches!(temp, Err(DbErr::RecordNotInserted)) {
+                TryInsertResult::Conflicted
+            } else {
+                TryInsertResult::Inserted(temp)
+            }
         }
     }
 
@@ -70,7 +75,12 @@ where
         if self.insert_struct.columns.is_empty() {
             TryInsertResult::Empty
         } else {
-            TryInsertResult::Inserted(self.insert_struct.exec_without_returning(db).await)
+            let temp = self.insert_struct.exec_without_returning(db).await;
+            if matches!(temp, Err(DbErr::RecordNotInserted)) {
+                TryInsertResult::Conflicted
+            } else {
+                TryInsertResult::Inserted(temp)
+            }
         }
     }
 
@@ -87,7 +97,12 @@ where
         if self.insert_struct.columns.is_empty() {
             TryInsertResult::Empty
         } else {
-            TryInsertResult::Inserted(self.insert_struct.exec_with_returning(db).await)
+            let temp = self.insert_struct.exec_with_returning(db).await;
+            if matches!(temp, Err(DbErr::RecordNotInserted)) {
+                TryInsertResult::Conflicted
+            } else {
+                TryInsertResult::Inserted(temp)
+            }
         }
     }
 }
