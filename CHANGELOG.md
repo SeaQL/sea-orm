@@ -303,6 +303,16 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
     assert!(matches!(db.ping().await, Err(DbErr::ConnectionAcquire)));
 }
 ```
+* Added `TryInsert` that does not panic on empty inserts https://github.com/SeaQL/sea-orm/pull/1708
+```rust
+// now, you can do:
+let empty_insert = Bakery::insert_many(std::iter::empty())
+    .on_empty_do_nothing()
+    .exec(db)
+    .await;
+
+assert!(matches!(empty_insert, TryInsertResult::Empty));
+```
 
 ### Upgrades
 
@@ -398,6 +408,7 @@ impl ColumnTrait for Column {
     }
 }
 ```
+* Resolved `insert_many` failing if the models iterator is empty https://github.com/SeaQL/sea-orm/issues/873
 
 ### Breaking changes
 
@@ -536,16 +547,6 @@ impl ColumnTrait for Column {
 * Added the `sea-orm-internal` feature flag to expose some SQLx types
     * Added `DatabaseConnection::get_*_connection_pool()` for accessing the inner SQLx connection pool https://github.com/SeaQL/sea-orm/pull/1297
     * Re-exporting SQLx errors https://github.com/SeaQL/sea-orm/pull/1434
-* Added `TryInsert` that does not panic on empty inserts https://github.com/SeaQL/sea-orm/pull/1708
-```rust
-// now, you can do:
-let empty_insert = Bakery::insert_many(std::iter::empty())
-    .on_empty_do_nothing()
-    .exec(db)
-    .await;
-
-assert!(matches!(empty_insert, TryInsertResult::Empty));
-```
 
 ### Upgrades
 
@@ -574,7 +575,6 @@ assert!(matches!(empty_insert, TryInsertResult::Empty));
     * Fixes hitting 'negative last_insert_rowid' panic with Sqlite https://github.com/SeaQL/sea-orm/issues/1357
 * Noop when update without providing any values https://github.com/SeaQL/sea-orm/pull/1384
     * Fixes Syntax Error when saving active model that sets nothing https://github.com/SeaQL/sea-orm/pull/1376
-* Resolved `insert_many` failing if the models iterator is empty https://github.com/SeaQL/sea-orm/issues/873
 
 ### Breaking Changes
 
