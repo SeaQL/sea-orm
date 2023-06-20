@@ -349,10 +349,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         match_row = quote! { #match_row.unique() };
                     }
                     if let Some(default_value) = default_value {
-                        match_row = quote! { #match_row.default_value(#default_value) };
+                        match_row = quote! { #match_row.default(#default_value) };
                     }
                     if let Some(default_expr) = default_expr {
-                        match_row = quote! { #match_row.default_value(#default_expr) };
+                        match_row = quote! { #match_row.default(#default_expr) };
                     }
                     columns_trait.push(match_row);
                 }

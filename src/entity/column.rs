@@ -15,7 +15,7 @@ pub struct ColumnDef {
     pub(crate) null: bool,
     pub(crate) unique: bool,
     pub(crate) indexed: bool,
-    pub(crate) default_value: Option<SimpleExpr>,
+    pub(crate) default: Option<SimpleExpr>,
 }
 
 macro_rules! bind_oper {
@@ -310,7 +310,7 @@ impl ColumnTypeTrait for ColumnType {
             null: false,
             unique: false,
             indexed: false,
-            default_value: None,
+            default: None,
         }
     }
 
@@ -362,15 +362,21 @@ impl ColumnDef {
     }
 
     /// Set the default value
-    #[deprecated(
-        since = "0.12.0",
-        note = "Please use [`ColumnDef::default`]"
-    )]
+    #[deprecated(since = "0.12.0", note = "Please use [`ColumnDef::default`]")]
     pub fn default_value<T>(mut self, value: T) -> Self
     where
         T: Into<Value>,
     {
-        self.default_value = Some(value.into());
+        self.default = Some(value.into().into());
+        self
+    }
+
+    /// Set the default value or expression of a column
+    pub fn default<T>(mut self, default: T) -> Self
+    where
+        T: Into<SimpleExpr>,
+    {
+        self.default = Some(default.into());
         self
     }
 
@@ -568,15 +574,15 @@ mod tests {
             hello::Column::Ten.def(),
             ColumnType::TimestampWithTimeZone
                 .def()
-                .default_value(Expr::current_timestamp())
+                .default(Expr::current_timestamp())
         );
         assert_eq!(
             hello::Column::Eleven.def(),
-            ColumnType::TinyUnsigned.def().default_value(7)
+            ColumnType::TinyUnsigned.def().default(7)
         );
         assert_eq!(
             hello::Column::Twelve.def(),
-            ColumnType::String(None).def().default_value("twelve_value")
+            ColumnType::String(None).def().default("twelve_value")
         );
     }
 
