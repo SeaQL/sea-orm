@@ -180,7 +180,7 @@ pub fn expand_derive_partial_model(input: syn::DeriveInput) -> syn::Result<Token
             span => compile_error!("you can only use one of `from_col` or `from_expr`");
         }),
         Err(Error::EntityNotSpecific) => Ok(quote_spanned! {
-            ident_span => compile_error!("you need specific which entity you are using")
+            ident_span => compile_error!("you need specific which entity you are using");
         }),
         Err(Error::InputNotStruct) => Ok(quote_spanned! {
             ident_span => compile_error!("you can only derive `DerivePartialModel` on named struct");
