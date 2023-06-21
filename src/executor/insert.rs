@@ -50,15 +50,13 @@ where
         A: 'a,
     {
         if self.insert_struct.columns.is_empty() {
-            TryInsertResult::Empty
-        } else {
-            let temp = self.insert_struct.exec(db).await;
-            if matches!(temp, Err(DbErr::RecordNotInserted)) {
-                TryInsertResult::Conflicted
-            } else {
-                TryInsertResult::Inserted(temp)
-            }
+            return TryInsertResult::Empty;
         }
+        let temp = self.insert_struct.exec(db).await;
+        if matches!(temp, Err(DbErr::RecordNotInserted)) {
+            return TryInsertResult::Conflicted;
+        }
+        TryInsertResult::Inserted(temp)
     }
 
     /// Execute an insert operation without returning (don't use `RETURNING` syntax)
@@ -73,15 +71,13 @@ where
         A: 'a,
     {
         if self.insert_struct.columns.is_empty() {
-            TryInsertResult::Empty
-        } else {
-            let temp = self.insert_struct.exec_without_returning(db).await;
-            if matches!(temp, Err(DbErr::RecordNotInserted)) {
-                TryInsertResult::Conflicted
-            } else {
-                TryInsertResult::Inserted(temp)
-            }
+            return TryInsertResult::Empty;
         }
+        let temp = self.insert_struct.exec_without_returning(db).await;
+        if matches!(temp, Err(DbErr::RecordNotInserted)) {
+            return TryInsertResult::Conflicted;
+        }
+        TryInsertResult::Inserted(temp)
     }
 
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
@@ -95,15 +91,13 @@ where
         A: 'a,
     {
         if self.insert_struct.columns.is_empty() {
-            TryInsertResult::Empty
-        } else {
-            let temp = self.insert_struct.exec_with_returning(db).await;
-            if matches!(temp, Err(DbErr::RecordNotInserted)) {
-                TryInsertResult::Conflicted
-            } else {
-                TryInsertResult::Inserted(temp)
-            }
+            return TryInsertResult::Empty;
         }
+        let temp = self.insert_struct.exec_with_returning(db).await;
+        if matches!(temp, Err(DbErr::RecordNotInserted)) {
+            return TryInsertResult::Conflicted;
+        }
+        TryInsertResult::Inserted(temp)
     }
 }
 
