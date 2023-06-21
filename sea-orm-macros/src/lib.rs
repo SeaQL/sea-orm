@@ -799,6 +799,44 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///     sum: i32
 /// }
 /// ```
+///
+/// Can contain orther `PartialModel` for complex col constitution
+/// ```
+/// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
+///
+/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// struct SelectResult {
+///     #[sea_orm(from_expr = "Expr::val(1).add(1)")]
+///     sum: i32,
+///     #[sea_orm(flatten)]
+///     foo: Foo
+/// }
+///
+/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// struct Foo{
+///     #[sea_orm(from_expr = "Expr::val(12).add(2)")]
+///     bar: i64
+/// }
+/// ```
+/// Note: the `flatten` cannot use with  `from_expr` or `from_col`,
+/// or is cannot compile
+/// ```compile_fail
+/// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
+///
+/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// struct SelectResult {
+///     #[sea_orm(from_expr = "Expr::val(1).add(1)")]
+///     sum: i32,
+///     #[sea_orm(flatten, from_expr = "Expr::val(11).div(5)")]
+///     foo: Foo
+/// }
+///
+/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// struct Foo{
+///     #[sea_orm(from_expr = "Expr::val(12).add(2)")]
+///     bar: i64
+/// }
+/// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DerivePartialModel, attributes(sea_orm))]
 pub fn derive_partial_model(input: TokenStream) -> TokenStream {
