@@ -3,6 +3,10 @@ use quote::format_ident;
 use syn::{punctuated::Punctuated, token::Comma, Field, Ident, Meta};
 
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
+    !field_attr_contain_key(field, "ignore")
+}
+
+pub(crate) fn field_attr_contain_key(field: &Field, key: &'static str) -> bool {
     for attr in field.attrs.iter() {
         if let Some(ident) = attr.path.get_ident() {
             if ident != "sea_orm" {
@@ -16,15 +20,15 @@ pub(crate) fn field_not_ignored(field: &Field) -> bool {
             for meta in list.iter() {
                 if let Meta::Path(path) = meta {
                     if let Some(name) = path.get_ident() {
-                        if name == "ignore" {
-                            return false;
+                        if name == key {
+                            return true;
                         }
                     }
                 }
             }
         }
     }
-    true
+    false
 }
 
 pub(crate) fn format_field_ident(field: Field) -> Ident {
