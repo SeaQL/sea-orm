@@ -45,3 +45,21 @@ struct FieldFromExpr {
     #[sea_orm(from_expr = "Expr::col(Column::Id).equals(Column::Foo)")]
     _bar: bool,
 }
+
+#[derive(FromQueryResult, DerivePartialModel)]
+struct NestWithOther {
+    #[sea_orm(flatten)]
+    _flatten1: FieldFromDiffNameColumnTest,
+    #[sea_orm(flatten)]
+    _flatten2: FieldFromExpr,
+}
+#[derive(FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "Entity")]
+struct MixedNestTest {
+    #[sea_orm(flatten)]
+    _flatten1: FieldFromDiffNameColumnTest,
+    #[sea_orm(from_col = "id")]
+    _id: i32,
+    #[sea_orm(from_expr = "Column::Bar2.sum()")]
+    _sum: f64,
+}
