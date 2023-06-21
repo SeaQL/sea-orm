@@ -590,6 +590,24 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 ///     num_of_fruits: i32,
 /// }
 /// ```
+///
+/// Can contain other `FromQueryResult` for a complex query result
+/// ```
+/// use sea_orm::{entity::prelude::*, FromQueryResult};
+///
+/// #[derive(Debug, FromQueryResult)]
+/// struct Foo{
+///     bar: i64
+/// }
+///
+/// #[derive(Debug, FromQueryResult)]
+/// struct SelectResult {
+///     name: String,
+///     num_of_fruits: i32,
+///     #[sea_orm(flatten)]
+///     foo: Foo
+/// }
+/// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(FromQueryResult)]
 pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
