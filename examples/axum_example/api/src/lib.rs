@@ -7,7 +7,7 @@ use axum::{
     routing::{get, get_service, post},
     Router, Server,
 };
-use axum_example_core::{
+use axum_example_service::{
     sea_orm::{Database, DatabaseConnection},
     Mutation as MutationCore, Query as QueryCore,
 };

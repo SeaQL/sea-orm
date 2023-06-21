@@ -139,3 +139,93 @@ where
 {
     DbErr::Json(s.to_string())
 }
+
+/// An error from unsuccessful SQL query
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum SqlErr {
+    /// Error for duplicate record in unique field or primary key field
+    #[error("Unique Constraint Violated: {0}")]
+    UniqueConstraintViolation(String),
+    /// Error for Foreign key constraint
+    #[error("Foreign Key Constraint Violated: {0}")]
+    ForeignKeyConstraintViolation(String),
+}
+
+#[allow(dead_code)]
+impl DbErr {
+    /// Convert generic DbErr by sqlx to SqlErr, return none if the error is not any type of SqlErr
+    pub fn sql_err(&self) -> Option<SqlErr> {
+        #[cfg(any(
+            feature = "sqlx-mysql",
+            feature = "sqlx-postgres",
+            feature = "sqlx-sqlite"
+        ))]
+        {
+            use std::ops::Deref;
+            if let DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(e)))
+            | DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(e))) = self
+            {
+                let error_code = e.code().unwrap_or_default();
+                let _error_code_expanded = error_code.deref();
+                #[cfg(feature = "sqlx-mysql")]
+                if e.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>()
+                    .is_some()
+                {
+                    let error_number = e
+                        .try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>()?
+                        .number();
+                    match error_number {
+                        // 1022 Can't write; duplicate key in table '%s'
+                        // 1062 Duplicate entry '%s' for key %d
+                        // 1169 Can't write, because of unique constraint, to table '%s'
+                        // 1586 Duplicate entry '%s' for key '%s'
+                        1022 | 1062 | 1169 | 1586 => {
+                            return Some(SqlErr::UniqueConstraintViolation(e.message().into()))
+                        }
+                        // 1216 Cannot add or update a child row: a foreign key constraint fails
+                        // 1217 Cannot delete or update a parent row: a foreign key constraint fails
+                        // 1451 Cannot delete or update a parent row: a foreign key constraint fails (%s)
+                        // 1452 Cannot add or update a child row: a foreign key constraint fails (%s)
+                        // 1557 Upholding foreign key constraints for table '%s', entry '%s', key %d would lead to a duplicate entry
+                        // 1761 Foreign key constraint for table '%s', record '%s' would lead to a duplicate entry in table '%s', key '%s'
+                        // 1762 Foreign key constraint for table '%s', record '%s' would lead to a duplicate entry in a child table
+                        1216 | 1217 | 1451 | 1452 | 1557 | 1761 | 1762 => {
+                            return Some(SqlErr::ForeignKeyConstraintViolation(e.message().into()))
+                        }
+                        _ => return None,
+                    }
+                }
+                #[cfg(feature = "sqlx-postgres")]
+                if e.try_downcast_ref::<sqlx::postgres::PgDatabaseError>()
+                    .is_some()
+                {
+                    match _error_code_expanded {
+                        "23505" => {
+                            return Some(SqlErr::UniqueConstraintViolation(e.message().into()))
+                        }
+                        "23503" => {
+                            return Some(SqlErr::ForeignKeyConstraintViolation(e.message().into()))
+                        }
+                        _ => return None,
+                    }
+                }
+                #[cfg(feature = "sqlx-sqlite")]
+                if e.try_downcast_ref::<sqlx::sqlite::SqliteError>().is_some() {
+                    match _error_code_expanded {
+                        // error code 1555 refers to the primary key's unique constraint violation
+                        // error code 2067 refers to the UNIQUE unique constraint violation
+                        "1555" | "2067" => {
+                            return Some(SqlErr::UniqueConstraintViolation(e.message().into()))
+                        }
+                        "787" => {
+                            return Some(SqlErr::ForeignKeyConstraintViolation(e.message().into()))
+                        }
+                        _ => return None,
+                    }
+                }
+            }
+        }
+        None
+    }
+}

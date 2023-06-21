@@ -390,6 +390,21 @@ impl DatabaseConnection {
         }
     }
 
+    /// Checks if a connection to the database is still valid.
+    pub async fn ping(&self) -> Result<(), DbErr> {
+        match self {
+            #[cfg(feature = "sqlx-mysql")]
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.ping().await,
+            #[cfg(feature = "sqlx-postgres")]
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.ping().await,
+            #[cfg(feature = "sqlx-sqlite")]
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.ping().await,
+            #[cfg(feature = "mock")]
+            DatabaseConnection::MockDatabaseConnection(conn) => conn.ping(),
+            DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
+        }
+    }
+
     /// Explicitly close the database connection
     pub async fn close(self) -> Result<(), DbErr> {
         match self {

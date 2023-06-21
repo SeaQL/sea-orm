@@ -31,6 +31,7 @@ pub async fn run_generate_command(
             lib,
             model_extra_derives,
             model_extra_attributes,
+            seaography,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -172,6 +173,7 @@ pub async fn run_generate_command(
                 serde_skip_hidden_column,
                 model_extra_derives,
                 model_extra_attributes,
+                seaography,
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
@@ -235,7 +237,7 @@ impl From<DateTimeCrate> for CodegenDateTimeCrate {
 
 #[cfg(test)]
 mod tests {
-    use clap::StructOpt;
+    use clap::Parser;
 
     use super::*;
     use crate::{Cli, Commands};

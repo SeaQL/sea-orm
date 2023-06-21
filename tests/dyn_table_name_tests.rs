@@ -6,7 +6,7 @@ use sea_orm::{
     entity::prelude::*, DatabaseConnection, Delete, IntoActiveModel, Iterable, QueryTrait, Set,
     Update,
 };
-use sea_query::{Expr, IntoIden, Query};
+use sea_query::{Expr, Query};
 
 #[sea_orm_macros::test]
 #[cfg(any(
