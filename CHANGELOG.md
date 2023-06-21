@@ -306,12 +306,24 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
 * Added `TryInsert` that does not panic on empty inserts https://github.com/SeaQL/sea-orm/pull/1708
 ```rust
 // now, you can do:
-let empty_insert = Bakery::insert_many(std::iter::empty())
+let res = Bakery::insert_many(std::iter::empty())
     .on_empty_do_nothing()
     .exec(db)
     .await;
 
-assert!(matches!(empty_insert, TryInsertResult::Empty));
+assert!(matches!(res, Ok(TryInsertResult::Empty)));
+```
+* On conflict do nothing not resulting in Err https://github.com/SeaQL/sea-orm/pull/1712
+```rust
+let on = OnConflict::column(Column::Id).do_nothing().to_owned();
+
+// Existing behaviour
+let res = Entity::insert_many([..]).on_conflict(on).exec(db).await;
+assert!(matches!(res, Err(DbErr::RecordNotInserted)));
+
+// New API; now you can:
+let res = Entity::insert_many([..]).on_conflict(on).do_nothing().exec(db).await;
+assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
 ```
 
 ### Upgrades

@@ -55,7 +55,7 @@ pub async fn create_insert_default(db: &DatabaseConnection) -> Result<(), DbErr>
     .exec(db)
     .await;
 
-    assert_eq!(res.err(), Some(DbErr::RecordNotInserted));
+    assert!(matches!(res, Err(DbErr::RecordNotInserted)));
 
     let res = Entity::insert_many([
         ActiveModel { id: Set(1) },
@@ -68,7 +68,7 @@ pub async fn create_insert_default(db: &DatabaseConnection) -> Result<(), DbErr>
     .exec(db)
     .await;
 
-    assert!(matches!(res, TryInsertResult::Conflicted));
+    assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
 
     Ok(())
 }

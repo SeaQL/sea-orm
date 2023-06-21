@@ -35,12 +35,12 @@ pub async fn test(db: &DbConn) {
         .exec(db)
         .await;
 
-    assert!(matches!(res, TryInsertResult::Inserted(_)));
+    assert!(matches!(res, Ok(TryInsertResult::Inserted(_))));
 
     let empty_insert = Bakery::insert_many(std::iter::empty::<bakery::ActiveModel>())
         .on_empty_do_nothing()
         .exec(db)
         .await;
 
-    assert!(matches!(empty_insert, TryInsertResult::Empty));
+    assert!(matches!(empty_insert, Ok(TryInsertResult::Empty)));
 }
