@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.12.0 - Pending
 
++ Yanked:     `0.12.0-rc.1`
 + 2023-05-19: `0.12.0-rc.2`
++ 2023-06-22: `0.12.0-rc.3`
 
 ### New Features
 
