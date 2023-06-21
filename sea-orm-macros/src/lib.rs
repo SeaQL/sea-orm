@@ -832,3 +832,14 @@ pub fn enum_iter(input: TokenStream) -> TokenStream {
         .unwrap_or_else(Error::into_compile_error)
         .into()
 }
+
+#[cfg(feature = "derive")]
+#[proc_macro_derive(DeriveValueType)]
+pub fn derive_value_type(input: TokenStream) -> TokenStream {
+    let derive_input = parse_macro_input!(input as DeriveInput);
+
+    match derives::expand_derive_value_type(derive_input) {
+        Ok(token_stream) => token_stream.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
