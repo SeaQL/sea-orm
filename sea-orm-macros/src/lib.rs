@@ -596,8 +596,8 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 /// use sea_orm::{entity::prelude::*, FromQueryResult};
 ///
 /// #[derive(Debug, FromQueryResult)]
-/// struct Foo{
-///     bar: i64
+/// struct Foo {
+///     bar: i64,
 /// }
 ///
 /// #[derive(Debug, FromQueryResult)]
@@ -605,7 +605,7 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 ///     name: String,
 ///     num_of_fruits: i32,
 ///     #[sea_orm(flatten)]
-///     foo: Foo
+///     foo: Foo,
 /// }
 /// ```
 #[cfg(feature = "derive")]
@@ -809,13 +809,13 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///     #[sea_orm(from_expr = "Expr::val(1).add(1)")]
 ///     sum: i32,
 ///     #[sea_orm(flatten)]
-///     foo: Foo
+///     foo: Foo,
 /// }
 ///
 /// #[derive(Debug, FromQueryResult, DerivePartialModel)]
-/// struct Foo{
+/// struct Foo {
 ///     #[sea_orm(from_expr = "Expr::val(12).add(2)")]
-///     bar: i64
+///     bar: i64,
 /// }
 /// ```
 /// Note: the `flatten` cannot use with  `from_expr` or `from_col`,
