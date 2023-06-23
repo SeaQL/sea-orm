@@ -4,7 +4,7 @@ use syn::{punctuated::Punctuated, token::Comma, Field, Ident, Meta};
 
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
     for attr in field.attrs.iter() {
-        if let Some(ident) = attr.path.get_ident() {
+        if let Some(ident) = attr.path().get_ident() {
             if ident != "sea_orm" {
                 continue;
             }

@@ -1,7 +1,7 @@
 use heck::ToSnakeCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{punctuated::Punctuated, token::Comma, Data, DataEnum, Fields, Lit, Meta, Variant};
+use syn::{Data, DataEnum, Expr, Fields, LitStr, Variant};
 
 /// Method to derive a Primary Key for a Model using the [PrimaryKeyTrait](sea_orm::PrimaryKeyTrait)
 pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenStream> {
@@ -34,31 +34,26 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
         .map(|v| {
             let mut column_name = v.ident.to_string().to_snake_case();
             for attr in v.attrs.iter() {
-                if let Some(ident) = attr.path.get_ident() {
-                    if ident != "sea_orm" {
-                        continue;
-                    }
-                } else {
+                if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
-                if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                {
-                    for meta in list.iter() {
-                        if let Meta::NameValue(nv) = meta {
-                            if let Some(name) = nv.path.get_ident() {
-                                if name == "column_name" {
-                                    if let Lit::Str(litstr) = &nv.lit {
-                                        column_name = litstr.value();
-                                    }
-                                }
-                            }
-                        }
+                
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("column_name") {
+                        column_name = meta.value()?.parse::<LitStr>()?.value();
+                    } else {
+                        // Reads the value expression to advance the parse stream.
+                        // Some parameters, such as `primary_key`, do not have any value,
+                        // so ignoring an error occurred here.
+                        let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
                     }
-                }
+                
+                    Ok(())
+                })?;
             }
-            quote! { #column_name }
+            Ok::<TokenStream, syn::Error>(quote! { #column_name })
         })
-        .collect();
+        .collect::<Result<_, _>>()?;
 
     Ok(quote!(
         #[automatically_derived]

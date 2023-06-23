@@ -1,12 +1,11 @@
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{TokenStream};
 use syn::{
     parenthesized,
     parse::{Parse, ParseStream},
     parse2, parse_str,
     punctuated::Punctuated,
-    spanned::Spanned,
-    Attribute, DeriveInput, Ident, Lit, LitBool, LitStr, Meta, MetaNameValue, Path, Token, Variant,
-    Visibility,
+    Attribute, DeriveInput, Expr, ExprLit, Ident, Lit, LitBool, LitStr, Meta, MetaNameValue, Path,
+    Token, Variant, Visibility,
 };
 
 use super::case_style::CaseStyle;
@@ -76,17 +75,6 @@ impl Parse for EnumMeta {
     }
 }
 
-impl Spanned for EnumMeta {
-    fn span(&self) -> Span {
-        match self {
-            EnumMeta::SerializeAll { kw, .. } => kw.span(),
-            EnumMeta::AsciiCaseInsensitive(kw) => kw.span(),
-            EnumMeta::Crate { kw, .. } => kw.span(),
-            EnumMeta::UsePhf(use_phf) => use_phf.span(),
-        }
-    }
-}
-
 pub enum EnumDiscriminantsMeta {
     Derive { kw: kw::derive, paths: Vec<Path> },
     Name { kw: kw::name, name: Ident },
@@ -100,7 +88,7 @@ impl Parse for EnumDiscriminantsMeta {
             let kw = input.parse()?;
             let content;
             parenthesized!(content in input);
-            let paths = content.parse_terminated::<_, Token![,]>(Path::parse)?;
+            let paths = content.parse_terminated(Path::parse, Token![,])?;
             Ok(EnumDiscriminantsMeta::Derive {
                 kw,
                 paths: paths.into_iter().collect(),
@@ -123,17 +111,6 @@ impl Parse for EnumDiscriminantsMeta {
             parenthesized!(content in input);
             let nested = content.parse()?;
             Ok(EnumDiscriminantsMeta::Other { path, nested })
-        }
-    }
-}
-
-impl Spanned for EnumDiscriminantsMeta {
-    fn span(&self) -> Span {
-        match self {
-            EnumDiscriminantsMeta::Derive { kw, .. } => kw.span,
-            EnumDiscriminantsMeta::Name { kw, .. } => kw.span,
-            EnumDiscriminantsMeta::Vis { kw, .. } => kw.span,
-            EnumDiscriminantsMeta::Other { path, .. } => path.span(),
         }
     }
 }
@@ -228,7 +205,7 @@ impl Parse for VariantMeta {
             let kw = input.parse()?;
             let content;
             parenthesized!(content in input);
-            let props = content.parse_terminated::<_, Token![,]>(Prop::parse)?;
+            let props = content.parse_terminated(Prop::parse, Token![,])?;
             Ok(VariantMeta::Props {
                 kw,
                 props: props
@@ -256,22 +233,6 @@ impl Parse for Prop {
     }
 }
 
-impl Spanned for VariantMeta {
-    fn span(&self) -> Span {
-        match self {
-            VariantMeta::Message { kw, .. } => kw.span,
-            VariantMeta::DetailedMessage { kw, .. } => kw.span,
-            VariantMeta::Documentation { value } => value.span(),
-            VariantMeta::Serialize { kw, .. } => kw.span,
-            VariantMeta::ToString { kw, .. } => kw.span,
-            VariantMeta::Disabled(kw) => kw.span,
-            VariantMeta::Default(kw) => kw.span,
-            VariantMeta::AsciiCaseInsensitive { kw, .. } => kw.span,
-            VariantMeta::Props { kw, .. } => kw.span,
-        }
-    }
-}
-
 pub trait VariantExt {
     /// Get all the metadata associated with an enum variant.
     fn get_metadata(&self) -> syn::Result<Vec<VariantMeta>>;
@@ -282,26 +243,32 @@ impl VariantExt for Variant {
         let result = get_metadata_inner("strum", &self.attrs)?;
         self.attrs
             .iter()
-            .filter(|attr| attr.path.is_ident("doc"))
+            .filter(|attr| attr.path().is_ident("doc"))
             .try_fold(result, |mut vec, attr| {
                 if let Meta::NameValue(MetaNameValue {
-                    lit: Lit::Str(value),
+                    value:
+                        Expr::Lit(ExprLit {
+                            lit: Lit::Str(value),
+                            ..
+                        }),
                     ..
-                }) = attr.parse_meta()?
+                }) = &attr.meta
                 {
-                    vec.push(VariantMeta::Documentation { value })
+                    vec.push(VariantMeta::Documentation {
+                        value: value.clone(),
+                    })
                 }
                 Ok(vec)
             })
     }
 }
 
-fn get_metadata_inner<'a, T: Parse + Spanned>(
+fn get_metadata_inner<'a, T: Parse>(
     ident: &str,
     it: impl IntoIterator<Item = &'a Attribute>,
 ) -> syn::Result<Vec<T>> {
     it.into_iter()
-        .filter(|attr| attr.path.is_ident(ident))
+        .filter(|attr| attr.path().is_ident(ident))
         .try_fold(Vec::new(), |mut vec, attr| {
             vec.extend(attr.parse_args_with(Punctuated::<T, Token![,]>::parse_terminated)?);
             Ok(vec)

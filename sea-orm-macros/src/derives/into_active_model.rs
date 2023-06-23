@@ -1,4 +1,4 @@
-use bae::FromAttributes;
+use bae2::FromAttributes;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
 
