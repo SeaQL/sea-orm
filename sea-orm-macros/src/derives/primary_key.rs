@@ -37,7 +37,7 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
                 if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
-                
+
                 attr.parse_nested_meta(|meta| {
                     if meta.path.is_ident("column_name") {
                         column_name = meta.value()?.parse::<LitStr>()?.value();
@@ -47,7 +47,7 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
                         // so ignoring an error occurred here.
                         let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
                     }
-                
+
                     Ok(())
                 })?;
             }

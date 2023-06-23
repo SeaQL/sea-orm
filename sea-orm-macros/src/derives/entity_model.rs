@@ -186,11 +186,11 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 // Some parameters, such as `primary_key`, do not have any value,
                                 // so ignoring an error occurred here.
                                 let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
-                        }
-                    
-                        Ok(())
-                    })?;
-                }
+                            }
+
+                            Ok(())
+                        })?;
+                    }
 
                     if let Some(enum_name) = enum_name {
                         field_name = enum_name;

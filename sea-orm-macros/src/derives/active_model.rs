@@ -44,8 +44,7 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
             let ident = escape_rust_keyword(ident);
             let mut ident = format_ident!("{}", &ident);
             for attr in field.attrs.iter() {
-                if !attr.path().is_ident("sea_orm") 
-                {
+                if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
                 attr.parse_nested_meta(|meta| {
@@ -58,7 +57,7 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
                         // so ignoring an error occurred here.
                         let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
                     }
-                
+
                     Ok(())
                 })?;
             }

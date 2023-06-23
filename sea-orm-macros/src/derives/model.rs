@@ -64,7 +64,7 @@ impl DeriveModel {
                             // so ignoring an error occurred here.
                             let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
                         }
-                    
+
                         Ok(())
                     })
                     .map_err(Error::Syn)?;

@@ -104,7 +104,7 @@ impl ActiveEnum {
                             meta.path.get_ident()
                         )));
                     }
-                
+
                     Ok(())
                 })
                 .map_err(Error::Syn)?;
