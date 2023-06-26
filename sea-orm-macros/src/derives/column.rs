@@ -32,7 +32,7 @@ pub fn impl_default_as_str(ident: &Ident, data: &Data) -> syn::Result<TokenStrea
                     continue;
                 }
                 attr.parse_nested_meta(|meta| {
-                    if meta.path.is_ident("column_name") || meta.path.is_ident("table_name") {
+                    if meta.path.is_ident("column_name") {
                         column_name = meta.value()?.parse::<LitStr>()?.value();
                     } else {
                         // Reads the value expression to advance the parse stream.
