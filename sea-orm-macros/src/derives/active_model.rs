@@ -43,7 +43,7 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
             let ident = trim_starting_raw_identifier(ident).to_upper_camel_case();
             let ident = escape_rust_keyword(ident);
             let mut ident = format_ident!("{}", &ident);
-            let _ = field
+            field
                 .attrs
                 .iter()
                 .filter(|attr| attr.path().is_ident("sea_orm"))
@@ -61,7 +61,7 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
 
                         Ok(())
                     })
-                });
+                })?;
             Ok::<Ident, syn::Error>(ident)
         })
         .collect::<Result<_, _>>()?;

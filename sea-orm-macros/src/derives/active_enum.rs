@@ -38,7 +38,7 @@ impl ActiveEnum {
             ident_span => compile_error!("Missing macro attribute `db_type`");
         }));
 
-        let _ = input
+        input
             .attrs
             .iter()
             .filter(|attr| attr.path().is_ident("sea_orm"))
@@ -75,8 +75,8 @@ impl ActiveEnum {
                     }
                     Ok(())
                 })
-                // .map_err(Error::Syn)?;
-            });
+                .map_err(Error::Syn)
+            })?;
 
         let variant_vec = match input.data {
             syn::Data::Enum(syn::DataEnum { variants, .. }) => variants,
