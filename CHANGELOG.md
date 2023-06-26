@@ -577,6 +577,7 @@ impl ColumnTrait for Column {
 * Disabled default features and enabled only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
 * Cleanup panic and unwrap https://github.com/SeaQL/sea-orm/pull/1231
 * Cleanup the use of `vec!` macro https://github.com/SeaQL/sea-orm/pull/1367
+* Upgrade `syn` to v2 https://github.com/SeaQL/sea-orm/pull/1713
 
 ### Bug Fixes
 
