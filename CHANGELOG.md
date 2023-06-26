@@ -423,6 +423,7 @@ impl ColumnTrait for Column {
 }
 ```
 * Resolved `insert_many` failing if the models iterator is empty https://github.com/SeaQL/sea-orm/issues/873
+* Update the template MD file of `migration/README.md`, fix a faulty sample `migrate init` shell script https://github.com/SeaQL/sea-orm/pull/1723
 
 ### Breaking changes
 
