@@ -43,24 +43,25 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
             let ident = trim_starting_raw_identifier(ident).to_upper_camel_case();
             let ident = escape_rust_keyword(ident);
             let mut ident = format_ident!("{}", &ident);
-            for attr in field.attrs.iter() {
-                if !attr.path().is_ident("sea_orm") {
-                    continue;
-                }
-                attr.parse_nested_meta(|meta| {
-                    if meta.path.is_ident("enum_name") {
-                        let litstr: LitStr = meta.value()?.parse()?;
-                        ident = syn::parse_str(&litstr.value()).unwrap();
-                    } else {
-                        // Reads the value expression to advance the parse stream.
-                        // Some parameters, such as `primary_key`, do not have any value,
-                        // so ignoring an error occurred here.
-                        let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
-                    }
+            let _ = field
+                .attrs
+                .iter()
+                .filter(|attr| attr.path().is_ident("sea_orm"))
+                .try_for_each(|attr| {
+                    attr.parse_nested_meta(|meta| {
+                        if meta.path.is_ident("enum_name") {
+                            let litstr: LitStr = meta.value()?.parse()?;
+                            ident = syn::parse_str(&litstr.value()).unwrap();
+                        } else {
+                            // Reads the value expression to advance the parse stream.
+                            // Some parameters, such as `primary_key`, do not have any value,
+                            // so ignoring an error occurred here.
+                            let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
+                        }
 
-                    Ok(())
-                })?;
-            }
+                        Ok(())
+                    })
+                });
             Ok::<Ident, syn::Error>(ident)
         })
         .collect::<Result<_, _>>()?;
