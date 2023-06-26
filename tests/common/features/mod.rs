@@ -7,6 +7,7 @@ pub mod byte_primary_key;
 pub mod collection;
 pub mod collection_expanded;
 pub mod custom_active_model;
+pub mod custom_wrapper;
 pub mod dyn_table_name_lazy_static;
 pub mod edit_log;
 pub mod event_trigger;
