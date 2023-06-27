@@ -101,6 +101,8 @@ impl ActiveEnum {
                     } else if meta.path.is_ident("num_value") {
                         is_int = true;
                         num_value = Some(meta.value()?.parse::<LitInt>()?);
+                    } else if meta.path.is_ident("display_value") {
+                        let _display_value = Some(meta.value()?.parse::<LitStr>()?);
                     } else {
                         return Err(meta.error(format!(
                             "Unknown attribute parameter found: {:?}",
@@ -376,14 +378,6 @@ impl ActiveEnum {
             impl sea_orm::sea_query::Nullable for #ident {
                 fn null() -> sea_orm::sea_query::Value {
                     <<Self as sea_orm::ActiveEnum>::Value as sea_orm::sea_query::Nullable>::null()
-                }
-            }
-
-            #[automatically_derived]
-            impl std::fmt::Display for #ident {
-                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    let v: sea_orm::sea_query::Value = <Self as sea_orm::ActiveEnum>::to_value(&self).into();
-                    write!(f, "{}", v)
                 }
             }
 

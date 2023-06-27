@@ -12,7 +12,7 @@ pub use crate::{
 pub use crate::{
     DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn,
     DeriveCustomColumn, DeriveEntity, DeriveEntityModel, DeriveIntoActiveModel, DeriveModel,
-    DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, FromJsonQueryResult,
+    DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, FromJsonQueryResult, DeriveDisplay,
 };
 
 pub use async_trait;
