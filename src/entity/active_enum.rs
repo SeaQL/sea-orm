@@ -17,7 +17,7 @@ use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 /// use sea_orm::entity::prelude::*;
 ///
 /// // Using the derive macro
-/// #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+/// #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
 /// #[sea_orm(
 ///     rs_type = "String",
 ///     db_type = "String(Some(1))",
@@ -85,7 +85,7 @@ use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 /// use sea_orm::entity::prelude::*;
 ///
 /// // Define the `Category` active enum
-/// #[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum)]
+/// #[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
 /// #[sea_orm(rs_type = "String", db_type = "String(Some(1))")]
 /// pub enum Category {
 ///     #[sea_orm(string_value = "B")]
@@ -216,7 +216,7 @@ mod tests {
             }
         }
 
-        #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+        #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
         #[sea_orm(
             rs_type = "String",
             db_type = "String(Some(1))",
@@ -276,7 +276,7 @@ mod tests {
     fn active_enum_derive_signed_integers() {
         macro_rules! test_num_value_int {
             ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 pub enum $ident {
                     #[sea_orm(num_value = -10)]
@@ -293,7 +293,7 @@ mod tests {
 
         macro_rules! test_fallback_int {
             ($ident: ident, $fallback_type: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 #[repr(i32)]
                 pub enum $ident {
@@ -346,7 +346,7 @@ mod tests {
     fn active_enum_derive_unsigned_integers() {
         macro_rules! test_num_value_uint {
             ($ident: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 pub enum $ident {
                     #[sea_orm(num_value = 1)]
@@ -361,7 +361,7 @@ mod tests {
 
         macro_rules! test_fallback_uint {
             ($ident: ident, $fallback_type: ident, $rs_type: expr, $db_type: expr, $col_def: ident) => {
-                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+                #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
                 #[sea_orm(rs_type = $rs_type, db_type = $db_type)]
                 #[repr($fallback_type)]
                 pub enum $ident {
@@ -408,7 +408,7 @@ mod tests {
 
     #[test]
     fn escaped_non_uax31() {
-        #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
+        #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy, DeriveDisplay)]
         #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "pop_os_names_typos")]
         pub enum PopOSTypos {
             #[sea_orm(string_value = "Pop!_OS")]
@@ -459,7 +459,7 @@ mod tests {
             assert_eq!(PopOSTypos::try_from_value(&val.to_owned()), Ok(variant));
         }
 
-        #[derive(Clone, Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+        #[derive(Clone, Debug, PartialEq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
         #[sea_orm(
             rs_type = "String",
             db_type = "String(None)",

@@ -43,7 +43,7 @@ impl Display {
                 attr.parse_nested_meta(|meta| {
                     if meta.path.is_ident("display_value") {
                         display_value = Some(meta.value()?.parse::<LitStr>()?);
-                    } else {display_value = Some(meta.value()?.parse::<LitStr>()?)}
+                    } else {let _other_value = Some(meta.value()?.parse::<Lit>()?);}
 
                     Ok(())
                 })
@@ -84,14 +84,12 @@ impl Display {
         let variant_display: Vec<TokenStream> = variants
             .iter()
             .map(|variant| {
-                let variant_span = variant.ident.span();
                 if let Some(display_value) = &variant.display_value {
                     let string = display_value.value();
                     quote! { #string }
                 } else {
-                    quote_spanned! {
-                        variant_span => compile_error!("Missing macro attribute, `display_value` should be specified");
-                    }
+                    let ident = &variant.ident;
+                    quote! { #ident }
                 }
             })
             .collect();
