@@ -2,6 +2,7 @@ pub mod common;
 
 pub use chrono::offset::Utc;
 pub use common::{bakery_chain::*, setup::*, TestContext};
+use pretty_assertions::assert_eq;
 pub use rust_decimal::prelude::*;
 pub use rust_decimal_macros::dec;
 use sea_orm::{entity::*, query::*, DbErr, DerivePartialModel, FromQueryResult};
@@ -745,6 +746,82 @@ pub async fn linked() -> Result<(), DbErr> {
             name: "Kara".to_owned(),
             notes: Some("Loves all cakes".to_owned()),
         }]
+    );
+
+    let select_baker_with_customer = Baker::find().find_with_linked(baker::BakedForCustomer);
+
+    assert_eq!(
+        select_baker_with_customer
+            .build(sea_orm::DatabaseBackend::MySql)
+            .to_string(),
+        [
+            // FIXME: This might be faulty!
+            "SELECT `baker`.`id` AS `A_id`,",
+            "`baker`.`name` AS `A_name`,",
+            "`baker`.`contact_details` AS `A_contact_details`,",
+            "`baker`.`bakery_id` AS `A_bakery_id`,",
+            "`r4`.`id` AS `B_id`,",
+            "`r4`.`name` AS `B_name`,",
+            "`r4`.`notes` AS `B_notes`",
+            "FROM `baker`",
+            "INNER JOIN `cakes_bakers` AS `r0` ON `r0`.`baker_id` = `baker`.`id`",
+            "INNER JOIN `cake` AS `r1` ON `r1`.`id` = `r0`.`cake_id`",
+            "INNER JOIN `lineitem` AS `r2` ON `r2`.`cake_id` = `r1`.`id`",
+            "INNER JOIN `order` AS `r3` ON `r3`.`id` = `r2`.`order_id`",
+            "INNER JOIN `customer` AS `r4` ON `r4`.`id` = `r3`.`customer_id`",
+            "ORDER BY `baker`.`id` ASC",
+        ]
+        .join(" ")
+    );
+
+    assert_eq!(
+        select_baker_with_customer.all(&ctx.db).await?,
+        [
+            (
+                baker::Model {
+                    id: 1,
+                    name: "Baker Bob".into(),
+                    contact_details: serde_json::json!({
+                        "mobile": "+61424000000",
+                        "home": "0395555555",
+                        "address": "12 Test St, Testville, Vic, Australia",
+                    }),
+                    bakery_id: Some(1),
+                },
+                vec![customer::Model {
+                    id: 2,
+                    name: "Kara".into(),
+                    notes: Some("Loves all cakes".into()),
+                }]
+            ),
+            (
+                baker::Model {
+                    id: 1,
+                    name: "Baker Bobby".into(),
+                    contact_details: serde_json::json!({
+                        "mobile": "+85212345678",
+                    }),
+                    bakery_id: Some(1),
+                },
+                vec![
+                    customer::Model {
+                        id: 1,
+                        name: "Kate".into(),
+                        notes: Some("Loves cheese cake".into()),
+                    },
+                    customer::Model {
+                        id: 1,
+                        name: "Kate".into(),
+                        notes: Some("Loves cheese cake".into()),
+                    },
+                    customer::Model {
+                        id: 2,
+                        name: "Kara".into(),
+                        notes: Some("Loves all cakes".into()),
+                    },
+                ]
+            ),
+        ]
     );
 
     ctx.delete().await;

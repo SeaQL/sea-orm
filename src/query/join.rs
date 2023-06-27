@@ -107,6 +107,15 @@ where
         }
         select_two
     }
+
+    pub fn find_with_linked<L, T>(self, l: L) -> SelectTwoMany<E, T>
+    where
+        L: Linked<FromEntity = E, ToEntity = T>,
+        T: EntityTrait,
+    {
+        // TODO: Should construct the select and join expression below
+        self.select_with(T::default())
+    }
 }
 
 #[cfg(test)]
