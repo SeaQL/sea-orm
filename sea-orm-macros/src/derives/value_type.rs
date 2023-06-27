@@ -17,10 +17,14 @@ impl DeriveValueType {
             }) => Some(unnamed),
             _ => None,
         };
+        if fields.clone().expect("hello").into_iter().count() != 1 {
+            panic!()
+        };
+
         let ty = fields
-            .expect("not a struct")
+            .expect("This derive accept only struct")
             .first()
-            .expect("empty type")
+            .expect("The struct should contain one value field")
             .to_owned()
             .ty;
         let name = input.ident;
@@ -29,11 +33,11 @@ impl DeriveValueType {
     }
 
     fn expand(&self) -> syn::Result<TokenStream> {
-        let expanded_impl_entity_name: TokenStream = self.impl_entity_name();
-        Ok(expanded_impl_entity_name)
+        let expanded_impl_value_type: TokenStream = self.impl_value_type();
+        Ok(expanded_impl_value_type)
     }
 
-    fn impl_entity_name(&self) -> TokenStream {
+    fn impl_value_type(&self) -> TokenStream {
         let name = &self.name;
         let ty = &self.ty;
 

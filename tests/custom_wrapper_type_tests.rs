@@ -2,18 +2,22 @@ pub mod common;
 
 pub use common::{
     features::{
-        custom_wrapper::{Model, StringVec},
+        custom_wrapper::{Integer, Model, StringVec},
         *,
     },
     setup::*,
     TestContext,
 };
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, DatabaseConnection};
+use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 use sea_query::ValueType;
 
 #[sea_orm_macros::test]
-#[cfg(all(feature = "sqlx-postgres", feature = "postgres-array"))]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("custom_wrapper_tests").await;
     create_tables(&ctx.db).await?;
@@ -23,15 +27,10 @@ async fn main() -> Result<(), DbErr> {
     Ok(())
 }
 
-pub async fn insert_value(_db: &DatabaseConnection) -> Result<(), DbErr> {
+pub async fn insert_value(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(StringVec::type_name(), "StringVec");
 
-    let model = Model {
-        id: 1,
-        str_vec: StringVec(vec!["ab".to_string(), "cd".to_string()]),
-    };
-
-    let string = Value::from(model.str_vec);
+    let string = Value::from(StringVec(vec!["ab".to_string(), "cd".to_string()]));
     assert_eq!(
         string,
         Value::Array(
@@ -42,6 +41,23 @@ pub async fn insert_value(_db: &DatabaseConnection) -> Result<(), DbErr> {
             ]))
         )
     );
+
+    let random_testing_int = 523;
+    let value_random_testing_int = sea_query::Value::Int(Some(523));
+
+    let direct_int = Integer(random_testing_int);
+    let unwrap_int = Integer::unwrap(value_random_testing_int);
+
+    assert_eq!(direct_int, unwrap_int);
+
+    let model = Model {
+        id: 1,
+        number: Integer(48),
+    };
+
+    let result = model.clone().into_active_model().insert(db).await?;
+
+    assert_eq!(result, model);
 
     Ok(())
 }

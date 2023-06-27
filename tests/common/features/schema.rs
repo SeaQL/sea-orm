@@ -48,6 +48,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_binary_table(db).await?;
     create_bits_table(db).await?;
     create_dyn_table_name_lazy_static_table(db).await?;
+    create_custom_wrapper_table(db).await?;
 
     if DbBackend::Postgres == db_backend {
         create_collection_table(db).await?;
@@ -633,4 +634,24 @@ pub async fn create_dyn_table_name_lazy_static_table(db: &DbConn) -> Result<(), 
     }
 
     Ok(())
+}
+
+pub async fn create_custom_wrapper_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(custom_wrapper::Entity)
+        .col(
+            ColumnDef::new(custom_wrapper::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(custom_wrapper::Column::Number)
+                .integer()
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, custom_wrapper::Entity).await
 }
