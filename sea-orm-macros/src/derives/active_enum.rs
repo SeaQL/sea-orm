@@ -101,8 +101,6 @@ impl ActiveEnum {
                     } else if meta.path.is_ident("num_value") {
                         is_int = true;
                         num_value = Some(meta.value()?.parse::<LitInt>()?);
-                    } else if meta.path.is_ident("display_value") {
-                        let _display_value = Some(meta.value()?.parse::<LitStr>()?);
                     } else {
                         return Err(meta.error(format!(
                             "Unknown attribute parameter found: {:?}",

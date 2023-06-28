@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, quote_spanned};
+use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::{LitStr, Lit};
 
 enum Error {
@@ -15,7 +15,7 @@ struct Display {
 
 struct DisplayVariant {
     ident: syn::Ident,
-    display_value: Option<LitStr>,
+    display_value: TokenStream,
 }
 
 impl Display {
@@ -30,7 +30,7 @@ impl Display {
         
         let mut variants = Vec::new();
         for variant in variant_vec {
-            let mut display_value = None;
+            let mut display_value = "".into_token_stream();
             let variant_span = variant.ident.span();
             for attr in variant.attrs.iter() {
                 if !attr.path().is_ident("sea_orm") {
@@ -38,13 +38,14 @@ impl Display {
                 }
                 attr.parse_nested_meta(|meta| {
                     if meta.path.is_ident("display_value") {
-                        display_value = Some(meta.value()?.parse::<LitStr>()?);
-                    } else {let _other_value = Some(meta.value()?.parse::<Lit>()?);}
+                        display_value = meta.value()?.parse::<LitStr>()?.to_token_stream();
+                    } else {display_value = variant.ident.to_token_stream();}
 
                     Ok(())
                 })
                 .map_err(Error::Syn)?;
             }
+            dbg!(&display_value.to_string());
 
             
             variants.push(DisplayVariant {
@@ -78,13 +79,7 @@ impl Display {
         let variant_display: Vec<TokenStream> = variants
             .iter()
             .map(|variant| {
-                if let Some(display_value) = &variant.display_value {
-                    let string = display_value.value();
-                    quote! { #string }
-                } else {
-                    let ident = &variant.ident;
-                    quote! { #ident }
-                }
+                variant.display_value.to_owned()
             })
             .collect();
 
@@ -95,7 +90,7 @@ impl Display {
                     #( Self::#variant_idents => #variant_display, )*
                     }
                     .to_owned()
-                }
+                }   
             }
 
             #[automatically_derived]
