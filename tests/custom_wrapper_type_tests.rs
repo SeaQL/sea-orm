@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{
     features::{
-        custom_wrapper::{Integer, Model, StringVec},
+        custom_wrapper::{Boolbean, Integer, Model, StringVec},
         *,
     },
     setup::*,
@@ -30,7 +30,8 @@ async fn main() -> Result<(), DbErr> {
 pub async fn insert_value(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(StringVec::type_name(), "StringVec");
 
-    let string = Value::from(StringVec(vec!["ab".to_string(), "cd".to_string()]));
+    let stringvec = StringVec(vec!["ab".to_string(), "cd".to_string()]);
+    let string = Value::from(stringvec);
     assert_eq!(
         string,
         Value::Array(
@@ -40,6 +41,20 @@ pub async fn insert_value(db: &DatabaseConnection) -> Result<(), DbErr> {
                 "cd".to_string().into()
             ]))
         )
+    );
+
+    assert_eq!(
+        Boolbean::column_type(),
+        sea_orm::sea_query::ColumnType::Boolean
+    );
+    assert_eq!(Boolbean::array_type(), sea_orm::sea_query::ArrayType::Bool);
+    assert_eq!(
+        StringVec::column_type(),
+        sea_orm::sea_query::ColumnType::String(Some(1))
+    );
+    assert_eq!(
+        StringVec::array_type(),
+        sea_orm::sea_query::ArrayType::String
     );
 
     let random_testing_int = 523;

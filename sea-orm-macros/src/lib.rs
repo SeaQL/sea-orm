@@ -834,7 +834,7 @@ pub fn enum_iter(input: TokenStream) -> TokenStream {
 }
 
 #[cfg(feature = "derive")]
-#[proc_macro_derive(DeriveValueType)]
+#[proc_macro_derive(DeriveValueType, attributes(sea_orm))]
 pub fn derive_value_type(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
     match derives::expand_derive_value_type(derive_input) {

@@ -1,19 +1,16 @@
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
-use syn::{spanned::Spanned, Data, Expr, Fields, Lit, LitStr, Type, Token};
+use syn::{spanned::Spanned, Expr, Lit, LitStr, Type};
 
-enum Error {
-    Syn(syn::Error),
-    TT(TokenStream),
-}
 struct DeriveValueType {
     name: syn::Ident,
     ty: Type,
     column_type: TokenStream,
+    array_type: TokenStream,
 }
 
 impl DeriveValueType {
-    pub fn new(input: syn::DeriveInput) -> Result<Self, Error> {
+    pub fn new(input: syn::DeriveInput) -> Option<Self> {
         let dat = input.data;
         let fields: Option<syn::punctuated::Punctuated<syn::Field, syn::token::Comma>> = match dat {
             syn::Data::Struct(syn::DataStruct {
@@ -31,24 +28,30 @@ impl DeriveValueType {
 
         let ty = field.clone().ty;
         let name = input.ident;
-        let mut column_type = quote!("abc");
-        let mut sql_type = None;
+        let mut col_type = None;
+        let mut arr_type = None;
 
-        // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(Some(255))", default_value = "new user", default_expr = "gen_random_uuid()", column_name = "name", enum_name = "Name", nullable, indexed, unique)]
         for attr in field.attrs.iter() {
             if !attr.path().is_ident("sea_orm") {
                 continue;
             }
 
-            // single param
             attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("column_type") {
                     let lit = meta.value()?.parse()?;
                     if let Lit::Str(litstr) = lit {
                         let ty: TokenStream = syn::parse_str(&litstr.value())?;
-                        sql_type = Some(ty);
+                        col_type = Some(ty);
                     } else {
                         return Err(meta.error(format!("Invalid column_type {:?}", lit)));
+                    }
+                } else if meta.path.is_ident("array_type") {
+                    let lit = meta.value()?.parse()?;
+                    if let Lit::Str(litstr) = lit {
+                        let ty: TokenStream = syn::parse_str(&litstr.value())?;
+                        arr_type = Some(ty);
+                    } else {
+                        return Err(meta.error(format!("Invalid array_type {:?}", lit)));
                     }
                 } else {
                     // Reads the value expression to advance the parse stream.
@@ -58,45 +61,124 @@ impl DeriveValueType {
                 }
 
                 Ok(())
-            }).expect("msg");
+            })
+            .expect("msg");
         }
 
-        ty = match sql_type {
-            Some(t) => match t.to_string().as_str() { 
-                "char" => Char(None),
-                "String" | "&str" => Type::Tuple(String(None)),
-                "i8" => Type::Tuple(String(None)),
-                "u8" => Type::Tuple(String(None)),
-                "i16" => Type::Tuple(String(None)),
-                "u16" => Type::Tuple(String(None)),
-                "i32" => Type::Tuple(String(None)),
-                "u32" => Type::Tuple(String(None)),
-                "i64" => Type::Tuple(String(None)),
-                "u64" => Type::Tuple(String(None)),
-                "f32" => Type::Tuple(String(None)),
-                "f64" => Type::Tuple(String(None)),
-                "bool" => Type::Tuple(String(None)),
-                "Date" | "NaiveDate" => Type::Tuple(String(None)),
-                "Time" | "NaiveTime" => Type::Tuple(String(None)),
-                "DateTime" | "NaiveDateTime" => {
-                    Type::Tuple(String(None))
-                }
-                "DateTimeUtc" | "DateTimeLocal" | "DateTimeWithTimeZone" => {
-                    Type::Tuple(String(None))
-                }
-                "Uuid" => Type::Tuple(String(None)),
-                "Json" => Type::Tuple(String(None)),
-                "Decimal" => Type::Tuple(String(None)),
-                "Vec<u8>" => {
-                    Type::Tuple(String(None))
-                },
-            None => ty
+        let field_type = &field.ty;
+        let field_type = quote! { #field_type }
+            .to_string() //E.g.: "Option < String >"
+            .replace(' ', ""); // Remove spaces
+        let field_type = if field_type.starts_with("Option<") {
+            &field_type[7..(field_type.len() - 1)] // Extract `T` out of `Option<T>`
+        } else {
+            field_type.as_str()
         };
 
-        Ok(DeriveValueType {
+        let column_type = match col_type {
+            Some(t) => quote! { sea_orm::sea_query::ColumnType::#t },
+            None => {
+                let col_type = match field_type {
+                    "char" => quote! { Char(None) },
+                    "String" | "&str" => quote! { String(None) },
+                    "i8" => quote! { TinyInteger },
+                    "u8" => quote! { TinyUnsigned },
+                    "i16" => quote! { SmallInteger },
+                    "u16" => quote! { SmallUnsigned },
+                    "i32" => quote! { Integer },
+                    "u32" => quote! { Unsigned },
+                    "i64" => quote! { BigInteger },
+                    "u64" => quote! { BigUnsigned },
+                    "f32" => quote! { Float },
+                    "f64" => quote! { Double },
+                    "bool" => quote! { Boolean },
+                    "Date" | "NaiveDate" => quote! { Date },
+                    "Time" | "NaiveTime" => quote! { Time },
+                    "DateTime" | "NaiveDateTime" => {
+                        quote! { DateTime }
+                    }
+                    "DateTimeUtc" | "DateTimeLocal" | "DateTimeWithTimeZone" => {
+                        quote! { TimestampWithTimeZone }
+                    }
+                    "Uuid" => quote! { Uuid },
+                    "Json" => quote! { Json },
+                    "Decimal" => quote! { Decimal(None) },
+                    "Vec<u8>" => {
+                        quote! { Binary(sea_orm::sea_query::BlobSize::Blob(None)) }
+                    }
+                    _ => {
+                        // Assumed it's ActiveEnum if none of the above type matches
+                        quote! {}
+                    }
+                };
+                if col_type.is_empty() {
+                    let field_span = field.span();
+                    let ty: Type = LitStr::new(field_type, field_span).parse().expect("g");
+                    let def = quote_spanned! { field_span =>
+                        std::convert::Into::<sea_orm::ColumnType>::into(
+                            <#ty as sea_orm::sea_query::ValueType>::column_type()
+                        )
+                    };
+                    quote! { #def }
+                } else {
+                    quote! { sea_orm::sea_query::ColumnType::#col_type }
+                }
+            }
+        };
+
+        let array_type = match arr_type {
+            Some(t) => quote! { sea_orm::sea_query::ArrayType::#t },
+            None => {
+                let arr_type = match field_type {
+                    "char" => quote! { Char },
+                    "String" | "&str" => quote! { String },
+                    "i8" => quote! { TinyInt },
+                    "u8" => quote! { TinyUnsigned },
+                    "i16" => quote! { SmallInt },
+                    "u16" => quote! { SmallUnsigned },
+                    "i32" => quote! { Int },
+                    "u32" => quote! { Unsigned },
+                    "i64" => quote! { BigInt },
+                    "u64" => quote! { BigUnsigned },
+                    "f32" => quote! { Float },
+                    "f64" => quote! { Double },
+                    "bool" => quote! { Bool },
+                    "Date" | "NaiveDate" => quote! { ChronoDate },
+                    "Time" | "NaiveTime" => quote! { ChronoTime },
+                    "DateTime" | "NaiveDateTime" => {
+                        quote! { ChronoDateTime }
+                    }
+                    "DateTimeUtc" | "DateTimeLocal" | "DateTimeWithTimeZone" => {
+                        quote! { ChronoDateTimeWithTimeZone }
+                    }
+                    "Uuid" => quote! { Uuid },
+                    "Json" => quote! { Json },
+                    "Decimal" => quote! { Decimal },
+                    _ => {
+                        // Assumed it's ActiveEnum if none of the above type matches
+                        quote! {}
+                    }
+                };
+                if arr_type.is_empty() {
+                    let field_span = field.span();
+                    let ty: Type = LitStr::new(field_type, field_span).parse().expect("g");
+                    let def = quote_spanned! { field_span =>
+                        std::convert::Into::<sea_orm::ArrayType>::into(
+                            <#ty as sea_orm::sea_query::ValueType>::array_type()
+                        )
+                    };
+                    quote! { #def }
+                } else {
+                    quote! { sea_orm::sea_query::ArrayType::#arr_type }
+                }
+            }
+        };
+
+        Some(DeriveValueType {
             name,
             ty,
             column_type,
+            array_type,
         })
     }
 
@@ -107,9 +189,9 @@ impl DeriveValueType {
 
     fn impl_value_type(&self) -> TokenStream {
         let name = &self.name;
-        let mut ty = &self.ty;
-        if &self.column_type.is_empty() {ty = &self.column_type}
+        let ty = &self.ty;
         let column_type = &self.column_type;
+        let array_type = &self.array_type;
 
         quote!(
             #[automatically_derived]
@@ -137,11 +219,11 @@ impl DeriveValueType {
                 }
 
                 fn array_type() -> sea_orm::sea_query::ArrayType {
-                    <#ty as sea_orm::sea_query::ValueType>::array_type()
+                    #array_type
                 }
 
                 fn column_type() -> sea_orm::sea_query::ColumnType {
-                    <#ty as sea_orm::sea_query::ValueType>::column_type()
+                    #column_type
                 }
             }
         )
@@ -149,9 +231,9 @@ impl DeriveValueType {
 }
 
 pub fn expand_derive_value_type(input: syn::DeriveInput) -> syn::Result<TokenStream> {
+    let input_span = input.span();
     match DeriveValueType::new(input) {
-        Ok(model) => model.expand(),
-        Err(Error::TT(token_stream)) => Ok(token_stream),
-        Err(Error::Syn(e)) => Err(e),
+        Some(model) => model.expand(),
+        None => Err(syn::Error::new(input_span, "error")),
     }
 }
