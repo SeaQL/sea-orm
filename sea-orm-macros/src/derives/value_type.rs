@@ -1,14 +1,19 @@
 use proc_macro2::TokenStream;
-use quote::quote;
-use syn::Type;
+use quote::{quote, quote_spanned};
+use syn::{spanned::Spanned, Data, Expr, Fields, Lit, LitStr, Type, Token};
 
+enum Error {
+    Syn(syn::Error),
+    TT(TokenStream),
+}
 struct DeriveValueType {
     name: syn::Ident,
     ty: Type,
+    column_type: TokenStream,
 }
 
 impl DeriveValueType {
-    pub fn new(input: syn::DeriveInput) -> Result<Self, syn::Error> {
+    pub fn new(input: syn::DeriveInput) -> Result<Self, Error> {
         let dat = input.data;
         let fields: Option<syn::punctuated::Punctuated<syn::Field, syn::token::Comma>> = match dat {
             syn::Data::Struct(syn::DataStruct {
@@ -17,19 +22,82 @@ impl DeriveValueType {
             }) => Some(unnamed),
             _ => None,
         };
-        if fields.clone().expect("hello").into_iter().count() != 1 {
-            panic!()
-        };
 
-        let ty = fields
+        let field = fields
             .expect("This derive accept only struct")
             .first()
             .expect("The struct should contain one value field")
-            .to_owned()
-            .ty;
-        let name = input.ident;
+            .to_owned();
 
-        Ok(DeriveValueType { name, ty })
+        let ty = field.clone().ty;
+        let name = input.ident;
+        let mut column_type = quote!("abc");
+        let mut sql_type = None;
+
+        // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(Some(255))", default_value = "new user", default_expr = "gen_random_uuid()", column_name = "name", enum_name = "Name", nullable, indexed, unique)]
+        for attr in field.attrs.iter() {
+            if !attr.path().is_ident("sea_orm") {
+                continue;
+            }
+
+            // single param
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("column_type") {
+                    let lit = meta.value()?.parse()?;
+                    if let Lit::Str(litstr) = lit {
+                        let ty: TokenStream = syn::parse_str(&litstr.value())?;
+                        sql_type = Some(ty);
+                    } else {
+                        return Err(meta.error(format!("Invalid column_type {:?}", lit)));
+                    }
+                } else {
+                    // Reads the value expression to advance the parse stream.
+                    // Some parameters, such as `primary_key`, do not have any value,
+                    // so ignoring an error occurred here.
+                    let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
+                }
+
+                Ok(())
+            }).expect("msg");
+        }
+
+        ty = match sql_type {
+            Some(t) => match t.to_string().as_str() { 
+                "char" => Char(None),
+                "String" | "&str" => Type::Tuple(String(None)),
+                "i8" => Type::Tuple(String(None)),
+                "u8" => Type::Tuple(String(None)),
+                "i16" => Type::Tuple(String(None)),
+                "u16" => Type::Tuple(String(None)),
+                "i32" => Type::Tuple(String(None)),
+                "u32" => Type::Tuple(String(None)),
+                "i64" => Type::Tuple(String(None)),
+                "u64" => Type::Tuple(String(None)),
+                "f32" => Type::Tuple(String(None)),
+                "f64" => Type::Tuple(String(None)),
+                "bool" => Type::Tuple(String(None)),
+                "Date" | "NaiveDate" => Type::Tuple(String(None)),
+                "Time" | "NaiveTime" => Type::Tuple(String(None)),
+                "DateTime" | "NaiveDateTime" => {
+                    Type::Tuple(String(None))
+                }
+                "DateTimeUtc" | "DateTimeLocal" | "DateTimeWithTimeZone" => {
+                    Type::Tuple(String(None))
+                }
+                "Uuid" => Type::Tuple(String(None)),
+                "Json" => Type::Tuple(String(None)),
+                "Decimal" => Type::Tuple(String(None)),
+                "Vec<u8>" => {
+                    Type::Tuple(String(None))
+                },
+            None => ty
+        };
+
+        Ok(DeriveValueType {
+            name,
+            ty,
+            column_type,
+        })
     }
 
     fn expand(&self) -> syn::Result<TokenStream> {
@@ -39,7 +107,9 @@ impl DeriveValueType {
 
     fn impl_value_type(&self) -> TokenStream {
         let name = &self.name;
-        let ty = &self.ty;
+        let mut ty = &self.ty;
+        if &self.column_type.is_empty() {ty = &self.column_type}
+        let column_type = &self.column_type;
 
         quote!(
             #[automatically_derived]
@@ -80,7 +150,8 @@ impl DeriveValueType {
 
 pub fn expand_derive_value_type(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     match DeriveValueType::new(input) {
-        Ok(value_type) => value_type.expand(),
-        Err(err) => Err(err),
+        Ok(model) => model.expand(),
+        Err(Error::TT(token_stream)) => Ok(token_stream),
+        Err(Error::Syn(e)) => Err(e),
     }
 }
