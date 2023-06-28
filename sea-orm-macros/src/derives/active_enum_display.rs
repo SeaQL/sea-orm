@@ -10,7 +10,6 @@ enum Error {
 
 struct Display {
     ident: syn::Ident,
-    name: String,
     variants: Vec<DisplayVariant>,
 }
 
@@ -22,9 +21,6 @@ struct DisplayVariant {
 impl Display {
     fn new(input: syn::DeriveInput) -> Result<Self, Error> {
         let ident = input.ident;
-
-        let mut name = ident.to_string();
-
         
         let variant_vec = match input.data {
             syn::Data::Enum(syn::DataEnum { variants, .. }) => variants,
@@ -58,7 +54,6 @@ impl Display {
         }
         Ok(Display {
             ident,
-            name,
             variants,
         })
     }
@@ -72,7 +67,6 @@ impl Display {
     fn impl_active_enum(&self) -> TokenStream {
         let Self {
             ident,
-            name,
             variants
         } = self;
 
