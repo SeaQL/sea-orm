@@ -37,7 +37,7 @@ pub trait ModelTrait: Clone + Send + Debug {
         l.find_linked().belongs_to_tbl_alias(self, tbl_alias)
     }
 
-    /// Delete an model
+    /// Delete a model
     async fn delete<'a, A, C>(self, db: &'a C) -> Result<DeleteResult, DbErr>
     where
         Self: IntoActiveModel<A>,

@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.12.0 - Pending
 
++ Yanked:     `0.12.0-rc.1`
 + 2023-05-19: `0.12.0-rc.2`
++ 2023-06-22: `0.12.0-rc.3`
 
 ### New Features
 
@@ -214,6 +216,65 @@ pub enum RelatedEntity {
 
     The DeriveRelatedEntity derive macro will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration when the `seaography` feature is enabled
 
+* Add `expr`, `exprs` and `expr_as` methods to `QuerySelect` trait
+```rs
+use sea_orm::sea_query::Expr;
+use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+
+assert_eq!(
+    cake::Entity::find()
+        .select_only()
+        .expr(Expr::col((cake::Entity, cake::Column::Id)))
+        .build(DbBackend::MySql)
+        .to_string(),
+    "SELECT `cake`.`id` FROM `cake`"
+);
+
+assert_eq!(
+    cake::Entity::find()
+        .select_only()
+        .exprs([
+            Expr::col((cake::Entity, cake::Column::Id)),
+            Expr::col((cake::Entity, cake::Column::Name)),
+        ])
+        .build(DbBackend::MySql)
+        .to_string(),
+    "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+);
+
+assert_eq!(
+    cake::Entity::find()
+        .expr_as(
+            Func::upper(Expr::col((cake::Entity, cake::Column::Name))),
+            "name_upper"
+        )
+        .build(DbBackend::MySql)
+        .to_string(),
+    "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
+);
+```
+* Add `DbErr::sql_err()` method to convert error into common database errors `SqlErr`, such as unique constraint or foreign key violation errors. https://github.com/SeaQL/sea-orm/pull/1707
+```rs
+assert!(matches!(
+    cake
+        .into_active_model()
+        .insert(db)
+        .await
+        .expect_err("Insert a row with duplicated primary key")
+        .sql_err(),
+    Some(SqlErr::UniqueConstraintViolation(_))
+));
+
+assert!(matches!(
+    fk_cake
+        .insert(db)
+        .await
+        .expect_err("Insert a row with invalid foreign key")
+        .sql_err(),
+    Some(SqlErr::ForeignKeyConstraintViolation(_))
+));
+```
+
 ### Enhancements
 
 * Added `Migration::name()` and `Migration::status()` getters for the name and status of `sea_orm_migration::Migration` https://github.com/SeaQL/sea-orm/pull/1519
@@ -236,6 +297,36 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
     * Changed the parameter of method `ConnectOptions::set_schema_search_path(T) where T: Into<String>` to takes any string
     * Changed the parameter of method `ColumnTrait::like()`, `ColumnTrait::not_like()`, `ColumnTrait::starts_with()`, `ColumnTrait::ends_with()` and `ColumnTrait::contains()` to takes any string
 * Re-export `sea_query::{DynIden, RcOrArc, SeaRc}` in `sea_orm::entity::prelude` module https://github.com/SeaQL/sea-orm/pull/1661
+* Added `DatabaseConnection::ping` https://github.com/SeaQL/sea-orm/pull/1627
+```rust
+|db: DatabaseConnection| {
+    assert!(db.ping().await.is_ok());
+    db.clone().close().await;
+    assert!(matches!(db.ping().await, Err(DbErr::ConnectionAcquire)));
+}
+```
+* Added `TryInsert` that does not panic on empty inserts https://github.com/SeaQL/sea-orm/pull/1708
+```rust
+// now, you can do:
+let res = Bakery::insert_many(std::iter::empty())
+    .on_empty_do_nothing()
+    .exec(db)
+    .await;
+
+assert!(matches!(res, Ok(TryInsertResult::Empty)));
+```
+* On conflict do nothing not resulting in Err https://github.com/SeaQL/sea-orm/pull/1712
+```rust
+let on = OnConflict::column(Column::Id).do_nothing().to_owned();
+
+// Existing behaviour
+let res = Entity::insert_many([..]).on_conflict(on).exec(db).await;
+assert!(matches!(res, Err(DbErr::RecordNotInserted)));
+
+// New API; now you can:
+let res = Entity::insert_many([..]).on_conflict(on).do_nothing().exec(db).await;
+assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
+```
 
 ### Upgrades
 
@@ -244,6 +335,7 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
 * Upgrade `sea-query` to `0.29` https://github.com/SeaQL/sea-orm/pull/1562
 * Upgrade `sea-query-binder` to `0.4` https://github.com/SeaQL/sea-orm/pull/1562
 * Upgrade `sea-schema` to `0.12` https://github.com/SeaQL/sea-orm/pull/1562
+* Upgrade `clap` to `4.3` https://github.com/SeaQL/sea-orm/pull/1468
 
 ### Bug Fixes
 
@@ -316,6 +408,22 @@ CREATE TABLE users_saved_bills
 );
 ```
 * [sea-orm-cli] fixed entity generation includes partitioned tables https://github.com/SeaQL/sea-orm/issues/1582, https://github.com/SeaQL/sea-schema/pull/105
+* Fixed `ActiveEnum::db_type()` return type does not implement `ColumnTypeTrait` https://github.com/SeaQL/sea-orm/pull/1576
+```rs
+impl ColumnTrait for Column {
+    type EntityName = Entity;
+    fn def(&self) -> ColumnDef {
+        match self {
+...
+            // `db_type()` returns `ColumnDef`; now it implements `ColumnTypeTrait`
+            Self::Thing => AnActiveEnumThing::db_type().def(),
+...
+        }
+    }
+}
+```
+* Resolved `insert_many` failing if the models iterator is empty https://github.com/SeaQL/sea-orm/issues/873
+* Update the template MD file of `migration/README.md`, fix a faulty sample `migrate init` shell script https://github.com/SeaQL/sea-orm/pull/1723
 
 ### Breaking changes
 
@@ -469,6 +577,7 @@ impl ColumnTrait for Column {
 * Disabled default features and enabled only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
 * Cleanup panic and unwrap https://github.com/SeaQL/sea-orm/pull/1231
 * Cleanup the use of `vec!` macro https://github.com/SeaQL/sea-orm/pull/1367
+* Upgrade `syn` to v2 https://github.com/SeaQL/sea-orm/pull/1713
 
 ### Bug Fixes
 

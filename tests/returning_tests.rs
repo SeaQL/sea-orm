@@ -1,8 +1,8 @@
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
-pub use sea_orm::{entity::prelude::*, *};
-pub use sea_query::Query;
+use sea_orm::entity::prelude::*;
+use sea_query::Query;
 
 #[sea_orm_macros::test]
 #[cfg(any(
