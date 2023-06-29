@@ -135,7 +135,7 @@ where
             }
 
             slf.query()
-                .join_as(JoinType::InnerJoin, table_ref, to_tbl, condition);
+                .join_as(JoinType::LeftJoin, table_ref, to_tbl, condition);
         }
         slf = slf.apply_alias(SelectA.as_str());
         let mut select_two_many = SelectTwoMany::new_without_prepare(slf.query);

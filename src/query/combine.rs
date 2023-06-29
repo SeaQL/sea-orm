@@ -120,8 +120,8 @@ where
 {
     pub(crate) fn new(query: SelectStatement) -> Self {
         Self::new_without_prepare(query)
-        .prepare_select()
-        .prepare_order_by()
+            .prepare_select()
+            .prepare_order_by()
     }
 
     pub(crate) fn new_without_prepare(query: SelectStatement) -> Self {

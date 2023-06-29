@@ -805,19 +805,19 @@ pub async fn linked() -> Result<(), DbErr> {
                 },
                 vec![
                     customer::Model {
-                        id: 1,
-                        name: "Kate".into(),
-                        notes: Some("Loves cheese cake".into()),
-                    },
-                    customer::Model {
-                        id: 1,
-                        name: "Kate".into(),
-                        notes: Some("Loves cheese cake".into()),
-                    },
-                    customer::Model {
                         id: 2,
                         name: "Kara".into(),
                         notes: Some("Loves all cakes".into()),
+                    },
+                    customer::Model {
+                        id: 1,
+                        name: "Kate".into(),
+                        notes: Some("Loves cheese cake".into()),
+                    },
+                    customer::Model {
+                        id: 1,
+                        name: "Kate".into(),
+                        notes: Some("Loves cheese cake".into()),
                     },
                 ]
             ),
