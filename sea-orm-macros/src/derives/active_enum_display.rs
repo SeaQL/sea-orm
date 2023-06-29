@@ -1,11 +1,11 @@
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, quote_spanned, ToTokens};
-use syn::{LitStr, Lit};
+use quote::{quote, quote_spanned, ToTokens};
+use syn::{LitStr, LitInt};
 
 enum Error {
     InputNotEnum,
     Syn(syn::Error),
-    // TT(TokenStream),
+    TT(TokenStream),
 }
 
 struct Display {
@@ -36,16 +36,25 @@ impl Display {
                 if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
+                display_value = variant.ident.clone().to_token_stream();
                 attr.parse_nested_meta(|meta| {
-                    if meta.path.is_ident("display_value") {
+                    if meta.path.is_ident("string_value") {
+                        Some(meta.value()?.parse::<LitStr>()?);
+                    } else if meta.path.is_ident("num_value") {
+                        Some(meta.value()?.parse::<LitInt>()?);
+                    } else if meta.path.is_ident("display_value") {
                         display_value = meta.value()?.parse::<LitStr>()?.to_token_stream();
-                    } else {display_value = variant.ident.to_token_stream();}
+                    } else {
+                    return Err(meta.error(format!(
+                        "Unknown attribute parameter found: {:?}",
+                        meta.path.get_ident()
+                    )));
+                }
 
                     Ok(())
                 })
                 .map_err(Error::Syn)?;
             }
-            dbg!(&display_value.to_string());
 
             
             variants.push(DisplayVariant {
@@ -82,8 +91,7 @@ impl Display {
                 variant.display_value.to_owned()
             })
             .collect();
-
-        quote!(
+        let debug_token = quote!(
             impl #ident {
                 fn to_display_value(&self) -> String {
                 match self {
@@ -100,7 +108,9 @@ impl Display {
                     write!(f, "{}", v)
                 }
             }
-        )
+        );
+        dbg!(debug_token.clone().to_string());
+        debug_token
     }
 }
 
@@ -112,7 +122,7 @@ pub fn expand_derive_active_enum_display(input: syn::DeriveInput) -> syn::Result
         Err(Error::InputNotEnum) => Ok(quote_spanned! {
             ident_span => compile_error!("you can only derive activeenum_Display on enums");
         }),
-        // Err(Error::TT(token_stream)) => Ok(token_stream),
+        Err(Error::TT(token_stream)) => Ok(token_stream),
         Err(Error::Syn(e)) => Err(e),
     }
 }
