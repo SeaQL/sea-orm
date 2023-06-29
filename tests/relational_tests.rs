@@ -764,11 +764,11 @@ pub async fn linked() -> Result<(), DbErr> {
             "`r4`.`name` AS `B_name`,",
             "`r4`.`notes` AS `B_notes`",
             "FROM `baker`",
-            "INNER JOIN `cakes_bakers` AS `r0` ON `r0`.`baker_id` = `baker`.`id`",
-            "INNER JOIN `cake` AS `r1` ON `r1`.`id` = `r0`.`cake_id`",
-            "INNER JOIN `lineitem` AS `r2` ON `r2`.`cake_id` = `r1`.`id`",
-            "INNER JOIN `order` AS `r3` ON `r3`.`id` = `r2`.`order_id`",
-            "INNER JOIN `customer` AS `r4` ON `r4`.`id` = `r3`.`customer_id`",
+            "LEFT JOIN `cakes_bakers` AS `r0` ON `baker`.`id` = `r0`.`baker_id`",
+            "LEFT JOIN `cake` AS `r1` ON `r0`.`cake_id` = `r1`.`id`",
+            "LEFT JOIN `lineitem` AS `r2` ON `r1`.`id` = `r2`.`cake_id`",
+            "LEFT JOIN `order` AS `r3` ON `r2`.`order_id` = `r3`.`id`",
+            "LEFT JOIN `customer` AS `r4` ON `r3`.`customer_id` = `r4`.`id`",
             "ORDER BY `baker`.`id` ASC",
         ]
         .join(" ")
@@ -796,7 +796,7 @@ pub async fn linked() -> Result<(), DbErr> {
             ),
             (
                 baker::Model {
-                    id: 1,
+                    id: 2,
                     name: "Baker Bobby".into(),
                     contact_details: serde_json::json!({
                         "mobile": "+85212345678",

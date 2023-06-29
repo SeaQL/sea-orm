@@ -108,13 +108,50 @@ where
         select_two
     }
 
+    /// Left Join with a Linked Entity and select Entity as a `Vec`.
     pub fn find_with_linked<L, T>(self, l: L) -> SelectTwoMany<E, T>
     where
         L: Linked<FromEntity = E, ToEntity = T>,
         T: EntityTrait,
     {
-        // TODO: Should construct the select and join expression below
-        self.select_with(T::default())
+        let mut slf = self;
+        for (i, mut rel) in l.link().into_iter().enumerate() {
+            let to_tbl = Alias::new(format!("r{i}")).into_iden();
+            let from_tbl = if i > 0 {
+                Alias::new(format!("r{}", i - 1)).into_iden()
+            } else {
+                unpack_table_ref(&rel.from_tbl)
+            };
+            let table_ref = rel.to_tbl;
+
+            let mut condition = Condition::all().add(join_tbl_on_condition(
+                SeaRc::clone(&from_tbl),
+                SeaRc::clone(&to_tbl),
+                rel.from_col,
+                rel.to_col,
+            ));
+            if let Some(f) = rel.on_condition.take() {
+                condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
+            }
+
+            slf.query()
+                .join_as(JoinType::InnerJoin, table_ref, to_tbl, condition);
+        }
+        slf = slf.apply_alias(SelectA.as_str());
+        let mut select_two_many = SelectTwoMany::new_without_prepare(slf.query);
+        for col in <T::Column as Iterable>::iter() {
+            let alias = format!("{}{}", SelectB.as_str(), col.as_str());
+            let expr = Expr::col((
+                Alias::new(format!("r{}", l.link().len() - 1)).into_iden(),
+                col.into_iden(),
+            ));
+            select_two_many.query().expr(SelectExpr {
+                expr: col.select_as(expr),
+                alias: Some(SeaRc::new(Alias::new(alias))),
+                window: None,
+            });
+        }
+        select_two_many
     }
 }
 
