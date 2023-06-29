@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
-use syn::{LitStr, LitInt};
+use syn::{LitInt, LitStr};
 
 enum Error {
     InputNotEnum,
@@ -21,13 +21,12 @@ struct DisplayVariant {
 impl Display {
     fn new(input: syn::DeriveInput) -> Result<Self, Error> {
         let ident = input.ident;
-        
+
         let variant_vec = match input.data {
             syn::Data::Enum(syn::DataEnum { variants, .. }) => variants,
             _ => return Err(Error::InputNotEnum),
         };
 
-        
         let mut variants = Vec::new();
         for variant in variant_vec {
             let mut display_value = "".into_token_stream();
@@ -36,7 +35,7 @@ impl Display {
                 if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
-                display_value = variant.ident.clone().to_token_stream();
+                display_value = variant.ident.clone().to_string().to_token_stream();
                 attr.parse_nested_meta(|meta| {
                     if meta.path.is_ident("string_value") {
                         Some(meta.value()?.parse::<LitStr>()?);
@@ -45,27 +44,24 @@ impl Display {
                     } else if meta.path.is_ident("display_value") {
                         display_value = meta.value()?.parse::<LitStr>()?.to_token_stream();
                     } else {
-                    return Err(meta.error(format!(
-                        "Unknown attribute parameter found: {:?}",
-                        meta.path.get_ident()
-                    )));
-                }
+                        return Err(meta.error(format!(
+                            "Unknown attribute parameter found: {:?}",
+                            meta.path.get_ident()
+                        )));
+                    }
 
                     Ok(())
                 })
                 .map_err(Error::Syn)?;
             }
 
-            
+            // dbg!(display_value.clone().to_string());
             variants.push(DisplayVariant {
                 ident: variant.ident,
                 display_value,
             });
         }
-        Ok(Display {
-            ident,
-            variants,
-        })
+        Ok(Display { ident, variants })
     }
 
     fn expand(&self) -> syn::Result<TokenStream> {
@@ -75,10 +71,7 @@ impl Display {
     }
 
     fn impl_active_enum(&self) -> TokenStream {
-        let Self {
-            ident,
-            variants
-        } = self;
+        let Self { ident, variants } = self;
 
         let variant_idents: Vec<syn::Ident> = variants
             .iter()
@@ -87,9 +80,7 @@ impl Display {
 
         let variant_display: Vec<TokenStream> = variants
             .iter()
-            .map(|variant| {
-                variant.display_value.to_owned()
-            })
+            .map(|variant| variant.display_value.to_owned())
             .collect();
         let debug_token = quote!(
             impl #ident {
@@ -98,7 +89,7 @@ impl Display {
                     #( Self::#variant_idents => #variant_display, )*
                     }
                     .to_owned()
-                }   
+                }
             }
 
             #[automatically_derived]
@@ -109,7 +100,7 @@ impl Display {
                 }
             }
         );
-        dbg!(debug_token.clone().to_string());
+        // dbg!(debug_token.clone().to_string());
         debug_token
     }
 }

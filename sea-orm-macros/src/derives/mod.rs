@@ -1,4 +1,5 @@
 mod active_enum;
+mod active_enum_display;
 mod active_model;
 mod active_model_behavior;
 mod attributes;
@@ -15,9 +16,9 @@ mod related_entity;
 mod relation;
 mod try_getable_from_json;
 mod util;
-mod active_enum_display;
 
 pub use active_enum::*;
+pub use active_enum_display::*;
 pub use active_model::*;
 pub use active_model_behavior::*;
 pub use column::*;
@@ -32,4 +33,3 @@ pub use primary_key::*;
 pub use related_entity::*;
 pub use relation::*;
 pub use try_getable_from_json::*;
-pub use active_enum_display::*;
