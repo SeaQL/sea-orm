@@ -7,7 +7,6 @@ pub mod byte_primary_key;
 pub mod collection;
 pub mod collection_expanded;
 pub mod custom_active_model;
-pub mod custom_wrapper;
 pub mod dyn_table_name_lazy_static;
 pub mod edit_log;
 pub mod event_trigger;
@@ -24,6 +23,7 @@ pub mod self_join;
 pub mod teas;
 pub mod transaction_log;
 pub mod uuid_fmt;
+pub mod value_type;
 
 pub use active_enum::Entity as ActiveEnum;
 pub use active_enum_child::Entity as ActiveEnumChild;

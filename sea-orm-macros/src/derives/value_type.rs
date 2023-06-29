@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
-use syn::{spanned::Spanned, Expr, Lit, LitStr, Type};
+use syn::{spanned::Spanned, Lit, LitStr, Type};
 
 struct DeriveValueType {
     name: syn::Ident,
@@ -54,15 +54,13 @@ impl DeriveValueType {
                         return Err(meta.error(format!("Invalid array_type {:?}", lit)));
                     }
                 } else {
-                    // Reads the value expression to advance the parse stream.
-                    // Some parameters, such as `primary_key`, do not have any value,
-                    // so ignoring an error occurred here.
-                    let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
+                    // received other attribute
+                    return Err(meta.error(format!("Invalid attribute {:?}", meta.path)));
                 }
 
                 Ok(())
             })
-            .expect("msg");
+            .unwrap_or(());
         }
 
         let field_type = &field.ty;
@@ -113,7 +111,9 @@ impl DeriveValueType {
                 };
                 if col_type.is_empty() {
                     let field_span = field.span();
-                    let ty: Type = LitStr::new(field_type, field_span).parse().expect("g");
+                    let ty: Type = LitStr::new(field_type, field_span)
+                        .parse()
+                        .expect("field type error");
                     let def = quote_spanned! { field_span =>
                         std::convert::Into::<sea_orm::ColumnType>::into(
                             <#ty as sea_orm::sea_query::ValueType>::column_type()
@@ -161,7 +161,9 @@ impl DeriveValueType {
                 };
                 if arr_type.is_empty() {
                     let field_span = field.span();
-                    let ty: Type = LitStr::new(field_type, field_span).parse().expect("g");
+                    let ty: Type = LitStr::new(field_type, field_span)
+                        .parse()
+                        .expect("field type error");
                     let def = quote_spanned! { field_span =>
                         std::convert::Into::<sea_orm::ArrayType>::into(
                             <#ty as sea_orm::sea_query::ValueType>::array_type()
@@ -209,9 +211,9 @@ impl DeriveValueType {
             }
 
             #[automatically_derived]
-            impl sea_query::ValueType for #name {
-                fn try_from(v: Value) -> Result<Self, sea_query::ValueTypeErr> {
-                    <#ty as sea_query::ValueType>::try_from(v).map(|v| #name(v))
+            impl sea_orm::sea_query::ValueType for #name {
+                fn try_from(v: Value) -> Result<Self, sea_orm::sea_query::ValueTypeErr> {
+                    <#ty as sea_orm::sea_query::ValueType>::try_from(v).map(|v| #name(v))
                 }
 
                 fn type_name() -> String {

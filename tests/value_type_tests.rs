@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{
     features::{
-        custom_wrapper::{Boolbean, Integer, Model, StringVec},
+        value_type::{Boolbean, Integer, Model, StringVec},
         *,
     },
     setup::*,
@@ -19,7 +19,7 @@ use sea_query::ValueType;
     feature = "sqlx-postgres"
 ))]
 async fn main() -> Result<(), DbErr> {
-    let ctx = TestContext::new("custom_wrapper_tests").await;
+    let ctx = TestContext::new("value_type_tests").await;
     create_tables(&ctx.db).await?;
     insert_value(&ctx.db).await?;
     ctx.delete().await;

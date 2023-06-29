@@ -2,7 +2,7 @@ use sea_orm::entity::prelude::*;
 use sea_orm_macros::DeriveValueType;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-#[sea_orm(table_name = "custom_wrapper")]
+#[sea_orm(table_name = "value_type")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
