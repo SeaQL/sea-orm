@@ -29,13 +29,12 @@ impl Display {
 
         let mut variants = Vec::new();
         for variant in variant_vec {
-            let mut display_value = "".into_token_stream();
-            let variant_span = variant.ident.span();
+            dbg!(variant.ident.clone());
+            let mut display_value = variant.ident.clone().to_string().to_token_stream();
             for attr in variant.attrs.iter() {
                 if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
-                display_value = variant.ident.clone().to_string().to_token_stream();
                 attr.parse_nested_meta(|meta| {
                     if meta.path.is_ident("string_value") {
                         Some(meta.value()?.parse::<LitStr>()?);
@@ -54,8 +53,6 @@ impl Display {
                 })
                 .map_err(Error::Syn)?;
             }
-
-            // dbg!(display_value.clone().to_string());
             variants.push(DisplayVariant {
                 ident: variant.ident,
                 display_value,
@@ -82,7 +79,9 @@ impl Display {
             .iter()
             .map(|variant| variant.display_value.to_owned())
             .collect();
-        let debug_token = quote!(
+        // dbg!(variant_display[0].to_string()) ;
+
+        quote!(
             impl #ident {
                 fn to_display_value(&self) -> String {
                 match self {
@@ -99,9 +98,7 @@ impl Display {
                     write!(f, "{}", v)
                 }
             }
-        );
-        // dbg!(debug_token.clone().to_string());
-        debug_token
+        )
     }
 }
 
