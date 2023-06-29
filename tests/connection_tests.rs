@@ -26,6 +26,30 @@ pub async fn connection_ping_closed_mysql() {
 
     ctx.db.get_mysql_connection_pool().close().await;
     assert_eq!(ctx_ping.db.ping().await, Err(DbErr::ConnectionAcquire));
+
+    let base_url = std::env::var("DATABASE_URL").unwrap();
+    let mut opt = sea_orm::ConnectOptions::new(format!("{base_url}/connection_ping_closed"));
+    opt
+        // The connection pool has a single connection only
+        .max_connections(1)
+        // A controlled connection acquire timeout
+        .acquire_timeout(std::time::Duration::from_secs(2));
+
+    let db = sea_orm::Database::connect(opt).await.unwrap();
+
+    async fn transaction_blocked(db: &DatabaseConnection) {
+        let _txn = sea_orm::TransactionTrait::begin(db).await.unwrap();
+        // Occupy the only connection, thus forcing others fail to acquire connection
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    }
+
+    async fn transaction(db: &DatabaseConnection) {
+        // Should fail to acquire
+        let _txn = sea_orm::TransactionTrait::begin(db).await.unwrap();
+    }
+
+    tokio::join!(transaction_blocked(&db), transaction(&db));
+
     ctx.delete().await;
 }
 
@@ -37,6 +61,30 @@ pub async fn connection_ping_closed_sqlite() {
 
     ctx.db.get_sqlite_connection_pool().close().await;
     assert_eq!(ctx_ping.db.ping().await, Err(DbErr::ConnectionAcquire));
+
+    let base_url = std::env::var("DATABASE_URL").unwrap();
+    let mut opt = sea_orm::ConnectOptions::new(base_url);
+    opt
+        // The connection pool has a single connection only
+        .max_connections(1)
+        // A controlled connection acquire timeout
+        .acquire_timeout(std::time::Duration::from_secs(2));
+
+    let db = sea_orm::Database::connect(opt).await.unwrap();
+
+    async fn transaction_blocked(db: &DatabaseConnection) {
+        let _txn = sea_orm::TransactionTrait::begin(db).await.unwrap();
+        // Occupy the only connection, thus forcing others fail to acquire connection
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    }
+
+    async fn transaction(db: &DatabaseConnection) {
+        // Should fail to acquire
+        let _txn = sea_orm::TransactionTrait::begin(db).await.unwrap();
+    }
+
+    tokio::join!(transaction_blocked(&db), transaction(&db));
+
     ctx.delete().await;
 }
 
@@ -48,5 +96,29 @@ pub async fn connection_ping_closed_postgres() {
 
     ctx.db.get_postgres_connection_pool().close().await;
     assert_eq!(ctx_ping.db.ping().await, Err(DbErr::ConnectionAcquire));
+
+    let base_url = std::env::var("DATABASE_URL").unwrap();
+    let mut opt = sea_orm::ConnectOptions::new(format!("{base_url}/connection_ping_closed"));
+    opt
+        // The connection pool has a single connection only
+        .max_connections(1)
+        // A controlled connection acquire timeout
+        .acquire_timeout(std::time::Duration::from_secs(2));
+
+    let db = sea_orm::Database::connect(opt).await.unwrap();
+
+    async fn transaction_blocked(db: &DatabaseConnection) {
+        let _txn = sea_orm::TransactionTrait::begin(db).await.unwrap();
+        // Occupy the only connection, thus forcing others fail to acquire connection
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    }
+
+    async fn transaction(db: &DatabaseConnection) {
+        // Should fail to acquire
+        let _txn = sea_orm::TransactionTrait::begin(db).await.unwrap();
+    }
+
+    tokio::join!(transaction_blocked(&db), transaction(&db));
+
     ctx.delete().await;
 }
