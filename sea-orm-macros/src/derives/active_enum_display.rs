@@ -5,7 +5,6 @@ use syn::{LitInt, LitStr};
 enum Error {
     InputNotEnum,
     Syn(syn::Error),
-    TT(TokenStream),
 }
 
 struct Display {
@@ -29,7 +28,6 @@ impl Display {
 
         let mut variants = Vec::new();
         for variant in variant_vec {
-            dbg!(variant.ident.clone());
             let mut display_value = variant.ident.clone().to_string().to_token_stream();
             for attr in variant.attrs.iter() {
                 if !attr.path().is_ident("sea_orm") {
@@ -37,9 +35,9 @@ impl Display {
                 }
                 attr.parse_nested_meta(|meta| {
                     if meta.path.is_ident("string_value") {
-                        Some(meta.value()?.parse::<LitStr>()?);
+                        meta.value()?.parse::<LitStr>()?;
                     } else if meta.path.is_ident("num_value") {
-                        Some(meta.value()?.parse::<LitInt>()?);
+                        meta.value()?.parse::<LitInt>()?;
                     } else if meta.path.is_ident("display_value") {
                         display_value = meta.value()?.parse::<LitStr>()?.to_token_stream();
                     } else {
@@ -79,22 +77,15 @@ impl Display {
             .iter()
             .map(|variant| variant.display_value.to_owned())
             .collect();
-        // dbg!(variant_display[0].to_string()) ;
 
         quote!(
-            impl #ident {
-                fn to_display_value(&self) -> String {
-                match self {
-                    #( Self::#variant_idents => #variant_display, )*
-                    }
-                    .to_owned()
-                }
-            }
-
             #[automatically_derived]
             impl std::fmt::Display for #ident {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    let v: sea_orm::sea_query::Value = Self::to_display_value(&self).into();
+                    let v = match self {
+                        #( Self::#variant_idents => #variant_display, )*
+                        }
+                        .to_owned();
                     write!(f, "{}", v)
                 }
             }
@@ -108,9 +99,8 @@ pub fn expand_derive_active_enum_display(input: syn::DeriveInput) -> syn::Result
     match Display::new(input) {
         Ok(model) => model.expand(),
         Err(Error::InputNotEnum) => Ok(quote_spanned! {
-            ident_span => compile_error!("you can only derive activeenum_Display on enums");
+            ident_span => compile_error!("you can only derive EnumDisplay on enums");
         }),
-        Err(Error::TT(token_stream)) => Ok(token_stream),
         Err(Error::Syn(e)) => Err(e),
     }
 }
