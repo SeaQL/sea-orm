@@ -5,6 +5,7 @@ use crate::{
 };
 use futures::{Stream, TryStreamExt};
 use sea_query::SelectStatement;
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::pin::Pin;
 
@@ -997,6 +998,29 @@ where
     L: EntityTrait,
     R: EntityTrait,
 {
+
+    let keys: Vec<L::Model> = rows
+        .iter()
+        .map(|row| row.0.to_owned())
+        .collect();
+
+    let col = <L::PrimaryKey as Iterable>::iter().next().unwrap_or_default().into_column();
+
+    let hashmap: HashMap<L::Model, Vec<R::Model>> = rows.into_iter().fold(
+        HashMap::<L::Model, Vec<R::Model>>::new(),
+        |mut acc: HashMap<L::Model, Vec<R::Model>>,
+         value: (L::Model, Option<R::Model>)| {
+            {
+                let key = value.0.get(L::PrimaryKey);
+
+                acc.insert(format!("{key:?}"), value.1);
+            }
+
+            acc
+        },
+    );
+
+
     let mut acc: Vec<(L::Model, Vec<R::Model>)> = Vec::new();
     for (l, r) in rows {
         if let Some((last_l, last_r)) = acc.last_mut() {
