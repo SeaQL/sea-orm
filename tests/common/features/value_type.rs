@@ -18,9 +18,9 @@ impl ActiveModelBehavior for ActiveModel {}
 pub struct Integer(pub i32);
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
-pub struct StringVec(
-    #[sea_orm(column_type = "String(Some(1))", array_type = "String")] pub Vec<String>,
-);
+#[sea_orm(column_type = "String(Some(1))", array_type = "String")]
+pub struct StringVec(pub Vec<String>);
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
-pub struct Boolbean(#[sea_orm(column_type = "Boolean", array_type = "Bool")] pub String);
+#[sea_orm(column_type = "Boolean", array_type = "Bool")]
+pub struct Boolbean(pub String);

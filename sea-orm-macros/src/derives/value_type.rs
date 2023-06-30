@@ -26,12 +26,11 @@ impl DeriveValueType {
             .expect("The struct should contain one value field")
             .to_owned();
 
-        let ty = field.clone().ty;
         let name = input.ident;
         let mut col_type = None;
         let mut arr_type = None;
 
-        for attr in field.attrs.iter() {
+        for attr in input.attrs.iter() {
             if !attr.path().is_ident("sea_orm") {
                 continue;
             }
@@ -63,8 +62,8 @@ impl DeriveValueType {
             .unwrap_or(());
         }
 
-        let field_type = &field.ty;
-        let field_type = quote! { #field_type }
+        let ty = field.clone().ty;
+        let field_type = quote! { #ty }
             .to_string() //E.g.: "Option < String >"
             .replace(' ', ""); // Remove spaces
         let field_type = if field_type.starts_with("Option<") {
@@ -191,7 +190,7 @@ impl DeriveValueType {
 
     fn impl_value_type(&self) -> TokenStream {
         let name = &self.name;
-        let ty = &self.ty;
+        let field_type = &self.ty;
         let column_type = &self.column_type;
         let array_type = &self.array_type;
 
@@ -206,14 +205,14 @@ impl DeriveValueType {
             #[automatically_derived]
             impl sea_orm::TryGetable for #name {
                 fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, sea_orm::TryGetError> {
-                    <#ty as sea_orm::TryGetable>::try_get_by(res, idx).map(|v| #name(v))
+                    <#field_type as sea_orm::TryGetable>::try_get_by(res, idx).map(|v| #name(v))
                 }
             }
 
             #[automatically_derived]
             impl sea_orm::sea_query::ValueType for #name {
                 fn try_from(v: Value) -> Result<Self, sea_orm::sea_query::ValueTypeErr> {
-                    <#ty as sea_orm::sea_query::ValueType>::try_from(v).map(|v| #name(v))
+                    <#field_type as sea_orm::sea_query::ValueType>::try_from(v).map(|v| #name(v))
                 }
 
                 fn type_name() -> String {
