@@ -998,9 +998,19 @@ where
     L: EntityTrait,
     R: EntityTrait,
 {
-    // #[cfg(feature = "hashable-value")]
     {
-        let pkcol = <L::PrimaryKey as Iterable>::iter()
+
+        let lpkcol = <L::PrimaryKey as Iterable>::iter()
+            .next()
+            .expect("should have primary key")
+            .into_column();
+        
+        let keys: Vec<Value> = rows
+            .iter()
+            .map(|row| row.0.get(lpkcol))
+            .collect();
+
+        let rpkcol = <R::PrimaryKey as Iterable>::iter()
             .next()
             .expect("should have primary key")
             .into_column();
@@ -1009,14 +1019,26 @@ where
             HashMap::<Value, Vec<R::Model>>::new(),
             |mut acc: HashMap<Value, Vec<R::Model>>, value: (L::Model, Option<R::Model>)| {
                 {
-                    let key = value.0.get(pkcol);
+                    let key = value.0.get(lpkcol);
 
-                    acc.insert(key, value.1);
+                    acc.insert(key, Vec::new());
                 }
 
                 acc
             },
         );
+
+        rows.into_iter().for_each(|row| {
+            let key = 
+        })
+
+        let result: Vec<R::Model> = keys
+            .iter()
+            .map(|key| 
+                hashmap.get(key).cloned()
+            )
+            .collect();
+
     }
 
     let mut acc: Vec<(L::Model, Vec<R::Model>)> = Vec::new();

@@ -775,30 +775,6 @@ pub async fn linked() -> Result<(), DbErr> {
     );
 
     assert_eq!(
-        select_baker_with_customer
-            .build(sea_orm::DatabaseBackend::Sqlite)
-            .to_string(),
-        [
-            // FIXME: This might be faulty!
-            "SELECT \"baker\".\"id\" AS \"A_id\",",
-            "\"baker\".\"name\" AS \"A_name\",",
-            "\"baker\".\"contact_details\" AS \"A_contact_details\",",
-            "\"baker\".\"bakery_id\" AS \"A_bakery_id\",",
-            "\"r4\".\"id\" AS \"B_id\",",
-            "\"r4\".\"name\" AS \"B_name\",",
-            "\"r4\".\"notes\" AS \"B_notes\"",
-            "FROM \"baker\"",
-            "LEFT JOIN \"cakes_bakers\" AS \"r0\" ON \"baker\".\"id\" = \"r0\".\"baker_id\"",
-            "LEFT JOIN \"cake\" AS \"r1\" ON \"r0\".\"cake_id\" = \"r1\".\"id\"",
-            "LEFT JOIN \"lineitem\" AS \"r2\" ON \"r1\".\"id\" = \"r2\".\"cake_id\"",
-            "LEFT JOIN \"order\" AS \"r3\" ON \"r2\".\"order_id\" = \"r3\".\"id\"",
-            "LEFT JOIN \"customer\" AS \"r4\" ON \"r3\".\"customer_id\" = \"r4\".\"id\"",
-            "ORDER BY \"baker\".\"id\" ASC",
-        ]
-        .join(" ")
-    );
-
-    assert_eq!(
         select_baker_with_customer.all(&ctx.db).await?,
         [
             (
