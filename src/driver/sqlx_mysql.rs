@@ -349,8 +349,8 @@ impl From<MySqlQueryResult> for ExecResult {
 pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, SqlxValues> {
     let values = stmt
         .values
-        .clone()
-        .map_or(Values(Vec::new()), |values| values);
+        .as_ref()
+        .map_or(Values(Vec::new()), |values| values.clone());
     sqlx::query_with(&stmt.sql, SqlxValues(values))
 }
 
