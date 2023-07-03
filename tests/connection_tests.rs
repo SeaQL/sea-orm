@@ -25,7 +25,10 @@ pub async fn connection_ping_closed_mysql() {
     let ctx_ping = std::rc::Rc::clone(&ctx);
 
     ctx.db.get_mysql_connection_pool().close().await;
-    assert_eq!(ctx_ping.db.ping().await, Err(DbErr::ConnectionAcquire));
+    assert_eq!(
+        ctx_ping.db.ping().await,
+        Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed))
+    );
 
     let base_url = std::env::var("DATABASE_URL").unwrap();
     let mut opt = sea_orm::ConnectOptions::new(format!("{base_url}/connection_ping_closed"));
@@ -45,7 +48,11 @@ pub async fn connection_ping_closed_mysql() {
 
     async fn transaction(db: &DatabaseConnection) {
         // Should fail to acquire
-        let _txn = sea_orm::TransactionTrait::begin(db).await.unwrap();
+        let txn = sea_orm::TransactionTrait::begin(db).await;
+        assert_eq!(
+            txn.expect_err("should be a time out"),
+            crate::DbErr::ConnectionAcquire(ConnAcquireErr::Timeout)
+        )
     }
 
     tokio::join!(transaction_blocked(&db), transaction(&db));
@@ -60,7 +67,10 @@ pub async fn connection_ping_closed_sqlite() {
     let ctx_ping = std::rc::Rc::clone(&ctx);
 
     ctx.db.get_sqlite_connection_pool().close().await;
-    assert_eq!(ctx_ping.db.ping().await, Err(DbErr::ConnectionAcquire));
+    assert_eq!(
+        ctx_ping.db.ping().await,
+        Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed))
+    );
 
     let base_url = std::env::var("DATABASE_URL").unwrap();
     let mut opt = sea_orm::ConnectOptions::new(base_url);
@@ -80,7 +90,11 @@ pub async fn connection_ping_closed_sqlite() {
 
     async fn transaction(db: &DatabaseConnection) {
         // Should fail to acquire
-        let _txn = sea_orm::TransactionTrait::begin(db).await.unwrap();
+        let txn = sea_orm::TransactionTrait::begin(db).await;
+        assert_eq!(
+            txn.expect_err("should be a time out"),
+            crate::DbErr::ConnectionAcquire(ConnAcquireErr::Timeout)
+        )
     }
 
     tokio::join!(transaction_blocked(&db), transaction(&db));
@@ -95,7 +109,10 @@ pub async fn connection_ping_closed_postgres() {
     let ctx_ping = std::rc::Rc::clone(&ctx);
 
     ctx.db.get_postgres_connection_pool().close().await;
-    assert_eq!(ctx_ping.db.ping().await, Err(DbErr::ConnectionAcquire));
+    assert_eq!(
+        ctx_ping.db.ping().await,
+        Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed))
+    );
 
     let base_url = std::env::var("DATABASE_URL").unwrap();
     let mut opt = sea_orm::ConnectOptions::new(format!("{base_url}/connection_ping_closed"));
@@ -115,7 +132,11 @@ pub async fn connection_ping_closed_postgres() {
 
     async fn transaction(db: &DatabaseConnection) {
         // Should fail to acquire
-        let _txn = sea_orm::TransactionTrait::begin(db).await.unwrap();
+        let txn = sea_orm::TransactionTrait::begin(db).await;
+        assert_eq!(
+            txn.expect_err("should be a time out"),
+            crate::DbErr::ConnectionAcquire(ConnAcquireErr::Timeout)
+        )
     }
 
     tokio::join!(transaction_blocked(&db), transaction(&db));

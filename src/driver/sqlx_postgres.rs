@@ -97,7 +97,8 @@ impl SqlxPostgresPoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        if let Ok(conn) = &mut self.pool.acquire().await {
+        let result = &mut self.pool.acquire().await;
+        if let Ok(conn) = result {
             crate::metric::metric!(self.metric_callback, &stmt, {
                 match query.execute(conn).await {
                     Ok(res) => Ok(res.into()),
@@ -105,7 +106,15 @@ impl SqlxPostgresPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::ConnectionAcquire)
+            match result {
+                Err(sqlx::Error::PoolTimedOut) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
+                }
+                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
+                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
+                    "connection failed".to_string(),
+                ))),
+            }
         }
     }
 
@@ -114,13 +123,22 @@ impl SqlxPostgresPoolConnection {
     pub async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug_print!("{}", sql);
 
-        if let Ok(conn) = &mut self.pool.acquire().await {
+        let result = &mut self.pool.acquire().await;
+        if let Ok(conn) = result {
             match conn.execute(sql).await {
                 Ok(res) => Ok(res.into()),
                 Err(err) => Err(sqlx_error_to_exec_err(err)),
             }
         } else {
-            Err(DbErr::ConnectionAcquire)
+            match result {
+                Err(sqlx::Error::PoolTimedOut) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
+                }
+                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
+                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
+                    "connection failed".to_string(),
+                ))),
+            }
         }
     }
 
@@ -130,7 +148,8 @@ impl SqlxPostgresPoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        if let Ok(conn) = &mut self.pool.acquire().await {
+        let result = &mut self.pool.acquire().await;
+        if let Ok(conn) = result {
             crate::metric::metric!(self.metric_callback, &stmt, {
                 match query.fetch_one(conn).await {
                     Ok(row) => Ok(Some(row.into())),
@@ -141,7 +160,15 @@ impl SqlxPostgresPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::ConnectionAcquire)
+            match result {
+                Err(sqlx::Error::PoolTimedOut) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
+                }
+                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
+                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
+                    "connection failed".to_string(),
+                ))),
+            }
         }
     }
 
@@ -151,7 +178,8 @@ impl SqlxPostgresPoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        if let Ok(conn) = &mut self.pool.acquire().await {
+        let result = &mut self.pool.acquire().await;
+        if let Ok(conn) = result {
             crate::metric::metric!(self.metric_callback, &stmt, {
                 match query.fetch_all(conn).await {
                     Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
@@ -159,7 +187,15 @@ impl SqlxPostgresPoolConnection {
                 }
             })
         } else {
-            Err(DbErr::ConnectionAcquire)
+            match result {
+                Err(sqlx::Error::PoolTimedOut) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
+                }
+                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
+                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
+                    "connection failed".to_string(),
+                ))),
+            }
         }
     }
 
@@ -167,15 +203,23 @@ impl SqlxPostgresPoolConnection {
     #[instrument(level = "trace")]
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
-
-        if let Ok(conn) = self.pool.acquire().await {
+        let result = self.pool.acquire().await;
+        if let Ok(conn) = result {
             Ok(QueryStream::from((
                 conn,
                 stmt,
                 self.metric_callback.clone(),
             )))
         } else {
-            Err(DbErr::ConnectionAcquire)
+            match result {
+                Err(sqlx::Error::PoolTimedOut) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
+                }
+                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
+                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
+                    "connection failed".to_string(),
+                ))),
+            }
         }
     }
 
@@ -186,7 +230,8 @@ impl SqlxPostgresPoolConnection {
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
     ) -> Result<DatabaseTransaction, DbErr> {
-        if let Ok(conn) = self.pool.acquire().await {
+        let result = self.pool.acquire().await;
+        if let Ok(conn) = result {
             DatabaseTransaction::new_postgres(
                 conn,
                 self.metric_callback.clone(),
@@ -195,7 +240,15 @@ impl SqlxPostgresPoolConnection {
             )
             .await
         } else {
-            Err(DbErr::ConnectionAcquire)
+            match result {
+                Err(sqlx::Error::PoolTimedOut) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
+                }
+                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
+                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
+                    "connection failed".to_string(),
+                ))),
+            }
         }
     }
 
@@ -215,7 +268,8 @@ impl SqlxPostgresPoolConnection {
         T: Send,
         E: std::error::Error + Send,
     {
-        if let Ok(conn) = self.pool.acquire().await {
+        let result = self.pool.acquire().await;
+        if let Ok(conn) = result {
             let transaction = DatabaseTransaction::new_postgres(
                 conn,
                 self.metric_callback.clone(),
@@ -226,7 +280,16 @@ impl SqlxPostgresPoolConnection {
             .map_err(|e| TransactionError::Connection(e))?;
             transaction.run(callback).await
         } else {
-            Err(DbErr::ConnectionAcquire.into())
+            match result {
+                Err(sqlx::Error::PoolTimedOut) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout).into())
+                }
+                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed).into()),
+                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
+                    "connection failed".to_string(),
+                ))
+                .into()),
+            }
         }
     }
 
@@ -239,13 +302,22 @@ impl SqlxPostgresPoolConnection {
 
     /// Checks if a connection to the database is still valid.
     pub async fn ping(&self) -> Result<(), DbErr> {
-        if let Ok(conn) = &mut self.pool.acquire().await {
+        let result = &mut self.pool.acquire().await;
+        if let Ok(conn) = result {
             match conn.ping().await {
                 Ok(_) => Ok(()),
                 Err(err) => Err(sqlx_error_to_conn_err(err)),
             }
         } else {
-            Err(DbErr::ConnectionAcquire)
+            match result {
+                Err(sqlx::Error::PoolTimedOut) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
+                }
+                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
+                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
+                    "connection failed".to_string(),
+                ))),
+            }
         }
     }
 

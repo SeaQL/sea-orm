@@ -17,7 +17,7 @@ use thiserror::Error;
 pub enum DbErr {
     /// This error can happen when the connection pool is fully-utilized
     #[error("Failed to acquire connection from pool")]
-    ConnectionAcquire,
+    ConnectionAcquire(ConnAcquireErr),
     /// Runtime type conversion error
     #[error("Error converting `{from}` into `{into}`: {source}")]
     TryIntoErr {
@@ -73,6 +73,20 @@ pub enum DbErr {
     /// May be the table is empty or the record does not exist
     #[error("None of the records are updated")]
     RecordNotUpdated,
+}
+
+/// Connection error
+#[derive(Error, Debug)]
+pub enum ConnAcquireErr {
+    /// Connection Timed Out
+    #[error("Connection Timed out")]
+    Timeout,
+    /// Unavailable connection
+    #[error("Connection closed by host")]
+    ConnectionClosed,
+    /// TODO: placing here incase
+    #[error("{0}")]
+    Unknown(String),
 }
 
 /// Runtime error
