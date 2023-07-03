@@ -16,7 +16,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum DbErr {
     /// This error can happen when the connection pool is fully-utilized
-    #[error("Failed to acquire connection from pool")]
+    #[error("Failed to acquire connection from pool {0}")]
     ConnectionAcquire(ConnAcquireErr),
     /// Runtime type conversion error
     #[error("Error converting `{from}` into `{into}`: {source}")]
@@ -84,10 +84,15 @@ pub enum ConnAcquireErr {
     /// Unavailable connection
     #[error("Connection closed by host")]
     ConnectionClosed,
-    /// TODO: placing here incase
-    #[error("{0}")]
-    Unknown(String),
 }
+
+impl PartialEq for ConnAcquireErr {
+    fn eq(&self, other: &Self) -> bool {
+        self.to_string() == other.to_string()
+    }
+}
+
+impl Eq for ConnAcquireErr {}
 
 /// Runtime error
 #[derive(Error, Debug)]
@@ -103,7 +108,16 @@ pub enum RuntimeErr {
 
 impl PartialEq for DbErr {
     fn eq(&self, other: &Self) -> bool {
-        self.to_string() == other.to_string()
+        match &self {
+            DbErr::ConnectionAcquire(acquire_self) => {
+                if let DbErr::ConnectionAcquire(acquire_other) = &other {
+                    acquire_self == acquire_other
+                } else {
+                    false
+                }
+            }
+            _ => self.to_string() == other.to_string(),
+        }
     }
 }
 

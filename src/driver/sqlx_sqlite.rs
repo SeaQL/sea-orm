@@ -12,7 +12,7 @@ use tracing::{instrument, warn};
 
 use crate::{
     debug_print, error::*, executor::*, AccessMode, ConnectOptions, DatabaseConnection,
-    DatabaseTransaction, IsolationLevel, QueryStream, Statement, TransactionError,
+    DatabaseTransaction, IsolationLevel, QueryStream, RuntimeErr, Statement, TransactionError,
 };
 
 use super::sqlx_common::*;
@@ -89,8 +89,8 @@ impl SqlxSqlitePoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        let result = &mut self.pool.acquire().await;
-        if let Ok(conn) = result {
+        let mut result = self.pool.acquire().await;
+        if let Ok(conn) = &mut result {
             crate::metric::metric!(self.metric_callback, &stmt, {
                 match query.execute(conn).await {
                     Ok(res) => Ok(res.into()),
@@ -102,9 +102,11 @@ impl SqlxSqlitePoolConnection {
                 Err(sqlx::Error::PoolTimedOut) => {
                     Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
                 }
-                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
-                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
-                    "connection failed".to_string(),
+                Err(sqlx::Error::PoolClosed) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed))
+                }
+                _ => Err(DbErr::Conn(RuntimeErr::SqlxError(
+                    result.expect_err("should be an error"),
                 ))),
             }
         }
@@ -115,8 +117,8 @@ impl SqlxSqlitePoolConnection {
     pub async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug_print!("{}", sql);
 
-        let result = &mut self.pool.acquire().await;
-        if let Ok(conn) = result {
+        let mut result = self.pool.acquire().await;
+        if let Ok(conn) = &mut result {
             match conn.execute(sql).await {
                 Ok(res) => Ok(res.into()),
                 Err(err) => Err(sqlx_error_to_exec_err(err)),
@@ -126,9 +128,11 @@ impl SqlxSqlitePoolConnection {
                 Err(sqlx::Error::PoolTimedOut) => {
                     Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
                 }
-                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
-                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
-                    "connection failed".to_string(),
+                Err(sqlx::Error::PoolClosed) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed))
+                }
+                _ => Err(DbErr::Conn(RuntimeErr::SqlxError(
+                    result.expect_err("should be an error"),
                 ))),
             }
         }
@@ -140,8 +144,8 @@ impl SqlxSqlitePoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        let result = &mut self.pool.acquire().await;
-        if let Ok(conn) = result {
+        let mut result = self.pool.acquire().await;
+        if let Ok(conn) = &mut result {
             crate::metric::metric!(self.metric_callback, &stmt, {
                 match query.fetch_one(conn).await {
                     Ok(row) => Ok(Some(row.into())),
@@ -156,9 +160,11 @@ impl SqlxSqlitePoolConnection {
                 Err(sqlx::Error::PoolTimedOut) => {
                     Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
                 }
-                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
-                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
-                    "connection failed".to_string(),
+                Err(sqlx::Error::PoolClosed) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed))
+                }
+                _ => Err(DbErr::Conn(RuntimeErr::SqlxError(
+                    result.expect_err("should be an error"),
                 ))),
             }
         }
@@ -170,8 +176,8 @@ impl SqlxSqlitePoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        let result = &mut self.pool.acquire().await;
-        if let Ok(conn) = result {
+        let mut result = self.pool.acquire().await;
+        if let Ok(conn) = &mut result {
             crate::metric::metric!(self.metric_callback, &stmt, {
                 match query.fetch_all(conn).await {
                     Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
@@ -183,9 +189,11 @@ impl SqlxSqlitePoolConnection {
                 Err(sqlx::Error::PoolTimedOut) => {
                     Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
                 }
-                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
-                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
-                    "connection failed".to_string(),
+                Err(sqlx::Error::PoolClosed) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed))
+                }
+                _ => Err(DbErr::Conn(RuntimeErr::SqlxError(
+                    result.expect_err("should be an error"),
                 ))),
             }
         }
@@ -208,9 +216,11 @@ impl SqlxSqlitePoolConnection {
                 Err(sqlx::Error::PoolTimedOut) => {
                     Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
                 }
-                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
-                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
-                    "connection failed".to_string(),
+                Err(sqlx::Error::PoolClosed) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed))
+                }
+                _ => Err(DbErr::Conn(RuntimeErr::SqlxError(
+                    result.expect_err("should be an error"),
                 ))),
             }
         }
@@ -237,9 +247,11 @@ impl SqlxSqlitePoolConnection {
                 Err(sqlx::Error::PoolTimedOut) => {
                     Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
                 }
-                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
-                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
-                    "connection failed".to_string(),
+                Err(sqlx::Error::PoolClosed) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed))
+                }
+                _ => Err(DbErr::Conn(RuntimeErr::SqlxError(
+                    result.expect_err("should be an error"),
                 ))),
             }
         }
@@ -277,9 +289,11 @@ impl SqlxSqlitePoolConnection {
                 Err(sqlx::Error::PoolTimedOut) => {
                     Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout).into())
                 }
-                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
-                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
-                    "connection failed".to_string(),
+                Err(sqlx::Error::PoolClosed) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed).into())
+                }
+                _ => Err(DbErr::Conn(RuntimeErr::SqlxError(
+                    result.expect_err("should be an error"),
                 ))
                 .into()),
             }
@@ -295,8 +309,8 @@ impl SqlxSqlitePoolConnection {
 
     /// Checks if a connection to the database is still valid.
     pub async fn ping(&self) -> Result<(), DbErr> {
-        let result = &mut self.pool.acquire().await;
-        if let Ok(conn) = result {
+        let mut result = self.pool.acquire().await;
+        if let Ok(conn) = &mut result {
             match conn.ping().await {
                 Ok(_) => Ok(()),
                 Err(err) => Err(sqlx_error_to_conn_err(err)),
@@ -306,9 +320,11 @@ impl SqlxSqlitePoolConnection {
                 Err(sqlx::Error::PoolTimedOut) => {
                     Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
                 }
-                // Err(PoolClosed) => Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed)),
-                _ => Err(DbErr::ConnectionAcquire(ConnAcquireErr::Unknown(
-                    "connection failed".to_string(),
+                Err(sqlx::Error::PoolClosed) => {
+                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed))
+                }
+                _ => Err(DbErr::Conn(RuntimeErr::SqlxError(
+                    result.expect_err("should be an error"),
                 ))),
             }
         }
