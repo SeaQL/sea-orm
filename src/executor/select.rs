@@ -4,7 +4,7 @@ use crate::{
     SelectB, SelectTwo, SelectTwoMany, Statement, StreamTrait, TryGetableMany,
 };
 use futures::{Stream, TryStreamExt};
-use sea_query::SelectStatement;
+use sea_query::{SelectStatement, Value};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::pin::Pin;
@@ -998,28 +998,26 @@ where
     L: EntityTrait,
     R: EntityTrait,
 {
+    // #[cfg(feature = "hashable-value")]
+    {
+        let pkcol = <L::PrimaryKey as Iterable>::iter()
+            .next()
+            .expect("should have primary key")
+            .into_column();
 
-    let keys: Vec<L::Model> = rows
-        .iter()
-        .map(|row| row.0.to_owned())
-        .collect();
+        let hashmap: HashMap<Value, Vec<R::Model>> = rows.into_iter().fold(
+            HashMap::<Value, Vec<R::Model>>::new(),
+            |mut acc: HashMap<Value, Vec<R::Model>>, value: (L::Model, Option<R::Model>)| {
+                {
+                    let key = value.0.get(pkcol);
 
-    let col = <L::PrimaryKey as Iterable>::iter().next().unwrap_or_default().into_column();
+                    acc.insert(key, value.1);
+                }
 
-    let hashmap: HashMap<L::Model, Vec<R::Model>> = rows.into_iter().fold(
-        HashMap::<L::Model, Vec<R::Model>>::new(),
-        |mut acc: HashMap<L::Model, Vec<R::Model>>,
-         value: (L::Model, Option<R::Model>)| {
-            {
-                let key = value.0.get(L::PrimaryKey);
-
-                acc.insert(format!("{key:?}"), value.1);
-            }
-
-            acc
-        },
-    );
-
+                acc
+            },
+        );
+    }
 
     let mut acc: Vec<(L::Model, Vec<R::Model>)> = Vec::new();
     for (l, r) in rows {
