@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "sea-orm-macros", "sea-orm-codegen"]
+members = [".", "sea-orm-macros", "sea-orm-codegen" , "sea-orm-macros/sea-bae"]
 
 [package]
 name = "sea-orm"
