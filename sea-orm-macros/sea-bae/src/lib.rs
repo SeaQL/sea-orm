@@ -3,13 +3,12 @@
 //! simpler API.
 //!
 //! ```rust
-//! use bae2::FromAttributes;
+//! use bae::FromAttributes;
 //!
 //! #[derive(
 //!     Debug,
 //!     Eq,
 //!     PartialEq,
-//!
 //!     // This will add two functions:
 //!     // ```
 //!     // fn from_attributes(attrs: &[syn::Attribute]) -> Result<MyAttr, syn::Error>
@@ -67,7 +66,10 @@
 //!         Some(syn::parse_str::<syn::Type>("OtherType").unwrap())
 //!     );
 //!
-//!     assert_eq!(my_attr.mandatory_ident, syn::parse_str::<syn::Ident>("foo").unwrap());
+//!     assert_eq!(
+//!         my_attr.mandatory_ident,
+//!         syn::parse_str::<syn::Ident>("foo").unwrap()
+//!     );
 //!
 //!     assert_eq!(my_attr.switch.is_some(), true);
 //!
