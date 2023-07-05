@@ -781,6 +781,21 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///     sum: i32
 /// }
 /// ```
+///
+/// `DerivePartialModel` support generic argument, it not require extra generic bound.
+///
+/// Note that, the bound [`TryGetable`](sea_orm::TryGetable) is for [`FromQueryResult`]
+/// ```rust
+/// use sea_orm::{
+///     entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult, TryGetable,
+/// };
+///
+/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// struct SelectResult<T: TryGetable> {
+///     #[sea_orm(from_expr = "Expr::val(1).add(1)")]
+///     sum: T,
+/// }
+/// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DerivePartialModel, attributes(sea_orm))]
 pub fn derive_partial_model(input: TokenStream) -> TokenStream {

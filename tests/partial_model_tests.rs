@@ -1,5 +1,7 @@
+use std::ops::Deref;
+
 use entity::{Column, Entity};
-use sea_orm::{ColumnTrait, DerivePartialModel, FromQueryResult};
+use sea_orm::{ColumnTrait, DerivePartialModel, FromQueryResult, TryGetable};
 use sea_query::Expr;
 
 mod entity {
@@ -44,4 +46,48 @@ struct FieldFromExpr {
     _foo: f64,
     #[sea_orm(from_expr = "Expr::col(Column::Id).equals(Column::Foo)")]
     _bar: bool,
+}
+
+#[derive(FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "Entity")]
+struct GenericTest<T>
+where
+    T: TryGetable,
+{
+    _foo: i32,
+    _bar: T,
+}
+#[derive(FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "Entity")]
+struct MultiGenericTest<T: TryGetable, F: TryGetable> {
+    #[sea_orm(from_expr = "Column::Bar2.sum()")]
+    _foo: T,
+    _bar: F,
+}
+
+#[derive(FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "Entity")]
+struct GenericWithBoundsTest<T: TryGetable + Copy + Clone + 'static> {
+    _foo: T,
+}
+
+#[derive(FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "Entity")]
+struct WhereGenericTest<T>
+where
+    T: TryGetable + Deref,
+    <T as Deref>::Target: Clone,
+{
+    _foo: T,
+}
+
+#[derive(FromQueryResult, DerivePartialModel)]
+struct MixedBoundTest<T: TryGetable + Clone, F>
+where
+    F: TryGetable + Clone,
+{
+    #[sea_orm(from_expr = "Column::Bar2.sum()")]
+    _foo: T,
+    #[sea_orm(from_expr = "Expr::col(Column::Id).equals(Column::Foo)")]
+    _bar: F,
 }

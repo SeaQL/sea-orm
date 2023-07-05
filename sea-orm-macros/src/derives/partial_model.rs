@@ -8,6 +8,7 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::Expr;
+use syn::Generics;
 
 use syn::Meta;
 
@@ -17,7 +18,6 @@ use self::util::GetAsKVMeta;
 enum Error {
     InputNotStruct,
     EntityNotSpecific,
-    NotSupportGeneric(Span),
     BothFromColAndFromExpr(Span),
     Syn(syn::Error),
 }
@@ -35,14 +35,11 @@ struct DerivePartialModel {
     entity_ident: Option<syn::Ident>,
     ident: syn::Ident,
     fields: Vec<ColumnAs>,
+    generic: Generics,
 }
 
 impl DerivePartialModel {
     fn new(input: syn::DeriveInput) -> Result<Self, Error> {
-        if !input.generics.params.is_empty() {
-            return Err(Error::NotSupportGeneric(input.generics.params.span()));
-        }
-
         let syn::Data::Struct(syn::DataStruct{fields:syn::Fields::Named(syn::FieldsNamed{named:fields,..}),..},..) = input.data else{
             return Err(Error::InputNotStruct);
         };
@@ -124,6 +121,7 @@ impl DerivePartialModel {
             entity_ident,
             ident: input.ident,
             fields: column_as_list,
+            generic: input.generics,
         })
     }
 
@@ -137,6 +135,7 @@ impl DerivePartialModel {
             entity_ident,
             ident,
             fields,
+            generic,
         } = self;
         let select_col_code_gen = fields.iter().map(|col_as| match col_as {
             ColumnAs::Col(ident) => {
@@ -154,9 +153,11 @@ impl DerivePartialModel {
             },
         });
 
+        let (impl_generic, type_generic, where_clause) = generic.split_for_impl();
+
         quote! {
             #[automatically_derived]
-            impl sea_orm::PartialModelTrait for #ident{
+            impl #impl_generic sea_orm::PartialModelTrait for #ident #type_generic #where_clause {
                 fn select_cols<S: sea_orm::SelectColumns>(#select_ident: S) -> S{
                     #(#select_col_code_gen)*
                     #select_ident
@@ -171,14 +172,11 @@ pub fn expand_derive_partial_model(input: syn::DeriveInput) -> syn::Result<Token
 
     match DerivePartialModel::new(input) {
         Ok(partial_model) => partial_model.expand(),
-        Err(Error::NotSupportGeneric(span)) => Ok(quote_spanned! {
-            span => compile_error!("you can only derive `DerivePartialModel` on named struct");
-        }),
         Err(Error::BothFromColAndFromExpr(span)) => Ok(quote_spanned! {
             span => compile_error!("you can only use one of `from_col` or `from_expr`");
         }),
         Err(Error::EntityNotSpecific) => Ok(quote_spanned! {
-            ident_span => compile_error!("you need specific which entity you are using")
+            ident_span => compile_error!("you need specific which entity you are using");
         }),
         Err(Error::InputNotStruct) => Ok(quote_spanned! {
             ident_span => compile_error!("you can only derive `DerivePartialModel` on named struct");
