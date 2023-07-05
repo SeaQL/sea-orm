@@ -1,9 +1,11 @@
 //! `bae` is a crate for proc macro authors, which simplifies parsing of attributes. It is
 //! heavily inspired by [`darling`](https://crates.io/crates/darling) but has a significantly
 //! simpler API.
+//! 
+//! sea-bae is a fork of the original bae crate, for use in [`sea-orm`](https://crates.io/crates/sea-orm).
 //!
 //! ```rust
-//! use bae::FromAttributes;
+//! use sea_bae::FromAttributes;
 //!
 //! #[derive(
 //!     Debug,
