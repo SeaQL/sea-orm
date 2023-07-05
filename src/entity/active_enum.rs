@@ -408,7 +408,7 @@ mod tests {
 
     #[test]
     fn escaped_non_uax31() {
-        #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy, DeriveDisplay)]
+        #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
         #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "pop_os_names_typos")]
         pub enum PopOSTypos {
             #[sea_orm(string_value = "Pop!_OS")]
