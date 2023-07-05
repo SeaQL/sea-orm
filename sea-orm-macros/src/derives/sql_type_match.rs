@@ -7,7 +7,7 @@ pub fn col_type_match(
     field_type: &str,
     field_span: Span,
 ) -> TokenStream {
-    let column_type = match col_type {
+    match col_type {
         Some(t) => quote! { sea_orm::prelude::ColumnType::#t },
         None => {
             let col_type = match field_type {
@@ -57,8 +57,7 @@ pub fn col_type_match(
                 quote! { sea_orm::prelude::ColumnType::#col_type }
             }
         }
-    };
-    column_type
+    }
 }
 
 pub fn arr_type_match(
@@ -66,7 +65,7 @@ pub fn arr_type_match(
     field_type: &str,
     field_span: Span,
 ) -> TokenStream {
-    let array_type = match arr_type {
+    match arr_type {
         Some(t) => quote! { sea_orm::sea_query::ArrayType::#t },
         None => {
             let arr_type = match field_type {
@@ -113,6 +112,5 @@ pub fn arr_type_match(
                 quote! { sea_orm::sea_query::ArrayType::#arr_type }
             }
         }
-    };
-    array_type
+    }
 }
