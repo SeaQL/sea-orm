@@ -999,73 +999,95 @@ where
     R: EntityTrait,
 {
     {
-
-        let lpkcol = <L::PrimaryKey as Iterable>::iter()
+        let pkcol = <L::PrimaryKey as Iterable>::iter()
             .next()
             .expect("should have primary key")
             .into_column();
-        
-        let keys: Vec<Value> = rows
+
+        let keys: Vec<Value> = rows.iter().map(|row| row.0.get(pkcol)).collect();
+        let mut unique_keys: Vec<Value> = Vec::new();
+        for key in keys {
+            let mut existed = false;
+            for existing_key in unique_keys.clone() {
+                if key == existing_key {
+                    existed = true;
+                    break;
+                }
+            }
+            if !existed {
+                unique_keys.push(key)
+            }
+        }
+
+        let key_values: Vec<(Value, L::Model, R::Model)> = rows
             .iter()
-            .map(|row| row.0.get(lpkcol))
+            .map(|row| {
+                (
+                    row.0.clone().get(pkcol),
+                    row.0.clone(),
+                    row.1.clone().expect("should have linked entity"),
+                )
+            })
             .collect();
 
-        let rpkcol = <R::PrimaryKey as Iterable>::iter()
-            .next()
-            .expect("should have primary key")
-            .into_column();
-
-        let hashmap: HashMap<Value, Vec<R::Model>> = rows.into_iter().fold(
-            HashMap::<Value, Vec<R::Model>>::new(),
-            |mut acc: HashMap<Value, Vec<R::Model>>, value: (L::Model, Option<R::Model>)| {
-                {
-                    let key = value.0.get(lpkcol);
-
-                    acc.insert(key, Vec::new());
-                }
+        let mut hashmap: HashMap<Value, (L::Model, Vec<R::Model>)> = key_values.into_iter().fold(
+            HashMap::<Value, (L::Model, Vec<R::Model>)>::new(),
+            |mut acc: HashMap<Value, (L::Model, Vec<R::Model>)>,
+             key_value: (Value, L::Model, R::Model)| {
+                acc.insert(key_value.0, (key_value.1, Vec::new()));
 
                 acc
             },
         );
 
         rows.into_iter().for_each(|row| {
-            let key = 
-        })
+            let key = row.0.get(pkcol);
 
-        let result: Vec<R::Model> = keys
-            .iter()
-            .map(|key| 
-                hashmap.get(key).cloned()
-            )
+            let vec = &mut hashmap
+                .get_mut(&key)
+                .expect("Failed at finding key on hashmap")
+                .1;
+
+            vec.push(row.1.expect("should have value in row"));
+        });
+
+        let result: Vec<(L::Model, Vec<R::Model>)> = unique_keys
+            .into_iter()
+            .map(|key: Value| {
+                hashmap
+                    .get(&key)
+                    .cloned()
+                    .expect("should have key in hashmap")
+            })
             .collect();
-
+        result
     }
 
-    let mut acc: Vec<(L::Model, Vec<R::Model>)> = Vec::new();
-    for (l, r) in rows {
-        if let Some((last_l, last_r)) = acc.last_mut() {
-            let mut same_l = true;
-            for pk_col in <L::PrimaryKey as Iterable>::iter() {
-                let col = pk_col.into_column();
-                let val = l.get(col);
-                let last_val = last_l.get(col);
-                if !val.eq(&last_val) {
-                    same_l = false;
-                    break;
-                }
-            }
-            if same_l {
-                if let Some(r) = r {
-                    last_r.push(r);
-                    continue;
-                }
-            }
-        }
-        let rows = match r {
-            Some(r) => vec![r],
-            None => vec![],
-        };
-        acc.push((l, rows));
-    }
-    acc
+    // let mut acc: Vec<(L::Model, Vec<R::Model>)> = Vec::new();
+    // for (l, r) in rows {
+    //     if let Some((last_l, last_r)) = acc.last_mut() {
+    //         let mut same_l = true;
+    //         for pk_col in <L::PrimaryKey as Iterable>::iter() {
+    //             let col = pk_col.into_column();
+    //             let val = l.get(col);
+    //             let last_val = last_l.get(col);
+    //             if !val.eq(&last_val) {
+    //                 same_l = false;
+    //                 break;
+    //             }
+    //         }
+    //         if same_l {
+    //             if let Some(r) = r {
+    //                 last_r.push(r);
+    //                 continue;
+    //             }
+    //         }
+    //     }
+    //     let rows = match r {
+    //         Some(r) => vec![r],
+    //         None => vec![],
+    //     };
+    //     acc.push((l, rows));
+    // }
+    // acc
 }

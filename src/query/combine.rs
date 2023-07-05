@@ -129,7 +129,6 @@ where
             query,
             entity: PhantomData,
         }
-        .prepare_order_by()
     }
 
     fn prepare_select(mut self) -> Self {

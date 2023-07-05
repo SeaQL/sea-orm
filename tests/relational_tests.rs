@@ -748,7 +748,10 @@ pub async fn linked() -> Result<(), DbErr> {
         }]
     );
 
-    let select_baker_with_customer = Baker::find().find_with_linked(baker::BakedForCustomer);
+    let select_baker_with_customer = Baker::find()
+        .find_with_linked(baker::BakedForCustomer)
+        .order_by_asc(baker::Column::Id)
+        .order_by_asc(Expr::col((Alias::new("r4"), customer::Column::Id)));
 
     assert_eq!(
         select_baker_with_customer
@@ -769,7 +772,7 @@ pub async fn linked() -> Result<(), DbErr> {
             "LEFT JOIN `lineitem` AS `r2` ON `r1`.`id` = `r2`.`cake_id`",
             "LEFT JOIN `order` AS `r3` ON `r2`.`order_id` = `r3`.`id`",
             "LEFT JOIN `customer` AS `r4` ON `r3`.`customer_id` = `r4`.`id`",
-            "ORDER BY `baker`.`id` ASC",
+            "ORDER BY `baker`.`id` ASC, `r4`.`id` ASC"
         ]
         .join(" ")
     );
@@ -805,19 +808,19 @@ pub async fn linked() -> Result<(), DbErr> {
                 },
                 vec![
                     customer::Model {
+                        id: 1,
+                        name: "Kate".into(),
+                        notes: Some("Loves cheese cake".into()),
+                    },
+                    customer::Model {
+                        id: 1,
+                        name: "Kate".into(),
+                        notes: Some("Loves cheese cake".into()),
+                    },
+                    customer::Model {
                         id: 2,
                         name: "Kara".into(),
                         notes: Some("Loves all cakes".into()),
-                    },
-                    customer::Model {
-                        id: 1,
-                        name: "Kate".into(),
-                        notes: Some("Loves cheese cake".into()),
-                    },
-                    customer::Model {
-                        id: 1,
-                        name: "Kate".into(),
-                        notes: Some("Loves cheese cake".into()),
                     },
                 ]
             ),
