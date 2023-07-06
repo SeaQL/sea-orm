@@ -356,8 +356,8 @@ pub use sea_orm_macros::{
 
 pub use sea_query;
 pub use sea_query::Iden;
-#[cfg(feature = "macros")]
-pub use sea_query::Iden as DeriveIden;
+// #[cfg(feature = "macros")]
+// pub use sea_query::Iden as DeriveIden;
 
 pub use sea_orm_macros::EnumIter;
 pub use strum;

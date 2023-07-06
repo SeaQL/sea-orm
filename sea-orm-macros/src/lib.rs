@@ -832,3 +832,26 @@ pub fn enum_iter(input: TokenStream) -> TokenStream {
         .unwrap_or_else(Error::into_compile_error)
         .into()
 }
+
+
+// #[proc_macro_derive(Iden, attributes(iden, method))]
+// pub fn iden(input: TokenStream) -> TokenStream {
+//     let input = parse_macro_input!(input as DeriveInput);
+//     if cfg!(feature = "sea-query"){
+//         crate::derive_iden(input)
+//     }
+//     else {
+//         sea_orm::derive_iden(input)
+//     }
+// }
+
+#[cfg(feature = "derive")]
+#[proc_macro_derive(DeriveIden, attributes(sea_orm))]
+pub fn derive_iden(input: TokenStream) -> TokenStream {
+    let derive_input = parse_macro_input!(input as DeriveInput);
+
+    match derives::expand_derive_iden(derive_input) {
+        Ok(token_stream) => token_stream.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
