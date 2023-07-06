@@ -18,7 +18,7 @@ pub enum Color {
     White,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "tea")]
 pub enum Tea {
     #[sea_orm(string_value = "EverydayTea")]
