@@ -36,14 +36,14 @@ pub async fn connection_ping_closed_mysql() {
         // The connection pool has a single connection only
         .max_connections(1)
         // A controlled connection acquire timeout
-        .acquire_timeout(std::time::Duration::from_secs(2));
+        .acquire_timeout(std::time::Duration::from_secs(10));
 
     let db = sea_orm::Database::connect(opt).await.unwrap();
 
     async fn transaction_blocked(db: &DatabaseConnection) {
         let _txn = sea_orm::TransactionTrait::begin(db).await.unwrap();
         // Occupy the only connection, thus forcing others fail to acquire connection
-        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(15)).await;
     }
 
     async fn transaction(db: &DatabaseConnection) {
@@ -78,14 +78,14 @@ pub async fn connection_ping_closed_sqlite() {
         // The connection pool has a single connection only
         .max_connections(1)
         // A controlled connection acquire timeout
-        .acquire_timeout(std::time::Duration::from_secs(2));
+        .acquire_timeout(std::time::Duration::from_secs(10));
 
     let db = sea_orm::Database::connect(opt).await.unwrap();
 
     async fn transaction_blocked(db: &DatabaseConnection) {
         let _txn = sea_orm::TransactionTrait::begin(db).await.unwrap();
         // Occupy the only connection, thus forcing others fail to acquire connection
-        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(15)).await;
     }
 
     async fn transaction(db: &DatabaseConnection) {
@@ -120,14 +120,14 @@ pub async fn connection_ping_closed_postgres() {
         // The connection pool has a single connection only
         .max_connections(1)
         // A controlled connection acquire timeout
-        .acquire_timeout(std::time::Duration::from_secs(2));
+        .acquire_timeout(std::time::Duration::from_secs(10));
 
     let db = sea_orm::Database::connect(opt).await.unwrap();
 
     async fn transaction_blocked(db: &DatabaseConnection) {
         let _txn = sea_orm::TransactionTrait::begin(db).await.unwrap();
         // Occupy the only connection, thus forcing others fail to acquire connection
-        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(15)).await;
     }
 
     async fn transaction(db: &DatabaseConnection) {
