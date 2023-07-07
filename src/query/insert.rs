@@ -347,7 +347,7 @@ where
 mod tests {
     use sea_query::OnConflict;
 
-    use crate::tests_cfg::cake::{self, ActiveModel};
+    use crate::tests_cfg::cake::{self};
     use crate::{ActiveValue, DbBackend, DbErr, EntityTrait, Insert, IntoActiveModel, QueryTrait};
 
     #[test]
