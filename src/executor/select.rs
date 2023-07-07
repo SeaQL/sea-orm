@@ -4,7 +4,8 @@ use crate::{
     SelectB, SelectTwo, SelectTwoMany, Statement, StreamTrait, TryGetableMany,
 };
 use futures::{Stream, TryStreamExt};
-use sea_query::SelectStatement;
+use sea_query::{SelectStatement, Value};
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::pin::Pin;
 
@@ -991,37 +992,39 @@ where
 }
 
 fn consolidate_query_result<L, R>(
-    rows: Vec<(L::Model, Option<R::Model>)>,
+    mut rows: Vec<(L::Model, Option<R::Model>)>,
 ) -> Vec<(L::Model, Vec<R::Model>)>
 where
     L: EntityTrait,
     R: EntityTrait,
 {
-    let mut acc: Vec<(L::Model, Vec<R::Model>)> = Vec::new();
-    for (l, r) in rows {
-        if let Some((last_l, last_r)) = acc.last_mut() {
-            let mut same_l = true;
-            for pk_col in <L::PrimaryKey as Iterable>::iter() {
-                let col = pk_col.into_column();
-                let val = l.get(col);
-                let last_val = last_l.get(col);
-                if !val.eq(&last_val) {
-                    same_l = false;
-                    break;
-                }
+    //todo: could take not iter
+    let pkcol = <L::PrimaryKey as Iterable>::iter()
+        .next()
+        .expect("should have primary key")
+        .into_column();
+
+    let mut hashmap: HashMap<Value, Vec<R::Model>> = rows.iter_mut().fold(
+        HashMap::<Value, Vec<R::Model>>::new(),
+        |mut acc: HashMap<Value, Vec<R::Model>>, row: &mut (L::Model, Option<R::Model>)| {
+            let key = row.0.get(pkcol);
+            let value = row.1.take().expect("should have a linked entity");
+            let vec: Option<&mut Vec<R::Model>> = acc.get_mut(&key);
+            if let Some(vec) = vec {
+                vec.push(value)
+            } else {
+                acc.insert(key, vec![value]);
             }
-            if same_l {
-                if let Some(r) = r {
-                    last_r.push(r);
-                    continue;
-                }
-            }
-        }
-        let rows = match r {
-            Some(r) => vec![r],
-            None => vec![],
-        };
-        acc.push((l, rows));
-    }
-    acc
+
+            acc
+        },
+    );
+
+    rows.into_iter()
+        .filter_map(|(l_model, _)| {
+            let l_pk = l_model.get(pkcol);
+            let r_models = hashmap.remove(&l_pk);
+            r_models.map(|r_models| (l_model, r_models))
+        })
+        .collect()
 }
