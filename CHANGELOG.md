@@ -589,6 +589,7 @@ impl ColumnTrait for Column {
 * Cleanup panic and unwrap https://github.com/SeaQL/sea-orm/pull/1231
 * Cleanup the use of `vec!` macro https://github.com/SeaQL/sea-orm/pull/1367
 * Upgrade `syn` to v2 https://github.com/SeaQL/sea-orm/pull/1713
+* Upgrade `ouroboros` to `0.17` https://github.com/SeaQL/sea-orm/pull/1724
 
 ### Bug Fixes
 
