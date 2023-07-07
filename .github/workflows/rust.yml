@@ -251,15 +251,11 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt
+      - run: cargo fmt --manifest-path ${{ matrix.path }} -- --check
       - run: cargo build --manifest-path ${{ matrix.path }}
       - run: cargo test --manifest-path ${{ matrix.path }}
       - if: ${{ contains(matrix.path, 'core/Cargo.toml') }}
         run: cargo test --manifest-path ${{ matrix.path }} --features mock
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-          components: rustfmt
-      - run: cargo fmt --manifest-path ${{ matrix.path }} --all -- --check
 
   issues-matrix:
     name: Issues Matrix

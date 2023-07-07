@@ -43,18 +43,21 @@ impl DerivePartialModel {
             return Err(Error::NotSupportGeneric(input.generics.params.span()));
         }
 
-        let syn::Data::Struct(syn::DataStruct{fields:syn::Fields::Named(syn::FieldsNamed{named:fields,..}),..},..) = input.data else{
+        let syn::Data::Struct(
+            syn::DataStruct {
+                fields: syn::Fields::Named(syn::FieldsNamed { named: fields, .. }),
+                ..
+            },
+            ..,
+        ) = input.data
+        else {
             return Err(Error::InputNotStruct);
         };
 
         let mut entity_ident = None;
 
         for attr in input.attrs.iter() {
-            if let Some(ident) = attr.path.get_ident() {
-                if ident != "sea_orm" {
-                    continue;
-                }
-            } else {
+            if !attr.path().is_ident("sea_orm") {
                 continue;
             }
 
@@ -77,7 +80,7 @@ impl DerivePartialModel {
             let mut from_expr = None;
 
             for attr in field.attrs.iter() {
-                if !attr.path.is_ident("sea_orm") {
+                if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
 
@@ -192,7 +195,7 @@ pub fn expand_derive_partial_model(input: syn::DeriveInput) -> syn::Result<Token
 }
 
 mod util {
-    use syn::{Lit, Meta, MetaNameValue};
+    use syn::{Meta, MetaNameValue};
 
     pub(super) trait GetAsKVMeta {
         fn get_as_kv(&self, k: &str) -> Option<String>;
@@ -200,12 +203,21 @@ mod util {
 
     impl GetAsKVMeta for Meta {
         fn get_as_kv(&self, k: &str) -> Option<String> {
-            let Meta::NameValue(MetaNameValue{path, lit:Lit::Str(lit), ..}) = self else {
-                return  None;
+            let Meta::NameValue(MetaNameValue {
+                path,
+                value: syn::Expr::Lit(exprlit),
+                ..
+            }) = self
+            else {
+                return None;
+            };
+
+            let syn::Lit::Str(litstr) = &exprlit.lit else {
+                return None;
             };
 
             if path.is_ident(k) {
-                Some(lit.value())
+                Some(litstr.value())
             } else {
                 None
             }

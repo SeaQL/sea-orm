@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.12.0 - Pending
 
++ Yanked:     `0.12.0-rc.1`
 + 2023-05-19: `0.12.0-rc.2`
++ 2023-06-22: `0.12.0-rc.3`
 
 ### New Features
 
@@ -303,6 +305,28 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
     assert!(matches!(db.ping().await, Err(DbErr::ConnectionAcquire)));
 }
 ```
+* Added `TryInsert` that does not panic on empty inserts https://github.com/SeaQL/sea-orm/pull/1708
+```rust
+// now, you can do:
+let res = Bakery::insert_many(std::iter::empty())
+    .on_empty_do_nothing()
+    .exec(db)
+    .await;
+
+assert!(matches!(res, Ok(TryInsertResult::Empty)));
+```
+* On conflict do nothing not resulting in Err https://github.com/SeaQL/sea-orm/pull/1712
+```rust
+let on = OnConflict::column(Column::Id).do_nothing().to_owned();
+
+// Existing behaviour
+let res = Entity::insert_many([..]).on_conflict(on).exec(db).await;
+assert!(matches!(res, Err(DbErr::RecordNotInserted)));
+
+// New API; now you can:
+let res = Entity::insert_many([..]).on_conflict(on).do_nothing().exec(db).await;
+assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
+```
 
 ### Upgrades
 
@@ -398,6 +422,8 @@ impl ColumnTrait for Column {
     }
 }
 ```
+* Resolved `insert_many` failing if the models iterator is empty https://github.com/SeaQL/sea-orm/issues/873
+* Update the template MD file of `migration/README.md`, fix a faulty sample `migrate init` shell script https://github.com/SeaQL/sea-orm/pull/1723
 
 ### Breaking changes
 
@@ -551,6 +577,7 @@ impl ColumnTrait for Column {
 * Disabled default features and enabled only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
 * Cleanup panic and unwrap https://github.com/SeaQL/sea-orm/pull/1231
 * Cleanup the use of `vec!` macro https://github.com/SeaQL/sea-orm/pull/1367
+* Upgrade `syn` to v2 https://github.com/SeaQL/sea-orm/pull/1713
 
 ### Bug Fixes
 

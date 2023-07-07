@@ -34,4 +34,5 @@ git commit -am "$1"
 cd examples
 find . -depth -type f -name '*.toml' -exec sed -i 's/^version = ".*" # sea-orm version$/version = "'$1'" # sea-orm version/' {} \;
 find . -depth -type f -name '*.toml' -exec sed -i 's/^version = ".*" # sea-orm-migration version$/version = "'$1'" # sea-orm-migration version/' {} \;
-git commit -am "update examples"
+git add .
+git commit -m "update examples"
