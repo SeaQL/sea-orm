@@ -274,6 +274,15 @@ assert!(matches!(
     Some(SqlErr::ForeignKeyConstraintViolation(_))
 ));
 ```
+* Add `Select::find_with_linked`, similar to `find_with_related`:
+```rust
+fn find_with_related<R>(self, r: R) -> SelectTwoMany<E, R>
+    where R: EntityTrait, E: Related<R>;
+fn find_with_linked<L, T>(self, l: L) -> SelectTwoMany<E, T>
+    where L: Linked<FromEntity = E, ToEntity = T>, T: EntityTrait;
+
+// boths yields `Vec<(E::Model, Vec<F::Model>)>`
+```
 
 ### Enhancements
 
@@ -433,6 +442,7 @@ impl ColumnTrait for Column {
     * The derive macro `EnumIter` is now shipped by `sea-orm-macros`
 * Added a new variant `Many` to `Identity` https://github.com/SeaQL/sea-orm/pull/1508
 * Replace the use of `SeaRc<T>` where `T` isn't `dyn Iden` with `RcOrArc<T>` https://github.com/SeaQL/sea-orm/pull/1661
+* Enabled `hashable-value` feature in SeaQuery, thus `Value::Float(NaN) == Value::Float(NaN)` would be true
 
 ## 0.11.3 - 2023-04-24
 
