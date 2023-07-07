@@ -48,7 +48,7 @@ pub fn col_type_match(
                     .parse()
                     .expect("field type error");
                 let def = quote_spanned! { field_span =>
-                    std::convert::Into::<sea_orm::ColumnType>::into(
+                    std::convert::Into::<sea_orm::sea_query::ColumnType>::into(
                         <#ty as sea_orm::sea_query::ValueType>::column_type()
                     )
                 };
@@ -103,7 +103,7 @@ pub fn arr_type_match(
                     .parse()
                     .expect("field type error");
                 let def = quote_spanned! { field_span =>
-                    std::convert::Into::<sea_orm::ArrayType>::into(
+                    std::convert::Into::<sea_orm::sea_query::ArrayType>::into(
                         <#ty as sea_orm::sea_query::ValueType>::array_type()
                     )
                 };

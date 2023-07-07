@@ -1,10 +1,11 @@
 pub mod common;
 
 use std::vec;
+use std::sync::Arc;
 
 pub use common::{
     features::{
-        value_type::{Boolbean, Integer, Model, StringVec},
+        value_type::{Boolbean, Integer, value_type_general, value_type_pg, StringVec},
         *,
     },
     setup::*,
@@ -26,6 +27,13 @@ async fn main() -> Result<(), DbErr> {
     insert_value(&ctx.db).await?;
     ctx.delete().await;
 
+    if cfg!(feature = "sqlx-postgres") {
+    let ctx = TestContext::new("value_type_postgres_tests").await;
+    create_tables(&ctx.db).await?;
+    postgres_insert_value(&ctx.db).await?;
+    ctx.delete().await;
+    }
+
     type_test();
     conversion_test();
 
@@ -33,9 +41,21 @@ async fn main() -> Result<(), DbErr> {
 }
 
 pub async fn insert_value(db: &DatabaseConnection) -> Result<(), DbErr> {
-    let model = Model {
+    let model = value_type_general::Model {
         id: 1,
         number: Integer(48),
+    };
+    let result = model.clone().into_active_model().insert(db).await?;
+    assert_eq!(result, model);
+
+    Ok(())
+}
+
+pub async fn postgres_insert_value(db: &DatabaseConnection) -> Result<(), DbErr> {
+    let model = value_type_pg::Model {
+        id: 1,
+        number: Integer(48),
+        str_vec: StringVec(vec!["ab".to_string(), "cd".to_string()])
     };
     let result = model.clone().into_active_model().insert(db).await?;
     assert_eq!(result, model);
@@ -46,21 +66,21 @@ pub async fn insert_value(db: &DatabaseConnection) -> Result<(), DbErr> {
 pub fn type_test() {
     assert_eq!(StringVec::type_name(), "StringVec");
 
-    // self implied
-    assert_eq!(Integer::array_type(), sea_orm::sea_query::ArrayType::Int);
-    assert_eq!(Integer::array_type(), sea_orm::sea_query::ArrayType::Int);
     // custom types
+    assert_eq!(Integer::array_type(), sea_orm::sea_query::ArrayType::Int);
+    assert_eq!(Integer::array_type(), sea_orm::sea_query::ArrayType::Int);
     assert_eq!(
         Boolbean::column_type(),
         sea_orm::sea_query::ColumnType::Boolean
     );
     assert_eq!(
         Boolbean::array_type(),
-        sea_orm::sea_query::ArrayType::String
+        sea_orm::sea_query::ArrayType::Bool
     );
+    // self implied
     assert_eq!(
         StringVec::column_type(),
-        sea_orm::sea_query::ColumnType::String(Some(1))
+        sea_orm::sea_query::ColumnType::Array(Arc::new(sea_orm::sea_query::ColumnType::String(None)))
     );
     assert_eq!(
         StringVec::array_type(),
