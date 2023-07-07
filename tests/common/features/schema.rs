@@ -658,25 +658,25 @@ pub async fn create_value_type_table(db: &DbConn) -> Result<ExecResult, DbErr> {
 }
 pub async fn create_value_type_postgres_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let postgres_stmt = sea_query::Table::create()
-    .table(value_type::value_type_pg::Entity)
-    .col(
-        ColumnDef::new(value_type::value_type_pg::Column::Id)
-            .integer()
-            .not_null()
-            .auto_increment()
-            .primary_key(),
-    )
-    .col(
-        ColumnDef::new(value_type::value_type_pg::Column::Number)
-            .integer()
-            .not_null(),
-    )
-    .col(
-        ColumnDef::new(json_vec::Column::StrVec)
-            .array(sea_query::ColumnType::String(None))
-            .not_null(),
-    )
-    .to_owned();
+        .table(value_type::value_type_pg::Entity)
+        .col(
+            ColumnDef::new(value_type::value_type_pg::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(value_type::value_type_pg::Column::Number)
+                .integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(json_vec::Column::StrVec)
+                .array(sea_query::ColumnType::String(None))
+                .not_null(),
+        )
+        .to_owned();
 
     create_table(db, &postgres_stmt, value_type::value_type_pg::Entity).await
 }

@@ -1,11 +1,11 @@
 pub mod common;
 
-use std::vec;
 use std::sync::Arc;
+use std::vec;
 
 pub use common::{
     features::{
-        value_type::{Boolbean, Integer, value_type_general, value_type_pg, StringVec},
+        value_type::{value_type_general, value_type_pg, Boolbean, Integer, StringVec},
         *,
     },
     setup::*,
@@ -28,10 +28,10 @@ async fn main() -> Result<(), DbErr> {
     ctx.delete().await;
 
     if cfg!(feature = "sqlx-postgres") {
-    let ctx = TestContext::new("value_type_postgres_tests").await;
-    create_tables(&ctx.db).await?;
-    postgres_insert_value(&ctx.db).await?;
-    ctx.delete().await;
+        let ctx = TestContext::new("value_type_postgres_tests").await;
+        create_tables(&ctx.db).await?;
+        postgres_insert_value(&ctx.db).await?;
+        ctx.delete().await;
     }
 
     type_test();
@@ -55,7 +55,7 @@ pub async fn postgres_insert_value(db: &DatabaseConnection) -> Result<(), DbErr>
     let model = value_type_pg::Model {
         id: 1,
         number: Integer(48),
-        str_vec: StringVec(vec!["ab".to_string(), "cd".to_string()])
+        str_vec: StringVec(vec!["ab".to_string(), "cd".to_string()]),
     };
     let result = model.clone().into_active_model().insert(db).await?;
     assert_eq!(result, model);
@@ -73,14 +73,13 @@ pub fn type_test() {
         Boolbean::column_type(),
         sea_orm::sea_query::ColumnType::Boolean
     );
-    assert_eq!(
-        Boolbean::array_type(),
-        sea_orm::sea_query::ArrayType::Bool
-    );
+    assert_eq!(Boolbean::array_type(), sea_orm::sea_query::ArrayType::Bool);
     // self implied
     assert_eq!(
         StringVec::column_type(),
-        sea_orm::sea_query::ColumnType::Array(Arc::new(sea_orm::sea_query::ColumnType::String(None)))
+        sea_orm::sea_query::ColumnType::Array(Arc::new(sea_orm::sea_query::ColumnType::String(
+            None
+        )))
     );
     assert_eq!(
         StringVec::array_type(),
