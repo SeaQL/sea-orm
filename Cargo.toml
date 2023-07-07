@@ -41,7 +41,7 @@ serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false, optional = true }
 sqlx = { version = "0.6", default-features = false, optional = true }
 uuid = { version = "1", default-features = false, optional = true }
-ouroboros = { version = "0.15", default-features = false }
+ouroboros = { version = "0.17", default-features = false }
 url = { version = "2.2", default-features = false }
 thiserror = { version = "1", default-features = false }
 
