@@ -6,8 +6,7 @@ use crate::{
 use futures::{Stream, TryStreamExt};
 use sea_query::{SelectStatement, Value};
 use std::collections::HashMap;
-use std::marker::PhantomData;
-use std::pin::Pin;
+use std::{hash::Hash, marker::PhantomData, pin::Pin};
 
 #[cfg(feature = "with-json")]
 use crate::JsonValue;
@@ -992,39 +991,117 @@ where
 }
 
 fn consolidate_query_result<L, R>(
-    mut rows: Vec<(L::Model, Option<R::Model>)>,
+    rows: Vec<(L::Model, Option<R::Model>)>,
 ) -> Vec<(L::Model, Vec<R::Model>)>
 where
     L: EntityTrait,
     R: EntityTrait,
 {
-    //todo: could take not iter
-    let pkcol = <L::PrimaryKey as Iterable>::iter()
-        .next()
-        .expect("should have primary key")
-        .into_column();
+    // This is a strong point to consider adding a trait associated constant
+    // to PrimaryKeyTrait to indicate the arity
+    let pkcol: Vec<_> = <L::PrimaryKey as Iterable>::iter()
+        .map(|pk| pk.into_column())
+        .collect();
+    if pkcol.len() == 1 {
+        consolidate_query_result_of::<L, R, UnitPk<L>>(rows, UnitPk(pkcol[0]))
+    } else {
+        consolidate_query_result_of::<L, R, TuplePk<L>>(rows, TuplePk(pkcol))
+    }
+}
 
-    let mut hashmap: HashMap<Value, Vec<R::Model>> = rows.iter_mut().fold(
-        HashMap::<Value, Vec<R::Model>>::new(),
-        |mut acc: HashMap<Value, Vec<R::Model>>, row: &mut (L::Model, Option<R::Model>)| {
-            let key = row.0.get(pkcol);
-            let value = row.1.take().expect("should have a linked entity");
-            let vec: Option<&mut Vec<R::Model>> = acc.get_mut(&key);
-            if let Some(vec) = vec {
-                vec.push(value)
-            } else {
-                acc.insert(key, vec![value]);
+trait ModelKey<E: EntityTrait> {
+    type Type: Hash + PartialEq + Eq;
+    fn get(&self, model: &E::Model) -> Self::Type;
+}
+
+// This could have been an array of [E::Column; <E::PrimaryKey as PrimaryKeyTrait>::ARITY]
+struct UnitPk<E: EntityTrait>(E::Column);
+struct TuplePk<E: EntityTrait>(Vec<E::Column>);
+
+impl<E: EntityTrait> ModelKey<E> for UnitPk<E> {
+    type Type = Value;
+    fn get(&self, model: &E::Model) -> Self::Type {
+        model.get(self.0)
+    }
+}
+
+impl<E: EntityTrait> ModelKey<E> for TuplePk<E> {
+    type Type = Vec<Value>;
+    fn get(&self, model: &E::Model) -> Self::Type {
+        let mut key = Vec::new();
+        for col in self.0.iter() {
+            key.push(model.get(*col));
+        }
+        key
+    }
+}
+
+fn consolidate_query_result_of<L, R, KEY: ModelKey<L>>(
+    mut rows: Vec<(L::Model, Option<R::Model>)>,
+    model_key: KEY,
+) -> Vec<(L::Model, Vec<R::Model>)>
+where
+    L: EntityTrait,
+    R: EntityTrait,
+{
+    let mut hashmap: HashMap<KEY::Type, Vec<R::Model>> =
+        rows.iter_mut().fold(HashMap::new(), |mut acc, row| {
+            let key = model_key.get(&row.0);
+            if let Some(value) = row.1.take() {
+                let vec: Option<&mut Vec<R::Model>> = acc.get_mut(&key);
+                if let Some(vec) = vec {
+                    vec.push(value)
+                } else {
+                    acc.insert(key, vec![value]);
+                }
             }
 
             acc
-        },
-    );
+        });
 
     rows.into_iter()
         .filter_map(|(l_model, _)| {
-            let l_pk = l_model.get(pkcol);
+            let l_pk = model_key.get(&l_model);
             let r_models = hashmap.remove(&l_pk);
             r_models.map(|r_models| (l_model, r_models))
         })
         .collect()
+}
+
+/// This is the legacy consolidate algorithm. Kept for reference
+#[allow(dead_code)]
+fn consolidate_query_result_of_ordered_rows<L, R>(
+    rows: Vec<(L::Model, Option<R::Model>)>,
+) -> Vec<(L::Model, Vec<R::Model>)>
+where
+    L: EntityTrait,
+    R: EntityTrait,
+{
+    let mut acc: Vec<(L::Model, Vec<R::Model>)> = Vec::new();
+    for (l, r) in rows {
+        if let Some((last_l, last_r)) = acc.last_mut() {
+            let mut same_l = true;
+            for pk_col in <L::PrimaryKey as Iterable>::iter() {
+                let col = pk_col.into_column();
+                let val = l.get(col);
+                let last_val = last_l.get(col);
+                if !val.eq(&last_val) {
+                    same_l = false;
+                    break;
+                }
+            }
+            if same_l {
+                if let Some(r) = r {
+                    last_r.push(r);
+                    continue;
+                }
+            }
+        }
+        let rows = match r {
+            Some(r) => vec![r],
+            None => vec![],
+        };
+        acc.push((l, rows));
+    }
+    acc
 }
