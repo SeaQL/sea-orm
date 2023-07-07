@@ -34,12 +34,12 @@ tracing = { version = "0.1", default-features = false, features = ["attributes",
 rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.3", default-features = false, optional = true }
 sea-orm-macros = { version = "0.12.0-rc.3", path = "sea-orm-macros", default-features = false, features = ["strum"] }
-sea-query = { version = "0.29.0-rc.2", features = ["thread-safe"] }
-sea-query-binder = { version = "0.4.0-rc.2", default-features = false, optional = true }
+sea-query = { version = "0.29.0", git = "https://github.com/seaql/sea-query", branch = "sqlx-v0.7", features = ["thread-safe"] }
+sea-query-binder = { version = "0.4.0", git = "https://github.com/seaql/sea-query", branch = "sqlx-v0.7", default-features = false, optional = true }
 strum = { version = "0.24", default-features = false }
 serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false, optional = true }
-sqlx = { version = "0.6", default-features = false, optional = true }
+sqlx = { version = "0.7", default-features = false, optional = true }
 uuid = { version = "1", default-features = false, optional = true }
 ouroboros = { version = "0.15", default-features = false }
 url = { version = "2.2", default-features = false }
@@ -78,7 +78,7 @@ macros = ["sea-orm-macros/derive", "sea-query/derive"]
 mock = []
 with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "time?/serde", "uuid?/serde", "sea-query-binder?/with-json", "sqlx?/json"]
 with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-binder?/with-chrono", "sqlx?/chrono"]
-with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-binder?/with-rust_decimal", "sqlx?/decimal"]
+with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-binder?/with-rust_decimal", "sqlx?/rust_decimal"]
 with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-binder?/with-bigdecimal", "sqlx?/bigdecimal"]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
 with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
@@ -102,12 +102,12 @@ runtime-async-std-rustls = [
 ]
 runtime-actix = []
 runtime-actix-native-tls = [
-    "sqlx?/runtime-actix-native-tls",
+    "sqlx?/runtime-tokio-native-tls",
     "sea-query-binder?/runtime-actix-native-tls",
     "runtime-actix",
 ]
 runtime-actix-rustls = [
-    "sqlx?/runtime-actix-rustls",
+    "sqlx?/runtime-tokio-rustls",
     "sea-query-binder?/runtime-actix-rustls",
     "runtime-actix",
 ]
