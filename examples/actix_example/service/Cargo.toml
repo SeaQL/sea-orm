@@ -10,7 +10,7 @@ entity = { path = "../entity" }
 
 [dependencies.sea-orm]
 path = "../../../" # remove this line in your own project
-version = "0.12.0-rc.3" # sea-orm version
+version = "0.12.0-rc.4" # sea-orm version
 features = [
     "debug-print",
     "runtime-async-std-native-tls",
