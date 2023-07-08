@@ -13,7 +13,7 @@ pub use common::{
 };
 use pretty_assertions::assert_eq;
 use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
-use sea_query::{ValueType, ValueTypeErr};
+use sea_query::{ArrayType, ColumnType, Value, ValueType, ValueTypeErr};
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -67,24 +67,16 @@ pub fn type_test() {
     assert_eq!(StringVec::type_name(), "StringVec");
 
     // custom types
-    assert_eq!(Integer::array_type(), sea_orm::sea_query::ArrayType::Int);
-    assert_eq!(Integer::array_type(), sea_orm::sea_query::ArrayType::Int);
-    assert_eq!(
-        Boolbean::column_type(),
-        sea_orm::sea_query::ColumnType::Boolean
-    );
-    assert_eq!(Boolbean::array_type(), sea_orm::sea_query::ArrayType::Bool);
+    assert_eq!(Integer::array_type(), ArrayType::Int);
+    assert_eq!(Integer::array_type(), ArrayType::Int);
+    assert_eq!(Boolbean::column_type(), ColumnType::Boolean);
+    assert_eq!(Boolbean::array_type(), ArrayType::Bool);
     // self implied
     assert_eq!(
         StringVec::column_type(),
-        sea_orm::sea_query::ColumnType::Array(Arc::new(sea_orm::sea_query::ColumnType::String(
-            None
-        )))
+        ColumnType::Array(Arc::new(ColumnType::String(None)))
     );
-    assert_eq!(
-        StringVec::array_type(),
-        sea_orm::sea_query::ArrayType::String
-    );
+    assert_eq!(StringVec::array_type(), ArrayType::String);
 }
 
 pub fn conversion_test() {
@@ -93,7 +85,7 @@ pub fn conversion_test() {
     assert_eq!(
         string,
         Value::Array(
-            sea_query::ArrayType::String,
+            ArrayType::String,
             Some(Box::new(vec![
                 "ab".to_string().into(),
                 "cd".to_string().into()
@@ -101,7 +93,7 @@ pub fn conversion_test() {
         )
     );
 
-    let value_random_int = sea_query::Value::Int(Some(523));
+    let value_random_int = Value::Int(Some(523));
     let unwrap_int = Integer::unwrap(value_random_int.clone());
     let try_from_int =
         <Integer as ValueType>::try_from(value_random_int).expect("should be ok to convert");
