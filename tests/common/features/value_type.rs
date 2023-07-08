@@ -40,7 +40,16 @@ use sea_orm_macros::DeriveValueType;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
 #[sea_orm(array_type = "Int")]
-pub struct Integer(pub i32);
+pub struct Integer(i32);
+
+impl<T> From<T> for Integer
+where
+    T: Into<i32>,
+{
+    fn from(v: T) -> Integer {
+        Integer(v.into())
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
 #[sea_orm(column_type = "Boolean", array_type = "Bool")]

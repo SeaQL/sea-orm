@@ -43,7 +43,7 @@ async fn main() -> Result<(), DbErr> {
 pub async fn insert_value(db: &DatabaseConnection) -> Result<(), DbErr> {
     let model = value_type_general::Model {
         id: 1,
-        number: Integer(48),
+        number: 48.into(),
     };
     let result = model.clone().into_active_model().insert(db).await?;
     assert_eq!(result, model);
@@ -54,7 +54,7 @@ pub async fn insert_value(db: &DatabaseConnection) -> Result<(), DbErr> {
 pub async fn postgres_insert_value(db: &DatabaseConnection) -> Result<(), DbErr> {
     let model = value_type_pg::Model {
         id: 1,
-        number: Integer(48),
+        number: 48.into(),
         str_vec: StringVec(vec!["ab".to_string(), "cd".to_string()]),
     };
     let result = model.clone().into_active_model().insert(db).await?;
@@ -107,7 +107,7 @@ pub fn conversion_test() {
         <Integer as ValueType>::try_from(value_random_int).expect("should be ok to convert");
 
     // tests for unwrap and try_from
-    let direct_int = Integer(523);
+    let direct_int: Integer = 523.into();
     assert_eq!(direct_int, unwrap_int);
     assert_eq!(direct_int, try_from_int);
 
