@@ -153,11 +153,7 @@ impl Updater {
                 )
                 .all(db)
                 .await?;
-                // If we got an empty Vec then we are updating a row that does not exist.
-                match models.is_empty() {
-                    true => Err(DbErr::RecordNotUpdated),
-                    false => Ok(models),
-                }
+                Ok(models)
             }
             false => unimplemented!("Database backend doesn't support RETURNING"),
         }

@@ -1,7 +1,7 @@
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
-pub use sea_orm::{entity::prelude::*, *};
+use sea_orm::{entity::prelude::*, IntoActiveModel};
 pub use sea_query::{Expr, Query};
 use serde_json::json;
 
