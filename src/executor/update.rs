@@ -45,6 +45,16 @@ where
     {
         Updater::new(self.query).exec(db).await
     }
+
+    /// Execute an update operation and return the updated model (use `RETURNING` syntax if database supported)
+    pub async fn exec_with_returning<C>(self, db: &'a C) -> Result<Vec<E::Model>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        Updater::new(self.query)
+            .exec_update_with_returning::<E, _>(db)
+            .await
+    }
 }
 
 impl Updater {
@@ -120,6 +130,32 @@ impl Updater {
                 self.check_record_exists().exec(db).await?;
                 find_updated_model_by_id(model, db).await
             }
+        }
+    }
+
+    async fn exec_update_with_returning<E, C>(mut self, db: &C) -> Result<Vec<E::Model>, DbErr>
+    where
+        E: EntityTrait,
+        C: ConnectionTrait,
+    {
+        if self.is_noop() {
+            return Ok(vec![]);
+        }
+
+        match db.support_returning() {
+            true => {
+                let returning =
+                    Query::returning().exprs(E::Column::iter().map(|c| c.select_as(Expr::col(c))));
+                self.query.returning(returning);
+                let db_backend = db.get_database_backend();
+                let models: Vec<E::Model> = SelectorRaw::<SelectModel<E::Model>>::from_statement(
+                    db_backend.build(&self.query),
+                )
+                .all(db)
+                .await?;
+                Ok(models)
+            }
+            false => unimplemented!("Database backend doesn't support RETURNING"),
         }
     }
 
