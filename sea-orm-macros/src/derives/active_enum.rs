@@ -160,7 +160,7 @@ impl ActiveEnum {
             }
 
             variants.push(ActiveEnumVariant {
-                ident: variant.ident.clone(),
+                ident: variant.ident,
                 string_value,
                 num_value,
             });
