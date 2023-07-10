@@ -82,27 +82,13 @@ impl SqlxMySqlPoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        let mut result = self.pool.acquire().await;
-        if let Ok(conn) = &mut result {
-            crate::metric::metric!(self.metric_callback, &stmt, {
-                match query.execute(conn).await {
-                    Ok(res) => Ok(res.into()),
-                    Err(err) => Err(sqlx_error_to_exec_err(err)),
-                }
-            })
-        } else {
-            match result {
-                Err(sqlx::Error::PoolTimedOut) => {
-                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::Timeout))
-                }
-                Err(sqlx::Error::PoolClosed) => {
-                    Err(DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed))
-                }
-                _ => Err(DbErr::Conn(RuntimeErr::SqlxError(
-                    result.expect_err("should be an error"),
-                ))),
+        let conn = &mut self.pool.acquire().await.map_err(conn_acquire_err)?;
+        crate::metric::metric!(self.metric_callback, &stmt, {
+            match query.execute(conn).await {
+                Ok(res) => Ok(res.into()),
+                Err(err) => Err(sqlx_error_to_exec_err(err)),
             }
-        }
+        })
     }
 
     /// Execute an unprepared SQL statement on a MySQL backend
