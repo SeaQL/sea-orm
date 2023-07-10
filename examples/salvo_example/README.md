@@ -1,6 +1,6 @@
 ![screenshot](Screenshot.png)
 
-# Poem with SeaORM example app
+# Salvo with SeaORM example app
 
 1. Modify the `DATABASE_URL` var in `.env` to point to your chosen database
 

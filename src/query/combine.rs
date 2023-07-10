@@ -119,12 +119,16 @@ where
     F: EntityTrait,
 {
     pub(crate) fn new(query: SelectStatement) -> Self {
+        Self::new_without_prepare(query)
+            .prepare_select()
+            .prepare_order_by()
+    }
+
+    pub(crate) fn new_without_prepare(query: SelectStatement) -> Self {
         Self {
             query,
             entity: PhantomData,
         }
-        .prepare_select()
-        .prepare_order_by()
     }
 
     fn prepare_select(mut self) -> Self {
