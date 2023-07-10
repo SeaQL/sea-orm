@@ -284,6 +284,60 @@ fn find_with_linked<L, T>(self, l: L) -> SelectTwoMany<E, T>
 
 // boths yields `Vec<(E::Model, Vec<F::Model>)>`
 ```
+* Add `DeriveValueType` derive macro for custom wrapper types, implementations of the required traits will be provided, you can customize the `column_type` and `array_type` if needed https://github.com/SeaQL/sea-orm/pull/1720
+```rs
+#[derive(DeriveValueType)]
+#[sea_orm(array_type = "Int")]
+pub struct Integer(i32);
+
+#[derive(DeriveValueType)]
+#[sea_orm(column_type = "Boolean", array_type = "Bool")]
+pub struct Boolbean(pub String);
+
+#[derive(DeriveValueType)]
+pub struct StringVec(pub Vec<String>);
+```
+The expanded code of `DeriveValueType` looks like.
+```rs
+#[derive(DeriveValueType)]
+pub struct StringVec(pub Vec<String>);
+
+// The `DeriveValueType` will be expanded into...
+
+impl From<StringVec> for Value {
+    fn from(source: StringVec) -> Self {
+        source.0.into()
+    }
+}
+
+impl sea_orm::TryGetable for StringVec {
+    fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, sea_orm::TryGetError> {
+        <Vec<String> as sea_orm::TryGetable>::try_get_by(res, idx).map(|v| StringVec(v))
+    }
+}
+
+impl sea_orm::sea_query::ValueType for StringVec {
+    fn try_from(v: Value) -> Result<Self, sea_orm::sea_query::ValueTypeErr> {
+        <Vec<String> as sea_orm::sea_query::ValueType>::try_from(v).map(|v| StringVec(v))
+    }
+
+    fn type_name() -> String {
+        stringify!(StringVec).to_owned()
+    }
+
+    fn array_type() -> sea_orm::sea_query::ArrayType {
+        std::convert::Into::<sea_orm::sea_query::ArrayType>::into(
+            <Vec<String> as sea_orm::sea_query::ValueType>::array_type()
+        )
+    }
+
+    fn column_type() -> sea_orm::sea_query::ColumnType {
+        std::convert::Into::<sea_orm::sea_query::ColumnType>::into(
+            <Vec<String> as sea_orm::sea_query::ValueType>::column_type()
+        )
+    }
+}
+```
 
 ### Enhancements
 
