@@ -47,6 +47,10 @@ where
     }
 
     /// Execute an update operation and return the updated model (use `RETURNING` syntax if database supported)
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `UPDATE RETURNING`.
     pub async fn exec_with_returning<C>(self, db: &'a C) -> Result<Vec<E::Model>, DbErr>
     where
         C: ConnectionTrait,
