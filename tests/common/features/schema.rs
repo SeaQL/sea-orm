@@ -48,8 +48,10 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_binary_table(db).await?;
     create_bits_table(db).await?;
     create_dyn_table_name_lazy_static_table(db).await?;
+    create_value_type_table(db).await?;
 
     if DbBackend::Postgres == db_backend {
+        create_value_type_postgres_table(db).await?;
         create_collection_table(db).await?;
         create_event_trigger_table(db).await?;
     }
@@ -633,4 +635,48 @@ pub async fn create_dyn_table_name_lazy_static_table(db: &DbConn) -> Result<(), 
     }
 
     Ok(())
+}
+
+pub async fn create_value_type_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let general_stmt = sea_query::Table::create()
+        .table(value_type::value_type_general::Entity)
+        .col(
+            ColumnDef::new(value_type::value_type_general::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(value_type::value_type_general::Column::Number)
+                .integer()
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &general_stmt, value_type::value_type_general::Entity).await
+}
+pub async fn create_value_type_postgres_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let postgres_stmt = sea_query::Table::create()
+        .table(value_type::value_type_pg::Entity)
+        .col(
+            ColumnDef::new(value_type::value_type_pg::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(value_type::value_type_pg::Column::Number)
+                .integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(json_vec::Column::StrVec)
+                .array(sea_query::ColumnType::String(None))
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &postgres_stmt, value_type::value_type_pg::Entity).await
 }
