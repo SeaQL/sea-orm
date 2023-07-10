@@ -349,7 +349,7 @@ pub use schema::*;
 #[cfg(feature = "macros")]
 pub use sea_orm_macros::{
     DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn,
-    DeriveCustomColumn, DeriveEntity, DeriveEntityModel, DeriveIntoActiveModel,
+    DeriveCustomColumn, DeriveDisplay, DeriveEntity, DeriveEntityModel, DeriveIntoActiveModel,
     DeriveMigrationName, DeriveModel, DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity,
     DeriveRelation, FromJsonQueryResult, FromQueryResult,
 };

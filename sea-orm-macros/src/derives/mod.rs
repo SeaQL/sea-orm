@@ -1,4 +1,5 @@
 mod active_enum;
+mod active_enum_display;
 mod active_model;
 mod active_model_behavior;
 mod attributes;
@@ -19,6 +20,7 @@ mod util;
 mod value_type;
 
 pub use active_enum::*;
+pub use active_enum_display::*;
 pub use active_model::*;
 pub use active_model_behavior::*;
 pub use column::*;

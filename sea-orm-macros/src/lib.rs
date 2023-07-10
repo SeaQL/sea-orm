@@ -842,3 +842,13 @@ pub fn derive_value_type(input: TokenStream) -> TokenStream {
         Err(e) => e.to_compile_error().into(),
     }
 }
+
+#[cfg(feature = "derive")]
+#[proc_macro_derive(DeriveDisplay, attributes(sea_orm))]
+pub fn derive_active_enum_display(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    match derives::expand_derive_active_enum_display(input) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
