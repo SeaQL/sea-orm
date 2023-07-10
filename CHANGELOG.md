@@ -432,6 +432,13 @@ assert!(matches!(res, Err(DbErr::RecordNotInserted)));
 let res = Entity::insert_many([..]).on_conflict(on).do_nothing().exec(db).await;
 assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
 ```
+* Added `UpdateMany::exec_with_returning()` https://github.com/SeaQL/sea-orm/pull/1677
+```rust
+Entity::update_many()
+    .col_expr(Column::Values, Expr::expr(..))
+    .exec_with_returning(db)
+    .await
+```
 
 ### Upgrades
 
