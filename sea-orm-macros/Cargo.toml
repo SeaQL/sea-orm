@@ -18,7 +18,7 @@ path = "src/lib.rs"
 proc-macro = true
 
 [dependencies]
-bae = { version = "1", package = "bae2", default-features = false, optional = true }
+bae = { version = "0.2", package = "sea-bae", default-features = false, optional = true }
 syn = { version = "2", default-features = false, features = ["parsing", "proc-macro", "derive", "printing"] }
 quote = { version = "1", default-features = false }
 heck = { version = "0.4", default-features = false }
