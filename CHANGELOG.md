@@ -338,6 +338,47 @@ impl sea_orm::sea_query::ValueType for StringVec {
     }
 }
 ```
+* Add `DeriveDisplay` derive macro to implements `std::fmt::Display` for active enum https://github.com/SeaQL/sea-orm/pull/1726
+```rs
+// String enum
+#[derive(EnumIter, DeriveActiveEnum, DeriveDisplay)]
+#[sea_orm(rs_type = "String", db_type = "String(Some(1))", enum_name = "category")]
+pub enum DeriveCategory {
+    #[sea_orm(string_value = "B")]
+    Big,
+    #[sea_orm(string_value = "S")]
+    Small,
+}
+assert_eq!(format!("{}", DeriveCategory::Big), "Big");
+assert_eq!(format!("{}", DeriveCategory::Small), "Small");
+
+// Numeric enum
+#[derive(EnumIter, DeriveActiveEnum, DeriveDisplay)]
+#[sea_orm(rs_type = "i32", db_type = "Integer")]
+pub enum $ident {
+    #[sea_orm(num_value = -10)]
+    Negative,
+    #[sea_orm(num_value = 1)]
+    Big,
+    #[sea_orm(num_value = 0)]
+    Small,
+}
+assert_eq!(format!("{}", $ident::Big), "Big");
+assert_eq!(format!("{}", $ident::Small), "Small");
+assert_eq!(format!("{}", $ident::Negative), "Negative");
+
+// String enum with `display_value` overrides
+#[derive(EnumIter, DeriveActiveEnum, DeriveDisplay)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "tea")]
+pub enum DisplayTea {
+    #[sea_orm(string_value = "EverydayTea", display_value = "Everyday")]
+    EverydayTea,
+    #[sea_orm(string_value = "BreakfastTea", display_value = "Breakfast")]
+    BreakfastTea,
+}
+assert_eq!(format!("{}", DisplayTea::BreakfastTea), "Breakfast");
+assert_eq!(format!("{}", DisplayTea::EverydayTea), "Everyday");
+```
 
 ### Enhancements
 
@@ -498,6 +539,7 @@ impl ColumnTrait for Column {
 * Added a new variant `Many` to `Identity` https://github.com/SeaQL/sea-orm/pull/1508
 * Replace the use of `SeaRc<T>` where `T` isn't `dyn Iden` with `RcOrArc<T>` https://github.com/SeaQL/sea-orm/pull/1661
 * Enabled `hashable-value` feature in SeaQuery, thus `Value::Float(NaN) == Value::Float(NaN)` would be true
+* The `DeriveActiveEnum` derive macro no longer provide `std::fmt::Display` implementation for the enum. You need to derive an extra `DeriveDisplay` macro alongside with `DeriveActiveEnum` derive macro. https://github.com/SeaQL/sea-orm/pull/1726
 
 ## 0.11.3 - 2023-04-24
 
