@@ -102,6 +102,8 @@ impl ActiveEnum {
                         is_int = true;
                         num_value = Some(meta.value()?.parse::<LitInt>()?);
                     } else if meta.path.is_ident("display_value") {
+                        // This is a placeholder to prevent the `display_value` proc_macro attribute of `DeriveDisplay`
+                        // to be considered unknown attribute parameter
                         meta.value()?.parse::<LitStr>()?;
                     } else {
                         return Err(meta.error(format!(
