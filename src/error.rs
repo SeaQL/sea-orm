@@ -76,7 +76,7 @@ pub enum DbErr {
 }
 
 /// Connection error
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum ConnAcquireErr {
     /// Connection Timed Out
     #[error("Connection Timed out")]
@@ -85,14 +85,6 @@ pub enum ConnAcquireErr {
     #[error("Connection closed by host")]
     ConnectionClosed,
 }
-
-impl PartialEq for ConnAcquireErr {
-    fn eq(&self, other: &Self) -> bool {
-        self.to_string() == other.to_string()
-    }
-}
-
-impl Eq for ConnAcquireErr {}
 
 /// Runtime error
 #[derive(Error, Debug)]
@@ -108,16 +100,7 @@ pub enum RuntimeErr {
 
 impl PartialEq for DbErr {
     fn eq(&self, other: &Self) -> bool {
-        match &self {
-            DbErr::ConnectionAcquire(acquire_self) => {
-                if let DbErr::ConnectionAcquire(acquire_other) = &other {
-                    acquire_self == acquire_other
-                } else {
-                    false
-                }
-            }
-            _ => self.to_string() == other.to_string(),
-        }
+        self.to_string() == other.to_string()
     }
 }
 
