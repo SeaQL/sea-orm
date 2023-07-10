@@ -23,6 +23,7 @@ pub mod self_join;
 pub mod teas;
 pub mod transaction_log;
 pub mod uuid_fmt;
+pub mod value_type;
 
 pub use active_enum::Entity as ActiveEnum;
 pub use active_enum_child::Entity as ActiveEnumChild;

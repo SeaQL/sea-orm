@@ -4,9 +4,9 @@ use crate::{
     SelectB, SelectTwo, SelectTwoMany, Statement, StreamTrait, TryGetableMany,
 };
 use futures::{Stream, TryStreamExt};
-use sea_query::SelectStatement;
-use std::marker::PhantomData;
-use std::pin::Pin;
+use sea_query::{SelectStatement, Value};
+use std::collections::HashMap;
+use std::{hash::Hash, marker::PhantomData, pin::Pin};
 
 #[cfg(feature = "with-json")]
 use crate::JsonValue;
@@ -991,6 +991,86 @@ where
 }
 
 fn consolidate_query_result<L, R>(
+    rows: Vec<(L::Model, Option<R::Model>)>,
+) -> Vec<(L::Model, Vec<R::Model>)>
+where
+    L: EntityTrait,
+    R: EntityTrait,
+{
+    // This is a strong point to consider adding a trait associated constant
+    // to PrimaryKeyTrait to indicate the arity
+    let pkcol: Vec<_> = <L::PrimaryKey as Iterable>::iter()
+        .map(|pk| pk.into_column())
+        .collect();
+    if pkcol.len() == 1 {
+        consolidate_query_result_of::<L, R, UnitPk<L>>(rows, UnitPk(pkcol[0]))
+    } else {
+        consolidate_query_result_of::<L, R, TuplePk<L>>(rows, TuplePk(pkcol))
+    }
+}
+
+trait ModelKey<E: EntityTrait> {
+    type Type: Hash + PartialEq + Eq;
+    fn get(&self, model: &E::Model) -> Self::Type;
+}
+
+// This could have been an array of [E::Column; <E::PrimaryKey as PrimaryKeyTrait>::ARITY]
+struct UnitPk<E: EntityTrait>(E::Column);
+struct TuplePk<E: EntityTrait>(Vec<E::Column>);
+
+impl<E: EntityTrait> ModelKey<E> for UnitPk<E> {
+    type Type = Value;
+    fn get(&self, model: &E::Model) -> Self::Type {
+        model.get(self.0)
+    }
+}
+
+impl<E: EntityTrait> ModelKey<E> for TuplePk<E> {
+    type Type = Vec<Value>;
+    fn get(&self, model: &E::Model) -> Self::Type {
+        let mut key = Vec::new();
+        for col in self.0.iter() {
+            key.push(model.get(*col));
+        }
+        key
+    }
+}
+
+fn consolidate_query_result_of<L, R, KEY: ModelKey<L>>(
+    mut rows: Vec<(L::Model, Option<R::Model>)>,
+    model_key: KEY,
+) -> Vec<(L::Model, Vec<R::Model>)>
+where
+    L: EntityTrait,
+    R: EntityTrait,
+{
+    let mut hashmap: HashMap<KEY::Type, Vec<R::Model>> =
+        rows.iter_mut().fold(HashMap::new(), |mut acc, row| {
+            let key = model_key.get(&row.0);
+            if let Some(value) = row.1.take() {
+                let vec: Option<&mut Vec<R::Model>> = acc.get_mut(&key);
+                if let Some(vec) = vec {
+                    vec.push(value)
+                } else {
+                    acc.insert(key, vec![value]);
+                }
+            }
+
+            acc
+        });
+
+    rows.into_iter()
+        .filter_map(|(l_model, _)| {
+            let l_pk = model_key.get(&l_model);
+            let r_models = hashmap.remove(&l_pk);
+            r_models.map(|r_models| (l_model, r_models))
+        })
+        .collect()
+}
+
+/// This is the legacy consolidate algorithm. Kept for reference
+#[allow(dead_code)]
+fn consolidate_query_result_of_ordered_rows<L, R>(
     rows: Vec<(L::Model, Option<R::Model>)>,
 ) -> Vec<(L::Model, Vec<R::Model>)>
 where
