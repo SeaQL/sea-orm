@@ -68,12 +68,12 @@ impl Display {
     fn impl_active_enum_display(&self) -> TokenStream {
         let Self { ident, variants } = self;
 
-        let variant_idents: Vec<syn::Ident> = variants
+        let variant_idents: Vec<_> = variants
             .iter()
             .map(|variant| variant.ident.clone())
             .collect();
 
-        let variant_display: Vec<TokenStream> = variants
+        let variant_display: Vec<_> = variants
             .iter()
             .map(|variant| variant.display_value.to_owned())
             .collect();
@@ -82,11 +82,9 @@ impl Display {
             #[automatically_derived]
             impl std::fmt::Display for #ident {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    let v = match self {
+                    write!(f, "{}", match self {
                         #( Self::#variant_idents => #variant_display, )*
-                        }
-                        .to_owned();
-                    write!(f, "{}", v)
+                    })
                 }
             }
         )
