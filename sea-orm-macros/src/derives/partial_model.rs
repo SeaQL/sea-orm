@@ -43,7 +43,14 @@ impl DerivePartialModel {
             return Err(Error::NotSupportGeneric(input.generics.params.span()));
         }
 
-        let syn::Data::Struct(syn::DataStruct{fields:syn::Fields::Named(syn::FieldsNamed{named:fields,..}),..},..) = input.data else{
+        let syn::Data::Struct(
+            syn::DataStruct {
+                fields: syn::Fields::Named(syn::FieldsNamed { named: fields, .. }),
+                ..
+            },
+            ..,
+        ) = input.data
+        else {
             return Err(Error::InputNotStruct);
         };
 
@@ -196,11 +203,18 @@ mod util {
 
     impl GetAsKVMeta for Meta {
         fn get_as_kv(&self, k: &str) -> Option<String> {
-            let Meta::NameValue(MetaNameValue{path, value: syn::Expr::Lit(exprlit), ..}) = self else {
-                return  None;
+            let Meta::NameValue(MetaNameValue {
+                path,
+                value: syn::Expr::Lit(exprlit),
+                ..
+            }) = self
+            else {
+                return None;
             };
 
-            let syn::Lit::Str(litstr) = &exprlit.lit else { return None; };
+            let syn::Lit::Str(litstr) = &exprlit.lit else {
+                return None;
+            };
 
             if path.is_ident(k) {
                 Some(litstr.value())
