@@ -833,18 +833,46 @@ pub fn enum_iter(input: TokenStream) -> TokenStream {
         .into()
 }
 
-
-// #[proc_macro_derive(Iden, attributes(iden, method))]
-// pub fn iden(input: TokenStream) -> TokenStream {
-//     let input = parse_macro_input!(input as DeriveInput);
-//     if cfg!(feature = "sea-query"){
-//         crate::derive_iden(input)
-//     }
-//     else {
-//         sea_orm::derive_iden(input)
-//     }
-// }
-
+/// The DeriveIden derive macro will implement `sea_orm::sea_query::Iden` for simplify Iden implementation.
+///
+/// ## Usage
+///
+/// ```rust
+/// use pretty_assertions::assert_eq;
+/// use sea_orm::{DeriveIden, Iden};
+///
+/// #[derive(DeriveIden)]
+/// pub enum Class {
+///     Id,
+///     Title,
+///     Text,
+/// }
+/// assert_eq!(Class::Id.to_string(), "id");
+/// assert_eq!(Class::Title.to_string(), "title");
+/// assert_eq!(Class::Text.to_string(), "text");
+///
+/// #[derive(Iden)]
+/// struct Glyph;
+/// assert_eq!(Glyph.to_string(), "glyph");
+/// ```
+///
+/// You can use iden = "" to customize the name
+/// ```
+/// use pretty_assertions::assert_eq;
+/// use sea_orm::{DeriveIden, Iden};
+///
+/// #[derive(DeriveIden)]
+/// pub enum Class {
+///     Id,
+///     #[sea_orm(iden = "turtle")]
+///     Title,
+///     #[sea_orm(iden = "TeXt")]
+///     Text,
+/// }
+/// assert_eq!(Class::Id.to_string(), "id");
+/// assert_eq!(Class::Title.to_string(), "turtle");
+/// assert_eq!(Class::Text.to_string(), "te_xt");
+/// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveIden, attributes(sea_orm))]
 pub fn derive_iden(input: TokenStream) -> TokenStream {

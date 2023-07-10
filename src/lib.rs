@@ -349,15 +349,13 @@ pub use schema::*;
 #[cfg(feature = "macros")]
 pub use sea_orm_macros::{
     DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn,
-    DeriveCustomColumn, DeriveEntity, DeriveEntityModel, DeriveIntoActiveModel,
+    DeriveCustomColumn, DeriveEntity, DeriveEntityModel, DeriveIden, DeriveIntoActiveModel,
     DeriveMigrationName, DeriveModel, DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity,
     DeriveRelation, FromJsonQueryResult, FromQueryResult,
 };
 
 pub use sea_query;
 pub use sea_query::Iden;
-// #[cfg(feature = "macros")]
-// pub use sea_query::Iden as DeriveIden;
 
 pub use sea_orm_macros::EnumIter;
 pub use strum;
