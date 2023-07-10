@@ -60,12 +60,12 @@ impl Display {
     }
 
     fn expand(&self) -> syn::Result<TokenStream> {
-        let expanded_impl_active_enum = self.impl_active_enum();
+        let expanded_impl_active_enum_display = self.impl_active_enum_display();
 
-        Ok(expanded_impl_active_enum)
+        Ok(expanded_impl_active_enum_display)
     }
 
-    fn impl_active_enum(&self) -> TokenStream {
+    fn impl_active_enum_display(&self) -> TokenStream {
         let Self { ident, variants } = self;
 
         let variant_idents: Vec<syn::Ident> = variants
