@@ -28,7 +28,7 @@ impl Display {
 
         let mut variants = Vec::new();
         for variant in variant_vec {
-            let mut display_value = variant.ident.clone().to_string().to_token_stream();
+            let mut display_value = variant.ident.to_string().to_token_stream();
             for attr in variant.attrs.iter() {
                 if !attr.path().is_ident("sea_orm") {
                     continue;
