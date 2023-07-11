@@ -155,6 +155,7 @@ impl SqlxPostgresPoolConnection {
     #[instrument(level = "trace")]
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
+
         let conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
         Ok(QueryStream::from((
             conn,
