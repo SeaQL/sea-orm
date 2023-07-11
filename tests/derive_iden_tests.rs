@@ -22,8 +22,8 @@ pub enum Book {
     Text,
 }
 
-#[sea_orm_macros::test]
-async fn main() -> Result<(), DbErr> {
+#[test]
+fn main() -> Result<(), DbErr> {
     assert_eq!(Class::Id.to_string(), "id");
     assert_eq!(Class::Title.to_string(), "title");
     assert_eq!(Class::Text.to_string(), "text");

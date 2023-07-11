@@ -858,8 +858,7 @@ pub fn derive_active_enum_display(input: TokenStream) -> TokenStream {
 /// ## Usage
 ///
 /// ```rust
-/// use pretty_assertions::assert_eq;
-/// use sea_orm::{DeriveIden, Iden};
+/// use sea_orm::DeriveIden;
 ///
 /// #[derive(DeriveIden)]
 /// pub enum Class {
@@ -867,19 +866,14 @@ pub fn derive_active_enum_display(input: TokenStream) -> TokenStream {
 ///     Title,
 ///     Text,
 /// }
-/// assert_eq!(Class::Id.to_string(), "id");
-/// assert_eq!(Class::Title.to_string(), "title");
-/// assert_eq!(Class::Text.to_string(), "text");
 ///
-/// #[derive(Iden)]
+/// #[derive(DeriveIden)]
 /// struct Glyph;
-/// assert_eq!(Glyph.to_string(), "glyph");
 /// ```
 ///
 /// You can use iden = "" to customize the name
 /// ```
-/// use pretty_assertions::assert_eq;
-/// use sea_orm::{DeriveIden, Iden};
+/// use sea_orm::DeriveIden;
 ///
 /// #[derive(DeriveIden)]
 /// pub enum Class {
@@ -889,9 +883,6 @@ pub fn derive_active_enum_display(input: TokenStream) -> TokenStream {
 ///     #[sea_orm(iden = "TeXt")]
 ///     Text,
 /// }
-/// assert_eq!(Class::Id.to_string(), "id");
-/// assert_eq!(Class::Title.to_string(), "turtle");
-/// assert_eq!(Class::Text.to_string(), "te_xt");
 /// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveIden, attributes(sea_orm))]
