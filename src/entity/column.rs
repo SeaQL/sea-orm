@@ -1,4 +1,4 @@
-use crate::{EntityName, IdenStatic, IntoSimpleExpr, Iterable};
+use crate::{self as sea_orm, EntityName, IdenStatic, IntoSimpleExpr, Iterable};
 use sea_query::{
     Alias, BinOper, DynIden, Expr, Iden, IntoIden, SeaRc, SelectStatement, SimpleExpr, Value,
 };
