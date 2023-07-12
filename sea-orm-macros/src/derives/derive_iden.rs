@@ -57,7 +57,7 @@ fn impl_iden_for_enum(
                     attr.parse_nested_meta(|meta| {
                         if meta.path.is_ident("iden") {
                             let litstr: LitStr = meta.value()?.parse()?;
-                            var_name = litstr.value().to_snake_case();
+                            var_name = litstr.value();
                             all_valid &= must_be_valid_iden(var_name.as_str());
                         } else {
                             // Reads the value expression to advance the parse stream.
@@ -104,7 +104,6 @@ pub fn expand_derive_iden(input: DeriveInput) -> syn::Result<TokenStream> {
     let DeriveInput { ident, data, .. } = input;
 
     let mut new_iden: TokenStream = ident.to_string().to_snake_case().parse().unwrap();
-    // let new_iden = &v.ident.to_string().to_snake_case();
     input
         .attrs
         .iter()
