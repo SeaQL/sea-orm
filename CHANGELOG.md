@@ -443,7 +443,7 @@ Entity::update_many()
 ### Upgrades
 
 * Upgrade `heck` dependency in `sea-orm-macros` and `sea-orm-codegen` to 0.4 https://github.com/SeaQL/sea-orm/pull/1520, https://github.com/SeaQL/sea-orm/pull/1544
-* Upgrade `strum` to 0.24
+* Upgrade `strum` to 0.25 https://github.com/SeaQL/sea-orm/pull/1752
 * Upgrade `sea-query` to `0.29` https://github.com/SeaQL/sea-orm/pull/1562
 * Upgrade `sea-query-binder` to `0.4` https://github.com/SeaQL/sea-orm/pull/1562
 * Upgrade `sea-schema` to `0.12` https://github.com/SeaQL/sea-orm/pull/1562
