@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### New Features
 
 * Supports for partial select of `Option<T>` model field. A `None` value will be filled when the select result does not contain the `Option<T>` field without throwing an error. https://github.com/SeaQL/sea-orm/pull/1513
-```rs
+```rust
 customer::ActiveModel {
     name: Set("Alice".to_owned()),
     notes: Set(Some("Want to communicate with Bob".to_owned())),
@@ -39,7 +39,7 @@ assert_eq!(customers.notes, None);
 ```
 * [sea-orm-cli] the `migrate init` command will create a `.gitignore` file when the migration folder reside in a Git repository https://github.com/SeaQL/sea-orm/pull/1334
 * Added `MigratorTrait::migration_table_name()` method to configure the name of migration table https://github.com/SeaQL/sea-orm/pull/1511
-```rs
+```rust
 #[async_trait::async_trait]
 impl MigratorTrait for Migrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
@@ -56,7 +56,7 @@ impl MigratorTrait for Migrator {
 }
 ```
 * Added option to construct chained AND / OR join on condition https://github.com/SeaQL/sea-orm/pull/1433
-```rs
+```rust
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -90,7 +90,7 @@ pub enum Relation {
 impl ActiveModelBehavior for ActiveModel {}
 ```
 You can also override it in custom join.
-```rs
+```rust
 assert_eq!(
     cake::Entity::find()
         .column_as(
@@ -128,7 +128,7 @@ assert_eq!(
     * Implemented `IdentityOf` for tuple of `ColumnTrait` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
     * Implemented `TryGetableMany` for tuple of `TryGetable` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
     * Implemented `TryFromU64` for tuple of `TryFromU64` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
-```rs
+```rust
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
@@ -169,7 +169,7 @@ pub enum Relation {}
 impl ActiveModelBehavior for ActiveModel {}
 ```
 * Added macro `DerivePartialModel` https://github.com/SeaQL/sea-orm/pull/1597
-```rs
+```rust
 #[derive(DerivePartialModel, FromQueryResult)]
 #[sea_orm(entity = "Cake")]
 struct PartialCake {
@@ -218,7 +218,7 @@ pub enum RelatedEntity {
     The DeriveRelatedEntity derive macro will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration when the `seaography` feature is enabled
 
 * Add `expr`, `exprs` and `expr_as` methods to `QuerySelect` trait https://github.com/SeaQL/sea-orm/pull/1702
-```rs
+```rust
 use sea_orm::sea_query::Expr;
 use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
 
@@ -255,7 +255,7 @@ assert_eq!(
 );
 ```
 * Add `DbErr::sql_err()` method to convert error into common database errors `SqlErr`, such as unique constraint or foreign key violation errors. https://github.com/SeaQL/sea-orm/pull/1707
-```rs
+```rust
 assert!(matches!(
     cake
         .into_active_model()
@@ -285,7 +285,7 @@ fn find_with_linked<L, T>(self, l: L) -> SelectTwoMany<E, T>
 // boths yields `Vec<(E::Model, Vec<F::Model>)>`
 ```
 * Add `DeriveValueType` derive macro for custom wrapper types, implementations of the required traits will be provided, you can customize the `column_type` and `array_type` if needed https://github.com/SeaQL/sea-orm/pull/1720
-```rs
+```rust
 #[derive(DeriveValueType)]
 #[sea_orm(array_type = "Int")]
 pub struct Integer(i32);
@@ -298,7 +298,7 @@ pub struct Boolbean(pub String);
 pub struct StringVec(pub Vec<String>);
 ```
 The expanded code of `DeriveValueType` looks like.
-```rs
+```rust
 #[derive(DeriveValueType)]
 pub struct StringVec(pub Vec<String>);
 
@@ -339,7 +339,7 @@ impl sea_orm::sea_query::ValueType for StringVec {
 }
 ```
 * Add `DeriveDisplay` derive macro to implements `std::fmt::Display` for active enum https://github.com/SeaQL/sea-orm/pull/1726
-```rs
+```rust
 // String enum
 #[derive(EnumIter, DeriveActiveEnum, DeriveDisplay)]
 #[sea_orm(rs_type = "String", db_type = "String(Some(1))", enum_name = "category")]
@@ -383,7 +383,7 @@ assert_eq!(format!("{}", DisplayTea::EverydayTea), "Everyday");
 ### Enhancements
 
 * Added `Migration::name()` and `Migration::status()` getters for the name and status of `sea_orm_migration::Migration` https://github.com/SeaQL/sea-orm/pull/1519
-```rs
+```rust
 let migrations = Migrator::get_pending_migrations(db).await?;
 assert_eq!(migrations.len(), 5);
 
@@ -522,7 +522,7 @@ CREATE TABLE users_saved_bills
 ```
 * [sea-orm-cli] fixed entity generation includes partitioned tables https://github.com/SeaQL/sea-orm/issues/1582, https://github.com/SeaQL/sea-schema/pull/105
 * Fixed `ActiveEnum::db_type()` return type does not implement `ColumnTypeTrait` https://github.com/SeaQL/sea-orm/pull/1576
-```rs
+```rust
 impl ColumnTrait for Column {
     type EntityName = Entity;
     fn def(&self) -> ColumnDef {
@@ -555,14 +555,14 @@ impl ColumnTrait for Column {
 
 * Re-export `sea_orm::ConnectionTrait` in `sea_orm_migration::prelude` https://github.com/SeaQL/sea-orm/pull/1577
 * Support generic structs in `FromQueryResult` derive macro https://github.com/SeaQL/sea-orm/pull/1464, https://github.com/SeaQL/sea-orm/pull/1603
-```rs
+```rust
 #[derive(FromQueryResult)]
 struct GenericTest<T: TryGetable> {
     foo: i32,
     bar: T,
 }
 ```
-```rs
+```rust
 trait MyTrait {
     type Item: TryGetable;
 }
@@ -593,7 +593,7 @@ where
 
 * Fixes `DeriveActiveEnum` (by qualifying `ColumnTypeTrait::def`) https://github.com/SeaQL/sea-orm/issues/1478
 * The CLI command `sea-orm-cli generate entity -u '<DB-URL>'` will now generate the following code for each `Binary` or `VarBinary` columns in compact format https://github.com/SeaQL/sea-orm/pull/1529
-```rs
+```rust
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "binary")]
 pub struct Model {
@@ -614,7 +614,7 @@ pub struct Model {
 }
 ```
 * The CLI command `sea-orm-cli generate entity -u '<DB-URL>' --expanded-format` will now generate the following code for each `Binary` or `VarBinary` columns in expanded format https://github.com/SeaQL/sea-orm/pull/1529
-```rs
+```rust
 impl ColumnTrait for Column {
     type EntityName = Entity;
     fn def(&self) -> ColumnDef {
