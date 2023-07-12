@@ -798,4 +798,12 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn display_test() {
+        assert_eq!(format!("{}", Tea::BreakfastTea), "BreakfastTea");
+        assert_eq!(format!("{}", DisplayTea::BreakfastTea), "Breakfast");
+        assert_eq!(format!("{}", Tea::EverydayTea), "EverydayTea");
+        assert_eq!(format!("{}", DisplayTea::EverydayTea), "Everyday");
+    }
 }
