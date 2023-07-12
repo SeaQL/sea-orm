@@ -546,7 +546,7 @@ impl ColumnTrait for Column {
     * The derive macro `EnumIter` is now shipped by `sea-orm-macros`
 * Added a new variant `Many` to `Identity` https://github.com/SeaQL/sea-orm/pull/1508
 * Replace the use of `SeaRc<T>` where `T` isn't `dyn Iden` with `RcOrArc<T>` https://github.com/SeaQL/sea-orm/pull/1661
-* Enabled `hashable-value` feature in SeaQuery, thus `Value::Float(NaN) == Value::Float(NaN)` would be true
+* Enabled `hashable-value` feature in SeaQuery, thus `Value::Float(NaN) == Value::Float(NaN)` would be true https://github.com/SeaQL/sea-orm/pull/1728, https://github.com/SeaQL/sea-orm/pull/1743
 * The `DeriveActiveEnum` derive macro no longer provide `std::fmt::Display` implementation for the enum. You need to derive an extra `DeriveDisplay` macro alongside with `DeriveActiveEnum` derive macro. https://github.com/SeaQL/sea-orm/pull/1726
 
 ## 0.11.3 - 2023-04-24
