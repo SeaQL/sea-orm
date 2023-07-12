@@ -8,6 +8,8 @@ use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 use futures::lock::Mutex;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::{pool::PoolConnection, TransactionManager};
+#[cfg(feature = "sqlx-dep")]
+use std::ops::DerefMut;
 use std::{future::Future, pin::Pin, sync::Arc};
 use tracing::instrument;
 
@@ -310,26 +312,26 @@ impl ConnectionTrait for DatabaseTransaction {
 
         match &mut *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
-            InnerConnection::MySql(ref mut conn) => {
+            InnerConnection::MySql(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
                 crate::metric::metric!(self.metric_callback, &stmt, {
-                    query.execute(&mut **conn).await.map(Into::into)
+                    query.execute(conn.deref_mut()).await.map(Into::into)
                 })
                 .map_err(sqlx_error_to_exec_err)
             }
             #[cfg(feature = "sqlx-postgres")]
-            InnerConnection::Postgres(ref mut conn) => {
+            InnerConnection::Postgres(conn) => {
                 let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
                 crate::metric::metric!(self.metric_callback, &stmt, {
-                    query.execute(&mut **conn).await.map(Into::into)
+                    query.execute(conn.deref_mut()).await.map(Into::into)
                 })
                 .map_err(sqlx_error_to_exec_err)
             }
             #[cfg(feature = "sqlx-sqlite")]
-            InnerConnection::Sqlite(ref mut conn) => {
+            InnerConnection::Sqlite(conn) => {
                 let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
                 crate::metric::metric!(self.metric_callback, &stmt, {
-                    query.execute(&mut **conn).await.map(Into::into)
+                    query.execute(conn.deref_mut()).await.map(Into::into)
                 })
                 .map_err(sqlx_error_to_exec_err)
             }
@@ -347,17 +349,17 @@ impl ConnectionTrait for DatabaseTransaction {
 
         match &mut *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
-            InnerConnection::MySql(ref mut conn) => sqlx::Executor::execute(&mut **conn, sql)
+            InnerConnection::MySql(conn) => sqlx::Executor::execute(conn.deref_mut(), sql)
                 .await
                 .map(Into::into)
                 .map_err(sqlx_error_to_exec_err),
             #[cfg(feature = "sqlx-postgres")]
-            InnerConnection::Postgres(ref mut conn) => sqlx::Executor::execute(&mut **conn, sql)
+            InnerConnection::Postgres(conn) => sqlx::Executor::execute(conn.deref_mut(), sql)
                 .await
                 .map(Into::into)
                 .map_err(sqlx_error_to_exec_err),
             #[cfg(feature = "sqlx-sqlite")]
-            InnerConnection::Sqlite(ref mut conn) => sqlx::Executor::execute(&mut **conn, sql)
+            InnerConnection::Sqlite(conn) => sqlx::Executor::execute(conn.deref_mut(), sql)
                 .await
                 .map(Into::into)
                 .map_err(sqlx_error_to_exec_err),
@@ -379,29 +381,38 @@ impl ConnectionTrait for DatabaseTransaction {
 
         match &mut *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
-            InnerConnection::MySql(ref mut conn) => {
+            InnerConnection::MySql(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
                 crate::metric::metric!(self.metric_callback, &stmt, {
                     Self::map_err_ignore_not_found(
-                        query.fetch_one(&mut **conn).await.map(|row| Some(row.into())),
+                        query
+                            .fetch_one(conn.deref_mut())
+                            .await
+                            .map(|row| Some(row.into())),
                     )
                 })
             }
             #[cfg(feature = "sqlx-postgres")]
-            InnerConnection::Postgres(ref mut conn) => {
+            InnerConnection::Postgres(conn) => {
                 let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
                 crate::metric::metric!(self.metric_callback, &stmt, {
                     Self::map_err_ignore_not_found(
-                        query.fetch_one(&mut **conn).await.map(|row| Some(row.into())),
+                        query
+                            .fetch_one(conn.deref_mut())
+                            .await
+                            .map(|row| Some(row.into())),
                     )
                 })
             }
             #[cfg(feature = "sqlx-sqlite")]
-            InnerConnection::Sqlite(ref mut conn) => {
+            InnerConnection::Sqlite(conn) => {
                 let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
                 crate::metric::metric!(self.metric_callback, &stmt, {
                     Self::map_err_ignore_not_found(
-                        query.fetch_one(&mut **conn).await.map(|row| Some(row.into())),
+                        query
+                            .fetch_one(conn.deref_mut())
+                            .await
+                            .map(|row| Some(row.into())),
                     )
                 })
             }
@@ -419,33 +430,33 @@ impl ConnectionTrait for DatabaseTransaction {
 
         match &mut *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
-            InnerConnection::MySql(ref mut conn) => {
+            InnerConnection::MySql(conn) => {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
                 crate::metric::metric!(self.metric_callback, &stmt, {
                     query
-                        .fetch_all(&mut **conn)
+                        .fetch_all(conn.deref_mut())
                         .await
                         .map(|rows| rows.into_iter().map(|r| r.into()).collect())
                         .map_err(sqlx_error_to_query_err)
                 })
             }
             #[cfg(feature = "sqlx-postgres")]
-            InnerConnection::Postgres(ref mut conn) => {
+            InnerConnection::Postgres(conn) => {
                 let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
                 crate::metric::metric!(self.metric_callback, &stmt, {
                     query
-                        .fetch_all(&mut **conn)
+                        .fetch_all(conn.deref_mut())
                         .await
                         .map(|rows| rows.into_iter().map(|r| r.into()).collect())
                         .map_err(sqlx_error_to_query_err)
                 })
             }
             #[cfg(feature = "sqlx-sqlite")]
-            InnerConnection::Sqlite(ref mut conn) => {
+            InnerConnection::Sqlite(conn) => {
                 let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
                 crate::metric::metric!(self.metric_callback, &stmt, {
                     query
-                        .fetch_all(&mut **conn)
+                        .fetch_all(conn.deref_mut())
                         .await
                         .map(|rows| rows.into_iter().map(|r| r.into()).collect())
                         .map_err(sqlx_error_to_query_err)

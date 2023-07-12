@@ -1,5 +1,5 @@
 use sea_query::Values;
-use std::{future::Future, pin::Pin, sync::Arc};
+use std::{future::Future, ops::DerefMut, pin::Pin, sync::Arc};
 
 use sqlx::{
     mysql::{MySqlConnectOptions, MySqlQueryResult, MySqlRow},
@@ -82,9 +82,9 @@ impl SqlxMySqlPoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        if let Ok(mut conn) = self.pool.acquire().await {
+        if let Ok(conn) = &mut self.pool.acquire().await {
             crate::metric::metric!(self.metric_callback, &stmt, {
-                match query.execute(&mut *conn).await {
+                match query.execute(conn.deref_mut()).await {
                     Ok(res) => Ok(res.into()),
                     Err(err) => Err(sqlx_error_to_exec_err(err)),
                 }
@@ -99,7 +99,7 @@ impl SqlxMySqlPoolConnection {
     pub async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug_print!("{}", sql);
 
-        if let Ok(mut conn) = self.pool.acquire().await {
+        if let Ok(conn) = &mut self.pool.acquire().await {
             match conn.execute(sql).await {
                 Ok(res) => Ok(res.into()),
                 Err(err) => Err(sqlx_error_to_exec_err(err)),
@@ -115,9 +115,9 @@ impl SqlxMySqlPoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        if let Ok(mut conn) = self.pool.acquire().await {
+        if let Ok(conn) = &mut self.pool.acquire().await {
             crate::metric::metric!(self.metric_callback, &stmt, {
-                match query.fetch_one(&mut *conn).await {
+                match query.fetch_one(conn.deref_mut()).await {
                     Ok(row) => Ok(Some(row.into())),
                     Err(err) => match err {
                         sqlx::Error::RowNotFound => Ok(None),
@@ -136,9 +136,9 @@ impl SqlxMySqlPoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        if let Ok(mut conn) = self.pool.acquire().await {
+        if let Ok(conn) = &mut self.pool.acquire().await {
             crate::metric::metric!(self.metric_callback, &stmt, {
-                match query.fetch_all(&mut *conn).await {
+                match query.fetch_all(conn.deref_mut()).await {
                     Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
                     Err(err) => Err(sqlx_error_to_query_err(err)),
                 }
@@ -224,7 +224,7 @@ impl SqlxMySqlPoolConnection {
 
     /// Checks if a connection to the database is still valid.
     pub async fn ping(&self) -> Result<(), DbErr> {
-        if let Ok(mut conn) = self.pool.acquire().await {
+        if let Ok(conn) = &mut self.pool.acquire().await {
             match conn.ping().await {
                 Ok(_) => Ok(()),
                 Err(err) => Err(sqlx_error_to_conn_err(err)),
