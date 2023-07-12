@@ -217,7 +217,7 @@ pub enum RelatedEntity {
 
     The DeriveRelatedEntity derive macro will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration when the `seaography` feature is enabled
 
-* Add `expr`, `exprs` and `expr_as` methods to `QuerySelect` trait
+* Add `expr`, `exprs` and `expr_as` methods to `QuerySelect` trait https://github.com/SeaQL/sea-orm/pull/1702
 ```rs
 use sea_orm::sea_query::Expr;
 use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
@@ -275,7 +275,7 @@ assert!(matches!(
     Some(SqlErr::ForeignKeyConstraintViolation(_))
 ));
 ```
-* Add `Select::find_with_linked`, similar to `find_with_related`:
+* Add `Select::find_with_linked`, similar to `find_with_related`: https://github.com/SeaQL/sea-orm/pull/1728, https://github.com/SeaQL/sea-orm/pull/1743
 ```rust
 fn find_with_related<R>(self, r: R) -> SelectTwoMany<E, R>
     where R: EntityTrait, E: Related<R>;
