@@ -11,8 +11,9 @@ pub use crate::{
 #[cfg(feature = "macros")]
 pub use crate::{
     DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn,
-    DeriveCustomColumn, DeriveDisplay, DeriveEntity, DeriveEntityModel, DeriveIntoActiveModel,
-    DeriveModel, DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, FromJsonQueryResult,
+    DeriveCustomColumn, DeriveDisplay, DeriveEntity, DeriveEntityModel, DeriveIden,
+    DeriveIntoActiveModel, DeriveModel, DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation,
+    FromJsonQueryResult,
 };
 
 pub use async_trait;

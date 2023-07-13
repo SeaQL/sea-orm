@@ -37,7 +37,7 @@ use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 ///     Small,
 /// }
 ///
-/// #[derive(Debug, Iden)]
+/// #[derive(Debug, DeriveIden)]
 /// pub struct CategoryEnum;
 ///
 /// impl ActiveEnum for Category {
@@ -182,8 +182,8 @@ mod tests {
             Small,
         }
 
-        #[derive(Debug, Iden)]
-        #[iden = "category"]
+        #[derive(Debug, DeriveIden)]
+        #[sea_orm(iden = "category")]
         pub struct CategoryEnum;
 
         impl ActiveEnum for Category {
