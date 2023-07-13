@@ -1,7 +1,6 @@
 pub mod common;
 pub use common::{features::*, setup::*, TestContext};
 use sea_orm::entity::prelude::*;
-use sea_orm_macros::DeriveIden;
 
 #[derive(DeriveIden)]
 pub enum ClassName {
@@ -13,6 +12,7 @@ pub enum ClassName {
 
 #[derive(DeriveIden)]
 pub enum Book {
+    #[sea_orm(iden = "book_table")]
     Table,
     Id,
     #[sea_orm(iden = "turtle")]
@@ -38,7 +38,7 @@ fn main() -> Result<(), DbErr> {
     assert_eq!(ClassName::Text.to_string(), "text");
 
     assert_eq!(Book::Id.to_string(), "id");
-    assert_eq!(Book::Table.to_string(), "book");
+    assert_eq!(Book::Table.to_string(), "book_table");
     assert_eq!(Book::Title.to_string(), "turtle");
     assert_eq!(Book::Text.to_string(), "TeXt");
     assert_eq!(Book::Type.to_string(), "ty_pe");
