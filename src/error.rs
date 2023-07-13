@@ -75,7 +75,7 @@ pub enum DbErr {
     RecordNotUpdated,
 }
 
-/// Connection error
+/// Connection Acquire error
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum ConnAcquireErr {
     /// Connection pool timed out
