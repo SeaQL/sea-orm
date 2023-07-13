@@ -852,3 +852,45 @@ pub fn derive_active_enum_display(input: TokenStream) -> TokenStream {
         Err(e) => e.to_compile_error().into(),
     }
 }
+
+/// The DeriveIden derive macro will implement `sea_orm::sea_query::Iden` for simplify Iden implementation.
+///
+/// ## Usage
+///
+/// ```rust
+/// use sea_orm::DeriveIden;
+///
+/// #[derive(DeriveIden)]
+/// pub enum Class {
+///     Id,
+///     Title,
+///     Text,
+/// }
+///
+/// #[derive(DeriveIden)]
+/// struct Glyph;
+/// ```
+///
+/// You can use iden = "" to customize the name
+/// ```
+/// use sea_orm::DeriveIden;
+///
+/// #[derive(DeriveIden)]
+/// pub enum Class {
+///     Id,
+///     #[sea_orm(iden = "turtle")]
+///     Title,
+///     #[sea_orm(iden = "TeXt")]
+///     Text,
+/// }
+/// ```
+#[cfg(feature = "derive")]
+#[proc_macro_derive(DeriveIden, attributes(sea_orm))]
+pub fn derive_iden(input: TokenStream) -> TokenStream {
+    let derive_input = parse_macro_input!(input as DeriveInput);
+
+    match derives::expand_derive_iden(derive_input) {
+        Ok(token_stream) => token_stream.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
