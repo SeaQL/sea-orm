@@ -362,7 +362,6 @@ impl ColumnDef {
     }
 
     /// Set the default value
-    #[deprecated(since = "0.12.0", note = "Please use [`ColumnDef::default`]")]
     pub fn default_value<T>(mut self, value: T) -> Self
     where
         T: Into<Value>,
@@ -537,6 +536,8 @@ mod tests {
                 pub eleven: u8,
                 #[sea_orm(default_value = "twelve_value")]
                 pub twelve: String,
+                #[sea_orm(default_expr = "\"twelve_value\"")]
+                pub twelve_two: String,
             }
 
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -590,6 +591,10 @@ mod tests {
         );
         assert_eq!(
             hello::Column::Twelve.def(),
+            ColumnType::String(None).def().default("twelve_value")
+        );
+        assert_eq!(
+            hello::Column::TwelveTwo.def(),
             ColumnType::String(None).def().default("twelve_value")
         );
     }
