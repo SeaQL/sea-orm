@@ -15,7 +15,7 @@ pub struct ColumnDef {
     pub(crate) null: bool,
     pub(crate) unique: bool,
     pub(crate) indexed: bool,
-    pub(crate) default_value: Option<Value>,
+    pub(crate) default: Option<SimpleExpr>,
 }
 
 macro_rules! bind_oper {
@@ -310,7 +310,7 @@ impl ColumnTypeTrait for ColumnType {
             null: false,
             unique: false,
             indexed: false,
-            default_value: None,
+            default: None,
         }
     }
 
@@ -362,11 +362,21 @@ impl ColumnDef {
     }
 
     /// Set the default value
+    #[deprecated(since = "0.12.0", note = "Please use [`ColumnDef::default`]")]
     pub fn default_value<T>(mut self, value: T) -> Self
     where
         T: Into<Value>,
     {
-        self.default_value = Some(value.into());
+        self.default = Some(value.into().into());
+        self
+    }
+
+    /// Set the default value or expression of a column
+    pub fn default<T>(mut self, default: T) -> Self
+    where
+        T: Into<SimpleExpr>,
+    {
+        self.default = Some(default.into());
         self
     }
 
@@ -493,7 +503,7 @@ mod tests {
     #[test]
     #[cfg(feature = "macros")]
     fn entity_model_column_1() {
-        use crate::entity::*;
+        use crate::prelude::*;
 
         mod hello {
             use crate as sea_orm;
@@ -521,6 +531,12 @@ mod tests {
                 pub eight: u32,
                 #[sea_orm(unique, indexed, nullable)]
                 pub nine: u64,
+                #[sea_orm(default_expr = "Expr::current_timestamp()")]
+                pub ten: DateTimeUtc,
+                #[sea_orm(default_value = 7)]
+                pub eleven: u8,
+                #[sea_orm(default_value = "twelve_value")]
+                pub twelve: String,
             }
 
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -561,6 +577,20 @@ mod tests {
         assert_eq!(
             hello::Column::Nine.def(),
             ColumnType::BigUnsigned.def().unique().indexed().nullable()
+        );
+        assert_eq!(
+            hello::Column::Ten.def(),
+            ColumnType::TimestampWithTimeZone
+                .def()
+                .default(Expr::current_timestamp())
+        );
+        assert_eq!(
+            hello::Column::Eleven.def(),
+            ColumnType::TinyUnsigned.def().default(7)
+        );
+        assert_eq!(
+            hello::Column::Twelve.def(),
+            ColumnType::String(None).def().default("twelve_value")
         );
     }
 
