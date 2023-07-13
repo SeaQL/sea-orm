@@ -49,7 +49,12 @@ fn impl_iden_for_enum(
     let match_pair: Vec<TokenStream> = variants
         .map(|v| {
             let var_ident = &v.ident;
-            let mut var_name = var_ident.to_string().to_snake_case();
+            let var_name = if var_ident == "Table" {
+                ident
+            } else {
+                var_ident
+            };
+            let mut var_name = var_name.to_string().to_snake_case();
             v.attrs
                 .iter()
                 .filter(|attr| attr.path().is_ident("sea_orm"))
