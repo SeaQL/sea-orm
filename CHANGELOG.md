@@ -14,45 +14,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
-* Supports for partial select of `Option<T>` model field. A `None` value will be filled when the select result does not contain the `Option<T>` field without throwing an error. https://github.com/SeaQL/sea-orm/pull/1513
-```rust
-customer::ActiveModel {
-    name: Set("Alice".to_owned()),
-    notes: Set(Some("Want to communicate with Bob".to_owned())),
-    ..Default::default()
-}
-.save(db)
-.await?;
-
-// The `notes` field was intentionally leaved out
-let customer = Customer::find()
-    .select_only()
-    .column(customer::Column::Id)
-    .column(customer::Column::Name)
-    .one(db)
-    .await
-    .unwrap();
-
-// The select result does not contain `notes` field.
-// Since it's of type `Option<String>`, it'll be `None` and no error will be thrown.
-assert_eq!(customers.notes, None);
-```
-* [sea-orm-cli] the `migrate init` command will create a `.gitignore` file when the migration folder reside in a Git repository https://github.com/SeaQL/sea-orm/pull/1334
 * Added `MigratorTrait::migration_table_name()` method to configure the name of migration table https://github.com/SeaQL/sea-orm/pull/1511
 ```rust
 #[async_trait::async_trait]
 impl MigratorTrait for Migrator {
-    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
-        vec![
-            Box::new(m20220118_000001_create_cake_table::Migration),
-            Box::new(m20220118_000002_create_fruit_table::Migration),
-        ]
-    }
-
     // Override the name of migration table
     fn migration_table_name() -> sea_orm::DynIden {
         Alias::new("override_migration_table_name").into_iden()
     }
+    ...
 }
 ```
 * Added option to construct chained AND / OR join on condition https://github.com/SeaQL/sea-orm/pull/1433
@@ -64,7 +34,6 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(column_name = "name", enum_name = "Name")]
     pub name: String,
 }
 
@@ -86,40 +55,6 @@ pub enum Relation {
     )]
     OrTropicalFruit,
 }
-
-impl ActiveModelBehavior for ActiveModel {}
-```
-You can also override it in custom join.
-```rust
-assert_eq!(
-    cake::Entity::find()
-        .column_as(
-            Expr::col((Alias::new("cake_filling_alias"), cake_filling::Column::CakeId)),
-            "cake_filling_cake_id"
-        )
-        .join(JoinType::LeftJoin, cake::Relation::OrTropicalFruit.def())
-        .join_as_rev(
-            JoinType::LeftJoin,
-            cake_filling::Relation::Cake
-                .def()
-                // chained AND / OR join on condition
-                .condition_type(ConditionType::Any)
-                .on_condition(|left, _right| {
-                    Expr::col((left, cake_filling::Column::CakeId))
-                        .gt(10)
-                        .into_condition()
-                }),
-            Alias::new("cake_filling_alias")
-        )
-        .build(DbBackend::MySql)
-        .to_string(),
-    [
-        "SELECT `cake`.`id`, `cake`.`name`, `cake_filling_alias`.`cake_id` AS `cake_filling_cake_id` FROM `cake`",
-        "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id` OR `fruit`.`name` LIKE '%tropical%'",
-        "LEFT JOIN `cake_filling` AS `cake_filling_alias` ON `cake_filling_alias`.`cake_id` = `cake`.`id` OR `cake_filling_alias`.`cake_id` > 10",
-    ]
-    .join(" ")
-);
 ```
 * Supports entity with composite primary key of length 12 https://github.com/SeaQL/sea-orm/pull/1508
     * Implemented `IntoIdentity` for `Identity` https://github.com/SeaQL/sea-orm/pull/1508
@@ -136,37 +71,10 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id_1: String,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_2: i8,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_3: u8,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_4: i16,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_5: u16,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_6: i32,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_7: u32,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_8: i64,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_9: u64,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_10: f32,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_11: f64,
+    ...
     #[sea_orm(primary_key, auto_increment = false)]
     pub id_12: bool,
-    pub owner: String,
-    pub name: String,
-    pub description: String,
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
-
-impl ActiveModelBehavior for ActiveModel {}
 ```
 * Added macro `DerivePartialModel` https://github.com/SeaQL/sea-orm/pull/1597
 ```rust
@@ -187,31 +95,6 @@ assert_eq!(
         .to_string(),
     r#"SELECT "cake"."name", UPPER("cake"."name") AS "name_upper" FROM "cake""#
 );
-```
-* [sea-orm-cli] Added support for generating migration of space separated name, for example executing `sea-orm-cli migrate generate "create accounts table"` command will create `m20230503_000000_create_accounts_table.rs` for you https://github.com/SeaQL/sea-orm/pull/1570
-
-* Add `seaography` flag to `sea-orm`, `sea-orm-orm-macros` and `sea-orm-cli` https://github.com/SeaQL/sea-orm/pull/1599
-* Add generation of `seaography` related information to `sea-orm-codegen` https://github.com/SeaQL/sea-orm/pull/1599
-
-    The following information is added in entities files by `sea-orm-cli` when flag `seaography` is `true`
-```rust
-/// ... Entity File ...
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
-pub enum RelatedEntity {
-    #[sea_orm(entity = "super::address::Entity")]
-    Address,
-    #[sea_orm(entity = "super::payment::Entity")]
-    Payment,
-    #[sea_orm(entity = "super::rental::Entity")]
-    Rental,
-    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
-    SelfRef,
-    #[sea_orm(entity = "super::store::Entity")]
-    Store,
-    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
-    SelfRefRev,
-}
 ```
 * Add `DeriveEntityRelated` macro https://github.com/SeaQL/sea-orm/pull/1599
 
@@ -297,91 +180,91 @@ pub struct Boolbean(pub String);
 #[derive(DeriveValueType)]
 pub struct StringVec(pub Vec<String>);
 ```
-The expanded code of `DeriveValueType` looks like.
-```rust
-#[derive(DeriveValueType)]
-pub struct StringVec(pub Vec<String>);
-
-// The `DeriveValueType` will be expanded into...
-
-impl From<StringVec> for Value {
-    fn from(source: StringVec) -> Self {
-        source.0.into()
-    }
-}
-
-impl sea_orm::TryGetable for StringVec {
-    fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, sea_orm::TryGetError> {
-        <Vec<String> as sea_orm::TryGetable>::try_get_by(res, idx).map(|v| StringVec(v))
-    }
-}
-
-impl sea_orm::sea_query::ValueType for StringVec {
-    fn try_from(v: Value) -> Result<Self, sea_orm::sea_query::ValueTypeErr> {
-        <Vec<String> as sea_orm::sea_query::ValueType>::try_from(v).map(|v| StringVec(v))
-    }
-
-    fn type_name() -> String {
-        stringify!(StringVec).to_owned()
-    }
-
-    fn array_type() -> sea_orm::sea_query::ArrayType {
-        std::convert::Into::<sea_orm::sea_query::ArrayType>::into(
-            <Vec<String> as sea_orm::sea_query::ValueType>::array_type()
-        )
-    }
-
-    fn column_type() -> sea_orm::sea_query::ColumnType {
-        std::convert::Into::<sea_orm::sea_query::ColumnType>::into(
-            <Vec<String> as sea_orm::sea_query::ValueType>::column_type()
-        )
-    }
-}
-```
 * Add `DeriveDisplay` derive macro to implements `std::fmt::Display` for active enum https://github.com/SeaQL/sea-orm/pull/1726
 ```rust
-// String enum
-#[derive(EnumIter, DeriveActiveEnum, DeriveDisplay)]
-#[sea_orm(rs_type = "String", db_type = "String(Some(1))", enum_name = "category")]
-pub enum DeriveCategory {
-    #[sea_orm(string_value = "B")]
-    Big,
-    #[sea_orm(string_value = "S")]
-    Small,
-}
-assert_eq!(format!("{}", DeriveCategory::Big), "Big");
-assert_eq!(format!("{}", DeriveCategory::Small), "Small");
-
-// Numeric enum
-#[derive(EnumIter, DeriveActiveEnum, DeriveDisplay)]
-#[sea_orm(rs_type = "i32", db_type = "Integer")]
-pub enum $ident {
-    #[sea_orm(num_value = -10)]
-    Negative,
-    #[sea_orm(num_value = 1)]
-    Big,
-    #[sea_orm(num_value = 0)]
-    Small,
-}
-assert_eq!(format!("{}", $ident::Big), "Big");
-assert_eq!(format!("{}", $ident::Small), "Small");
-assert_eq!(format!("{}", $ident::Negative), "Negative");
-
-// String enum with `display_value` overrides
-#[derive(EnumIter, DeriveActiveEnum, DeriveDisplay)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "tea")]
+#[derive(DeriveDisplay)]
 pub enum DisplayTea {
-    #[sea_orm(string_value = "EverydayTea", display_value = "Everyday")]
     EverydayTea,
-    #[sea_orm(string_value = "BreakfastTea", display_value = "Breakfast")]
+    #[sea_orm(display_value = "Breakfast")]
     BreakfastTea,
 }
+assert_eq!(format!("{}", DisplayTea::EverydayTea), "EverydayTea");
 assert_eq!(format!("{}", DisplayTea::BreakfastTea), "Breakfast");
-assert_eq!(format!("{}", DisplayTea::EverydayTea), "Everyday");
+```
+* Added `UpdateMany::exec_with_returning()` https://github.com/SeaQL/sea-orm/pull/1677
+```rust
+Entity::update_many()
+    .col_expr(Column::Values, Expr::expr(..))
+    .exec_with_returning(db)
+    .await
+```
+* Supporting `default_expr` in `DeriveEntityModel` https://github.com/SeaQL/sea-orm/pull/1474
+```rust
+#[derive(DeriveEntityModel)]
+#[sea_orm(table_name = "hello")]
+pub struct Model {
+    #[sea_orm(default_expr = "Expr::current_timestamp()")]
+    pub timestamp: DateTimeUtc,
+}
+
+assert_eq!(
+    Column::Timestamp.def(),
+    ColumnType::TimestampWithTimeZone.def().default(Expr::current_timestamp())
+);
+```
+
+#### Seaography
+
+* Add generation of `seaography` related information to `sea-orm-codegen` https://github.com/SeaQL/sea-orm/pull/1599
+
+    The following information is added in entities files by `sea-orm-cli` when flag `seaography` is `true`
+```rust
+/// ... Entity File ...
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+pub enum RelatedEntity {
+    #[sea_orm(entity = "super::address::Entity")]
+    Address,
+    #[sea_orm(entity = "super::payment::Entity")]
+    Payment,
+    #[sea_orm(entity = "super::rental::Entity")]
+    Rental,
+    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
+    SelfRef,
+    #[sea_orm(entity = "super::store::Entity")]
+    Store,
+    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
+    SelfRefRev,
+}
 ```
 
 ### Enhancements
 
+* Supports for partial select of `Option<T>` model field. A `None` value will be filled when the select result does not contain the `Option<T>` field without throwing an error. https://github.com/SeaQL/sea-orm/pull/1513
+```rust
+customer::ActiveModel {
+    name: Set("Alice".to_owned()),
+    notes: Set(Some("Want to communicate with Bob".to_owned())),
+    ..Default::default()
+}
+.save(db)
+.await?;
+
+// The `notes` field was intentionally leaved out
+let customer = Customer::find()
+    .select_only()
+    .column(customer::Column::Id)
+    .column(customer::Column::Name)
+    .one(db)
+    .await
+    .unwrap();
+
+// The select result does not contain `notes` field.
+// Since it's of type `Option<String>`, it'll be `None` and no error will be thrown.
+assert_eq!(customers.notes, None);
+```
+* [sea-orm-cli] the `migrate init` command will create a `.gitignore` file when the migration folder reside in a Git repository https://github.com/SeaQL/sea-orm/pull/1334
+* [sea-orm-cli] Added support for generating migration of space separated name, for example executing `sea-orm-cli migrate generate "create accounts table"` command will create `m20230503_000000_create_accounts_table.rs` for you https://github.com/SeaQL/sea-orm/pull/1570
 * Added `Migration::name()` and `Migration::status()` getters for the name and status of `sea_orm_migration::Migration` https://github.com/SeaQL/sea-orm/pull/1519
 ```rust
 let migrations = Migrator::get_pending_migrations(db).await?;
@@ -431,13 +314,6 @@ assert!(matches!(res, Err(DbErr::RecordNotInserted)));
 // New API; now you can:
 let res = Entity::insert_many([..]).on_conflict(on).do_nothing().exec(db).await;
 assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
-```
-* Added `UpdateMany::exec_with_returning()` https://github.com/SeaQL/sea-orm/pull/1677
-```rust
-Entity::update_many()
-    .col_expr(Column::Values, Expr::expr(..))
-    .exec_with_returning(db)
-    .await
 ```
 
 ### Upgrades
