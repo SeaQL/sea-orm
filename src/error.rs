@@ -78,11 +78,11 @@ pub enum DbErr {
 /// Connection error
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum ConnAcquireErr {
-    /// Connection Timed Out
-    #[error("Connection Timed out")]
+    /// Connection pool timed out
+    #[error("Connection pool timed out")]
     Timeout,
-    /// Unavailable connection
-    #[error("Connection closed by host")]
+    /// Connection closed
+    #[error("Connection closed")]
     ConnectionClosed,
 }
 

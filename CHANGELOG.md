@@ -212,6 +212,18 @@ assert_eq!(
     ColumnType::TimestampWithTimeZone.def().default(Expr::current_timestamp())
 );
 ```
+* Introduced new `ConnAcquireErr` https://github.com/SeaQL/sea-orm/pull/1737
+```rust
+enum DbErr {
+    ConnectionAcquire(ConnAcquireErr),
+    ..
+}
+
+enum ConnAcquireErr {
+    Timeout,
+    ConnectionClosed,
+}
+```
 
 #### Seaography
 
@@ -328,7 +340,7 @@ assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
 
 ### Bug Fixes
 
-* `DeriveActiveEnum` no longer impl `Display`
+* `DeriveActiveEnum` no longer impl `Display` https://github.com/SeaQL/sea-orm/pull/1726
 * Fixed `DeriveActiveEnum` throwing errors because `string_value` consists non-UAX#31 compliant characters https://github.com/SeaQL/sea-orm/pull/1374
 
 For example,
@@ -453,6 +465,7 @@ pub enum Tea {
     EverydayTea,
 }
 ```
+* Definition of `DbErr::ConnectionAcquire` changed to `ConnectionAcquire(ConnAcquireErr)` https://github.com/SeaQL/sea-orm/pull/1737
 
 ## 0.11.3 - 2023-04-24
 
