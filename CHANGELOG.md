@@ -466,6 +466,7 @@ pub enum Tea {
 }
 ```
 * Definition of `DbErr::ConnectionAcquire` changed to `ConnectionAcquire(ConnAcquireErr)` https://github.com/SeaQL/sea-orm/pull/1737
+* `FromJsonQueryResult` removed from entity prelude
 
 ## 0.11.3 - 2023-04-24
 
