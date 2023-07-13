@@ -1,6 +1,6 @@
-use crate::{EntityName, IdenStatic, IntoSimpleExpr, Iterable};
+use crate::{EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable};
 use sea_query::{
-    Alias, BinOper, DynIden, Expr, Iden, IntoIden, SeaRc, SelectStatement, SimpleExpr, Value,
+    Alias, BinOper, DynIden, Expr, IntoIden, SeaRc, SelectStatement, SimpleExpr, Value,
 };
 use std::str::FromStr;
 
@@ -381,12 +381,20 @@ impl ColumnDef {
     }
 }
 
-#[derive(Iden)]
 struct Text;
-
-#[derive(Iden)]
-#[iden = "text[]"]
 struct TextArray;
+
+impl Iden for Text {
+    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+        write!(s, "text").unwrap();
+    }
+}
+
+impl Iden for TextArray {
+    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+        write!(s, "text[]").unwrap();
+    }
+}
 
 fn cast_enum_as<C, F>(expr: Expr, col: &C, f: F) -> SimpleExpr
 where

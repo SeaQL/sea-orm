@@ -548,6 +548,34 @@ impl ColumnTrait for Column {
 * Replace the use of `SeaRc<T>` where `T` isn't `dyn Iden` with `RcOrArc<T>` https://github.com/SeaQL/sea-orm/pull/1661
 * Enabled `hashable-value` feature in SeaQuery, thus `Value::Float(NaN) == Value::Float(NaN)` would be true https://github.com/SeaQL/sea-orm/pull/1728, https://github.com/SeaQL/sea-orm/pull/1743
 * The `DeriveActiveEnum` derive macro no longer provide `std::fmt::Display` implementation for the enum. You need to derive an extra `DeriveDisplay` macro alongside with `DeriveActiveEnum` derive macro. https://github.com/SeaQL/sea-orm/pull/1726
+* `sea-query/derive` is no longer enabled by `sea-orm`, as such, `Iden` no longer works as a derive macro (it's still a trait). Instead, we are shipping a new macro `DeriveIden`:
+```rust
+// then:
+
+#[derive(Iden)]
+#[iden = "category"]
+pub struct CategoryEnum;
+
+#[derive(Iden)]
+pub enum Tea {
+    Table,
+    #[iden = "EverydayTea"]
+    EverydayTea,
+}
+
+// now:
+
+#[derive(DeriveIden)]
+#[sea_orm(iden = "category")]
+pub struct CategoryEnum;
+
+#[derive(DeriveIden)]
+pub enum Tea {
+    Table,
+    #[sea_orm(iden = "EverydayTea")]
+    EverydayTea,
+}
+```
 
 ## 0.11.3 - 2023-04-24
 
