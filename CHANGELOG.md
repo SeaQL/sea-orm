@@ -183,13 +183,13 @@ pub struct StringVec(pub Vec<String>);
 * Add `DeriveDisplay` derive macro to implements `std::fmt::Display` for active enum https://github.com/SeaQL/sea-orm/pull/1726
 ```rust
 #[derive(DeriveDisplay)]
-pub enum DisplayTea {
+enum DisplayTea {
     EverydayTea,
-    #[sea_orm(display_value = "Breakfast")]
+    #[sea_orm(display_value = "Breakfast Tea")]
     BreakfastTea,
 }
 assert_eq!(format!("{}", DisplayTea::EverydayTea), "EverydayTea");
-assert_eq!(format!("{}", DisplayTea::BreakfastTea), "Breakfast");
+assert_eq!(format!("{}", DisplayTea::BreakfastTea), "Breakfast Tea");
 ```
 * Added `UpdateMany::exec_with_returning()` https://github.com/SeaQL/sea-orm/pull/1677
 ```rust
@@ -328,6 +328,7 @@ assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
 
 ### Bug Fixes
 
+* `DeriveActiveEnum` no longer impl `Display`
 * Fixed `DeriveActiveEnum` throwing errors because `string_value` consists non-UAX#31 compliant characters https://github.com/SeaQL/sea-orm/pull/1374
 
 For example,

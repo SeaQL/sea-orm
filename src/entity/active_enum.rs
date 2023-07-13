@@ -490,4 +490,18 @@ mod tests {
         assert_eq!(EnumVariant::A0x24B.to_string(), "A$B");
         assert_eq!(EnumVariant::_0x300x20123.to_string(), "0 123");
     }
+
+    #[test]
+    fn test_derive_display() {
+        use crate::DeriveDisplay;
+
+        #[derive(DeriveDisplay)]
+        enum DisplayTea {
+            EverydayTea,
+            #[sea_orm(display_value = "Breakfast Tea")]
+            BreakfastTea,
+        }
+        assert_eq!(format!("{}", DisplayTea::EverydayTea), "EverydayTea");
+        assert_eq!(format!("{}", DisplayTea::BreakfastTea), "Breakfast Tea");
+    }
 }
