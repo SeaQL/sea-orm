@@ -16,8 +16,8 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum DbErr {
     /// This error can happen when the connection pool is fully-utilized
-    #[error("Failed to acquire connection from pool")]
-    ConnectionAcquire,
+    #[error("Failed to acquire connection from pool: {0}")]
+    ConnectionAcquire(ConnAcquireErr),
     /// Runtime type conversion error
     #[error("Error converting `{from}` into `{into}`: {source}")]
     TryIntoErr {
@@ -73,6 +73,17 @@ pub enum DbErr {
     /// May be the table is empty or the record does not exist
     #[error("None of the records are updated")]
     RecordNotUpdated,
+}
+
+/// Connection error
+#[derive(Error, Debug, PartialEq, Eq)]
+pub enum ConnAcquireErr {
+    /// Connection Timed Out
+    #[error("Connection Timed out")]
+    Timeout,
+    /// Unavailable connection
+    #[error("Connection closed by host")]
+    ConnectionClosed,
 }
 
 /// Runtime error
@@ -138,6 +149,16 @@ where
     T: ToString,
 {
     DbErr::Json(s.to_string())
+}
+
+#[allow(dead_code)]
+#[cfg(feature = "sqlx-dep")]
+pub(crate) fn conn_acquire_err(sqlx_err: sqlx::Error) -> DbErr {
+    match sqlx_err {
+        sqlx::Error::PoolTimedOut => DbErr::ConnectionAcquire(ConnAcquireErr::Timeout),
+        sqlx::Error::PoolClosed => DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed),
+        _ => DbErr::Conn(RuntimeErr::SqlxError(sqlx_err)),
+    }
 }
 
 /// An error from unsuccessful SQL query
