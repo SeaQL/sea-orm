@@ -1,4 +1,4 @@
-use sea_orm::Iden;
+use sea_orm::{sea_query::{self, Iden}};
 
 #[derive(Iden)]
 enum Character {
