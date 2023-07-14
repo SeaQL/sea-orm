@@ -8,9 +8,11 @@ edition = "2021"
 publish = false
 
 [dependencies]
-async-std = { version = "1.9", features = [ "attributes", "tokio1" ] }
+async-std = { version = "1.12", features = [ "attributes", "tokio1" ] }
 sea-orm = { path = "../../", features = [ "sqlx-all", "runtime-async-std-native-tls" ] }
 serde_json = { version = "1" }
 futures = { version = "0.3" }
 async-stream = { version = "0.3" }
 futures-util = { version = "0.3" }
+
+#unsure, connection driver issue

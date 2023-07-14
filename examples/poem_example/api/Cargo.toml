@@ -5,11 +5,11 @@ edition = "2021"
 
 [dependencies]
 poem-example-service = { path = "../service" }
-tokio = { version = "1.15.0", features = ["macros", "rt-multi-thread"] }
-poem = { version = "1.2.33", features = ["static-files"] }
+tokio = { version = "1.29.0", features = ["macros", "rt-multi-thread"] }
+poem = { version = "1.3.56", features = ["static-files"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 serde = { version = "1", features = ["derive"] }
-tera = "1.8.0"
+tera = "1.19.0"
 dotenvy = "0.15"
 entity = { path = "../entity" }
 migration = { path = "../migration" }
