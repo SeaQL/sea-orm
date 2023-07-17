@@ -24,6 +24,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [mediarepo](https://mediarepo.trivernis.dev) ([repository](https://github.com/Trivernis/mediarepo)) ![GitHub stars](https://img.shields.io/github/stars/Trivernis/mediarepo.svg?style=social) | A tag-based media management application | DB: SQLite
 - [mugen](https://github.com/koopa1338/mugen-dms) | DMS written in 🦀 | DB: Postgres
 - [OctoBase](https://github.com/toeverything/OctoBase) ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend written in 🦀 | DB: MySQL, Postgres, SQLite
+- [Ryot](https://ignisda.github.io/ryot) ([repository](https://github.com/IgnisDa/ryot)) ![GitHub stars](https://img.shields.io/github/stars/ignisda/ryot.svg?style=social) | The only self hosted tracker you will ever need | DB: MySQL, Postgres, SQLite
 - [Wikijump](https://github.com/scpwiki/wikijump) ([repository](https://github.com/scpwiki/wikijump/tree/develop/deepwell)) ![GitHub stars](https://img.shields.io/github/stars/scpwiki/wikijump.svg?style=social) | API service for Wikijump, a fork of Wikidot | DB: Postgres
 
 #### Game
