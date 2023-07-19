@@ -45,7 +45,7 @@ tracing = { version = "0.1", default-features = false }
 url = { version = "2.2", default-features = false }
 chrono = { version = "0.4.20", default-features = false, features = ["clock"] }
 regex = { version = "1", default-features = false }
-git2 = { version = "0.16", default-features = false }
+git2 = { version = ">= 0.16", default-features = false, optional = true }
 
 [dev-dependencies]
 smol = "1.2.5"
@@ -53,7 +53,7 @@ smol = "1.2.5"
 [features]
 default = ["codegen", "cli", "runtime-async-std-native-tls", "async-std"]
 codegen = ["sea-schema/sqlx-all", "sea-orm-codegen"]
-cli = ["clap", "dotenvy"]
+cli = ["clap", "dotenvy", "git2"]
 runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls", "sea-schema/runtime-actix-native-tls"]
 runtime-async-std-native-tls = ["sqlx/runtime-async-std-native-tls", "sea-schema/runtime-async-std-native-tls"]
 runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls", "sea-schema/runtime-tokio-native-tls"]

@@ -78,6 +78,7 @@ pub fn run_migrate_command(
     Ok(())
 }
 
+#[cfg(feature = "cli")]
 pub fn run_migrate_init(migration_dir: &str) -> Result<(), Box<dyn Error>> {
     let migration_dir = match migration_dir.ends_with('/') {
         true => migration_dir.to_string(),
