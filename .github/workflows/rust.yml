@@ -232,7 +232,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - id: set-matrix
-        run: echo "path_matrix=$(find examples -maxdepth 1 -type d -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "examples/\(.)" ]')" >> $GITHUB_OUTPUT
+        run: echo "path_matrix=$(find examples -mindepth 1 -maxdepth 1 -type d -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "examples/\(.)" ]')" >> $GITHUB_OUTPUT
     outputs:
       path_matrix: ${{ steps.set-matrix.outputs.path_matrix }}
 
