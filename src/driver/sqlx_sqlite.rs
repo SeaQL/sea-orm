@@ -1,5 +1,5 @@
 use sea_query::Values;
-use std::{future::Future, ops::DerefMut, pin::Pin, sync::Arc};
+use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
     pool::PoolConnection,
@@ -89,9 +89,9 @@ impl SqlxSqlitePoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        let conn = &mut self.pool.acquire().await.map_err(conn_acquire_err)?;
+        let mut conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
         crate::metric::metric!(self.metric_callback, &stmt, {
-            match query.execute(conn.deref_mut()).await {
+            match query.execute(&mut *conn).await {
                 Ok(res) => Ok(res.into()),
                 Err(err) => Err(sqlx_error_to_exec_err(err)),
             }
@@ -116,9 +116,9 @@ impl SqlxSqlitePoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        let conn = &mut self.pool.acquire().await.map_err(conn_acquire_err)?;
+        let mut conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
         crate::metric::metric!(self.metric_callback, &stmt, {
-            match query.fetch_one(conn.deref_mut()).await {
+            match query.fetch_one(&mut *conn).await {
                 Ok(row) => Ok(Some(row.into())),
                 Err(err) => match err {
                     sqlx::Error::RowNotFound => Ok(None),
@@ -134,9 +134,9 @@ impl SqlxSqlitePoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        let conn = &mut self.pool.acquire().await.map_err(conn_acquire_err)?;
+        let mut conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
         crate::metric::metric!(self.metric_callback, &stmt, {
-            match query.fetch_all(conn.deref_mut()).await {
+            match query.fetch_all(&mut *conn).await {
                 Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
                 Err(err) => Err(sqlx_error_to_query_err(err)),
             }
