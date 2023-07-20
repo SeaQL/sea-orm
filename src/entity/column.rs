@@ -1,6 +1,6 @@
-use crate::{EntityName, IdenStatic, IntoSimpleExpr, Iterable};
+use crate::{EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable};
 use sea_query::{
-    Alias, BinOper, DynIden, Expr, Iden, IntoIden, SeaRc, SelectStatement, SimpleExpr, Value,
+    Alias, BinOper, DynIden, Expr, IntoIden, SeaRc, SelectStatement, SimpleExpr, Value,
 };
 use std::str::FromStr;
 
@@ -15,7 +15,7 @@ pub struct ColumnDef {
     pub(crate) null: bool,
     pub(crate) unique: bool,
     pub(crate) indexed: bool,
-    pub(crate) default_value: Option<Value>,
+    pub(crate) default: Option<SimpleExpr>,
 }
 
 macro_rules! bind_oper {
@@ -310,7 +310,7 @@ impl ColumnTypeTrait for ColumnType {
             null: false,
             unique: false,
             indexed: false,
-            default_value: None,
+            default: None,
         }
     }
 
@@ -366,7 +366,16 @@ impl ColumnDef {
     where
         T: Into<Value>,
     {
-        self.default_value = Some(value.into());
+        self.default = Some(value.into().into());
+        self
+    }
+
+    /// Set the default value or expression of a column
+    pub fn default<T>(mut self, default: T) -> Self
+    where
+        T: Into<SimpleExpr>,
+    {
+        self.default = Some(default.into());
         self
     }
 
@@ -381,12 +390,20 @@ impl ColumnDef {
     }
 }
 
-#[derive(Iden)]
 struct Text;
-
-#[derive(Iden)]
-#[iden = "text[]"]
 struct TextArray;
+
+impl Iden for Text {
+    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+        write!(s, "text").unwrap();
+    }
+}
+
+impl Iden for TextArray {
+    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+        write!(s, "text[]").unwrap();
+    }
+}
 
 fn cast_enum_as<C, F>(expr: Expr, col: &C, f: F) -> SimpleExpr
 where
@@ -485,7 +502,7 @@ mod tests {
     #[test]
     #[cfg(feature = "macros")]
     fn entity_model_column_1() {
-        use crate::entity::*;
+        use crate::prelude::*;
 
         mod hello {
             use crate as sea_orm;
@@ -513,6 +530,14 @@ mod tests {
                 pub eight: u32,
                 #[sea_orm(unique, indexed, nullable)]
                 pub nine: u64,
+                #[sea_orm(default_expr = "Expr::current_timestamp()")]
+                pub ten: DateTimeUtc,
+                #[sea_orm(default_value = 7)]
+                pub eleven: u8,
+                #[sea_orm(default_value = "twelve_value")]
+                pub twelve: String,
+                #[sea_orm(default_expr = "\"twelve_value\"")]
+                pub twelve_two: String,
             }
 
             #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -553,6 +578,24 @@ mod tests {
         assert_eq!(
             hello::Column::Nine.def(),
             ColumnType::BigUnsigned.def().unique().indexed().nullable()
+        );
+        assert_eq!(
+            hello::Column::Ten.def(),
+            ColumnType::TimestampWithTimeZone
+                .def()
+                .default(Expr::current_timestamp())
+        );
+        assert_eq!(
+            hello::Column::Eleven.def(),
+            ColumnType::TinyUnsigned.def().default(7)
+        );
+        assert_eq!(
+            hello::Column::Twelve.def(),
+            ColumnType::String(None).def().default("twelve_value")
+        );
+        assert_eq!(
+            hello::Column::TwelveTwo.def(),
+            ColumnType::String(None).def().default("twelve_value")
         );
     }
 

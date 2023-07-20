@@ -137,7 +137,15 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                             } else if meta.path.is_ident("default_value") {
                                 default_value = Some(meta.value()?.parse::<Lit>()?);
                             } else if meta.path.is_ident("default_expr") {
-                                default_expr = Some(meta.value()?.parse::<Lit>()?);
+                                let lit = meta.value()?.parse()?;
+                                if let Lit::Str(litstr) = lit {
+                                    let value_expr: TokenStream = syn::parse_str(&litstr.value())?;
+                                    default_expr = Some(value_expr);
+                                } else {
+                                    return Err(
+                                        meta.error(format!("Invalid column_type {:?}", lit))
+                                    );
+                                }
                             } else if meta.path.is_ident("column_name") {
                                 let lit = meta.value()?.parse()?;
                                 if let Lit::Str(litstr) = lit {
@@ -267,7 +275,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         match_row = quote! { #match_row.default_value(#default_value) };
                     }
                     if let Some(default_expr) = default_expr {
-                        match_row = quote! { #match_row.default_expr(#default_expr) };
+                        match_row = quote! { #match_row.default(#default_expr) };
                     }
                     columns_trait.push(match_row);
                 }

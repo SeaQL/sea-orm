@@ -42,12 +42,11 @@ impl MigrationTrait for Migration {
     }
 }
 
-/// Learn more at https://docs.rs/sea-query#iden
-#[derive(Iden)]
+#[derive(DeriveIden)]
 pub enum Tea {
     Table,
-    #[iden = "EverydayTea"]
+    #[sea_orm(iden = "EverydayTea")]
     EverydayTea,
-    #[iden = "BreakfastTea"]
+    #[sea_orm(iden = "BreakfastTea")]
     BreakfastTea,
 }

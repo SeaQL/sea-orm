@@ -36,7 +36,6 @@ pub mod value_type_pg {
 }
 
 use sea_orm::entity::prelude::*;
-use sea_orm_macros::DeriveValueType;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
 #[sea_orm(array_type = "Int")]

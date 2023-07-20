@@ -1,6 +1,6 @@
 pub use crate::{
     error::*,
-    sea_query::{BlobSize, DynIden, RcOrArc, SeaRc},
+    sea_query::{BlobSize, DynIden, Expr, RcOrArc, SeaRc},
     ActiveEnum, ActiveModelBehavior, ActiveModelTrait, ColumnDef, ColumnTrait, ColumnType,
     ColumnTypeTrait, ConnectionTrait, CursorTrait, DatabaseConnection, DbConn, EntityName,
     EntityTrait, EnumIter, ForeignKeyAction, Iden, IdenStatic, Linked, LoaderTrait, ModelTrait,
@@ -11,8 +11,9 @@ pub use crate::{
 #[cfg(feature = "macros")]
 pub use crate::{
     DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn,
-    DeriveCustomColumn, DeriveDisplay, DeriveEntity, DeriveEntityModel, DeriveIntoActiveModel,
-    DeriveModel, DerivePrimaryKey, DeriveRelatedEntity, DeriveRelation, FromJsonQueryResult,
+    DeriveCustomColumn, DeriveDisplay, DeriveEntity, DeriveEntityModel, DeriveIden,
+    DeriveIntoActiveModel, DeriveModel, DerivePartialModel, DerivePrimaryKey, DeriveRelatedEntity,
+    DeriveRelation, DeriveValueType,
 };
 
 pub use async_trait;
