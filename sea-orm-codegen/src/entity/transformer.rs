@@ -2,6 +2,7 @@ use crate::{
     util::unpack_table_ref, ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error,
     PrimaryKey, Relation, RelationType,
 };
+use heck::ToUpperCamelCase;
 use sea_query::{Alias, ColumnDef, ColumnSpec, SeaRc, TableCreateStatement};
 use std::collections::{BTreeMap, HashMap};
 
@@ -72,7 +73,7 @@ impl EntityTransformer {
                         let pk_custom_type_name = format!("{}PrimaryKey", table_name);
 
                         col.col_type = sea_query::ColumnType::CustomRustType {
-                            rust_ty: pk_custom_type_name,
+                            rust_ty: pk_custom_type_name.to_upper_camel_case(),
                             db_ty: Box::new(curr_type),
                         };
                     }

@@ -380,6 +380,7 @@ impl EntityWriter {
         // If any column is a custom type, we need to generate a custom primary
         // key type. This assumes there is only one primary key, which is should
         // be the intented use case.
+        dbg!(&entity.columns);
         let pk_custom_types = match entity
             .columns
             .iter()
