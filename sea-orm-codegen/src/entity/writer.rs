@@ -2,7 +2,8 @@ use crate::{util::escape_rust_keyword, ActiveEnum, Entity};
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use std::{collections::BTreeMap, str::FromStr};
+use sea_query::{Alias, QuotedBuilder, SeaRc};
+use std::{collections::BTreeMap, fmt::format, str::FromStr};
 use syn::{punctuated::Punctuated, token::Comma};
 use tracing::info;
 
@@ -375,13 +376,51 @@ impl EntityWriter {
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
+
+        // If any column is a custom type, we need to generate a custom primary
+        // key type. This assumes there is only one primary key, which is should
+        // be the intented use case.
+        let pk_custom_types = match entity
+            .columns
+            .iter()
+            .find(|col| {
+                if let sea_query::ColumnType::CustomRustType {
+                    rust_ty: _,
+                    db_ty: _,
+                } = &col.col_type
+                {
+                    true
+                } else {
+                    false
+                }
+            })
+            .map(|col| {
+                // Get the table name, and the name of the new type
+                let table_name = entity.table_name.to_upper_camel_case();
+                let pk_custom_type_name = format!("{}PrimaryKey", table_name);
+
+                let db_ty = col.get_rs_type(date_time_crate);
+
+                // Get the type of the primary key
+                quote! { pub type #pk_custom_type_name = #db_ty; }
+            }) {
+            Some(ts) => ts,
+            None => quote! {},
+        };
+
+        // Override the type of the primary key
+        // pk_column.col_type =
+        //     sea_query::ColumnType::Custom(SeaRc::new(Alias::new(pk_custom_type_name)));
+
         let mut code_blocks = vec![
             imports,
+            pk_custom_types,
             Self::gen_compact_model_struct(
                 entity,
                 with_serde,
                 date_time_crate,
                 schema_name,
+                // pk_custom_type_name,
                 serde_skip_deserializing_primary_key,
                 serde_skip_hidden_column,
                 model_extra_derives,
@@ -692,6 +731,7 @@ impl EntityWriter {
         with_serde: &WithSerde,
         date_time_crate: &DateTimeCrate,
         schema_name: &Option<String>,
+        // pk_type_name: String,
         serde_skip_deserializing_primary_key: bool,
         serde_skip_hidden_column: bool,
         model_extra_derives: &TokenStream,
@@ -706,16 +746,18 @@ impl EntityWriter {
             .iter()
             .map(|pk| pk.name.clone())
             .collect();
+
+        // Build the token stream for the attributes of the model struct
         let attrs: Vec<TokenStream> = entity
             .columns
             .iter()
             .map(|col| {
                 let mut attrs: Punctuated<_, Comma> = Punctuated::new();
-                let is_primary_key = primary_keys.contains(&col.name);
                 if !col.is_snake_case_name() {
                     let column_name = &col.name;
                     attrs.push(quote! { column_name = #column_name });
                 }
+                let is_primary_key = primary_keys.contains(&col.name);
                 if is_primary_key {
                     attrs.push(quote! { primary_key });
                     if !col.auto_increment {
@@ -1488,6 +1530,7 @@ mod tests {
         assert_eq!(entities.len(), ENTITY_FILES.len());
 
         for (i, entity) in entities.iter().enumerate() {
+            println!("Testing entity: {}", entity.table_name);
             assert_eq!(
                 parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
                 EntityWriter::gen_compact_code_blocks(
