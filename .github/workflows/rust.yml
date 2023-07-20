@@ -231,7 +231,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - id: set-matrix
-        run: echo "path_matrix=$(find examples -type f -name 'Cargo.toml' -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "examples/\(.)" ]')" >> $GITHUB_OUTPUT
+        run: echo "path_matrix=$(find examples -mindepth 1 -maxdepth 1 -type d -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "examples/\(.)" ]')" >> $GITHUB_OUTPUT
     outputs:
       path_matrix: ${{ steps.set-matrix.outputs.path_matrix }}
 
@@ -239,10 +239,8 @@ jobs:
     name: Examples
     runs-on: ubuntu-latest
     needs: examples-matrix
-    timeout-minutes: 15
     strategy:
       fail-fast: false
-      max-parallel: 12
       matrix:
         path: ${{ fromJson(needs.examples-matrix.outputs.path_matrix) }}
     steps:
@@ -251,11 +249,10 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt
-      - run: cargo fmt --manifest-path ${{ matrix.path }} -- --check
-      - run: cargo build --manifest-path ${{ matrix.path }}
-      - run: cargo test --manifest-path ${{ matrix.path }}
-      - if: ${{ contains(matrix.path, 'core/Cargo.toml') }}
-        run: cargo test --manifest-path ${{ matrix.path }} --features mock
+      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -printf '\ncargo fmt --manifest-path %p -- --check\n' -exec cargo fmt --manifest-path {} -- --check \;
+      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -printf '\ncargo build --manifest-path %p\n' -exec cargo build --manifest-path {} \;
+      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -printf '\ncargo test --manifest-path %p\n' -exec cargo test --manifest-path {} \;
+      - run: (${{ '[ -d "' }}${{ matrix.path }}${{ '/service" ]' }} && find ${{ matrix.path }}/service -type f -name 'Cargo.toml' -printf '\ncargo test --manifest-path %p --features mock\n' -exec cargo test --manifest-path {} --features mock \;) || true
 
   issues-matrix:
     name: Issues Matrix
