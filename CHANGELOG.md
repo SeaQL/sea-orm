@@ -330,13 +330,13 @@ assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
 
 ### Upgrades
 
-* Upgrade `heck` dependency in `sea-orm-macros` and `sea-orm-codegen` to 0.4 https://github.com/SeaQL/sea-orm/pull/1520, https://github.com/SeaQL/sea-orm/pull/1544
-* Upgrade `strum` to 0.25 https://github.com/SeaQL/sea-orm/pull/1752
-* Upgrade `sea-query` to 0.29 https://github.com/SeaQL/sea-orm/pull/1562
-* Upgrade `sea-query-binder` to 0.4 https://github.com/SeaQL/sea-orm/pull/1562
-* Upgrade `sea-schema` to 0.12 https://github.com/SeaQL/sea-orm/pull/1562
-* Upgrade `clap` to 4.3 https://github.com/SeaQL/sea-orm/pull/1468
-* Replace `bae` with `sea-bae` https://github.com/SeaQL/sea-orm/pull/1739
+* Upgrade `syn` to `2` https://github.com/SeaQL/sea-orm/pull/1713
+* Upgrade `heck` to `0.4` https://github.com/SeaQL/sea-orm/pull/1520, https://github.com/SeaQL/sea-orm/pull/1544
+* Upgrade `strum` to `0.25` https://github.com/SeaQL/sea-orm/pull/1752
+* Upgrade `sea-query` to `0.30`
+* Upgrade `sea-schema` to `0.14`
+* Upgrade `clap` to `4.3` https://github.com/SeaQL/sea-orm/pull/1468
+* Upgrade `ouroboros` to `0.17` https://github.com/SeaQL/sea-orm/pull/1724
 
 ### Bug Fixes
 
@@ -426,6 +426,7 @@ impl ColumnTrait for Column {
 ```
 * Resolved `insert_many` failing if the models iterator is empty https://github.com/SeaQL/sea-orm/issues/873
 * Update the template MD file of `migration/README.md`, fix a faulty sample `migrate init` shell script https://github.com/SeaQL/sea-orm/pull/1723
+* [sea-orm-cli] Fix Postgres enum arrays https://github.com/SeaQL/sea-orm/pull/1678
 
 ### Breaking changes
 
@@ -467,6 +468,10 @@ pub enum Tea {
 ```
 * Definition of `DbErr::ConnectionAcquire` changed to `ConnectionAcquire(ConnAcquireErr)` https://github.com/SeaQL/sea-orm/pull/1737
 * `FromJsonQueryResult` removed from entity prelude
+
+### House keeping
+
+* Replace `bae` with `sea-bae` https://github.com/SeaQL/sea-orm/pull/1739
 
 ## 0.11.3 - 2023-04-24
 
@@ -611,8 +616,6 @@ impl ColumnTrait for Column {
 * Disabled default features and enabled only the needed ones https://github.com/SeaQL/sea-orm/pull/1300
 * Cleanup panic and unwrap https://github.com/SeaQL/sea-orm/pull/1231
 * Cleanup the use of `vec!` macro https://github.com/SeaQL/sea-orm/pull/1367
-* Upgrade `syn` to v2 https://github.com/SeaQL/sea-orm/pull/1713
-* Upgrade `ouroboros` to `0.17` https://github.com/SeaQL/sea-orm/pull/1724
 
 ### Bug Fixes
 
