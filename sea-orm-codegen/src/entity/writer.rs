@@ -1,4 +1,4 @@
-use crate::{util::escape_rust_keyword, ActiveEnum, Entity};
+use crate::{util::escape_rust_keyword, ActiveEnum, Column, Entity};
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -30,6 +30,12 @@ pub enum WithSerde {
     Both,
 }
 
+#[derive(PartialEq, Eq, Debug)]
+pub enum WithTablePkType {
+    None,
+    Custom,
+}
+
 #[derive(Debug)]
 pub enum DateTimeCrate {
     Chrono,
@@ -40,6 +46,7 @@ pub enum DateTimeCrate {
 pub struct EntityWriterContext {
     pub(crate) expanded_format: bool,
     pub(crate) with_serde: WithSerde,
+    pub(crate) with_table_pk_type: WithTablePkType,
     pub(crate) with_copy_enums: bool,
     pub(crate) date_time_crate: DateTimeCrate,
     pub(crate) schema_name: Option<String>,
@@ -136,6 +143,7 @@ impl EntityWriterContext {
     pub fn new(
         expanded_format: bool,
         with_serde: WithSerde,
+        with_table_pk_type: WithTablePkType,
         with_copy_enums: bool,
         date_time_crate: DateTimeCrate,
         schema_name: Option<String>,
@@ -149,6 +157,7 @@ impl EntityWriterContext {
         Self {
             expanded_format,
             with_serde,
+            with_table_pk_type,
             with_copy_enums,
             date_time_crate,
             schema_name,
@@ -384,23 +393,27 @@ impl EntityWriter {
         let pk_custom_types = match entity
             .columns
             .iter()
-            .find(|col| {
-                if let sea_query::ColumnType::CustomRustType {
-                    rust_ty: _,
-                    db_ty: _,
-                } = &col.col_type
+            .find_map(|col| {
+                if let sea_query::ColumnType::CustomRustType { rust_ty: _, db_ty } =
+                    col.clone().col_type
                 {
-                    true
+                    Some((col, db_ty))
                 } else {
-                    false
+                    None
                 }
             })
-            .map(|col| {
+            .map(|(col, db_ty)| {
                 // Get the table name, and the name of the new type
                 let table_name = entity.table_name.to_upper_camel_case();
                 let pk_custom_type_name = format!("{}PrimaryKey", table_name);
 
-                let db_ty = col.get_rs_type(date_time_crate);
+                let db_ty = Column {
+                    col_type: *db_ty,
+                    ..col.clone()
+                }
+                .get_rs_type(date_time_crate);
+
+                // let db_ty = col.get_rs_type(date_time_crate);
 
                 // Get the type of the primary key
                 quote! { pub type #pk_custom_type_name = #db_ty; }
@@ -408,10 +421,6 @@ impl EntityWriter {
             Some(ts) => ts,
             None => quote! {},
         };
-
-        // Override the type of the primary key
-        // pk_column.col_type =
-        //     sea_query::ColumnType::Custom(SeaRc::new(Alias::new(pk_custom_type_name)));
 
         let mut code_blocks = vec![
             imports,

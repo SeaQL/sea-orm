@@ -68,8 +68,7 @@ impl EntityTransformer {
                     if primary_key {
                         // Change this to a custom type
                         let curr_type = col.col_type;
-                        // let new_col_type =
-                        //     sea_query::ColumnType::Custom(SeaRc::new(Alias::new("test")));
+
                         let pk_custom_type_name = format!("{}PrimaryKey", table_name);
 
                         col.col_type = sea_query::ColumnType::CustomRustType {
