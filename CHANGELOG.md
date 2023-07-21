@@ -27,8 +27,6 @@ impl MigratorTrait for Migrator {
 ```
 * Added option to construct chained AND / OR join on condition https://github.com/SeaQL/sea-orm/pull/1433
 ```rust
-use sea_orm::entity::prelude::*;
-
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "cake")]
 pub struct Model {
@@ -64,8 +62,6 @@ pub enum Relation {
     * Implemented `TryGetableMany` for tuple of `TryGetable` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
     * Implemented `TryFromU64` for tuple of `TryFromU64` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
 ```rust
-use sea_orm::entity::prelude::*;
-
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 #[sea_orm(table_name = "primary_key_of_12")]
 pub struct Model {
@@ -330,11 +326,12 @@ assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
 
 ### Upgrades
 
+* Upgrade `sqlx` to `0.7` https://github.com/SeaQL/sea-orm/pull/1742
+* Upgrade `sea-query` to `0.30` https://github.com/SeaQL/sea-orm/pull/1742
+* Upgrade `sea-schema` to `0.14` https://github.com/SeaQL/sea-orm/pull/1742
 * Upgrade `syn` to `2` https://github.com/SeaQL/sea-orm/pull/1713
 * Upgrade `heck` to `0.4` https://github.com/SeaQL/sea-orm/pull/1520, https://github.com/SeaQL/sea-orm/pull/1544
 * Upgrade `strum` to `0.25` https://github.com/SeaQL/sea-orm/pull/1752
-* Upgrade `sea-query` to `0.30`
-* Upgrade `sea-schema` to `0.14`
 * Upgrade `clap` to `4.3` https://github.com/SeaQL/sea-orm/pull/1468
 * Upgrade `ouroboros` to `0.17` https://github.com/SeaQL/sea-orm/pull/1724
 
