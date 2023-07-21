@@ -240,6 +240,13 @@ pub enum GenerateSubcommands {
         #[arg(
             long,
             default_value = "false",
+            help = "Custom Rust type for pk"
+        )]
+        custom_rust_type_pk: bool,
+
+        #[arg(
+            long,
+            default_value = "false",
             long_help = "Automatically derive the Copy trait on generated enums.\n\
             Enums generated from a database don't have associated data by default, and as such can \
             derive Copy.

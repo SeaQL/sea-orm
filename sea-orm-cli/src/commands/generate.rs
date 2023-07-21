@@ -1,6 +1,6 @@
 use sea_orm_codegen::{
     DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
-    WithSerde,
+    WithSerde, WithTablePkType,
 };
 use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
@@ -26,6 +26,7 @@ pub async fn run_generate_command(
             with_serde,
             serde_skip_deserializing_primary_key,
             serde_skip_hidden_column,
+            custom_rust_type_pk: bool,
             with_copy_enums,
             date_time_crate,
             lib,
@@ -165,6 +166,10 @@ pub async fn run_generate_command(
             let writer_context = EntityWriterContext::new(
                 expanded_format,
                 WithSerde::from_str(&with_serde).expect("Invalid serde derive option"),
+                match custom_rust_type_pk {
+                    true => WithTablePkType::Custom,
+                    false => WithTablePkType::None,
+                },
                 with_copy_enums,
                 date_time_crate.into(),
                 schema_name,
