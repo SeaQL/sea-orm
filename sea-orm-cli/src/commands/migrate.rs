@@ -117,7 +117,7 @@ pub fn run_migrate_init(migration_dir: &str) -> Result<(), Box<dyn Error>> {
         content.replace("<sea-orm-migration-version>", &ver)
     });
     write_file!("README.md");
-    if git2::Repository::discover(Path::new(&migration_dir)).is_ok() {
+    if glob::glob(&format!("{migration_dir}**/.git"))?.count() > 0 {
         write_file!(".gitignore", "_gitignore");
     }
     println!("Done!");

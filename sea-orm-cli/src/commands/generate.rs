@@ -112,7 +112,7 @@ pub async fn run_generate_command(
 
                     let connection = connect::<MySql>(max_connections, url.as_str(), None).await?;
                     let schema_discovery = SchemaDiscovery::new(connection, database_name);
-                    let schema = schema_discovery.discover().await;
+                    let schema = schema_discovery.discover().await?;
                     let table_stmts = schema
                         .tables
                         .into_iter()
@@ -148,7 +148,7 @@ pub async fn run_generate_command(
                     let connection =
                         connect::<Postgres>(max_connections, url.as_str(), Some(schema)).await?;
                     let schema_discovery = SchemaDiscovery::new(connection, schema);
-                    let schema = schema_discovery.discover().await;
+                    let schema = schema_discovery.discover().await?;
                     let table_stmts = schema
                         .tables
                         .into_iter()
