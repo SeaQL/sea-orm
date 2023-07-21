@@ -2,18 +2,21 @@ use crate::{
     util::unpack_table_ref, ActiveEnum, Column, ConjunctRelation, Entity, EntityWriter, Error,
     PrimaryKey, Relation, RelationType,
 };
-use sea_query::{ColumnSpec, TableCreateStatement};
+use heck::ToUpperCamelCase;
+use sea_query::{Alias, ColumnDef, ColumnSpec, SeaRc, TableCreateStatement};
 use std::collections::{BTreeMap, HashMap};
 
 #[derive(Clone, Debug)]
 pub struct EntityTransformer;
 
 impl EntityTransformer {
-    pub fn transform(table_create_stmts: Vec<TableCreateStatement>) -> Result<EntityWriter, Error> {
+    pub fn transform(
+        mut table_create_stmts: Vec<TableCreateStatement>,
+    ) -> Result<EntityWriter, Error> {
         let mut enums: BTreeMap<String, ActiveEnum> = BTreeMap::new();
         let mut inverse_relations: BTreeMap<String, Vec<Relation>> = BTreeMap::new();
         let mut entities = BTreeMap::new();
-        for table_create in table_create_stmts.into_iter() {
+        for table_create in table_create_stmts.iter_mut() {
             let table_name = match table_create.get_table_name() {
                 Some(table_ref) => match table_ref {
                     sea_query::TableRef::Table(t)
@@ -43,10 +46,37 @@ impl EntityTransformer {
                         primary_keys.push(PrimaryKey {
                             name: col_def.get_column_name(),
                         });
+
+                        // // Change this to a custom type
+                        // let curr_type = col_def.get_column_type();
+
+                        // let pk_custom_type_name = format!("{}PrimaryKey", table_name);
+
+                        // let new_col_type = sea_query::ColumnType::CustomRustType {
+                        //     rust_ty: todo!(),
+                        //     db_ty: todo!(),
+                        // };
+                        // let col_def = ColumnDef::new_with_type(
+                        //     SeaRc::new(Alias::new(col_def.get_column_name())),
+                        //     new_col_type,
+                        // );
                     }
-                    col_def.into()
+                    let col_def: Column = col_def.into();
+                    (col_def, primary_key)
                 })
-                .map(|mut col: Column| {
+                .map(|(mut col, primary_key)| {
+                    if primary_key {
+                        // Change this to a custom type
+                        let curr_type = col.col_type;
+
+                        let pk_custom_type_name = format!("{}PrimaryKey", table_name);
+
+                        col.col_type = sea_query::ColumnType::CustomRustType {
+                            rust_ty: pk_custom_type_name.to_upper_camel_case(),
+                            db_ty: Box::new(curr_type),
+                        };
+                    }
+
                     col.unique = table_create
                         .get_indexes()
                         .iter()
@@ -380,6 +410,7 @@ mod tests {
                 EntityWriter::gen_compact_code_blocks(
                     entity,
                     &crate::WithSerde::None,
+                    &crate::WithTablePkType::None,
                     &crate::DateTimeCrate::Chrono,
                     &None,
                     false,

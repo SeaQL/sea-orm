@@ -4,6 +4,7 @@ use quote::format_ident;
 use quote::quote;
 use sea_query::ColumnType;
 
+use crate::WithTablePkType;
 use crate::{
     util::escape_rust_keyword, Column, ConjunctRelation, DateTimeCrate, PrimaryKey, Relation,
 };
@@ -48,11 +49,32 @@ impl Entity {
             .collect()
     }
 
-    pub fn get_column_rs_types(&self, date_time_crate: &DateTimeCrate) -> Vec<TokenStream> {
+    pub fn get_column_rs_types(
+        &self,
+        date_time_crate: &DateTimeCrate,
+        with_table_pk_type: &WithTablePkType,
+    ) -> Vec<TokenStream> {
         self.columns
             .clone()
             .into_iter()
-            .map(|col| col.get_rs_type(date_time_crate))
+            .map(|col| {
+                // If this is the primary key column, we need to check if we need
+                // to use the custom type for the table's primary key
+                if let ColumnType::CustomRustType { rust_ty, db_ty } = col.col_type {
+                    match with_table_pk_type {
+                        WithTablePkType::None => Column {
+                            col_type: *db_ty,
+                            ..col
+                        }
+                        .get_rs_type(date_time_crate),
+                        WithTablePkType::Custom => {
+                            quote! { #rust_ty }
+                        }
+                    }
+                } else {
+                    col.get_rs_type(date_time_crate)
+                }
+            })
             .collect()
     }
 
@@ -381,7 +403,7 @@ mod tests {
         let entity = setup();
 
         for (i, elem) in entity
-            .get_column_rs_types(&DateTimeCrate::Chrono)
+            .get_column_rs_types(&DateTimeCrate::Chrono, &crate::WithTablePkType::None)
             .into_iter()
             .enumerate()
         {

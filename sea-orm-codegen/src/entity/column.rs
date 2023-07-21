@@ -75,6 +75,7 @@ impl Column {
                 ColumnType::Array(column_type) => {
                     format!("Vec<{}>", write_rs_type(column_type, date_time_crate))
                 }
+                ColumnType::CustomRustType { rust_ty, db_ty } => rust_ty.to_owned(),
                 _ => unimplemented!(),
             }
         }

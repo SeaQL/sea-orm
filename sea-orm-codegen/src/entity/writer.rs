@@ -1,8 +1,9 @@
-use crate::{util::escape_rust_keyword, ActiveEnum, Entity};
+use crate::{util::escape_rust_keyword, ActiveEnum, Column, Entity};
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use std::{collections::BTreeMap, str::FromStr};
+use sea_query::{Alias, QuotedBuilder, SeaRc};
+use std::{collections::BTreeMap, fmt::format, str::FromStr};
 use syn::{punctuated::Punctuated, token::Comma};
 use tracing::info;
 
@@ -29,6 +30,12 @@ pub enum WithSerde {
     Both,
 }
 
+#[derive(PartialEq, Eq, Debug)]
+pub enum WithTablePkType {
+    None,
+    Custom,
+}
+
 #[derive(Debug)]
 pub enum DateTimeCrate {
     Chrono,
@@ -39,6 +46,7 @@ pub enum DateTimeCrate {
 pub struct EntityWriterContext {
     pub(crate) expanded_format: bool,
     pub(crate) with_serde: WithSerde,
+    pub(crate) with_table_pk_type: WithTablePkType,
     pub(crate) with_copy_enums: bool,
     pub(crate) date_time_crate: DateTimeCrate,
     pub(crate) schema_name: Option<String>,
@@ -135,6 +143,7 @@ impl EntityWriterContext {
     pub fn new(
         expanded_format: bool,
         with_serde: WithSerde,
+        with_table_pk_type: WithTablePkType,
         with_copy_enums: bool,
         date_time_crate: DateTimeCrate,
         schema_name: Option<String>,
@@ -148,6 +157,7 @@ impl EntityWriterContext {
         Self {
             expanded_format,
             with_serde,
+            with_table_pk_type,
             with_copy_enums,
             date_time_crate,
             schema_name,
@@ -206,6 +216,7 @@ impl EntityWriter {
                     Self::gen_expanded_code_blocks(
                         entity,
                         &context.with_serde,
+                        &context.with_table_pk_type,
                         &context.date_time_crate,
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
@@ -218,6 +229,7 @@ impl EntityWriter {
                     Self::gen_compact_code_blocks(
                         entity,
                         &context.with_serde,
+                        &context.with_table_pk_type,
                         &context.date_time_crate,
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
@@ -322,6 +334,7 @@ impl EntityWriter {
     pub fn gen_expanded_code_blocks(
         entity: &Entity,
         with_serde: &WithSerde,
+        with_table_pk_type: &WithTablePkType,
         date_time_crate: &DateTimeCrate,
         schema_name: &Option<String>,
         serde_skip_deserializing_primary_key: bool,
@@ -339,6 +352,7 @@ impl EntityWriter {
             Self::gen_model_struct(
                 entity,
                 with_serde,
+                with_table_pk_type,
                 date_time_crate,
                 serde_skip_deserializing_primary_key,
                 serde_skip_hidden_column,
@@ -365,6 +379,7 @@ impl EntityWriter {
     pub fn gen_compact_code_blocks(
         entity: &Entity,
         with_serde: &WithSerde,
+        with_table_pk_type: &WithTablePkType,
         date_time_crate: &DateTimeCrate,
         schema_name: &Option<String>,
         serde_skip_deserializing_primary_key: bool,
@@ -375,11 +390,54 @@ impl EntityWriter {
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
+
+        // If any column is a custom type, we need to generate a custom primary
+        // key type. This assumes there is only one primary key, which is should
+        // be the intented use case.
+        dbg!(&entity.columns);
+        let pk_custom_types = if let WithTablePkType::Custom = with_table_pk_type {
+            match entity
+                .columns
+                .iter()
+                .find_map(|col| {
+                    if let sea_query::ColumnType::CustomRustType { rust_ty: _, db_ty } =
+                        col.clone().col_type
+                    {
+                        Some((col, db_ty))
+                    } else {
+                        None
+                    }
+                })
+                .map(|(col, db_ty)| {
+                    // Get the table name, and the name of the new type
+                    let table_name = entity.table_name.to_upper_camel_case();
+                    let pk_custom_type_name = format!("{}PrimaryKey", table_name);
+
+                    // This is a hacky way to get the type from `db_ty` in the
+                    // Column struct
+                    let db_ty = Column {
+                        col_type: *db_ty,
+                        ..col.clone()
+                    }
+                    .get_rs_type(date_time_crate);
+
+                    // Get the type of the primary key
+                    quote! { pub type #pk_custom_type_name = #db_ty; }
+                }) {
+                Some(ts) => ts,
+                None => quote! {},
+            }
+        } else {
+            quote! {}
+        };
+
         let mut code_blocks = vec![
             imports,
+            pk_custom_types,
             Self::gen_compact_model_struct(
                 entity,
                 with_serde,
+                with_table_pk_type,
                 date_time_crate,
                 schema_name,
                 serde_skip_deserializing_primary_key,
@@ -474,6 +532,7 @@ impl EntityWriter {
     pub fn gen_model_struct(
         entity: &Entity,
         with_serde: &WithSerde,
+        with_table_pk_type: &WithTablePkType,
         date_time_crate: &DateTimeCrate,
         serde_skip_deserializing_primary_key: bool,
         serde_skip_hidden_column: bool,
@@ -481,7 +540,7 @@ impl EntityWriter {
         model_extra_attributes: &TokenStream,
     ) -> TokenStream {
         let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types(date_time_crate);
+        let column_rs_types = entity.get_column_rs_types(date_time_crate, with_table_pk_type);
         let if_eq_needed = entity.get_eq_needed();
         let serde_attributes = entity.get_column_serde_attributes(
             serde_skip_deserializing_primary_key,
@@ -690,8 +749,10 @@ impl EntityWriter {
     pub fn gen_compact_model_struct(
         entity: &Entity,
         with_serde: &WithSerde,
+        with_table_pk_type: &WithTablePkType,
         date_time_crate: &DateTimeCrate,
         schema_name: &Option<String>,
+        // pk_type_name: String,
         serde_skip_deserializing_primary_key: bool,
         serde_skip_hidden_column: bool,
         model_extra_derives: &TokenStream,
@@ -699,23 +760,25 @@ impl EntityWriter {
     ) -> TokenStream {
         let table_name = entity.table_name.as_str();
         let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types(date_time_crate);
+        let column_rs_types = entity.get_column_rs_types(date_time_crate, with_table_pk_type);
         let if_eq_needed = entity.get_eq_needed();
         let primary_keys: Vec<String> = entity
             .primary_keys
             .iter()
             .map(|pk| pk.name.clone())
             .collect();
+
+        // Build the token stream for the attributes of the model struct
         let attrs: Vec<TokenStream> = entity
             .columns
             .iter()
             .map(|col| {
                 let mut attrs: Punctuated<_, Comma> = Punctuated::new();
-                let is_primary_key = primary_keys.contains(&col.name);
                 if !col.is_snake_case_name() {
                     let column_name = &col.name;
                     attrs.push(quote! { column_name = #column_name });
                 }
+                let is_primary_key = primary_keys.contains(&col.name);
                 if is_primary_key {
                     attrs.push(quote! { primary_key });
                     if !col.auto_increment {
@@ -753,12 +816,14 @@ impl EntityWriter {
                 ts
             })
             .collect();
+
         let schema_name = match Self::gen_schema_name(schema_name) {
             Some(schema_name) => quote! {
                 schema_name = #schema_name,
             },
             None => quote! {},
         };
+
         let extra_derive = with_serde.extra_derive();
 
         quote! {
@@ -810,7 +875,7 @@ mod tests {
     use crate::{
         entity::writer::{bonus_attributes, bonus_derive},
         Column, ConjunctRelation, DateTimeCrate, Entity, EntityWriter, PrimaryKey, Relation,
-        RelationType, WithSerde,
+        RelationType, WithSerde, WithTablePkType,
     };
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
@@ -1394,6 +1459,7 @@ mod tests {
                 EntityWriter::gen_expanded_code_blocks(
                     entity,
                     &crate::WithSerde::None,
+                    &crate::WithTablePkType::None,
                     &crate::DateTimeCrate::Chrono,
                     &None,
                     false,
@@ -1415,6 +1481,7 @@ mod tests {
                 EntityWriter::gen_expanded_code_blocks(
                     entity,
                     &crate::WithSerde::None,
+                    &crate::WithTablePkType::None,
                     &crate::DateTimeCrate::Chrono,
                     &Some("public".to_owned()),
                     false,
@@ -1436,6 +1503,7 @@ mod tests {
                 EntityWriter::gen_expanded_code_blocks(
                     entity,
                     &crate::WithSerde::None,
+                    &crate::WithTablePkType::None,
                     &crate::DateTimeCrate::Chrono,
                     &Some("schema_name".to_owned()),
                     false,
@@ -1488,11 +1556,13 @@ mod tests {
         assert_eq!(entities.len(), ENTITY_FILES.len());
 
         for (i, entity) in entities.iter().enumerate() {
+            println!("Testing entity: {}", entity.table_name);
             assert_eq!(
                 parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
                 EntityWriter::gen_compact_code_blocks(
                     entity,
                     &crate::WithSerde::None,
+                    &crate::WithTablePkType::None,
                     &crate::DateTimeCrate::Chrono,
                     &None,
                     false,
@@ -1514,6 +1584,7 @@ mod tests {
                 EntityWriter::gen_compact_code_blocks(
                     entity,
                     &crate::WithSerde::None,
+                    &crate::WithTablePkType::None,
                     &crate::DateTimeCrate::Chrono,
                     &Some("public".to_owned()),
                     false,
@@ -1535,6 +1606,7 @@ mod tests {
                 EntityWriter::gen_compact_code_blocks(
                     entity,
                     &crate::WithSerde::None,
+                    &crate::WithTablePkType::None,
                     &crate::DateTimeCrate::Chrono,
                     &Some("schema_name".to_owned()),
                     false,
@@ -1568,6 +1640,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -1584,6 +1657,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::Serialize,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -1600,6 +1674,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::Deserialize,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 true,
@@ -1614,6 +1689,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::Both,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 true,
@@ -1630,6 +1706,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -1646,6 +1723,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::Serialize,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -1662,6 +1740,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::Deserialize,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 true,
@@ -1676,6 +1755,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::Both,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 true,
@@ -1757,6 +1837,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -1773,6 +1854,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -1800,6 +1882,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -1814,6 +1897,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -1830,6 +1914,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -1848,6 +1933,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -1864,6 +1950,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -1880,6 +1967,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -1925,6 +2013,7 @@ mod tests {
             dyn Fn(
                 &Entity,
                 &WithSerde,
+                &WithTablePkType,
                 &DateTimeCrate,
                 &Option<String>,
                 bool,
@@ -1956,6 +2045,7 @@ mod tests {
         let generated = generator(
             cake_entity,
             &entity_serde_variant.1,
+            &WithTablePkType::None,
             &DateTimeCrate::Chrono,
             &entity_serde_variant.2,
             serde_skip_deserializing_primary_key,
@@ -1988,6 +2078,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -2004,6 +2095,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -2020,6 +2112,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_compact_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -2038,6 +2131,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -2054,6 +2148,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -2070,6 +2165,7 @@ mod tests {
             generated_to_string(EntityWriter::gen_expanded_code_blocks(
                 &cake_entity,
                 &WithSerde::None,
+                &WithTablePkType::None,
                 &DateTimeCrate::Chrono,
                 &None,
                 false,
@@ -2163,6 +2259,7 @@ mod tests {
                 EntityWriter::gen_compact_code_blocks(
                     entity,
                     &crate::WithSerde::None,
+                    &crate::WithTablePkType::None,
                     &crate::DateTimeCrate::Chrono,
                     &None,
                     false,
@@ -2184,6 +2281,7 @@ mod tests {
                 EntityWriter::gen_compact_code_blocks(
                     entity,
                     &crate::WithSerde::None,
+                    &crate::WithTablePkType::None,
                     &crate::DateTimeCrate::Chrono,
                     &Some("public".to_owned()),
                     false,
@@ -2205,8 +2303,78 @@ mod tests {
                 EntityWriter::gen_expanded_code_blocks(
                     entity,
                     &crate::WithSerde::None,
+                    &crate::WithTablePkType::None,
                     &crate::DateTimeCrate::Chrono,
                     &Some("schema_name".to_owned()),
+                    false,
+                    false,
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    false,
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_gen_with_custom_pk_id() -> io::Result<()> {
+        let entities = setup();
+        const ENTITY_FILES: [&str; 10] = [
+            include_str!("../../tests/compact_custom_pk/cake.rs"),
+            include_str!("../../tests/compact_custom_pk/cake_filling.rs"),
+            include_str!("../../tests/compact_custom_pk/filling.rs"),
+            include_str!("../../tests/compact_custom_pk/fruit.rs"),
+            include_str!("../../tests/compact_custom_pk/vendor.rs"),
+            include_str!("../../tests/compact_custom_pk/rust_keyword.rs"),
+            include_str!("../../tests/compact_custom_pk/cake_with_float.rs"),
+            include_str!("../../tests/compact_custom_pk/cake_with_double.rs"),
+            include_str!("../../tests/compact_custom_pk/collection.rs"),
+            include_str!("../../tests/compact_custom_pk/collection_float.rs"),
+        ];
+
+        assert_eq!(entities.len(), ENTITY_FILES.len());
+
+        for (i, entity) in entities.iter().enumerate() {
+            println!("Testing entity: {}", entity.table_name);
+            assert_eq!(
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
+                EntityWriter::gen_compact_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &crate::WithTablePkType::Custom,
+                    &crate::DateTimeCrate::Chrono,
+                    &None,
+                    false,
+                    false,
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    false,
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+            assert_eq!(
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
+                EntityWriter::gen_compact_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &crate::WithTablePkType::Custom,
+                    &crate::DateTimeCrate::Chrono,
+                    &Some("public".to_owned()),
                     false,
                     false,
                     &TokenStream::new(),
