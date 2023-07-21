@@ -2324,4 +2324,73 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_gen_with_custom_pk_id() -> io::Result<()> {
+        let entities = setup();
+        const ENTITY_FILES: [&str; 10] = [
+            include_str!("../../tests/compact_custom_pk/cake.rs"),
+            include_str!("../../tests/compact_custom_pk/cake_filling.rs"),
+            include_str!("../../tests/compact_custom_pk/filling.rs"),
+            include_str!("../../tests/compact_custom_pk/fruit.rs"),
+            include_str!("../../tests/compact_custom_pk/vendor.rs"),
+            include_str!("../../tests/compact_custom_pk/rust_keyword.rs"),
+            include_str!("../../tests/compact_custom_pk/cake_with_float.rs"),
+            include_str!("../../tests/compact_custom_pk/cake_with_double.rs"),
+            include_str!("../../tests/compact_custom_pk/collection.rs"),
+            include_str!("../../tests/compact_custom_pk/collection_float.rs"),
+        ];
+
+        assert_eq!(entities.len(), ENTITY_FILES.len());
+
+        for (i, entity) in entities.iter().enumerate() {
+            println!("Testing entity: {}", entity.table_name);
+            assert_eq!(
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
+                EntityWriter::gen_compact_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &crate::WithTablePkType::Custom,
+                    &crate::DateTimeCrate::Chrono,
+                    &None,
+                    false,
+                    false,
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    false,
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+            assert_eq!(
+                parse_from_file(ENTITY_FILES[i].as_bytes())?.to_string(),
+                EntityWriter::gen_compact_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &crate::WithTablePkType::Custom,
+                    &crate::DateTimeCrate::Chrono,
+                    &Some("public".to_owned()),
+                    false,
+                    false,
+                    &TokenStream::new(),
+                    &TokenStream::new(),
+                    false,
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+        }
+
+        Ok(())
+    }
 }
