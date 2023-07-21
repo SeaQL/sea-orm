@@ -49,9 +49,9 @@ impl SqlxMySqlConnector {
             .map_err(sqlx_error_to_conn_err)?;
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
-            opt.disable_statement_logging();
+            opt = opt.disable_statement_logging();
         } else {
-            opt.log_statements(options.sqlx_logging_level);
+            opt = opt.log_statements(options.sqlx_logging_level);
         }
         match options.pool_options().connect_with(opt).await {
             Ok(pool) => Ok(DatabaseConnection::SqlxMySqlPoolConnection(
@@ -82,9 +82,9 @@ impl SqlxMySqlPoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        let conn = &mut self.pool.acquire().await.map_err(conn_acquire_err)?;
+        let mut conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
         crate::metric::metric!(self.metric_callback, &stmt, {
-            match query.execute(conn).await {
+            match query.execute(&mut *conn).await {
                 Ok(res) => Ok(res.into()),
                 Err(err) => Err(sqlx_error_to_exec_err(err)),
             }
@@ -109,9 +109,9 @@ impl SqlxMySqlPoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        let conn = &mut self.pool.acquire().await.map_err(conn_acquire_err)?;
+        let mut conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
         crate::metric::metric!(self.metric_callback, &stmt, {
-            match query.fetch_one(conn).await {
+            match query.fetch_one(&mut *conn).await {
                 Ok(row) => Ok(Some(row.into())),
                 Err(err) => match err {
                     sqlx::Error::RowNotFound => Ok(None),
@@ -127,9 +127,9 @@ impl SqlxMySqlPoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        let conn = &mut self.pool.acquire().await.map_err(conn_acquire_err)?;
+        let mut conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
         crate::metric::metric!(self.metric_callback, &stmt, {
-            match query.fetch_all(conn).await {
+            match query.fetch_all(&mut *conn).await {
                 Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
                 Err(err) => Err(sqlx_error_to_query_err(err)),
             }
