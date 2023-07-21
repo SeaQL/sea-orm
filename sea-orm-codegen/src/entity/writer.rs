@@ -461,7 +461,7 @@ impl EntityWriter {
             .columns
             .iter()
             .fold(TokenStream::new(), |mut ts, col| {
-                if let sea_query::ColumnType::Enum { name, .. } = &col.col_type {
+                if let sea_query::ColumnType::Enum { name, .. } = col.get_inner_col_type() {
                     let enum_name = format_ident!("{}", name.to_string().to_upper_camel_case());
                     ts.extend([quote! {
                         use super::sea_orm_active_enums::#enum_name;

@@ -249,6 +249,13 @@ impl Column {
             quote! {}
         }
     }
+
+    pub fn get_inner_col_type(&self) -> &ColumnType {
+        match &self.col_type {
+            ColumnType::Array(inner_col_type) => inner_col_type.as_ref(),
+            _ => &self.col_type,
+        }
+    }
 }
 
 impl From<ColumnDef> for Column {
