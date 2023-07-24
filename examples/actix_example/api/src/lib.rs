@@ -184,7 +184,7 @@ async fn start() -> std::io::Result<()> {
             .wrap(middleware::Logger::default()) // enable logger
             .default_service(web::route().to(not_found))
             .configure(init)
-    });
+    })
 
     server = match listenfd.take_tcp_listener(0)? {
         Some(listener) => server.listen(listener)?,
