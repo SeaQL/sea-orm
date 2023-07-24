@@ -1,9 +1,13 @@
-CREATE TABLE `src` (
+CREATE SCHEMA `src`;
+
+CREATE TABLE `src`.`src` (
   `id` int NOT NULL,
   PRIMARY KEY (`id`)
 )
 
-CREATE TABLE `dest` (
+CREATE SCHEMA `dest`;
+
+CREATE TABLE `dest`.`dest` (
   `id` int NOT NULL,
   `src_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
