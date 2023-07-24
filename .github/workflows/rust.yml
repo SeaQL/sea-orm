@@ -249,10 +249,10 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt
-      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -printf '\ncargo fmt --manifest-path %p -- --check\n' -exec cargo fmt --manifest-path {} -- --check \;
-      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -printf '\ncargo build --manifest-path %p\n' -exec cargo build --manifest-path {} \;
-      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -printf '\ncargo test --manifest-path %p\n' -exec cargo test --manifest-path {} \;
-      - run: (${{ '[ -d "' }}${{ matrix.path }}${{ '/service" ]' }} && find ${{ matrix.path }}/service -type f -name 'Cargo.toml' -printf '\ncargo test --manifest-path %p --features mock\n' -exec cargo test --manifest-path {} --features mock \;) || true
+      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo fmt --manifest-path {} -- --check
+      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo build --manifest-path {}
+      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
+      - run: ${{'! '}}${{ '[ -d "' }}${{ matrix.path }}${{ '/service" ]' }} || find ${{ matrix.path }}/service -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {} --features mock
 
   issues-matrix:
     name: Issues Matrix
