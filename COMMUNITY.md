@@ -54,9 +54,9 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 #### Dev Tools
 - [Crosup](https://github.com/tsirysndr/crosup) | Quickly setup your development environment on your Chromebook/ChromeOS or any Linux distribution 🐧 ❄️ 💻 🚀 ✨ | DB: SQLite
+- [CyberAPI](https://github.com/vicanso/cyberapi) API tool client for developer. | DB: SQLite
 - [nitro_repo](https://github.com/wyatt-herkamp/nitro_repo) | An OpenSource, lightweight, and fast artifact manager. | DB: MySQL, SQLite
 - [Orca](https://github.com/workfoxes/orca) | An No-code Test Automation platform using Actix, SeaORM, React. runs on the desktop and cloud | DB: Postgres
-- [CyberAPI](https://github.com/vicanso/cyberapi) API tool client for developer. | DB: SQLite
 
 #### System
 - [Email view tracker](https://github.com/friedemannsommer/email-view-tracker) | Simple web UI to create tracking URLs for HTML emails. | DB: MySQL, Postgres
@@ -95,8 +95,8 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 ### Frameworks
 
-- [awto](https://github.com/awto-rs/awto) | Awtomate your 🦀 microservices with awto | DB: Postgres
 - [actix-admin](https://github.com/mgugger/actix-admin/) | An admin panel for Actix Web built with Tera, HTMX and SeaOrm | DB: MySQL, Postgres, SQLite
+- [awto](https://github.com/awto-rs/awto) | Awtomate your 🦀 microservices with awto | DB: Postgres
 - [poem_admin](https://github.com/lingdu1234/poem_admin) | An admin panel built with poems, SeaORM and Vue 3. | DB: MySQL, Postgres, SQLite
 - [Quasar](https://github.com/Technik97/Quasar) | Rust REST API using Actix Web, SeaORM and Postgres with Svelte Typescript Frontend | DB: Postgres
 - [tardis](https://github.com/ideal-world/tardis) | Elegant, Clean Rust development framework🛸 | DB: MySQL, Postgres, SQLite
