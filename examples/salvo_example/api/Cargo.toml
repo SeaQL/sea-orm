@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 salvo-example-service = { path = "../service" }
 tokio = { version = "1.29.0", features = ["macros", "rt-multi-thread"] }
-salvo = { version = "0.46", features = ["affix", "serve-static"] }
+salvo = { version = "0.49", features = ["affix", "serve-static"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 serde = { version = "1", features = ["derive"] }
 tera = "1.19.0"

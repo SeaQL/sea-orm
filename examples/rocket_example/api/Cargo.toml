@@ -25,3 +25,4 @@ tokio = "1.29.0"
 [dependencies.sea-orm-rocket]
 path = "../../../sea-orm-rocket/lib" # remove this line in your own project and uncomment the following line
 # version = "0.5.2"
+

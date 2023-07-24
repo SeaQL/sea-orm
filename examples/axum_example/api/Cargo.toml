@@ -8,10 +8,9 @@ publish = false
 [dependencies]
 axum-example-service = { path = "../service" }
 tokio = { version = "1.29.0", features = ["full"] }
-axum = "0.6.18"
+axum = "0.6.19"
 tower = "0.4.13"
-tower-http = { version = "0.4.1", features = ["fs"] }
-# todo: tower-http should be updated to 0.4.1
+tower-http = { version = "0.4.3", features = ["fs"] }
 tower-cookies = "0.9.0"
 anyhow = "1.0.71"
 dotenvy = "0.15.7"
@@ -21,5 +20,3 @@ tera = "1.17.1"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
-
-#notcomplete, http issue

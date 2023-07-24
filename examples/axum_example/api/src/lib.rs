@@ -53,7 +53,7 @@ async fn start() -> anyhow::Result<()> {
                 env!("CARGO_MANIFEST_DIR"),
                 "/static"
             )))
-            .handle_error(|error: std::io::Error| async move {
+            .handle_error(|error| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Unhandled internal error: {error}"),

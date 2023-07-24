@@ -2,10 +2,9 @@ use std::env;
 
 use entity::post;
 use migration::{Migrator, MigratorTrait};
-use salvo::extra::affix;
-use salvo::extra::serve_static::DirHandler;
+use salvo::salvo_extra::affix;
+use salvo::salvo_extra::serve_static::DirHandler;
 use salvo::prelude::*;
-use salvo::writer::Text;
 use salvo_example_service::{
     sea_orm::{Database, DatabaseConnection},
     Mutation, Query,
