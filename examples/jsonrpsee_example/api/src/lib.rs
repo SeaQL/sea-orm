@@ -2,8 +2,8 @@ use std::env;
 
 use entity::post;
 use jsonrpsee::core::{async_trait, RpcResult};
-use jsonrpsee::server::ServerBuilder;
 use jsonrpsee::proc_macros::rpc;
+use jsonrpsee::server::ServerBuilder;
 use jsonrpsee::types::error::ErrorObjectOwned;
 use jsonrpsee_example_service::sea_orm::{Database, DatabaseConnection};
 use jsonrpsee_example_service::{Mutation, Query};
@@ -115,7 +115,8 @@ async fn start() -> std::io::Result<()> {
 
     let server = ServerBuilder::default()
         .build(server_url.parse::<SocketAddr>().unwrap())
-        .await.unwrap();
+        .await
+        .unwrap();
 
     let rpc_impl = PpcImpl { conn };
     let server_addr = server.local_addr().unwrap();

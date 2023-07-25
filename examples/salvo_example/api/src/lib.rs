@@ -26,7 +26,6 @@ async fn create(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
         .ok_or_else(StatusError::internal_server_error)?;
     let conn = &state.conn;
 
-    
     let form = req
         .parse_form::<post::Model>()
         .await
@@ -36,7 +35,7 @@ async fn create(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
         .await
         .map_err(|_| StatusError::internal_server_error())?;
 
-        Redirect::found("/").render(res);
+    Redirect::found("/").render(res);
     Ok(())
 }
 

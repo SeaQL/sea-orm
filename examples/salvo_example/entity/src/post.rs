@@ -1,6 +1,6 @@
+use salvo::prelude::Extractible;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use salvo::prelude::Extractible;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Extractible, Deserialize, Serialize)]
 #[sea_orm(table_name = "posts")]
