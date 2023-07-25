@@ -11,8 +11,8 @@ use axum::{
     routing::get,
     Router,
 };
-use graphql::schema::{build_schema, AppSchema};
 use axum_macros::debug_handler;
+use graphql::schema::{build_schema, AppSchema};
 
 #[cfg(debug_assertions)]
 use dotenvy::dotenv;
