@@ -13,5 +13,3 @@ tera = "1.19.0"
 dotenvy = "0.15"
 entity = { path = "../entity" }
 migration = { path = "../migration" }
-
-#notcomplete

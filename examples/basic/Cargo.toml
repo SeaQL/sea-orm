@@ -14,5 +14,3 @@ serde_json = { version = "1" }
 futures = { version = "0.3" }
 async-stream = { version = "0.3" }
 futures-util = { version = "0.3" }
-
-#unsure, connection driver issue

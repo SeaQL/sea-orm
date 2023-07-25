@@ -14,5 +14,3 @@ dotenvy = "0.15.7"
 async-graphql-axum = "5.0.10"
 entity = { path = "../entity" }
 migration = { path = "../migration" }
-
-#notcomplete, axum issue
