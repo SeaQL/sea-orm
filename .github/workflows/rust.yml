@@ -247,6 +247,8 @@ jobs:
         path: ${{ fromJson(needs.examples-matrix.outputs.path_matrix) }}
     steps:
       - uses: actions/checkout@v3
+      - if: ${{ contains(matrix.path, 'tonic_example') }}
+        uses: arduino/setup-protoc@v1
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
