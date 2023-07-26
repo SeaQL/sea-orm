@@ -333,39 +333,8 @@ pub enum StringValueVariant {
     _0x300x20123,
 }
 ```
-* [sea-orm-cli] The implementation of `Related<R>` with `via` and `to` methods will not be generated if there exists multiple paths via an intermediate table. Like in the schema defined below - Path 1. `users <-> users_votes <-> bills`, Path 2. `users <-> users_saved_bills <-> bills` https://github.com/SeaQL/sea-orm/pull/1435
-```sql
-CREATE TABLE users
-(
-  id uuid  PRIMARY KEY  DEFAULT uuid_generate_v1mc(),
-  email TEXT UNIQUE NOT NULL,
-  ...
-);
-```
-```sql
-CREATE TABLE bills
-(
-  id uuid  PRIMARY KEY  DEFAULT uuid_generate_v1mc(),
-  ...
-);
-```
-```sql
-CREATE TABLE users_votes
-(
-  user_id uuid REFERENCES users (id) ON UPDATE CASCADE ON DELETE CASCADE,
-  bill_id uuid REFERENCES bills (id) ON UPDATE CASCADE ON DELETE CASCADE,
-  vote boolean NOT NULL,
-  CONSTRAINT users_bills_pkey PRIMARY KEY (user_id, bill_id)
-);
-```
-```sql
-CREATE TABLE users_saved_bills
-(
-  user_id uuid REFERENCES users (id) ON UPDATE CASCADE ON DELETE CASCADE,
-  bill_id uuid REFERENCES bills (id) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT users_saved_bills_pkey PRIMARY KEY (user_id, bill_id)
-);
-```
+* [sea-orm-cli] Fix Postgres enum arrays https://github.com/SeaQL/sea-orm/pull/1678
+* [sea-orm-cli] The implementation of `Related<R>` with `via` and `to` methods will not be generated if there exists multiple paths via an intermediate table https://github.com/SeaQL/sea-orm/pull/1435
 * [sea-orm-cli] fixed entity generation includes partitioned tables https://github.com/SeaQL/sea-orm/issues/1582, https://github.com/SeaQL/sea-schema/pull/105
 * Fixed `ActiveEnum::db_type()` return type does not implement `ColumnTypeTrait` https://github.com/SeaQL/sea-orm/pull/1576
 ```rust
@@ -375,15 +344,14 @@ impl ColumnTrait for Column {
         match self {
 ...
             // `db_type()` returns `ColumnDef`; now it implements `ColumnTypeTrait`
-            Self::Thing => AnActiveEnumThing::db_type().def(),
+            Self::Thing => SomeThing::db_type().def(),
 ...
         }
     }
 }
 ```
 * Resolved `insert_many` failing if the models iterator is empty https://github.com/SeaQL/sea-orm/issues/873
-* Update the template MD file of `migration/README.md`, fix a faulty sample `migrate init` shell script https://github.com/SeaQL/sea-orm/pull/1723
-* [sea-orm-cli] Fix Postgres enum arrays https://github.com/SeaQL/sea-orm/pull/1678
+* Update the template MD file of `migration/README.md`, fixed a faulty sample `migrate init` shell script https://github.com/SeaQL/sea-orm/pull/1723
 
 ### Breaking changes
 
