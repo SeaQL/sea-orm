@@ -149,10 +149,10 @@ assert_eq!(format!("{}", DisplayTea::BreakfastTea), "Breakfast Tea");
 ```
 * Added `UpdateMany::exec_with_returning()` https://github.com/SeaQL/sea-orm/pull/1677
 ```rust
-Entity::update_many()
+let models: Vec<Model> = Entity::update_many()
     .col_expr(Column::Values, Expr::expr(..))
     .exec_with_returning(db)
-    .await
+    .await?;
 ```
 * Supporting `default_expr` in `DeriveEntityModel` https://github.com/SeaQL/sea-orm/pull/1474
 ```rust

@@ -82,7 +82,7 @@ where
         }
     }
 
-    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
+    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
     pub async fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
@@ -141,7 +141,7 @@ where
         Inserter::<A>::new(self.primary_key, self.query).exec_without_returning(db)
     }
 
-    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
+    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
@@ -190,7 +190,7 @@ where
         exec_insert_without_returning(self.query, db)
     }
 
-    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
+    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,

@@ -758,7 +758,6 @@ pub async fn linked() -> Result<(), DbErr> {
             .build(sea_orm::DatabaseBackend::MySql)
             .to_string(),
         [
-            // FIXME: This might be faulty!
             "SELECT `baker`.`id` AS `A_id`,",
             "`baker`.`name` AS `A_name`,",
             "`baker`.`contact_details` AS `A_contact_details`,",

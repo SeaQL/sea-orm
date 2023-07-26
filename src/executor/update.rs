@@ -46,7 +46,7 @@ where
         Updater::new(self.query).exec(db).await
     }
 
-    /// Execute an update operation and return the updated model (use `RETURNING` syntax if database supported)
+    /// Execute an update operation and return the updated model (use `RETURNING` syntax if supported)
     ///
     /// # Panics
     ///
