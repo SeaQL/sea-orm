@@ -13,6 +13,7 @@ pub mod event_trigger;
 pub mod insert_default;
 pub mod json_struct;
 pub mod json_vec;
+pub mod json_vec_derive;
 pub mod metadata;
 pub mod pi;
 pub mod repository;

@@ -100,7 +100,7 @@ impl DeriveValueType {
 
         quote!(
             #[automatically_derived]
-            impl From<#name> for Value {
+            impl std::convert::From<#name> for Value {
                 fn from(source: #name) -> Self {
                     source.0.into()
                 }
