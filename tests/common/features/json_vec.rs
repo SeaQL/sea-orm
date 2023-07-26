@@ -1,5 +1,5 @@
 use sea_orm::entity::prelude::*;
-use sea_orm::{TryGetError, TryGetable};
+use sea_orm::TryGetableFromJson;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    pub str_vec: StringVec,
+    pub str_vec: Option<StringVec>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -18,26 +18,25 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StringVec(pub Vec<String>);
 
+impl TryGetableFromJson for StringVec {}
+
 impl From<StringVec> for Value {
     fn from(source: StringVec) -> Self {
-        Value::String(serde_json::to_string(&source).ok().map(Box::new))
-    }
-}
-
-impl TryGetable for StringVec {
-    fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
-        let json_str: String = res.try_get_by(idx).map_err(TryGetError::DbErr)?;
-        serde_json::from_str(&json_str).map_err(|e| TryGetError::DbErr(DbErr::Json(e.to_string())))
+        sea_orm::Value::Json(
+            serde_json::to_value(&source)
+                .ok()
+                .map(|s| std::boxed::Box::new(s)),
+        )
     }
 }
 
 impl sea_query::ValueType for StringVec {
     fn try_from(v: Value) -> Result<Self, sea_query::ValueTypeErr> {
         match v {
-            Value::String(Some(x)) => Ok(StringVec(
-                serde_json::from_str(&x).map_err(|_| sea_query::ValueTypeErr)?,
-            )),
-            _ => Err(sea_query::ValueTypeErr),
+            sea_orm::Value::Json(Some(json)) => {
+                Ok(serde_json::from_value(*json).map_err(|_| sea_orm::sea_query::ValueTypeErr)?)
+            }
+            _ => Err(sea_orm::sea_query::ValueTypeErr),
         }
     }
 
@@ -46,10 +45,16 @@ impl sea_query::ValueType for StringVec {
     }
 
     fn array_type() -> sea_orm::sea_query::ArrayType {
-        sea_orm::sea_query::ArrayType::String
+        sea_orm::sea_query::ArrayType::Json
     }
 
     fn column_type() -> sea_query::ColumnType {
-        sea_query::ColumnType::String(None)
+        sea_query::ColumnType::Json
+    }
+}
+
+impl sea_orm::sea_query::Nullable for StringVec {
+    fn null() -> sea_orm::Value {
+        sea_orm::Value::Json(None)
     }
 }

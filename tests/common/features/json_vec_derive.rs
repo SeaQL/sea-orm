@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    pub str_vec: StringVec,
+    pub str_vec: Option<StringVec>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
