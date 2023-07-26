@@ -281,7 +281,6 @@
 //! </table>
 //!
 //! SeaORM is the foundation of:
-//! + [StarfishQL](https://github.com/SeaQL/starfish-ql): an experimental graph database
 //! + [Seaography](https://github.com/SeaQL/seaography): GraphQL framework for SeaORM
 //!
 //! For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm).
