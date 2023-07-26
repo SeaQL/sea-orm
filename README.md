@@ -49,15 +49,15 @@ Integration examples
 
 2. Dynamic
 
-    Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex queries without 'fighting the ORM'.
+    Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex dynamic queries.
 
-3. Testable
+3. Multi-backend
 
-    Use mock connections to write unit tests for your logic.
+    You can develop applications targeting multiple backends, or use Mock / SQLite as a test double in test suites.
 
 4. Service Oriented
 
-    Quickly build services that join, filter, sort and paginate data in APIs.
+    Quickly build services that join, filter, sort and paginate data in REST, GraphQL and gRPC APIs.
 
 ## A quick taste of SeaORM
 
