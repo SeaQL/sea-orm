@@ -34,6 +34,13 @@ AUTHORS:
     - invitation link: https://discord.com/invite/uCPdDXzbdv
 
   If you like what we do, consider starring, commenting, sharing and contributing!
+
+  *******************************
+
+  Thank you for reading this documentation.
+  While we have you, would you spare a few minutes into completing our SeaQL Community Survey?
+  This is essential for the continued development and maintenance of the libraries we develop at SeaQL.
+  🌊 I'm in, take me to the survey! https://sea-ql.org/community-survey 🦀
 "#
 )]
 pub struct Cli {
