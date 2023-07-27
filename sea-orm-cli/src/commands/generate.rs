@@ -189,7 +189,7 @@ pub async fn run_generate_command(
 
             for OutputFile { name, content } in output.files.iter() {
                 let file_path = dir.join(name);
-                println!("Writing {file_path}");
+                println!("Writing {}", file_path.display());
                 let mut file = fs::File::create(file_path)?;
                 file.write_all(content.as_bytes())?;
             }
