@@ -54,7 +54,7 @@ Integration examples:
 
 3. Testable
 
-    Use Mock / SQLite to write tests for your application logic.
+    Use mock connections and/or SQLite to write tests for your application logic.
 
 4. Service Oriented
 
