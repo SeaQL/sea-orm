@@ -24,16 +24,19 @@ AUTHORS:
   An async & dynamic ORM for Rust                  \ |  ,/
   ===============================                   \|_/
 
-  Getting Started!
-    - documentation: https://www.sea-ql.org/SeaORM
-    - step-by-step tutorials: https://www.sea-ql.org/sea-orm-tutorial
-    - integration examples: https://github.com/SeaQL/sea-orm/tree/master/examples
-    - cookbook: https://www.sea-ql.org/sea-orm-cookbook
+  Getting Started
+    - Documentation: https://www.sea-ql.org/SeaORM
+    - Tutorial: https://www.sea-ql.org/sea-orm-tutorial
+    - Examples: https://github.com/SeaQL/sea-orm/tree/master/examples
+    - Cookbook: https://www.sea-ql.org/sea-orm-cookbook
 
   Join our Discord server to chat with others in the SeaQL community!
-    - invitation link: https://discord.com/invite/uCPdDXzbdv
+    - Invitation: https://discord.com/invite/uCPdDXzbdv
 
-  If you like what we do, consider starring, commenting, sharing and contributing!
+  SeaQL Community Survey 2023
+    - Link: https://sea-ql.org/community-survey
+
+  If you like what we do, consider starring, sharing and contributing!
 "#
 )]
 pub struct Cli {
