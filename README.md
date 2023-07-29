@@ -190,9 +190,9 @@ fruit::Entity::delete_many()
 
 ## Seaography: first-class GraphQL integration (preview)
 
-[Seaography](https://github.com/SeaQL/seaography) is a GraphQL framework built on top of SeaORM. It embodies our vision of 'full-stack Rust': with just a few commands, you can launch a GraphQL server on SeaORM entities!
+[Seaography](https://github.com/SeaQL/seaography) is a GraphQL framework built on top of SeaORM. It embodies our vision of 'full-stack Rust': with just a few commands, you can launch a GraphQL server from SeaORM entities!
 
-Starting `0.12`, `seaography` is integrated into `sea-orm`. While Seaography development is still in an early stage, it especially useful in prototyping and building internal-use admin panels.
+Starting `0.12`, `seaography` is integrated into `sea-orm`. While Seaography development is still in an early stage, it is especially useful in prototyping and building internal-use admin panels.
 
 <img src="https://raw.githubusercontent.com/SeaQL/sea-orm/master/examples/seaography_example/Seaography%20example.png"/>
 
@@ -219,7 +219,7 @@ The following products are powered by SeaORM:
   </tbody>
 </table>
 
-For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm).
+For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to [submit yours](https://github.com/SeaQL/sea-orm/issues/403)!
 
 ## License
 
