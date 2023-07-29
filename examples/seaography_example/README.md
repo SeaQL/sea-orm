@@ -1,3 +1,7 @@
+# SeaORM Seaography Example
+
+![Seaography screenshot with Bakery schema](<Seaography example.png>)
+
 ## Specifiy a database url
 
 ```

@@ -2,6 +2,7 @@
 edition = "2021"
 name = "sea-orm-seaography-example"
 version = "0.3.0"
+publish = false
 
 [dependencies]
 poem = { version = "1.3.56" }
