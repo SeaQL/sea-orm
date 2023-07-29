@@ -1,6 +1,12 @@
 # SeaORM + Seaography Example
 
-![Seaography screenshot with Bakery schema](<Seaography example.png>)
+| ![](<Seaography example.png>) |
+|:--:| 
+| Seaography screenshot with Bakery schema |
+
+| ![](https://raw.githubusercontent.com/SeaQL/sea-orm/master/tests/common/bakery_chain/bakery_chain_erd.png) |
+|:--:| 
+| The Bakery schema |
 
 ## Specifiy a database url
 
