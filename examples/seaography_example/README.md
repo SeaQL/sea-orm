@@ -1,4 +1,4 @@
-# SeaORM Seaography Example
+# SeaORM + Seaography Example
 
 ![Seaography screenshot with Bakery schema](<Seaography example.png>)
 
