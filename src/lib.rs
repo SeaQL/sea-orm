@@ -51,6 +51,7 @@
 //! + [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
 //! + [Salvo Example](https://github.com/SeaQL/sea-orm/tree/master/examples/salvo_example)
 //! + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
+//! + [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example)
 //!
 //! ## Features
 //!
@@ -260,11 +261,21 @@
 //! # }
 //! ```
 //!
+//! ## Seaography: first-class GraphQL integration (preview)
+//!
+//! [Seaography](https://github.com/SeaQL/seaography) is a GraphQL framework built on top of SeaORM. It embodies our vision of 'full-stack Rust': with just a few commands, you can launch a GraphQL server on SeaORM entities!
+//!
+//! Starting `0.12`, `seaography` is integrated into `sea-orm`. While Seaography development is still in an early stage, it especially useful in prototyping and building internal-use admin panels.
+//!
+//! <img src="https://raw.githubusercontent.com/SeaQL/sea-orm/master/examples/seaography_example/Seaography%20example.png"/>
+//!
+//! Look at the [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example) to learn more.
+//!
 //! ## Learn More
 //!
 //! 1. [Design](https://github.com/SeaQL/sea-orm/tree/master/DESIGN.md)
 //! 1. [Architecture](https://www.sea-ql.org/SeaORM/docs/internal-design/architecture/)
-//! 1. [Release Model](https://www.sea-ql.org/SeaORM/blog/2021-08-30-release-model)
+//! 1. [Engineering](https://www.sea-ql.org/blog/2022-07-30-engineering/)
 //! 1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 //!
 //! ## Who's using SeaORM?
@@ -280,9 +291,6 @@
 //!     </tr>
 //!   </tbody>
 //! </table>
-//!
-//! SeaORM is the foundation of:
-//! + [Seaography](https://github.com/SeaQL/seaography): GraphQL framework for SeaORM
 //!
 //! For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm).
 //!
@@ -305,9 +313,15 @@
 //!
 //! SeaORM is a community driven project. We welcome you to participate, contribute and together help build Rust's future.
 //!
-//! A big shout out to our contributors:
+//! A big shout out to our contributors!
 //!
 //! [![Contributors](https://opencollective.com/sea-orm/contributors.svg?width=1000&button=false)](https://github.com/SeaQL/sea-orm/graphs/contributors)
+//!
+//! ## Sponsorship
+//!
+//! [SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers. If you enjoy using our libraries, please star and share our repositories. If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
+//!
+//! We invite you to participate, contribute and together help build Rust's future.
 //!
 //! ## Mascot
 //!

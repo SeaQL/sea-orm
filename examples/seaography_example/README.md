@@ -8,23 +8,23 @@
 export DATABASE_URL=mysql://sea:sea@localhost/bakery
 ```
 
-## Setup the Database first
+## Setup the Database
 
-Cd into `migration` folder, follow instructions there, but basically:
+Cd into `migration` folder and follow instructions there, but basically:
 
-```
+```sh
 cargo run
 ```
 
 ## Install Seaography
 
-```
+```sh
 cargo install seaography-cli@^1.0.0-rc.2
 ```
 
-## Generate Seaography project
+## Generate GraphQL project
 
-```
+```sh
 rm -rf graphql # this entire folder is generated
 sea-orm-cli generate entity --output-dir graphql/src/entities --seaography
 seaography-cli graphql graphql/src/entities $DATABASE_URL sea-orm-seaography-example
@@ -32,7 +32,7 @@ seaography-cli graphql graphql/src/entities $DATABASE_URL sea-orm-seaography-exa
 
 ## Running the project
 
-```
+```sh
 cd graphql
 cargo run
 ```
