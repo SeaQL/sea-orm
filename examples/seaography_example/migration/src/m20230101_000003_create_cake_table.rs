@@ -29,7 +29,6 @@ impl MigrationTrait for Migration {
                             .on_update(ForeignKeyAction::Cascade),
                     )
                     .col(ColumnDef::new(Cake::GlutenFree).boolean().not_null())
-                    .col(ColumnDef::new(Cake::Serial).uuid().not_null())
                     .to_owned(),
             )
             .await
@@ -49,7 +48,6 @@ enum Cake {
     Name,
     Price,
     GlutenFree,
-    Serial,
     BakeryId,
 }
 

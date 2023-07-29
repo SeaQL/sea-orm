@@ -5,4 +5,4 @@ pub mod prelude;
 pub mod baker;
 pub mod bakery;
 pub mod cake;
-pub mod cakes_bakers;
+pub mod cake_baker;

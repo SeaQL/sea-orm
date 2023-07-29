@@ -9,27 +9,27 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(CakesBakers::Table)
-                    .col(ColumnDef::new(CakesBakers::CakeId).integer().not_null())
-                    .col(ColumnDef::new(CakesBakers::BakerId).integer().not_null())
+                    .table(CakeBaker::Table)
+                    .col(ColumnDef::new(CakeBaker::CakeId).integer().not_null())
+                    .col(ColumnDef::new(CakeBaker::BakerId).integer().not_null())
                     .primary_key(
                         Index::create()
-                            .name("pk-cakes_bakers")
-                            .col(CakesBakers::CakeId)
-                            .col(CakesBakers::BakerId),
+                            .name("pk-cake_baker")
+                            .col(CakeBaker::CakeId)
+                            .col(CakeBaker::BakerId),
                     )
                     .foreign_key(
                         ForeignKey::create()
-                            .name("fk-cakes_bakers-cake_id")
-                            .from(CakesBakers::Table, CakesBakers::CakeId)
+                            .name("fk-cake_baker-cake_id")
+                            .from(CakeBaker::Table, CakeBaker::CakeId)
                             .to(Cake::Table, Cake::Id)
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )
                     .foreign_key(
                         ForeignKey::create()
-                            .name("fk-cakes_bakers-baker_id")
-                            .from(CakesBakers::Table, CakesBakers::BakerId)
+                            .name("fk-cake_baker-baker_id")
+                            .from(CakeBaker::Table, CakeBaker::BakerId)
                             .to(Baker::Table, Baker::Id)
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
@@ -41,13 +41,13 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(CakesBakers::Table).to_owned())
+            .drop_table(Table::drop().table(CakeBaker::Table).to_owned())
             .await
     }
 }
 
 #[derive(DeriveIden)]
-enum CakesBakers {
+enum CakeBaker {
     Table,
     CakeId,
     BakerId,

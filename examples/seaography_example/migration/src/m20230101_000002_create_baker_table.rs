@@ -18,7 +18,7 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Baker::Name).string().not_null())
-                    .col(ColumnDef::new(Baker::ContactDetails).json().not_null())
+                    .col(ColumnDef::new(Baker::Contact).string().not_null())
                     .col(ColumnDef::new(Baker::BakeryId).integer())
                     .foreign_key(
                         ForeignKey::create()
@@ -45,7 +45,7 @@ enum Baker {
     Table,
     Id,
     Name,
-    ContactDetails,
+    Contact,
     BakeryId,
 }
 

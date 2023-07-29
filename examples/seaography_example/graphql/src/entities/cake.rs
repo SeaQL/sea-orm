@@ -3,13 +3,15 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-#[sea_orm(table_name = "baker")]
+#[sea_orm(table_name = "cake")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub name: String,
-    pub contact_details: Json,
+    #[sea_orm(column_type = "Decimal(Some((19, 4)))")]
+    pub price: Decimal,
     pub bakery_id: Option<i32>,
+    pub gluten_free: i8,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -22,8 +24,8 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Bakery,
-    #[sea_orm(has_many = "super::cakes_bakers::Entity")]
-    CakesBakers,
+    #[sea_orm(has_many = "super::cake_baker::Entity")]
+    CakeBaker,
 }
 
 impl Related<super::bakery::Entity> for Entity {
@@ -32,19 +34,29 @@ impl Related<super::bakery::Entity> for Entity {
     }
 }
 
-impl Related<super::cakes_bakers::Entity> for Entity {
+impl Related<super::cake_baker::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::CakesBakers.def()
+        Relation::CakeBaker.def()
     }
 }
 
-impl Related<super::cake::Entity> for Entity {
+impl Related<super::baker::Entity> for Entity {
     fn to() -> RelationDef {
-        super::cakes_bakers::Relation::Cake.def()
+        super::cake_baker::Relation::Baker.def()
     }
     fn via() -> Option<RelationDef> {
-        Some(super::cakes_bakers::Relation::Baker.def().rev())
+        Some(super::cake_baker::Relation::Cake.def().rev())
     }
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+pub enum RelatedEntity {
+    #[sea_orm(entity = "super::bakery::Entity")]
+    Bakery,
+    #[sea_orm(entity = "super::cake_baker::Entity")]
+    CakeBaker,
+    #[sea_orm(entity = "super::baker::Entity")]
+    Baker,
+}

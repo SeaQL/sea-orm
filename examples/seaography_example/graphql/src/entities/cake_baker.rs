@@ -3,7 +3,7 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-#[sea_orm(table_name = "cakes_bakers")]
+#[sea_orm(table_name = "cake_baker")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub cake_id: i32,
@@ -44,3 +44,11 @@ impl Related<super::cake::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+pub enum RelatedEntity {
+    #[sea_orm(entity = "super::baker::Entity")]
+    Baker,
+    #[sea_orm(entity = "super::cake::Entity")]
+    Cake,
+}

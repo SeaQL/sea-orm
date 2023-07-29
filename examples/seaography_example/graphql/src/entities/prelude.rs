@@ -3,4 +3,4 @@
 pub use super::baker::Entity as Baker;
 pub use super::bakery::Entity as Bakery;
 pub use super::cake::Entity as Cake;
-pub use super::cakes_bakers::Entity as CakesBakers;
+pub use super::cake_baker::Entity as CakeBaker;
