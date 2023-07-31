@@ -261,7 +261,7 @@
 //! # }
 //! ```
 //!
-//! ## Seaography: first-class GraphQL integration (preview)
+//! ## 🧭 Seaography: first-class GraphQL integration (preview)
 //!
 //! [Seaography](https://github.com/SeaQL/seaography) is a GraphQL framework built on top of SeaORM. It embodies our vision of 'full-stack Rust': with just a few commands, you can launch a GraphQL server from SeaORM entities!
 //!
