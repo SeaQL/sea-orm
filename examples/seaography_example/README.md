@@ -1,6 +1,6 @@
 # SeaORM + Seaography Example
 
-| ![](<Seaography example.png>) |
+| ![](https://raw.githubusercontent.com/SeaQL/sea-orm/master/examples/seaography_example/Seaography%20example.png) |
 |:--:| 
 | Seaography screenshot with Bakery schema |
 
