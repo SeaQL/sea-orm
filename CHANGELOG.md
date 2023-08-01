@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.12.2 - Pending
+
+### Enhancements
+
+* Added support for Postgres arrays in `FromQueryResult` impl of `JsonValue` https://github.com/SeaQL/sea-orm/pull/1598
+
 ## 0.12.1 - 2023-07-27
 
 + `0.12.0-rc.1`: Yanked    
