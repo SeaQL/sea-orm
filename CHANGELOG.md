@@ -291,7 +291,7 @@ pub enum StringValueVariant {
 * Added a new variant `Many` to `Identity` https://github.com/SeaQL/sea-orm/pull/1508
 * Enabled `hashable-value` feature in SeaQuery, thus `Value::Float(NaN) == Value::Float(NaN)` would be true https://github.com/SeaQL/sea-orm/pull/1728, https://github.com/SeaQL/sea-orm/pull/1743
 * The `DeriveActiveEnum` derive macro no longer implement `std::fmt::Display`. You can use the new `DeriveDisplay` macro https://github.com/SeaQL/sea-orm/pull/1726
-* `sea-query/derive` is no longer enabled by `sea-orm`, as such, `Iden` no longer works as a derive macro (it's still a trait). Instead, we are shipping a new macro `DeriveIden`:
+* `sea-query/derive` is no longer enabled by `sea-orm`, as such, `Iden` no longer works as a derive macro (it's still a trait). Instead, we are shipping a new macro `DeriveIden` https://github.com/SeaQL/sea-orm/pull/1740 https://github.com/SeaQL/sea-orm/pull/1755
 ```rust
 // then:
 
