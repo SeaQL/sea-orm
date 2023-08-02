@@ -190,27 +190,20 @@ enum ConnAcquireErr {
 #### Seaography
 
 * Add generation of `seaography` related information to `sea-orm-codegen` https://github.com/SeaQL/sea-orm/pull/1599
-
-    The following information is added in entities files by `sea-orm-cli` when flag `seaography` is `true`
+The `RelatedEntity` enum is added in entities files by `sea-orm-cli` when flag `seaography` is set:
 ```rust
 /// ... Entity File ...
-
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
 pub enum RelatedEntity {
-    #[sea_orm(entity = "super::address::Entity")]
-    Address,
-    #[sea_orm(entity = "super::payment::Entity")]
-    Payment,
-    #[sea_orm(entity = "super::rental::Entity")]
-    Rental,
-    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
-    SelfRef,
-    #[sea_orm(entity = "super::store::Entity")]
-    Store,
-    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
-    SelfRefRev,
+    #[sea_orm(entity = "super::bakery::Entity")]
+    Bakery,
+    #[sea_orm(entity = "super::cake_baker::Entity")]
+    CakeBaker,
+    #[sea_orm(entity = "super::cake::Entity")]
+    Cake,
 }
 ```
+* Added `seaography_example`
 
 ### Enhancements
 
