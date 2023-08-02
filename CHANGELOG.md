@@ -224,6 +224,7 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
     * Changed the parameter of method `Transaction::from_sql_and_values(DbBackend, T, I) where I: IntoIterator<Item = Value>, T: Into<String>` to takes any string SQL
     * Changed the parameter of method `ConnectOptions::set_schema_search_path(T) where T: Into<String>` to takes any string
     * Changed the parameter of method `ColumnTrait::like()`, `ColumnTrait::not_like()`, `ColumnTrait::starts_with()`, `ColumnTrait::ends_with()` and `ColumnTrait::contains()` to takes any string
+* Added `sea_query::{DynIden, RcOrArc, SeaRc}` to entity prelude https://github.com/SeaQL/sea-orm/pull/1661
 * Added `expr`, `exprs` and `expr_as` methods to `QuerySelect` trait https://github.com/SeaQL/sea-orm/pull/1702
 * Added `DatabaseConnection::ping` https://github.com/SeaQL/sea-orm/pull/1627
 ```rust
@@ -288,7 +289,6 @@ pub enum StringValueVariant {
     * Added `derive` and `strum` features to `sea-orm-macros`
     * The derive macro `EnumIter` is now shipped by `sea-orm-macros`
 * Added a new variant `Many` to `Identity` https://github.com/SeaQL/sea-orm/pull/1508
-* Replace the use of `SeaRc<T>` where `T` isn't `dyn Iden` with `RcOrArc<T>` https://github.com/SeaQL/sea-orm/pull/1661
 * Enabled `hashable-value` feature in SeaQuery, thus `Value::Float(NaN) == Value::Float(NaN)` would be true https://github.com/SeaQL/sea-orm/pull/1728, https://github.com/SeaQL/sea-orm/pull/1743
 * The `DeriveActiveEnum` derive macro no longer implement `std::fmt::Display`. You can use the new `DeriveDisplay` macro https://github.com/SeaQL/sea-orm/pull/1726
 * `sea-query/derive` is no longer enabled by `sea-orm`, as such, `Iden` no longer works as a derive macro (it's still a trait). Instead, we are shipping a new macro `DeriveIden`:
@@ -324,14 +324,14 @@ pub enum Tea {
 
 ### Upgrades
 
-* Upgrade `sqlx` to `0.7` https://github.com/SeaQL/sea-orm/pull/1742
-* Upgrade `sea-query` to `0.30` https://github.com/SeaQL/sea-orm/pull/1742
-* Upgrade `sea-schema` to `0.14` https://github.com/SeaQL/sea-orm/pull/1742
-* Upgrade `syn` to `2` https://github.com/SeaQL/sea-orm/pull/1713
-* Upgrade `heck` to `0.4` https://github.com/SeaQL/sea-orm/pull/1520, https://github.com/SeaQL/sea-orm/pull/1544
-* Upgrade `strum` to `0.25` https://github.com/SeaQL/sea-orm/pull/1752
-* Upgrade `clap` to `4.3` https://github.com/SeaQL/sea-orm/pull/1468
-* Upgrade `ouroboros` to `0.17` https://github.com/SeaQL/sea-orm/pull/1724
+* Upgraded `sqlx` to `0.7` https://github.com/SeaQL/sea-orm/pull/1742
+* Upgraded `sea-query` to `0.30` https://github.com/SeaQL/sea-orm/pull/1742
+* Upgraded `sea-schema` to `0.14` https://github.com/SeaQL/sea-orm/pull/1742
+* Upgraded `syn` to `2` https://github.com/SeaQL/sea-orm/pull/1713
+* Upgraded `heck` to `0.4` https://github.com/SeaQL/sea-orm/pull/1520, https://github.com/SeaQL/sea-orm/pull/1544
+* Upgraded `strum` to `0.25` https://github.com/SeaQL/sea-orm/pull/1752
+* Upgraded `clap` to `4.3` https://github.com/SeaQL/sea-orm/pull/1468
+* Upgraded `ouroboros` to `0.17` https://github.com/SeaQL/sea-orm/pull/1724
 
 ### House keeping
 
