@@ -258,17 +258,6 @@ Entity::insert_many([..]).on_conflict(on).do_nothing().exec(db).await;
 assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
 ```
 
-### Upgrades
-
-* Upgrade `sqlx` to `0.7` https://github.com/SeaQL/sea-orm/pull/1742
-* Upgrade `sea-query` to `0.30` https://github.com/SeaQL/sea-orm/pull/1742
-* Upgrade `sea-schema` to `0.14` https://github.com/SeaQL/sea-orm/pull/1742
-* Upgrade `syn` to `2` https://github.com/SeaQL/sea-orm/pull/1713
-* Upgrade `heck` to `0.4` https://github.com/SeaQL/sea-orm/pull/1520, https://github.com/SeaQL/sea-orm/pull/1544
-* Upgrade `strum` to `0.25` https://github.com/SeaQL/sea-orm/pull/1752
-* Upgrade `clap` to `4.3` https://github.com/SeaQL/sea-orm/pull/1468
-* Upgrade `ouroboros` to `0.17` https://github.com/SeaQL/sea-orm/pull/1724
-
 ### Bug Fixes
 
 * Fixed `DeriveActiveEnum` throwing errors because `string_value` consists non-UAX#31 compliant characters https://github.com/SeaQL/sea-orm/pull/1374
@@ -333,6 +322,17 @@ pub enum Tea {
 ```
 * Definition of `DbErr::ConnectionAcquire` changed to `ConnectionAcquire(ConnAcquireErr)` https://github.com/SeaQL/sea-orm/pull/1737
 * `FromJsonQueryResult` removed from entity prelude
+
+### Upgrades
+
+* Upgrade `sqlx` to `0.7` https://github.com/SeaQL/sea-orm/pull/1742
+* Upgrade `sea-query` to `0.30` https://github.com/SeaQL/sea-orm/pull/1742
+* Upgrade `sea-schema` to `0.14` https://github.com/SeaQL/sea-orm/pull/1742
+* Upgrade `syn` to `2` https://github.com/SeaQL/sea-orm/pull/1713
+* Upgrade `heck` to `0.4` https://github.com/SeaQL/sea-orm/pull/1520, https://github.com/SeaQL/sea-orm/pull/1544
+* Upgrade `strum` to `0.25` https://github.com/SeaQL/sea-orm/pull/1752
+* Upgrade `clap` to `4.3` https://github.com/SeaQL/sea-orm/pull/1468
+* Upgrade `ouroboros` to `0.17` https://github.com/SeaQL/sea-orm/pull/1724
 
 ### House keeping
 
