@@ -132,7 +132,7 @@ pub struct Boolbean(pub String);
 #[derive(DeriveValueType)]
 pub struct StringVec(pub Vec<String>);
 ```
-* Add `DeriveDisplay` derive macro to implements `std::fmt::Display` for enum https://github.com/SeaQL/sea-orm/pull/1726
+* Added `DeriveDisplay` derive macro to implements `std::fmt::Display` for enum https://github.com/SeaQL/sea-orm/pull/1726
 ```rust
 #[derive(DeriveDisplay)]
 enum DisplayTea {
@@ -225,7 +225,7 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
     * Changed the parameter of method `ConnectOptions::set_schema_search_path(T) where T: Into<String>` to takes any string
     * Changed the parameter of method `ColumnTrait::like()`, `ColumnTrait::not_like()`, `ColumnTrait::starts_with()`, `ColumnTrait::ends_with()` and `ColumnTrait::contains()` to takes any string
 * Re-export `sea_query::{DynIden, RcOrArc, SeaRc}` in `sea_orm::entity::prelude` module https://github.com/SeaQL/sea-orm/pull/1661
-* Add `expr`, `exprs` and `expr_as` methods to `QuerySelect` trait https://github.com/SeaQL/sea-orm/pull/1702
+* Added `expr`, `exprs` and `expr_as` methods to `QuerySelect` trait https://github.com/SeaQL/sea-orm/pull/1702
 * Added `DatabaseConnection::ping` https://github.com/SeaQL/sea-orm/pull/1627
 ```rust
 |db: DatabaseConnection| {
