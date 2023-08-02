@@ -94,7 +94,7 @@ assert_eq!(
     r#"SELECT "cake"."name", UPPER("cake"."name") AS "name_upper" FROM "cake""#
 );
 ```
-* Add `DbErr::sql_err()` method to convert error into common database errors `SqlErr`, such as unique constraint or foreign key violation errors. https://github.com/SeaQL/sea-orm/pull/1707
+* Added `DbErr::sql_err()` method to convert error into common database errors `SqlErr`, such as unique constraint or foreign key violation errors. https://github.com/SeaQL/sea-orm/pull/1707
 ```rust
 assert!(matches!(
     cake.into_active_model().insert(db).await
@@ -110,7 +110,7 @@ assert!(matches!(
     Some(SqlErr::ForeignKeyConstraintViolation(_))
 ));
 ```
-* Add `Select::find_with_linked`, similar to `find_with_related`: https://github.com/SeaQL/sea-orm/pull/1728, https://github.com/SeaQL/sea-orm/pull/1743
+* Added `Select::find_with_linked`, similar to `find_with_related`: https://github.com/SeaQL/sea-orm/pull/1728, https://github.com/SeaQL/sea-orm/pull/1743
 ```rust
 fn find_with_related<R>(self, r: R) -> SelectTwoMany<E, R>
     where R: EntityTrait, E: Related<R>;
@@ -119,7 +119,7 @@ fn find_with_linked<L, T>(self, l: L) -> SelectTwoMany<E, T>
 
 // boths yields `Vec<(E::Model, Vec<F::Model>)>`
 ```
-* Add `DeriveValueType` derive macro for custom wrapper types, implementations of the required traits will be provided, you can customize the `column_type` and `array_type` if needed https://github.com/SeaQL/sea-orm/pull/1720
+* Added `DeriveValueType` derive macro for custom wrapper types, implementations of the required traits will be provided, you can customize the `column_type` and `array_type` if needed https://github.com/SeaQL/sea-orm/pull/1720
 ```rust
 #[derive(DeriveValueType)]
 #[sea_orm(array_type = "Int")]
@@ -182,7 +182,7 @@ enum ConnAcquireErr {
 
 Added Seaography integration https://github.com/SeaQL/sea-orm/pull/1599
 
-* Add `DeriveEntityRelated` macro which will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration when the `seaography` feature is enabled
+* Added `DeriveEntityRelated` macro which will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration when the `seaography` feature is enabled
 * Added generation of `seaography` related information to `sea-orm-codegen`.
 
     The `RelatedEntity` enum is added in entities files by `sea-orm-cli` when flag `seaography` is set:
@@ -244,7 +244,7 @@ let res = Bakery::insert_many(std::iter::empty())
 
 assert!(matches!(res, Ok(TryInsertResult::Empty)));
 ```
-* On conflict do nothing not resulting in Err https://github.com/SeaQL/sea-orm/pull/1712
+* Insert on conflict do nothing to return Ok https://github.com/SeaQL/sea-orm/pull/1712
 ```rust
 let on = OnConflict::column(Column::Id).do_nothing().to_owned();
 
