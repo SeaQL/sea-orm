@@ -1054,10 +1054,8 @@ where
                 } else {
                     acc.insert(key, vec![value]);
                 }
-            } else {
-                if acc.get(&key).is_none() {
-                    acc.insert(key, vec![]);
-                }
+            } else if acc.get(&key).is_none() {
+                acc.insert(key, vec![]);
             }
 
             acc

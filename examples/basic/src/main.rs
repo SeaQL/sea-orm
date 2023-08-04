@@ -23,7 +23,7 @@ use select::*;
 
 #[async_std::main]
 async fn main() {
-    let db = Database::connect("sql://sea:sea@localhost/bakery")
+    let db = Database::connect("mysql://sea:sea@localhost/test")
         .await
         .unwrap();
 
@@ -32,8 +32,4 @@ async fn main() {
     println!("===== =====\n");
 
     all_about_select(&db).await.unwrap();
-
-    println!("===== =====\n");
-
-    all_about_operation(&db).await.unwrap();
 }
