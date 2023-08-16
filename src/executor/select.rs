@@ -1107,3 +1107,297 @@ where
     }
     acc
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_cfg::{cake_filling, cake_filling_price, entity_linked, filling, fruit};
+    use crate::{DbBackend, ModelTrait, QueryFilter, QueryTrait, RelationTrait};
+    use pretty_assertions::assert_eq;
+    use sea_query::{ConditionType, Expr, IntoCondition, JoinType};
+
+    fn cake_fruit_model(
+        cake_id: i32,
+        cake_name: String,
+        fruit_id: i32,
+        fruit_name: String,
+    ) -> (
+        sea_orm::tests_cfg::cake::Model,
+        sea_orm::tests_cfg::fruit::Model,
+    ) {
+        (
+            cake_model(cake_id, cake_name),
+            fruit_model(fruit_id, fruit_name, Some(cake_id)),
+        )
+    }
+
+    fn cake_model(id: i32, name: String) -> sea_orm::tests_cfg::cake::Model {
+        sea_orm::tests_cfg::cake::Model { id, name }
+    }
+
+    fn fruit_model(
+        id: i32,
+        name: String,
+        cake_id: Option<i32>,
+    ) -> sea_orm::tests_cfg::fruit::Model {
+        sea_orm::tests_cfg::fruit::Model { id, name, cake_id }
+    }
+
+    #[smol_potat::test]
+    pub async fn also_related() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, MockDatabase, QuerySelect, Statement, Transaction};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[cake_fruit_model(
+                1,
+                "apple cake".to_owned(),
+                1,
+                "apple".to_owned(),
+            )]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find()
+                .find_also_related(Fruit)
+                .select_only()
+                .column(cake::Column::Name)
+                .column(fruit::Column::Name)
+                .all(&db)
+                .await?,
+            [(
+                cake_model(1, "apple cake".to_owned()),
+                Some(fruit_model(1, "apple".to_owned(), Some(1)))
+            )]
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake"."name", "fruit"."name""#,
+                    r#"FROM "cake""#,
+                    r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#
+                ]
+                .join(" ")
+                .as_str(),
+                []
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    pub async fn also_related_2() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, MockDatabase, QuerySelect};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()),
+                cake_fruit_model(1, "apple cake".to_owned(), 2, "orange".to_owned()),
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find()
+                .find_also_related(Fruit)
+                .select_only()
+                .column(cake::Column::Name)
+                .column(fruit::Column::Name)
+                .all(&db)
+                .await?,
+            [
+                (
+                    cake_model(1, "apple cake".to_owned()),
+                    Some(fruit_model(1, "apple".to_owned(), Some(1)))
+                ),
+                (
+                    cake_model(1, "apple cake".to_owned()),
+                    Some(fruit_model(2, "orange".to_owned(), Some(1)))
+                )
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    pub async fn also_related_3() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, MockDatabase, QuerySelect};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()),
+                cake_fruit_model(1, "apple cake".to_owned(), 2, "orange".to_owned()),
+                cake_fruit_model(2, "orange cake".to_owned(), 2, "orange".to_owned()),
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find()
+                .find_also_related(Fruit)
+                .select_only()
+                .column(cake::Column::Name)
+                .column(fruit::Column::Name)
+                .all(&db)
+                .await?,
+            [
+                (
+                    cake_model(1, "apple cake".to_owned()),
+                    Some(fruit_model(1, "apple".to_owned(), Some(1)))
+                ),
+                (
+                    cake_model(1, "apple cake".to_owned()),
+                    Some(fruit_model(2, "orange".to_owned(), Some(1)))
+                ),
+                (
+                    cake_model(2, "orange cake".to_owned()),
+                    Some(fruit_model(2, "orange".to_owned(), Some(2)))
+                )
+            ]
+        );
+
+        Ok(())
+    }
+
+    // fixme: unsure on how to insert a cake with no fruit into query_result
+    // #[smol_potat::test]
+    pub async fn also_related_4() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, MockDatabase, QuerySelect};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()),
+                cake_fruit_model(1, "apple cake".to_owned(), 2, "orange".to_owned()),
+                cake_fruit_model(2, "orange cake".to_owned(), 2, "orange".to_owned()),
+            ]])
+            .append_query_results([[
+                cake_model(3, "chocolate cake".to_owned()), // no fruit in cake
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find()
+                .find_also_related(Fruit)
+                .select_only()
+                .column(cake::Column::Name)
+                .column(fruit::Column::Name)
+                .all(&db)
+                .await?,
+            [
+                (
+                    cake_model(1, "apple cake".to_owned()),
+                    Some(fruit_model(1, "apple".to_owned(), Some(1)))
+                ),
+                (
+                    cake_model(1, "apple cake".to_owned()),
+                    Some(fruit_model(2, "orange".to_owned(), Some(1)))
+                ),
+                (
+                    cake_model(2, "orange cake".to_owned()),
+                    Some(fruit_model(2, "orange".to_owned(), Some(2)))
+                ),
+                (cake_model(3, "chocolate cake".to_owned()), None)
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    #[cfg(any(feature = "mock",))]
+    pub async fn with_related() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, MockDatabase, QuerySelect, Statement, Transaction};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()),
+                cake_fruit_model(1, "apple cake".to_owned(), 2, "orange".to_owned()),
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find()
+                .find_with_related(Fruit)
+                .select_only()
+                .column(cake::Column::Name)
+                .column(fruit::Column::Name)
+                .all(&db)
+                .await?,
+            [(
+                cake_model(1, "apple cake".to_owned()),
+                vec![
+                    fruit_model(1, "apple".to_owned(), Some(1)),
+                    fruit_model(2, "orange".to_owned(), Some(1))
+                ]
+            )]
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake"."name", "fruit"."name""#,
+                    r#"FROM "cake""#,
+                    r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
+                    r#"ORDER BY "cake"."id" ASC"#
+                ]
+                .join(" ")
+                .as_str(),
+                []
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    #[cfg(any(feature = "mock",))]
+    pub async fn with_related_2() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, MockDatabase, QuerySelect};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()),
+                cake_fruit_model(2, "fruit cake".to_owned(), 1, "apple".to_owned()),
+                cake_fruit_model(2, "fruit cake".to_owned(), 2, "orange".to_owned()),
+                cake_fruit_model(2, "fruit cake".to_owned(), 3, "grape".to_owned()),
+                cake_fruit_model(2, "fruit cake".to_owned(), 4, "melon".to_owned()),
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find()
+                .find_with_related(Fruit)
+                .select_only()
+                .column(cake::Column::Name)
+                .column(fruit::Column::Name)
+                .all(&db)
+                .await?,
+            [
+                (
+                    cake_model(1, "apple cake".to_owned()),
+                    vec![fruit_model(1, "apple".to_owned(), Some(1)),]
+                ),
+                (
+                    cake_model(2, "fruit cake".to_owned()),
+                    vec![
+                        fruit_model(1, "apple".to_owned(), Some(2)),
+                        fruit_model(2, "orange".to_owned(), Some(2)),
+                        fruit_model(3, "grape".to_owned(), Some(2)),
+                        fruit_model(4, "melon".to_owned(), Some(2)),
+                    ]
+                )
+            ]
+        );
+
+        Ok(())
+    }
+}

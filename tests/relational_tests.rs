@@ -496,190 +496,6 @@ pub async fn having() {
 
 #[sea_orm_macros::test]
 #[cfg(any(
-    feature = "mock",
-))]
-pub async fn mock_also_related() -> Result<(), DbErr> {
-    use sea_orm::{MockDatabase, DbBackend, Transaction};
-
-
-    #[derive(Debug, FromQueryResult, PartialEq)]
-    struct BakerLite {
-        name: String,
-    }
-
-    #[derive(Debug, FromQueryResult, PartialEq)]
-    struct BakeryLite {
-        name: String,
-    }
-
-    let db = MockDatabase::new(DbBackend::Postgres)
-        .append_query_results([[
-            (
-                bakery::Model {
-                    id: 1,
-                    name: "SeaSide Bakery".to_string(),
-                    profit_margin: 10.3,
-                },
-                baker::Model {
-                    id: 1,
-                    name: "Baker Bob".to_owned(),
-                    contact_details: serde_json::json!({
-                        "mobile": "+61424000000",
-                        "home": "0395555555",
-                        "address": "12 Test St, Testville, Vic, Australia"
-                    }),
-                    bakery_id: Some(1),
-                },
-            )
-        ]])
-        .into_connection();
-
-    assert_eq!(
-        Bakery::find()
-        .find_also_related(Baker)
-        .select_only()
-        .column(bakery::Column::Name)
-        .column(baker::Column::Name)
-        .all(&db)
-        .await?,
-        [
-            (
-                bakery::Model {
-                    id: 1,
-                    name: "SeaSide Bakery".to_string(),
-                    profit_margin: 10.3,
-                },
-                Some(baker::Model {
-                    id: 1,
-                    name: "Baker Bob".to_owned(),
-                    contact_details: serde_json::json!({
-                        "mobile": "+61424000000",
-                        "home": "0395555555",
-                        "address": "12 Test St, Testville, Vic, Australia"
-                    }),
-                    bakery_id: Some(1),
-                }),
-            )
-        ]
-    );
-
-    Ok(())
-}
-
-#[sea_orm_macros::test]
-#[cfg(any(
-    feature = "mock",
-))]
-pub async fn mock_with_related() -> Result<(), DbErr> {
-    use sea_orm::{MockDatabase, DbBackend, Transaction};
-
-    #[derive(Debug, FromQueryResult, PartialEq)]
-    struct BakerLite {
-        name: String,
-    }
-
-    #[derive(Debug, FromQueryResult, PartialEq)]
-    struct BakeryLite {
-        name: String,
-    }
-
-    let db = MockDatabase::new(DbBackend::Postgres)
-        .append_query_results([[
-            (
-                bakery::Model {
-                    id: 1,
-                    name: "SeaSide Bakery".to_string(),
-                    profit_margin: 10.3,
-                },
-                baker::Model {
-                    id: 1,
-                    name: "Baker Bob".to_owned(),
-                    contact_details: serde_json::json!({
-                        "mobile": "+61424000000",
-                        "home": "0395555555",
-                        "address": "12 Test St, Testville, Vic, Australia"
-                    }),
-                    bakery_id: Some(1),
-                }
-            ),
-            (
-                bakery::Model {
-                    id: 1,
-                    name: "SeaSide Bakery".to_string(),
-                    profit_margin: 10.3,
-                }, 
-                baker::Model {
-                    id: 2,
-                    name: "Baker Bobby".to_owned(),
-                    contact_details: serde_json::json!({
-                        "mobile": "+85212345678",
-                    }),
-                    bakery_id: Some(1),
-                }
-            )
-        ]])
-        .into_connection();
-
-    assert_eq!(
-        Bakery::find()
-        .find_with_related(Baker)
-        .select_only()
-        .column(bakery::Column::Name)
-        .column(baker::Column::Name)
-        .all(&db)
-        .await?,
-        [
-            (
-                bakery::Model {
-                    id: 1,
-                    name: "SeaSide Bakery".to_string(),
-                    profit_margin: 10.3,
-                },
-                vec![baker::Model {
-                    id: 1,
-                    name: "Baker Bob".to_owned(),
-                    contact_details: serde_json::json!({
-                        "mobile": "+61424000000",
-                        "home": "0395555555",
-                        "address": "12 Test St, Testville, Vic, Australia"
-                    }),
-                    bakery_id: Some(1),
-                },
-                {
-                    baker::Model {
-                        id: 2,
-                        name: "Baker Bobby".to_owned(),
-                        contact_details: serde_json::json!({
-                            "mobile": "+85212345678",
-                        }),
-                        bakery_id: Some(1),
-                    }
-                }],
-            )
-        ]
-    );
-
-    assert_eq!(
-        db.into_transaction_log(),
-        [Transaction::many([Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            [
-                r#"SELECT "bakery"."name", "baker"."name""#,
-                r#"FROM "bakery""#,
-                r#"LEFT JOIN "baker" ON "bakery"."id" = "baker"."bakery_id""#,
-                r#"ORDER BY "bakery"."id" ASC"#
-            ]
-            .join(" ")
-            .as_str(),
-            []
-        ),])]
-    );
-
-    Ok(())
-}
-
-#[sea_orm_macros::test]
-#[cfg(any(
     feature = "sqlx-mysql",
     feature = "sqlx-sqlite",
     feature = "sqlx-postgres"
@@ -762,6 +578,7 @@ pub async fn related() -> Result<(), DbErr> {
         name: String,
     }
 
+    // get all bakery and baker's name and put them into tuples
     let bakers_in_bakery: Vec<(BakeryLite, Option<BakerLite>)> = Bakery::find()
         .find_also_related(Baker)
         .select_only()
@@ -1136,6 +953,8 @@ pub async fn linked() -> Result<(), DbErr> {
         )
         .group_by(baker::Column::Id)
         .group_by(Expr::col((Alias::new("r4"), customer::Column::Id)))
+        .group_by(baker::Column::Name)
+        .group_by(Expr::col((Alias::new("r4"), customer::Column::Name)))
         .order_by_asc(baker::Column::Id)
         .order_by_asc(Expr::col((Alias::new("r4"), customer::Column::Id)))
         .into_model()
