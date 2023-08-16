@@ -843,95 +843,86 @@ pub async fn related() -> Result<(), DbErr> {
         ]
     );
 
-    // TODO
-    // let select_baker_with_customer = Baker::find()
-    //     .find_with_linked(baker::BakedForCustomer)
-    //     .order_by_asc(baker::Column::Id)
-    //     .order_by_asc(Expr::col((Alias::new("r4"), customer::Column::Id)));
+    let select_bakery_with_baker = Bakery::find()
+        .find_with_related(Baker)
+        .order_by_asc(baker::Column::Id);
 
-    // assert_eq!(
-    //     select_baker_with_customer
-    //         .build(sea_orm::DatabaseBackend::MySql)
-    //         .to_string(),
-    //     [
-    //         "SELECT `baker`.`id` AS `A_id`,",
-    //         "`baker`.`name` AS `A_name`,",
-    //         "`baker`.`contact_details` AS `A_contact_details`,",
-    //         "`baker`.`bakery_id` AS `A_bakery_id`,",
-    //         "`r4`.`id` AS `B_id`,",
-    //         "`r4`.`name` AS `B_name`,",
-    //         "`r4`.`notes` AS `B_notes`",
-    //         "FROM `baker`",
-    //         "LEFT JOIN `cakes_bakers` AS `r0` ON `baker`.`id` = `r0`.`baker_id`",
-    //         "LEFT JOIN `cake` AS `r1` ON `r0`.`cake_id` = `r1`.`id`",
-    //         "LEFT JOIN `lineitem` AS `r2` ON `r1`.`id` = `r2`.`cake_id`",
-    //         "LEFT JOIN `order` AS `r3` ON `r2`.`order_id` = `r3`.`id`",
-    //         "LEFT JOIN `customer` AS `r4` ON `r3`.`customer_id` = `r4`.`id`",
-    //         "ORDER BY `baker`.`id` ASC, `r4`.`id` ASC"
-    //     ]
-    //     .join(" ")
-    // );
+    assert_eq!(
+        select_bakery_with_baker
+            .build(sea_orm::DatabaseBackend::MySql)
+            .to_string(),
+        [
+            "SELECT `bakery`.`id` AS `A_id`,",
+            "`bakery`.`name` AS `A_name`,",
+            "`bakery`.`profit_margin` AS `A_profit_margin`,",
+            "`baker`.`id` AS `B_id`,",
+            "`baker`.`name` AS `B_name`,",
+            "`baker`.`contact_details` AS `B_contact_details`,",
+            "`baker`.`bakery_id` AS `B_bakery_id`",
+            "FROM `bakery`",
+            "LEFT JOIN `baker` ON `bakery`.`id` = `baker`.`bakery_id`",
+            "ORDER BY `bakery`.`id` ASC, `baker`.`id` ASC"
+        ]
+        .join(" ")
+    );
 
-    // assert_eq!(
-    //     select_baker_with_customer.all(&ctx.db).await?,
-    //     [
-    //         (
-    //             baker::Model {
-    //                 id: 1,
-    //                 name: "Baker Bob".into(),
-    //                 contact_details: serde_json::json!({
-    //                     "mobile": "+61424000000",
-    //                     "home": "0395555555",
-    //                     "address": "12 Test St, Testville, Vic, Australia",
-    //                 }),
-    //                 bakery_id: Some(1),
-    //             },
-    //             vec![customer::Model {
-    //                 id: 2,
-    //                 name: "Kara".into(),
-    //                 notes: Some("Loves all cakes".into()),
-    //             }]
-    //         ),
-    //         (
-    //             baker::Model {
-    //                 id: 2,
-    //                 name: "Baker Bobby".into(),
-    //                 contact_details: serde_json::json!({
-    //                     "mobile": "+85212345678",
-    //                 }),
-    //                 bakery_id: Some(1),
-    //             },
-    //             vec![
-    //                 customer::Model {
-    //                     id: 1,
-    //                     name: "Kate".into(),
-    //                     notes: Some("Loves cheese cake".into()),
-    //                 },
-    //                 customer::Model {
-    //                     id: 1,
-    //                     name: "Kate".into(),
-    //                     notes: Some("Loves cheese cake".into()),
-    //                 },
-    //                 customer::Model {
-    //                     id: 2,
-    //                     name: "Kara".into(),
-    //                     notes: Some("Loves all cakes".into()),
-    //                 },
-    //             ]
-    //         ),
-    //         (
-    //             baker::Model {
-    //                 id: 3,
-    //                 name: "Freerider".into(),
-    //                 contact_details: serde_json::json!({
-    //                     "mobile": "+85298765432",
-    //                 }),
-    //                 bakery_id: Some(1),
-    //             },
-    //             vec![]
-    //         ),
-    //     ]
-    // );
+    assert_eq!(
+        select_bakery_with_baker.all(&ctx.db).await?,
+        [
+            (
+                bakery::Model {
+                    id: 1,
+                    name: "SeaSide Bakery".to_owned(),
+                    profit_margin: 10.4,
+                },
+                vec![baker::Model {
+                    id: 1,
+                    name: "Baker Bob".to_owned(),
+                    contact_details: serde_json::json!({
+                        "mobile": "+61424000000",
+                        "home": "0395555555",
+                        "address": "12 Test St, Testville, Vic, Australia"
+                    }),
+                    bakery_id: Some(seaside_bakery_res.last_insert_id),
+                },
+                baker::Model {
+                    id: 2,
+                    name: "Baker Bobby".to_owned(),
+                    contact_details: serde_json::json!({
+                        "mobile": "+85212345678",
+                    }),
+                    bakery_id: Some(seaside_bakery_res.last_insert_id),
+                }]
+            ),
+            (
+                bakery::Model {
+                    id: 2,
+                    name: "Terres Bakery".to_owned(),
+                    profit_margin: 13.5,
+                },
+                vec![
+                    baker::Model {
+                        id: 3,
+                        name: "Baker Ada".to_owned(),
+                        contact_details: serde_json::json!({
+                            "mobile": "+61424000000",
+                            "home": "0395555555",
+                            "address": "12 Test St, Testville, Vic, Australia"
+                        }),
+                        bakery_id: Some(terres_bakery_res.last_insert_id),
+                    }
+                ]
+            ),
+            (
+                bakery::Model {
+                    id: 3,
+                    name: "Stone Bakery".to_owned(),
+                    profit_margin: 13.5,
+                },
+                vec![]
+            ),
+        ]
+    );
 
     ctx.delete().await;
 
