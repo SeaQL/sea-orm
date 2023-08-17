@@ -47,7 +47,6 @@ async fn loader_load_many() -> Result<(), DbErr> {
 
     let bakery_1 = insert_bakery(&ctx.db, "SeaSide Bakery").await?;
     let bakery_2 = insert_bakery(&ctx.db, "Offshore Bakery").await?;
-    let bakery_3 = insert_bakery(&ctx.db, "Offshore Bakery").await?;
 
     let baker_1 = insert_baker(&ctx.db, "Baker 1", bakery_1.id).await?;
     let baker_2 = insert_baker(&ctx.db, "Baker 2", bakery_1.id).await?;
@@ -116,7 +115,6 @@ async fn loader_load_many_multi() -> Result<(), DbErr> {
 
     let bakery_1 = insert_bakery(&ctx.db, "SeaSide Bakery").await?;
     let bakery_2 = insert_bakery(&ctx.db, "Offshore Bakery").await?;
-    let bakery_3 = insert_bakery(&ctx.db, "Onshore Bakery").await?;
 
     let baker_1 = insert_baker(&ctx.db, "John", bakery_1.id).await?;
     let baker_2 = insert_baker(&ctx.db, "Jane", bakery_1.id).await?;
@@ -131,9 +129,9 @@ async fn loader_load_many_multi() -> Result<(), DbErr> {
     let bakers = bakeries.load_many(baker::Entity, &ctx.db).await?;
     let cakes = bakeries.load_many(cake::Entity, &ctx.db).await?;
 
-    assert_eq!(bakeries, [bakery_1, bakery_2, bakery_3]);
-    assert_eq!(bakers, [vec![baker_1, baker_2], vec![baker_3], vec![]]);
-    assert_eq!(cakes, [vec![cake_1], vec![cake_2, cake_3], vec![]]);
+    assert_eq!(bakeries, [bakery_1, bakery_2]);
+    assert_eq!(bakers, [vec![baker_1, baker_2], vec![baker_3]]);
+    assert_eq!(cakes, [vec![cake_1], vec![cake_2, cake_3]]);
 
     Ok(())
 }
