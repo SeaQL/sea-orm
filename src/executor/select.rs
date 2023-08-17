@@ -1112,31 +1112,62 @@ where
 mod tests {
     use pretty_assertions::assert_eq;
 
+    use crate::tests_cfg::entity_linked;
+
     fn cake_fruit_model(
         cake_id: i32,
-        cake_name: String,
         fruit_id: i32,
-        fruit_name: String,
     ) -> (
         sea_orm::tests_cfg::cake::Model,
         sea_orm::tests_cfg::fruit::Model,
     ) {
-        (
-            cake_model(cake_id, cake_name),
-            fruit_model(fruit_id, fruit_name, Some(cake_id)),
-        )
+        (cake_model(cake_id), fruit_model(fruit_id, Some(cake_id)))
     }
 
-    fn cake_model(id: i32, name: String) -> sea_orm::tests_cfg::cake::Model {
+    fn cake_model(id: i32) -> sea_orm::tests_cfg::cake::Model {
+        let name = match id {
+            1 => "apple cake",
+            2 => "orange cake",
+            3 => "fruit cake",
+            4 => "chocolate cake",
+            _ => "",
+        }
+        .to_string();
         sea_orm::tests_cfg::cake::Model { id, name }
     }
 
-    fn fruit_model(
-        id: i32,
-        name: String,
-        cake_id: Option<i32>,
-    ) -> sea_orm::tests_cfg::fruit::Model {
+    fn fruit_model(id: i32, cake_id: Option<i32>) -> sea_orm::tests_cfg::fruit::Model {
+        let name = match id {
+            1 => "apple",
+            2 => "orange",
+            3 => "grape",
+            4 => "strawberry",
+            _ => "",
+        }
+        .to_string();
         sea_orm::tests_cfg::fruit::Model { id, name, cake_id }
+    }
+
+    fn cake_vendor_link(
+        cake_id: i32,
+        vendor_id: i32,
+    ) -> (
+        sea_orm::tests_cfg::cake::Model,
+        sea_orm::tests_cfg::vendor::Model,
+    ) {
+        (cake_model(cake_id), vendor_model(vendor_id))
+    }
+
+    fn vendor_model(id: i32) -> sea_orm::tests_cfg::vendor::Model {
+        let name = match id {
+            1 => "Apollo",
+            2 => "Benny",
+            3 => "Christine",
+            4 => "David",
+            _ => "",
+        }
+        .to_string();
+        sea_orm::tests_cfg::vendor::Model { id, name }
     }
 
     #[smol_potat::test]
@@ -1145,20 +1176,12 @@ mod tests {
         use sea_orm::{DbBackend, EntityTrait, MockDatabase, Statement, Transaction};
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[cake_fruit_model(
-                1,
-                "apple cake".to_owned(),
-                1,
-                "apple".to_owned(),
-            )]])
+            .append_query_results([[cake_fruit_model(1, 1)]])
             .into_connection();
 
         assert_eq!(
             Cake::find().find_also_related(Fruit).all(&db).await?,
-            [(
-                cake_model(1, "apple cake".to_owned()),
-                Some(fruit_model(1, "apple".to_owned(), Some(1)))
-            )]
+            [(cake_model(1), Some(fruit_model(1, Some(1))))]
         );
 
         assert_eq!(
@@ -1186,23 +1209,14 @@ mod tests {
         use sea_orm::{DbBackend, EntityTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[
-                cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()),
-                cake_fruit_model(1, "apple cake".to_owned(), 2, "orange".to_owned()),
-            ]])
+            .append_query_results([[cake_fruit_model(1, 1), cake_fruit_model(1, 2)]])
             .into_connection();
 
         assert_eq!(
             Cake::find().find_also_related(Fruit).all(&db).await?,
             [
-                (
-                    cake_model(1, "apple cake".to_owned()),
-                    Some(fruit_model(1, "apple".to_owned(), Some(1)))
-                ),
-                (
-                    cake_model(1, "apple cake".to_owned()),
-                    Some(fruit_model(2, "orange".to_owned(), Some(1)))
-                )
+                (cake_model(1), Some(fruit_model(1, Some(1)))),
+                (cake_model(1), Some(fruit_model(2, Some(1))))
             ]
         );
 
@@ -1216,27 +1230,18 @@ mod tests {
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[
-                cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()),
-                cake_fruit_model(1, "apple cake".to_owned(), 2, "orange".to_owned()),
-                cake_fruit_model(2, "orange cake".to_owned(), 2, "orange".to_owned()),
+                cake_fruit_model(1, 1),
+                cake_fruit_model(1, 2),
+                cake_fruit_model(2, 2),
             ]])
             .into_connection();
 
         assert_eq!(
             Cake::find().find_also_related(Fruit).all(&db).await?,
             [
-                (
-                    cake_model(1, "apple cake".to_owned()),
-                    Some(fruit_model(1, "apple".to_owned(), Some(1)))
-                ),
-                (
-                    cake_model(1, "apple cake".to_owned()),
-                    Some(fruit_model(2, "orange".to_owned(), Some(1)))
-                ),
-                (
-                    cake_model(2, "orange cake".to_owned()),
-                    Some(fruit_model(2, "orange".to_owned(), Some(2)))
-                )
+                (cake_model(1), Some(fruit_model(1, Some(1)))),
+                (cake_model(1), Some(fruit_model(2, Some(1)))),
+                (cake_model(2), Some(fruit_model(2, Some(2))))
             ]
         );
 
@@ -1250,35 +1255,20 @@ mod tests {
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[
-                cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()).into_mock_row(),
-                cake_fruit_model(1, "apple cake".to_owned(), 2, "orange".to_owned())
-                    .into_mock_row(),
-                cake_fruit_model(2, "orange cake".to_owned(), 2, "orange".to_owned())
-                    .into_mock_row(),
-                (
-                    cake_model(3, "chocolate cake".to_owned()),
-                    None::<fruit::Model>,
-                )
-                    .into_mock_row(),
+                cake_fruit_model(1, 1).into_mock_row(),
+                cake_fruit_model(1, 2).into_mock_row(),
+                cake_fruit_model(2, 2).into_mock_row(),
+                (cake_model(3.to_owned()), None::<fruit::Model>).into_mock_row(),
             ]])
             .into_connection();
 
         assert_eq!(
             Cake::find().find_also_related(Fruit).all(&db).await?,
             [
-                (
-                    cake_model(1, "apple cake".to_owned()),
-                    Some(fruit_model(1, "apple".to_owned(), Some(1)))
-                ),
-                (
-                    cake_model(1, "apple cake".to_owned()),
-                    Some(fruit_model(2, "orange".to_owned(), Some(1)))
-                ),
-                (
-                    cake_model(2, "orange cake".to_owned()),
-                    Some(fruit_model(2, "orange".to_owned(), Some(2)))
-                ),
-                (cake_model(3, "chocolate cake".to_owned()), None)
+                (cake_model(1), Some(fruit_model(1, Some(1)))),
+                (cake_model(1), Some(fruit_model(2, Some(1)))),
+                (cake_model(2), Some(fruit_model(2, Some(2)))),
+                (cake_model(3.to_owned()), None)
             ]
         );
 
@@ -1292,25 +1282,19 @@ mod tests {
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[
-                cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()),
-                cake_fruit_model(2, "fruit cake".to_owned(), 1, "apple".to_owned()),
-                cake_fruit_model(2, "fruit cake".to_owned(), 2, "orange".to_owned()),
+                cake_fruit_model(1, 1),
+                cake_fruit_model(2, 2),
+                cake_fruit_model(2, 3),
             ]])
             .into_connection();
 
         assert_eq!(
             Cake::find().find_with_related(Fruit).all(&db).await?,
             [
+                (cake_model(1), vec![fruit_model(1, Some(1))]),
                 (
-                    cake_model(1, "apple cake".to_owned()),
-                    vec![fruit_model(1, "apple".to_owned(), Some(1))]
-                ),
-                (
-                    cake_model(2, "fruit cake".to_owned()),
-                    vec![
-                        fruit_model(1, "apple".to_owned(), Some(2)),
-                        fruit_model(2, "orange".to_owned(), Some(2))
-                    ]
+                    cake_model(2),
+                    vec![fruit_model(2, Some(2)), fruit_model(3, Some(2))]
                 )
             ]
         );
@@ -1342,92 +1326,80 @@ mod tests {
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[
-                cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()).into_mock_row(),
-                cake_fruit_model(2, "fruit cake".to_owned(), 1, "apple".to_owned()).into_mock_row(),
-                cake_fruit_model(2, "fruit cake".to_owned(), 2, "orange".to_owned())
-                    .into_mock_row(),
-                (
-                    cake_model(2, "fruit cake".to_owned()),
-                    Some(fruit_model(3, "grape".to_owned(), Some(2))),
-                )
-                    .into_mock_row(),
-                (
-                    cake_model(3, "chocolate cake".to_owned()),
-                    None::<fruit::Model>,
-                )
-                    .into_mock_row(),
+                cake_fruit_model(1, 1).into_mock_row(),
+                cake_fruit_model(2, 1).into_mock_row(),
+                cake_fruit_model(2, 2).into_mock_row(),
+                cake_fruit_model(2, 3).into_mock_row(),
             ]])
             .into_connection();
 
         assert_eq!(
             Cake::find().find_with_related(Fruit).all(&db).await?,
             [
+                (cake_model(1), vec![fruit_model(1, Some(1)),]),
                 (
-                    cake_model(1, "apple cake".to_owned()),
-                    vec![fruit_model(1, "apple".to_owned(), Some(1)),]
-                ),
-                (
-                    cake_model(2, "fruit cake".to_owned()),
+                    cake_model(2),
                     vec![
-                        fruit_model(1, "apple".to_owned(), Some(2)),
-                        fruit_model(2, "orange".to_owned(), Some(2)),
-                        fruit_model(3, "grape".to_owned(), Some(2)),
+                        fruit_model(1, Some(2)),
+                        fruit_model(2, Some(2)),
+                        fruit_model(3, Some(2)),
                     ]
                 ),
-                (cake_model(3, "chocolate cake".to_owned()), vec![])
             ]
         );
 
         Ok(())
     }
 
-    fn cake_filling_link(
-        cake_id: i32,
-        cake_name: String,
-        filling_id: i32,
-        filling_name: String,
-    ) -> (
-        sea_orm::tests_cfg::cake::Model,
-        sea_orm::tests_cfg::filling::Model,
-    ) {
-        (
-            cake_model(cake_id, cake_name),
-            filling_model(filling_id, filling_name),
-        )
-    }
+    #[smol_potat::test]
+    pub async fn with_related_empty() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
 
-    fn filling_model(id: i32, name: String) -> sea_orm::tests_cfg::filling::Model {
-        sea_orm::tests_cfg::filling::Model {
-            id,
-            name,
-            vendor_id: None,
-            ignored_attr: 0,
-        }
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                cake_fruit_model(1, 1).into_mock_row(),
+                cake_fruit_model(2, 1).into_mock_row(),
+                cake_fruit_model(2, 2).into_mock_row(),
+                cake_fruit_model(2, 3).into_mock_row(),
+                (cake_model(3.to_owned()), None::<fruit::Model>).into_mock_row(),
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find().find_with_related(Fruit).all(&db).await?,
+            [
+                (cake_model(1), vec![fruit_model(1, Some(1)),]),
+                (
+                    cake_model(2),
+                    vec![
+                        fruit_model(1, Some(2)),
+                        fruit_model(2, Some(2)),
+                        fruit_model(3, Some(2)),
+                    ]
+                ),
+                (cake_model(3), vec![])
+            ]
+        );
+
+        Ok(())
     }
 
     #[smol_potat::test]
-    pub async fn also_linked() -> Result<(), sea_orm::DbErr> {
+    pub async fn also_linked_base() -> Result<(), sea_orm::DbErr> {
         use sea_orm::tests_cfg::*;
         use sea_orm::{DbBackend, EntityTrait, MockDatabase, Statement, Transaction};
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[cake_filling_link(
-                1,
-                "apple cake".to_owned(),
-                1,
-                "apple juice".to_owned(),
-            )]])
+            .append_query_results([[cake_vendor_link(1, 1)]])
             .into_connection();
 
         assert_eq!(
             Cake::find()
-                .find_also_linked(entity_linked::CakeToFilling)
+                .find_also_linked(entity_linked::CakeToFillingVendor)
                 .all(&db)
                 .await?,
-            [(
-                cake_model(1, "apple cake".to_owned()),
-                Some(filling_model(1, "apple juice".to_owned()))
-            )]
+            [(cake_model(1), Some(vendor_model(1)))]
         );
 
         assert_eq!(
@@ -1436,10 +1408,11 @@ mod tests {
                 DbBackend::Postgres,
                 [
                     r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
-                    r#""r1"."id" AS "B_id", "r1"."name" AS "B_name", "r1"."vendor_id" AS "B_vendor_id""#,
+                    r#""r2"."id" AS "B_id", "r2"."name" AS "B_name""#,
                     r#"FROM "cake""#,
                     r#"LEFT JOIN "cake_filling" AS "r0" ON "cake"."id" = "r0"."cake_id""#,
                     r#"LEFT JOIN "filling" AS "r1" ON "r0"."filling_id" = "r1"."id""#,
+                    r#"LEFT JOIN "vendor" AS "r2" ON "r1"."vendor_id" = "r2"."id""#,
                 ]
                 .join(" ")
                 .as_str(),
@@ -1451,36 +1424,27 @@ mod tests {
     }
 
     #[smol_potat::test]
-    pub async fn also_linked_2() -> Result<(), sea_orm::DbErr> {
+    pub async fn also_linked_same_cake() -> Result<(), sea_orm::DbErr> {
         use sea_orm::tests_cfg::*;
         use sea_orm::{DbBackend, EntityTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[
-                cake_filling_link(1, "apple cake".to_owned(), 1, "apple juice".to_owned()),
-                cake_filling_link(2, "fruit cake".to_owned(), 1, "apple juice".to_owned()),
-                cake_filling_link(2, "fruit cake".to_owned(), 2, "orange jam".to_owned()),
+                cake_vendor_link(1, 1),
+                cake_vendor_link(1, 2),
+                cake_vendor_link(2, 3),
             ]])
             .into_connection();
 
         assert_eq!(
             Cake::find()
-                .find_also_linked(entity_linked::CakeToFilling)
+                .find_also_linked(entity_linked::CakeToFillingVendor)
                 .all(&db)
                 .await?,
             [
-                (
-                    cake_model(1, "apple cake".to_owned()),
-                    Some(filling_model(1, "apple juice".to_owned()))
-                ),
-                (
-                    cake_model(2, "fruit cake".to_owned()),
-                    Some(filling_model(1, "apple juice".to_owned()))
-                ),
-                (
-                    cake_model(2, "fruit cake".to_owned()),
-                    Some(filling_model(2, "orange jam".to_owned()))
-                )
+                (cake_model(1), Some(vendor_model(1))),
+                (cake_model(1), Some(vendor_model(2))),
+                (cake_model(2), Some(vendor_model(3)))
             ]
         );
 
@@ -1488,45 +1452,27 @@ mod tests {
     }
 
     #[smol_potat::test]
-    pub async fn also_linked_3() -> Result<(), sea_orm::DbErr> {
+    pub async fn also_linked_same_vendor() -> Result<(), sea_orm::DbErr> {
         use sea_orm::tests_cfg::*;
         use sea_orm::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[
-                cake_filling_link(1, "apple cake".to_owned(), 1, "apple juice".to_owned())
-                    .into_mock_row(),
-                cake_filling_link(2, "fruit cake".to_owned(), 1, "apple juice".to_owned())
-                    .into_mock_row(),
-                cake_filling_link(2, "fruit cake".to_owned(), 2, "orange jam".to_owned())
-                    .into_mock_row(),
-                (
-                    cake_model(3, "chocolate cake".to_owned()),
-                    None::<filling::Model>,
-                )
-                    .into_mock_row(),
+                cake_vendor_link(1, 1).into_mock_row(),
+                cake_vendor_link(2, 1).into_mock_row(),
+                cake_vendor_link(3, 2).into_mock_row(),
             ]])
             .into_connection();
 
         assert_eq!(
             Cake::find()
-                .find_also_linked(entity_linked::CakeToFilling)
+                .find_also_linked(entity_linked::CakeToFillingVendor)
                 .all(&db)
                 .await?,
             [
-                (
-                    cake_model(1, "apple cake".to_owned()),
-                    Some(filling_model(1, "apple juice".to_owned()))
-                ),
-                (
-                    cake_model(2, "fruit cake".to_owned()),
-                    Some(filling_model(1, "apple juice".to_owned()))
-                ),
-                (
-                    cake_model(2, "fruit cake".to_owned()),
-                    Some(filling_model(2, "orange jam".to_owned()))
-                ),
-                (cake_model(3, "chocolate cake".to_owned()), None)
+                (cake_model(1), Some(vendor_model(1))),
+                (cake_model(2), Some(vendor_model(1))),
+                (cake_model(3), Some(vendor_model(2))),
             ]
         );
 
@@ -1534,35 +1480,84 @@ mod tests {
     }
 
     #[smol_potat::test]
-    pub async fn with_linked() -> Result<(), sea_orm::DbErr> {
+    pub async fn also_linked_many_to_many() -> Result<(), sea_orm::DbErr> {
         use sea_orm::tests_cfg::*;
-        use sea_orm::{DbBackend, EntityTrait, MockDatabase, Statement, Transaction};
+        use sea_orm::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[
-                cake_filling_link(1, "apple cake".to_owned(), 1, "apple juice".to_owned()),
-                cake_filling_link(2, "fruit cake".to_owned(), 1, "apple juice".to_owned()),
-                cake_filling_link(2, "fruit cake".to_owned(), 2, "orange jam".to_owned()),
+                cake_vendor_link(1, 1).into_mock_row(),
+                cake_vendor_link(2, 1).into_mock_row(),
+                cake_vendor_link(2, 2).into_mock_row(),
             ]])
             .into_connection();
 
         assert_eq!(
             Cake::find()
-                .find_with_linked(entity_linked::CakeToFilling)
+                .find_also_linked(entity_linked::CakeToFillingVendor)
                 .all(&db)
                 .await?,
             [
-                (
-                    cake_model(1, "apple cake".to_owned()),
-                    vec![filling_model(1, "apple juice".to_owned())]
-                ),
-                (
-                    cake_model(2, "fruit cake".to_owned()),
-                    vec![
-                        filling_model(1, "apple juice".to_owned()),
-                        filling_model(2, "orange jam".to_owned())
-                    ]
-                )
+                (cake_model(1), Some(vendor_model(1))),
+                (cake_model(2), Some(vendor_model(1))),
+                (cake_model(2), Some(vendor_model(2))),
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    pub async fn also_linked_empty() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                cake_vendor_link(1, 1).into_mock_row(),
+                cake_vendor_link(2, 2).into_mock_row(),
+                cake_vendor_link(3, 3).into_mock_row(),
+                (cake_model(4), None::<vendor::Model>).into_mock_row(),
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find()
+                .find_also_linked(entity_linked::CakeToFillingVendor)
+                .all(&db)
+                .await?,
+            [
+                (cake_model(1), Some(vendor_model(1))),
+                (cake_model(2), Some(vendor_model(2))),
+                (cake_model(3), Some(vendor_model(3))),
+                (cake_model(4), None)
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    pub async fn with_linked_base() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, MockDatabase, Statement, Transaction};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                cake_vendor_link(1, 1),
+                cake_vendor_link(2, 2),
+                cake_vendor_link(2, 3),
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find()
+                .find_with_linked(entity_linked::CakeToFillingVendor)
+                .all(&db)
+                .await?,
+            [
+                (cake_model(1), vec![vendor_model(1)]),
+                (cake_model(2), vec![vendor_model(2), vendor_model(3)])
             ]
         );
 
@@ -1572,10 +1567,10 @@ mod tests {
                 DbBackend::Postgres,
                 [
                     r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
-                    r#""r1"."id" AS "B_id", "r1"."name" AS "B_name", "r1"."vendor_id" AS "B_vendor_id""#,
-                    r#"FROM "cake""#,
+                    r#""r2"."id" AS "B_id", "r2"."name" AS "B_name" FROM "cake""#,
                     r#"LEFT JOIN "cake_filling" AS "r0" ON "cake"."id" = "r0"."cake_id""#,
                     r#"LEFT JOIN "filling" AS "r1" ON "r0"."filling_id" = "r1"."id""#,
+                    r#"LEFT JOIN "vendor" AS "r2" ON "r1"."vendor_id" = "r2"."id""#,
                 ]
                 .join(" ")
                 .as_str(),
@@ -1587,44 +1582,85 @@ mod tests {
     }
 
     #[smol_potat::test]
-    pub async fn with_linked_2() -> Result<(), sea_orm::DbErr> {
+    pub async fn with_linked_same_vendor() -> Result<(), sea_orm::DbErr> {
         use sea_orm::tests_cfg::*;
         use sea_orm::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[
-                cake_filling_link(1, "apple cake".to_owned(), 1, "apple juice".to_owned())
-                    .into_mock_row(),
-                cake_filling_link(2, "fruit cake".to_owned(), 1, "apple juice".to_owned())
-                    .into_mock_row(),
-                cake_filling_link(2, "fruit cake".to_owned(), 2, "orange jam".to_owned())
-                    .into_mock_row(),
-                (
-                    cake_model(3, "chocolate cake".to_owned()),
-                    None::<filling::Model>,
-                )
-                    .into_mock_row(),
+                cake_vendor_link(1, 1).into_mock_row(),
+                cake_vendor_link(2, 2).into_mock_row(),
+                cake_vendor_link(3, 2).into_mock_row(),
             ]])
             .into_connection();
 
         assert_eq!(
             Cake::find()
-                .find_with_linked(entity_linked::CakeToFilling)
+                .find_with_linked(entity_linked::CakeToFillingVendor)
                 .all(&db)
                 .await?,
             [
-                (
-                    cake_model(1, "apple cake".to_owned()),
-                    vec![filling_model(1, "apple juice".to_owned()),]
-                ),
-                (
-                    cake_model(2, "fruit cake".to_owned()),
-                    vec![
-                        filling_model(1, "apple juice".to_owned()),
-                        filling_model(2, "orange jam".to_owned()),
-                    ]
-                ),
-                (cake_model(3, "chocolate cake".to_owned()), vec![])
+                (cake_model(1), vec![vendor_model(1)]),
+                (cake_model(2), vec![vendor_model(2),]),
+                (cake_model(3), vec![vendor_model(2)])
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    pub async fn with_linked_empty() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                cake_vendor_link(1, 1).into_mock_row(),
+                cake_vendor_link(2, 1).into_mock_row(),
+                cake_vendor_link(2, 2).into_mock_row(),
+                (cake_model(3), None::<vendor::Model>).into_mock_row(),
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find()
+                .find_with_linked(entity_linked::CakeToFillingVendor)
+                .all(&db)
+                .await?,
+            [
+                (cake_model(1), vec![vendor_model(1)]),
+                (cake_model(2), vec![vendor_model(1), vendor_model(2),]),
+                (cake_model(3), vec![])
+            ]
+        );
+
+        Ok(())
+    }
+
+    // this should not happen?
+    #[smol_potat::test]
+    pub async fn with_linked_repeated() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                cake_vendor_link(1, 1).into_mock_row(),
+                cake_vendor_link(1, 1).into_mock_row(),
+                cake_vendor_link(2, 1).into_mock_row(),
+                cake_vendor_link(2, 2).into_mock_row(),
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find()
+                .find_with_linked(entity_linked::CakeToFillingVendor)
+                .all(&db)
+                .await?,
+            [
+                (cake_model(1), vec![vendor_model(1), vendor_model(1)]),
+                (cake_model(2), vec![vendor_model(1), vendor_model(2),]),
             ]
         );
 

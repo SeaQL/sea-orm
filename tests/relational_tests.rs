@@ -583,8 +583,6 @@ pub async fn related() -> Result<(), DbErr> {
         .select_only()
         .column_as(bakery::Column::Name, (SelectA, bakery::Column::Name))
         .column_as(baker::Column::Name, (SelectB, baker::Column::Name))
-        .group_by(bakery::Column::Id)
-        .group_by(baker::Column::Id)
         .order_by_asc(bakery::Column::Id)
         .order_by_asc(baker::Column::Id)
         .into_model()

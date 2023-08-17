@@ -440,72 +440,121 @@ fn table_column(tbl: &TableRef, col: &DynIden) -> ColumnRef {
 
 #[cfg(test)]
 mod tests {
+    fn cake_model(id: i32) -> sea_orm::tests_cfg::cake::Model {
+        let name = match id {
+            1 => "apple cake",
+            2 => "orange cake",
+            3 => "fruit cake",
+            4 => "chocolate cake",
+            _ => "",
+        }
+        .to_string();
+        sea_orm::tests_cfg::cake::Model { id, name }
+    }
+
+    fn fruit_model(id: i32, cake_id: Option<i32>) -> sea_orm::tests_cfg::fruit::Model {
+        let name = match id {
+            1 => "apple",
+            2 => "orange",
+            3 => "grape",
+            4 => "strawberry",
+            _ => "",
+        }
+        .to_string();
+        sea_orm::tests_cfg::fruit::Model { id, name, cake_id }
+    }
+
     #[tokio::test]
     async fn test_load_one() {
-        use crate::{
+        use sea_orm::{
             entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
         };
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[
-                cake::Model {
-                    id: 1,
-                    name: "New York Cheese".to_owned(),
-                }
-                .into_mock_row(),
-                cake::Model {
-                    id: 2,
-                    name: "London Cheese".to_owned(),
-                }
-                .into_mock_row(),
-            ]])
+            .append_query_results([[cake_model(1), cake_model(2)]])
             .into_connection();
 
-        let fruits = vec![fruit::Model {
-            id: 1,
-            name: "Apple".to_owned(),
-            cake_id: Some(1),
-        }];
+        let fruits = vec![fruit_model(1, Some(1))];
 
         let cakes = fruits
             .load_one(cake::Entity::find(), &db)
             .await
             .expect("Should return something");
 
-        assert_eq!(
-            cakes,
-            [Some(cake::Model {
-                id: 1,
-                name: "New York Cheese".to_owned(),
-            })]
-        );
+        assert_eq!(cakes, [Some(cake_model(1))]);
     }
 
     #[tokio::test]
-    async fn test_load_many() {
-        use crate::{
+    async fn test_load_one_same_cake() {
+        use sea_orm::{
             entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
         };
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[fruit::Model {
-                id: 1,
-                name: "Apple".to_owned(),
-                cake_id: Some(1),
-            }
-            .into_mock_row()]])
+            .append_query_results([[cake_model(1), cake_model(2)]])
             .into_connection();
 
-        let cakes = vec![
-            cake::Model {
-                id: 1,
-                name: "New York Cheese".to_owned(),
-            },
-            cake::Model {
-                id: 2,
-                name: "London Cheese".to_owned(),
-            },
-        ];
+        let fruits = vec![fruit_model(1, Some(1)), fruit_model(2, Some(1))];
+
+        let cakes = fruits
+            .load_one(cake::Entity::find(), &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(cakes, [Some(cake_model(1)), Some(cake_model(1))]);
+    }
+
+    #[tokio::test]
+    async fn test_load_one_empty() {
+        use sea_orm::{
+            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
+        };
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[cake_model(1), cake_model(2)]])
+            .into_connection();
+
+        let fruits: Vec<fruit::Model> = vec![];
+
+        let cakes = fruits
+            .load_one(cake::Entity::find(), &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(cakes, []);
+    }
+
+    #[tokio::test]
+    async fn test_load_many() {
+        use sea_orm::{
+            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
+        };
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[fruit_model(1, Some(1))]])
+            .into_connection();
+
+        let cakes = vec![cake_model(1), cake_model(2)];
+
+        let fruits = cakes
+            .load_many(fruit::Entity::find(), &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(fruits, [vec![fruit_model(1, Some(1))], vec![]]);
+    }
+
+    #[tokio::test]
+    async fn test_load_many_2() {
+        use sea_orm::{
+            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
+        };
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[fruit_model(1, Some(1)), fruit_model(2, Some(1))]])
+            .into_connection();
+
+        let cakes = vec![cake_model(1), cake_model(2)];
 
         let fruits = cakes
             .load_many(fruit::Entity::find(), &db)
@@ -515,13 +564,28 @@ mod tests {
         assert_eq!(
             fruits,
             [
-                vec![fruit::Model {
-                    id: 1,
-                    name: "Apple".to_owned(),
-                    cake_id: Some(1),
-                }],
+                vec![fruit_model(1, Some(1)), fruit_model(2, Some(1))],
                 vec![]
             ]
         );
+    }
+
+    // FIXME: load many with empty vector will panic
+    // #[tokio::test]
+    async fn test_load_many_empty() {
+        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[fruit_model(1, Some(1)), fruit_model(2, Some(1))]])
+            .into_connection();
+
+        let cakes: Vec<cake::Model> = vec![];
+
+        let fruits = cakes
+            .load_many(fruit::Entity::find(), &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(fruits, [vec![], vec![]]);
     }
 }
