@@ -1263,20 +1263,17 @@ mod tests {
         Ok(())
     }
 
-    // fixme: unsure on how to insert a cake with no fruit into query_result
-    // #[smol_potat::test]
+    #[smol_potat::test]
     pub async fn also_related_4() -> Result<(), sea_orm::DbErr> {
         use sea_orm::tests_cfg::*;
-        use sea_orm::{DbBackend, EntityTrait, MockDatabase, QuerySelect};
+        use sea_orm::{DbBackend, EntityTrait, MockDatabase, QuerySelect, IntoMockRow};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[
-                cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()),
-                cake_fruit_model(1, "apple cake".to_owned(), 2, "orange".to_owned()),
-                cake_fruit_model(2, "orange cake".to_owned(), 2, "orange".to_owned()),
-            ]])
-            .append_query_results([[
-                cake_model(3, "chocolate cake".to_owned()), // no fruit in cake
+                cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()).into_mock_row(),
+                cake_fruit_model(1, "apple cake".to_owned(), 2, "orange".to_owned()).into_mock_row(),
+                cake_fruit_model(2, "orange cake".to_owned(), 2, "orange".to_owned()).into_mock_row(),
+                (cake_model(3, "chocolate cake".to_owned()), None::<fruit::Model>).into_mock_row(),
             ]])
             .into_connection();
 
@@ -1317,7 +1314,8 @@ mod tests {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[
                 cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()),
-                cake_fruit_model(1, "apple cake".to_owned(), 2, "orange".to_owned()),
+                cake_fruit_model(2, "fruit cake".to_owned(), 1, "apple".to_owned()),
+                cake_fruit_model(2, "fruit cake".to_owned(), 2, "orange".to_owned()),
             ]])
             .into_connection();
 
@@ -1332,8 +1330,14 @@ mod tests {
             [(
                 cake_model(1, "apple cake".to_owned()),
                 vec![
-                    fruit_model(1, "apple".to_owned(), Some(1)),
-                    fruit_model(2, "orange".to_owned(), Some(1))
+                    fruit_model(1, "apple".to_owned(), Some(1))
+                ]
+            ),
+            (
+                cake_model(2, "fruit cake".to_owned()),
+                vec![
+                    fruit_model(1, "apple".to_owned(), Some(2)),
+                    fruit_model(2, "orange".to_owned(), Some(2))
                 ]
             )]
         );
@@ -1361,15 +1365,15 @@ mod tests {
     #[cfg(any(feature = "mock",))]
     pub async fn with_related_2() -> Result<(), sea_orm::DbErr> {
         use sea_orm::tests_cfg::*;
-        use sea_orm::{DbBackend, EntityTrait, MockDatabase, QuerySelect};
+        use sea_orm::{DbBackend, EntityTrait, MockDatabase, QuerySelect, IntoMockRow};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[
-                cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()),
-                cake_fruit_model(2, "fruit cake".to_owned(), 1, "apple".to_owned()),
-                cake_fruit_model(2, "fruit cake".to_owned(), 2, "orange".to_owned()),
-                cake_fruit_model(2, "fruit cake".to_owned(), 3, "grape".to_owned()),
-                cake_fruit_model(2, "fruit cake".to_owned(), 4, "melon".to_owned()),
+                cake_fruit_model(1, "apple cake".to_owned(), 1, "apple".to_owned()).into_mock_row(),
+                cake_fruit_model(2, "fruit cake".to_owned(), 1, "apple".to_owned()).into_mock_row(),
+                cake_fruit_model(2, "fruit cake".to_owned(), 2, "orange".to_owned()).into_mock_row(),
+                (cake_model(2, "fruit cake".to_owned()), Some(fruit_model(3, "grape".to_owned(), Some(2)))).into_mock_row(),
+                (cake_model(3, "chocolate cake".to_owned()), None::<fruit::Model>).into_mock_row()
             ]])
             .into_connection();
 
@@ -1392,8 +1396,11 @@ mod tests {
                         fruit_model(1, "apple".to_owned(), Some(2)),
                         fruit_model(2, "orange".to_owned(), Some(2)),
                         fruit_model(3, "grape".to_owned(), Some(2)),
-                        fruit_model(4, "melon".to_owned(), Some(2)),
                     ]
+                ),
+                (
+                    cake_model(3, "chocolate cake".to_owned()),
+                    vec![]
                 )
             ]
         );

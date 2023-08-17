@@ -285,6 +285,33 @@ where
     }
 }
 
+impl<M, N> IntoMockRow for (M, Option<N>)
+where
+    M: ModelTrait,
+    N: ModelTrait,
+{
+    fn into_mock_row(self) -> MockRow {
+        let mut mapped_join = BTreeMap::new();
+
+        for column in <<M as ModelTrait>::Entity as EntityTrait>::Column::iter() {
+            mapped_join.insert(
+                format!("{}{}", SelectA.as_str(), column.as_str()),
+                self.0.get(column),
+            );
+        }
+        if let Some(b_entity) = self.1 {
+            for column in <<N as ModelTrait>::Entity as EntityTrait>::Column::iter() {
+                mapped_join.insert(
+                    format!("{}{}", SelectB.as_str(), column.as_str()),
+                    b_entity.get(column),
+                );
+            }
+        }
+
+        mapped_join.into_mock_row()
+    }
+}
+
 impl<T> IntoMockRow for BTreeMap<T, Value>
 where
     T: Into<String>,
