@@ -502,7 +502,6 @@ pub async fn having() {
 ))]
 pub async fn related() -> Result<(), DbErr> {
     use sea_orm::{SelectA, SelectB};
-    use sea_query::{Alias, Expr};
 
     let ctx = TestContext::new("test_related").await;
     create_tables(&ctx.db).await?;
@@ -526,7 +525,7 @@ pub async fn related() -> Result<(), DbErr> {
         bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
         ..Default::default()
     };
-    let baker_bob_res = Baker::insert(baker_bob).exec(&ctx.db).await?;
+    let _baker_bob_res = Baker::insert(baker_bob).exec(&ctx.db).await?;
 
     // Bobby's Baker
     let baker_bobby = baker::ActiveModel {
@@ -537,7 +536,7 @@ pub async fn related() -> Result<(), DbErr> {
         bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
         ..Default::default()
     };
-    let baker_bobby_res = Baker::insert(baker_bobby).exec(&ctx.db).await?;
+    let _baker_bobby_res = Baker::insert(baker_bobby).exec(&ctx.db).await?;
 
     // Terres Bakery
     let terres_bakery = bakery::ActiveModel {
@@ -558,7 +557,7 @@ pub async fn related() -> Result<(), DbErr> {
         bakery_id: Set(Some(terres_bakery_res.last_insert_id)),
         ..Default::default()
     };
-    let baker_ada_res = Baker::insert(baker_ada).exec(&ctx.db).await?;
+    let _baker_ada_res = Baker::insert(baker_ada).exec(&ctx.db).await?;
 
     // Stone Bakery, with no baker
     let stone_bakery = bakery::ActiveModel {
@@ -566,7 +565,7 @@ pub async fn related() -> Result<(), DbErr> {
         profit_margin: Set(13.5),
         ..Default::default()
     };
-    let stone_bakery_res = Bakery::insert(stone_bakery).exec(&ctx.db).await?;
+    let _stone_bakery_res = Bakery::insert(stone_bakery).exec(&ctx.db).await?;
 
     #[derive(Debug, FromQueryResult, PartialEq)]
     struct BakerLite {
@@ -692,24 +691,26 @@ pub async fn related() -> Result<(), DbErr> {
                     name: "SeaSide Bakery".to_owned(),
                     profit_margin: 10.4,
                 },
-                vec![baker::Model {
-                    id: 1,
-                    name: "Baker Bob".to_owned(),
-                    contact_details: serde_json::json!({
-                        "mobile": "+61424000000",
-                        "home": "0395555555",
-                        "address": "12 Test St, Testville, Vic, Australia"
-                    }),
-                    bakery_id: Some(seaside_bakery_res.last_insert_id),
-                },
-                baker::Model {
-                    id: 2,
-                    name: "Baker Bobby".to_owned(),
-                    contact_details: serde_json::json!({
-                        "mobile": "+85212345678",
-                    }),
-                    bakery_id: Some(seaside_bakery_res.last_insert_id),
-                }]
+                vec![
+                    baker::Model {
+                        id: 1,
+                        name: "Baker Bob".to_owned(),
+                        contact_details: serde_json::json!({
+                            "mobile": "+61424000000",
+                            "home": "0395555555",
+                            "address": "12 Test St, Testville, Vic, Australia"
+                        }),
+                        bakery_id: Some(seaside_bakery_res.last_insert_id),
+                    },
+                    baker::Model {
+                        id: 2,
+                        name: "Baker Bobby".to_owned(),
+                        contact_details: serde_json::json!({
+                            "mobile": "+85212345678",
+                        }),
+                        bakery_id: Some(seaside_bakery_res.last_insert_id),
+                    }
+                ]
             ),
             (
                 bakery::Model {
@@ -717,18 +718,16 @@ pub async fn related() -> Result<(), DbErr> {
                     name: "Terres Bakery".to_owned(),
                     profit_margin: 13.5,
                 },
-                vec![
-                    baker::Model {
-                        id: 3,
-                        name: "Baker Ada".to_owned(),
-                        contact_details: serde_json::json!({
-                            "mobile": "+61424000000",
-                            "home": "0395555555",
-                            "address": "12 Test St, Testville, Vic, Australia"
-                        }),
-                        bakery_id: Some(terres_bakery_res.last_insert_id),
-                    }
-                ]
+                vec![baker::Model {
+                    id: 3,
+                    name: "Baker Ada".to_owned(),
+                    contact_details: serde_json::json!({
+                        "mobile": "+61424000000",
+                        "home": "0395555555",
+                        "address": "12 Test St, Testville, Vic, Australia"
+                    }),
+                    bakery_id: Some(terres_bakery_res.last_insert_id),
+                }]
             ),
             (
                 bakery::Model {
