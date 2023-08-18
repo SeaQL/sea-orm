@@ -1487,6 +1487,8 @@ mod tests {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[
                 cake_vendor_link(1, 1).into_mock_row(),
+                cake_vendor_link(1, 2).into_mock_row(),
+                cake_vendor_link(1, 3).into_mock_row(),
                 cake_vendor_link(2, 1).into_mock_row(),
                 cake_vendor_link(2, 2).into_mock_row(),
             ]])
@@ -1499,6 +1501,8 @@ mod tests {
                 .await?,
             [
                 (cake_model(1), Some(vendor_model(1))),
+                (cake_model(1), Some(vendor_model(2))),
+                (cake_model(1), Some(vendor_model(3))),
                 (cake_model(2), Some(vendor_model(1))),
                 (cake_model(2), Some(vendor_model(2))),
             ]
@@ -1601,7 +1605,7 @@ mod tests {
                 .await?,
             [
                 (cake_model(1), vec![vendor_model(1)]),
-                (cake_model(2), vec![vendor_model(2),]),
+                (cake_model(2), vec![vendor_model(2)]),
                 (cake_model(3), vec![vendor_model(2)])
             ]
         );
@@ -1638,7 +1642,7 @@ mod tests {
         Ok(())
     }
 
-    // this should not happen?
+    // normally would not happen
     #[smol_potat::test]
     pub async fn with_linked_repeated() -> Result<(), sea_orm::DbErr> {
         use sea_orm::tests_cfg::*;

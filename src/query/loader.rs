@@ -464,6 +464,19 @@ mod tests {
         sea_orm::tests_cfg::fruit::Model { id, name, cake_id }
     }
 
+    fn filling_model(id: i32) -> sea_orm::tests_cfg::filling::Model {
+        let name = match id {
+            1 => "apple juice",
+            2 => "orange jam",
+            3 => "chocolate crust",
+            4 => "strawberry jam",
+            _ => "",
+        }
+        .to_string();
+        sea_orm::tests_cfg::filling::Model { id, name, vendor_id: Some(1), ignored_attr: 0 }
+    }
+
+
     #[tokio::test]
     async fn test_load_one() {
         use sea_orm::{
@@ -588,4 +601,29 @@ mod tests {
 
         assert_eq!(fruits, [vec![], vec![]]);
     }
+
+    // not sure how to test
+    // #[tokio::test]
+    async fn test_load_many_to_many() {
+        use sea_orm::{
+            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
+        };
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                (cake_filling::Model { cake_id:1, filling_id: 1},
+                filling_model(1))
+                ]])
+            .into_connection();
+
+        let cakes = vec![cake_model(1)];
+
+        let fillings = cakes
+            .load_many_to_many(Filling, CakeFilling , &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(fillings, [vec![filling_model(1)], vec![]]);
+    }
+
 }

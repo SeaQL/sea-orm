@@ -1,7 +1,7 @@
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
-use sea_orm::{entity::*, query::*, DbConn, DbErr};
+use sea_orm::{entity::*, query::*, DbConn, DbErr, RuntimeErr};
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -41,12 +41,50 @@ async fn loader_load_one() -> Result<(), DbErr> {
     feature = "sqlx-sqlite",
     feature = "sqlx-postgres"
 ))]
+async fn loader_load_one_edge_case() -> Result<(), DbErr> {
+    let ctx = TestContext::new("loader_test_load_one").await;
+    create_tables(&ctx.db).await?;
+
+    let bakery_0 = insert_bakery(&ctx.db, "SeaSide Bakery").await?;
+    let bakery_1 = insert_bakery(&ctx.db, "SeaSide Bakery").await?;
+
+    let baker_1 = insert_baker(&ctx.db, "Baker 1", bakery_0.id).await?;
+    let baker_2 = insert_baker(&ctx.db, "Baker 2", bakery_0.id).await?;
+    let baker_3 = baker::ActiveModel {
+        name: Set("Baker 3".to_owned()),
+        contact_details: Set(serde_json::json!({})),
+        bakery_id: Set(None),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await?;
+
+    let bakers = baker::Entity::find().all(&ctx.db).await?;
+    let bakeries = bakers.load_one(bakery::Entity, &ctx.db).await?;
+
+    assert_eq!(bakers, [baker_1, baker_2, baker_3]);
+    assert_eq!(bakeries, [Some(bakery_0.clone()), Some(bakery_0), None]);
+    
+    let bakeries = bakery::Entity::find().all(&ctx.db).await?;
+    let bakers = bakeries.load_one(baker::Entity, &ctx.db).await;
+
+    assert_eq!(bakers, Err(DbErr::Query(RuntimeErr::Internal("Relation is HasMany instead of HasOne".to_string()))));
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 async fn loader_load_many() -> Result<(), DbErr> {
     let ctx = TestContext::new("loader_test_load_many").await;
     create_tables(&ctx.db).await?;
 
     let bakery_1 = insert_bakery(&ctx.db, "SeaSide Bakery").await?;
     let bakery_2 = insert_bakery(&ctx.db, "Offshore Bakery").await?;
+    let bakery_3 = insert_bakery(&ctx.db, "Rocky Bakery").await?;
 
     let baker_1 = insert_baker(&ctx.db, "Baker 1", bakery_1.id).await?;
     let baker_2 = insert_baker(&ctx.db, "Baker 2", bakery_1.id).await?;
@@ -57,12 +95,13 @@ async fn loader_load_many() -> Result<(), DbErr> {
     let bakeries = bakery::Entity::find().all(&ctx.db).await?;
     let bakers = bakeries.load_many(baker::Entity, &ctx.db).await?;
 
-    assert_eq!(bakeries, [bakery_1.clone(), bakery_2.clone()]);
+    assert_eq!(bakeries, [bakery_1.clone(), bakery_2.clone(), bakery_3.clone()]);
     assert_eq!(
         bakers,
         [
-            [baker_1.clone(), baker_2.clone()],
-            [baker_3.clone(), baker_4.clone()]
+            vec![baker_1.clone(), baker_2.clone()],
+            vec![baker_3.clone(), baker_4.clone()],
+            vec![]
         ]
     );
 
@@ -79,7 +118,8 @@ async fn loader_load_many() -> Result<(), DbErr> {
         bakers,
         [
             vec![baker_1.clone(), baker_2.clone()],
-            vec![baker_4.clone()]
+            vec![baker_4.clone()],
+            vec![]
         ]
     );
 
