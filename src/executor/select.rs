@@ -1134,6 +1134,33 @@ mod tests {
         sea_orm::tests_cfg::cake::Model { id, name }
     }
 
+    fn filling_model(id: i32) -> sea_orm::tests_cfg::filling::Model {
+        let name = match id {
+            1 => "apple juice",
+            2 => "orange jam",
+            3 => "fruit",
+            4 => "chocolate crust",
+            _ => "",
+        }
+        .to_string();
+        sea_orm::tests_cfg::filling::Model {
+            id,
+            name,
+            vendor_id: Some(1),
+            ignored_attr: 0,
+        }
+    }
+
+    fn cake_filling_models(
+        cake_id: i32,
+        filling_id: i32,
+    ) -> (
+        sea_orm::tests_cfg::cake::Model,
+        sea_orm::tests_cfg::filling::Model,
+    ) {
+        (cake_model(cake_id), filling_model(filling_id))
+    }
+
     fn fruit_model(id: i32, cake_id: Option<i32>) -> sea_orm::tests_cfg::fruit::Model {
         let name = match id {
             1 => "apple",
@@ -1230,7 +1257,7 @@ mod tests {
             .append_query_results([[
                 cake_fruit_model(1, 1),
                 cake_fruit_model(1, 2),
-                cake_fruit_model(2, 2),
+                cake_fruit_model(2, 3),
             ]])
             .into_connection();
 
@@ -1239,7 +1266,7 @@ mod tests {
             [
                 (cake_model(1), Some(fruit_model(1, Some(1)))),
                 (cake_model(1), Some(fruit_model(2, Some(1)))),
-                (cake_model(2), Some(fruit_model(2, Some(2))))
+                (cake_model(2), Some(fruit_model(3, Some(2))))
             ]
         );
 
@@ -1255,7 +1282,7 @@ mod tests {
             .append_query_results([[
                 cake_fruit_model(1, 1).into_mock_row(),
                 cake_fruit_model(1, 2).into_mock_row(),
-                cake_fruit_model(2, 2).into_mock_row(),
+                cake_fruit_model(2, 3).into_mock_row(),
                 (cake_model(3), None::<fruit::Model>).into_mock_row(),
             ]])
             .into_connection();
@@ -1265,7 +1292,59 @@ mod tests {
             [
                 (cake_model(1), Some(fruit_model(1, Some(1)))),
                 (cake_model(1), Some(fruit_model(2, Some(1)))),
-                (cake_model(2), Some(fruit_model(2, Some(2)))),
+                (cake_model(2), Some(fruit_model(3, Some(2)))),
+                (cake_model(3), None)
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    pub async fn also_related_many_to_many() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                cake_filling_models(1, 1).into_mock_row(),
+                cake_filling_models(1, 2).into_mock_row(),
+                cake_filling_models(2, 2).into_mock_row(),
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find().find_also_related(Filling).all(&db).await?,
+            [
+                (cake_model(1), Some(filling_model(1))),
+                (cake_model(1), Some(filling_model(2))),
+                (cake_model(2), Some(filling_model(2))),
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    pub async fn also_related_many_to_many_2() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                cake_filling_models(1, 1).into_mock_row(),
+                cake_filling_models(1, 2).into_mock_row(),
+                cake_filling_models(2, 2).into_mock_row(),
+                (cake_model(3), None::<filling::Model>).into_mock_row(),
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find().find_also_related(Filling).all(&db).await?,
+            [
+                (cake_model(1), Some(filling_model(1))),
+                (cake_model(1), Some(filling_model(2))),
+                (cake_model(2), Some(filling_model(2))),
                 (cake_model(3), None)
             ]
         );
@@ -1376,6 +1455,56 @@ mod tests {
                         fruit_model(3, Some(2)),
                     ]
                 ),
+                (cake_model(3), vec![])
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    pub async fn with_related_many_to_many() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                cake_filling_models(1, 1).into_mock_row(),
+                cake_filling_models(1, 2).into_mock_row(),
+                cake_filling_models(2, 2).into_mock_row(),
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find().find_with_related(Filling).all(&db).await?,
+            [
+                (cake_model(1), vec![filling_model(1), filling_model(2)]),
+                (cake_model(2), vec![filling_model(2)]),
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    pub async fn with_related_many_to_many_2() -> Result<(), sea_orm::DbErr> {
+        use sea_orm::tests_cfg::*;
+        use sea_orm::{DbBackend, EntityTrait, IntoMockRow, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[
+                cake_filling_models(1, 1).into_mock_row(),
+                cake_filling_models(1, 2).into_mock_row(),
+                cake_filling_models(2, 2).into_mock_row(),
+                (cake_model(3), None::<filling::Model>).into_mock_row(),
+            ]])
+            .into_connection();
+
+        assert_eq!(
+            Cake::find().find_with_related(Filling).all(&db).await?,
+            [
+                (cake_model(1), vec![filling_model(1), filling_model(2)]),
+                (cake_model(2), vec![filling_model(2)]),
                 (cake_model(3), vec![])
             ]
         );
