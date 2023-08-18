@@ -940,6 +940,7 @@ pub async fn linked() -> Result<(), DbErr> {
         name: String,
     }
 
+    // filtered find
     let baked_for_customers: Vec<(BakerLite, Option<CustomerLite>)> = Baker::find()
         .find_also_linked(baker::BakedForCustomer)
         .select_only()
@@ -994,6 +995,7 @@ pub async fn linked() -> Result<(), DbErr> {
         ]
     );
 
+    // try to use find_linked instead
     let baker_bob = Baker::find()
         .filter(baker::Column::Id.eq(1))
         .one(&ctx.db)
@@ -1014,6 +1016,7 @@ pub async fn linked() -> Result<(), DbErr> {
         }]
     );
 
+    // find full model using with_linked
     let select_baker_with_customer = Baker::find()
         .find_with_linked(baker::BakedForCustomer)
         .order_by_asc(baker::Column::Id)
