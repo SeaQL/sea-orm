@@ -1,4 +1,5 @@
-use clap::{ArgGroup, Parser, Subcommand, ValueEnum};
+use clap::{ArgGroup, Parser, Subcommand, ValueEnum, Args};
+use serde::Deserialize;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -161,137 +162,133 @@ pub enum GenerateSubcommands {
     #[command(about = "Generate entity")]
     #[command(group(ArgGroup::new("formats").args(&["compact_format", "expanded_format"])))]
     #[command(group(ArgGroup::new("group-tables").args(&["tables", "include_hidden_tables"])))]
-    Entity {
-        #[arg(long, help = "Generate entity file of compact format")]
-        compact_format: bool,
+    Entity(GenerateSubCommandsEntity),
+}
 
-        #[arg(long, help = "Generate entity file of expanded format")]
-        expanded_format: bool,
+#[derive(Args,PartialEq, Eq, Debug, Deserialize)]
+pub struct GenerateSubCommandsEntity {
+    #[arg(long, help = "Generate entity file of compact format")]
+    pub compact_format: Option<bool>,
 
-        #[arg(
-            long,
-            help = "Generate entity file for hidden tables (i.e. table name starts with an underscore)"
-        )]
-        include_hidden_tables: bool,
+    #[arg(long, help = "Generate entity file of expanded format")]
+    pub expanded_format: Option<bool>,
 
-        #[arg(
-            short = 't',
-            long,
-            value_delimiter = ',',
-            help = "Generate entity file for specified tables only (comma separated)"
-        )]
-        tables: Vec<String>,
+    #[arg(long, help = "Path to config")]
+    #[serde(skip_deserializing)]
+    pub config: Option<String>,
 
-        #[arg(
-            long,
-            value_delimiter = ',',
-            default_value = "seaql_migrations",
-            help = "Skip generating entity file for specified tables (comma separated)"
-        )]
-        ignore_tables: Vec<String>,
+    #[arg(
+        long,
+        help = "Generate entity file for hidden tables (i.e. table name starts with an underscore)"
+    )]
+    pub include_hidden_tables: Option<bool>,
 
-        #[arg(
-            long,
-            default_value = "1",
-            help = "The maximum amount of connections to use when connecting to the database."
-        )]
-        max_connections: u32,
+    #[arg(
+        short = 't',
+        long,
+        value_delimiter = ',',
+        help = "Generate entity file for specified tables only (comma separated)"
+    )]
+    pub tables: Option<Vec<String>>,
 
-        #[arg(
-            short = 'o',
-            long,
-            default_value = "./",
-            help = "Entity file output directory"
-        )]
-        output_dir: String,
+    #[arg(
+        long,
+        value_delimiter = ',',
+        help = "Skip generating entity file for specified tables (comma separated)"
+    )]
+    pub ignore_tables: Option<Vec<String>>,
 
-        #[arg(
-            short = 's',
-            long,
-            env = "DATABASE_SCHEMA",
-            default_value = "public",
-            long_help = "Database schema\n \
+    #[arg(
+        long,
+        help = "The maximum amount of connections to use when connecting to the database."
+    )]
+    pub max_connections: Option<u32>,
+
+    #[arg(
+        short = 'o',
+        long,
+        help = "Entity file output directory"
+    )]
+    pub output_dir: Option<String>,
+
+    #[arg(
+        short = 's',
+        long,
+        env = "DATABASE_SCHEMA",
+        long_help = "Database schema\n \
                         - For MySQL, this argument is ignored.\n \
                         - For PostgreSQL, this argument is optional with default value 'public'."
-        )]
-        database_schema: String,
+    )]
+    pub database_schema: Option<String>,
 
-        #[arg(short = 'u', long, env = "DATABASE_URL", help = "Database URL")]
-        database_url: String,
+    #[arg(short = 'u', long, env = "DATABASE_URL", help = "Database URL")]
+    pub database_url: Option<String>,
 
-        #[arg(
-            long,
-            default_value = "none",
-            help = "Automatically derive serde Serialize / Deserialize traits for the entity (none, \
+    #[arg(
+        long,
+        help = "Automatically derive serde Serialize / Deserialize traits for the entity (none, \
                 serialize, deserialize, both)"
-        )]
-        with_serde: String,
+    )]
+    pub with_serde: Option<String>,
 
-        #[arg(
-            long,
-            help = "Generate a serde field attribute, '#[serde(skip_deserializing)]', for the primary key fields to skip them during deserialization, this flag will be affective only when '--with-serde' is 'both' or 'deserialize'"
-        )]
-        serde_skip_deserializing_primary_key: bool,
+    #[arg(
+        long,
+        help = "Generate a serde field attribute, '#[serde(skip_deserializing)]', for the primary key fields to skip them during deserialization, this flag will be affective only when '--with-serde' is 'both' or 'deserialize'"
+    )]
+    pub serde_skip_deserializing_primary_key: Option<bool>,
 
-        #[arg(
-            long,
-            default_value = "false",
-            help = "Opt-in to add skip attributes to hidden columns (i.e. when 'with-serde' enabled and column name starts with an underscore)"
-        )]
-        serde_skip_hidden_column: bool,
+    #[arg(
+        long,
+        help = "Opt-in to add skip attributes to hidden columns (i.e. when 'with-serde' enabled and column name starts with an underscore)"
+    )]
+    pub serde_skip_hidden_column: Option<bool>,
 
-        #[arg(
-            long,
-            default_value = "false",
-            long_help = "Automatically derive the Copy trait on generated enums.\n\
+    #[arg(
+        long,
+        long_help = "Automatically derive the Copy trait on generated enums.\n\
             Enums generated from a database don't have associated data by default, and as such can \
             derive Copy.
             "
-        )]
-        with_copy_enums: bool,
+    )]
+    pub with_copy_enums: Option<bool>,
 
-        #[arg(
-            long,
-            default_value_t,
-            value_enum,
-            help = "The datetime crate to use for generating entities."
-        )]
-        date_time_crate: DateTimeCrate,
+    #[arg(
+        long,
+        value_enum,
+        help = "The datetime crate to use for generating entities."
+    )]
+    pub date_time_crate: Option<DateTimeCrate>,
 
-        #[arg(
-            long,
-            short = 'l',
-            default_value = "false",
-            help = "Generate index file as `lib.rs` instead of `mod.rs`."
-        )]
-        lib: bool,
+    #[arg(
+        long,
+        short = 'l',
+        help = "Generate index file as `lib.rs` instead of `mod.rs`."
+    )]
+    pub lib: Option<bool>,
 
-        #[arg(
-            long,
-            value_delimiter = ',',
-            help = "Add extra derive macros to generated model struct (comma separated), e.g. `--model-extra-derives 'ts_rs::Ts','CustomDerive'`"
-        )]
-        model_extra_derives: Vec<String>,
+    #[arg(
+        long,
+        value_delimiter = ',',
+        help = "Add extra derive macros to generated model struct (comma separated), e.g. `--model-extra-derives 'ts_rs::Ts','CustomDerive'`"
+    )]
+    pub model_extra_derives: Option<Vec<String>>,
 
-        #[arg(
-            long,
-            value_delimiter = ',',
-            help = r#"Add extra attributes to generated model struct, no need for `#[]` (comma separated), e.g. `--model-extra-attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
-        )]
-        model_extra_attributes: Vec<String>,
+    #[arg(
+        long,
+        value_delimiter = ',',
+        help = r#"Add extra attributes to generated model struct, no need for `#[]` (comma separated), e.g. `--model-extra-attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
+    )]
+    pub model_extra_attributes: Option<Vec<String>>,
 
-        #[arg(
-            long,
-            default_value = "false",
-            long_help = "Generate helper Enumerations that are used by Seaography."
-        )]
-        seaography: bool,
-    },
+    #[arg(
+        long,
+        long_help = "Generate helper Enumerations that are used by Seaography."
+    )]
+    pub seaography: Option<bool>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Deserialize)]
 pub enum DateTimeCrate {
-    #[default]
     Chrono,
     Time,
 }

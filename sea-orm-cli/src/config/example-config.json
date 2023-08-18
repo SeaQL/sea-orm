@@ -1,0 +1,18 @@
+{
+        "compact_format": true,
+        "expanded_format": true,
+        "include_hidden_tables": true,
+        "tables": [
+                "my_tables"
+        ],
+        "ignore_tables": [
+                "seaql_migrations"
+        ],
+        "output_dir": "out",
+        "database_schema": "public",
+        "with_serde": "none",
+        "with_copy_enums": true,
+        "date_time_crate": "Chrono",
+        "lib": true,
+        "seaography": true
+}

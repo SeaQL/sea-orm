@@ -6,33 +6,121 @@ use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromSt
 use tracing_subscriber::{prelude::*, EnvFilter};
 use url::Url;
 
-use crate::{DateTimeCrate, GenerateSubcommands};
+use crate::{parse_config, DateTimeCrate, GenerateSubCommandsEntity, GenerateSubcommands};
+
+fn merge_options<T: std::fmt::Debug>(default: Option<T>,config: Option<T>,cli: Option<T>) -> Option<T>{
+    dbg!(&default,&config,&cli);
+    if cli.is_some(){
+        cli
+    }else if config.is_some(){
+        config
+    }else{
+        default
+    }
+}
+
+fn merge_cli_config_generate_entity(
+    mut command: GenerateSubCommandsEntity,
+) -> Result<GenerateSubCommandsEntity, Box<dyn Error>> {
+    let default_values = GenerateSubCommandsEntity {
+        compact_format: Some(false),
+        expanded_format: Some(false),
+        config: None,
+        include_hidden_tables: Some(false),
+        tables: Some(vec![]),
+        ignore_tables: Some(vec!["seaql_migrations".to_string()]),
+        max_connections: Some(1),
+        output_dir: Some("./".to_string()),
+        database_schema: Some("public".to_string()),
+        database_url: None,
+        with_serde: Some("none".to_string()),
+        serde_skip_deserializing_primary_key: Some(false),
+        serde_skip_hidden_column: Some(false),
+        with_copy_enums: Some(false),
+        date_time_crate: Some(DateTimeCrate::Chrono),
+        lib: Some(false),
+        model_extra_derives: Some(vec![]),
+        model_extra_attributes: Some(vec![]),
+        seaography: Some(false),
+    };
+
+    if let Some(ref config_path) = command.config {
+        let config_values = parse_config::<GenerateSubCommandsEntity>(config_path.to_string())?;
+        if Option::is_some(&config_values.database_url) {
+            return Err("Database Url is set in the config which is not recommended".into());
+        }
+        if Option::is_some(&config_values.max_connections) {
+            return Err("Max Connections is set in the config which is not recommended".into());
+        }
+        
+        command.compact_format = merge_options(default_values.compact_format,config_values.compact_format,command.compact_format);
+        command.expanded_format = merge_options(default_values.expanded_format,config_values.expanded_format,command.expanded_format);
+        command.include_hidden_tables = merge_options(default_values.include_hidden_tables,config_values.include_hidden_tables,command.include_hidden_tables);
+        command.tables = merge_options(default_values.tables,config_values.tables,command.tables);
+        command.ignore_tables = merge_options(default_values.ignore_tables,config_values.ignore_tables,command.ignore_tables);
+        command.max_connections = merge_options(default_values.max_connections,config_values.max_connections,command.max_connections);
+        command.output_dir = merge_options(default_values.output_dir,config_values.output_dir,command.output_dir);
+        command.database_schema = merge_options(default_values.database_schema,config_values.database_schema,command.database_schema);
+        command.database_url = merge_options(default_values.database_url,config_values.database_url,command.database_url);
+        command.with_serde = merge_options(default_values.with_serde,config_values.with_serde,command.with_serde);
+        command.serde_skip_deserializing_primary_key = merge_options(default_values.serde_skip_deserializing_primary_key,config_values.serde_skip_deserializing_primary_key,command.serde_skip_deserializing_primary_key);
+        command.serde_skip_hidden_column = merge_options(default_values.serde_skip_hidden_column,config_values.serde_skip_hidden_column,command.serde_skip_hidden_column);
+        command.with_copy_enums = merge_options(default_values.with_copy_enums,config_values.with_copy_enums,command.with_copy_enums);
+        command.date_time_crate = merge_options(default_values.date_time_crate,config_values.date_time_crate,command.date_time_crate);
+        command.lib = merge_options(default_values.lib,config_values.lib,command.lib);
+        command.model_extra_derives = merge_options(default_values.model_extra_derives,config_values.model_extra_derives,command.model_extra_derives);
+        command.model_extra_attributes = merge_options(default_values.model_extra_attributes,config_values.model_extra_attributes,command.model_extra_attributes);
+        command.seaography = merge_options(default_values.seaography ,config_values.seaography ,command.seaography );
+    }
+    Ok(command)
+}
 
 pub async fn run_generate_command(
     command: GenerateSubcommands,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
     match command {
-        GenerateSubcommands::Entity {
-            compact_format: _,
-            expanded_format,
-            include_hidden_tables,
-            tables,
-            ignore_tables,
-            max_connections,
-            output_dir,
-            database_schema,
-            database_url,
-            with_serde,
-            serde_skip_deserializing_primary_key,
-            serde_skip_hidden_column,
-            with_copy_enums,
-            date_time_crate,
-            lib,
-            model_extra_derives,
-            model_extra_attributes,
-            seaography,
-        } => {
+        GenerateSubcommands::Entity(command) => {
+            let command = merge_cli_config_generate_entity(command)?;
+            let (
+                _,
+                expanded_format,
+                include_hidden_tables,
+                tables,
+                ignore_tables,
+                max_connections,
+                output_dir,
+                database_schema,
+                database_url,
+                with_serde,
+                serde_skip_deserializing_primary_key,
+                serde_skip_hidden_column,
+                with_copy_enums,
+                date_time_crate,
+                lib,
+                model_extra_derives,
+                model_extra_attributes,
+                seaography,
+            ) = (
+                command.compact_format.unwrap(),
+                command.expanded_format.unwrap(),
+                command.include_hidden_tables.unwrap(),
+                command.tables.unwrap(),
+                command.ignore_tables.unwrap(),
+                command.max_connections.unwrap(),
+                command.output_dir.unwrap(),
+                command.database_schema.unwrap(),
+                command.database_url.unwrap(),
+                command.with_serde.unwrap(),
+                command.serde_skip_deserializing_primary_key.unwrap(),
+                command.serde_skip_hidden_column.unwrap(),
+                command.with_copy_enums.unwrap(),
+                command.date_time_crate.unwrap(),
+                command.lib.unwrap(),
+                command.model_extra_derives.unwrap(),
+                command.model_extra_attributes.unwrap(),
+                command.seaography.unwrap(),
+            );
             if verbose {
                 let _ = tracing_subscriber::fmt()
                     .with_max_level(tracing::Level::DEBUG)
@@ -248,9 +336,108 @@ impl From<DateTimeCrate> for CodegenDateTimeCrate {
 #[cfg(test)]
 mod tests {
     use clap::Parser;
+    use std::path::PathBuf;
 
     use super::*;
     use crate::{Cli, Commands};
+
+    #[test]
+    fn test_generate_entity_config_test() {
+        let cli = Cli::parse_from([
+            "sea-orm-cli",
+            "generate",
+            "entity",
+            "--database-url",
+            "postgres://root:root@localhost:3306/database",
+            "--config",
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("src/config/tests/parse.json")
+                .to_str()
+                .unwrap(),
+        ]);
+
+        match cli.command {
+            Commands::Generate { command } => match command {
+                GenerateSubcommands::Entity(command) => {
+                    let command = merge_cli_config_generate_entity(command).unwrap();
+                    assert_eq!(
+                        command,
+                        GenerateSubCommandsEntity {
+                            compact_format: Some(true),
+                            expanded_format: Some(true),
+                            config: Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/config/tests/parse.json").into_os_string().into_string().unwrap()),
+                            include_hidden_tables: Some(true),
+                            tables: Some(vec!["my_tables".to_string()]),
+                            ignore_tables: Some(vec!["seaql_migrations".to_string()]),
+                            max_connections: Some(1),
+                            output_dir: Some("out".to_string()),
+                            database_schema: Some("public".to_string()),
+                            database_url: Some("postgres://root:root@localhost:3306/database".to_string()),
+                            with_serde: Some("none".to_string()),
+                            serde_skip_deserializing_primary_key: Some(false),
+                            serde_skip_hidden_column: Some(false),
+                            with_copy_enums: Some(true),
+                            date_time_crate: Some(DateTimeCrate::Chrono),
+                            lib: Some(true),
+                            model_extra_derives: Some(vec![]),
+                            model_extra_attributes: Some(vec![]),
+                            seaography: Some(true),
+                        }
+                    )
+                }
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "called `Result::unwrap()` on an `Err` value: \"Database Url is set in the config which is not recommended\""
+    )]
+    fn test_generate_entity_config_database_url_test() {
+        let cli = Cli::parse_from([
+            "sea-orm-cli",
+            "generate",
+            "entity",
+            "--config",
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("src/config/tests/database_url.json")
+                .to_str()
+                .unwrap(),
+        ]);
+
+        match cli.command {
+            Commands::Generate { command } => match command {
+                GenerateSubcommands::Entity(command) => {let _ = merge_cli_config_generate_entity(command).unwrap();},
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "called `Result::unwrap()` on an `Err` value: \"Max Connections is set in the config which is not recommended\""
+    )]
+    fn test_generate_entity_config_max_connections() {
+        let cli = Cli::parse_from([
+            "sea-orm-cli",
+            "generate",
+            "entity",
+            "--database-url",
+            "postgres://root:root@localhost:3306/database",
+            "--config",
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("src/config/tests/max_connections.json")
+                .to_str()
+                .unwrap(),
+        ]);
+        match cli.command {
+            Commands::Generate { command } => match command {
+                GenerateSubcommands::Entity(command) => {let _ = merge_cli_config_generate_entity(command).unwrap();},
+            },
+            _ => unreachable!(),
+        }
+    }
 
     #[test]
     #[should_panic(
