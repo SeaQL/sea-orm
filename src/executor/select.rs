@@ -1404,9 +1404,9 @@ mod tests {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[
                 cake_fruit_model(1, 1).into_mock_row(),
-                cake_fruit_model(2, 1).into_mock_row(),
                 cake_fruit_model(2, 2).into_mock_row(),
                 cake_fruit_model(2, 3).into_mock_row(),
+                cake_fruit_model(2, 4).into_mock_row(),
             ]])
             .into_connection();
 
@@ -1417,9 +1417,9 @@ mod tests {
                 (
                     cake_model(2),
                     vec![
-                        fruit_model(1, Some(2)),
                         fruit_model(2, Some(2)),
                         fruit_model(3, Some(2)),
+                        fruit_model(4, Some(2)),
                     ]
                 ),
             ]
@@ -1436,9 +1436,9 @@ mod tests {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[
                 cake_fruit_model(1, 1).into_mock_row(),
-                cake_fruit_model(2, 1).into_mock_row(),
                 cake_fruit_model(2, 2).into_mock_row(),
                 cake_fruit_model(2, 3).into_mock_row(),
+                cake_fruit_model(2, 4).into_mock_row(),
                 (cake_model(3), None::<fruit::Model>).into_mock_row(),
             ]])
             .into_connection();
@@ -1450,9 +1450,9 @@ mod tests {
                 (
                     cake_model(2),
                     vec![
-                        fruit_model(1, Some(2)),
                         fruit_model(2, Some(2)),
                         fruit_model(3, Some(2)),
+                        fruit_model(4, Some(2)),
                     ]
                 ),
                 (cake_model(3), vec![])
