@@ -45,7 +45,11 @@ pub async fn test(db: &DbConn) {
     };
 
     let res = Bakery::insert(double_seaside_bakery)
-        .on_conflict(OnConflict::column(bakery::Column::Id).do_nothing().to_owned())
+        .on_conflict(
+            OnConflict::column(bakery::Column::Id)
+                .do_nothing()
+                .to_owned(),
+        )
         .on_empty_do_nothing()
         .exec(db)
         .await;

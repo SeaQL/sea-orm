@@ -1112,8 +1112,6 @@ where
 mod tests {
     use pretty_assertions::assert_eq;
 
-    use crate::tests_cfg::entity_linked;
-
     fn cake_fruit_model(
         cake_id: i32,
         fruit_id: i32,
@@ -1226,7 +1224,7 @@ mod tests {
     #[smol_potat::test]
     pub async fn also_related_3() -> Result<(), sea_orm::DbErr> {
         use sea_orm::tests_cfg::*;
-        use sea_orm::{DbBackend, EntityTrait, MockDatabase, QuerySelect};
+        use sea_orm::{DbBackend, EntityTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[

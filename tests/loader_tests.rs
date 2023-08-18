@@ -36,7 +36,12 @@ async fn loader_load_one() -> Result<(), DbErr> {
     let bakeries = bakery::Entity::find().all(&ctx.db).await?;
     let bakers = bakeries.load_one(baker::Entity, &ctx.db).await;
 
-    assert_eq!(bakers, Err(DbErr::Query(RuntimeErr::Internal("Relation is HasMany instead of HasOne".to_string()))));
+    assert_eq!(
+        bakers,
+        Err(DbErr::Query(RuntimeErr::Internal(
+            "Relation is HasMany instead of HasOne".to_string()
+        )))
+    );
 
     Ok(())
 }
@@ -64,7 +69,10 @@ async fn loader_load_many() -> Result<(), DbErr> {
     let bakeries = bakery::Entity::find().all(&ctx.db).await?;
     let bakers = bakeries.load_many(baker::Entity, &ctx.db).await?;
 
-    assert_eq!(bakeries, [bakery_1.clone(), bakery_2.clone(), bakery_3.clone()]);
+    assert_eq!(
+        bakeries,
+        [bakery_1.clone(), bakery_2.clone(), bakery_3.clone()]
+    );
     assert_eq!(
         bakers,
         [

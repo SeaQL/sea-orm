@@ -473,15 +473,27 @@ mod tests {
             _ => "",
         }
         .to_string();
-        sea_orm::tests_cfg::filling::Model { id, name, vendor_id: Some(1), ignored_attr: 0 }
+        sea_orm::tests_cfg::filling::Model {
+            id,
+            name,
+            vendor_id: Some(1),
+            ignored_attr: 0,
+        }
     }
 
+    fn cake_filling_model(
+        cake_id: i32,
+        filling_id: i32,
+    ) -> sea_orm::tests_cfg::cake_filling::Model {
+        sea_orm::tests_cfg::cake_filling::Model {
+            cake_id,
+            filling_id,
+        }
+    }
 
     #[tokio::test]
     async fn test_load_one() {
-        use sea_orm::{
-            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
-        };
+        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[cake_model(1), cake_model(2)]])
@@ -499,9 +511,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_one_same_cake() {
-        use sea_orm::{
-            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
-        };
+        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[cake_model(1), cake_model(2)]])
@@ -519,9 +529,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_one_empty() {
-        use sea_orm::{
-            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
-        };
+        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[cake_model(1), cake_model(2)]])
@@ -539,9 +547,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many() {
-        use sea_orm::{
-            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
-        };
+        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[fruit_model(1, Some(1))]])
@@ -558,10 +564,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_load_many_2() {
-        use sea_orm::{
-            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
-        };
+    async fn test_load_many_same_fruit() {
+        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[fruit_model(1, Some(1)), fruit_model(2, Some(1))]])
@@ -586,7 +590,7 @@ mod tests {
     // FIXME: load many with empty vector will panic
     // #[tokio::test]
     async fn test_load_many_empty() {
-        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, MockDatabase};
+        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[fruit_model(1, Some(1)), fruit_model(2, Some(1))]])
@@ -599,31 +603,98 @@ mod tests {
             .await
             .expect("Should return something");
 
-        assert_eq!(fruits, [vec![], vec![]]);
+        let empty_vec: Vec<Vec<fruit::Model>> = vec![];
+
+        assert_eq!(fruits, empty_vec);
     }
 
-    // TODO: not sure how to test
-    // #[tokio::test]
-    async fn test_load_many_to_many() {
+    #[tokio::test]
+    async fn test_load_many_to_many_base() {
         use sea_orm::{
             entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
         };
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[
-                (cake_filling::Model { cake_id:1, filling_id: 1},
-                filling_model(1))
-                ]])
+            .append_query_results([
+                [cake_filling_model(1, 1).into_mock_row()],
+                [filling_model(1).into_mock_row()],
+            ])
             .into_connection();
 
         let cakes = vec![cake_model(1)];
 
         let fillings = cakes
-            .load_many_to_many(Filling, CakeFilling , &db)
+            .load_many_to_many(Filling, CakeFilling, &db)
             .await
             .expect("Should return something");
 
-        assert_eq!(fillings, [vec![filling_model(1)], vec![]]);
+        assert_eq!(fillings, vec![vec![filling_model(1)]]);
     }
 
+    #[tokio::test]
+    async fn test_load_many_to_many_complex() {
+        use sea_orm::{
+            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
+        };
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([
+                [
+                    cake_filling_model(1, 1).into_mock_row(),
+                    cake_filling_model(1, 2).into_mock_row(),
+                    cake_filling_model(1, 3).into_mock_row(),
+                    cake_filling_model(2, 1).into_mock_row(),
+                    cake_filling_model(2, 2).into_mock_row(),
+                ],
+                [
+                    filling_model(1).into_mock_row(),
+                    filling_model(2).into_mock_row(),
+                    filling_model(3).into_mock_row(),
+                    filling_model(4).into_mock_row(),
+                    filling_model(5).into_mock_row(),
+                ],
+            ])
+            .into_connection();
+
+        let cakes = vec![cake_model(1), cake_model(2), cake_model(3)];
+
+        let fillings = cakes
+            .load_many_to_many(Filling, CakeFilling, &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(
+            fillings,
+            vec![
+                vec![filling_model(1), filling_model(2), filling_model(3)],
+                vec![filling_model(1), filling_model(2)],
+                vec![],
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn test_load_many_to_many_empty() {
+        use sea_orm::{
+            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
+        };
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([
+                [cake_filling_model(1, 1).into_mock_row()],
+                [filling_model(1).into_mock_row()],
+            ])
+            .into_connection();
+
+        let cakes: Vec<cake::Model> = vec![];
+
+        let fillings = cakes
+            .load_many_to_many(Filling, CakeFilling, &db)
+            .await
+            .expect("Should return something");
+
+        let empty_vec: Vec<Vec<filling::Model>> = vec![];
+
+        assert_eq!(fillings, empty_vec);
+    }
 }
