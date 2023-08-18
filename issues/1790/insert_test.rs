@@ -1,4 +1,5 @@
 mod tests {
+    // currently ok
     #[test]
     fn insert_do_nothing_postgres() {
         assert_eq!(
@@ -17,6 +18,7 @@ mod tests {
         );
     }
 
+    //failed to run
     #[test]
     fn insert_do_nothing_mysql() {
         assert_eq!(
@@ -35,6 +37,7 @@ mod tests {
         );
     }
 
+    // currently ok
     #[test]
     fn insert_do_nothing() {
         assert_eq!(
