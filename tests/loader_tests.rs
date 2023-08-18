@@ -32,43 +32,12 @@ async fn loader_load_one() -> Result<(), DbErr> {
     assert_eq!(bakers, [baker_1, baker_2, baker_3]);
     assert_eq!(bakeries, [Some(bakery_0.clone()), Some(bakery_0), None]);
 
-    Ok(())
-}
-
-#[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
-async fn loader_load_one_edge_case() -> Result<(), DbErr> {
-    let ctx = TestContext::new("loader_test_load_one").await;
-    create_tables(&ctx.db).await?;
-
-    let bakery_0 = insert_bakery(&ctx.db, "SeaSide Bakery").await?;
-    let bakery_1 = insert_bakery(&ctx.db, "SeaSide Bakery").await?;
-
-    let baker_1 = insert_baker(&ctx.db, "Baker 1", bakery_0.id).await?;
-    let baker_2 = insert_baker(&ctx.db, "Baker 2", bakery_0.id).await?;
-    let baker_3 = baker::ActiveModel {
-        name: Set("Baker 3".to_owned()),
-        contact_details: Set(serde_json::json!({})),
-        bakery_id: Set(None),
-        ..Default::default()
-    }
-    .insert(&ctx.db)
-    .await?;
-
-    let bakers = baker::Entity::find().all(&ctx.db).await?;
-    let bakeries = bakers.load_one(bakery::Entity, &ctx.db).await?;
-
-    assert_eq!(bakers, [baker_1, baker_2, baker_3]);
-    assert_eq!(bakeries, [Some(bakery_0.clone()), Some(bakery_0), None]);
-    
+    // has many find, should use load_many instead
     let bakeries = bakery::Entity::find().all(&ctx.db).await?;
     let bakers = bakeries.load_one(baker::Entity, &ctx.db).await;
 
     assert_eq!(bakers, Err(DbErr::Query(RuntimeErr::Internal("Relation is HasMany instead of HasOne".to_string()))));
+
     Ok(())
 }
 
@@ -190,6 +159,7 @@ async fn loader_load_many_to_many() -> Result<(), DbErr> {
 
     let baker_1 = insert_baker(&ctx.db, "Jane", bakery_1.id).await?;
     let baker_2 = insert_baker(&ctx.db, "Peter", bakery_1.id).await?;
+    let baker_3 = insert_baker(&ctx.db, "Fred", bakery_1.id).await?; // does not make cake
 
     let cake_1 = insert_cake(&ctx.db, "Cheesecake", None).await?;
     let cake_2 = insert_cake(&ctx.db, "Coffee", None).await?;
@@ -206,12 +176,13 @@ async fn loader_load_many_to_many() -> Result<(), DbErr> {
         .load_many_to_many(cake::Entity, cakes_bakers::Entity, &ctx.db)
         .await?;
 
-    assert_eq!(bakers, [baker_1.clone(), baker_2.clone()]);
+    assert_eq!(bakers, [baker_1.clone(), baker_2.clone(), baker_3.clone()]);
     assert_eq!(
         cakes,
         [
             vec![cake_1.clone(), cake_2.clone()],
-            vec![cake_2.clone(), cake_3.clone()]
+            vec![cake_2.clone(), cake_3.clone()],
+            vec![]
         ]
     );
 
@@ -224,7 +195,7 @@ async fn loader_load_many_to_many() -> Result<(), DbErr> {
             &ctx.db,
         )
         .await?;
-    assert_eq!(cakes, [vec![cake_1.clone()], vec![cake_3.clone()]]);
+    assert_eq!(cakes, [vec![cake_1.clone()], vec![cake_3.clone()], vec![]]);
 
     // now, start again from cakes
 

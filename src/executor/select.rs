@@ -1258,7 +1258,7 @@ mod tests {
                 cake_fruit_model(1, 1).into_mock_row(),
                 cake_fruit_model(1, 2).into_mock_row(),
                 cake_fruit_model(2, 2).into_mock_row(),
-                (cake_model(3.to_owned()), None::<fruit::Model>).into_mock_row(),
+                (cake_model(3), None::<fruit::Model>).into_mock_row(),
             ]])
             .into_connection();
 
@@ -1268,7 +1268,7 @@ mod tests {
                 (cake_model(1), Some(fruit_model(1, Some(1)))),
                 (cake_model(1), Some(fruit_model(2, Some(1)))),
                 (cake_model(2), Some(fruit_model(2, Some(2)))),
-                (cake_model(3.to_owned()), None)
+                (cake_model(3), None)
             ]
         );
 
@@ -1362,7 +1362,7 @@ mod tests {
                 cake_fruit_model(2, 1).into_mock_row(),
                 cake_fruit_model(2, 2).into_mock_row(),
                 cake_fruit_model(2, 3).into_mock_row(),
-                (cake_model(3.to_owned()), None::<fruit::Model>).into_mock_row(),
+                (cake_model(3), None::<fruit::Model>).into_mock_row(),
             ]])
             .into_connection();
 
@@ -1634,7 +1634,7 @@ mod tests {
                 .await?,
             [
                 (cake_model(1), vec![vendor_model(1)]),
-                (cake_model(2), vec![vendor_model(1), vendor_model(2),]),
+                (cake_model(2), vec![vendor_model(1), vendor_model(2)]),
                 (cake_model(3), vec![])
             ]
         );
@@ -1664,7 +1664,7 @@ mod tests {
                 .await?,
             [
                 (cake_model(1), vec![vendor_model(1), vendor_model(1)]),
-                (cake_model(2), vec![vendor_model(1), vendor_model(2),]),
+                (cake_model(2), vec![vendor_model(1), vendor_model(2)]),
             ]
         );
 
