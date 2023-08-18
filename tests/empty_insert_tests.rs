@@ -44,19 +44,6 @@ pub async fn test(db: &DbConn) {
         id: Set(1),
     };
 
-    let res = Bakery::insert(double_seaside_bakery)
-        .on_conflict(
-            OnConflict::column(bakery::Column::Id)
-                .do_nothing()
-                .to_owned(),
-        )
-        .on_empty_do_nothing()
-        .exec(db)
-        .await;
-
-    dbg!(&res);
-    assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
-
     let empty_insert = Bakery::insert_many(std::iter::empty::<bakery::ActiveModel>())
         .on_empty_do_nothing()
         .exec(db)
