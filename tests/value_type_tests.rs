@@ -71,6 +71,7 @@ pub fn type_test() {
     assert_eq!(Integer::array_type(), ArrayType::Int);
     assert_eq!(Boolbean::column_type(), ColumnType::Boolean);
     assert_eq!(Boolbean::array_type(), ArrayType::Bool);
+
     // self implied
     assert_eq!(
         StringVec::column_type(),

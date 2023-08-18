@@ -64,4 +64,7 @@ pub async fn test_error(db: &DatabaseConnection) {
         fk_error.sql_err(),
         Some(SqlErr::ForeignKeyConstraintViolation(_))
     ));
+
+    let invalid_error = DbErr::Custom("random error".to_string());
+    assert_eq!(invalid_error.sql_err(), None)
 }

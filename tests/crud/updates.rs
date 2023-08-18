@@ -52,6 +52,7 @@ pub async fn test_update_cake(db: &DbConn) {
     let cake_model = cake.unwrap();
     assert_eq!(cake_model.name, "Extra chocolate mud cake");
     assert_eq!(cake_model.price, dec!(20.00));
+    assert!(!cake_model.gluten_free);
 }
 
 pub async fn test_update_bakery(db: &DbConn) {

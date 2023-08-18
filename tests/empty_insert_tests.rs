@@ -9,6 +9,7 @@ pub use sea_orm::{
 pub use crud::*;
 // use common::bakery_chain::*;
 use sea_orm::{DbConn, TryInsertResult};
+use sea_query::OnConflict;
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -36,6 +37,12 @@ pub async fn test(db: &DbConn) {
         .await;
 
     assert!(matches!(res, Ok(TryInsertResult::Inserted(_))));
+
+    let double_seaside_bakery = bakery::ActiveModel {
+        name: Set("SeaSide Bakery".to_owned()),
+        profit_margin: Set(10.4),
+        id: Set(1),
+    };
 
     let empty_insert = Bakery::insert_many(std::iter::empty::<bakery::ActiveModel>())
         .on_empty_do_nothing()

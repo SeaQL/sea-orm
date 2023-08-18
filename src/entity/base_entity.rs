@@ -961,7 +961,6 @@ mod tests {
         }
 
         delete_by_id("UUID".to_string());
-        delete_by_id("UUID".to_string());
         delete_by_id("UUID");
         delete_by_id(Cow::from("UUID"));
     }
