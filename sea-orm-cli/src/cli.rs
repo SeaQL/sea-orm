@@ -1,4 +1,5 @@
-use clap::{ArgGroup, Parser, Subcommand, ValueEnum, Args};
+use clap::{ArgGroup, Args, Parser, Subcommand, ValueEnum};
+use merge::Merge;
 use serde::Deserialize;
 
 #[derive(Parser, Debug)]
@@ -165,7 +166,7 @@ pub enum GenerateSubcommands {
     Entity(GenerateSubCommandsEntity),
 }
 
-#[derive(Args,PartialEq, Eq, Debug, Deserialize)]
+#[derive(Args, PartialEq, Eq, Debug, Merge, Deserialize, Default)]
 pub struct GenerateSubCommandsEntity {
     #[arg(long, help = "Generate entity file of compact format")]
     pub compact_format: Option<bool>,
@@ -204,11 +205,7 @@ pub struct GenerateSubCommandsEntity {
     )]
     pub max_connections: Option<u32>,
 
-    #[arg(
-        short = 'o',
-        long,
-        help = "Entity file output directory"
-    )]
+    #[arg(short = 'o', long, help = "Entity file output directory")]
     pub output_dir: Option<String>,
 
     #[arg(
@@ -287,8 +284,9 @@ pub struct GenerateSubCommandsEntity {
     pub seaography: Option<bool>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Default, Deserialize)]
 pub enum DateTimeCrate {
+    #[default]
     Chrono,
     Time,
 }

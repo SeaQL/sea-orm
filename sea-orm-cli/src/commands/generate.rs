@@ -1,3 +1,4 @@
+use merge::Merge;
 use sea_orm_codegen::{
     DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
     WithSerde,
@@ -7,17 +8,6 @@ use tracing_subscriber::{prelude::*, EnvFilter};
 use url::Url;
 
 use crate::{parse_config, DateTimeCrate, GenerateSubCommandsEntity, GenerateSubcommands};
-
-fn merge_options<T: std::fmt::Debug>(default: Option<T>,config: Option<T>,cli: Option<T>) -> Option<T>{
-    dbg!(&default,&config,&cli);
-    if cli.is_some(){
-        cli
-    }else if config.is_some(){
-        config
-    }else{
-        default
-    }
-}
 
 fn merge_cli_config_generate_entity(
     mut command: GenerateSubCommandsEntity,
@@ -45,32 +35,17 @@ fn merge_cli_config_generate_entity(
     };
 
     if let Some(ref config_path) = command.config {
-        let config_values = parse_config::<GenerateSubCommandsEntity>(config_path.to_string())?;
+        let mut config_values = parse_config::<GenerateSubCommandsEntity>(config_path.to_string())?;
         if Option::is_some(&config_values.database_url) {
             return Err("Database Url is set in the config which is not recommended".into());
         }
         if Option::is_some(&config_values.max_connections) {
             return Err("Max Connections is set in the config which is not recommended".into());
         }
-        
-        command.compact_format = merge_options(default_values.compact_format,config_values.compact_format,command.compact_format);
-        command.expanded_format = merge_options(default_values.expanded_format,config_values.expanded_format,command.expanded_format);
-        command.include_hidden_tables = merge_options(default_values.include_hidden_tables,config_values.include_hidden_tables,command.include_hidden_tables);
-        command.tables = merge_options(default_values.tables,config_values.tables,command.tables);
-        command.ignore_tables = merge_options(default_values.ignore_tables,config_values.ignore_tables,command.ignore_tables);
-        command.max_connections = merge_options(default_values.max_connections,config_values.max_connections,command.max_connections);
-        command.output_dir = merge_options(default_values.output_dir,config_values.output_dir,command.output_dir);
-        command.database_schema = merge_options(default_values.database_schema,config_values.database_schema,command.database_schema);
-        command.database_url = merge_options(default_values.database_url,config_values.database_url,command.database_url);
-        command.with_serde = merge_options(default_values.with_serde,config_values.with_serde,command.with_serde);
-        command.serde_skip_deserializing_primary_key = merge_options(default_values.serde_skip_deserializing_primary_key,config_values.serde_skip_deserializing_primary_key,command.serde_skip_deserializing_primary_key);
-        command.serde_skip_hidden_column = merge_options(default_values.serde_skip_hidden_column,config_values.serde_skip_hidden_column,command.serde_skip_hidden_column);
-        command.with_copy_enums = merge_options(default_values.with_copy_enums,config_values.with_copy_enums,command.with_copy_enums);
-        command.date_time_crate = merge_options(default_values.date_time_crate,config_values.date_time_crate,command.date_time_crate);
-        command.lib = merge_options(default_values.lib,config_values.lib,command.lib);
-        command.model_extra_derives = merge_options(default_values.model_extra_derives,config_values.model_extra_derives,command.model_extra_derives);
-        command.model_extra_attributes = merge_options(default_values.model_extra_attributes,config_values.model_extra_attributes,command.model_extra_attributes);
-        command.seaography = merge_options(default_values.seaography ,config_values.seaography ,command.seaography );
+        config_values.merge(default_values);
+        command.merge(config_values);
+    } else {
+        command.merge(default_values);
     }
     Ok(command)
 }
@@ -83,7 +58,6 @@ pub async fn run_generate_command(
         GenerateSubcommands::Entity(command) => {
             let command = merge_cli_config_generate_entity(command)?;
             let (
-                _,
                 expanded_format,
                 include_hidden_tables,
                 tables,
@@ -102,7 +76,6 @@ pub async fn run_generate_command(
                 model_extra_attributes,
                 seaography,
             ) = (
-                command.compact_format.unwrap(),
                 command.expanded_format.unwrap(),
                 command.include_hidden_tables.unwrap(),
                 command.tables.unwrap(),
@@ -365,14 +338,22 @@ mod tests {
                         GenerateSubCommandsEntity {
                             compact_format: Some(true),
                             expanded_format: Some(true),
-                            config: Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/config/tests/parse.json").into_os_string().into_string().unwrap()),
+                            config: Some(
+                                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                                    .join("src/config/tests/parse.json")
+                                    .into_os_string()
+                                    .into_string()
+                                    .unwrap()
+                            ),
                             include_hidden_tables: Some(true),
                             tables: Some(vec!["my_tables".to_string()]),
                             ignore_tables: Some(vec!["seaql_migrations".to_string()]),
                             max_connections: Some(1),
                             output_dir: Some("out".to_string()),
                             database_schema: Some("public".to_string()),
-                            database_url: Some("postgres://root:root@localhost:3306/database".to_string()),
+                            database_url: Some(
+                                "postgres://root:root@localhost:3306/database".to_string()
+                            ),
                             with_serde: Some("none".to_string()),
                             serde_skip_deserializing_primary_key: Some(false),
                             serde_skip_hidden_column: Some(false),
@@ -408,7 +389,9 @@ mod tests {
 
         match cli.command {
             Commands::Generate { command } => match command {
-                GenerateSubcommands::Entity(command) => {let _ = merge_cli_config_generate_entity(command).unwrap();},
+                GenerateSubcommands::Entity(command) => {
+                    let _ = merge_cli_config_generate_entity(command).unwrap();
+                }
             },
             _ => unreachable!(),
         }
@@ -433,7 +416,9 @@ mod tests {
         ]);
         match cli.command {
             Commands::Generate { command } => match command {
-                GenerateSubcommands::Entity(command) => {let _ = merge_cli_config_generate_entity(command).unwrap();},
+                GenerateSubcommands::Entity(command) => {
+                    let _ = merge_cli_config_generate_entity(command).unwrap();
+                }
             },
             _ => unreachable!(),
         }

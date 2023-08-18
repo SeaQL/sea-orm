@@ -5,5 +5,5 @@ pub mod config;
 
 #[cfg(feature = "cli")]
 pub use cli::*;
-pub use config::*;
 pub use commands::*;
+pub use config::*;
