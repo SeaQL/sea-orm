@@ -453,6 +453,46 @@ mod tests {
     }
 
     #[test]
+    fn insert_6_1() {
+        let orange = cake::ActiveModel {
+            id: ActiveValue::set(2),
+            name: ActiveValue::set("Orange".to_owned()),
+        };
+
+        assert_eq!(
+            cake::Entity::insert(orange)
+                .on_conflict(
+                    OnConflict::column(cake::Column::Name)
+                        .do_nothing()
+                        .to_owned()
+                )
+                .build(DbBackend::MySql)
+                .to_string(),
+            r#"INSERT IGNORE INTO `cake` (`id`, `name`) VALUES (2, 'Orange')"#,
+        );
+    }
+
+    #[test]
+    fn insert_6_2() {
+        let orange = cake::ActiveModel {
+            id: ActiveValue::set(2),
+            name: ActiveValue::set("Orange".to_owned()),
+        };
+
+        assert_eq!(
+            cake::Entity::insert(orange)
+                .on_conflict(
+                    OnConflict::column(cake::Column::Name)
+                        .do_nothing()
+                        .to_owned()
+                )
+                .build(DbBackend::Sqlite)
+                .to_string(),
+            r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("name") DO NOTHING"#,
+        );
+    }
+
+    #[test]
     fn insert_7() {
         let orange = cake::ActiveModel {
             id: ActiveValue::set(2),

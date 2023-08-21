@@ -7,7 +7,11 @@ use sea_orm::TryInsertResult;
 use sea_orm::{sea_query::OnConflict, Set};
 
 #[sea_orm_macros::test]
-#[cfg(feature = "sqlx-postgres")]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("upsert_tests").await;
     create_tables(&ctx.db).await?;
