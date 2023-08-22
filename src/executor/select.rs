@@ -488,6 +488,131 @@ where
         }
     }
 
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(all(feature = "mock", feature = "macros"))]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![vec![
+    /// #         maplit::btreemap! {
+    /// #             "cake_name" => Into::<Value>::into("Apple Cake"),
+    /// #             "fruit_name" => Into::<Value>::into("Apple"),
+    /// #         },
+    /// #         maplit::btreemap! {
+    /// #             "cake_name" => Into::<Value>::into("Fruit Cake"),
+    /// #             "fruit_name" => Into::<Value>::into("Orange"),
+    /// #         },
+    /// #         maplit::btreemap! {
+    /// #             "cake_name" => Into::<Value>::into("Fruit Cake"),
+    /// #             "fruit_name" => Into::<Value>::into("Strawberry"),
+    /// #         },
+    /// #         maplit::btreemap! {
+    /// #             "cake_name" => Into::<Value>::into("New York Cheese"),
+    /// #         },
+    /// #     ]])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    ///
+    /// let res: Vec<(String, Option<String>)> = cake::Entity::find()
+    ///     .find_also_related(Fruit)
+    ///     .select_only()
+    ///     .column(cake::Column::Name)
+    ///     .column(fruit::Column::Name)
+    ///     .into_tuple::<(String, Option<String>)>()
+    ///     .all(&db)
+    ///     .await?;
+    ///
+    /// assert_eq!(
+    ///     res,
+    ///     vec![
+    ///         ("Apple Cake".to_owned(), Some("Apple".to_owned())),
+    ///         ("Fruit Cake".to_owned(), Some("Orange".to_owned())),
+    ///         ("Fruit Cake".to_owned(), Some("Strawberry".to_owned())),
+    ///         ("New York Cheese".to_owned(), None),
+    ///     ]
+    /// );
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         vec![
+    ///             r#"SELECT "cake"."name", "fruit"."name""#,
+    ///             r#"FROM "cake""#,
+    ///             r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
+    ///         ]
+    ///         .join(" ")
+    ///         .as_str(),
+    ///         vec![]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// ```
+    /// # use sea_orm::{error::*, tests_cfg::*, *};
+    /// #
+    /// # #[smol_potat::main]
+    /// # #[cfg(all(feature = "mock", feature = "macros"))]
+    /// # pub async fn main() -> Result<(), DbErr> {
+    /// #
+    /// # let db = MockDatabase::new(DbBackend::Postgres)
+    /// #     .append_query_results(vec![vec![
+    /// #         maplit::btreemap! {
+    /// #             "cake_name" => Into::<Value>::into("Apple Cake"),
+    /// #             "cake_id" => Into::<Value>::into(2i64),
+    /// #             "fruit_name" => Into::<Value>::into("Apple"),
+    /// #             "fruit_id" => Into::<Value>::into(1i64),
+    /// #         },
+    /// #     ]])
+    /// #     .into_connection();
+    /// #
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    ///
+    /// let res: Vec<(String, i64, Option<String>, Option<i64>)> = cake::Entity::find()
+    ///     .find_also_related(Fruit)
+    ///     .select_only()
+    ///     .column(cake::Column::Name)
+    ///     .column(cake::Column::Id)
+    ///     .column(fruit::Column::Name)
+    ///     .column(fruit::Column::Id)
+    ///     .into_tuple::<(String, i64, Option<String>, Option<i64>)>()
+    ///     .all(&db)
+    ///     .await?;
+    ///
+    /// assert_eq!(res, vec![("Apple Cake".to_owned(), 2i64, Some("Apple".to_owned()), Some(1i64))]);
+    ///
+    /// assert_eq!(
+    ///     db.into_transaction_log(),
+    ///     vec![Transaction::from_sql_and_values(
+    ///         DbBackend::Postgres,
+    ///         vec![
+    ///             r#"SELECT "cake"."name", "cake"."id", "fruit"."name", "fruit"."id""#,
+    ///             r#"FROM "cake" GROUP BY "cake"."name""#,
+    ///             r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
+    ///         ]
+    ///         .join(" ")
+    ///         .as_str(),
+    ///         vec![]
+    ///     )]
+    /// );
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn into_tuple<T>(self) -> Selector<SelectGetableTuple<T>>
+    where
+        T: TryGetableMany,
+    {
+        Selector::<SelectGetableTuple<T>>::into_tuple(self.query)
+    }
+
     /// Get one Model from the Select query
     pub async fn one<'a, C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
     where
