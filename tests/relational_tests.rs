@@ -592,10 +592,10 @@ pub async fn related() -> Result<(), DbErr> {
     assert_eq!(
         tuple_bakers_in_bakery,
         [
-            ("SeaSide Bakery".to_string(),Some("Baker Bob".to_owned())),
-            ("SeaSide Bakery".to_string(),Some("Baker Bobby".to_owned())),
-            ("Terres Bakery".to_string(),Some("Baker Ada".to_owned())),
-            ("Stone Bakery".to_string(),None),
+            ("SeaSide Bakery".to_string(), Some("Baker Bob".to_owned())),
+            ("SeaSide Bakery".to_string(), Some("Baker Bobby".to_owned())),
+            ("Terres Bakery".to_string(), Some("Baker Ada".to_owned())),
+            ("Stone Bakery".to_string(), None),
         ]
     );
 

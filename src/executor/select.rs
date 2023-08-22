@@ -522,7 +522,7 @@ where
     ///     .select_only()
     ///     .column(cake::Column::Name)
     ///     .column(fruit::Column::Name)
-    ///     .into_tuple::<(String, Option<String>)>()
+    ///     .into_tuple()
     ///     .all(&db)
     ///     .await?;
     ///
@@ -566,35 +566,36 @@ where
     /// #     .append_query_results(vec![vec![
     /// #         maplit::btreemap! {
     /// #             "cake_name" => Into::<Value>::into("Apple Cake"),
-    /// #             "cake_id" => Into::<Value>::into(2i64),
+    /// #             "cake_number" => Into::<Value>::into(2i64),
     /// #             "fruit_name" => Into::<Value>::into("Apple"),
-    /// #             "fruit_id" => Into::<Value>::into(1i64),
     /// #         },
     /// #     ]])
     /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
     ///
-    /// let res: Vec<(String, i64, Option<String>, Option<i64>)> = cake::Entity::find()
+    /// let res: Vec<(String, i64, Option<String>)> = cake::Entity::find()
     ///     .find_also_related(Fruit)
     ///     .select_only()
     ///     .column(cake::Column::Name)
     ///     .column(cake::Column::Id)
     ///     .column(fruit::Column::Name)
-    ///     .column(fruit::Column::Id)
-    ///     .into_tuple::<(String, i64, Option<String>, Option<i64>)>()
+    ///     .into_tuple()
     ///     .all(&db)
     ///     .await?;
     ///
-    /// assert_eq!(res, vec![("Apple Cake".to_owned(), 2i64, Some("Apple".to_owned()), Some(1i64))]);
+    /// assert_eq!(
+    ///     res,
+    ///     vec![("Apple Cake".to_owned(), 2i64, Some("Apple".to_owned()))]
+    /// );
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
     ///     vec![Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         vec![
-    ///             r#"SELECT "cake"."name", "cake"."id", "fruit"."name", "fruit"."id""#,
-    ///             r#"FROM "cake" GROUP BY "cake"."name""#,
+    ///             r#"SELECT "cake"."name", "cake"."id", "fruit"."name""#,
+    ///             r#"FROM "cake""#,
     ///             r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
     ///         ]
     ///         .join(" ")
