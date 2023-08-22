@@ -1,6 +1,6 @@
 use crate::{
     ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IntoIdentity,
-    PartialModelTrait, QueryOrder, QuerySelect, Select, SelectModel, SelectorTrait,
+    PartialModelTrait, QueryOrder, QuerySelect, Select, SelectTwo, SelectModel, SelectorTrait,
 };
 use sea_query::{
     Condition, DynIden, Expr, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr, Value,
@@ -303,6 +303,23 @@ where
     }
 }
 
+impl<E, F, M, N> CursorTrait for SelectTwo<E, F>
+where
+    E: EntityTrait<Model = M>,
+    F: EntityTrait<Model = N>,
+    M: FromQueryResult + Sized + Send + Sync,
+    N: FromQueryResult + Sized + Send + Sync,
+{
+    type Selector = SelectTwoModel<M, N>;
+
+    fn cursor_by<C>(self, order_columns: C) -> Cursor<Self::Selector>
+    where
+        C: IntoIdentity,
+    {
+        Cursor::new(self.query, SeaRc::new(E::default()), order_columns)
+    }
+}
+
 #[cfg(test)]
 #[cfg(feature = "mock")]
 mod tests {
@@ -353,6 +370,117 @@ mod tests {
                     r#"WHERE "fruit"."id" < $1"#,
                     r#"ORDER BY "fruit"."id" ASC"#,
                     r#"LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+    
+    #[smol_potat::test]
+    async fn first_2_before_10_also_select() -> Result<(), DbErr> {
+
+        let models = [
+            (cake::Model{
+                id: 1,
+                name: "Blueberry Cheese Cake".into()
+            },
+            Some(fruit::Model {
+                id: 9,
+                name: "Blueberry".into(),
+                cake_id: Some(1),
+            })),
+            (cake::Model{
+                id: 2,
+                name: "Rasberry Cheese Cake".into()
+            },
+            Some(fruit::Model {
+                id: 10,
+                name: "Rasberry".into(),
+                cake_id: Some(1),
+            })),
+        ];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_related(Fruit)
+                .cursor_by(cake::Column::Id)
+                .before(10)
+                .first(2)
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
+                    r#""fruit"."id" AS "B_id", "fruit"."name" AS "B_name", "fruit"."cake_id" AS "B_cake_id""#,
+                    r#"FROM "cake""#,
+                    r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
+                    r#"WHERE "cake"."id" < $1"#,
+                    r#"ORDER BY "cake"."id" ASC LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn first_2_before_10_also_select_cursor_other() -> Result<(), DbErr> {
+
+        let models = [
+            (cake::Model{
+                id: 1,
+                name: "Blueberry Cheese Cake".into()
+            },
+            Some(fruit::Model {
+                id: 9,
+                name: "Blueberry".into(),
+                cake_id: Some(1),
+            })),
+        ];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_related(Fruit)
+                .cursor_by(fruit::Column::Id)
+                .before(10)
+                .first(2)
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
+                    r#""fruit"."id" AS "B_id", "fruit"."name" AS "B_name", "fruit"."cake_id" AS "B_cake_id""#,
+                    r#"FROM "cake""#,
+                    r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
+                    r#"WHERE "fruit"."id" < $1"#,
+                    r#"ORDER BY "fruit"."id" ASC LIMIT $2"#,
                 ]
                 .join(" ")
                 .as_str(),
