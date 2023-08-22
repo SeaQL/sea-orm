@@ -45,3 +45,14 @@ pub fn expand_derive_from_json_query_result(ident: Ident) -> syn::Result<TokenSt
         }
     ))
 }
+
+pub fn expand_derive_from_json_array_query_result(ident: Ident) -> syn::Result<TokenStream> {
+    let derive_try_getable_from_json_expansion = expand_derive_from_json_query_result(ident.clone());
+
+    Ok(quote!(
+        #derive_try_getable_from_json_expansion
+
+        #[automatically_derived]
+        impl sea_orm::sea_query::with_array::NotU8 for #ident {}
+    ))
+}

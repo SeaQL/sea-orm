@@ -1002,6 +1002,9 @@ where
 }
 
 #[cfg(feature = "with-json")]
+impl<T> TryGetableFromJson for Vec<T> where T: TryGetableFromJson {}
+
+#[cfg(feature = "with-json")]
 impl<T> TryGetable for T
 where
     T: TryGetableFromJson,

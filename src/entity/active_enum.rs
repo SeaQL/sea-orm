@@ -144,18 +144,18 @@ pub trait ActiveEnum: Sized + Iterable {
     }
 }
 
-impl<T> TryGetable for Vec<T>
-where
-    T: ActiveEnum,
-    T::ValueVec: TryGetable,
-{
-    fn try_get_by<I: crate::ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
-        <T::ValueVec as TryGetable>::try_get_by(res, index)?
-            .into_iter()
-            .map(|value| T::try_from_value(&value).map_err(Into::into))
-            .collect()
-    }
-}
+// impl<T> TryGetable for Vec<T>
+// where
+//     T: ActiveEnum,
+//     T::ValueVec: TryGetable,
+// {
+//     fn try_get_by<I: crate::ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
+//         <T::ValueVec as TryGetable>::try_get_by(res, index)?
+//             .into_iter()
+//             .map(|value| T::try_from_value(&value).map_err(Into::into))
+//             .collect()
+//     }
+// }
 
 impl<T> TryFromU64 for T
 where
