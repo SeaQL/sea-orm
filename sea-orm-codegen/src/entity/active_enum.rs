@@ -20,7 +20,18 @@ impl ActiveEnum {
             if v.chars().next().map(char::is_numeric).unwrap_or(false) {
                 format_ident!("_{}", v)
             } else {
-                format_ident!("{}", v.to_upper_camel_case())
+                let variant_name = v.to_upper_camel_case();
+                if variant_name.is_empty() {
+                    println!("Warning: item '{}' in the enumeration '{}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.", v, enum_name);
+                    let mut utf_string = String::new();
+                    for c in v.chars() {
+                        utf_string.push('U');
+                        utf_string.push_str(&format!("{:04X}", c as u32));
+                    }
+                    format_ident!("{}", utf_string)
+                } else {
+                    format_ident!("{}", variant_name)
+                }
             }
         });
 
