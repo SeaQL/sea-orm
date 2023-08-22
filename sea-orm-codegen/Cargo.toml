@@ -17,7 +17,7 @@ name = "sea_orm_codegen"
 path = "src/lib.rs"
 
 [dependencies]
-sea-query = { version = "0.30.0", git = "https://github.com/SeaQL/sea-query.git", branch = "on_conflict-do-nothing-fixup", default-features = false, features = ["thread-safe"] }
+sea-query = { version = "0.30.0", default-features = false, features = ["thread-safe"] }
 syn = { version = "2", default-features = false, features = ["parsing", "proc-macro", "derive", "printing"] }
 quote = { version = "1", default-features = false }
 heck = { version = "0.4", default-features = false }
