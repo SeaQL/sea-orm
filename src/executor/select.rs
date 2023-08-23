@@ -374,7 +374,7 @@ where
     /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
-    /// 
+    ///
     /// #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
     /// enum QueryAs {
     ///     CakeName,
