@@ -1,6 +1,6 @@
 use crate::{
     ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IntoIdentity,
-    PartialModelTrait, QueryOrder, QuerySelect, Select, SelectTwo, SelectModel, SelectorTrait,
+    PartialModelTrait, QueryOrder, QuerySelect, Select, SelectTwo, SelectModel, SelectorTrait, IdentityOf, SelectTwoModel,
 };
 use sea_query::{
     Condition, DynIden, Expr, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr, Value,
@@ -281,11 +281,6 @@ where
 pub trait CursorTrait {
     /// Select operation
     type Selector: SelectorTrait + Send + Sync;
-
-    /// Convert current type into a cursor
-    fn cursor_by<C>(self, order_columns: C) -> Cursor<Self::Selector>
-    where
-        C: IntoIdentity;
 }
 
 impl<E, M> CursorTrait for Select<E>
@@ -294,29 +289,43 @@ where
     M: FromQueryResult + Sized + Send + Sync,
 {
     type Selector = SelectModel<M>;
+}
 
-    fn cursor_by<C>(self, order_columns: C) -> Cursor<Self::Selector>
+impl<E, M> Select<E>
+where
+    E: EntityTrait<Model = M>,
+    M: FromQueryResult + Sized + Send + Sync,
+{
+    /// Convert into a cursor
+    pub fn cursor_by<C>(self, order_columns: C) -> Cursor<SelectModel<M>>
     where
-        C: IntoIdentity,
+        C: IdentityOf<E>,
     {
-        Cursor::new(self.query, SeaRc::new(E::default()), order_columns)
+        Cursor::new(self.query, SeaRc::new(E::default()), order_columns.identity_of())
     }
 }
 
-impl<E, F, M, N> CursorTrait for SelectTwo<E, F>
+impl<E, F, M, N> SelectTwo<E, F>
 where
     E: EntityTrait<Model = M>,
     F: EntityTrait<Model = N>,
     M: FromQueryResult + Sized + Send + Sync,
     N: FromQueryResult + Sized + Send + Sync,
 {
-    type Selector = SelectTwoModel<M, N>;
-
-    fn cursor_by<C>(self, order_columns: C) -> Cursor<Self::Selector>
+    /// Convert into a cursor using column of first entity
+    pub fn cursor_by<C>(self, order_columns: C) -> Cursor<SelectTwoModel<M, N>>
     where
-        C: IntoIdentity,
+        C: IdentityOf<E>,
     {
-        Cursor::new(self.query, SeaRc::new(E::default()), order_columns)
+        Cursor::new(self.query, SeaRc::new(E::default()), order_columns.identity_of())
+    }
+
+    /// Convert into a cursor using column of second entity
+    pub fn cursor_by_other<C>(self, order_columns: C) -> Cursor<SelectTwoModel<M, N>>
+    where
+        C: IdentityOf<F>,
+    {
+        Cursor::new(self.query, SeaRc::new(F::default()), order_columns.identity_of())
     }
 }
 
