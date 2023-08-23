@@ -374,11 +374,17 @@ where
     /// #     .into_connection();
     /// #
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake};
+    /// 
+    /// #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+    /// enum QueryAs {
+    ///     CakeName,
+    ///     NumOfCakes,
+    /// }
     ///
     /// let res: Vec<(String, i64)> = cake::Entity::find()
     ///     .select_only()
-    ///     .column(cake::Column::Name)
-    ///     .column(cake::Column::Id)
+    ///     .column_as(cake::Column::Name, QueryAs::CakeName)
+    ///     .column_as(cake::Column::Id.count(), QueryAs::NumOfCakes)
     ///     .group_by(cake::Column::Name)
     ///     .into_tuple()
     ///     .all(&db)
@@ -391,7 +397,7 @@ where
     ///     vec![Transaction::from_sql_and_values(
     ///         DbBackend::Postgres,
     ///         vec![
-    ///             r#"SELECT "cake"."name", "cake"."id""#,
+    ///             r#"SELECT "cake"."name" AS "cake_name", COUNT("cake"."id") AS "num_of_cakes""#,
     ///             r#"FROM "cake" GROUP BY "cake"."name""#,
     ///         ]
     ///         .join(" ")
