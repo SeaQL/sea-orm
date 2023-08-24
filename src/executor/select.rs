@@ -368,7 +368,7 @@ where
     /// #     .append_query_results(vec![vec![
     /// #         maplit::btreemap! {
     /// #             "cake_name" => Into::<Value>::into("Chocolate Forest"),
-    /// #             "d" => Into::<Value>::into(2i64),
+    /// #             "num_of_cakes" => Into::<Value>::into(2i64),
     /// #         },
     /// #     ]])
     /// #     .into_connection();
