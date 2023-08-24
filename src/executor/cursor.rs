@@ -305,6 +305,16 @@ where
     }
 }
 
+impl<E, F, M, N> CursorTrait for SelectTwo<E, F>
+where
+    E: EntityTrait<Model = M>,
+    F: EntityTrait<Model = N>,
+    M: FromQueryResult + Sized + Send + Sync,
+    N: FromQueryResult + Sized + Send + Sync,
+{
+    type Selector = SelectTwoModel<M,N>;
+}
+
 impl<E, F, M, N> SelectTwo<E, F>
 where
     E: EntityTrait<Model = M>,
@@ -390,7 +400,7 @@ mod tests {
     }
     
     #[smol_potat::test]
-    async fn first_2_before_10_also_select() -> Result<(), DbErr> {
+    async fn first_2_before_10_also_related_select() -> Result<(), DbErr> {
 
         let models = [
             (cake::Model{
@@ -450,7 +460,7 @@ mod tests {
     }
 
     #[smol_potat::test]
-    async fn first_2_before_10_also_select_cursor_other() -> Result<(), DbErr> {
+    async fn first_2_before_10_also_related_select_cursor_other() -> Result<(), DbErr> {
 
         let models = [
             (cake::Model{
@@ -471,7 +481,7 @@ mod tests {
         assert_eq!(
             cake::Entity::find()
                 .find_also_related(Fruit)
-                .cursor_by(fruit::Column::Id)
+                .cursor_by_other(fruit::Column::Id)
                 .before(10)
                 .first(2)
                 .all(&db)
@@ -490,6 +500,114 @@ mod tests {
                     r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
                     r#"WHERE "fruit"."id" < $1"#,
                     r#"ORDER BY "fruit"."id" ASC LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn first_2_before_10_also_linked_select() -> Result<(), DbErr> {
+        let models = [
+            (cake::Model{
+                id: 1,
+                name: "Blueberry Cheese Cake".into()
+            },
+            Some(vendor::Model {
+                id: 9,
+                name: "Blueberry".into(),
+            })),
+            (cake::Model{
+                id: 2,
+                name: "Rasberry Cheese Cake".into()
+            },
+            Some(vendor::Model {
+                id: 10,
+                name: "Rasberry".into(),
+            })),
+        ];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_linked(entity_linked::CakeToFillingVendor)
+                .cursor_by(cake::Column::Id)
+                .before(10)
+                .first(2)
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
+                    r#""r2"."id" AS "B_id", "r2"."name" AS "B_name""#,
+                    r#"FROM "cake""#,
+                    r#"LEFT JOIN "cake_filling" AS "r0" ON "cake"."id" = "r0"."cake_id""#,
+                    r#"LEFT JOIN "filling" AS "r1" ON "r0"."filling_id" = "r1"."id""#,
+                    r#"LEFT JOIN "vendor" AS "r2" ON "r1"."vendor_id" = "r2"."id""#,
+                    r#"WHERE "cake"."id" < $1 ORDER BY "cake"."id" ASC LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn first_2_before_10_also_linked_select_cursor_other() -> Result<(), DbErr> {
+        let models = [
+            (cake::Model{
+                id: 1,
+                name: "Blueberry Cheese Cake".into()
+            },
+            Some(vendor::Model {
+                id: 9,
+                name: "Blueberry".into(),
+            })),
+        ];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_linked(entity_linked::CakeToFillingVendor)
+                .cursor_by_other(vendor::Column::Id)
+                .before(10)
+                .first(2)
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
+                    r#""r2"."id" AS "B_id", "r2"."name" AS "B_name""#,
+                    r#"FROM "cake""#,
+                    r#"LEFT JOIN "cake_filling" AS "r0" ON "cake"."id" = "r0"."cake_id""#,
+                    r#"LEFT JOIN "filling" AS "r1" ON "r0"."filling_id" = "r1"."id""#,
+                    r#"LEFT JOIN "vendor" AS "r2" ON "r1"."vendor_id" = "r2"."id""#,
+                    r#"WHERE "vendor"."id" < $1 ORDER BY "vendor"."id" ASC LIMIT $2"#,
                 ]
                 .join(" ")
                 .as_str(),
@@ -1028,6 +1146,209 @@ mod tests {
                 r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" < 'val_2')"#,
                 r#"OR "t"."col_1" < 'val_1'"#,
             ].join(" "))
+        );
+
+        Ok(())
+    }
+
+    mod test_base_entity {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+        use super::test_related_entity;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "base")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            #[sea_orm(primary_key)]
+            pub name: String,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {
+            #[sea_orm(has_many = "super::test_related_entity::Entity")]
+            TestRelatedEntity,
+        }
+
+        impl Related<super::test_related_entity::Entity> for Entity {
+            fn to() -> RelationDef {
+                Relation::TestRelatedEntity.def()
+            }
+        }
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    mod test_related_entity {
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+        use super::test_base_entity;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "related")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            #[sea_orm(primary_key)]
+            pub name: String,
+            pub test_id: i32
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {
+            #[sea_orm(
+                belongs_to = "test_base_entity::Entity",
+                from = "Column::TestId",
+                to = "super::test_base_entity::Column::Id"
+            )]
+            TestBaseEntity,
+        }
+
+        impl Related<super::test_base_entity::Entity> for Entity {
+            fn to() -> RelationDef {
+                Relation::TestBaseEntity.def()
+            }
+        }
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    #[smol_potat::test]
+    async fn related_composite_keys_1() -> Result<(), DbErr> {
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[(test_base_entity::Model {
+                id: 1,
+                name: "CAT".into(),
+            }, 
+            test_related_entity::Model {
+                id: 1,
+                name: "CATE".into(),
+                test_id: 1,
+            })]])
+            .into_connection();
+
+        assert!(!test_base_entity::Entity::find()
+            .find_also_related(test_related_entity::Entity)
+            .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
+            .first(1)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "base"."id" AS "A_id", "base"."name" AS "A_name","#,
+                    r#""related"."id" AS "B_id", "related"."name" AS "B_name", "related"."test_id" AS "B_test_id""#,
+                    r#"FROM "base""#,
+                    r#"LEFT JOIN "related" ON "base"."id" = "related"."test_id""#,
+                    r#"ORDER BY "base"."id" ASC, "base"."name" ASC LIMIT $1"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [3_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn related_composite_keys_2() -> Result<(), DbErr> {
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[(test_base_entity::Model {
+                id: 1,
+                name: "CAT".into(),
+            }, 
+            test_related_entity::Model {
+                id: 1,
+                name: "CATE".into(),
+                test_id: 1,
+            })]])
+            .into_connection();
+
+        assert!(!test_base_entity::Entity::find()
+            .find_also_related(test_related_entity::Entity)
+            .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
+            .after((1,"C".to_string()))
+            .first(2)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "base"."id" AS "A_id", "base"."name" AS "A_name","#,
+                    r#""related"."id" AS "B_id", "related"."name" AS "B_name", "related"."test_id" AS "B_test_id""#,
+                    r#"FROM "base""#,
+                    r#"LEFT JOIN "related" ON "base"."id" = "related"."test_id""#,
+                    r#"WHERE ("base"."id" = $1 AND "base"."name" > $2) OR "base"."id" > $3"#,
+                    r#"ORDER BY "base"."id" ASC, "base"."name" ASC LIMIT $4"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [   
+                    1_i32.into(),
+                    "C".into(),
+                    1_i32.into(),
+                    2_u64.into(),
+                ]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn related_composite_keys_3() -> Result<(), DbErr> {
+        let db = MockDatabase::new(DbBackend::Postgres)
+        .append_query_results([[(test_base_entity::Model {
+            id: 1,
+            name: "CAT".into(),
+        }, 
+        test_related_entity::Model {
+            id: 1,
+            name: "CATE".into(),
+            test_id: 1,
+        })]])
+        .into_connection();
+
+        assert!(!test_base_entity::Entity::find()
+            .find_also_related(test_related_entity::Entity)
+            .cursor_by_other((test_related_entity::Column::Id, test_related_entity::Column::Name))
+            .after((1,"CAT".to_string()))
+            .first(2)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "base"."id" AS "A_id", "base"."name" AS "A_name","#,
+                    r#""related"."id" AS "B_id", "related"."name" AS "B_name", "related"."test_id" AS "B_test_id""#,
+                    r#"FROM "base""#,
+                    r#"LEFT JOIN "related" ON "base"."id" = "related"."test_id""#,
+                    r#"WHERE ("related"."id" = $1 AND "related"."name" > $2) OR "related"."id" > $3"#,
+                    r#"ORDER BY "related"."id" ASC, "related"."name" ASC LIMIT $4"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [   
+                    1_i32.into(),
+                    "CAT".into(),
+                    1_i32.into(),
+                    2_u64.into(),
+                ]
+            ),])]
         );
 
         Ok(())
