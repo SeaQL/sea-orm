@@ -1,6 +1,7 @@
 use crate::{
-    ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IntoIdentity,
-    PartialModelTrait, QueryOrder, QuerySelect, Select, SelectTwo, SelectModel, SelectorTrait, IdentityOf, SelectTwoModel,
+    ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IdentityOf, IntoIdentity,
+    PartialModelTrait, QueryOrder, QuerySelect, Select, SelectModel, SelectTwo, SelectTwoModel,
+    SelectorTrait,
 };
 use sea_query::{
     Condition, DynIden, Expr, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr, Value,
@@ -299,9 +300,9 @@ where
     /// Convert into a cursor
     pub fn cursor_by<C>(self, order_columns: C) -> Cursor<SelectModel<M>>
     where
-        C: IdentityOf<E>,
+        C: IntoIdentity,
     {
-        Cursor::new(self.query, SeaRc::new(E::default()), order_columns.identity_of())
+        Cursor::new(self.query, SeaRc::new(E::default()), order_columns)
     }
 }
 
@@ -312,7 +313,7 @@ where
     M: FromQueryResult + Sized + Send + Sync,
     N: FromQueryResult + Sized + Send + Sync,
 {
-    type Selector = SelectTwoModel<M,N>;
+    type Selector = SelectTwoModel<M, N>;
 }
 
 impl<E, F, M, N> SelectTwo<E, F>
@@ -327,7 +328,11 @@ where
     where
         C: IdentityOf<E>,
     {
-        Cursor::new(self.query, SeaRc::new(E::default()), order_columns.identity_of())
+        Cursor::new(
+            self.query,
+            SeaRc::new(E::default()),
+            order_columns.identity_of(),
+        )
     }
 
     /// Convert into a cursor using column of second entity
@@ -335,7 +340,11 @@ where
     where
         C: IdentityOf<F>,
     {
-        Cursor::new(self.query, SeaRc::new(F::default()), order_columns.identity_of())
+        Cursor::new(
+            self.query,
+            SeaRc::new(F::default()),
+            order_columns.identity_of(),
+        )
     }
 }
 
@@ -398,29 +407,32 @@ mod tests {
 
         Ok(())
     }
-    
+
     #[smol_potat::test]
     async fn first_2_before_10_also_related_select() -> Result<(), DbErr> {
-
         let models = [
-            (cake::Model{
-                id: 1,
-                name: "Blueberry Cheese Cake".into()
-            },
-            Some(fruit::Model {
-                id: 9,
-                name: "Blueberry".into(),
-                cake_id: Some(1),
-            })),
-            (cake::Model{
-                id: 2,
-                name: "Rasberry Cheese Cake".into()
-            },
-            Some(fruit::Model {
-                id: 10,
-                name: "Rasberry".into(),
-                cake_id: Some(1),
-            })),
+            (
+                cake::Model {
+                    id: 1,
+                    name: "Blueberry Cheese Cake".into(),
+                },
+                Some(fruit::Model {
+                    id: 9,
+                    name: "Blueberry".into(),
+                    cake_id: Some(1),
+                }),
+            ),
+            (
+                cake::Model {
+                    id: 2,
+                    name: "Rasberry Cheese Cake".into(),
+                },
+                Some(fruit::Model {
+                    id: 10,
+                    name: "Rasberry".into(),
+                    cake_id: Some(1),
+                }),
+            ),
         ];
 
         let db = MockDatabase::new(DbBackend::Postgres)
@@ -461,18 +473,17 @@ mod tests {
 
     #[smol_potat::test]
     async fn first_2_before_10_also_related_select_cursor_other() -> Result<(), DbErr> {
-
-        let models = [
-            (cake::Model{
+        let models = [(
+            cake::Model {
                 id: 1,
-                name: "Blueberry Cheese Cake".into()
+                name: "Blueberry Cheese Cake".into(),
             },
             Some(fruit::Model {
                 id: 9,
                 name: "Blueberry".into(),
                 cake_id: Some(1),
-            })),
-        ];
+            }),
+        )];
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([models.clone()])
@@ -513,22 +524,26 @@ mod tests {
     #[smol_potat::test]
     async fn first_2_before_10_also_linked_select() -> Result<(), DbErr> {
         let models = [
-            (cake::Model{
-                id: 1,
-                name: "Blueberry Cheese Cake".into()
-            },
-            Some(vendor::Model {
-                id: 9,
-                name: "Blueberry".into(),
-            })),
-            (cake::Model{
-                id: 2,
-                name: "Rasberry Cheese Cake".into()
-            },
-            Some(vendor::Model {
-                id: 10,
-                name: "Rasberry".into(),
-            })),
+            (
+                cake::Model {
+                    id: 1,
+                    name: "Blueberry Cheese Cake".into(),
+                },
+                Some(vendor::Model {
+                    id: 9,
+                    name: "Blueberry".into(),
+                }),
+            ),
+            (
+                cake::Model {
+                    id: 2,
+                    name: "Rasberry Cheese Cake".into(),
+                },
+                Some(vendor::Model {
+                    id: 10,
+                    name: "Rasberry".into(),
+                }),
+            ),
         ];
 
         let db = MockDatabase::new(DbBackend::Postgres)
@@ -570,16 +585,16 @@ mod tests {
 
     #[smol_potat::test]
     async fn first_2_before_10_also_linked_select_cursor_other() -> Result<(), DbErr> {
-        let models = [
-            (cake::Model{
+        let models = [(
+            cake::Model {
                 id: 1,
-                name: "Blueberry Cheese Cake".into()
+                name: "Blueberry Cheese Cake".into(),
             },
             Some(vendor::Model {
                 id: 9,
                 name: "Blueberry".into(),
-            })),
-        ];
+            }),
+        )];
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([models.clone()])
@@ -1152,9 +1167,9 @@ mod tests {
     }
 
     mod test_base_entity {
+        use super::test_related_entity;
         use crate as sea_orm;
         use crate::entity::prelude::*;
-        use super::test_related_entity;
 
         #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
         #[sea_orm(table_name = "base")]
@@ -1181,9 +1196,9 @@ mod tests {
     }
 
     mod test_related_entity {
+        use super::test_base_entity;
         use crate as sea_orm;
         use crate::entity::prelude::*;
-        use super::test_base_entity;
 
         #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
         #[sea_orm(table_name = "related")]
@@ -1192,7 +1207,7 @@ mod tests {
             pub id: i32,
             #[sea_orm(primary_key)]
             pub name: String,
-            pub test_id: i32
+            pub test_id: i32,
         }
 
         #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -1217,15 +1232,17 @@ mod tests {
     #[smol_potat::test]
     async fn related_composite_keys_1() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[(test_base_entity::Model {
-                id: 1,
-                name: "CAT".into(),
-            }, 
-            test_related_entity::Model {
-                id: 1,
-                name: "CATE".into(),
-                test_id: 1,
-            })]])
+            .append_query_results([[(
+                test_base_entity::Model {
+                    id: 1,
+                    name: "CAT".into(),
+                },
+                test_related_entity::Model {
+                    id: 1,
+                    name: "CATE".into(),
+                    test_id: 1,
+                },
+            )]])
             .into_connection();
 
         assert!(!test_base_entity::Entity::find()
@@ -1249,7 +1266,7 @@ mod tests {
                 ]
                 .join(" ")
                 .as_str(),
-                [3_u64.into()]
+                [1_u64.into()]
             ),])]
         );
 
@@ -1259,21 +1276,23 @@ mod tests {
     #[smol_potat::test]
     async fn related_composite_keys_2() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[(test_base_entity::Model {
-                id: 1,
-                name: "CAT".into(),
-            }, 
-            test_related_entity::Model {
-                id: 1,
-                name: "CATE".into(),
-                test_id: 1,
-            })]])
+            .append_query_results([[(
+                test_base_entity::Model {
+                    id: 1,
+                    name: "CAT".into(),
+                },
+                test_related_entity::Model {
+                    id: 1,
+                    name: "CATE".into(),
+                    test_id: 1,
+                },
+            )]])
             .into_connection();
 
         assert!(!test_base_entity::Entity::find()
             .find_also_related(test_related_entity::Entity)
             .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
-            .after((1,"C".to_string()))
+            .after((1, "C".to_string()))
             .first(2)
             .all(&db)
             .await?
@@ -1293,7 +1312,7 @@ mod tests {
                 ]
                 .join(" ")
                 .as_str(),
-                [   
+                [
                     1_i32.into(),
                     "C".into(),
                     1_i32.into(),
@@ -1308,21 +1327,26 @@ mod tests {
     #[smol_potat::test]
     async fn related_composite_keys_3() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
-        .append_query_results([[(test_base_entity::Model {
-            id: 1,
-            name: "CAT".into(),
-        }, 
-        test_related_entity::Model {
-            id: 1,
-            name: "CATE".into(),
-            test_id: 1,
-        })]])
-        .into_connection();
+            .append_query_results([[(
+                test_base_entity::Model {
+                    id: 1,
+                    name: "CAT".into(),
+                },
+                test_related_entity::Model {
+                    id: 1,
+                    name: "CATE".into(),
+                    test_id: 1,
+                },
+            )]])
+            .into_connection();
 
         assert!(!test_base_entity::Entity::find()
             .find_also_related(test_related_entity::Entity)
-            .cursor_by_other((test_related_entity::Column::Id, test_related_entity::Column::Name))
-            .after((1,"CAT".to_string()))
+            .cursor_by_other((
+                test_related_entity::Column::Id,
+                test_related_entity::Column::Name
+            ))
+            .after((1, "CAT".to_string()))
             .first(2)
             .all(&db)
             .await?
@@ -1342,7 +1366,7 @@ mod tests {
                 ]
                 .join(" ")
                 .as_str(),
-                [   
+                [
                     1_i32.into(),
                     "CAT".into(),
                     1_i32.into(),
