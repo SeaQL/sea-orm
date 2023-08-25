@@ -1,13 +1,14 @@
 use crate::{
     ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IdentityOf, IntoIdentity,
     PartialModelTrait, QueryOrder, QuerySelect, Select, SelectModel, SelectTwo, SelectTwoModel,
-    SelectorTrait,
+    SelectorTrait, PrimaryKeyToColumn, ColumnTrait
 };
 use sea_query::{
     Condition, DynIden, Expr, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr, Value,
     ValueTuple,
 };
 use std::marker::PhantomData;
+use strum::IntoEnumIterator as Iterable;
 
 #[cfg(feature = "with-json")]
 use crate::JsonValue;
@@ -18,11 +19,12 @@ pub struct Cursor<S>
 where
     S: SelectorTrait,
 {
-    pub(crate) query: SelectStatement,
-    pub(crate) table: DynIden,
-    pub(crate) order_columns: Identity,
-    pub(crate) last: bool,
-    pub(crate) phantom: PhantomData<S>,
+    query: SelectStatement,
+    table: DynIden,
+    order_columns: Identity,
+    secondary_order_by: Vec<(DynIden, Identity)>,
+    last: bool,
+    phantom: PhantomData<S>,
 }
 
 impl<S> Cursor<S>
@@ -30,7 +32,7 @@ where
     S: SelectorTrait,
 {
     /// Initialize a cursor
-    pub fn new<C>(query: SelectStatement, table: DynIden, order_columns: C) -> Self
+    pub fn new<C>(query: SelectStatement, table: DynIden, order_columns: C, secondary_order_by: Vec<(DynIden, Identity)>) -> Self
     where
         C: IntoIdentity,
     {
@@ -40,6 +42,7 @@ where
             order_columns: order_columns.into_identity(),
             last: false,
             phantom: PhantomData,
+            secondary_order_by
         }
     }
 
@@ -159,10 +162,7 @@ where
     /// Limit result set to only first N rows in ascending order of the order by column
     pub fn first(&mut self, num_rows: u64) -> &mut Self {
         self.query.limit(num_rows).clear_order_by();
-        let table = SeaRc::clone(&self.table);
-        self.apply_order_by(|query, col| {
-            query.order_by((SeaRc::clone(&table), SeaRc::clone(col)), Order::Asc);
-        });
+        self.apply_order_by(self.table, Order::Asc);
         self.last = false;
         self
     }
@@ -170,38 +170,38 @@ where
     /// Limit result set to only last N rows in ascending order of the order by column
     pub fn last(&mut self, num_rows: u64) -> &mut Self {
         self.query.limit(num_rows).clear_order_by();
-        let table = SeaRc::clone(&self.table);
-        self.apply_order_by(|query, col| {
-            query.order_by((SeaRc::clone(&table), SeaRc::clone(col)), Order::Desc);
-        });
+        self.apply_order_by(self.table, Order::Desc);
         self.last = true;
         self
     }
 
-    fn apply_order_by<F>(&mut self, f: F)
-    where
-        F: Fn(&mut SelectStatement, &DynIden),
+    fn apply_order_by(&mut self, table: DynIden, ord: Order)
     {
         let query = &mut self.query;
+        let mut order = |col: &DynIden| query.order_by((table.clone(), col.clone()), ord);
         match &self.order_columns {
             Identity::Unary(c1) => {
-                f(query, c1);
+                order(c1);
             }
             Identity::Binary(c1, c2) => {
-                f(query, c1);
-                f(query, c2);
+                order(c1);
+                order(c2);
             }
             Identity::Ternary(c1, c2, c3) => {
-                f(query, c1);
-                f(query, c2);
-                f(query, c3);
+                order(c1);
+                order(c2);
+                order(c3);
             }
             Identity::Many(vec) => {
                 for col in vec.iter() {
-                    f(query, col);
+                    order(col);
                 }
             }
         }
+        
+        self.secondary_order_by.into_iter().map(
+            |(tbl, col)| query.order_by((tbl.clone(), col.clone()), ord)
+        );
     }
 
     /// Fetch the paginated result
@@ -232,6 +232,7 @@ where
             order_columns: self.order_columns,
             last: self.last,
             phantom: PhantomData,
+            secondary_order_by: self.secondary_order_by,
         }
     }
 
@@ -252,7 +253,13 @@ where
             order_columns: self.order_columns,
             last: self.last,
             phantom: PhantomData,
+            secondary_order_by: self.secondary_order_by,
         }
+    }
+
+    pub fn set_secondary_order_by(&mut self, tbl_col: Vec<(DynIden, Identity)>) -> &mut Self {
+        self.secondary_order_by = tbl_col;
+        self
     }
 }
 
@@ -302,7 +309,7 @@ where
     where
         C: IntoIdentity,
     {
-        Cursor::new(self.query, SeaRc::new(E::default()), order_columns)
+        Cursor::new(self.query, SeaRc::new(E::default()), order_columns, vec![])
     }
 }
 
@@ -328,10 +335,14 @@ where
     where
         C: IdentityOf<E>,
     {
+        let primary_keys: Vec<(DynIden, Identity)> = <F::PrimaryKey as Iterable>::iter()
+        .map(|pk| (SeaRc::new(F::default()), Identity::Unary(SeaRc::new(pk.into_column()))))
+        .collect();
         Cursor::new(
             self.query,
             SeaRc::new(E::default()),
             order_columns.identity_of(),
+            primary_keys,
         )
     }
 
@@ -340,10 +351,14 @@ where
     where
         C: IdentityOf<F>,
     {
+        let primary_keys: Vec<(DynIden, Identity)> = <E::PrimaryKey as Iterable>::iter()
+        .map(|pk| (SeaRc::new(F::default()), Identity::Unary(SeaRc::new(pk.into_column()))))
+        .collect();
         Cursor::new(
             self.query,
             SeaRc::new(F::default()),
             order_columns.identity_of(),
+            primary_keys
         )
     }
 }
