@@ -2,7 +2,9 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, DerivePartialModel, FromQueryResult, QuerySelect, Set, QueryOrder};
+use sea_orm::{
+    entity::prelude::*, DerivePartialModel, FromQueryResult, QueryOrder, QuerySelect, Set,
+};
 use serde_json::json;
 
 #[sea_orm_macros::test]
