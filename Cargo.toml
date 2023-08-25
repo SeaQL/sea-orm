@@ -34,7 +34,7 @@ tracing = { version = "0.1", default-features = false, features = ["attributes",
 rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.3", default-features = false, optional = true }
 sea-orm-macros = { version = "0.12.2", path = "sea-orm-macros", default-features = false, features = ["strum"] }
-sea-query = { version = "0.30.0", default-features = false, features = ["thread-safe", "hashable-value", "backend-mysql", "backend-postgres", "backend-sqlite"] }
+sea-query = { version = "0.30.1", default-features = false, features = ["thread-safe", "hashable-value", "backend-mysql", "backend-postgres", "backend-sqlite"] }
 sea-query-binder = { version = "0.5.0", default-features = false, optional = true }
 strum = { version = "0.25", default-features = false }
 serde = { version = "1.0", default-features = false }
