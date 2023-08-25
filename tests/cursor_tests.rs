@@ -393,6 +393,7 @@ pub async fn cursor_related_pagination(db: &DatabaseConnection) -> Result<(), Db
     assert_eq!(
         bakery::Entity::find()
             .find_also_related(Baker)
+            .order_by_asc(baker::Column::Id)
             .cursor_by(bakery::Column::Id)
             .before(5)
             .first(20)
