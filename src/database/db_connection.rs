@@ -470,6 +470,10 @@ impl DatabaseConnection {
 impl DbBackend {
     /// Check if the URI is the same as the specified database backend.
     /// Returns true if they match.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `base_url` cannot be parsed as `Url`.
     pub fn is_prefix_of(self, base_url: &str) -> bool {
         let base_url_parsed = Url::parse(base_url).expect("Fail to parse database URL");
         match self {
