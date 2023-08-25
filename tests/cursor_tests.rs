@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, DerivePartialModel, FromQueryResult, Set, QuerySelect};
+use sea_orm::{entity::prelude::*, DerivePartialModel, FromQueryResult, QuerySelect, Set, QueryOrder};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -304,7 +304,7 @@ fn baker(c: char) -> baker::Model {
 pub struct CakeBakerlite {
     pub cake_name: String,
     pub cake_id: i32,
-    pub baker_name: String
+    pub baker_name: String,
 }
 
 fn cakebaker(cake: char, baker: char) -> CakeBakerlite {
@@ -365,7 +365,8 @@ pub async fn create_baker_cake(db: &DatabaseConnection) -> Result<(), DbErr> {
                 cake_id: Set(1),
                 baker_id: Set(2),
             },
-        ].as_mut()
+        ]
+        .as_mut(),
     );
     Baker::insert_many(bakers).exec(db).await?;
     Cake::insert_many(cakes).exec(db).await?;
@@ -414,6 +415,7 @@ pub async fn cursor_related_pagination(db: &DatabaseConnection) -> Result<(), Db
     assert_eq!(
         bakery::Entity::find()
             .find_also_related(Baker)
+            .order_by_asc(baker::Column::Id)
             .cursor_by(bakery::Column::Id)
             .before(5)
             .first(4)
@@ -431,6 +433,7 @@ pub async fn cursor_related_pagination(db: &DatabaseConnection) -> Result<(), Db
     assert_eq!(
         bakery::Entity::find()
             .find_also_related(Baker)
+            .order_by_asc(baker::Column::Id)
             .cursor_by(bakery::Column::Name)
             .before("3")
             .first(4)
@@ -487,10 +490,7 @@ pub async fn cursor_related_pagination(db: &DatabaseConnection) -> Result<(), Db
             .into_model::<CakeBakerlite>()
             .all(db)
             .await?,
-        vec![
-            cakebaker('a', 'A'),
-            cakebaker('a', 'B'),
-        ]
+        vec![cakebaker('a', 'A'), cakebaker('a', 'B'),]
     );
 
     assert_eq!(
@@ -507,10 +507,7 @@ pub async fn cursor_related_pagination(db: &DatabaseConnection) -> Result<(), Db
             .into_model::<CakeBakerlite>()
             .all(db)
             .await?,
-        vec![
-            cakebaker('a', 'A'),
-            cakebaker('b', 'A'),
-        ]
+        vec![cakebaker('a', 'A'), cakebaker('b', 'A'),]
     );
 
     assert_eq!(
