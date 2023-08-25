@@ -17,11 +17,12 @@ pub struct Cursor<S>
 where
     S: SelectorTrait,
 {
-    pub(crate) query: SelectStatement,
-    pub(crate) table: DynIden,
-    pub(crate) order_columns: Identity,
-    pub(crate) last: bool,
-    pub(crate) phantom: PhantomData<S>,
+    query: SelectStatement,
+    table: DynIden,
+    order_columns: Identity,
+    secondary_order_by: Option<(DynIden, Identity)>,
+    last: bool,
+    phantom: PhantomData<S>,
 }
 
 impl<S> Cursor<S>
@@ -158,10 +159,7 @@ where
     /// Limit result set to only first N rows in ascending order of the order by column
     pub fn first(&mut self, num_rows: u64) -> &mut Self {
         self.query.limit(num_rows).clear_order_by();
-        let table = SeaRc::clone(&self.table);
-        self.apply_order_by(|query, col| {
-            query.order_by((SeaRc::clone(&table), SeaRc::clone(col)), Order::Asc);
-        });
+        self.apply_order_by(table, Order::Asc);
         self.last = false;
         self
     }
@@ -169,37 +167,38 @@ where
     /// Limit result set to only last N rows in ascending order of the order by column
     pub fn last(&mut self, num_rows: u64) -> &mut Self {
         self.query.limit(num_rows).clear_order_by();
-        let table = SeaRc::clone(&self.table);
-        self.apply_order_by(|query, col| {
-            query.order_by((SeaRc::clone(&table), SeaRc::clone(col)), Order::Desc);
-        });
+        self.apply_order_by(table, Order::Desc);
         self.last = true;
         self
     }
 
-    fn apply_order_by<F>(&mut self, f: F)
-    where
-        F: Fn(&mut SelectStatement, &DynIden),
+    fn apply_order_by<F>(&mut self, table: DynIden, ord: Order)
     {
         let query = &mut self.query;
+        let mut order = |col| query.order_by(table.clone(), col.clone(), ord);
+
         match &self.order_columns {
             Identity::Unary(c1) => {
-                f(query, c1);
+                order(query, c1);
             }
             Identity::Binary(c1, c2) => {
-                f(query, c1);
-                f(query, c2);
+                order(query, c1);
+                order(query, c2);
             }
             Identity::Ternary(c1, c2, c3) => {
-                f(query, c1);
-                f(query, c2);
-                f(query, c3);
+                order(query, c1);
+                order(query, c2);
+                order(query, c3);
             }
             Identity::Many(vec) => {
                 for col in vec.iter() {
-                    f(query, col);
+                    order(query, col);
                 }
             }
+        }
+
+        if let Some((tbl, col)) = &self.secondary_order_by {
+            query.order_by(tbl.clone(), col.clone(), ord);
         }
     }
 
@@ -253,6 +252,10 @@ where
             phantom: PhantomData,
         }
     }
+
+    pub fn set_secondary_order_by(&mut self, tbl_col: Option<(DynIden, Identity)>) {
+        self.secondary_order_by = tbl_col;
+    }
 }
 
 impl<S> QuerySelect for Cursor<S>
@@ -299,7 +302,9 @@ where
     where
         C: IntoIdentity,
     {
-        Cursor::new(self.query, SeaRc::new(E::default()), order_columns)
+        let mut cursor = Cursor::new(self.query, SeaRc::new(E::default()), order_columns);
+        cursor.set_secondary_order_by(F::sdf);
+        cursor
     }
 }
 
