@@ -20,7 +20,17 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Cake::Name).string().not_null())
                     .to_owned(),
             )
-            .await
+            .await?;
+        manager
+            .create_index(
+                Index::create()
+                    .name("cake_name_index")
+                    .table(Cake::Table)
+                    .col(Cake::Name)
+                    .to_owned(),
+            )
+            .await?;
+        Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
