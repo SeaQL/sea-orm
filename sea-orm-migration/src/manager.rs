@@ -136,4 +136,25 @@ impl<'c> SchemaManager<'c> {
 
         res.try_get("", "has_column")
     }
+
+    pub async fn has_index<T, I>(&self, table: T, index: I) -> Result<bool, DbErr>
+    where
+        T: AsRef<str>,
+        I: AsRef<str>,
+    {
+        let stmt = match self.conn.get_database_backend() {
+            DbBackend::MySql => MySql::has_index(table, index),
+            DbBackend::Postgres => Postgres::has_index(table, index),
+            DbBackend::Sqlite => Sqlite::has_index(table, index),
+        };
+
+        let builder = self.conn.get_database_backend();
+        let res = self
+            .conn
+            .query_one(builder.build(&stmt))
+            .await?
+            .ok_or_else(|| DbErr::Custom("Failed to check index exists".to_owned()))?;
+
+        res.try_get("", "has_index")
+    }
 }
