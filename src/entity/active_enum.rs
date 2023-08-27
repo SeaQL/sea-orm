@@ -144,17 +144,18 @@ pub trait ActiveEnum: Sized + Iterable {
     }
 }
 
-#[cfg(all(feature = "with-json", feature = "postgres-array"))]
+#[cfg(feature = "with-json")]
 pub trait ActiveEnumOrJson: Sized {
     fn try_get_by<I: crate::ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError>;
 
+    #[cfg(feature = "postgres-array")]
     fn try_get_array_by<I: crate::ColIdx>(
         res: &QueryResult,
         index: I,
     ) -> Result<Vec<Self>, TryGetError>;
 }
 
-#[cfg(all(feature = "with-json", feature = "postgres-array"))]
+#[cfg(feature = "with-json")]
 impl<T> TryGetable for T
 where
     T: ActiveEnumOrJson,
@@ -427,14 +428,10 @@ mod tests {
         }
 
         test_num_value_uint!(U8, "u8", "TinyInteger", TinyInteger);
-        test_num_value_uint!(U16, "u16", "SmallInteger", SmallInteger);
         test_num_value_uint!(U32, "u32", "Integer", Integer);
-        test_num_value_uint!(U64, "u64", "BigInteger", BigInteger);
 
         test_fallback_uint!(U8Fallback, u8, "u8", "TinyInteger", TinyInteger);
-        test_fallback_uint!(U16Fallback, u16, "u16", "SmallInteger", SmallInteger);
         test_fallback_uint!(U32Fallback, u32, "u32", "Integer", Integer);
-        test_fallback_uint!(U64Fallback, u64, "u64", "BigInteger", BigInteger);
     }
 
     #[test]

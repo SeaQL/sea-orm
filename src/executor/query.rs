@@ -1008,10 +1008,10 @@ where
     }
 }
 
-#[cfg(all(feature = "with-json", feature = "postgres-array"))]
+#[cfg(feature = "with-json")]
 use crate::ActiveEnumOrJson;
 
-#[cfg(all(feature = "with-json", feature = "postgres-array"))]
+#[cfg(feature = "with-json")]
 impl<T> ActiveEnumOrJson for T
 where
     T: TryGetableFromJson,
@@ -1020,6 +1020,7 @@ where
         <T as TryGetableFromJson>::try_get_from_json(res, index)
     }
 
+    #[cfg(feature = "postgres-array")]
     fn try_get_array_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<Self>, TryGetError> {
         try_get_from_json_impl::<Vec<Self>, I>(res, index)
     }

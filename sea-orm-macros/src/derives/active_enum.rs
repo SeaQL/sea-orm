@@ -290,18 +290,9 @@ impl ActiveEnum {
             quote!()
         };
 
-        let impl_active_enum_or_json = if cfg!(all(
-            feature = "postgres-array",
-            feature = "with-json"
-        )) {
-            quote!(
-                #[automatically_derived]
-                impl sea_orm::ActiveEnumOrJson for #ident {
-                    fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, idx: I) -> Result<Self, sea_orm::TryGetError> {
-                        let value = <<Self as sea_orm::ActiveEnum>::Value as sea_orm::TryGetable>::try_get_by(res, idx)?;
-                        <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(sea_orm::TryGetError::DbErr)
-                    }
-
+        let impl_active_enum_or_json = if cfg!(feature = "with-json") {
+            let impl_active_enum_or_json_vec = if cfg!(feature = "postgres-array") {
+                quote!(
                     fn try_get_array_by<I: sea_orm::ColIdx>(
                         res: &sea_orm::QueryResult,
                         index: I,
@@ -311,6 +302,20 @@ impl ActiveEnum {
                             .map(|value| <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(Into::into))
                             .collect()
                     }
+                )
+            } else {
+                quote!()
+            };
+
+            quote!(
+                #[automatically_derived]
+                impl sea_orm::ActiveEnumOrJson for #ident {
+                    fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, idx: I) -> Result<Self, sea_orm::TryGetError> {
+                        let value = <<Self as sea_orm::ActiveEnum>::Value as sea_orm::TryGetable>::try_get_by(res, idx)?;
+                        <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(sea_orm::TryGetError::DbErr)
+                    }
+
+                    #impl_active_enum_or_json_vec
                 }
             )
         } else {
