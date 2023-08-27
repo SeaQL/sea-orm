@@ -144,13 +144,44 @@ pub trait ActiveEnum: Sized + Iterable {
     }
 }
 
+#[cfg(all(feature = "with-json", feature = "postgres-array"))]
+pub trait ActiveEnumOrJson: Sized {
+    fn try_get_by<I: crate::ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError>;
+
+    fn try_get_array_by<I: crate::ColIdx>(
+        res: &QueryResult,
+        index: I,
+    ) -> Result<Vec<Self>, TryGetError>;
+}
+
+#[cfg(all(feature = "with-json", feature = "postgres-array"))]
+impl<T> TryGetable for T
+where
+    T: ActiveEnumOrJson,
+{
+    fn try_get_by<I: crate::ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
+        <T as ActiveEnumOrJson>::try_get_by(res, index)
+    }
+}
+
+#[cfg(all(feature = "with-json", feature = "postgres-array"))]
+impl<T> TryGetable for Vec<T>
+where
+    T: ActiveEnumOrJson,
+{
+    fn try_get_by<I: crate::ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
+        <T as ActiveEnumOrJson>::try_get_array_by(res, index)
+    }
+}
+
+#[cfg(not(feature = "with-json"))]
 impl<T> TryGetable for Vec<T>
 where
     T: ActiveEnum,
     T::ValueVec: TryGetable,
 {
     fn try_get_by<I: crate::ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
-        <T::ValueVec as TryGetable>::try_get_by(res, index)?
+        <T::ValueVec as TryGetable>::try_get_by(res, index)
             .into_iter()
             .map(|value| T::try_from_value(&value).map_err(Into::into))
             .collect()

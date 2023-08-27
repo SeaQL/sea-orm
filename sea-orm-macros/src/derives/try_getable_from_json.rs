@@ -47,7 +47,8 @@ pub fn expand_derive_from_json_query_result(ident: Ident) -> syn::Result<TokenSt
 }
 
 pub fn expand_derive_from_json_array_query_result(ident: Ident) -> syn::Result<TokenStream> {
-    let derive_from_json_query_result_expansion = expand_derive_from_json_query_result(ident.clone())?;
+    let derive_from_json_query_result_expansion =
+        expand_derive_from_json_query_result(ident.clone())?;
 
     Ok(quote!(
         #derive_from_json_query_result_expansion

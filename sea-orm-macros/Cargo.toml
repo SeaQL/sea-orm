@@ -32,6 +32,7 @@ serde = { version = "1.0", features = ["derive"] }
 [features]
 default = ["derive"]
 postgres-array = []
+with-json = []
 derive = ["bae"]
 strum = []
 seaography = []

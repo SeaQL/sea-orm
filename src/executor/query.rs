@@ -962,6 +962,39 @@ fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), Try
 
 // TryGetableFromJson //
 
+fn try_get_from_json_impl<T, I: ColIdx>(res: &QueryResult, idx: I) -> Result<T, TryGetError>
+where
+    for<'de> T: serde::Deserialize<'de>,
+{
+    match &res.row {
+        #[cfg(feature = "sqlx-mysql")]
+        QueryResultRow::SqlxMySql(row) => row
+            .try_get::<Option<sqlx::types::Json<T>>, _>(idx.as_sqlx_mysql_index())
+            .map_err(|e| sqlx_error_to_query_err(e).into())
+            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)).map(|json| json.0)),
+        #[cfg(feature = "sqlx-postgres")]
+        QueryResultRow::SqlxPostgres(row) => row
+            .try_get::<Option<sqlx::types::Json<T>>, _>(idx.as_sqlx_postgres_index())
+            .map_err(|e| sqlx_error_to_query_err(e).into())
+            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)).map(|json| json.0)),
+        #[cfg(feature = "sqlx-sqlite")]
+        QueryResultRow::SqlxSqlite(row) => row
+            .try_get::<Option<sqlx::types::Json<T>>, _>(idx.as_sqlx_sqlite_index())
+            .map_err(|e| sqlx_error_to_query_err(e).into())
+            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)).map(|json| json.0)),
+        #[cfg(feature = "mock")]
+        QueryResultRow::Mock(row) => row
+            .try_get::<serde_json::Value, I>(idx)
+            .map_err(|e| {
+                debug_print!("{:#?}", e.to_string());
+                err_null_idx_col(idx)
+            })
+            .and_then(|json| serde_json::from_value(json).map_err(|e| json_err(e).into())),
+        #[allow(unreachable_patterns)]
+        _ => unreachable!(),
+    }
+}
+
 /// An interface to get a JSON from the query result
 #[cfg(feature = "with-json")]
 pub trait TryGetableFromJson: Sized
@@ -971,48 +1004,26 @@ where
     /// Get a JSON from the query result with prefixed column name
     #[allow(unused_variables, unreachable_code)]
     fn try_get_from_json<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
-        match &res.row {
-            #[cfg(feature = "sqlx-mysql")]
-            QueryResultRow::SqlxMySql(row) => row
-                .try_get::<Option<sqlx::types::Json<Self>>, _>(idx.as_sqlx_mysql_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)).map(|json| json.0)),
-            #[cfg(feature = "sqlx-postgres")]
-            QueryResultRow::SqlxPostgres(row) => row
-                .try_get::<Option<sqlx::types::Json<Self>>, _>(idx.as_sqlx_postgres_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)).map(|json| json.0)),
-            #[cfg(feature = "sqlx-sqlite")]
-            QueryResultRow::SqlxSqlite(row) => row
-                .try_get::<Option<sqlx::types::Json<Self>>, _>(idx.as_sqlx_sqlite_index())
-                .map_err(|e| sqlx_error_to_query_err(e).into())
-                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)).map(|json| json.0)),
-            #[cfg(feature = "mock")]
-            QueryResultRow::Mock(row) => row
-                .try_get::<serde_json::Value, I>(idx)
-                .map_err(|e| {
-                    debug_print!("{:#?}", e.to_string());
-                    err_null_idx_col(idx)
-                })
-                .and_then(|json| serde_json::from_value(json).map_err(|e| json_err(e).into())),
-            #[allow(unreachable_patterns)]
-            _ => unreachable!(),
-        }
+        try_get_from_json_impl::<Self, I>(res, idx)
     }
 }
 
-#[cfg(feature = "with-json")]
-impl<T> TryGetableFromJson for Vec<T> where T: TryGetableFromJson {}
+#[cfg(all(feature = "with-json", feature = "postgres-array"))]
+use crate::ActiveEnumOrJson;
 
-#[cfg(feature = "with-json")]
-impl<T> TryGetable for T
+#[cfg(all(feature = "with-json", feature = "postgres-array"))]
+impl<T> ActiveEnumOrJson for T
 where
     T: TryGetableFromJson,
 {
     fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
-        T::try_get_from_json(res, index)
+        <T as TryGetableFromJson>::try_get_from_json(res, index)
     }
-}}
+
+    fn try_get_array_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<Self>, TryGetError> {
+        try_get_from_json_impl::<Vec<Self>, I>(res, index)
+    }
+}
 
 // TryFromU64 //
 /// Try to convert a type to a u64
