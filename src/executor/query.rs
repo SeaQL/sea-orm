@@ -1012,7 +1012,7 @@ where
     fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
         T::try_get_from_json(res, index)
     }
-}
+}}
 
 // TryFromU64 //
 /// Try to convert a type to a u64
