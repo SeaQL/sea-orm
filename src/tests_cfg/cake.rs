@@ -23,6 +23,12 @@ pub enum Relation {
         on_condition = r#"super::fruit::Column::Name.like("%tropical%")"#
     )]
     TropicalFruit,
+    #[sea_orm(
+        has_many = "super::fruit::Entity",
+        condition_type = "any",
+        on_condition = r#"super::fruit::Column::Name.like("%tropical%")"#
+    )]
+    OrTropicalFruit,
 }
 
 impl Related<super::fruit::Entity> for Entity {

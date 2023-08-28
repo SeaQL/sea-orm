@@ -6,17 +6,19 @@ use entity::async_graphql;
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{
-    extract::Extension,
+    extract::State,
     response::{Html, IntoResponse},
     routing::get,
     Router,
 };
+use axum_macros::debug_handler;
 use graphql::schema::{build_schema, AppSchema};
 
 #[cfg(debug_assertions)]
 use dotenvy::dotenv;
 
-async fn graphql_handler(schema: Extension<AppSchema>, req: GraphQLRequest) -> GraphQLResponse {
+#[debug_handler]
+async fn graphql_handler(schema: State<AppSchema>, req: GraphQLRequest) -> GraphQLResponse {
     schema.execute(req.into_inner()).await.into()
 }
 
@@ -38,7 +40,7 @@ pub async fn main() {
             "/api/graphql",
             get(graphql_playground).post(graphql_handler),
         )
-        .layer(Extension(schema));
+        .with_state(schema);
 
     println!("Playground: http://localhost:3000/api/graphql");
 

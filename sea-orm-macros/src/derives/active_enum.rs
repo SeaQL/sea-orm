@@ -1,7 +1,8 @@
-use heck::CamelCase;
+use super::util::camel_case_with_escaped_non_uax31;
+use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse, punctuated::Punctuated, token::Comma, Expr, Lit, LitInt, LitStr, Meta, UnOp};
+use syn::{parse, Expr, Lit, LitInt, LitStr, UnOp};
 
 enum Error {
     InputNotEnum,
@@ -29,58 +30,53 @@ impl ActiveEnum {
         let ident_span = input.ident.span();
         let ident = input.ident;
 
-        let mut enum_name = ident.to_string().to_camel_case();
+        let mut enum_name = ident.to_string().to_upper_camel_case();
         let mut rs_type = Err(Error::TT(quote_spanned! {
             ident_span => compile_error!("Missing macro attribute `rs_type`");
         }));
         let mut db_type = Err(Error::TT(quote_spanned! {
             ident_span => compile_error!("Missing macro attribute `db_type`");
         }));
-        for attr in input.attrs.iter() {
-            if let Some(ident) = attr.path.get_ident() {
-                if ident != "sea_orm" {
-                    continue;
-                }
-            } else {
-                continue;
-            }
-            if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
-                for meta in list.iter() {
-                    if let Meta::NameValue(nv) = meta {
-                        if let Some(name) = nv.path.get_ident() {
-                            if name == "rs_type" {
-                                if let Lit::Str(litstr) = &nv.lit {
-                                    rs_type = syn::parse_str::<TokenStream>(&litstr.value())
-                                        .map_err(Error::Syn);
-                                }
-                            } else if name == "db_type" {
-                                if let Lit::Str(litstr) = &nv.lit {
-                                    let s = litstr.value();
-                                    match s.as_ref() {
-                                        "Enum" => {
-                                            db_type = Ok(quote! {
-                                                Enum {
-                                                    name: Self::name(),
-                                                    variants: Self::iden_values(),
-                                                }
-                                            })
-                                        }
-                                        _ => {
-                                            db_type = syn::parse_str::<TokenStream>(&s)
-                                                .map_err(Error::Syn);
-                                        }
+
+        input
+            .attrs
+            .iter()
+            .filter(|attr| attr.path().is_ident("sea_orm"))
+            .try_for_each(|attr| {
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("rs_type") {
+                        let litstr: LitStr = meta.value()?.parse()?;
+                        rs_type =
+                            syn::parse_str::<TokenStream>(&litstr.value()).map_err(Error::Syn);
+                    } else if meta.path.is_ident("db_type") {
+                        let litstr: LitStr = meta.value()?.parse()?;
+                        let s = litstr.value();
+                        match s.as_ref() {
+                            "Enum" => {
+                                db_type = Ok(quote! {
+                                    Enum {
+                                        name: Self::name(),
+                                        variants: Self::iden_values(),
                                     }
-                                }
-                            } else if name == "enum_name" {
-                                if let Lit::Str(litstr) = &nv.lit {
-                                    enum_name = litstr.value();
-                                }
+                                })
+                            }
+                            _ => {
+                                db_type = syn::parse_str::<TokenStream>(&s).map_err(Error::Syn);
                             }
                         }
+                    } else if meta.path.is_ident("enum_name") {
+                        let litstr: LitStr = meta.value()?.parse()?;
+                        enum_name = litstr.value();
+                    } else {
+                        return Err(meta.error(format!(
+                            "Unknown attribute parameter found: {:?}",
+                            meta.path.get_ident()
+                        )));
                     }
-                }
-            }
-        }
+                    Ok(())
+                })
+                .map_err(Error::Syn)
+            })?;
 
         let variant_vec = match input.data {
             syn::Data::Enum(syn::DataEnum { variants, .. }) => variants,
@@ -95,33 +91,30 @@ impl ActiveEnum {
             let mut string_value = None;
             let mut num_value = None;
             for attr in variant.attrs.iter() {
-                if let Some(ident) = attr.path.get_ident() {
-                    if ident != "sea_orm" {
-                        continue;
-                    }
-                } else {
+                if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
-                if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                {
-                    for meta in list {
-                        if let Meta::NameValue(nv) = meta {
-                            if let Some(name) = nv.path.get_ident() {
-                                if name == "string_value" {
-                                    if let Lit::Str(lit) = nv.lit {
-                                        is_string = true;
-                                        string_value = Some(lit);
-                                    }
-                                } else if name == "num_value" {
-                                    if let Lit::Int(lit) = nv.lit {
-                                        is_int = true;
-                                        num_value = Some(lit);
-                                    }
-                                }
-                            }
-                        }
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("string_value") {
+                        is_string = true;
+                        string_value = Some(meta.value()?.parse::<LitStr>()?);
+                    } else if meta.path.is_ident("num_value") {
+                        is_int = true;
+                        num_value = Some(meta.value()?.parse::<LitInt>()?);
+                    } else if meta.path.is_ident("display_value") {
+                        // This is a placeholder to prevent the `display_value` proc_macro attribute of `DeriveDisplay`
+                        // to be considered unknown attribute parameter
+                        meta.value()?.parse::<LitStr>()?;
+                    } else {
+                        return Err(meta.error(format!(
+                            "Unknown attribute parameter found: {:?}",
+                            meta.path.get_ident()
+                        )));
                     }
-                }
+
+                    Ok(())
+                })
+                .map_err(Error::Syn)?;
             }
 
             if is_string && is_int {
@@ -247,18 +240,18 @@ impl ActiveEnum {
             let enum_variants: Vec<syn::Ident> = str_variants
                 .iter()
                 .map(|v| {
-                    if v.chars().next().map(char::is_numeric).unwrap_or(false) {
-                        format_ident!("_{}", v)
-                    } else {
-                        format_ident!("{}", v.to_camel_case())
-                    }
+                    let v_cleaned = camel_case_with_escaped_non_uax31(v);
+
+                    format_ident!("{}", v_cleaned)
                 })
                 .collect();
 
             quote!(
+                #[doc = " Generated by sea-orm-macros"]
                 #[derive(Debug, Clone, PartialEq, Eq, sea_orm::EnumIter)]
                 pub enum #enum_variant_iden {
                     #(
+                        #[doc = " Generated by sea-orm-macros"]
                         #enum_variants,
                     )*
                 }
@@ -276,6 +269,7 @@ impl ActiveEnum {
 
                 #[automatically_derived]
                 impl #ident {
+                    #[doc = " Generated by sea-orm-macros"]
                     pub fn iden_values() -> Vec<sea_orm::sea_query::DynIden> {
                         <#enum_variant_iden as sea_orm::strum::IntoEnumIterator>::iter()
                             .map(|v| sea_orm::sea_query::SeaRc::new(v) as sea_orm::sea_query::DynIden)
@@ -297,6 +291,7 @@ impl ActiveEnum {
         };
 
         quote!(
+            #[doc = " Generated by sea-orm-macros"]
             #[derive(Debug, Clone, PartialEq, Eq)]
             pub struct #enum_name_iden;
 
@@ -338,7 +333,7 @@ impl ActiveEnum {
                 }
 
                 fn db_type() -> sea_orm::ColumnDef {
-                    sea_orm::ColumnType::#db_type.def()
+                    sea_orm::prelude::ColumnTypeTrait::def(sea_orm::ColumnType::#db_type)
                 }
             }
 
@@ -385,14 +380,6 @@ impl ActiveEnum {
             impl sea_orm::sea_query::Nullable for #ident {
                 fn null() -> sea_orm::sea_query::Value {
                     <<Self as sea_orm::ActiveEnum>::Value as sea_orm::sea_query::Nullable>::null()
-                }
-            }
-
-            #[automatically_derived]
-            impl std::fmt::Display for #ident {
-                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    let v: sea_orm::sea_query::Value = <Self as sea_orm::ActiveEnum>::to_value(&self).into();
-                    write!(f, "{}", v)
                 }
             }
 

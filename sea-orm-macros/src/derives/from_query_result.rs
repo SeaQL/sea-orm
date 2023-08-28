@@ -1,9 +1,13 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
-use syn::{ext::IdentExt, Data, DataStruct, Field, Fields};
+use syn::{ext::IdentExt, Data, DataStruct, Field, Fields, Generics};
 
 /// Method to derive a [QueryResult](sea_orm::QueryResult)
-pub fn expand_derive_from_query_result(ident: Ident, data: Data) -> syn::Result<TokenStream> {
+pub fn expand_derive_from_query_result(
+    ident: Ident,
+    data: Data,
+    generics: Generics,
+) -> syn::Result<TokenStream> {
     let fields = match data {
         Data::Struct(DataStruct {
             fields: Fields::Named(named),
@@ -29,9 +33,11 @@ pub fn expand_derive_from_query_result(ident: Ident, data: Data) -> syn::Result<
         })
         .collect();
 
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
     Ok(quote!(
         #[automatically_derived]
-        impl sea_orm::FromQueryResult for #ident {
+        impl #impl_generics sea_orm::FromQueryResult for #ident #ty_generics #where_clause {
             fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
                 Ok(Self {
                     #(#field: row.try_get(pre, #name)?),*

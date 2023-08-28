@@ -203,6 +203,10 @@ impl MockDatabaseTrait for MockDatabase {
     fn get_database_backend(&self) -> DbBackend {
         self.db_backend
     }
+
+    fn ping(&self) -> Result<(), DbErr> {
+        Ok(())
+    }
 }
 
 impl MockRow {
@@ -281,31 +285,54 @@ where
     }
 }
 
-impl IntoMockRow for BTreeMap<String, Value> {
+impl<M, N> IntoMockRow for (M, Option<N>)
+where
+    M: ModelTrait,
+    N: ModelTrait,
+{
     fn into_mock_row(self) -> MockRow {
-        MockRow {
-            values: self.into_iter().map(|(k, v)| (k, v)).collect(),
+        let mut mapped_join = BTreeMap::new();
+
+        for column in <<M as ModelTrait>::Entity as EntityTrait>::Column::iter() {
+            mapped_join.insert(
+                format!("{}{}", SelectA.as_str(), column.as_str()),
+                self.0.get(column),
+            );
         }
+        if let Some(b_entity) = self.1 {
+            for column in <<N as ModelTrait>::Entity as EntityTrait>::Column::iter() {
+                mapped_join.insert(
+                    format!("{}{}", SelectB.as_str(), column.as_str()),
+                    b_entity.get(column),
+                );
+            }
+        }
+
+        mapped_join.into_mock_row()
     }
 }
 
-impl IntoMockRow for BTreeMap<&str, Value> {
+impl<T> IntoMockRow for BTreeMap<T, Value>
+where
+    T: Into<String>,
+{
     fn into_mock_row(self) -> MockRow {
         MockRow {
-            values: self.into_iter().map(|(k, v)| (k.to_owned(), v)).collect(),
+            values: self.into_iter().map(|(k, v)| (k.into(), v)).collect(),
         }
     }
 }
 
 impl Transaction {
     /// Get the [Value]s from s raw SQL statement depending on the [DatabaseBackend](crate::DatabaseBackend)
-    pub fn from_sql_and_values<I>(db_backend: DbBackend, sql: &str, values: I) -> Self
+    pub fn from_sql_and_values<I, T>(db_backend: DbBackend, sql: T, values: I) -> Self
     where
         I: IntoIterator<Item = Value>,
+        T: Into<String>,
     {
         Self::one(Statement::from_string_values_tuple(
             db_backend,
-            (sql.to_string(), Values(values.into_iter().collect())),
+            (sql, Values(values.into_iter().collect())),
         ))
     }
 
@@ -336,10 +363,7 @@ impl Transaction {
 impl OpenTransaction {
     fn init() -> Self {
         Self {
-            stmts: vec![Statement::from_string(
-                DbBackend::Postgres,
-                "BEGIN".to_owned(),
-            )],
+            stmts: vec![Statement::from_string(DbBackend::Postgres, "BEGIN")],
             transaction_depth: 0,
         }
     }
@@ -354,7 +378,7 @@ impl OpenTransaction {
 
     fn commit(&mut self, db_backend: DbBackend) -> bool {
         if self.transaction_depth == 0 {
-            self.push(Statement::from_string(db_backend, "COMMIT".to_owned()));
+            self.push(Statement::from_string(db_backend, "COMMIT"));
             true
         } else {
             self.push(Statement::from_string(
@@ -368,7 +392,7 @@ impl OpenTransaction {
 
     fn rollback(&mut self, db_backend: DbBackend) -> bool {
         if self.transaction_depth == 0 {
-            self.push(Statement::from_string(db_backend, "ROLLBACK".to_owned()));
+            self.push(Statement::from_string(db_backend, "ROLLBACK"));
             true
         } else {
             self.push(Statement::from_string(
@@ -433,7 +457,7 @@ mod tests {
             db.into_transaction_log(),
             [
                 Transaction::many([
-                    Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
+                    Statement::from_string(DbBackend::Postgres, "BEGIN"),
                     Statement::from_sql_and_values(
                         DbBackend::Postgres,
                         r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
@@ -444,7 +468,7 @@ mod tests {
                         r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
                         []
                     ),
-                    Statement::from_string(DbBackend::Postgres, "COMMIT".to_owned()),
+                    Statement::from_string(DbBackend::Postgres, "COMMIT"),
                 ]),
                 Transaction::from_sql_and_values(
                     DbBackend::Postgres,
@@ -478,13 +502,13 @@ mod tests {
         assert_eq!(
             db.into_transaction_log(),
             [Transaction::many([
-                Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
+                Statement::from_string(DbBackend::Postgres, "BEGIN"),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
                     [1u64.into()]
                 ),
-                Statement::from_string(DbBackend::Postgres, "ROLLBACK".to_owned()),
+                Statement::from_string(DbBackend::Postgres, "ROLLBACK"),
             ])]
         );
     }
@@ -516,23 +540,20 @@ mod tests {
         assert_eq!(
             db.into_transaction_log(),
             [Transaction::many([
-                Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
+                Statement::from_string(DbBackend::Postgres, "BEGIN"),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
                     [1u64.into()]
                 ),
-                Statement::from_string(DbBackend::Postgres, "SAVEPOINT savepoint_1".to_owned()),
+                Statement::from_string(DbBackend::Postgres, "SAVEPOINT savepoint_1"),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
                     []
                 ),
-                Statement::from_string(
-                    DbBackend::Postgres,
-                    "RELEASE SAVEPOINT savepoint_1".to_owned()
-                ),
-                Statement::from_string(DbBackend::Postgres, "COMMIT".to_owned()),
+                Statement::from_string(DbBackend::Postgres, "RELEASE SAVEPOINT savepoint_1"),
+                Statement::from_string(DbBackend::Postgres, "COMMIT"),
             ]),]
         );
     }
@@ -574,33 +595,27 @@ mod tests {
         assert_eq!(
             db.into_transaction_log(),
             [Transaction::many([
-                Statement::from_string(DbBackend::Postgres, "BEGIN".to_owned()),
+                Statement::from_string(DbBackend::Postgres, "BEGIN"),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "cake"."id", "cake"."name" FROM "cake" LIMIT $1"#,
                     [1u64.into()]
                 ),
-                Statement::from_string(DbBackend::Postgres, "SAVEPOINT savepoint_1".to_owned()),
+                Statement::from_string(DbBackend::Postgres, "SAVEPOINT savepoint_1"),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
                     []
                 ),
-                Statement::from_string(DbBackend::Postgres, "SAVEPOINT savepoint_2".to_owned()),
+                Statement::from_string(DbBackend::Postgres, "SAVEPOINT savepoint_2"),
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
                     r#"SELECT "cake"."id", "cake"."name" FROM "cake""#,
                     []
                 ),
-                Statement::from_string(
-                    DbBackend::Postgres,
-                    "RELEASE SAVEPOINT savepoint_2".to_owned()
-                ),
-                Statement::from_string(
-                    DbBackend::Postgres,
-                    "RELEASE SAVEPOINT savepoint_1".to_owned()
-                ),
-                Statement::from_string(DbBackend::Postgres, "COMMIT".to_owned()),
+                Statement::from_string(DbBackend::Postgres, "RELEASE SAVEPOINT savepoint_2"),
+                Statement::from_string(DbBackend::Postgres, "RELEASE SAVEPOINT savepoint_1"),
+                Statement::from_string(DbBackend::Postgres, "COMMIT"),
             ]),]
         );
     }

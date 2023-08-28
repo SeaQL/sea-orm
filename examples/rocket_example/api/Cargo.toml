@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 async-stream = { version = "0.3" }
 async-trait = { version = "0.1" }
-rocket-example-core = { path = "../core" }
+rocket-example-service = { path = "../service" }
 futures = { version = "0.3" }
 futures-util = { version = "0.3" }
 rocket = { version = "0.5.0-rc.1", features = [
@@ -20,7 +20,7 @@ rocket_dyn_templates = { version = "0.1.0-rc.1", features = [
 serde_json = { version = "1" }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
-tokio = "1.20.0"
+tokio = "1.29.0"
 
 [dependencies.sea-orm-rocket]
 path = "../../../sea-orm-rocket/lib" # remove this line in your own project and uncomment the following line

@@ -2,11 +2,9 @@ use std::env;
 
 use entity::post;
 use migration::{Migrator, MigratorTrait};
-use salvo::extra::affix;
-use salvo::extra::serve_static::DirHandler;
+use salvo::affix;
 use salvo::prelude::*;
-use salvo::writer::Text;
-use salvo_example_core::{
+use salvo_example_service::{
     sea_orm::{Database, DatabaseConnection},
     Mutation, Query,
 };
@@ -29,7 +27,7 @@ async fn create(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
     let conn = &state.conn;
 
     let form = req
-        .extract_form::<post::Model>()
+        .parse_form::<post::Model>()
         .await
         .map_err(|_| StatusError::bad_request())?;
 
@@ -37,7 +35,7 @@ async fn create(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
         .await
         .map_err(|_| StatusError::internal_server_error())?;
 
-    res.redirect_found("/");
+    Redirect::found("/").render(res);
     Ok(())
 }
 
@@ -114,7 +112,7 @@ async fn update(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
     let conn = &state.conn;
     let id = req.param::<i32>("id").unwrap_or_default();
     let form = req
-        .extract_form::<post::Model>()
+        .parse_form::<post::Model>()
         .await
         .map_err(|_| StatusError::bad_request())?;
 
@@ -122,7 +120,7 @@ async fn update(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
         .await
         .map_err(|_| StatusError::internal_server_error())?;
 
-    res.redirect_found("/");
+    Redirect::found("/").render(res);
     Ok(())
 }
 
@@ -138,7 +136,7 @@ async fn delete(req: &mut Request, depot: &mut Depot, res: &mut Response) -> Res
         .await
         .map_err(|_| StatusError::internal_server_error())?;
 
-    res.redirect_found("/");
+    Redirect::found("/").render(res);
     Ok(())
 }
 
@@ -170,13 +168,13 @@ pub async fn main() {
         .push(Router::with_path("<id>").get(edit).post(update))
         .push(Router::with_path("delete/<id>").post(delete))
         .push(
-            Router::with_path("static/<**>").get(DirHandler::new(concat!(
+            Router::with_path("static/<**>").get(salvo::prelude::StaticDir::new(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/static"
             ))),
         );
 
-    Server::new(TcpListener::bind(&format!("{host}:{port}")))
+    Server::new(TcpListener::bind(TcpListener::new(format!("{host}:{port}"))).await)
         .serve(router)
         .await;
 }

@@ -210,8 +210,8 @@ where
     if orm_column_def.unique {
         column_def.unique_key();
     }
-    if let Some(value) = orm_column_def.default_value {
-        column_def.default(value);
+    if let Some(default) = orm_column_def.default {
+        column_def.default(default);
     }
     for primary_key in E::PrimaryKey::iter() {
         if column.to_string() == primary_key.into_column().to_string() {

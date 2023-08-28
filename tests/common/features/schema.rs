@@ -1,12 +1,12 @@
-pub use super::super::bakery_chain::*;
-
 use super::*;
 use crate::common::setup::{create_enum, create_table, create_table_without_asserts};
 use sea_orm::{
     error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName,
     ExecResult, Schema,
 };
-use sea_query::{extension::postgres::Type, Alias, ColumnDef, ForeignKeyCreateStatement, IntoIden};
+use sea_query::{
+    extension::postgres::Type, Alias, BlobSize, ColumnDef, ForeignKeyCreateStatement, IntoIden,
+};
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     let db_backend = db.get_database_backend();
@@ -45,8 +45,13 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_uuid_fmt_table(db).await?;
     create_edit_log_table(db).await?;
     create_teas_table(db).await?;
+    create_binary_table(db).await?;
+    create_bits_table(db).await?;
+    create_dyn_table_name_lazy_static_table(db).await?;
+    create_value_type_table(db).await?;
 
     if DbBackend::Postgres == db_backend {
+        create_value_type_postgres_table(db).await?;
         create_collection_table(db).await?;
         create_event_trigger_table(db).await?;
     }
@@ -308,7 +313,7 @@ pub async fn create_json_vec_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .auto_increment()
                 .primary_key(),
         )
-        .col(ColumnDef::new(json_vec::Column::StrVec).string().not_null())
+        .col(ColumnDef::new(json_vec::Column::StrVec).json())
         .to_owned();
 
     create_table(db, &create_table_stmt, JsonVec).await
@@ -339,7 +344,7 @@ pub async fn create_json_struct_table(db: &DbConn) -> Result<ExecResult, DbErr> 
 pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     db.execute(sea_orm::Statement::from_string(
         db.get_database_backend(),
-        "CREATE EXTENSION IF NOT EXISTS citext".into(),
+        "CREATE EXTENSION IF NOT EXISTS citext",
     ))
     .await?;
 
@@ -514,4 +519,164 @@ pub async fn create_teas_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &create_table_stmt, Teas).await
+}
+
+pub async fn create_binary_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(binary::Entity.table_ref())
+        .col(
+            ColumnDef::new(binary::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(binary::Column::Binary).binary().not_null())
+        .col(
+            ColumnDef::new(binary::Column::Binary10)
+                .blob(BlobSize::Blob(Some(10)))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(binary::Column::BinaryTiny)
+                .blob(BlobSize::Tiny)
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(binary::Column::BinaryMedium)
+                .blob(BlobSize::Medium)
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(binary::Column::BinaryLong)
+                .blob(BlobSize::Long)
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(binary::Column::VarBinary)
+                .var_binary(10)
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &create_table_stmt, Binary).await
+}
+
+pub async fn create_bits_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(bits::Entity.table_ref())
+        .col(
+            ColumnDef::new(bits::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(bits::Column::Bit0)
+                .custom(Alias::new("BIT"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(bits::Column::Bit1)
+                .custom(Alias::new("BIT(1)"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(bits::Column::Bit8)
+                .custom(Alias::new("BIT(8)"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(bits::Column::Bit16)
+                .custom(Alias::new("BIT(16)"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(bits::Column::Bit32)
+                .custom(Alias::new("BIT(32)"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(bits::Column::Bit64)
+                .custom(Alias::new("BIT(64)"))
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &create_table_stmt, Bits).await
+}
+
+pub async fn create_dyn_table_name_lazy_static_table(db: &DbConn) -> Result<(), DbErr> {
+    use dyn_table_name_lazy_static::*;
+
+    let entities = [
+        Entity {
+            table_name: TableName::from_str_truncate("dyn_table_name_lazy_static_1"),
+        },
+        Entity {
+            table_name: TableName::from_str_truncate("dyn_table_name_lazy_static_2"),
+        },
+    ];
+    for entity in entities {
+        let create_table_stmt = sea_query::Table::create()
+            .table(entity.table_ref())
+            .col(
+                ColumnDef::new(Column::Id)
+                    .integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .col(ColumnDef::new(Column::Name).string().not_null())
+            .to_owned();
+
+        create_table(db, &create_table_stmt, entity).await?;
+    }
+
+    Ok(())
+}
+
+pub async fn create_value_type_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let general_stmt = sea_query::Table::create()
+        .table(value_type::value_type_general::Entity)
+        .col(
+            ColumnDef::new(value_type::value_type_general::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(value_type::value_type_general::Column::Number)
+                .integer()
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &general_stmt, value_type::value_type_general::Entity).await
+}
+pub async fn create_value_type_postgres_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let postgres_stmt = sea_query::Table::create()
+        .table(value_type::value_type_pg::Entity)
+        .col(
+            ColumnDef::new(value_type::value_type_pg::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(value_type::value_type_pg::Column::Number)
+                .integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(json_vec::Column::StrVec)
+                .array(sea_query::ColumnType::String(None))
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &postgres_stmt, value_type::value_type_pg::Entity).await
 }

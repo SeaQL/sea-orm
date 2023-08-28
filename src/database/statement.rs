@@ -23,9 +23,12 @@ pub trait StatementBuilder {
 
 impl Statement {
     /// Create a [Statement] from a [crate::DatabaseBackend] and a raw SQL statement
-    pub fn from_string(db_backend: DbBackend, stmt: String) -> Statement {
+    pub fn from_string<T>(db_backend: DbBackend, stmt: T) -> Statement
+    where
+        T: Into<String>,
+    {
         Statement {
-            sql: stmt,
+            sql: stmt.into(),
             values: None,
             db_backend,
         }
@@ -33,22 +36,20 @@ impl Statement {
 
     /// Create a SQL statement from a [crate::DatabaseBackend], a
     /// raw SQL statement and param values
-    pub fn from_sql_and_values<I>(db_backend: DbBackend, sql: &str, values: I) -> Self
+    pub fn from_sql_and_values<I, T>(db_backend: DbBackend, sql: T, values: I) -> Self
     where
         I: IntoIterator<Item = Value>,
+        T: Into<String>,
     {
-        Self::from_string_values_tuple(
-            db_backend,
-            (sql.to_owned(), Values(values.into_iter().collect())),
-        )
+        Self::from_string_values_tuple(db_backend, (sql, Values(values.into_iter().collect())))
     }
 
-    pub(crate) fn from_string_values_tuple(
-        db_backend: DbBackend,
-        stmt: (String, Values),
-    ) -> Statement {
+    pub(crate) fn from_string_values_tuple<T>(db_backend: DbBackend, stmt: (T, Values)) -> Statement
+    where
+        T: Into<String>,
+    {
         Statement {
-            sql: stmt.0,
+            sql: stmt.0.into(),
             values: Some(stmt.1),
             db_backend,
         }

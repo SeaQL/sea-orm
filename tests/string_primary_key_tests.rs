@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, sea_query::OnConflict, DatabaseConnection};
+use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -44,6 +44,8 @@ pub async fn insert_and_delete_repository(db: &DatabaseConnection) -> Result<(),
 
     #[cfg(any(feature = "sqlx-sqlite", feature = "sqlx-postgres"))]
     {
+        use sea_orm::sea_query::OnConflict;
+
         let err = Repository::insert(repository)
             // MySQL does not support DO NOTHING, we might workaround that later
             .on_conflict(OnConflict::new().do_nothing().to_owned())

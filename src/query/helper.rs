@@ -3,8 +3,8 @@ use crate::{
     PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
-    Alias, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr, SelectStatement,
-    SimpleExpr, TableRef,
+    Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr,
+    SelectStatement, SimpleExpr, TableRef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -355,10 +355,10 @@ pub trait QuerySelect: Sized {
     ///         .filter(
     ///             Condition::all().add_option(input.name.map(|n| cake::Column::Name.contains(&n)))
     ///         )
-    ///         .distinct_on([cake::Column::Name])
+    ///         .distinct_on([(cake::Entity, cake::Column::Name)])
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     "SELECT DISTINCT ON (\"name\") \"cake\".\"id\", \"cake\".\"name\" FROM \"cake\" WHERE \"cake\".\"name\" LIKE '%cheese%'"
+    ///     r#"SELECT DISTINCT ON ("cake"."name") "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."name" LIKE '%cheese%'"#
     /// );
     /// ```
     fn distinct_on<T, I>(mut self, cols: I) -> Self
@@ -444,6 +444,79 @@ pub trait QuerySelect: Sized {
     /// Select lock exclusive
     fn lock_exclusive(mut self) -> Self {
         self.query().lock_exclusive();
+        self
+    }
+
+    /// Add an expression to the select expression list.
+    /// ```
+    /// use sea_orm::sea_query::Expr;
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .expr(Expr::col((cake::Entity, cake::Column::Id)))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id` FROM `cake`"
+    /// );
+    /// ```
+    fn expr<T>(mut self, expr: T) -> Self
+    where
+        T: Into<SelectExpr>,
+    {
+        self.query().expr(expr);
+        self
+    }
+
+    /// Add select expressions from vector of [`SelectExpr`].
+    /// ```
+    /// use sea_orm::sea_query::Expr;
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .exprs([
+    ///             Expr::col((cake::Entity, cake::Column::Id)),
+    ///             Expr::col((cake::Entity, cake::Column::Name)),
+    ///         ])
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
+    /// );
+    /// ```
+    fn exprs<T, I>(mut self, exprs: I) -> Self
+    where
+        T: Into<SelectExpr>,
+        I: IntoIterator<Item = T>,
+    {
+        self.query().exprs(exprs);
+        self
+    }
+
+    /// Select column.
+    /// ```
+    /// use sea_orm::sea_query::{Alias, Expr, Func};
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .expr_as(
+    ///             Func::upper(Expr::col((cake::Entity, cake::Column::Name))),
+    ///             "name_upper"
+    ///         )
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
+    /// );
+    /// ```
+    fn expr_as<T, A>(&mut self, expr: T, alias: A) -> &mut Self
+    where
+        T: Into<SimpleExpr>,
+        A: IntoIdentity,
+    {
+        self.query().expr_as(expr, alias.into_identity());
         self
     }
 }
@@ -690,7 +763,12 @@ pub(crate) fn join_condition(mut rel: RelationDef) -> Condition {
     let owner_keys = rel.from_col;
     let foreign_keys = rel.to_col;
 
-    let mut condition = Condition::all().add(join_tbl_on_condition(
+    let mut condition = match rel.condition_type {
+        ConditionType::All => Condition::all(),
+        ConditionType::Any => Condition::any(),
+    };
+
+    condition = condition.add(join_tbl_on_condition(
         SeaRc::clone(&from_tbl),
         SeaRc::clone(&to_tbl),
         owner_keys,
@@ -708,24 +786,15 @@ pub(crate) fn join_tbl_on_condition(
     to_tbl: SeaRc<dyn Iden>,
     owner_keys: Identity,
     foreign_keys: Identity,
-) -> SimpleExpr {
-    match (owner_keys, foreign_keys) {
-        (Identity::Unary(o1), Identity::Unary(f1)) => {
-            Expr::col((SeaRc::clone(&from_tbl), o1)).equals((SeaRc::clone(&to_tbl), f1))
-        }
-        (Identity::Binary(o1, o2), Identity::Binary(f1, f2)) => {
-            Expr::col((SeaRc::clone(&from_tbl), o1))
-                .equals((SeaRc::clone(&to_tbl), f1))
-                .and(Expr::col((SeaRc::clone(&from_tbl), o2)).equals((SeaRc::clone(&to_tbl), f2)))
-        }
-        (Identity::Ternary(o1, o2, o3), Identity::Ternary(f1, f2, f3)) => {
-            Expr::col((SeaRc::clone(&from_tbl), o1))
-                .equals((SeaRc::clone(&to_tbl), f1))
-                .and(Expr::col((SeaRc::clone(&from_tbl), o2)).equals((SeaRc::clone(&to_tbl), f2)))
-                .and(Expr::col((SeaRc::clone(&from_tbl), o3)).equals((SeaRc::clone(&to_tbl), f3)))
-        }
-        _ => panic!("Owner key and foreign key mismatch"),
+) -> Condition {
+    let mut cond = Condition::all();
+    for (owner_key, foreign_key) in owner_keys.into_iter().zip(foreign_keys.into_iter()) {
+        cond = cond.add(
+            Expr::col((SeaRc::clone(&from_tbl), owner_key))
+                .equals((SeaRc::clone(&to_tbl), foreign_key)),
+        );
     }
+    cond
 }
 
 pub(crate) fn unpack_table_ref(table_ref: &TableRef) -> DynIden {

@@ -3,7 +3,7 @@ use crate::{
     PrimaryKey, Relation, RelationType,
 };
 use sea_query::{ColumnSpec, TableCreateStatement};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 #[derive(Clone, Debug)]
 pub struct EntityTransformer;
@@ -12,7 +12,6 @@ impl EntityTransformer {
     pub fn transform(table_create_stmts: Vec<TableCreateStatement>) -> Result<EntityWriter, Error> {
         let mut enums: BTreeMap<String, ActiveEnum> = BTreeMap::new();
         let mut inverse_relations: BTreeMap<String, Vec<Relation>> = BTreeMap::new();
-        let mut conjunct_relations: BTreeMap<String, Vec<ConjunctRelation>> = BTreeMap::new();
         let mut entities = BTreeMap::new();
         for table_create in table_create_stmts.into_iter() {
             let table_name = match table_create.get_table_name() {
@@ -59,7 +58,8 @@ impl EntityTransformer {
                     col
                 })
                 .map(|col| {
-                    if let sea_query::ColumnType::Enum { name, variants } = &col.col_type {
+                    if let sea_query::ColumnType::Enum { name, variants } = col.get_inner_col_type()
+                    {
                         enums.insert(
                             name.to_string(),
                             ActiveEnum {
@@ -125,7 +125,7 @@ impl EntityTransformer {
                 primary_keys,
             };
             entities.insert(table_name.clone(), entity.clone());
-            for (i, mut rel) in relations.into_iter().enumerate() {
+            for mut rel in relations.into_iter() {
                 // This will produce a duplicated relation
                 if rel.self_referencing {
                     continue;
@@ -135,50 +135,32 @@ impl EntityTransformer {
                 if rel.num_suffix > 0 {
                     continue;
                 }
-                let is_conjunct_relation =
-                    entity.relations.len() == 2 && entity.primary_keys.len() == 2;
-                match is_conjunct_relation {
-                    true => {
-                        let another_rel = entity.relations.get((i == 0) as usize).unwrap();
-                        let conjunct_relation = ConjunctRelation {
-                            via: table_name.clone(),
-                            to: another_rel.ref_table.clone(),
-                        };
-                        if let Some(vec) = conjunct_relations.get_mut(&rel.ref_table) {
-                            vec.push(conjunct_relation);
-                        } else {
-                            conjunct_relations.insert(rel.ref_table, vec![conjunct_relation]);
-                        }
+                let ref_table = rel.ref_table;
+                let mut unique = true;
+                for column in rel.columns.iter() {
+                    if !entity
+                        .columns
+                        .iter()
+                        .filter(|col| col.unique)
+                        .any(|col| col.name.as_str() == column)
+                    {
+                        unique = false;
+                        break;
                     }
-                    false => {
-                        let ref_table = rel.ref_table;
-                        let mut unique = true;
-                        for column in rel.columns.iter() {
-                            if !entity
-                                .columns
-                                .iter()
-                                .filter(|col| col.unique)
-                                .any(|col| col.name.as_str() == column)
-                            {
-                                unique = false;
-                                break;
-                            }
-                        }
-                        let rel_type = if unique {
-                            RelationType::HasOne
-                        } else {
-                            RelationType::HasMany
-                        };
-                        rel.rel_type = rel_type;
-                        rel.ref_table = table_name.clone();
-                        rel.columns = Vec::new();
-                        rel.ref_columns = Vec::new();
-                        if let Some(vec) = inverse_relations.get_mut(&ref_table) {
-                            vec.push(rel);
-                        } else {
-                            inverse_relations.insert(ref_table, vec![rel]);
-                        }
-                    }
+                }
+                let rel_type = if unique {
+                    RelationType::HasOne
+                } else {
+                    RelationType::HasMany
+                };
+                rel.rel_type = rel_type;
+                rel.ref_table = table_name.clone();
+                rel.columns = Vec::new();
+                rel.ref_columns = Vec::new();
+                if let Some(vec) = inverse_relations.get_mut(&ref_table) {
+                    vec.push(rel);
+                } else {
+                    inverse_relations.insert(ref_table, vec![rel]);
                 }
             }
         }
@@ -195,30 +177,245 @@ impl EntityTransformer {
                 }
             }
         }
-        for (tbl_name, mut conjunct_relations) in conjunct_relations.into_iter() {
-            if let Some(entity) = entities.get_mut(&tbl_name) {
-                for relation in entity.relations.iter_mut() {
-                    // Skip `impl Related ... { fn to() ... }` implementation block,
-                    // if the same related entity is being referenced by a conjunct relation
-                    if conjunct_relations
-                        .iter()
-                        .any(|conjunct_relation| conjunct_relation.to == relation.ref_table)
-                    {
-                        relation.impl_related = false;
+        for table_name in entities.clone().keys() {
+            let relations = match entities.get(table_name) {
+                Some(entity) => {
+                    let is_conjunct_relation =
+                        entity.relations.len() == 2 && entity.primary_keys.len() == 2;
+                    if !is_conjunct_relation {
+                        continue;
                     }
+                    entity.relations.clone()
                 }
-                entity.conjunct_relations.append(&mut conjunct_relations);
+                None => unreachable!(),
+            };
+            for (i, rel) in relations.iter().enumerate() {
+                let another_rel = relations.get((i == 0) as usize).unwrap();
+                if let Some(entity) = entities.get_mut(&rel.ref_table) {
+                    let conjunct_relation = ConjunctRelation {
+                        via: table_name.clone(),
+                        to: another_rel.ref_table.clone(),
+                    };
+                    entity.conjunct_relations.push(conjunct_relation);
+                }
             }
         }
         Ok(EntityWriter {
             entities: entities
                 .into_values()
                 .map(|mut v| {
+                    // Filter duplicated conjunct relations
+                    let duplicated_to: Vec<_> = v
+                        .conjunct_relations
+                        .iter()
+                        .fold(HashMap::new(), |mut acc, conjunct_relation| {
+                            acc.entry(conjunct_relation.to.clone())
+                                .and_modify(|c| *c += 1)
+                                .or_insert(1);
+                            acc
+                        })
+                        .into_iter()
+                        .filter(|(_, v)| v > &1)
+                        .map(|(k, _)| k)
+                        .collect();
+                    v.conjunct_relations
+                        .retain(|conjunct_relation| !duplicated_to.contains(&conjunct_relation.to));
+
+                    // Skip `impl Related ... { fn to() ... }` implementation block,
+                    // if the same related entity is being referenced by a conjunct relation
+                    v.relations.iter_mut().for_each(|relation| {
+                        if v.conjunct_relations
+                            .iter()
+                            .any(|conjunct_relation| conjunct_relation.to == relation.ref_table)
+                        {
+                            relation.impl_related = false;
+                        }
+                    });
+
+                    // Sort relation vectors
                     v.relations.sort_by(|a, b| a.ref_table.cmp(&b.ref_table));
+                    v.conjunct_relations.sort_by(|a, b| a.to.cmp(&b.to));
                     v
                 })
                 .collect(),
             enums,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use proc_macro2::TokenStream;
+    use sea_orm::{DbBackend, Schema};
+    use std::{
+        error::Error,
+        io::{self, BufRead, BufReader},
+    };
+
+    #[test]
+    fn duplicated_many_to_many_paths() -> Result<(), Box<dyn Error>> {
+        use crate::tests_cfg::duplicated_many_to_many_paths::*;
+        let schema = Schema::new(DbBackend::Postgres);
+
+        validate_compact_entities(
+            vec![
+                schema.create_table_from_entity(bills::Entity),
+                schema.create_table_from_entity(users::Entity),
+                schema.create_table_from_entity(users_saved_bills::Entity),
+                schema.create_table_from_entity(users_votes::Entity),
+            ],
+            vec![
+                (
+                    "bills",
+                    include_str!("../tests_cfg/duplicated_many_to_many_paths/bills.rs"),
+                ),
+                (
+                    "users",
+                    include_str!("../tests_cfg/duplicated_many_to_many_paths/users.rs"),
+                ),
+                (
+                    "users_saved_bills",
+                    include_str!("../tests_cfg/duplicated_many_to_many_paths/users_saved_bills.rs"),
+                ),
+                (
+                    "users_votes",
+                    include_str!("../tests_cfg/duplicated_many_to_many_paths/users_votes.rs"),
+                ),
+            ],
+        )
+    }
+
+    #[test]
+    fn many_to_many() -> Result<(), Box<dyn Error>> {
+        use crate::tests_cfg::many_to_many::*;
+        let schema = Schema::new(DbBackend::Postgres);
+
+        validate_compact_entities(
+            vec![
+                schema.create_table_from_entity(bills::Entity),
+                schema.create_table_from_entity(users::Entity),
+                schema.create_table_from_entity(users_votes::Entity),
+            ],
+            vec![
+                ("bills", include_str!("../tests_cfg/many_to_many/bills.rs")),
+                ("users", include_str!("../tests_cfg/many_to_many/users.rs")),
+                (
+                    "users_votes",
+                    include_str!("../tests_cfg/many_to_many/users_votes.rs"),
+                ),
+            ],
+        )
+    }
+
+    #[test]
+    fn many_to_many_multiple() -> Result<(), Box<dyn Error>> {
+        use crate::tests_cfg::many_to_many_multiple::*;
+        let schema = Schema::new(DbBackend::Postgres);
+
+        validate_compact_entities(
+            vec![
+                schema.create_table_from_entity(bills::Entity),
+                schema.create_table_from_entity(users::Entity),
+                schema.create_table_from_entity(users_votes::Entity),
+            ],
+            vec![
+                (
+                    "bills",
+                    include_str!("../tests_cfg/many_to_many_multiple/bills.rs"),
+                ),
+                (
+                    "users",
+                    include_str!("../tests_cfg/many_to_many_multiple/users.rs"),
+                ),
+                (
+                    "users_votes",
+                    include_str!("../tests_cfg/many_to_many_multiple/users_votes.rs"),
+                ),
+            ],
+        )
+    }
+
+    #[test]
+    fn self_referencing() -> Result<(), Box<dyn Error>> {
+        use crate::tests_cfg::self_referencing::*;
+        let schema = Schema::new(DbBackend::Postgres);
+
+        validate_compact_entities(
+            vec![
+                schema.create_table_from_entity(bills::Entity),
+                schema.create_table_from_entity(users::Entity),
+            ],
+            vec![
+                (
+                    "bills",
+                    include_str!("../tests_cfg/self_referencing/bills.rs"),
+                ),
+                (
+                    "users",
+                    include_str!("../tests_cfg/self_referencing/users.rs"),
+                ),
+            ],
+        )
+    }
+
+    fn validate_compact_entities(
+        table_create_stmts: Vec<TableCreateStatement>,
+        files: Vec<(&str, &str)>,
+    ) -> Result<(), Box<dyn Error>> {
+        let entities: HashMap<_, _> = EntityTransformer::transform(table_create_stmts)?
+            .entities
+            .into_iter()
+            .map(|entity| (entity.table_name.clone(), entity))
+            .collect();
+
+        for (entity_name, file_content) in files {
+            let entity = entities
+                .get(entity_name)
+                .expect("Forget to add entity to the list");
+
+            assert_eq!(
+                parse_from_file(file_content.as_bytes())?.to_string(),
+                EntityWriter::gen_compact_code_blocks(
+                    entity,
+                    &crate::WithSerde::None,
+                    &crate::DateTimeCrate::Chrono,
+                    &None,
+                    false,
+                    false,
+                    &Default::default(),
+                    &Default::default(),
+                    false,
+                )
+                .into_iter()
+                .skip(1)
+                .fold(TokenStream::new(), |mut acc, tok| {
+                    acc.extend(tok);
+                    acc
+                })
+                .to_string()
+            );
+        }
+
+        Ok(())
+    }
+
+    fn parse_from_file<R>(inner: R) -> io::Result<TokenStream>
+    where
+        R: io::Read,
+    {
+        let mut reader = BufReader::new(inner);
+        let mut lines: Vec<String> = Vec::new();
+
+        reader.read_until(b';', &mut Vec::new())?;
+
+        let mut line = String::new();
+        while reader.read_line(&mut line)? > 0 {
+            lines.push(line.to_owned());
+            line.clear();
+        }
+        let content = lines.join("");
+        Ok(content.parse().unwrap())
     }
 }

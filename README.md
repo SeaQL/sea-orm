@@ -19,17 +19,18 @@
 ## Getting Started
 
 [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
-If you like what we do, consider starring, commenting, sharing and contributing!
+If you like what we do, consider starring, sharing and contributing!
+
++ [Documentation](https://www.sea-ql.org/SeaORM)
++ [Tutorial](https://www.sea-ql.org/sea-orm-tutorial)
++ [Cookbook](https://www.sea-ql.org/sea-orm-cookbook)
 
 [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
 Join our Discord server to chat with others in the SeaQL community!
 
-+ [Getting Started](https://www.sea-ql.org/SeaORM/docs/index)
-+ [Step-by-step Tutorials](https://www.sea-ql.org/sea-orm-tutorial/)
-+ [Cookbook](https://www.sea-ql.org/sea-orm-cookbook/)
-+ [Usage Example](https://github.com/SeaQL/sea-orm/tree/master/examples/basic)
+Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2023](https://sea-ql.org/community-survey)!
 
-Integration examples
+Integration examples:
 
 + [Actix v4 Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
 + [Actix v3 Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix3_example)
@@ -40,6 +41,7 @@ Integration examples
 + [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
 + [Salvo Example](https://github.com/SeaQL/sea-orm/tree/master/examples/salvo_example)
 + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
++ [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example)
 
 ## Features
 
@@ -49,15 +51,15 @@ Integration examples
 
 2. Dynamic
 
-    Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex queries without 'fighting the ORM'.
+    Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex dynamic queries.
 
 3. Testable
 
-    Use mock connections to write unit tests for your logic.
+    Use mock connections and/or SQLite to write tests for your application logic.
 
 4. Service Oriented
 
-    Quickly build services that join, filter, sort and paginate data in APIs.
+    Quickly build services that join, filter, sort and paginate data in REST, GraphQL and gRPC APIs.
 
 ## A quick taste of SeaORM
 
@@ -186,11 +188,21 @@ fruit::Entity::delete_many()
 
 ```
 
+## 🧭 Seaography: GraphQL integration (preview)
+
+[Seaography](https://github.com/SeaQL/seaography) is a GraphQL framework built on top of SeaORM. Seaography allows you to build GraphQL resolvers quickly. With just a few commands, you can launch a GraphQL server from SeaORM entities!
+
+Starting `0.12`, `seaography` integration is built into `sea-orm`. While Seaography development is still in an early stage, it is especially useful in prototyping and building internal-use admin panels.
+
+<img src="https://raw.githubusercontent.com/SeaQL/sea-orm/master/examples/seaography_example/Seaography%20example.png"/>
+
+Look at the [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example) to learn more.
+
 ## Learn More
 
 1. [Design](https://github.com/SeaQL/sea-orm/tree/master/DESIGN.md)
 1. [Architecture](https://www.sea-ql.org/SeaORM/docs/internal-design/architecture/)
-1. [Release Model](https://www.sea-ql.org/SeaORM/blog/2021-08-30-release-model)
+1. [Engineering](https://www.sea-ql.org/blog/2022-07-30-engineering/)
 1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 
 ## Who's using SeaORM?
@@ -207,11 +219,7 @@ The following products are powered by SeaORM:
   </tbody>
 </table>
 
-SeaORM is the foundation of:
-+ [StarfishQL](https://github.com/SeaQL/starfish-ql): an experimental graph database
-+ [Seaography](https://github.com/SeaQL/seaography): GraphQL framework for SeaORM
-
-For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm).
+For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to [submit yours](https://github.com/SeaQL/sea-orm/issues/403)!
 
 ## License
 
@@ -232,9 +240,15 @@ dual licensed as above, without any additional terms or conditions.
 
 SeaORM is a community driven project. We welcome you to participate, contribute and together help build Rust's future.
 
-A big shout out to our contributors:
+A big shout out to our contributors!
 
 [![Contributors](https://opencollective.com/sea-orm/contributors.svg?width=1000&button=false)](https://github.com/SeaQL/sea-orm/graphs/contributors)
+
+## Sponsorship
+
+[SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers. If you enjoy using our libraries, please star and share our repositories. If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
+
+We invite you to participate, contribute and together help build Rust's future.
 
 ## Mascot
 
