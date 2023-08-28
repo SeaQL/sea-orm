@@ -368,7 +368,7 @@ where
         let primary_keys: Vec<(DynIden, Identity)> = <E::PrimaryKey as Iterable>::iter()
             .map(|pk| {
                 (
-                    SeaRc::new(F::default()),
+                    SeaRc::new(E::default()),
                     Identity::Unary(SeaRc::new(pk.into_column())),
                 )
             })
@@ -494,7 +494,7 @@ mod tests {
                     r#"FROM "cake""#,
                     r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
                     r#"WHERE "cake"."id" < $1"#,
-                    r#"ORDER BY "cake"."id" ASC LIMIT $2"#,
+                    r#"ORDER BY "cake"."id" ASC, "fruit"."id" ASC LIMIT $2"#,
                 ]
                 .join(" ")
                 .as_str(),
@@ -544,7 +544,7 @@ mod tests {
                     r#"FROM "cake""#,
                     r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
                     r#"WHERE "fruit"."id" < $1"#,
-                    r#"ORDER BY "fruit"."id" ASC LIMIT $2"#,
+                    r#"ORDER BY "fruit"."id" ASC, "cake"."id" ASC LIMIT $2"#,
                 ]
                 .join(" ")
                 .as_str(),
@@ -606,7 +606,7 @@ mod tests {
                     r#"LEFT JOIN "cake_filling" AS "r0" ON "cake"."id" = "r0"."cake_id""#,
                     r#"LEFT JOIN "filling" AS "r1" ON "r0"."filling_id" = "r1"."id""#,
                     r#"LEFT JOIN "vendor" AS "r2" ON "r1"."vendor_id" = "r2"."id""#,
-                    r#"WHERE "cake"."id" < $1 ORDER BY "cake"."id" ASC LIMIT $2"#,
+                    r#"WHERE "cake"."id" < $1 ORDER BY "cake"."id" ASC, "vendor"."id" ASC LIMIT $2"#,
                 ]
                 .join(" ")
                 .as_str(),
@@ -656,7 +656,7 @@ mod tests {
                     r#"LEFT JOIN "cake_filling" AS "r0" ON "cake"."id" = "r0"."cake_id""#,
                     r#"LEFT JOIN "filling" AS "r1" ON "r0"."filling_id" = "r1"."id""#,
                     r#"LEFT JOIN "vendor" AS "r2" ON "r1"."vendor_id" = "r2"."id""#,
-                    r#"WHERE "vendor"."id" < $1 ORDER BY "vendor"."id" ASC LIMIT $2"#,
+                    r#"WHERE "vendor"."id" < $1 ORDER BY "vendor"."id" ASC, "cake"."id" ASC LIMIT $2"#,
                 ]
                 .join(" ")
                 .as_str(),
@@ -1296,7 +1296,7 @@ mod tests {
                     r#""related"."id" AS "B_id", "related"."name" AS "B_name", "related"."test_id" AS "B_test_id""#,
                     r#"FROM "base""#,
                     r#"LEFT JOIN "related" ON "base"."id" = "related"."test_id""#,
-                    r#"ORDER BY "base"."id" ASC, "base"."name" ASC LIMIT $1"#,
+                    r#"ORDER BY "base"."id" ASC, "base"."name" ASC, "related"."id" ASC, "related"."name" ASC LIMIT $1"#,
                 ]
                 .join(" ")
                 .as_str(),
@@ -1342,7 +1342,7 @@ mod tests {
                     r#"FROM "base""#,
                     r#"LEFT JOIN "related" ON "base"."id" = "related"."test_id""#,
                     r#"WHERE ("base"."id" = $1 AND "base"."name" > $2) OR "base"."id" > $3"#,
-                    r#"ORDER BY "base"."id" ASC, "base"."name" ASC LIMIT $4"#,
+                    r#"ORDER BY "base"."id" ASC, "base"."name" ASC, "related"."id" ASC, "related"."name" ASC LIMIT $4"#,
                 ]
                 .join(" ")
                 .as_str(),
@@ -1396,7 +1396,7 @@ mod tests {
                     r#"FROM "base""#,
                     r#"LEFT JOIN "related" ON "base"."id" = "related"."test_id""#,
                     r#"WHERE ("related"."id" = $1 AND "related"."name" > $2) OR "related"."id" > $3"#,
-                    r#"ORDER BY "related"."id" ASC, "related"."name" ASC LIMIT $4"#,
+                    r#"ORDER BY "related"."id" ASC, "related"."name" ASC, "base"."id" ASC, "base"."name" ASC LIMIT $4"#,
                 ]
                 .join(" ")
                 .as_str(),
