@@ -205,15 +205,11 @@ where
             }
         }
 
-        let _ = self
-            .secondary_order_by
-            .clone()
-            .into_iter()
-            .map(|(tbl, col)| {
-                if let Identity::Unary(c1) = col {
-                    query.order_by((tbl, c1), ord.clone());
-                }
-            });
+        for (tbl, col) in self.secondary_order_by.clone() {
+            if let Identity::Unary(c1) = col {
+                query.order_by((tbl, c1), ord.clone());
+            };
+        }
     }
 
     /// Fetch the paginated result
