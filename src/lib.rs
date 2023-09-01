@@ -368,9 +368,6 @@ pub use sea_orm_macros::{
     DeriveRelatedEntity, DeriveRelation, DeriveValueType, FromJsonQueryResult, FromQueryResult,
 };
 
-#[cfg(all(feature = "macros", feature = "postgres-array"))]
-pub use sea_orm_macros::FromJsonArrayQueryResult;
-
 pub use sea_query;
 pub use sea_query::Iden;
 

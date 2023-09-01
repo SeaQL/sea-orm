@@ -718,17 +718,6 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
     }
 }
 
-#[cfg(feature = "derive")]
-#[proc_macro_derive(FromJsonArrayQueryResult)]
-pub fn derive_from_json_array_query_result(input: TokenStream) -> TokenStream {
-    let DeriveInput { ident, .. } = parse_macro_input!(input);
-
-    match derives::expand_derive_from_json_array_query_result(ident) {
-        Ok(ts) => ts.into(),
-        Err(e) => e.to_compile_error().into(),
-    }
-}
-
 /// The DerivePartialModel derive macro will implement `sea_orm::PartialModelTrait` for simplify partial model queries.
 ///
 /// ## Usage

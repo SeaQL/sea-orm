@@ -2,6 +2,15 @@ use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 
 pub fn expand_derive_from_json_query_result(ident: Ident) -> syn::Result<TokenStream> {
+    let implement_not_u8 = if cfg!(feature = "postgres-arrays") {
+        quote!(
+            #[automatically_derived]
+            impl sea_orm::sea_query::with_array::NotU8 for #ident {}
+        )
+    } else {
+        quote!()
+    };
+
     Ok(quote!(
         #[automatically_derived]
         impl sea_orm::TryGetableFromJson for #ident {}
@@ -43,17 +52,7 @@ pub fn expand_derive_from_json_query_result(ident: Ident) -> syn::Result<TokenSt
                 sea_orm::Value::Json(None)
             }
         }
-    ))
-}
 
-pub fn expand_derive_from_json_array_query_result(ident: Ident) -> syn::Result<TokenStream> {
-    let derive_from_json_query_result_expansion =
-        expand_derive_from_json_query_result(ident.clone())?;
-
-    Ok(quote!(
-        #derive_from_json_query_result_expansion
-
-        #[automatically_derived]
-        impl sea_orm::sea_query::with_array::NotU8 for #ident {}
+        #implement_not_u8
     ))
 }
