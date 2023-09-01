@@ -144,10 +144,14 @@ pub trait ActiveEnum: Sized + Iterable {
     }
 }
 
+/// Trait to help implementation of [`TryGetable`] interface for ActiveEnum as well as
+/// JSON and their array counterparts without running into conflicting trait impl issues.
 #[cfg(feature = "with-json")]
 pub trait ActiveEnumOrJson: Sized {
+    /// Get a value from the query result with an ColIdx
     fn try_get_by<I: crate::ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError>;
 
+    /// Get a array value from the query result with an ColIdx
     #[cfg(feature = "postgres-array")]
     fn try_get_array_by<I: crate::ColIdx>(
         res: &QueryResult,

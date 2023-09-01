@@ -365,8 +365,11 @@ pub use sea_orm_macros::{
     DeriveActiveEnum, DeriveActiveModel, DeriveActiveModelBehavior, DeriveColumn,
     DeriveCustomColumn, DeriveDisplay, DeriveEntity, DeriveEntityModel, DeriveIden,
     DeriveIntoActiveModel, DeriveMigrationName, DeriveModel, DerivePartialModel, DerivePrimaryKey,
-    DeriveRelatedEntity, DeriveRelation, DeriveValueType, FromJsonQueryResult, FromJsonArrayQueryResult, FromQueryResult,
+    DeriveRelatedEntity, DeriveRelation, DeriveValueType, FromJsonQueryResult, FromQueryResult,
 };
+
+#[cfg(all(feature = "macros", feature = "postgres-array"))]
+pub use sea_orm_macros::FromJsonArrayQueryResult;
 
 pub use sea_query;
 pub use sea_query::Iden;
