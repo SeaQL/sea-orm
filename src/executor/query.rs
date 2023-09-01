@@ -962,6 +962,7 @@ fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), Try
 
 // TryGetableFromJson //
 
+#[allow(unused_variables)]
 fn try_get_from_json_impl<T, I: ColIdx>(res: &QueryResult, idx: I) -> Result<T, TryGetError>
 where
     for<'de> T: serde::Deserialize<'de>,
