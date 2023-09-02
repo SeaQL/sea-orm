@@ -22,6 +22,7 @@ async fn main() -> Result<(), DbErr> {
     create_tables(&ctx.db).await?;
     insert_active_enum(&ctx.db).await?;
     insert_active_enum_child(&ctx.db).await?;
+    insert_active_enum_vec(&ctx.db).await?;
     find_related_active_enum(&ctx.db).await?;
     find_linked_active_enum(&ctx.db).await?;
     ctx.delete().await;
@@ -201,6 +202,70 @@ pub async fn insert_active_enum_child(db: &DatabaseConnection) -> Result<(), DbE
             .await?
             .unwrap()
     );
+
+    Ok(())
+}
+
+pub async fn insert_active_enum_vec(db: &DatabaseConnection) -> Result<(), DbErr> {
+    use active_enum_vec::*;
+
+    let model = Model {
+        id: 1,
+        categories: None,
+    };
+
+    assert_eq!(
+        model,
+        ActiveModel {
+            categories: Set(None),
+            ..Default::default()
+        }
+        .insert(db)
+        .await?
+    );
+    assert_eq!(model, Entity::find().one(db).await?.unwrap());
+    assert_eq!(
+        model,
+        Entity::find()
+            .filter(Column::Id.is_not_null())
+            .filter(Column::Categories.is_null())
+            .one(db)
+            .await?
+            .unwrap()
+    );
+
+    let _ = ActiveModel {
+        categories: Set(Some(vec![Category::Big, Category::Small])),
+        ..model.into_active_model()
+    }
+    .save(db)
+    .await?;
+
+    let model = Entity::find().one(db).await?.unwrap();
+    assert_eq!(
+        model,
+        Model {
+            id: 1,
+            categories: Some(vec![Category::Big, Category::Small]),
+        }
+    );
+    assert_eq!(
+        model,
+        Entity::find()
+            .filter(Column::Id.eq(1))
+            .filter(Expr::cust_with_values(
+                r#"$1 = ANY("categories")"#,
+                vec![Category::Big]
+            ))
+            .one(db)
+            .await?
+            .unwrap()
+    );
+
+    let res = model.delete(db).await?;
+
+    assert_eq!(res.rows_affected, 1);
+    assert_eq!(Entity::find().one(db).await?, None);
 
     Ok(())
 }
