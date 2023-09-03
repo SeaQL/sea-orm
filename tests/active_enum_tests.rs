@@ -22,7 +22,9 @@ async fn main() -> Result<(), DbErr> {
     create_tables(&ctx.db).await?;
     insert_active_enum(&ctx.db).await?;
     insert_active_enum_child(&ctx.db).await?;
+
     insert_active_enum_vec(&ctx.db).await?;
+
     find_related_active_enum(&ctx.db).await?;
     find_linked_active_enum(&ctx.db).await?;
     ctx.delete().await;
@@ -207,7 +209,7 @@ pub async fn insert_active_enum_child(db: &DatabaseConnection) -> Result<(), DbE
 }
 
 pub async fn insert_active_enum_vec(db: &DatabaseConnection) -> Result<(), DbErr> {
-    use active_enum_vec::*;
+    use categories::*;
 
     let model = Model {
         id: 1,
@@ -217,6 +219,7 @@ pub async fn insert_active_enum_vec(db: &DatabaseConnection) -> Result<(), DbErr
     assert_eq!(
         model,
         ActiveModel {
+            id: Set(1),
             categories: Set(None),
             ..Default::default()
         }
@@ -235,6 +238,7 @@ pub async fn insert_active_enum_vec(db: &DatabaseConnection) -> Result<(), DbErr
     );
 
     let _ = ActiveModel {
+        id: Set(1),
         categories: Set(Some(vec![Category::Big, Category::Small])),
         ..model.into_active_model()
     }
