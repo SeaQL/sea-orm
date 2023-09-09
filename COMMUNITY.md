@@ -39,6 +39,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [JinShu](https://github.com/gengteng/jinshu) | A cross-platform **I**nstant **M**essaging system written in 🦀 | DB: MySQL, Postgres
 - [Portfolio](https://github.com/admisio/Portfolio) | Encrypted high school 🏫 admissions service | DB: Postgres, SQLite
 - [THUBurrow](https://github.com/BobAnkh/THUBurrow) | A campus forum built by Next.js and Rocket | DB: Postgres
+- [playa](https://github.com/whizzes/playa) | 🏖️ Decentralized Social Platform powered by Rust and Whizzes Contributors
 
 #### Bots
 - [bulbbot-gw](https://github.com/TeamBulbbot/bulbbot-gw) | The gateway code for the Discord bot Bulbbot | DB: Postgres
@@ -69,7 +70,6 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 #### Url Shortener
 - [Dinoly](https://github.com/ippsav/Dinoly) | An url shortener using Axum web framework and SeaORM | DB: Postgres
-- [Linx](https://github.com/whizzes/linx) | Headless URL Shortener written in Rust 🦀
 - [SlashURL](https://github.com/henriquekirchheck/slashurl) | A url shortener using Rust designed to be implemented anywere | DB: PostgreSQL
 - [url_shortener](https://github.com/michidk/url_shortener) | A simple self-hosted URL shortener written in Rust | DB: MySQL, Postgres, SQLite
 
