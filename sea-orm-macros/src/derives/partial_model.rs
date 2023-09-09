@@ -166,7 +166,7 @@ impl DerivePartialModel {
             ColumnAs::Expr { expr, field_name } => {
                 quote!(let #select_ident =  sea_orm::SelectColumns::select_column_as(#select_ident, #expr, #field_name);)
             },
-            ColumnAs::Flatten { ty }=>{
+            ColumnAs::Flatten { ty } => {
                 quote!(let #select_ident = <#ty as sea_orm::PartialModelTrait>::select_cols(#select_ident);)
             }
         });
