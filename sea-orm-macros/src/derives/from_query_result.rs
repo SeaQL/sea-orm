@@ -50,7 +50,7 @@ pub fn expand_derive_from_query_result(
             if *flatten{
                 quote! { #ident : <#ty as sea_orm::FromQueryResult>::from_query_result(#arg_row, #arg_pre)? }
             } else {
-                quote! { #ident : #arg_row.try_get(#arg_pre, #s)?}
+                quote! { #ident : #arg_row.try_get(#arg_pre, #s)? }
             }
         })
         .collect();
