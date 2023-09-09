@@ -49,7 +49,7 @@ pub fn expand_derive_from_query_result(
             let s = ident.unraw().to_string();
             if *flatten{
                 quote! { #ident : <#ty as sea_orm::FromQueryResult>::from_query_result(#arg_row, #arg_pre)? }
-            }else{
+            } else {
                 quote! { #ident : #arg_row.try_get(#arg_pre, #s)?}
             }
         })
