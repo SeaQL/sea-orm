@@ -26,7 +26,7 @@ path = "src/lib.rs"
 [dependencies]
 async-stream = { version = "0.3", default-features = false }
 async-trait = { version = "0.1", default-features = false }
-chrono = { version = "0.4.20", default-features = false, optional = true }
+chrono = { version = "0.4.30", default-features = false, optional = true }
 time = { version = "0.3", default-features = false, optional = true }
 futures = { version = "0.3", default-features = false, features = ["std"] }
 log = { version = "0.4", default-features = false }
