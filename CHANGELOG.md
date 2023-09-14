@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.12.3 - Pending
+
+### New Features
+
+* [sea-orm-migration] Check if an index exists https://github.com/SeaQL/sea-orm/pull/1828
+
 ## 0.12.2 - 2023-08-04
 
 ### Enhancements
