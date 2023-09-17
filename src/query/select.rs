@@ -106,6 +106,14 @@ impl IntoSimpleExpr for SimpleExpr {
     }
 }
 
+impl IntoSimpleExpr for T
+where T: Into<SimpleExpr>,
+{
+    fn into_simple_expr(self) -> SimpleExpr {
+        self.into()
+    }
+}
+
 impl<E> Select<E>
 where
     E: EntityTrait,
