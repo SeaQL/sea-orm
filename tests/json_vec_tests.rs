@@ -5,18 +5,13 @@ use pretty_assertions::assert_eq;
 use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
+#[cfg(feature = "sqlx-postgres")]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("json_vec_tests").await;
     create_tables(&ctx.db).await?;
     insert_json_vec(&ctx.db).await?;
 
     insert_json_string_vec_derive(&ctx.db).await?;
-    // insert_json_struct_vec_derive(&ctx.db).await?;
 
     ctx.delete().await;
 

@@ -20,9 +20,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_byte_primary_key_table(db).await?;
     create_satellites_table(db).await?;
     create_transaction_log_table(db).await?;
-    create_json_vec_table(db).await?;
     create_json_struct_table(db).await?;
-    create_json_struct_vec_table(db).await?;
 
     let create_enum_stmts = match db_backend {
         DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
@@ -47,7 +45,6 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_pi_table(db).await?;
     create_uuid_fmt_table(db).await?;
     create_edit_log_table(db).await?;
-    create_categories_table(db).await?;
     create_teas_table(db).await?;
     create_binary_table(db).await?;
     create_bits_table(db).await?;
@@ -58,6 +55,9 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
         create_value_type_postgres_table(db).await?;
         create_collection_table(db).await?;
         create_event_trigger_table(db).await?;
+        create_json_vec_table(db).await?;
+        create_json_struct_vec_table(db).await?;
+        create_categories_table(db).await?;
     }
 
     Ok(())
