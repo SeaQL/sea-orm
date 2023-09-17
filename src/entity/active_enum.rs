@@ -432,10 +432,14 @@ mod tests {
         }
 
         test_num_value_uint!(U8, "u8", "TinyInteger", TinyInteger);
+        test_num_value_uint!(U16, "u16", "SmallInteger", SmallInteger);
         test_num_value_uint!(U32, "u32", "Integer", Integer);
+        test_num_value_uint!(U64, "u64", "BigInteger", BigInteger);
 
         test_fallback_uint!(U8Fallback, u8, "u8", "TinyInteger", TinyInteger);
+        test_fallback_uint!(U16Fallback, u16, "u16", "SmallInteger", SmallInteger);
         test_fallback_uint!(U32Fallback, u32, "u32", "Integer", Integer);
+        test_fallback_uint!(U64Fallback, u64, "u64", "BigInteger", BigInteger);
     }
 
     #[test]
