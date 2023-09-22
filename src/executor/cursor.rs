@@ -31,13 +31,8 @@ impl<S> Cursor<S>
 where
     S: SelectorTrait,
 {
-    /// Initialize a cursor
-    pub fn new<C>(
-        query: SelectStatement,
-        table: DynIden,
-        order_columns: C,
-        secondary_order_by: Vec<(DynIden, Identity)>,
-    ) -> Self
+    /// Create a new cursor
+    pub fn new<C>(query: SelectStatement, table: DynIden, order_columns: C) -> Self
     where
         C: IntoIdentity,
     {
@@ -47,7 +42,7 @@ where
             order_columns: order_columns.into_identity(),
             last: false,
             phantom: PhantomData,
-            secondary_order_by,
+            secondary_order_by: Default::default(),
         }
     }
 
@@ -205,7 +200,7 @@ where
             }
         }
 
-        for (tbl, col) in self.secondary_order_by.clone() {
+        for (tbl, col) in self.secondary_order_by.iter().cloned() {
             if let Identity::Unary(c1) = col {
                 query.order_by((tbl, c1), ord.clone());
             };
@@ -318,7 +313,7 @@ where
     where
         C: IntoIdentity,
     {
-        Cursor::new(self.query, SeaRc::new(E::default()), order_columns, vec![])
+        Cursor::new(self.query, SeaRc::new(E::default()), order_columns)
     }
 }
 
@@ -352,12 +347,13 @@ where
                 )
             })
             .collect();
-        Cursor::new(
+        let mut cursor = Cursor::new(
             self.query,
             SeaRc::new(E::default()),
             order_columns.identity_of(),
-            primary_keys,
-        )
+        );
+        cursor.set_secondary_order_by(primary_keys);
+        cursor
     }
 
     /// Convert into a cursor using column of second entity
@@ -373,12 +369,13 @@ where
                 )
             })
             .collect();
-        Cursor::new(
+        let mut cursor = Cursor::new(
             self.query,
             SeaRc::new(F::default()),
             order_columns.identity_of(),
-            primary_keys,
-        )
+        );
+        cursor.set_secondary_order_by(primary_keys);
+        cursor
     }
 }
 
@@ -1201,7 +1198,6 @@ mod tests {
     }
 
     mod test_base_entity {
-        use super::test_related_entity;
         use crate as sea_orm;
         use crate::entity::prelude::*;
 
