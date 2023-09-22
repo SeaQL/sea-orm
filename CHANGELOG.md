@@ -15,6 +15,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * [sea-orm-cli] Support generation of related entity with composite foreign key https://github.com/SeaQL/sea-orm/pull/1693
 
+### Bug Fixes
+
+* [sea-orm-macro] Fix `DeriveValueType` by qualifying `QueryResult` https://github.com/SeaQL/sea-orm/pull/1855
+
+### Upgrades
+
+* Upgraded `salvo` to `0.50`
+* Upgraded `chrono` to `0.4.30` https://github.com/SeaQL/sea-orm/pull/1858
+
+### House keeping
+
+* Added test cases for `find_xxx_related/linked` https://github.com/SeaQL/sea-orm/pull/1811
+
 ## 0.12.2 - 2023-08-04
 
 ### Enhancements
