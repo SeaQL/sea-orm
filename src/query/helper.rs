@@ -3,8 +3,8 @@ use crate::{
     PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
-    Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr,
-    SelectStatement, SimpleExpr, TableRef,
+    Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockBehavior, LockType, SeaRc,
+    SelectExpr, SelectStatement, SimpleExpr, TableRef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -444,6 +444,14 @@ pub trait QuerySelect: Sized {
     /// Select lock exclusive
     fn lock_exclusive(mut self) -> Self {
         self.query().lock_exclusive();
+        self
+    }
+
+    /// Row locking with behavior (if supported).
+    ///
+    /// See [`SelectStatement::lock_with_behavior`].
+    fn lock_with_behavior(mut self, r#type: LockType, behavior: LockBehavior) -> Self {
+        self.query().lock_with_behavior(r#type, behavior);
         self
     }
 
