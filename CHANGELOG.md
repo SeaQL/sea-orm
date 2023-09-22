@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * [sea-orm-migration] Check if an index exists https://github.com/SeaQL/sea-orm/pull/1828
 
+### Enhancements
+
+* [sea-orm-cli] Support generation of related entity with composite foreign key https://github.com/SeaQL/sea-orm/pull/1693
+
 ## 0.12.2 - 2023-08-04
 
 ### Enhancements
