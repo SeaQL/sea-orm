@@ -382,7 +382,6 @@ where
 #[cfg(test)]
 #[cfg(feature = "mock")]
 mod tests {
-    use super::*;
     use crate::entity::prelude::*;
     use crate::tests_cfg::*;
     use crate::{DbBackend, MockDatabase, Statement, Transaction};

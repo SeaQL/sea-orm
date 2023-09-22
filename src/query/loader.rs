@@ -143,6 +143,10 @@ where
             return Err(query_err("Relation is HasMany instead of HasOne"));
         }
 
+        if self.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let keys: Vec<ValueTuple> = self
             .iter()
             .map(|model: &M| extract_key(&rel_def.from_col, model))
@@ -192,6 +196,10 @@ where
         let rel_def = <<<Self as LoaderTrait>::Model as ModelTrait>::Entity as Related<R>>::to();
         if rel_def.rel_type == RelationType::HasOne {
             return Err(query_err("Relation is HasOne instead of HasMany"));
+        }
+
+        if self.is_empty() {
+            return Ok(Vec::new());
         }
 
         let keys: Vec<ValueTuple> = self
@@ -267,6 +275,10 @@ where
                     via_rel.to_tbl,
                     via.table_ref()
                 )));
+            }
+
+            if self.is_empty() {
+                return Ok(Vec::new());
             }
 
             let pkeys: Vec<ValueTuple> = self
@@ -587,14 +599,11 @@ mod tests {
         );
     }
 
-    // FIXME: load many with empty vector will panic
-    // #[tokio::test]
+    #[tokio::test]
     async fn test_load_many_empty() {
         use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, MockDatabase};
 
-        let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[fruit_model(1, Some(1)), fruit_model(2, Some(1))]])
-            .into_connection();
+        let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
         let cakes: Vec<cake::Model> = vec![];
 
@@ -610,9 +619,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_to_many_base() {
-        use sea_orm::{
-            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
-        };
+        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
@@ -633,9 +640,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_to_many_complex() {
-        use sea_orm::{
-            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
-        };
+        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
@@ -675,9 +680,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_to_many_empty() {
-        use sea_orm::{
-            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
-        };
+        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
