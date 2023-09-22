@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.12.3 - Pending
+## 0.12.3 - 2023-09-22
 
 ### New Features
 
@@ -17,12 +17,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Bug Fixes
 
-* [sea-orm-macro] Fix `DeriveValueType` by qualifying `QueryResult` https://github.com/SeaQL/sea-orm/pull/1855
+* [sea-orm-macro] Fixed `DeriveValueType` by qualifying `QueryResult` https://github.com/SeaQL/sea-orm/pull/1855
+* Fixed `Loader` panic on empty inputs
 
 ### Upgrades
 
 * Upgraded `salvo` to `0.50`
 * Upgraded `chrono` to `0.4.30` https://github.com/SeaQL/sea-orm/pull/1858
+* Updated `sea-query` to `0.30.1`
 
 ### House keeping
 
