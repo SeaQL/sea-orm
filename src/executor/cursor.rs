@@ -1,12 +1,14 @@
 use crate::{
-    ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IntoIdentity,
-    PartialModelTrait, QueryOrder, QuerySelect, Select, SelectModel, SelectorTrait,
+    ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IdentityOf, IntoIdentity,
+    PartialModelTrait, PrimaryKeyToColumn, QueryOrder, QuerySelect, Select, SelectModel, SelectTwo,
+    SelectTwoModel, SelectorTrait,
 };
 use sea_query::{
     Condition, DynIden, Expr, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr, Value,
     ValueTuple,
 };
 use std::marker::PhantomData;
+use strum::IntoEnumIterator as Iterable;
 
 #[cfg(feature = "with-json")]
 use crate::JsonValue;
@@ -17,11 +19,12 @@ pub struct Cursor<S>
 where
     S: SelectorTrait,
 {
-    pub(crate) query: SelectStatement,
-    pub(crate) table: DynIden,
-    pub(crate) order_columns: Identity,
-    pub(crate) last: bool,
-    pub(crate) phantom: PhantomData<S>,
+    query: SelectStatement,
+    table: DynIden,
+    order_columns: Identity,
+    secondary_order_by: Vec<(DynIden, Identity)>,
+    last: bool,
+    phantom: PhantomData<S>,
 }
 
 impl<S> Cursor<S>
@@ -29,7 +32,12 @@ where
     S: SelectorTrait,
 {
     /// Initialize a cursor
-    pub fn new<C>(query: SelectStatement, table: DynIden, order_columns: C) -> Self
+    pub fn new<C>(
+        query: SelectStatement,
+        table: DynIden,
+        order_columns: C,
+        secondary_order_by: Vec<(DynIden, Identity)>,
+    ) -> Self
     where
         C: IntoIdentity,
     {
@@ -39,6 +47,7 @@ where
             order_columns: order_columns.into_identity(),
             last: false,
             phantom: PhantomData,
+            secondary_order_by,
         }
     }
 
@@ -158,10 +167,7 @@ where
     /// Limit result set to only first N rows in ascending order of the order by column
     pub fn first(&mut self, num_rows: u64) -> &mut Self {
         self.query.limit(num_rows).clear_order_by();
-        let table = SeaRc::clone(&self.table);
-        self.apply_order_by(|query, col| {
-            query.order_by((SeaRc::clone(&table), SeaRc::clone(col)), Order::Asc);
-        });
+        self.apply_order_by(self.table.clone(), Order::Asc);
         self.last = false;
         self
     }
@@ -169,37 +175,40 @@ where
     /// Limit result set to only last N rows in ascending order of the order by column
     pub fn last(&mut self, num_rows: u64) -> &mut Self {
         self.query.limit(num_rows).clear_order_by();
-        let table = SeaRc::clone(&self.table);
-        self.apply_order_by(|query, col| {
-            query.order_by((SeaRc::clone(&table), SeaRc::clone(col)), Order::Desc);
-        });
+        self.apply_order_by(self.table.clone(), Order::Desc);
         self.last = true;
         self
     }
 
-    fn apply_order_by<F>(&mut self, f: F)
-    where
-        F: Fn(&mut SelectStatement, &DynIden),
-    {
+    fn apply_order_by(&mut self, table: DynIden, ord: Order) {
         let query = &mut self.query;
+        let order = |query: &mut SelectStatement, col| {
+            query.order_by((SeaRc::clone(&table), SeaRc::clone(col)), ord.clone());
+        };
         match &self.order_columns {
             Identity::Unary(c1) => {
-                f(query, c1);
+                order(query, c1);
             }
             Identity::Binary(c1, c2) => {
-                f(query, c1);
-                f(query, c2);
+                order(query, c1);
+                order(query, c2);
             }
             Identity::Ternary(c1, c2, c3) => {
-                f(query, c1);
-                f(query, c2);
-                f(query, c3);
+                order(query, c1);
+                order(query, c2);
+                order(query, c3);
             }
             Identity::Many(vec) => {
                 for col in vec.iter() {
-                    f(query, col);
+                    order(query, col);
                 }
             }
+        }
+
+        for (tbl, col) in self.secondary_order_by.clone() {
+            if let Identity::Unary(c1) = col {
+                query.order_by((tbl, c1), ord.clone());
+            };
         }
     }
 
@@ -231,6 +240,7 @@ where
             order_columns: self.order_columns,
             last: self.last,
             phantom: PhantomData,
+            secondary_order_by: self.secondary_order_by,
         }
     }
 
@@ -251,7 +261,14 @@ where
             order_columns: self.order_columns,
             last: self.last,
             phantom: PhantomData,
+            secondary_order_by: self.secondary_order_by,
         }
+    }
+
+    /// Set the cursor ordering for another table when dealing with SelectTwo
+    pub fn set_secondary_order_by(&mut self, tbl_col: Vec<(DynIden, Identity)>) -> &mut Self {
+        self.secondary_order_by = tbl_col;
+        self
     }
 }
 
@@ -281,11 +298,6 @@ where
 pub trait CursorTrait {
     /// Select operation
     type Selector: SelectorTrait + Send + Sync;
-
-    /// Convert current type into a cursor
-    fn cursor_by<C>(self, order_columns: C) -> Cursor<Self::Selector>
-    where
-        C: IntoIdentity;
 }
 
 impl<E, M> CursorTrait for Select<E>
@@ -294,12 +306,79 @@ where
     M: FromQueryResult + Sized + Send + Sync,
 {
     type Selector = SelectModel<M>;
+}
 
-    fn cursor_by<C>(self, order_columns: C) -> Cursor<Self::Selector>
+impl<E, M> Select<E>
+where
+    E: EntityTrait<Model = M>,
+    M: FromQueryResult + Sized + Send + Sync,
+{
+    /// Convert into a cursor
+    pub fn cursor_by<C>(self, order_columns: C) -> Cursor<SelectModel<M>>
     where
         C: IntoIdentity,
     {
-        Cursor::new(self.query, SeaRc::new(E::default()), order_columns)
+        Cursor::new(self.query, SeaRc::new(E::default()), order_columns, vec![])
+    }
+}
+
+impl<E, F, M, N> CursorTrait for SelectTwo<E, F>
+where
+    E: EntityTrait<Model = M>,
+    F: EntityTrait<Model = N>,
+    M: FromQueryResult + Sized + Send + Sync,
+    N: FromQueryResult + Sized + Send + Sync,
+{
+    type Selector = SelectTwoModel<M, N>;
+}
+
+impl<E, F, M, N> SelectTwo<E, F>
+where
+    E: EntityTrait<Model = M>,
+    F: EntityTrait<Model = N>,
+    M: FromQueryResult + Sized + Send + Sync,
+    N: FromQueryResult + Sized + Send + Sync,
+{
+    /// Convert into a cursor using column of first entity
+    pub fn cursor_by<C>(self, order_columns: C) -> Cursor<SelectTwoModel<M, N>>
+    where
+        C: IdentityOf<E>,
+    {
+        let primary_keys: Vec<(DynIden, Identity)> = <F::PrimaryKey as Iterable>::iter()
+            .map(|pk| {
+                (
+                    SeaRc::new(F::default()),
+                    Identity::Unary(SeaRc::new(pk.into_column())),
+                )
+            })
+            .collect();
+        Cursor::new(
+            self.query,
+            SeaRc::new(E::default()),
+            order_columns.identity_of(),
+            primary_keys,
+        )
+    }
+
+    /// Convert into a cursor using column of second entity
+    pub fn cursor_by_other<C>(self, order_columns: C) -> Cursor<SelectTwoModel<M, N>>
+    where
+        C: IdentityOf<F>,
+    {
+        let primary_keys: Vec<(DynIden, Identity)> = <E::PrimaryKey as Iterable>::iter()
+            .map(|pk| {
+                (
+                    SeaRc::new(E::default()),
+                    Identity::Unary(SeaRc::new(pk.into_column())),
+                )
+            })
+            .collect();
+        Cursor::new(
+            self.query,
+            SeaRc::new(F::default()),
+            order_columns.identity_of(),
+            primary_keys,
+        )
     }
 }
 
@@ -353,6 +432,231 @@ mod tests {
                     r#"WHERE "fruit"."id" < $1"#,
                     r#"ORDER BY "fruit"."id" ASC"#,
                     r#"LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn first_2_before_10_also_related_select() -> Result<(), DbErr> {
+        let models = [
+            (
+                cake::Model {
+                    id: 1,
+                    name: "Blueberry Cheese Cake".into(),
+                },
+                Some(fruit::Model {
+                    id: 9,
+                    name: "Blueberry".into(),
+                    cake_id: Some(1),
+                }),
+            ),
+            (
+                cake::Model {
+                    id: 2,
+                    name: "Rasberry Cheese Cake".into(),
+                },
+                Some(fruit::Model {
+                    id: 10,
+                    name: "Rasberry".into(),
+                    cake_id: Some(1),
+                }),
+            ),
+        ];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_related(Fruit)
+                .cursor_by(cake::Column::Id)
+                .before(10)
+                .first(2)
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
+                    r#""fruit"."id" AS "B_id", "fruit"."name" AS "B_name", "fruit"."cake_id" AS "B_cake_id""#,
+                    r#"FROM "cake""#,
+                    r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
+                    r#"WHERE "cake"."id" < $1"#,
+                    r#"ORDER BY "cake"."id" ASC, "fruit"."id" ASC LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn first_2_before_10_also_related_select_cursor_other() -> Result<(), DbErr> {
+        let models = [(
+            cake::Model {
+                id: 1,
+                name: "Blueberry Cheese Cake".into(),
+            },
+            Some(fruit::Model {
+                id: 9,
+                name: "Blueberry".into(),
+                cake_id: Some(1),
+            }),
+        )];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_related(Fruit)
+                .cursor_by_other(fruit::Column::Id)
+                .before(10)
+                .first(2)
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
+                    r#""fruit"."id" AS "B_id", "fruit"."name" AS "B_name", "fruit"."cake_id" AS "B_cake_id""#,
+                    r#"FROM "cake""#,
+                    r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
+                    r#"WHERE "fruit"."id" < $1"#,
+                    r#"ORDER BY "fruit"."id" ASC, "cake"."id" ASC LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn first_2_before_10_also_linked_select() -> Result<(), DbErr> {
+        let models = [
+            (
+                cake::Model {
+                    id: 1,
+                    name: "Blueberry Cheese Cake".into(),
+                },
+                Some(vendor::Model {
+                    id: 9,
+                    name: "Blueberry".into(),
+                }),
+            ),
+            (
+                cake::Model {
+                    id: 2,
+                    name: "Rasberry Cheese Cake".into(),
+                },
+                Some(vendor::Model {
+                    id: 10,
+                    name: "Rasberry".into(),
+                }),
+            ),
+        ];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_linked(entity_linked::CakeToFillingVendor)
+                .cursor_by(cake::Column::Id)
+                .before(10)
+                .first(2)
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
+                    r#""r2"."id" AS "B_id", "r2"."name" AS "B_name""#,
+                    r#"FROM "cake""#,
+                    r#"LEFT JOIN "cake_filling" AS "r0" ON "cake"."id" = "r0"."cake_id""#,
+                    r#"LEFT JOIN "filling" AS "r1" ON "r0"."filling_id" = "r1"."id""#,
+                    r#"LEFT JOIN "vendor" AS "r2" ON "r1"."vendor_id" = "r2"."id""#,
+                    r#"WHERE "cake"."id" < $1 ORDER BY "cake"."id" ASC, "vendor"."id" ASC LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn first_2_before_10_also_linked_select_cursor_other() -> Result<(), DbErr> {
+        let models = [(
+            cake::Model {
+                id: 1,
+                name: "Blueberry Cheese Cake".into(),
+            },
+            Some(vendor::Model {
+                id: 9,
+                name: "Blueberry".into(),
+            }),
+        )];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_linked(entity_linked::CakeToFillingVendor)
+                .cursor_by_other(vendor::Column::Id)
+                .before(10)
+                .first(2)
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
+                    r#""r2"."id" AS "B_id", "r2"."name" AS "B_name""#,
+                    r#"FROM "cake""#,
+                    r#"LEFT JOIN "cake_filling" AS "r0" ON "cake"."id" = "r0"."cake_id""#,
+                    r#"LEFT JOIN "filling" AS "r1" ON "r0"."filling_id" = "r1"."id""#,
+                    r#"LEFT JOIN "vendor" AS "r2" ON "r1"."vendor_id" = "r2"."id""#,
+                    r#"WHERE "vendor"."id" < $1 ORDER BY "vendor"."id" ASC, "cake"."id" ASC LIMIT $2"#,
                 ]
                 .join(" ")
                 .as_str(),
@@ -891,6 +1195,218 @@ mod tests {
                 r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" < 'val_2')"#,
                 r#"OR "t"."col_1" < 'val_1'"#,
             ].join(" "))
+        );
+
+        Ok(())
+    }
+
+    mod test_base_entity {
+        use super::test_related_entity;
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "base")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            #[sea_orm(primary_key)]
+            pub name: String,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {
+            #[sea_orm(has_many = "super::test_related_entity::Entity")]
+            TestRelatedEntity,
+        }
+
+        impl Related<super::test_related_entity::Entity> for Entity {
+            fn to() -> RelationDef {
+                Relation::TestRelatedEntity.def()
+            }
+        }
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    mod test_related_entity {
+        use super::test_base_entity;
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "related")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            #[sea_orm(primary_key)]
+            pub name: String,
+            pub test_id: i32,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {
+            #[sea_orm(
+                belongs_to = "test_base_entity::Entity",
+                from = "Column::TestId",
+                to = "super::test_base_entity::Column::Id"
+            )]
+            TestBaseEntity,
+        }
+
+        impl Related<super::test_base_entity::Entity> for Entity {
+            fn to() -> RelationDef {
+                Relation::TestBaseEntity.def()
+            }
+        }
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    #[smol_potat::test]
+    async fn related_composite_keys_1() -> Result<(), DbErr> {
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[(
+                test_base_entity::Model {
+                    id: 1,
+                    name: "CAT".into(),
+                },
+                test_related_entity::Model {
+                    id: 1,
+                    name: "CATE".into(),
+                    test_id: 1,
+                },
+            )]])
+            .into_connection();
+
+        assert!(!test_base_entity::Entity::find()
+            .find_also_related(test_related_entity::Entity)
+            .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
+            .first(1)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "base"."id" AS "A_id", "base"."name" AS "A_name","#,
+                    r#""related"."id" AS "B_id", "related"."name" AS "B_name", "related"."test_id" AS "B_test_id""#,
+                    r#"FROM "base""#,
+                    r#"LEFT JOIN "related" ON "base"."id" = "related"."test_id""#,
+                    r#"ORDER BY "base"."id" ASC, "base"."name" ASC, "related"."id" ASC, "related"."name" ASC LIMIT $1"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [1_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn related_composite_keys_2() -> Result<(), DbErr> {
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[(
+                test_base_entity::Model {
+                    id: 1,
+                    name: "CAT".into(),
+                },
+                test_related_entity::Model {
+                    id: 1,
+                    name: "CATE".into(),
+                    test_id: 1,
+                },
+            )]])
+            .into_connection();
+
+        assert!(!test_base_entity::Entity::find()
+            .find_also_related(test_related_entity::Entity)
+            .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
+            .after((1, "C".to_string()))
+            .first(2)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "base"."id" AS "A_id", "base"."name" AS "A_name","#,
+                    r#""related"."id" AS "B_id", "related"."name" AS "B_name", "related"."test_id" AS "B_test_id""#,
+                    r#"FROM "base""#,
+                    r#"LEFT JOIN "related" ON "base"."id" = "related"."test_id""#,
+                    r#"WHERE ("base"."id" = $1 AND "base"."name" > $2) OR "base"."id" > $3"#,
+                    r#"ORDER BY "base"."id" ASC, "base"."name" ASC, "related"."id" ASC, "related"."name" ASC LIMIT $4"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [
+                    1_i32.into(),
+                    "C".into(),
+                    1_i32.into(),
+                    2_u64.into(),
+                ]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn related_composite_keys_3() -> Result<(), DbErr> {
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[(
+                test_base_entity::Model {
+                    id: 1,
+                    name: "CAT".into(),
+                },
+                test_related_entity::Model {
+                    id: 1,
+                    name: "CATE".into(),
+                    test_id: 1,
+                },
+            )]])
+            .into_connection();
+
+        assert!(!test_base_entity::Entity::find()
+            .find_also_related(test_related_entity::Entity)
+            .cursor_by_other((
+                test_related_entity::Column::Id,
+                test_related_entity::Column::Name
+            ))
+            .after((1, "CAT".to_string()))
+            .first(2)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "base"."id" AS "A_id", "base"."name" AS "A_name","#,
+                    r#""related"."id" AS "B_id", "related"."name" AS "B_name", "related"."test_id" AS "B_test_id""#,
+                    r#"FROM "base""#,
+                    r#"LEFT JOIN "related" ON "base"."id" = "related"."test_id""#,
+                    r#"WHERE ("related"."id" = $1 AND "related"."name" > $2) OR "related"."id" > $3"#,
+                    r#"ORDER BY "related"."id" ASC, "related"."name" ASC, "base"."id" ASC, "base"."name" ASC LIMIT $4"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [
+                    1_i32.into(),
+                    "CAT".into(),
+                    1_i32.into(),
+                    2_u64.into(),
+                ]
+            ),])]
         );
 
         Ok(())
