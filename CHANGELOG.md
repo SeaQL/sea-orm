@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Upgraded `salvo` to `0.50`
 * Upgraded `chrono` to `0.4.30` https://github.com/SeaQL/sea-orm/pull/1858
 * Updated `sea-query` to `0.30.1`
+* Updated `sea-schema` to `0.14.1`
 
 ### House keeping
 
