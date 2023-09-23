@@ -314,6 +314,39 @@ macro_rules! try_getable_unsigned {
     };
 }
 
+macro_rules! try_getable_postgres {
+    ( $type: ty ) => {
+        impl TryGetable for $type {
+            fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
+                let _column = format!("{}{}", pre, col);
+                match &res.row {
+                    #[cfg(feature = "sqlx-mysql")]
+                    QueryResultRow::SqlxMySql(row) => {
+                        panic!("{} unsupported by sqlx-mysql", stringify!($type))
+                    }
+                    #[cfg(feature = "sqlx-postgres")]
+                    QueryResultRow::SqlxPostgres(row) => {
+                        use sqlx::Row;
+                        row.try_get::<Option<$type>, _>(_column.as_str())
+                            .map_err(|e| TryGetError::DbErr(crate::sqlx_error_to_query_err(e)))
+                            .and_then(|opt| opt.ok_or(TryGetError::Null))
+                    }
+                    #[cfg(feature = "sqlx-sqlite")]
+                    QueryResultRow::SqlxSqlite(row) => {
+                        panic!("{} unsupported by sqlx-sqlite", stringify!($type))
+                    }
+                    #[cfg(feature = "mock")]
+                    #[allow(unused_variables)]
+                    QueryResultRow::Mock(row) => row.try_get(_column.as_str()).map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        TryGetError::Null
+                    }),
+                }
+            }
+        }
+    };
+}
+
 macro_rules! try_getable_mysql {
     ( $type: ty ) => {
         impl TryGetable for $type {
@@ -425,6 +458,49 @@ try_getable_all!(chrono::DateTime<chrono::Utc>);
 #[cfg(feature = "with-chrono")]
 try_getable_all!(chrono::DateTime<chrono::Local>);
 
+#[cfg(all(all(feature = "sqlx-postgres", feature = "with-chrono")))]
+use chrono::Duration;
+
+#[cfg(all(all(feature = "sqlx-postgres", feature = "with-chrono")))]
+impl TryGetable for chrono::Duration {
+    fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+        match &res.row {
+            #[cfg(feature = "sqlx-mysql")]
+            QueryResultRow::SqlxMySql(row) => {
+                Err(type_err(format!("{} unsupported by sqlx-mysql", stringify!($type))).into())
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => {
+                use sqlx::postgres::types::PgInterval;
+
+                row.try_get::<Option<PgInterval>, _>(idx.as_sqlx_postgres_index())
+                    .map_err(|e| sqlx_error_to_query_err(e).into())
+                    .and_then(|opt| -> Result<Self, TryGetError> {
+                        match opt {
+                            Some(i) => {
+                                let mut dur = Duration::weeks((i.months * 30).into());
+                                dur = dur + Duration::days(i.days.into());
+                                dur = dur + Duration::microseconds(i.microseconds);
+                                Ok(dur)
+                            }
+                            None => Err(err_null_idx_col(idx)),
+                        }
+                    })
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            QueryResultRow::SqlxSqlite(row) => {
+                Err(type_err(format!("{} unsupported by sqlx-sqlite", stringify!($type))).into())
+            }
+            #[cfg(feature = "mock")]
+            #[allow(unused_variables)]
+            QueryResultRow::Mock(row) => row.try_get(_column.as_str()).map_err(|e| {
+                debug_print!("{:#?}", e.to_string());
+                TryGetError::Null
+            }),
+        }
+    }
+}
+
 #[cfg(feature = "with-time")]
 try_getable_all!(time::Date);
 
@@ -436,6 +512,49 @@ try_getable_all!(time::PrimitiveDateTime);
 
 #[cfg(feature = "with-time")]
 try_getable_all!(time::OffsetDateTime);
+
+#[cfg(all(all(feature = "sqlx-postgres", feature = "with-time")))]
+use time::Duration;
+
+#[cfg(all(all(feature = "sqlx-postgres", feature = "with-time")))]
+impl TryGetable for Duration {
+    fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+        match &res.row {
+            #[cfg(feature = "sqlx-mysql")]
+            QueryResultRow::SqlxMySql(row) => {
+                Err(type_err(format!("{} unsupported by sqlx-mysql", stringify!($type))).into())
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => {
+                use sqlx::postgres::types::PgInterval;
+
+                row.try_get::<Option<PgInterval>, _>(idx.as_sqlx_postgres_index())
+                    .map_err(|e| sqlx_error_to_query_err(e).into())
+                    .and_then(|opt| -> Result<Self, TryGetError> {
+                        match opt {
+                            Some(i) => {
+                                let mut dur = Duration::days((i.months * 30).into());
+                                dur = dur + Duration::days(i.days.into());
+                                dur = dur + Duration::microseconds(i.microseconds);
+                                Ok(dur)
+                            }
+                            None => Err(err_null_idx_col(idx)),
+                        }
+                    })
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            QueryResultRow::SqlxSqlite(row) => {
+                Err(type_err(format!("{} unsupported by sqlx-sqlite", stringify!($type))).into())
+            }
+            #[cfg(feature = "mock")]
+            #[allow(unused_variables)]
+            QueryResultRow::Mock(row) => row.try_get(_column.as_str()).map_err(|e| {
+                debug_print!("{:#?}", e.to_string());
+                TryGetError::Null
+            }),
+        }
+    }
+}
 
 #[cfg(feature = "with-rust_decimal")]
 use rust_decimal::Decimal;
@@ -696,6 +815,58 @@ mod postgres_array {
     #[cfg(feature = "with-chrono")]
     try_getable_postgres_array!(chrono::DateTime<chrono::Local>);
 
+    #[cfg(all(all(feature = "sqlx-postgres", feature = "with-chrono")))]
+    use chrono::Duration;
+
+    #[cfg(all(all(feature = "sqlx-postgres", feature = "with-chrono")))]
+    impl TryGetable for Vec<Duration> {
+        fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+            match &res.row {
+                #[cfg(feature = "sqlx-mysql")]
+                QueryResultRow::SqlxMySql(_) => Err(type_err(format!(
+                    "{} unsupported by sqlx-mysql",
+                    stringify!(Duration)
+                ))
+                .into()),
+                #[cfg(feature = "sqlx-postgres")]
+                QueryResultRow::SqlxPostgres(row) => {
+                    use sqlx::postgres::types::PgInterval;
+
+                    row.try_get::<Option<Vec<PgInterval>>, _>(idx.as_sqlx_postgres_index())
+                        .map_err(|e| sqlx_error_to_query_err(e).into())
+                        .and_then(|opt| -> Result<Self, TryGetError> {
+                            match opt {
+                                Some(a) => Ok(a
+                                    .into_iter()
+                                    .map(|i| {
+                                        let mut dur = Duration::weeks((i.months * 30).into());
+                                        dur = dur + Duration::days(i.days.into());
+                                        dur = dur + Duration::microseconds(i.microseconds);
+                                        dur
+                                    })
+                                    .collect::<Vec<Duration>>()),
+                                None => Err(err_null_idx_col(idx)),
+                            }
+                        })
+                }
+                #[cfg(feature = "sqlx-sqlite")]
+                QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
+                    "{} unsupported by sqlx-sqlite",
+                    stringify!(time::Duration)
+                ))
+                .into()),
+                #[cfg(feature = "mock")]
+                #[allow(unused_variables)]
+                QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
+                    debug_print!("{:#?}", e.to_string());
+                    err_null_idx_col(idx)
+                }),
+                #[allow(unreachable_patterns)]
+                _ => unreachable!(),
+            }
+        }
+    }
+
     #[cfg(feature = "with-time")]
     try_getable_postgres_array!(time::Date);
 
@@ -707,6 +878,58 @@ mod postgres_array {
 
     #[cfg(feature = "with-time")]
     try_getable_postgres_array!(time::OffsetDateTime);
+
+    #[cfg(all(all(feature = "sqlx-postgres", feature = "with-time")))]
+    use time::Duration;
+
+    #[cfg(all(all(feature = "sqlx-postgres", feature = "with-time")))]
+    impl TryGetable for Vec<Duration> {
+        fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+            match &res.row {
+                #[cfg(feature = "sqlx-mysql")]
+                QueryResultRow::SqlxMySql(_) => Err(type_err(format!(
+                    "{} unsupported by sqlx-mysql",
+                    stringify!(Duration)
+                ))
+                .into()),
+                #[cfg(feature = "sqlx-postgres")]
+                QueryResultRow::SqlxPostgres(row) => {
+                    use sqlx::postgres::types::PgInterval;
+
+                    row.try_get::<Option<Vec<PgInterval>>, _>(idx.as_sqlx_postgres_index())
+                        .map_err(|e| sqlx_error_to_query_err(e).into())
+                        .and_then(|opt| -> Result<Self, TryGetError> {
+                            match opt {
+                                Some(a) => Ok(a
+                                    .into_iter()
+                                    .map(|i| {
+                                        let mut dur = Duration::days((i.months * 30).into());
+                                        dur = dur + Duration::days(i.days.into());
+                                        dur = dur + Duration::microseconds(i.microseconds);
+                                        dur
+                                    })
+                                    .collect::<Vec<Duration>>()),
+                                None => Err(err_null_idx_col(idx)),
+                            }
+                        })
+                }
+                #[cfg(feature = "sqlx-sqlite")]
+                QueryResultRow::SqlxSqlite(_) => Err(type_err(format!(
+                    "{} unsupported by sqlx-sqlite",
+                    stringify!(time::Duration)
+                ))
+                .into()),
+                #[cfg(feature = "mock")]
+                #[allow(unused_variables)]
+                QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
+                    debug_print!("{:#?}", e.to_string());
+                    err_null_idx_col(idx)
+                }),
+                #[allow(unreachable_patterns)]
+                _ => unreachable!(),
+            }
+        }
+    }
 
     #[cfg(feature = "with-rust_decimal")]
     try_getable_postgres_array!(rust_decimal::Decimal);
@@ -1118,6 +1341,9 @@ try_from_u64_err!(chrono::DateTime<chrono::Utc>);
 #[cfg(feature = "with-chrono")]
 try_from_u64_err!(chrono::DateTime<chrono::Local>);
 
+#[cfg(all(all(feature = "sqlx-postgres", feature = "with-chrono")))]
+try_from_u64_err!(chrono::Duration);
+
 #[cfg(feature = "with-time")]
 try_from_u64_err!(time::Date);
 
@@ -1129,6 +1355,9 @@ try_from_u64_err!(time::PrimitiveDateTime);
 
 #[cfg(feature = "with-time")]
 try_from_u64_err!(time::OffsetDateTime);
+
+#[cfg(all(all(feature = "sqlx-postgres", feature = "with-time")))]
+try_from_u64_err!(time::Duration);
 
 #[cfg(feature = "with-rust_decimal")]
 try_from_u64_err!(rust_decimal::Decimal);

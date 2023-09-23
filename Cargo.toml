@@ -33,9 +33,9 @@ log = { version = "0.4", default-features = false }
 tracing = { version = "0.1", default-features = false, features = ["attributes", "log"] }
 rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.3", default-features = false, optional = true }
-sea-orm-macros = { version = "0.12.3", path = "sea-orm-macros", default-features = false, features = ["strum"] }
-sea-query = { version = "0.30.1", default-features = false, features = ["thread-safe", "hashable-value", "backend-mysql", "backend-postgres", "backend-sqlite"] }
-sea-query-binder = { version = "0.5.0", default-features = false, optional = true }
+sea-orm-macros = { path = "./sea-orm-macros", default-features = false, features = ["strum"] }
+sea-query = { git = "https://github.com/Rudi3/sea-query", branch = "master", default-features = false, features = ["thread-safe", "hashable-value", "backend-mysql", "backend-postgres", "backend-sqlite"] }
+sea-query-binder = { git = "https://github.com/Rudi3/sea-query", branch = "master", default-features = false, optional = true }
 strum = { version = "0.25", default-features = false }
 serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false, optional = true }
@@ -83,11 +83,12 @@ with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-binder?
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
 with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
 postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array", "sea-orm-macros/postgres-array"]
+postgres-interval=[]
 sea-orm-internal = []
 sqlx-dep = []
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-mysql = ["sqlx-dep", "sea-query-binder/sqlx-mysql", "sqlx/mysql"]
-sqlx-postgres = ["sqlx-dep", "sea-query-binder/sqlx-postgres", "sqlx/postgres", "postgres-array"]
+sqlx-postgres = ["sqlx-dep", "sea-query-binder/sqlx-postgres", "sea-query-binder/postgres-interval", "sqlx/postgres", "postgres-array", "sea-query/postgres-interval", "postgres-interval"]
 sqlx-sqlite = ["sqlx-dep", "sea-query-binder/sqlx-sqlite", "sqlx/sqlite"]
 runtime-async-std = []
 runtime-async-std-native-tls = [

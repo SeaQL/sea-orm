@@ -63,6 +63,9 @@ pub type ChronoDateTimeUtc = chrono::DateTime<chrono::Utc>;
 #[cfg(feature = "with-chrono")]
 pub type ChronoDateTimeLocal = chrono::DateTime<chrono::Local>;
 
+#[cfg(all(feature = "postgres-interval", feature = "with-chrono"))]
+pub use chrono::Duration as ChronoDuration;
+
 #[cfg(feature = "with-time")]
 pub use time::Date as TimeDate;
 
@@ -74,6 +77,9 @@ pub use time::PrimitiveDateTime as TimeDateTime;
 
 #[cfg(feature = "with-time")]
 pub use time::OffsetDateTime as TimeDateTimeWithTimeZone;
+
+#[cfg(all(feature = "postgres-interval", feature = "with-time"))]
+pub use time::Duration as TimeDuration;
 
 #[cfg(feature = "with-rust_decimal")]
 pub use rust_decimal::Decimal;
