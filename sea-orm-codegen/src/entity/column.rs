@@ -67,6 +67,10 @@ impl Column {
                     DateTimeCrate::Chrono => "DateTimeWithTimeZone".to_owned(),
                     DateTimeCrate::Time => "TimeDateTimeWithTimeZone".to_owned(),
                 },
+                ColumnType::Interval => match date_time_crate {
+                    DateTimeCrate::Chrono => "Duration".to_owned(),
+                    DateTimeCrate::Time => "TimeDuration".to_owned(),
+                },
                 ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal".to_owned(),
                 ColumnType::Uuid => "Uuid".to_owned(),
                 ColumnType::Binary(_) | ColumnType::VarBinary(_) => "Vec<u8>".to_owned(),
@@ -92,6 +96,11 @@ impl Column {
             ColumnType::Float => Some("Float".to_owned()),
             ColumnType::Double => Some("Double".to_owned()),
             ColumnType::Decimal(Some((p, s))) => Some(format!("Decimal(Some(({p}, {s})))")),
+            ColumnType::Interval(Some(i), Some(p)) => {
+                Some(format!("Interval(Some({i}), Some({s}))"))
+            }
+            ColumnType::Interval(Some(i), None) => Some(format!("Interval(Some({i}), None))")),
+            ColumnType::Interval(None, Some(p)) => Some(format!("Interval(None, Some({s}))")),
             ColumnType::Money(Some((p, s))) => Some(format!("Money(Some({p}, {s}))")),
             ColumnType::Text => Some("Text".to_owned()),
             ColumnType::JsonBinary => Some("JsonBinary".to_owned()),
@@ -142,6 +151,7 @@ impl Column {
                 }
                 ColumnType::Time => quote! { ColumnType::Time },
                 ColumnType::Date => quote! { ColumnType::Date },
+                ColumnType::Interval => quote! { ColumnType::Interval },
                 ColumnType::Binary(BlobSize::Blob(None)) => {
                     quote! { ColumnType::Binary(BlobSize::Blob(None)) }
                 }

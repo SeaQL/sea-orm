@@ -127,6 +127,8 @@ impl FromQueryResult for JsonValue {
                     match_postgres_type!(chrono::NaiveDateTime);
                     #[cfg(feature = "with-chrono")]
                     match_postgres_type!(chrono::DateTime<chrono::FixedOffset>);
+                    #[cfg(all(feature = "postgres-interval", feature = "with-chrono"))]
+                    match_postgres_type!(chrono::Duration);
                     #[cfg(feature = "with-time")]
                     match_postgres_type!(time::Date);
                     #[cfg(feature = "with-time")]
@@ -135,6 +137,8 @@ impl FromQueryResult for JsonValue {
                     match_postgres_type!(time::PrimitiveDateTime);
                     #[cfg(feature = "with-time")]
                     match_postgres_type!(time::OffsetDateTime);
+                    #[cfg(all(feature = "postgres-interval", feature = "with-time"))]
+                    match_postgres_type!(time::Duration);
                     #[cfg(feature = "with-rust_decimal")]
                     match_postgres_type!(rust_decimal::Decimal);
                     #[cfg(feature = "with-json")]
