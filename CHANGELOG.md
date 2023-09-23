@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### New Features
 
 * [sea-orm-migration] Check if an index exists https://github.com/SeaQL/sea-orm/pull/1828
+* Added `cursor_by` to `SelectTwo` https://github.com/SeaQL/sea-orm/pull/1826
 
 ### Enhancements
 
