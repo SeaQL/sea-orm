@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Loader: use `ValueTuple` as hash key https://github.com/SeaQL/sea-orm/pull/1868
 
+### Upgrades
+
+* Updated `sea-query` to `0.30.2`
+
 ## 0.12.3 - 2023-09-22
 
 ### New Features
