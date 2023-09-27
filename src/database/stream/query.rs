@@ -105,6 +105,25 @@ impl
     }
 }
 
+#[cfg(feature = "proxy")]
+impl
+    From<(
+        Arc<crate::ProxyDatabaseConnection>,
+        Statement,
+        Option<crate::metric::Callback>,
+    )> for QueryStream
+{
+    fn from(
+        (conn, stmt, metric_callback): (
+            Arc<crate::ProxyDatabaseConnection>,
+            Statement,
+            Option<crate::metric::Callback>,
+        ),
+    ) -> Self {
+        QueryStream::build(stmt, InnerConnection::Proxy(conn), metric_callback)
+    }
+}
+
 impl std::fmt::Debug for QueryStream {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "QueryStream")

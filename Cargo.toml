@@ -16,7 +16,7 @@ keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 rust-version = "1.65"
 
 [package.metadata.docs.rs]
-features = ["default", "sqlx-all", "mock", "runtime-async-std-native-tls", "postgres-array", "sea-orm-internal"]
+features = ["default", "sqlx-all", "mock", "proxy", "runtime-async-std-native-tls", "postgres-array", "sea-orm-internal"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
@@ -55,7 +55,7 @@ actix-rt = { version = "2.2.0" }
 maplit = { version = "1" }
 rust_decimal_macros = { version = "1" }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
-sea-orm = { path = ".", features = ["mock", "debug-print", "tests-cfg", "postgres-array", "sea-orm-internal"] }
+sea-orm = { path = ".", features = ["mock", "proxy", "debug-print", "tests-cfg", "postgres-array", "sea-orm-internal"] }
 pretty_assertions = { version = "0.7" }
 time = { version = "0.3", features = ["macros"] }
 uuid = { version = "1", features = ["v4"] }
@@ -76,6 +76,10 @@ default = [
 ]
 macros = ["sea-orm-macros/derive"]
 mock = []
+proxy = ['proxy-mysql', 'proxy-postgres', 'proxy-sqlite']
+proxy-mysql = []
+proxy-postgres = []
+proxy-sqlite = []
 with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "time?/serde", "uuid?/serde", "sea-query-binder?/with-json", "sqlx?/json"]
 with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-binder?/with-chrono", "sqlx?/chrono"]
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-binder?/with-rust_decimal", "sqlx?/rust_decimal"]

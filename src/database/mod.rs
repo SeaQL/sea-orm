@@ -5,6 +5,9 @@ mod db_connection;
 #[cfg(feature = "mock")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 mod mock;
+#[cfg(feature = "proxy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
+mod proxy;
 mod statement;
 mod stream;
 mod transaction;
@@ -14,6 +17,9 @@ pub use db_connection::*;
 #[cfg(feature = "mock")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 pub use mock::*;
+#[cfg(feature = "proxy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
+pub use proxy::*;
 pub use statement::*;
 use std::borrow::Cow;
 pub use stream::*;
@@ -79,6 +85,23 @@ impl Database {
         if crate::MockDatabaseConnector::accepts(&opt.url) {
             return crate::MockDatabaseConnector::connect(&opt.url).await;
         }
+        #[cfg(feature = "proxy")]
+        {
+            // Only match the prefix if the proxy feature is enabled
+            #[cfg(feature = "proxy-mysql")]
+            if DbBackend::MySql.is_prefix_of(&opt.url) {
+                return crate::ProxyDatabaseConnector::connect(DbBackend::MySql).await;
+            }
+            #[cfg(feature = "proxy-postgres")]
+            if DbBackend::Postgres.is_prefix_of(&opt.url) {
+                return crate::ProxyDatabaseConnector::connect(DbBackend::Postgres).await;
+            }
+            #[cfg(feature = "proxy-sqlite")]
+            if DbBackend::Sqlite.is_prefix_of(&opt.url) {
+                return crate::ProxyDatabaseConnector::connect(DbBackend::Sqlite).await;
+            }
+        }
+
         Err(conn_err(format!(
             "The connection string '{}' has no supporting driver.",
             opt.url
