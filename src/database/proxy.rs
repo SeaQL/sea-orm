@@ -1,18 +1,41 @@
 use crate::{
     error::*, DatabaseConnection, DbBackend, EntityTrait, ExecResult, Iden, IdenStatic, Iterable,
-    ModelTrait, OpenTransaction, ProxyDatabaseConnection, ProxyDatabaseTrait, QueryResult, SelectA,
-    SelectB, Statement, Transaction,
+    ModelTrait, ProxyDatabaseConnection, ProxyDatabaseTrait, QueryResult, SelectA, SelectB,
+    Statement,
 };
+
 use sea_query::{Value, ValueType};
 use std::{collections::BTreeMap, sync::Arc};
 use tracing::instrument;
 
+#[cfg(feature = "proxy")]
+/// Defines the [ProxyDatabaseFuncTrait] to save the functions
+pub trait ProxyDatabaseFuncTrait: Send + Sync + std::fmt::Debug {
+    /// Execute a query in the [ProxyDatabase], and return the query results
+    fn query(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr>;
+
+    /// Execute a command in the [ProxyDatabase], and report the number of rows affected
+    fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr>;
+
+    /// Begin a transaction in the [ProxyDatabase]
+    fn begin(&self);
+
+    /// Commit a transaction in the [ProxyDatabase]
+    fn commit(&self);
+
+    /// Rollback a transaction in the [ProxyDatabase]
+    fn rollback(&self);
+
+    /// Ping the [ProxyDatabase], it should return an error if the database is not available
+    fn ping(&self) -> Result<(), DbErr>;
+}
+
+#[cfg(feature = "proxy")]
 /// Defines a Proxy database suitable for testing
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ProxyDatabase {
     db_backend: DbBackend,
-    transaction: Option<OpenTransaction>,
-    transaction_log: Vec<Transaction>,
+    proxy_func: Arc<dyn ProxyDatabaseFuncTrait>,
 }
 
 /// Defines the results obtained from a [ProxyDatabase]
@@ -38,13 +61,11 @@ pub trait IntoProxyRow {
 }
 
 impl ProxyDatabase {
-    /// Instantiate a mock database with a [DbBackend] to simulate real
-    /// world SQL databases
-    pub fn new(db_backend: DbBackend) -> Self {
+    /// Instantiate a proxy database with a [DbBackend] and the [ProxyDatabaseFuncTrait]
+    pub fn new(db_backend: DbBackend, func: Arc<dyn ProxyDatabaseFuncTrait>) -> Self {
         Self {
             db_backend,
-            transaction: None,
-            transaction_log: Vec::new(),
+            proxy_func: func.to_owned(),
         }
     }
 
@@ -57,31 +78,27 @@ impl ProxyDatabase {
 impl ProxyDatabaseTrait for ProxyDatabase {
     #[instrument(level = "trace")]
     fn execute(&mut self, statement: Statement) -> Result<ExecResult, DbErr> {
-        todo!("Not done yet");
+        self.proxy_func.execute(statement)
     }
 
     #[instrument(level = "trace")]
     fn query(&mut self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
-        todo!("Not done yet");
+        self.proxy_func.query(statement)
     }
 
     #[instrument(level = "trace")]
     fn begin(&mut self) {
-        todo!("Not done yet");
+        self.proxy_func.begin()
     }
 
     #[instrument(level = "trace")]
     fn commit(&mut self) {
-        todo!("Not done yet");
+        self.proxy_func.commit()
     }
 
     #[instrument(level = "trace")]
     fn rollback(&mut self) {
-        todo!("Not done yet");
-    }
-
-    fn drain_transaction_log(&mut self) -> Vec<Transaction> {
-        std::mem::take(&mut self.transaction_log)
+        self.proxy_func.rollback()
     }
 
     fn get_database_backend(&self) -> DbBackend {
@@ -89,7 +106,7 @@ impl ProxyDatabaseTrait for ProxyDatabase {
     }
 
     fn ping(&self) -> Result<(), DbErr> {
-        Ok(())
+        self.proxy_func.ping()
     }
 }
 

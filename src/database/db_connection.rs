@@ -33,8 +33,8 @@ pub enum DatabaseConnection {
     #[cfg(feature = "mock")]
     MockDatabaseConnection(Arc<crate::MockDatabaseConnection>),
 
-    // Create a Proxy database connection useful for proxying
-    #[cfg(any(feature = "proxy-mysql", feature = "proxy-postgres", feature = "proxy-sqlite"))]
+    /// Create a Proxy database connection useful for proxying
+    #[cfg(feature = "proxy")]
     ProxyDatabaseConnection(Arc<crate::ProxyDatabaseConnection>),
 
     /// The connection to the database has been severed
@@ -233,7 +233,7 @@ impl StreamTrait for DatabaseConnection {
                 }
                 #[cfg(feature = "proxy")]
                 DatabaseConnection::ProxyDatabaseConnection(conn) => {
-                    Ok(crate::QueryStream::from((conn.clone(), stmt, None)))
+                    Ok(crate::QueryStream::from((Arc::clone(conn), stmt, None)))
                 }
                 DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
             }
@@ -492,7 +492,7 @@ impl DatabaseConnection {
             DatabaseConnection::ProxyDatabaseConnection(_) => {
                 // Nothing to cleanup, we just consume the `DatabaseConnection`
                 Ok(())
-            },
+            }
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }

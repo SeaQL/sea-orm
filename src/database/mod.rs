@@ -58,6 +58,13 @@ pub struct ConnectOptions {
     pub(crate) sqlcipher_key: Option<Cow<'static, str>>,
     /// Schema search path (PostgreSQL only)
     pub(crate) schema_search_path: Option<String>,
+
+    /// Proxy type for proxy connections, which MySql is the default value (Proxy only)
+    #[cfg(feature = "proxy")]
+    pub(crate) proxy_type: Option<DbBackend>,
+    /// Proxy functions for proxy connections (Proxy only)
+    #[cfg(feature = "proxy")]
+    pub(crate) proxy_func: Option<std::sync::Arc<dyn ProxyDatabaseFuncTrait>>,
 }
 
 impl Database {
@@ -86,19 +93,28 @@ impl Database {
             return crate::MockDatabaseConnector::connect(&opt.url).await;
         }
         #[cfg(feature = "proxy")]
-        {
-            // Only match the prefix if the proxy feature is enabled
-            #[cfg(feature = "proxy-mysql")]
-            if DbBackend::MySql.is_prefix_of(&opt.url) {
-                return crate::ProxyDatabaseConnector::connect(DbBackend::MySql).await;
-            }
-            #[cfg(feature = "proxy-postgres")]
-            if DbBackend::Postgres.is_prefix_of(&opt.url) {
-                return crate::ProxyDatabaseConnector::connect(DbBackend::Postgres).await;
-            }
-            #[cfg(feature = "proxy-sqlite")]
-            if DbBackend::Sqlite.is_prefix_of(&opt.url) {
-                return crate::ProxyDatabaseConnector::connect(DbBackend::Sqlite).await;
+        if let Some(proxy_func_arc) = &opt.proxy_func {
+            if let Some(proxy_type) = &opt.proxy_type {
+                match proxy_type {
+                    DbBackend::MySql => {
+                        return crate::ProxyDatabaseConnector::connect(
+                            DbBackend::MySql,
+                            proxy_func_arc.to_owned(),
+                        );
+                    }
+                    DbBackend::Postgres => {
+                        return crate::ProxyDatabaseConnector::connect(
+                            DbBackend::Postgres,
+                            proxy_func_arc.to_owned(),
+                        );
+                    }
+                    DbBackend::Sqlite => {
+                        return crate::ProxyDatabaseConnector::connect(
+                            DbBackend::Sqlite,
+                            proxy_func_arc.to_owned(),
+                        );
+                    }
+                }
             }
         }
 
@@ -136,6 +152,11 @@ impl ConnectOptions {
             sqlx_logging_level: log::LevelFilter::Info,
             sqlcipher_key: None,
             schema_search_path: None,
+
+            #[cfg(feature = "proxy")]
+            proxy_type: Some(DbBackend::MySql),
+            #[cfg(feature = "proxy")]
+            proxy_func: None,
         }
     }
 

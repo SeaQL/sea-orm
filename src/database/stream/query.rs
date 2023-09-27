@@ -2,7 +2,7 @@
 
 use tracing::instrument;
 
-#[cfg(feature = "mock")]
+#[cfg(any(feature = "mock", feature = "proxy"))]
 use std::sync::Arc;
 use std::{pin::Pin, task::Poll};
 

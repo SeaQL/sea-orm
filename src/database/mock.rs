@@ -40,7 +40,7 @@ pub trait IntoMockRow {
 }
 
 /// Defines a transaction that is has not been committed
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OpenTransaction {
     stmts: Vec<Statement>,
     transaction_depth: usize,
@@ -361,14 +361,14 @@ impl Transaction {
 }
 
 impl OpenTransaction {
-    fn init() -> Self {
+    pub(crate) fn init() -> Self {
         Self {
             stmts: vec![Statement::from_string(DbBackend::Postgres, "BEGIN")],
             transaction_depth: 0,
         }
     }
 
-    fn begin_nested(&mut self, db_backend: DbBackend) {
+    pub(crate) fn begin_nested(&mut self, db_backend: DbBackend) {
         self.transaction_depth += 1;
         self.push(Statement::from_string(
             db_backend,
@@ -376,7 +376,7 @@ impl OpenTransaction {
         ));
     }
 
-    fn commit(&mut self, db_backend: DbBackend) -> bool {
+    pub(crate) fn commit(&mut self, db_backend: DbBackend) -> bool {
         if self.transaction_depth == 0 {
             self.push(Statement::from_string(db_backend, "COMMIT"));
             true
@@ -390,7 +390,7 @@ impl OpenTransaction {
         }
     }
 
-    fn rollback(&mut self, db_backend: DbBackend) -> bool {
+    pub(crate) fn rollback(&mut self, db_backend: DbBackend) -> bool {
         if self.transaction_depth == 0 {
             self.push(Statement::from_string(db_backend, "ROLLBACK"));
             true
@@ -404,11 +404,11 @@ impl OpenTransaction {
         }
     }
 
-    fn push(&mut self, stmt: Statement) {
+    pub(crate) fn push(&mut self, stmt: Statement) {
         self.stmts.push(stmt);
     }
 
-    fn into_transaction(self) -> Transaction {
+    pub(crate) fn into_transaction(self) -> Transaction {
         match self.transaction_depth {
             0 => Transaction { stmts: self.stmts },
             _ => panic!("There is uncommitted nested transaction"),

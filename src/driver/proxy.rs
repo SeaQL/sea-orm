@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, ProxyDatabase, QueryResult,
-    Statement, Transaction,
+    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, ProxyDatabase,
+    ProxyDatabaseFuncTrait, QueryResult, Statement,
 };
 use futures::Stream;
 use std::{
@@ -37,9 +37,6 @@ pub trait ProxyDatabaseTrait: Send + Debug {
     /// Roll back a transaction since errors were encountered
     fn rollback(&mut self);
 
-    /// Get all logs from a [ProxyDatabase] and return a [Transaction]
-    fn drain_transaction_log(&mut self) -> Vec<Transaction>;
-
     /// Get the backend being used in the [ProxyDatabase]
     fn get_database_backend(&self) -> DbBackend;
 
@@ -58,9 +55,12 @@ impl ProxyDatabaseConnector {
     /// Connect to the [ProxyDatabase]
     #[allow(unused_variables)]
     #[instrument(level = "trace")]
-    pub async fn connect(db_type: DbBackend) -> Result<DatabaseConnection, DbErr> {
+    pub fn connect(
+        db_type: DbBackend,
+        func: Arc<dyn ProxyDatabaseFuncTrait>,
+    ) -> Result<DatabaseConnection, DbErr> {
         Ok(DatabaseConnection::ProxyDatabaseConnection(Arc::new(
-            ProxyDatabaseConnection::new(ProxyDatabase::new(db_type)),
+            ProxyDatabaseConnection::new(ProxyDatabase::new(db_type, func)),
         )))
     }
 }
@@ -121,10 +121,7 @@ impl ProxyDatabaseConnection {
     /// Create a statement block  of SQL statements that execute together.
     #[instrument(level = "trace")]
     pub fn begin(&self) {
-        self.proxy
-            .lock()
-            .expect("Failed to acquire mocker")
-            .begin()
+        self.proxy.lock().expect("Failed to acquire mocker").begin()
     }
 
     /// Commit a transaction atomically to the database
