@@ -54,6 +54,8 @@ impl ExecResult {
             }
             #[cfg(feature = "mock")]
             ExecResultHolder::Mock(result) => result.last_insert_id,
+            #[cfg(feature = "proxy")]
+            ExecResultHolder::Proxy(result) => result.last_insert_id,
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -70,6 +72,8 @@ impl ExecResult {
             ExecResultHolder::SqlxSqlite(result) => result.rows_affected(),
             #[cfg(feature = "mock")]
             ExecResultHolder::Mock(result) => result.rows_affected,
+            #[cfg(feature = "proxy")]
+            ExecResultHolder::Proxy(result) => result.rows_affected,
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }

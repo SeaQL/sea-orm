@@ -158,14 +158,16 @@ mod tests {
 
     impl ProxyDatabaseFuncTrait for EmptyProxyFunc {
         fn query(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
+            println!("query: {:?}", statement);
             Ok(vec![])
         }
 
         fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
+            println!("execute: {:?}", statement);
             Ok(ExecResult {
                 result: crate::ExecResultHolder::Proxy(crate::ProxyExecResult {
-                    last_insert_id: 0,
-                    rows_affected: 0,
+                    last_insert_id: 1,
+                    rows_affected: 1,
                 }),
             })
         }
@@ -191,6 +193,12 @@ mod tests {
             ProxyDatabase::new(DbBackend::MySql, (*EMPTY_DB_FUNC).to_owned()).into_connection();
 
         let _ = cake::Entity::find().all(&db).await;
+
+        let item = cake::ActiveModel {
+            id: NotSet,
+            name: Set("Alice".to_string()),
+        };
+        cake::Entity::insert(item).exec(&db).await.unwrap();
 
         assert_eq!("1", "1");
     }
