@@ -214,6 +214,18 @@ impl FromQueryResult for JsonValue {
                 }
                 Ok(JsonValue::Object(map))
             }
+            #[cfg(feature = "proxy")]
+            crate::QueryResultRow::Proxy(row) => {
+                for (column, value) in row.clone().into_column_value_tuples() {
+                    let col = if !column.starts_with(pre) {
+                        continue;
+                    } else {
+                        column.replacen(pre, "", 1)
+                    };
+                    map.insert(col, sea_query::sea_value_to_json_value(&value));
+                }
+                Ok(JsonValue::Object(map))
+            }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
