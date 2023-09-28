@@ -54,12 +54,6 @@ pub struct ProxyRow {
     values: BTreeMap<String, Value>,
 }
 
-/// A trait to get a [ProxyRow] from a type useful for testing in the [ProxyDatabase]
-pub trait IntoProxyRow {
-    /// The method to perform this operation
-    fn into_mock_row(self) -> ProxyRow;
-}
-
 impl ProxyDatabase {
     /// Instantiate a proxy database with a [DbBackend] and the [ProxyDatabaseFuncTrait]
     pub fn new(db_backend: DbBackend, func: Arc<dyn ProxyDatabaseFuncTrait>) -> Self {
@@ -139,87 +133,5 @@ impl ProxyRow {
     /// An iterator over the keys and values of a mock row
     pub fn into_column_value_tuples(self) -> impl Iterator<Item = (String, Value)> {
         self.values.into_iter()
-    }
-}
-
-impl IntoProxyRow for ProxyRow {
-    fn into_mock_row(self) -> ProxyRow {
-        self
-    }
-}
-
-impl<M> IntoProxyRow for M
-where
-    M: ModelTrait,
-{
-    fn into_mock_row(self) -> ProxyRow {
-        let mut values = BTreeMap::new();
-        for col in <<M::Entity as EntityTrait>::Column>::iter() {
-            values.insert(col.to_string(), self.get(col));
-        }
-        ProxyRow { values }
-    }
-}
-
-impl<M, N> IntoProxyRow for (M, N)
-where
-    M: ModelTrait,
-    N: ModelTrait,
-{
-    fn into_mock_row(self) -> ProxyRow {
-        let mut mapped_join = BTreeMap::new();
-
-        for column in <<M as ModelTrait>::Entity as EntityTrait>::Column::iter() {
-            mapped_join.insert(
-                format!("{}{}", SelectA.as_str(), column.as_str()),
-                self.0.get(column),
-            );
-        }
-        for column in <<N as ModelTrait>::Entity as EntityTrait>::Column::iter() {
-            mapped_join.insert(
-                format!("{}{}", SelectB.as_str(), column.as_str()),
-                self.1.get(column),
-            );
-        }
-
-        mapped_join.into_mock_row()
-    }
-}
-
-impl<M, N> IntoProxyRow for (M, Option<N>)
-where
-    M: ModelTrait,
-    N: ModelTrait,
-{
-    fn into_mock_row(self) -> ProxyRow {
-        let mut mapped_join = BTreeMap::new();
-
-        for column in <<M as ModelTrait>::Entity as EntityTrait>::Column::iter() {
-            mapped_join.insert(
-                format!("{}{}", SelectA.as_str(), column.as_str()),
-                self.0.get(column),
-            );
-        }
-        if let Some(b_entity) = self.1 {
-            for column in <<N as ModelTrait>::Entity as EntityTrait>::Column::iter() {
-                mapped_join.insert(
-                    format!("{}{}", SelectB.as_str(), column.as_str()),
-                    b_entity.get(column),
-                );
-            }
-        }
-
-        mapped_join.into_mock_row()
-    }
-}
-
-impl<T> IntoProxyRow for BTreeMap<T, Value>
-where
-    T: Into<String>,
-{
-    fn into_mock_row(self) -> ProxyRow {
-        ProxyRow {
-            values: self.into_iter().map(|(k, v)| (k.into(), v)).collect(),
-        }
     }
 }
