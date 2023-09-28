@@ -1,7 +1,6 @@
 use crate::{
-    error::*, DatabaseConnection, DbBackend, EntityTrait, ExecResult, Iden, IdenStatic, Iterable,
-    ModelTrait, ProxyDatabaseConnection, ProxyDatabaseTrait, QueryResult, SelectA, SelectB,
-    Statement,
+    error::*, DatabaseConnection, DbBackend, ExecResult, ExecResultHolder, ProxyDatabaseConnection,
+    ProxyDatabaseTrait, QueryResult, Statement,
 };
 
 use sea_query::{Value, ValueType};
@@ -30,14 +29,6 @@ pub trait ProxyDatabaseFuncTrait: Send + Sync + std::fmt::Debug {
     fn ping(&self) -> Result<(), DbErr>;
 }
 
-#[cfg(feature = "proxy")]
-/// Defines a Proxy database suitable for testing
-#[derive(Debug, Clone)]
-pub struct ProxyDatabase {
-    db_backend: DbBackend,
-    proxy_func: Arc<dyn ProxyDatabaseFuncTrait>,
-}
-
 /// Defines the results obtained from a [ProxyDatabase]
 #[derive(Clone, Debug, Default)]
 pub struct ProxyExecResult {
@@ -52,6 +43,14 @@ pub struct ProxyExecResult {
 #[derive(Clone, Debug)]
 pub struct ProxyRow {
     values: BTreeMap<String, Value>,
+}
+
+#[cfg(feature = "proxy")]
+/// Defines a Proxy database suitable for testing
+#[derive(Debug, Clone)]
+pub struct ProxyDatabase {
+    db_backend: DbBackend,
+    proxy_func: Arc<dyn ProxyDatabaseFuncTrait>,
 }
 
 impl ProxyDatabase {
@@ -72,7 +71,15 @@ impl ProxyDatabase {
 impl ProxyDatabaseTrait for ProxyDatabase {
     #[instrument(level = "trace")]
     fn execute(&mut self, statement: Statement) -> Result<ExecResult, DbErr> {
-        self.proxy_func.execute(statement)
+        match self.proxy_func.execute(statement) {
+            Ok(result) => Ok(ExecResult {
+                result: ExecResultHolder::Proxy(ProxyExecResult {
+                    last_insert_id: result.last_insert_id(),
+                    rows_affected: result.rows_affected(),
+                }),
+            }),
+            Err(err) => Err(err),
+        }
     }
 
     #[instrument(level = "trace")]
@@ -130,8 +137,61 @@ impl ProxyRow {
         }
     }
 
-    /// An iterator over the keys and values of a mock row
+    /// An iterator over the keys and values of a proxy row
     pub fn into_column_value_tuples(self) -> impl Iterator<Item = (String, Value)> {
         self.values.into_iter()
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "proxy")]
+mod tests {
+    use crate::{
+        entity::*, tests_cfg::*, DbBackend, DbErr, ExecResult, ProxyDatabase,
+        ProxyDatabaseFuncTrait, QueryResult, Statement,
+    };
+    use pretty_assertions::assert_eq;
+    use std::sync::Arc;
+
+    #[derive(Debug)]
+    struct EmptyProxyFunc {}
+
+    impl ProxyDatabaseFuncTrait for EmptyProxyFunc {
+        fn query(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
+            Ok(vec![])
+        }
+
+        fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
+            Ok(ExecResult {
+                result: crate::ExecResultHolder::Proxy(crate::ProxyExecResult {
+                    last_insert_id: 0,
+                    rows_affected: 0,
+                }),
+            })
+        }
+
+        fn begin(&self) {}
+
+        fn commit(&self) {}
+
+        fn rollback(&self) {}
+
+        fn ping(&self) -> Result<(), DbErr> {
+            Ok(())
+        }
+    }
+
+    use once_cell::sync::Lazy;
+
+    static EMPTY_DB_FUNC: Lazy<Arc<EmptyProxyFunc>> = Lazy::new(|| Arc::new(EmptyProxyFunc {}));
+
+    #[smol_potat::test]
+    async fn test_empty_oper() {
+        let db =
+            ProxyDatabase::new(DbBackend::MySql, (*EMPTY_DB_FUNC).to_owned()).into_connection();
+
+        let _ = cake::Entity::find().all(&db).await;
+
+        assert_eq!("1", "1");
     }
 }

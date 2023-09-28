@@ -22,6 +22,9 @@ pub(crate) enum ExecResultHolder {
     /// Holds the result of executing an operation on the Mock database
     #[cfg(feature = "mock")]
     Mock(crate::MockExecResult),
+    /// Holds the result of executing an operation on the Proxy database
+    #[cfg(feature = "proxy")]
+    Proxy(crate::ProxyExecResult),
 }
 
 // ExecResult //
