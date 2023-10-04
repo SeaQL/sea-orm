@@ -338,6 +338,16 @@ impl ActiveEnum {
             }
 
             #[automatically_derived]
+            impl sea_orm::TryGetableArray for #ident {
+                fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, index: I) -> std::result::Result<Vec<Self>, sea_orm::TryGetError> {
+                    <<Self as sea_orm::ActiveEnum>::Value as sea_orm::ActiveEnumValue>::try_get_vec_by(res, index)?
+                        .into_iter()
+                        .map(|value| Self::try_from_value(&value).map_err(Into::into))
+                        .collect()
+                }
+            }
+
+            #[automatically_derived]
             #[allow(clippy::from_over_into)]
             impl Into<sea_orm::sea_query::Value> for #ident {
                 fn into(self) -> sea_orm::sea_query::Value {
