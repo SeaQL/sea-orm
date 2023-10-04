@@ -1,4 +1,4 @@
-use crate::{ColumnDef, DbErr, Iterable, QueryResult, TryFromU64, TryGetError, TryGetable};
+use crate::{ColIdx, ColumnDef, DbErr, Iterable, QueryResult, TryFromU64, TryGetError, TryGetable};
 use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 
 /// A Rust representation of enum defined in database.
@@ -110,11 +110,11 @@ use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 /// impl ActiveModelBehavior for ActiveModel {}
 /// ```
 pub trait ActiveEnum: Sized + Iterable {
-    /// Define the Rust type that each enum variant represents.
-    type Value: Into<Value> + ValueType + Nullable + TryGetable;
+    /// Define the Rust type that each enum variant corresponds.
+    type Value: ActiveEnumValue;
 
-    /// Define the enum value in Vector type.
-    type ValueVec: IntoIterator<Item = Self::Value>;
+    /// This has no purpose. It will be removed in the next major version.
+    type ValueVec;
 
     /// Get the name of enum
     fn name() -> DynIden;
@@ -144,13 +144,59 @@ pub trait ActiveEnum: Sized + Iterable {
     }
 }
 
+/// The Rust Value backing ActiveEnums
+pub trait ActiveEnumValue: Into<Value> + ValueType + Nullable + TryGetable {
+    /// For getting an array of enum. Postgres only
+    fn try_get_vec_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<Self>, TryGetError>;
+}
+
+macro_rules! impl_active_enum_value {
+    ($type:ident) => {
+        impl ActiveEnumValue for $type {
+            fn try_get_vec_by<I: ColIdx>(
+                _res: &QueryResult,
+                _index: I,
+            ) -> Result<Vec<Self>, TryGetError> {
+                panic!("Not supported by `postgres-array`")
+            }
+        }
+    };
+}
+
+macro_rules! impl_active_enum_value_with_pg_array {
+    ($type:ident) => {
+        impl ActiveEnumValue for $type {
+            fn try_get_vec_by<I: ColIdx>(
+                _res: &QueryResult,
+                _index: I,
+            ) -> Result<Vec<Self>, TryGetError> {
+                #[cfg(feature = "postgres-array")]
+                {
+                    <Vec<Self>>::try_get_by(_res, _index)
+                }
+                #[cfg(not(feature = "postgres-array"))]
+                panic!("`postgres-array` is not enabled")
+            }
+        }
+    };
+}
+
+impl_active_enum_value!(u8);
+impl_active_enum_value!(u16);
+impl_active_enum_value!(u32);
+impl_active_enum_value!(u64);
+impl_active_enum_value_with_pg_array!(String);
+impl_active_enum_value_with_pg_array!(i8);
+impl_active_enum_value_with_pg_array!(i16);
+impl_active_enum_value_with_pg_array!(i32);
+impl_active_enum_value_with_pg_array!(i64);
+
 impl<T> TryGetable for Vec<T>
 where
     T: ActiveEnum,
-    T::ValueVec: TryGetable,
 {
-    fn try_get_by<I: crate::ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
-        <T::ValueVec as TryGetable>::try_get_by(res, index)?
+    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
+        <T::Value>::try_get_vec_by(res, index)?
             .into_iter()
             .map(|value| T::try_from_value(&value).map_err(Into::into))
             .collect()
