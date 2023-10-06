@@ -11,5 +11,5 @@ pub fn main() {
         println!("result: {}", result);
     };
 
-    println!("Done at api");
+    println!("Done at WASI runtime");
 }
