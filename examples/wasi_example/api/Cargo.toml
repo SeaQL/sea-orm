@@ -7,3 +7,7 @@ publish = false
 [dependencies.sea-orm]
 path = "../../.."
 version = "*"
+
+[dependencies]
+anyhow = "^1"
+lazy_static = "^1"

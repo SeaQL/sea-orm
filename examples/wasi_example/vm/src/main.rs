@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use tokio::sync::oneshot;
+use tokio::sync::mpsc;
 
 use wasmtime::*;
 use wasmtime_wasi::{sync::WasiCtxBuilder, WasiCtx};
@@ -23,44 +23,23 @@ async fn main() -> Result<()> {
 
     wasmtime_wasi::add_to_linker(&mut linker, |s| s)?;
 
-    let (tx_before, rx_before) = oneshot::channel::<(usize, usize)>();
-    let (tx_after, rx_after) = oneshot::channel::<String>();
+    let (tx, mut rx) = mpsc::channel::<(usize, usize)>(32);
 
-    let tx_before_clone = std::sync::Arc::new(std::sync::Mutex::new(Some(tx_before)));
-    let rx_after_clone = std::sync::Arc::new(std::sync::Mutex::new(Some(rx_after)));
+    let count = std::sync::Arc::new(std::sync::Mutex::new(0));
     linker.func_wrap("sea-orm", "query", move |ptr: i32, len: i32| -> i32 {
-        println!("ptr: {}, len: {}", ptr, len);
-        let tx_before = tx_before_clone.lock().unwrap().take().unwrap();
-        println!("sending");
-        tx_before
-            .send((ptr as usize, len as usize))
-            .expect("Cannot send message from inner");
-        println!("sent");
-
-        let rx_after = rx_after_clone.lock().unwrap().take().unwrap();
-        tokio::task::block_in_place(move || {
-            let ret = rx_after
-                .blocking_recv()
-                .context("Cannot receive message from inner")
-                .unwrap();
-            println!("ret: {}", ret);
+        let tx = tx.clone();
+        tokio::spawn(async move {
+            tx.send((ptr as usize, len as usize)).await.unwrap();
         });
 
-        1
+        let count = count.clone();
+        let mut count = count.lock().unwrap();
+        *count += 1;
+        *count
     })?;
 
     linker.module(&mut store, "", &module)?;
 
-    // TODO - Sucks, but I don't know how to do this without tokio::spawn
-    tokio::spawn(async move {
-        tokio::task::block_in_place(move || {
-            let (ptr, len) = rx_before
-                .blocking_recv()
-                .context("Cannot receive message from outer")
-                .unwrap();
-            println!("ptr: {}, len: {}", ptr, len);
-        });
-    });
     linker
         .get_default(&mut store, "")?
         .typed::<(), ()>(&store)?
@@ -68,16 +47,14 @@ async fn main() -> Result<()> {
 
     let instance = linker.instantiate(&mut store, &module)?;
 
-    // let memory = instance
-    //     .get_memory(&mut store, "memory")
-    //     .expect("Cannot get memory");
-    // let data = memory.data(&mut store);
-    // let str = std::str::from_utf8(&data[ptr..ptr + len]).context("Cannot convert to str")?;
-    // tx_after
-    //     .send(str.to_owned())
-    //     .expect("Cannot send message from outer");
-
-    println!("Done at VM");
-
-    Ok(())
+    loop {
+        let (ptr, len) = rx.recv().await.context("Cannot receive message")?;
+        println!("ptr: {}, len: {}", ptr, len);
+        let memory = instance
+            .get_memory(&mut store, "memory")
+            .expect("Cannot get memory");
+        let data = memory.data(&mut store);
+        let str = std::str::from_utf8(&data[ptr..ptr + len]).context("Cannot convert to str")?;
+        println!("str: {}", str);
+    }
 }
