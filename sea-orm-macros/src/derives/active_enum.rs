@@ -342,7 +342,7 @@ impl ActiveEnum {
                 fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, index: I) -> std::result::Result<Vec<Self>, sea_orm::TryGetError> {
                     <<Self as sea_orm::ActiveEnum>::Value as sea_orm::ActiveEnumValue>::try_get_vec_by(res, index)?
                         .into_iter()
-                        .map(|value| Self::try_from_value(&value).map_err(Into::into))
+                        .map(|value| <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(Into::into))
                         .collect()
                 }
             }
