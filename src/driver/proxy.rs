@@ -1,6 +1,6 @@
 use crate::{
-    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, ProxyDatabase,
-    ProxyDatabaseFuncTrait, QueryResult, Statement,
+    debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, ProxyDatabaseTrait,
+    QueryResult, Statement,
 };
 use futures::Stream;
 use std::{
@@ -17,31 +17,8 @@ pub struct ProxyDatabaseConnector;
 /// Defines a connection for the [ProxyDatabase]
 #[derive(Debug)]
 pub struct ProxyDatabaseConnection {
-    proxy: Mutex<Box<dyn ProxyDatabaseTrait>>,
-}
-
-/// A Trait for any type wanting to perform operations on the [ProxyDatabase]
-pub trait ProxyDatabaseTrait: Send + Debug {
-    /// Execute a statement in the [ProxyDatabase]
-    fn execute(&mut self, stmt: Statement) -> Result<ExecResult, DbErr>;
-
-    /// Execute a SQL query in the [ProxyDatabase]
-    fn query(&mut self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr>;
-
-    /// Create a transaction that can be committed atomically
-    fn begin(&mut self);
-
-    /// Commit a successful transaction atomically into the [ProxyDatabase]
-    fn commit(&mut self);
-
-    /// Roll back a transaction since errors were encountered
-    fn rollback(&mut self);
-
-    /// Get the backend being used in the [ProxyDatabase]
-    fn get_database_backend(&self) -> DbBackend;
-
-    /// Ping the [ProxyDatabase]
-    fn ping(&self) -> Result<(), DbErr>;
+    db_backend: DbBackend,
+    proxy: Arc<Mutex<Box<dyn ProxyDatabaseTrait>>>,
 }
 
 impl ProxyDatabaseConnector {
@@ -57,38 +34,38 @@ impl ProxyDatabaseConnector {
     #[instrument(level = "trace")]
     pub fn connect(
         db_type: DbBackend,
-        func: Arc<dyn ProxyDatabaseFuncTrait>,
+        func: Arc<Mutex<Box<dyn ProxyDatabaseTrait>>>,
     ) -> Result<DatabaseConnection, DbErr> {
         Ok(DatabaseConnection::ProxyDatabaseConnection(Arc::new(
-            ProxyDatabaseConnection::new(ProxyDatabase::new(db_type, func)),
+            ProxyDatabaseConnection::new(db_type, func),
         )))
     }
 }
 
 impl ProxyDatabaseConnection {
     /// Create a connection to the [ProxyDatabase]
-    pub fn new<M: 'static>(m: M) -> Self
-    where
-        M: ProxyDatabaseTrait,
-    {
+    pub fn new(db_backend: DbBackend, funcs: Arc<Mutex<Box<dyn ProxyDatabaseTrait>>>) -> Self {
         Self {
-            proxy: Mutex::new(Box::new(m)),
+            db_backend,
+            proxy: funcs.to_owned(),
         }
     }
 
     /// Get the [DatabaseBackend](crate::DatabaseBackend) being used by the [ProxyDatabase]
     pub fn get_database_backend(&self) -> DbBackend {
-        self.proxy
-            .lock()
-            .expect("Fail to acquire mocker")
-            .get_database_backend()
+        self.db_backend
     }
 
     /// Execute the SQL statement in the [ProxyDatabase]
     #[instrument(level = "trace")]
     pub fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", statement);
-        self.proxy.lock().map_err(exec_err)?.execute(statement)
+        Ok(self
+            .proxy
+            .lock()
+            .map_err(exec_err)?
+            .execute(statement)?
+            .into())
     }
 
     /// Return one [QueryResult] if the query was successful
@@ -96,14 +73,28 @@ impl ProxyDatabaseConnection {
     pub fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", statement);
         let result = self.proxy.lock().map_err(query_err)?.query(statement)?;
-        Ok(result.into_iter().next())
+
+        if let Some(first) = result.first() {
+            return Ok(Some(QueryResult {
+                row: crate::QueryResultRow::Proxy(first.to_owned()),
+            }));
+        } else {
+            return Ok(None);
+        }
     }
 
     /// Return all [QueryResult]s if the query was successful
     #[instrument(level = "trace")]
     pub fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", statement);
-        self.proxy.lock().map_err(query_err)?.query(statement)
+        let result = self.proxy.lock().map_err(query_err)?.query(statement)?;
+
+        Ok(result
+            .into_iter()
+            .map(|row| QueryResult {
+                row: crate::QueryResultRow::Proxy(row),
+            })
+            .collect())
     }
 
     /// Return [QueryResult]s  from a multi-query operation

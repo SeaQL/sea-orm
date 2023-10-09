@@ -3,8 +3,7 @@
 #![deny(missing_docs)]
 
 use sea_orm::{
-    Database, DbBackend, DbErr, ExecResult, ProxyDatabaseTrait, ProxyExecResult, ProxyQueryRow,
-    Statement,
+    Database, DbBackend, DbErr, ProxyDatabaseTrait, ProxyExecResult, ProxyRow, Statement,
 };
 use std::sync::{Arc, Mutex};
 
@@ -12,14 +11,14 @@ use std::sync::{Arc, Mutex};
 struct ProxyDb {}
 
 impl ProxyDatabaseTrait for ProxyDb {
-    fn query(&self, statement: Statement) -> Result<Vec<ProxyQueryRow>, DbErr> {
+    fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr> {
         println!("SQL query: {}", statement.sql);
-        Ok(vec![])
+        Ok(vec![].into())
     }
 
     fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
         println!("SQL execute: {}", statement.sql);
-        Ok(ProxyExecResult::default())
+        Ok(Default::default())
     }
 }
 
