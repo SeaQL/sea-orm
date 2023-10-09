@@ -21,7 +21,10 @@ pub use mock::*;
 #[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
 pub use proxy::*;
 pub use statement::*;
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    sync::{Arc, Mutex},
+};
 pub use stream::*;
 use tracing::instrument;
 pub use transaction::*;
@@ -58,13 +61,6 @@ pub struct ConnectOptions {
     pub(crate) sqlcipher_key: Option<Cow<'static, str>>,
     /// Schema search path (PostgreSQL only)
     pub(crate) schema_search_path: Option<String>,
-
-    /// Proxy type for proxy connections, which MySql is the default value (Proxy only)
-    #[cfg(feature = "proxy")]
-    pub(crate) proxy_type: Option<DbBackend>,
-    /// Proxy functions for proxy connections (Proxy only)
-    #[cfg(feature = "proxy")]
-    pub(crate) proxy_func: Option<std::sync::Arc<dyn ProxyDatabaseFuncTrait>>,
 }
 
 impl Database {
@@ -92,41 +88,40 @@ impl Database {
         if crate::MockDatabaseConnector::accepts(&opt.url) {
             return crate::MockDatabaseConnector::connect(&opt.url).await;
         }
-        #[cfg(feature = "proxy")]
-        if let Some(proxy_type) = &opt.proxy_type {
-            if let Some(proxy_func_arc) = &opt.proxy_func {
-                match proxy_type {
-                    DbBackend::MySql => {
-                        return crate::ProxyDatabaseConnector::connect(
-                            DbBackend::MySql,
-                            proxy_func_arc.to_owned(),
-                        );
-                    }
-                    DbBackend::Postgres => {
-                        return crate::ProxyDatabaseConnector::connect(
-                            DbBackend::Postgres,
-                            proxy_func_arc.to_owned(),
-                        );
-                    }
-                    DbBackend::Sqlite => {
-                        return crate::ProxyDatabaseConnector::connect(
-                            DbBackend::Sqlite,
-                            proxy_func_arc.to_owned(),
-                        );
-                    }
-                }
-            } else {
-                return Err(conn_err(format!(
-                    "The connection string '{}' has no proxy function.",
-                    opt.url
-                )));
-            }
-        }
 
         Err(conn_err(format!(
             "The connection string '{}' has no supporting driver.",
             opt.url
         )))
+    }
+
+    /// Method to create a [DatabaseConnection] on a proxy database
+    #[cfg(feature = "proxy")]
+    #[instrument(level = "trace", skip(proxy_func_arc))]
+    pub async fn connect_proxy(
+        db_type: DbBackend,
+        proxy_func_arc: Arc<Mutex<Box<dyn ProxyDatabaseTrait>>>,
+    ) -> Result<DatabaseConnection, DbErr> {
+        match db_type {
+            DbBackend::MySql => {
+                return crate::ProxyDatabaseConnector::connect(
+                    DbBackend::MySql,
+                    proxy_func_arc.to_owned(),
+                );
+            }
+            DbBackend::Postgres => {
+                return crate::ProxyDatabaseConnector::connect(
+                    DbBackend::Postgres,
+                    proxy_func_arc.to_owned(),
+                );
+            }
+            DbBackend::Sqlite => {
+                return crate::ProxyDatabaseConnector::connect(
+                    DbBackend::Sqlite,
+                    proxy_func_arc.to_owned(),
+                );
+            }
+        }
     }
 }
 
@@ -157,11 +152,6 @@ impl ConnectOptions {
             sqlx_logging_level: log::LevelFilter::Info,
             sqlcipher_key: None,
             schema_search_path: None,
-
-            #[cfg(feature = "proxy")]
-            proxy_type: Some(DbBackend::MySql),
-            #[cfg(feature = "proxy")]
-            proxy_func: None,
         }
     }
 
@@ -302,23 +292,6 @@ impl ConnectOptions {
         T: Into<String>,
     {
         self.schema_search_path = Some(schema_search_path.into());
-        self
-    }
-
-    /// Set the proxy type for proxy connections, which MySql is the default value
-    #[cfg(feature = "proxy")]
-    pub fn proxy_type(&mut self, proxy_type: DbBackend) -> &mut Self {
-        self.proxy_type = Some(proxy_type);
-        self
-    }
-
-    /// Set the proxy functions for proxy connections
-    #[cfg(feature = "proxy")]
-    pub fn proxy_func(
-        &mut self,
-        proxy_func: std::sync::Arc<dyn ProxyDatabaseFuncTrait>,
-    ) -> &mut Self {
-        self.proxy_func = Some(proxy_func);
         self
     }
 }
