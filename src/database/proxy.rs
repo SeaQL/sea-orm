@@ -1,10 +1,10 @@
 use crate::{
     error::*, DatabaseConnection, DbBackend, ExecResult, ExecResultHolder, ProxyDatabaseConnection,
-    ProxyDatabaseTrait, QueryResult, Statement,
+    ProxyDatabaseTrait, QueryResult, QueryResultRow, Statement,
 };
 
 use sea_query::{Value, ValueType};
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, fmt::Debug, sync::Arc};
 use tracing::instrument;
 
 #[cfg(feature = "proxy")]
@@ -17,16 +17,18 @@ pub trait ProxyDatabaseFuncTrait: Send + Sync + std::fmt::Debug {
     fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr>;
 
     /// Begin a transaction in the [ProxyDatabase]
-    fn begin(&self);
+    fn begin(&self) {}
 
     /// Commit a transaction in the [ProxyDatabase]
-    fn commit(&self);
+    fn commit(&self) {}
 
     /// Rollback a transaction in the [ProxyDatabase]
-    fn rollback(&self);
+    fn rollback(&self) {}
 
     /// Ping the [ProxyDatabase], it should return an error if the database is not available
-    fn ping(&self) -> Result<(), DbErr>;
+    fn ping(&self) -> Result<(), DbErr> {
+        Ok(())
+    }
 }
 
 /// Defines the results obtained from a [ProxyDatabase]
@@ -38,11 +40,94 @@ pub struct ProxyExecResult {
     pub rows_affected: u64,
 }
 
+impl ProxyExecResult {
+    /// Create a new [ProxyExecResult] from the last inserted id and the number of rows affected
+    pub fn new(last_insert_id: u64, rows_affected: u64) -> Self {
+        Self {
+            last_insert_id,
+            rows_affected,
+        }
+    }
+}
+
+impl Default for ExecResultHolder {
+    fn default() -> Self {
+        Self::Proxy(ProxyExecResult::default())
+    }
+}
+
+impl From<ProxyExecResult> for ExecResult {
+    fn from(result: ProxyExecResult) -> Self {
+        Self {
+            result: ExecResultHolder::Proxy(result),
+        }
+    }
+}
+
+impl From<ExecResult> for ProxyExecResult {
+    fn from(result: ExecResult) -> Self {
+        match result.result {
+            ExecResultHolder::Proxy(result) => result,
+            _ => unreachable!("Cannot convert ExecResult to ProxyExecResult"),
+        }
+    }
+}
+
 /// Defines the structure of a test Row for the [ProxyDatabase]
 /// which is just a [BTreeMap]<[String], [Value]>
 #[derive(Clone, Debug)]
 pub struct ProxyRow {
     values: BTreeMap<String, Value>,
+}
+
+impl ProxyRow {
+    /// Create a new [ProxyRow] from a [BTreeMap]<[String], [Value]>
+    pub fn new(values: BTreeMap<String, Value>) -> Self {
+        Self { values }
+    }
+}
+
+impl Default for ProxyRow {
+    fn default() -> Self {
+        Self {
+            values: BTreeMap::new(),
+        }
+    }
+}
+
+impl From<BTreeMap<String, Value>> for ProxyRow {
+    fn from(values: BTreeMap<String, Value>) -> Self {
+        Self { values }
+    }
+}
+
+impl From<ProxyRow> for BTreeMap<String, Value> {
+    fn from(row: ProxyRow) -> Self {
+        row.values
+    }
+}
+
+impl From<ProxyRow> for Vec<(String, Value)> {
+    fn from(row: ProxyRow) -> Self {
+        row.values.into_iter().collect()
+    }
+}
+
+impl From<ProxyRow> for QueryResult {
+    fn from(row: ProxyRow) -> Self {
+        QueryResult {
+            row: QueryResultRow::Proxy(row),
+        }
+    }
+}
+
+impl From<QueryResult> for ProxyRow {
+    fn from(result: QueryResult) -> Self {
+        match result.row {
+            QueryResultRow::Proxy(row) => row,
+            _ => unreachable!("Cannot convert QueryResult to ProxyRow"),
+        }
+    }
 }
 
 #[cfg(feature = "proxy")]

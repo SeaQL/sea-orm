@@ -93,8 +93,8 @@ impl Database {
             return crate::MockDatabaseConnector::connect(&opt.url).await;
         }
         #[cfg(feature = "proxy")]
-        if let Some(proxy_func_arc) = &opt.proxy_func {
-            if let Some(proxy_type) = &opt.proxy_type {
+        if let Some(proxy_type) = &opt.proxy_type {
+            if let Some(proxy_func_arc) = &opt.proxy_func {
                 match proxy_type {
                     DbBackend::MySql => {
                         return crate::ProxyDatabaseConnector::connect(
@@ -115,6 +115,11 @@ impl Database {
                         );
                     }
                 }
+            } else {
+                return Err(conn_err(format!(
+                    "The connection string '{}' has no proxy function.",
+                    opt.url
+                )));
             }
         }
 
@@ -297,6 +302,23 @@ impl ConnectOptions {
         T: Into<String>,
     {
         self.schema_search_path = Some(schema_search_path.into());
+        self
+    }
+
+    /// Set the proxy type for proxy connections, which MySql is the default value
+    #[cfg(feature = "proxy")]
+    pub fn proxy_type(&mut self, proxy_type: DbBackend) -> &mut Self {
+        self.proxy_type = Some(proxy_type);
+        self
+    }
+
+    /// Set the proxy functions for proxy connections
+    #[cfg(feature = "proxy")]
+    pub fn proxy_func(
+        &mut self,
+        proxy_func: std::sync::Arc<dyn ProxyDatabaseFuncTrait>,
+    ) -> &mut Self {
+        self.proxy_func = Some(proxy_func);
         self
     }
 }

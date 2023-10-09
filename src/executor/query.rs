@@ -1,7 +1,7 @@
 use crate::{error::*, SelectGetableValue, SelectorRaw, Statement};
 use std::fmt;
 
-#[cfg(feature = "mock")]
+#[cfg(any(feature = "mock", feature = "proxy"))]
 use crate::debug_print;
 
 #[cfg(feature = "sqlx-dep")]
