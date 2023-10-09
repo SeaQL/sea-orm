@@ -21,10 +21,7 @@ pub use mock::*;
 #[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
 pub use proxy::*;
 pub use statement::*;
-use std::{
-    borrow::Cow,
-    sync::{Arc, Mutex},
-};
+use std::borrow::Cow;
 pub use stream::*;
 use tracing::instrument;
 pub use transaction::*;
@@ -100,7 +97,7 @@ impl Database {
     #[instrument(level = "trace", skip(proxy_func_arc))]
     pub async fn connect_proxy(
         db_type: DbBackend,
-        proxy_func_arc: Arc<Mutex<Box<dyn ProxyDatabaseTrait>>>,
+        proxy_func_arc: std::sync::Arc<std::sync::Mutex<Box<dyn ProxyDatabaseTrait>>>,
     ) -> Result<DatabaseConnection, DbErr> {
         match db_type {
             DbBackend::MySql => {

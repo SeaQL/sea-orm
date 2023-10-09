@@ -13,7 +13,7 @@ struct ProxyDb {}
 impl ProxyDatabaseTrait for ProxyDb {
     fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr> {
         println!("SQL query: {}", statement.sql);
-        Ok(vec![].into())
+        Ok(vec![])
     }
 
     fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {

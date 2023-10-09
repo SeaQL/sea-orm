@@ -179,7 +179,6 @@ mod tests {
         entity::*, tests_cfg::*, Database, DbBackend, DbErr, ProxyDatabaseTrait, ProxyExecResult,
         ProxyRow, Statement,
     };
-    use pretty_assertions::assert_eq;
     use std::sync::{Arc, Mutex};
 
     #[derive(Debug)]
@@ -193,23 +192,43 @@ mod tests {
 
         fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
             println!("SQL execute: {}", statement.sql);
-            Ok(Default::default())
+            Ok(ProxyExecResult {
+                last_insert_id: 1,
+                rows_affected: 1,
+            })
         }
     }
 
     #[smol_potat::test]
-    async fn test_empty_oper() {
+    async fn create_proxy_conn() {
+        let db =
+            Database::connect_proxy(DbBackend::MySql, Arc::new(Mutex::new(Box::new(ProxyDb {}))))
+                .await
+                .unwrap();
+    }
+
+    #[smol_potat::test]
+    async fn select_rows() {
         let db =
             Database::connect_proxy(DbBackend::MySql, Arc::new(Mutex::new(Box::new(ProxyDb {}))))
                 .await
                 .unwrap();
 
         let _ = cake::Entity::find().all(&db).await;
+    }
+
+    #[smol_potat::test]
+    async fn insert_one_row() {
+        let db =
+            Database::connect_proxy(DbBackend::MySql, Arc::new(Mutex::new(Box::new(ProxyDb {}))))
+                .await
+                .unwrap();
 
         let item = cake::ActiveModel {
             id: NotSet,
             name: Set("Alice".to_string()),
         };
+
         cake::Entity::insert(item).exec(&db).await.unwrap();
     }
 }
