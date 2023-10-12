@@ -44,6 +44,7 @@ pub use event_trigger::Entity as EventTrigger;
 pub use insert_default::Entity as InsertDefault;
 pub use json_struct::Entity as JsonStruct;
 pub use json_vec::Entity as JsonVec;
+pub use json_vec_derive::json_string_vec::Entity as JsonStringVec;
 pub use json_vec_derive::json_struct_vec::Entity as JsonStructVec;
 pub use metadata::Entity as Metadata;
 pub use pi::Entity as Pi;

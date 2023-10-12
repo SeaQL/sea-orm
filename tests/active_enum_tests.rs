@@ -23,12 +23,12 @@ async fn main() -> Result<(), DbErr> {
     insert_active_enum(&ctx.db).await?;
     insert_active_enum_child(&ctx.db).await?;
 
-    if cfg!(feature = "sqlx-postgres") {
-        insert_active_enum_vec(&ctx.db).await?;
-    }
+    #[cfg(feature = "sqlx-postgres")]
+    insert_active_enum_vec(&ctx.db).await?;
 
     find_related_active_enum(&ctx.db).await?;
     find_linked_active_enum(&ctx.db).await?;
+
     ctx.delete().await;
 
     Ok(())
