@@ -1,11 +1,13 @@
 use super::*;
+use crate::common::features::json_vec_derive::json_struct_vec;
 use crate::common::setup::{create_enum, create_table, create_table_without_asserts};
 use sea_orm::{
     error::*, sea_query, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityName,
     ExecResult, Schema,
 };
 use sea_query::{
-    extension::postgres::Type, Alias, BlobSize, ColumnDef, ForeignKeyCreateStatement, IntoIden,
+    extension::postgres::Type, Alias, BlobSize, ColumnDef, ColumnType, ForeignKeyCreateStatement,
+    IntoIden,
 };
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
@@ -18,7 +20,6 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_byte_primary_key_table(db).await?;
     create_satellites_table(db).await?;
     create_transaction_log_table(db).await?;
-    create_json_vec_table(db).await?;
     create_json_struct_table(db).await?;
 
     let create_enum_stmts = match db_backend {
@@ -54,6 +55,9 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
         create_value_type_postgres_table(db).await?;
         create_collection_table(db).await?;
         create_event_trigger_table(db).await?;
+        create_json_vec_table(db).await?;
+        create_json_struct_vec_table(db).await?;
+        create_categories_table(db).await?;
     }
 
     Ok(())
@@ -319,6 +323,26 @@ pub async fn create_json_vec_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     create_table(db, &create_table_stmt, JsonVec).await
 }
 
+pub async fn create_json_struct_vec_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(json_struct_vec::Entity.table_ref())
+        .col(
+            ColumnDef::new(json_struct_vec::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(json_struct_vec::Column::StructVec)
+                .json_binary()
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &create_table_stmt, JsonStructVec).await
+}
+
 pub async fn create_json_struct_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = sea_query::Table::create()
         .table(json_struct::Entity)
@@ -519,6 +543,21 @@ pub async fn create_teas_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &create_table_stmt, Teas).await
+}
+
+pub async fn create_categories_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(categories::Entity.table_ref())
+        .col(
+            ColumnDef::new(categories::Column::Id)
+                .integer()
+                .not_null()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(categories::Column::Categories).array(ColumnType::String(Some(1))))
+        .to_owned();
+
+    create_table(db, &create_table_stmt, Categories).await
 }
 
 pub async fn create_binary_table(db: &DbConn) -> Result<ExecResult, DbErr> {
