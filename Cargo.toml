@@ -34,12 +34,12 @@ tracing = { version = "0.1", default-features = false, features = ["attributes",
 rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.3", default-features = false, optional = true }
 sea-orm-macros = { version = "0.12.3", path = "sea-orm-macros", default-features = false, features = ["strum"] }
-sea-query = { version = "0.30.2", default-features = false, features = ["thread-safe", "hashable-value", "backend-mysql", "backend-postgres", "backend-sqlite"] }
-sea-query-binder = { version = "0.5.0", default-features = false, optional = true }
+sea-query = { git = "https://github.com/yasamoka/sea-query", branch = "pg-interval-value", default-features = false, features = ["thread-safe", "hashable-value", "backend-mysql", "backend-postgres", "backend-sqlite"] }
+sea-query-binder = { git = "https://github.com/yasamoka/sea-query", branch = "pg-interval-value", package="sea-query-binder", default-features = false, optional = true }
 strum = { version = "0.25", default-features = false }
 serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false, optional = true }
-sqlx = { version = "0.7", default-features = false, optional = true }
+sqlx = { git = "https://github.com/yasamoka/sqlx", branch = "pg-interval-hash", default-features = false, optional = true }
 uuid = { version = "1", default-features = false, optional = true }
 ouroboros = { version = "0.17", default-features = false }
 url = { version = "2.2", default-features = false }
@@ -83,6 +83,7 @@ with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-binder?
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
 with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
 postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array", "sea-orm-macros/postgres-array"]
+postgres-interval = ["with-chrono", "sea-query/postgres-interval", "sea-query-binder?/postgres-interval", "sqlx/postgres"]
 sea-orm-internal = []
 sqlx-dep = []
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]

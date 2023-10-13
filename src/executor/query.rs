@@ -6,6 +6,8 @@ use crate::debug_print;
 
 #[cfg(feature = "sqlx-dep")]
 use crate::driver::*;
+#[cfg(feature = "postgres-interval")]
+use sqlx::postgres::types::PgInterval;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::Row;
 
@@ -424,6 +426,9 @@ try_getable_all!(chrono::DateTime<chrono::Utc>);
 
 #[cfg(feature = "with-chrono")]
 try_getable_all!(chrono::DateTime<chrono::Local>);
+
+#[cfg(feature = "postgres-interval")]
+try_getable_all!(PgInterval);
 
 #[cfg(feature = "with-time")]
 try_getable_all!(time::Date);
