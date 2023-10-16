@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### New Features
 
 * Add support for root JSON arrays https://github.com/SeaQL/sea-orm/pull/1898
-    Now the following works!
+    Now the following works (requires the `json-array` / `postgres-array` feature)!
 ```rust
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "json_struct_vec")]
