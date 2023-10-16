@@ -5,7 +5,8 @@ use sea_orm::{
     ExecResult, Schema,
 };
 use sea_query::{
-    extension::postgres::Type, Alias, BlobSize, ColumnDef, ForeignKeyCreateStatement, IntoIden,
+    extension::postgres::Type, Alias, BlobSize, ColumnDef, ColumnType, ForeignKeyCreateStatement,
+    IntoIden,
 };
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
@@ -18,8 +19,6 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_byte_primary_key_table(db).await?;
     create_satellites_table(db).await?;
     create_transaction_log_table(db).await?;
-    create_json_vec_table(db).await?;
-    create_json_struct_table(db).await?;
 
     let create_enum_stmts = match db_backend {
         DbBackend::MySql | DbBackend::Sqlite => Vec::new(),
@@ -50,10 +49,16 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_dyn_table_name_lazy_static_table(db).await?;
     create_value_type_table(db).await?;
 
+    create_json_vec_table(db).await?;
+    create_json_struct_table(db).await?;
+    create_json_string_vec_table(db).await?;
+    create_json_struct_vec_table(db).await?;
+
     if DbBackend::Postgres == db_backend {
         create_value_type_postgres_table(db).await?;
         create_collection_table(db).await?;
         create_event_trigger_table(db).await?;
+        create_categories_table(db).await?;
     }
 
     Ok(())
@@ -341,6 +346,42 @@ pub async fn create_json_struct_table(db: &DbConn) -> Result<ExecResult, DbErr> 
     create_table(db, &stmt, JsonStruct).await
 }
 
+pub async fn create_json_string_vec_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(JsonStringVec.table_ref())
+        .col(
+            ColumnDef::new(json_vec_derive::json_string_vec::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(json_vec_derive::json_string_vec::Column::StrVec).json())
+        .to_owned();
+
+    create_table(db, &create_table_stmt, JsonStringVec).await
+}
+
+pub async fn create_json_struct_vec_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(JsonStructVec.table_ref())
+        .col(
+            ColumnDef::new(json_vec_derive::json_struct_vec::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(json_vec_derive::json_struct_vec::Column::StructVec)
+                .json_binary()
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &create_table_stmt, JsonStructVec).await
+}
+
 pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     db.execute(sea_orm::Statement::from_string(
         db.get_database_backend(),
@@ -519,6 +560,21 @@ pub async fn create_teas_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &create_table_stmt, Teas).await
+}
+
+pub async fn create_categories_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let create_table_stmt = sea_query::Table::create()
+        .table(categories::Entity.table_ref())
+        .col(
+            ColumnDef::new(categories::Column::Id)
+                .integer()
+                .not_null()
+                .primary_key(),
+        )
+        .col(ColumnDef::new(categories::Column::Categories).array(ColumnType::String(Some(1))))
+        .to_owned();
+
+    create_table(db, &create_table_stmt, Categories).await
 }
 
 pub async fn create_binary_table(db: &DbConn) -> Result<ExecResult, DbErr> {
