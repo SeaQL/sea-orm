@@ -1,5 +1,5 @@
 [package]
-name = "rocket-example-service"
+name = "rocket-okapi-example-service"
 version = "0.1.0"
 edition = "2021"
 
