@@ -1,5 +1,5 @@
 [package]
-name = "sea-orm-proxy-conn-example"
+name = "sea-orm-proxy-surrealdb-example"
 version = "0.1.0"
 authors = ["Langyo <langyo.china@gmail.com>"]
 edition = "2021"
