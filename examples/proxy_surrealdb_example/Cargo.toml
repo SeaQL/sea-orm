@@ -6,7 +6,6 @@ edition = "2021"
 publish = false
 
 [workspace]
-members = ["."]
 
 [dependencies]
 async-std = { version = "1.12", features = ["attributes", "tokio1"] }

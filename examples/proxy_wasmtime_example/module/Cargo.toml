@@ -1,0 +1,11 @@
+[package]
+name = "sea-orm-proxy-wasmtime-example-module"
+version = "0.1.0"
+authors = ["Langyo <langyo.china@gmail.com>"]
+edition = "2021"
+publish = false
+
+[dependencies]
+ron = "0.8"
+serde = { version = "1", features = ["derive"] }
+anyhow = "1"
