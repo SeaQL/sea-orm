@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.12.4 - Pending
 
+### New Features
+
+* Add support for root JSON arrays https://github.com/SeaQL/sea-orm/pull/1898
+    Now the following works (requires the `json-array` / `postgres-array` feature)!
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "json_struct_vec")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    #[sea_orm(column_type = "Json")]
+    pub struct_vec: Vec<JsonColumn>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
+pub struct JsonColumn {
+    pub value: String,
+}
+```
+
 ### Enhancements
 
 * Loader: use `ValueTuple` as hash key https://github.com/SeaQL/sea-orm/pull/1868

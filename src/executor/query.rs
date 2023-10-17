@@ -1027,6 +1027,25 @@ fn try_get_many_with_slice_len_of(len: usize, cols: &[String]) -> Result<(), Try
     }
 }
 
+/// An interface to get an array of values from the query result.
+/// A type can only implement `ActiveEnum` or `TryGetableFromJson`, but not both.
+/// A blanket impl is provided for `TryGetableFromJson`, while the impl for `ActiveEnum`
+/// is provided by the `DeriveActiveEnum` macro. So as an end user you won't normally
+/// touch this trait.
+pub trait TryGetableArray: Sized {
+    /// Just a delegate
+    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<Self>, TryGetError>;
+}
+
+impl<T> TryGetable for Vec<T>
+where
+    T: TryGetableArray,
+{
+    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
+        T::try_get_by(res, index)
+    }
+}
+
 // TryGetableFromJson //
 
 /// An interface to get a JSON from the query result
@@ -1074,6 +1093,22 @@ where
             _ => unreachable!(),
         }
     }
+
+    /// Get a Vec<Self> from an Array of Json
+    fn from_json_vec(value: serde_json::Value) -> Result<Vec<Self>, TryGetError> {
+        match value {
+            serde_json::Value::Array(values) => {
+                let mut res = Vec::new();
+                for item in values {
+                    res.push(serde_json::from_value(item).map_err(json_err)?);
+                }
+                Ok(res)
+            }
+            _ => Err(TryGetError::DbErr(DbErr::Json(
+                "Value is not an Array".to_owned(),
+            ))),
+        }
+    }
 }
 
 #[cfg(feature = "with-json")]
@@ -1083,6 +1118,16 @@ where
 {
     fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Self, TryGetError> {
         T::try_get_from_json(res, index)
+    }
+}
+
+#[cfg(feature = "with-json")]
+impl<T> TryGetableArray for T
+where
+    T: TryGetableFromJson,
+{
+    fn try_get_by<I: ColIdx>(res: &QueryResult, index: I) -> Result<Vec<T>, TryGetError> {
+        T::from_json_vec(serde_json::Value::try_get_by(res, index)?)
     }
 }
 

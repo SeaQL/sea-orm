@@ -281,6 +281,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     }
 
     /// Cast value of an enum column as enum type; do nothing if `self` is not an enum.
+    /// Will also transform `Array(Vec<Json>)` into `Json(Vec<Json>)` if the column type is `Json`.
     fn save_enum_as(&self, val: Expr) -> SimpleExpr {
         cast_enum_as(val, self, |col, enum_name, col_type| {
             let type_name = match col_type {
@@ -412,9 +413,41 @@ where
 {
     let col_def = col.def();
     let col_type = col_def.get_column_type();
-    match col_type.get_enum_name() {
-        Some(enum_name) => f(expr, SeaRc::clone(enum_name), col_type),
-        None => expr.into(),
+
+    match col_type {
+        #[cfg(all(feature = "with-json", feature = "postgres-array"))]
+        ColumnType::Json | ColumnType::JsonBinary => {
+            use sea_query::ArrayType;
+            use serde_json::Value as Json;
+
+            #[allow(clippy::boxed_local)]
+            fn unbox<T>(boxed: Box<T>) -> T {
+                *boxed
+            }
+
+            let expr = expr.into();
+            match expr {
+                SimpleExpr::Value(Value::Array(ArrayType::Json, Some(json_vec))) => {
+                    // flatten Array(Vec<Json>) into Json
+                    let json_vec: Vec<Json> = json_vec
+                        .into_iter()
+                        .filter_map(|val| match val {
+                            Value::Json(Some(json)) => Some(unbox(json)),
+                            _ => None,
+                        })
+                        .collect();
+                    SimpleExpr::Value(Value::Json(Some(Box::new(json_vec.into()))))
+                }
+                SimpleExpr::Value(Value::Array(ArrayType::Json, None)) => {
+                    SimpleExpr::Value(Value::Json(None))
+                }
+                _ => expr,
+            }
+        }
+        _ => match col_type.get_enum_name() {
+            Some(enum_name) => f(expr, SeaRc::clone(enum_name), col_type),
+            None => expr.into(),
+        },
     }
 }
 
