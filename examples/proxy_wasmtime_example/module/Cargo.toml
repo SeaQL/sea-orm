@@ -9,3 +9,10 @@ publish = false
 ron = "0.8"
 serde = { version = "1", features = ["derive"] }
 anyhow = "1"
+async-std = { version = "1", features = ["attributes", "tokio1"] }
+
+sea-orm = { path = "../../../", default-features = false, features = [
+  "macros",
+  "proxy",
+  "runtime-async-std",
+] }

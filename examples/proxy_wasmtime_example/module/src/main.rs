@@ -1,7 +1,10 @@
 use anyhow::Result;
-use std::io;
-
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
+
+use sea_orm::{
+    Database, DbBackend, DbErr, ProxyDatabaseTrait, ProxyExecResult, ProxyRow, Statement,
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Msg {
@@ -9,20 +12,29 @@ pub struct Msg {
     pub data: String,
 }
 
-fn main() -> Result<()> {
-    loop {
-        let mut buffer = String::new();
-        let stdin = io::stdin();
-        stdin.read_line(&mut buffer)?;
+#[derive(Debug)]
+struct ProxyDb {}
 
-        let msg: Msg = ron::from_str(&buffer)?;
+impl ProxyDatabaseTrait for ProxyDb {
+    fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr> {
+        Ok(vec![])
+    }
 
-        let ret = Msg {
-            id: msg.id + 1,
-            data: msg.data + " hahaha",
-        };
-        let ret = ron::to_string(&ret)?;
+    fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
+        Ok(ProxyExecResult {
+            last_insert_id: 1,
+            rows_affected: 1,
+        })
+    }
+}
 
-        println!("{}", ret);
+#[async_std::main]
+async fn main() {
+    if let Ok(db) =
+        Database::connect_proxy(DbBackend::MySql, Arc::new(Mutex::new(Box::new(ProxyDb {})))).await
+    {
+        println!("Initialized {:?}", db);
+    } else {
+        println!("Failed to initialize");
     }
 }
