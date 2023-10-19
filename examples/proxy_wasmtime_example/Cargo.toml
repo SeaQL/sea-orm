@@ -6,11 +6,20 @@ edition = "2021"
 publish = false
 
 [workspace]
-members = [".", "module", "vm"]
+members = [".", "module"]
 resolver = "2"
 
-[profile.release]
-lto = true
-opt-level = 'z'
-codegen-units = 1
-panic = "abort"
+[dependencies]
+anyhow = "1"
+bytes = "1"
+async-trait = "0.1"
+ron = "0.8"
+serde = { version = "1", features = ["derive"] }
+reqwest = { version = "0.11", features = ["blocking"] }
+lazy_static = "1"
+flume = "0.11"
+async-std = { version = "1", features = ["attributes", "tokio1"] }
+
+wit-component = "0.15"
+wasmtime = { version = "13", features = ["component-model"] }
+wasmtime-wasi = "13"

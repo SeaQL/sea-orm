@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
 
     let component = &ComponentEncoder::default()
         .module(include_bytes!(
-            "../../target/wasm32-wasi/debug/sea-orm-proxy-wasmtime-example-module.wasm"
+            "../target/wasm32-wasi/debug/sea-orm-proxy-wasmtime-example-module.wasm"
         ))?
         .validate(true)
         .adapter("wasi_snapshot_preview1", adapter)?

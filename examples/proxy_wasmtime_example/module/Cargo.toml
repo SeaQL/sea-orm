@@ -5,6 +5,10 @@ authors = ["Langyo <langyo.china@gmail.com>"]
 edition = "2021"
 publish = false
 
+[lib]
+name = "module"
+path = "src/main.rs"
+
 [dependencies]
 ron = "0.8"
 serde = { version = "1", features = ["derive"] }
