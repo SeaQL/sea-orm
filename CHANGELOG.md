@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.12.4 - Pending
+## 0.12.4 - 2023-10-19
 
 ### New Features
 
@@ -33,7 +33,7 @@ pub struct JsonColumn {
 
 ### Upgrades
 
-* Updated `sea-query` to `0.30.2`
+* Updated `sea-query` to `0.30.2` https://github.com/SeaQL/sea-query/releases/tag/0.30.2
 
 ## 0.12.3 - 2023-09-22
 
