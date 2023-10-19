@@ -28,7 +28,7 @@ impl ProxyDatabaseTrait for ProxyDb {
     }
 }
 
-#[async_std::main]
+#[tokio::main]
 async fn main() {
     if let Ok(db) =
         Database::connect_proxy(DbBackend::MySql, Arc::new(Mutex::new(Box::new(ProxyDb {})))).await
