@@ -1,5 +1,12 @@
+[package]
+name = "sea-orm-proxy-wasmtime-example"
+version = "0.1.0"
+authors = ["Langyo <langyo.china@gmail.com>"]
+edition = "2021"
+publish = false
+
 [workspace]
-members = ["module", "vm"]
+members = [".", "module", "vm"]
 resolver = "2"
 
 [profile.release]
