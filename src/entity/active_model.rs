@@ -824,7 +824,7 @@ where
         }
     }
 
-    /// Check is a [Value] exists or not
+    /// Check if a [Value] exists or not
     pub fn into_value(self) -> Option<Value> {
         match self {
             ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value.into()),
