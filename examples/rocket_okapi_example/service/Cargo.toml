@@ -1,5 +1,5 @@
 [package]
-name = "rocket-example-service"
+name = "rocket-okapi-example-service"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,7 +10,7 @@ entity = { path = "../entity" }
 
 [dependencies.sea-orm]
 path = "../../../" # remove this line in your own project
-version = "0.12.3" # sea-orm version
+version = "0.12.4" # sea-orm version
 features = [
     "runtime-tokio-native-tls",
     "sqlx-postgres",

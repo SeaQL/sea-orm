@@ -16,19 +16,16 @@
 
 #### SeaORM is a relational ORM to help you build web services in Rust with the familiarity of dynamic languages.
 
-## Getting Started
-
 [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
 If you like what we do, consider starring, sharing and contributing!
+
+Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2023](https://sea-ql.org/community-survey)!
+
+## Getting Started
 
 + [Documentation](https://www.sea-ql.org/SeaORM)
 + [Tutorial](https://www.sea-ql.org/sea-orm-tutorial)
 + [Cookbook](https://www.sea-ql.org/sea-orm-cookbook)
-
-[![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
-Join our Discord server to chat with others in the SeaQL community!
-
-Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2023](https://sea-ql.org/community-survey)!
 
 Integration examples:
 
@@ -42,6 +39,13 @@ Integration examples:
 + [Salvo Example](https://github.com/SeaQL/sea-orm/tree/master/examples/salvo_example)
 + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
 + [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example)
+
+## Support
+
+[![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
+Join our Discord server to chat with other members of the SeaQL community!
+
+Professional support on Rust programming and best practices is available. You can email us for a quote!
 
 ## Features
 
