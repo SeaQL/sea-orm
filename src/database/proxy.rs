@@ -29,7 +29,7 @@ pub trait ProxyDatabaseTrait: Send + Sync + std::fmt::Debug {
 
 /// Defines the results obtained from a [ProxyDatabase]
 #[cfg(feature = "proxy")]
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct ProxyExecResult {
     /// The last inserted id on auto-increment
     pub last_insert_id: u64,
