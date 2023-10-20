@@ -11,7 +11,9 @@ use wasmtime_wasi::preview2::{
     Table, WasiCtx, WasiCtxBuilder, WasiView,
 };
 
-use crate::stream::{InputStream, Msg, OutputStream};
+use crate::stream::{
+    InputStream, OutputStream, {RequestMsg, ResponseMsg},
+};
 
 struct Ctx {
     wasi: WasiCtx,
@@ -44,8 +46,8 @@ pub struct Runner {
     component: Component,
     linker: Linker<Ctx>,
 
-    pub tx: Sender<Msg>,
-    pub rx: Receiver<Msg>,
+    pub tx: Sender<ResponseMsg>,
+    pub rx: Receiver<RequestMsg>,
 }
 
 impl Runtime {

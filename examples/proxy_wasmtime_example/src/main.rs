@@ -1,5 +1,6 @@
 use anyhow::Result;
 use bytes::Bytes;
+use std::{env, path::Path, process::Command};
 
 use wasmtime::{Config, Engine};
 use wit_component::ComponentEncoder;
@@ -7,15 +8,31 @@ use wit_component::ComponentEncoder;
 mod runtime;
 mod stream;
 
-use {runtime::Runtime, stream::Msg};
+use {
+    runtime::Runtime,
+    stream::{RequestMsg, ResponseMsg},
+};
 
-#[async_std::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
+    // Build the wasm component binary
+    let pwd = Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf();
+    Command::new("cargo")
+        .current_dir(pwd.clone())
+        .arg("build")
+        .arg("--target")
+        .arg("wasm32-wasi")
+        .arg("--package")
+        .arg("module")
+        .arg("--release")
+        .status()
+        .unwrap();
+
     // Transfer the wasm binary to wasm component binary
     let adapter = include_bytes!("../res/wasi_snapshot_preview1.command.wasm");
-
+    let component = pwd.join("target/wasm32-wasi/release/module.wasm");
+    let component = std::fs::read(component)?;
     let component = &ComponentEncoder::default()
-        .module(include_bytes!("../target/wasm32-wasi/release/module.wasm"))?
+        .module(&component)?
         .validate(true)
         .adapter("wasi_snapshot_preview1", adapter)?
         .encode()?;
@@ -31,50 +48,20 @@ async fn main() -> Result<()> {
     // Run the prototype demo
 
     println!("Running prototype demo...");
-    let entity_base = Runtime::new(cwasm);
+    let mut runner = Runtime::new(cwasm).init()?;
 
-    use std::time::Instant;
-    let now = Instant::now();
+    let tx = runner.tx.clone();
+    let rx = runner.rx.clone();
 
-    let mut threads = Vec::new();
-    for index in 0..10 {
-        let mut entity = entity_base.clone();
-        threads.push(std::thread::spawn(move || {
-            let mut runner = entity.init().unwrap();
+    std::thread::spawn(move || {
+        runner.run().unwrap();
+    });
 
-            let tx = runner.tx.clone();
-            let rx = runner.rx.clone();
+    loop {
+        let msg = rx.recv()?;
+        println!("Received on main: {:?}", msg);
 
-            std::thread::spawn(move || {
-                runner.run().unwrap();
-            });
-
-            let data = Msg {
-                id: 233,
-                data: "hello".to_string(),
-            };
-            println!("#{index} Sending to vm: {:?}", data);
-            tx.send(data).unwrap();
-
-            let msg = rx.recv().unwrap();
-            println!("#{index} Received on main: {:?}", msg);
-
-            let data = Msg {
-                id: 23333,
-                data: "hi".to_string(),
-            };
-            println!("#{index} Sending to vm: {:?}", data);
-            tx.send(data).unwrap();
-
-            let msg = rx.recv().unwrap();
-            println!("#{index} Received on main: {:?}", msg);
-        }));
+        // TODO - Send the result
+        loop {}
     }
-
-    for thread in threads {
-        thread.join().unwrap();
-    }
-    println!("Time elapsed: {:?}", now.elapsed());
-
-    Ok(())
 }
