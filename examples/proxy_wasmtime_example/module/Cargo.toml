@@ -1,13 +1,9 @@
 [package]
-name = "sea-orm-proxy-wasmtime-example-module"
+name = "module"
 version = "0.1.0"
 authors = ["Langyo <langyo.china@gmail.com>"]
 edition = "2021"
 publish = false
-
-[lib]
-name = "module"
-path = "src/main.rs"
 
 [dependencies]
 ron = "0.8"
@@ -20,9 +16,3 @@ sea-orm = { path = "../../../", default-features = false, features = [
   "proxy",
   "runtime-tokio",
 ] }
-
-[profile.release]
-lto = true
-opt-level = 'z'
-codegen-units = 1
-panic = "abort"

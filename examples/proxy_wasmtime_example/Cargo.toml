@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Langyo <langyo.china@gmail.com>"]
 edition = "2021"
 publish = false
+build = "build.rs"
 
 [workspace]
 members = [".", "module"]
@@ -20,6 +21,6 @@ lazy_static = "1"
 flume = "0.11"
 async-std = { version = "1", features = ["attributes", "tokio1"] }
 
-wit-component = "0.15"
+wit-component = "0.16"
 wasmtime = { version = "13", features = ["component-model"] }
 wasmtime-wasi = "13"

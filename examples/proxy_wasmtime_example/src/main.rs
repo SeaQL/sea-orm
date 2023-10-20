@@ -12,13 +12,10 @@ use {runtime::Runtime, stream::Msg};
 #[async_std::main]
 async fn main() -> Result<()> {
     // Transfer the wasm binary to wasm component binary
-
     let adapter = include_bytes!("../res/wasi_snapshot_preview1.command.wasm");
 
     let component = &ComponentEncoder::default()
-        .module(include_bytes!(
-            "../target/wasm32-wasi/release/sea-orm-proxy-wasmtime-example-module.wasm"
-        ))?
+        .module(include_bytes!("../target/wasm32-wasi/release/module.wasm"))?
         .validate(true)
         .adapter("wasi_snapshot_preview1", adapter)?
         .encode()?;

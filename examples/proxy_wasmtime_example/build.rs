@@ -10,7 +10,7 @@ fn main() {
         .arg("--target")
         .arg("wasm32-wasi")
         .arg("--package")
-        .arg("sea-orm-proxy-wasmtime-example-module")
+        .arg("module")
         .arg("--release")
         .status()
         .unwrap();
