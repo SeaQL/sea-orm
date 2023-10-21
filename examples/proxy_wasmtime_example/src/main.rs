@@ -14,21 +14,9 @@ use {
 };
 
 fn main() -> Result<()> {
-    // Build the wasm component binary
-    let pwd = Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf();
-    Command::new("cargo")
-        .current_dir(pwd.clone())
-        .arg("build")
-        .arg("--target")
-        .arg("wasm32-wasi")
-        .arg("--package")
-        .arg("module")
-        .arg("--release")
-        .status()
-        .unwrap();
-
     // Transfer the wasm binary to wasm component binary
     let adapter = include_bytes!("../res/wasi_snapshot_preview1.command.wasm");
+    let pwd = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf();
     let component = pwd.join("target/wasm32-wasi/release/module.wasm");
     let component = std::fs::read(component)?;
     let component = &ComponentEncoder::default()

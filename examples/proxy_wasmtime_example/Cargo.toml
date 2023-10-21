@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Langyo <langyo.china@gmail.com>"]
 edition = "2021"
 publish = false
+build = "build.rs"
 
 [workspace]
 members = [".", "module"]
