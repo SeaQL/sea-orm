@@ -1,7 +1,7 @@
 use anyhow::Result;
 use bytes::Bytes;
-use std::{env, path::Path, process::Command};
 
+use sea_orm::{ConnectionTrait, Database, DatabaseBackend, ProxyExecResult, ProxyRow, Statement};
 use wasmtime::{Config, Engine};
 use wit_component::ComponentEncoder;
 
@@ -13,7 +13,8 @@ use {
     stream::{RequestMsg, ResponseMsg},
 };
 
-fn main() -> Result<()> {
+#[async_std::main]
+async fn main() -> Result<()> {
     // Transfer the wasm binary to wasm component binary
     let adapter = include_bytes!("../res/wasi_snapshot_preview1.command.wasm");
     let pwd = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf();
@@ -33,8 +34,22 @@ fn main() -> Result<()> {
     let cwasm = engine.precompile_component(component)?;
     let cwasm = Bytes::from(cwasm);
 
-    // Run the prototype demo
+    // Create the database connection
+    println!("Creating database connection...");
+    let db = Database::connect("sqlite::memory:").await?;
+    db.execute(Statement::from_string(
+        DatabaseBackend::Sqlite,
+        r#"
+            CREATE TABLE IF NOT EXISTS posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                text TEXT NOT NULL
+            )
+        "#,
+    ))
+    .await?;
 
+    // Run the prototype demo
     println!("Running prototype demo...");
     let mut runner = Runtime::new(cwasm).init()?;
 
@@ -47,9 +62,28 @@ fn main() -> Result<()> {
 
     loop {
         let msg = rx.recv()?;
-        println!("Received on main: {:?}", msg);
 
-        // TODO - Send the result
-        loop {}
+        match msg {
+            RequestMsg::Execute(sql) => {
+                let ret: ProxyExecResult = db
+                    .execute(Statement::from_string(DatabaseBackend::Sqlite, sql))
+                    .await?
+                    .into();
+                println!("Execute result: {:?}", ret);
+                let ret = ResponseMsg::Execute(ret);
+                tx.send(ret)?;
+            }
+            RequestMsg::Query(sql) => {
+                let ret: Vec<ProxyRow> = db
+                    .query_all(Statement::from_string(DatabaseBackend::Sqlite, sql))
+                    .await?
+                    .iter()
+                    .map(|r| r.into())
+                    .collect();
+            }
+            RequestMsg::Debug(msg) => {
+                println!("VM Debug: {}", msg);
+            }
+        }
     }
 }

@@ -13,4 +13,6 @@ fn main() {
         .arg("--release")
         .status()
         .unwrap();
+
+    println!("cargo:rerun-if-changed=module/**/*");
 }

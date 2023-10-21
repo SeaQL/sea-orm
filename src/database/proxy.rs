@@ -68,8 +68,27 @@ impl From<ProxyExecResult> for ExecResult {
 impl From<ExecResult> for ProxyExecResult {
     fn from(result: ExecResult) -> Self {
         match result.result {
+            #[cfg(feature = "sqlx-mysql")]
+            ExecResultHolder::SqlxMySql(result) => Self {
+                last_insert_id: result.last_insert_id() as u64,
+                rows_affected: result.rows_affected(),
+            },
+            #[cfg(feature = "sqlx-postgres")]
+            ExecResultHolder::SqlxPostgres(result) => Self {
+                last_insert_id: result.last_insert_rowid() as u64,
+                rows_affected: result.rows_affected(),
+            },
+            #[cfg(feature = "sqlx-sqlite")]
+            ExecResultHolder::SqlxSqlite(result) => Self {
+                last_insert_id: result.last_insert_rowid() as u64,
+                rows_affected: result.rows_affected(),
+            },
+            #[cfg(feature = "mock")]
+            ExecResultHolder::Mock(result) => Self {
+                last_insert_id: result.last_insert_id,
+                rows_affected: result.rows_affected,
+            },
             ExecResultHolder::Proxy(result) => result,
-            _ => unreachable!("Cannot convert ExecResult to ProxyExecResult"),
         }
     }
 }
@@ -134,8 +153,92 @@ impl From<ProxyRow> for QueryResult {
 impl From<QueryResult> for ProxyRow {
     fn from(result: QueryResult) -> Self {
         match result.row {
+            #[cfg(feature = "sqlx-mysql")]
+            QueryResultRow::SqlxMySql(row) => row.into(),
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => row.into(),
+            #[cfg(feature = "sqlx-sqlite")]
+            QueryResultRow::SqlxSqlite(row) => row.into(),
+            #[cfg(feature = "mock")]
+            QueryResultRow::Mock(row) => row.into(),
             QueryResultRow::Proxy(row) => row,
-            _ => unreachable!("Cannot convert QueryResult to ProxyRow"),
+        }
+    }
+}
+
+// #[cfg(all(feature = "proxy", feature = "sqlx-mysql"))]
+// impl From<sqlx::mysql::MySqlRow> for ProxyRow {
+//     fn from(row: sqlx::mysql::MySqlRow) -> Self {
+//         use sqlx::{Column, Row, TypeInfo};
+//         Self {
+//             values: row
+//                 .columns()
+//                 .iter()
+//                 .map(|c| {
+//                     (
+//                         c.name().to_string(),
+//                         match c.type_info().name() {
+//                             "MEDIUMINT" | "INT" | "INTEGER" => Value::Int(Some(
+//                                 row.try_get(c.ordinal())
+//                                     .expect("Failed to get value from row"),
+//                             )),
+//                             "BIGINT" => Value::BigInt(Some(
+//                                 row.try_get(c.ordinal())
+//                                     .expect("Failed to get value from row"),
+//                             )),
+//                             "FLOAT" => Value::Float(Some(
+//                                 row.try_get(c.ordinal())
+//                                     .expect("Failed to get value from row"),
+//                             )),
+//                             "DOUBLE" => Value::Double(Some(
+//                                 row.try_get(c.ordinal())
+//                                     .expect("Failed to get value from row"),
+//                             )),
+
+//                             #[cfg(feature = "with-bigdecimal")]
+//                             "DECIMAL" => Value::BigDecimal(Some(Box::new(
+//                                 row.try_get(c.ordinal())
+//                                     .expect("Failed to get value from row"),
+//                             ))),
+
+//                             #[cfg(feature = "with-chrono")]
+//                             "DATE" => Value::ChronoDate(Some(Box::new(
+//                                 row.try_get(c.ordinal())
+//                                     .expect("Failed to get value from row"),
+//                             ))),
+//                             #[cfg(feature = "with-chrono")]
+//                             "TIME" => Value::ChronoTime(Some(Box::new(
+//                                 row.try_get(c.ordinal())
+//                                     .expect("Failed to get value from row"),
+//                             ))),
+//                             #[cfg(feature = "with-chrono")]
+//                             "DATETIME" => Value::ChronoDateTime(Some(Box::new(
+//                                 row.try_get(c.ordinal())
+//                                     .expect("Failed to get value from row"),
+//                             ))),
+
+//                             "CHAR" | "VARCHAR" | "TINYTEXT" | "TEXT" | "MEDIUMTEXT"
+//                             | "LONGTEXT" => Value::String(Some(Box::new(
+//                                 row.try_get(c.ordinal())
+//                                     .expect("Failed to get value from row"),
+//                             ))),
+//                             _ => Value::String(Some(Box::new(
+//                                 row.try_get(c.ordinal())
+//                                     .expect("Failed to get value from row"),
+//                             ))),
+//                         },
+//                     )
+//                 })
+//                 .collect(),
+//         }
+//     }
+// }
+
+#[cfg(all(feature = "proxy", feature = "mock"))]
+impl From<crate::MockRow> for ProxyRow {
+    fn from(row: crate::MockRow) -> Self {
+        Self {
+            values: row.values.into_iter().collect(),
         }
     }
 }

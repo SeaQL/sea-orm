@@ -104,7 +104,7 @@ default = [
 ]
 macros = ["sea-orm-macros/derive"]
 mock = []
-proxy = []
+proxy = ["serde_json"]
 with-json = [
     "serde_json",
     "sea-query/with-json",
