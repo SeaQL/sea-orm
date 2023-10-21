@@ -12,9 +12,8 @@ use wasmtime_wasi::preview2::{
 };
 
 use crate::stream::{
-    InputStream, OutputStream, {RequestMsg, ResponseMsg},
+    HostInputStreamBox, HostOutputStreamBox, {RequestMsg, ResponseMsg},
 };
-
 struct Ctx {
     wasi: WasiCtx,
     table: Table,
@@ -65,17 +64,16 @@ impl Runtime {
         let mut linker = Linker::new(&self.engine);
         command::sync::add_to_linker(&mut linker).unwrap();
 
-        let mut table = Table::new();
         let mut wasi = WasiCtxBuilder::new();
         wasi.inherit_stderr();
 
         let (tx_in, rx_in) = flume::unbounded();
         let (tx_out, rx_out) = flume::unbounded();
 
-        let input_stream = InputStream {
+        let input_stream = HostInputStreamBox {
             tasks: Default::default(),
         };
-        let output_stream = OutputStream { tx: tx_out };
+        let output_stream = HostOutputStreamBox { tx: tx_out };
 
         let rx = rx_in.clone();
         let tasks = input_stream.tasks.clone();
@@ -85,10 +83,11 @@ impl Runtime {
             }
         });
 
-        wasi.stdin(input_stream, wasmtime_wasi::preview2::IsATTY::No);
-        wasi.stdout(output_stream, wasmtime_wasi::preview2::IsATTY::No);
+        wasi.stdin(input_stream);
+        wasi.stdout(output_stream);
 
-        let wasi = wasi.build(&mut table).unwrap();
+        let wasi = wasi.build();
+        let table = Table::new();
         let store = Store::new(&self.engine, Ctx { wasi, table });
 
         Ok(Runner {

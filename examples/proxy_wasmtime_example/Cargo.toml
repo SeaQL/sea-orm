@@ -13,20 +13,19 @@ resolver = "2"
 anyhow = "1"
 bytes = "1"
 async-trait = "0.1"
-ron = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.11", features = ["blocking"] }
 lazy_static = "1"
 flume = "0.11"
-tokio = { version = "1", features = ["full"] }
+async-std = { version = "^1", features = ["attributes", "tokio1"] }
 
 wit-component = "0.16"
-wasmtime = { version = "13", features = ["component-model"] }
-wasmtime-wasi = "13"
+wasmtime = { version = "14", features = ["component-model"] }
+wasmtime-wasi = "14"
 surrealdb = { version = "1", features = ["kv-mem"] }
 sea-orm = { path = "../..", features = [
   "proxy",
   "sqlx-sqlite",
-  "runtime-tokio-rustls",
+  "runtime-async-std-rustls",
 ] }
