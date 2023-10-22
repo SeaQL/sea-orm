@@ -80,6 +80,10 @@ async fn main() -> Result<()> {
                     .iter()
                     .map(|r| r.into())
                     .collect();
+                let ret: Vec<serde_json::Value> = ret.iter().map(|r| r.into()).collect();
+                println!("Query result: {:?}", ret);
+                let ret = ResponseMsg::Query(ret);
+                tx.send(ret)?;
             }
             RequestMsg::Debug(msg) => {
                 println!("VM Debug: {}", msg);

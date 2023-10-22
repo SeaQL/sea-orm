@@ -144,6 +144,8 @@ with-time = [
     "sea-query-binder?/with-time",
     "sqlx?/time",
 ]
+with-ipnetwork = ["sea-query/with-ipnetwork"]
+with-mac_address = ["sea-query/with-mac_address"]
 postgres-array = [
     "sea-query/postgres-array",
     "sea-query-binder?/postgres-array",
