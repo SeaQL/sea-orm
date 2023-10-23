@@ -1,7 +1,7 @@
 use anyhow::Result;
 use bytes::Bytes;
 
-use sea_orm::{ConnectionTrait, Database, DatabaseBackend, ProxyExecResult, ProxyRow, Statement};
+use sea_orm::{ConnectionTrait, Database, DatabaseBackend, ProxyExecResult, Statement};
 use wasmtime::{Config, Engine};
 use wit_component::ComponentEncoder;
 
@@ -60,9 +60,7 @@ async fn main() -> Result<()> {
         runner.run().unwrap();
     });
 
-    loop {
-        let msg = rx.recv()?;
-
+    while let Ok(msg) = rx.recv() {
         match msg {
             RequestMsg::Execute(sql) => {
                 let ret: ProxyExecResult = db
@@ -74,14 +72,16 @@ async fn main() -> Result<()> {
                 tx.send(ret)?;
             }
             RequestMsg::Query(sql) => {
-                let ret: Vec<ProxyRow> = db
+                use sea_orm::FromQueryResult;
+
+                let ret: Vec<serde_json::Value> = db
                     .query_all(Statement::from_string(DatabaseBackend::Sqlite, sql))
                     .await?
                     .iter()
-                    .map(|r| r.into())
+                    .map(|r| sea_orm::query::JsonValue::from_query_result(&r, "").unwrap())
                     .collect();
-                let ret: Vec<serde_json::Value> = ret.iter().map(|r| r.into()).collect();
                 println!("Query result: {:?}", ret);
+
                 let ret = ResponseMsg::Query(ret);
                 tx.send(ret)?;
             }
@@ -90,4 +90,6 @@ async fn main() -> Result<()> {
             }
         }
     }
+
+    Ok(())
 }

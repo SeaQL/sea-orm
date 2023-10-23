@@ -39,8 +39,39 @@ struct ProxyDb {}
 impl ProxyDatabaseTrait for ProxyDb {
     fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr> {
         let sql = statement.sql.clone();
+        println!(
+            "{}",
+            serde_json::to_string(&RequestMsg::Query(sql)).unwrap()
+        );
 
-        Ok(vec![])
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).unwrap();
+        let ret: ResponseMsg = serde_json::from_str(&input).unwrap();
+        let ret = match ret {
+            ResponseMsg::Query(v) => v,
+            _ => unreachable!("Not a query result"),
+        };
+
+        let mut rows: Vec<ProxyRow> = vec![];
+        for row in ret {
+            let mut map: BTreeMap<String, sea_orm::Value> = BTreeMap::new();
+            for (k, v) in row.as_object().unwrap().iter() {
+                map.insert(k.to_owned(), {
+                    if v.is_string() {
+                        sea_orm::Value::String(Some(Box::new(v.as_str().unwrap().to_string())))
+                    } else if v.is_number() {
+                        sea_orm::Value::BigInt(Some(v.as_i64().unwrap()))
+                    } else if v.is_boolean() {
+                        sea_orm::Value::Bool(Some(v.as_bool().unwrap()))
+                    } else {
+                        unreachable!("Unknown json type")
+                    }
+                });
+            }
+            rows.push(ProxyRow { values: map });
+        }
+
+        Ok(rows)
     }
 
     fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {

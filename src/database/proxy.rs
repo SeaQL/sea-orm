@@ -3,7 +3,6 @@ use crate::{error::*, ExecResult, ExecResultHolder, QueryResult, QueryResultRow,
 use sea_query::{Value, ValueType};
 use std::{collections::BTreeMap, fmt::Debug};
 
-#[cfg(feature = "proxy")]
 /// Defines the [ProxyDatabaseTrait] to save the functions
 pub trait ProxyDatabaseTrait: Send + Sync + std::fmt::Debug {
     /// Execute a query in the [ProxyDatabase], and return the query results
@@ -28,7 +27,6 @@ pub trait ProxyDatabaseTrait: Send + Sync + std::fmt::Debug {
 }
 
 /// Defines the results obtained from a [ProxyDatabase]
-#[cfg(feature = "proxy")]
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct ProxyExecResult {
     /// The last inserted id on auto-increment
@@ -37,7 +35,6 @@ pub struct ProxyExecResult {
     pub rows_affected: u64,
 }
 
-#[cfg(feature = "proxy")]
 impl ProxyExecResult {
     /// Create a new [ProxyExecResult] from the last inserted id and the number of rows affected
     pub fn new(last_insert_id: u64, rows_affected: u64) -> Self {
@@ -48,14 +45,12 @@ impl ProxyExecResult {
     }
 }
 
-#[cfg(feature = "proxy")]
 impl Default for ExecResultHolder {
     fn default() -> Self {
         Self::Proxy(ProxyExecResult::default())
     }
 }
 
-#[cfg(feature = "proxy")]
 impl From<ProxyExecResult> for ExecResult {
     fn from(result: ProxyExecResult) -> Self {
         Self {
@@ -64,7 +59,6 @@ impl From<ProxyExecResult> for ExecResult {
     }
 }
 
-#[cfg(feature = "proxy")]
 impl From<ExecResult> for ProxyExecResult {
     fn from(result: ExecResult) -> Self {
         match result.result {
@@ -95,14 +89,12 @@ impl From<ExecResult> for ProxyExecResult {
 
 /// Defines the structure of a Row for the [ProxyDatabase]
 /// which is just a [BTreeMap]<[String], [Value]>
-#[cfg(feature = "proxy")]
 #[derive(Clone, Debug)]
 pub struct ProxyRow {
     /// The values of the single row
     pub values: BTreeMap<String, Value>,
 }
 
-#[cfg(feature = "proxy")]
 impl ProxyRow {
     /// Create a new [ProxyRow] from a [BTreeMap]<[String], [Value]>
     pub fn new(values: BTreeMap<String, Value>) -> Self {
@@ -110,7 +102,6 @@ impl ProxyRow {
     }
 }
 
-#[cfg(feature = "proxy")]
 impl Default for ProxyRow {
     fn default() -> Self {
         Self {
@@ -119,28 +110,24 @@ impl Default for ProxyRow {
     }
 }
 
-#[cfg(feature = "proxy")]
 impl From<BTreeMap<String, Value>> for ProxyRow {
     fn from(values: BTreeMap<String, Value>) -> Self {
         Self { values }
     }
 }
 
-#[cfg(feature = "proxy")]
 impl From<ProxyRow> for BTreeMap<String, Value> {
     fn from(row: ProxyRow) -> Self {
         row.values
     }
 }
 
-#[cfg(feature = "proxy")]
 impl From<ProxyRow> for Vec<(String, Value)> {
     fn from(row: ProxyRow) -> Self {
         row.values.into_iter().collect()
     }
 }
 
-#[cfg(feature = "proxy")]
 impl From<ProxyRow> for QueryResult {
     fn from(row: ProxyRow) -> Self {
         QueryResult {
@@ -149,7 +136,7 @@ impl From<ProxyRow> for QueryResult {
     }
 }
 
-#[cfg(all(feature = "proxy", feature = "with-json"))]
+#[cfg(feature = "with-json")]
 impl Into<serde_json::Value> for ProxyRow {
     fn into(self) -> serde_json::Value {
         self.values
@@ -159,7 +146,6 @@ impl Into<serde_json::Value> for ProxyRow {
     }
 }
 
-#[cfg(feature = "proxy")]
 impl From<QueryResult> for ProxyRow {
     fn from(result: QueryResult) -> Self {
         match result.row {
@@ -176,7 +162,7 @@ impl From<QueryResult> for ProxyRow {
     }
 }
 
-#[cfg(all(feature = "proxy", feature = "sqlx-mysql"))]
+#[cfg(feature = "sqlx-mysql")]
 impl From<sqlx::mysql::MySqlRow> for ProxyRow {
     fn from(row: sqlx::mysql::MySqlRow) -> Self {
         // https://docs.rs/sqlx-mysql/0.7.2/src/sqlx_mysql/protocol/text/column.rs.html
@@ -316,7 +302,7 @@ impl From<sqlx::mysql::MySqlRow> for ProxyRow {
     }
 }
 
-#[cfg(all(feature = "proxy", feature = "sqlx-postgres"))]
+#[cfg(feature = "sqlx-postgres")]
 impl From<sqlx::postgres::PgRow> for ProxyRow {
     fn from(row: sqlx::postgres::PgRow) -> Self {
         // https://docs.rs/sqlx-postgres/0.7.2/src/sqlx_postgres/type_info.rs.html
@@ -780,7 +766,7 @@ impl From<sqlx::postgres::PgRow> for ProxyRow {
     }
 }
 
-#[cfg(all(feature = "proxy", feature = "sqlx-sqlite"))]
+#[cfg(feature = "sqlx-sqlite")]
 impl From<sqlx::sqlite::SqliteRow> for ProxyRow {
     fn from(row: sqlx::sqlite::SqliteRow) -> Self {
         // https://docs.rs/sqlx-sqlite/0.7.2/src/sqlx_sqlite/type_info.rs.html
@@ -854,7 +840,7 @@ impl From<sqlx::sqlite::SqliteRow> for ProxyRow {
     }
 }
 
-#[cfg(all(feature = "proxy", feature = "mock"))]
+#[cfg(feature = "mock")]
 impl From<crate::MockRow> for ProxyRow {
     fn from(row: crate::MockRow) -> Self {
         Self {
@@ -896,7 +882,6 @@ impl ProxyRow {
 }
 
 #[cfg(test)]
-#[cfg(feature = "proxy")]
 mod tests {
     use crate::{
         entity::*, tests_cfg::*, Database, DbBackend, DbErr, ProxyDatabaseTrait, ProxyExecResult,
@@ -924,7 +909,7 @@ mod tests {
 
     #[smol_potat::test]
     async fn create_proxy_conn() {
-        let db =
+        let _db =
             Database::connect_proxy(DbBackend::MySql, Arc::new(Mutex::new(Box::new(ProxyDb {}))))
                 .await
                 .unwrap();
