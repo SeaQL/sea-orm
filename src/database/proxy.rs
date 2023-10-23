@@ -231,7 +231,7 @@ pub(crate) fn from_sqlx_mysql_row_to_proxy_row(row: &sqlx::mysql::MySqlRow) -> P
                         "TIMESTAMP" => Value::ChronoDateTimeUtc(Some(Box::new(
                             row.try_get(c.ordinal()).expect("Failed to get timestamp"),
                         ))),
-                        #[cfg(feature = "with-time")]
+                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
                         "TIMESTAMP" => Value::TimeDateTime(Some(Box::new(
                             row.try_get(c.ordinal()).expect("Failed to get timestamp"),
                         ))),
@@ -240,7 +240,7 @@ pub(crate) fn from_sqlx_mysql_row_to_proxy_row(row: &sqlx::mysql::MySqlRow) -> P
                         "DATE" => Value::ChronoDate(Some(Box::new(
                             row.try_get(c.ordinal()).expect("Failed to get date"),
                         ))),
-                        #[cfg(feature = "with-time")]
+                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
                         "DATE" => Value::TimeDate(Some(Box::new(
                             row.try_get(c.ordinal()).expect("Failed to get date"),
                         ))),
@@ -249,7 +249,7 @@ pub(crate) fn from_sqlx_mysql_row_to_proxy_row(row: &sqlx::mysql::MySqlRow) -> P
                         "TIME" => Value::ChronoTime(Some(Box::new(
                             row.try_get(c.ordinal()).expect("Failed to get time"),
                         ))),
-                        #[cfg(feature = "with-time")]
+                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
                         "TIME" => Value::TimeTime(Some(Box::new(
                             row.try_get(c.ordinal()).expect("Failed to get time"),
                         ))),
@@ -258,7 +258,7 @@ pub(crate) fn from_sqlx_mysql_row_to_proxy_row(row: &sqlx::mysql::MySqlRow) -> P
                         "DATETIME" => Value::ChronoDateTime(Some(Box::new(
                             row.try_get(c.ordinal()).expect("Failed to get datetime"),
                         ))),
-                        #[cfg(feature = "with-time")]
+                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
                         "DATETIME" => Value::TimeDateTime(Some(Box::new(
                             row.try_get(c.ordinal()).expect("Failed to get datetime"),
                         ))),
@@ -267,7 +267,7 @@ pub(crate) fn from_sqlx_mysql_row_to_proxy_row(row: &sqlx::mysql::MySqlRow) -> P
                         "YEAR" => Value::ChronoDate(Some(Box::new(
                             row.try_get(c.ordinal()).expect("Failed to get year"),
                         ))),
-                        #[cfg(feature = "with-time")]
+                        #[cfg(all(feature = "with-time", not(feature = "with-chrono")))]
                         "YEAR" => Value::TimeDate(Some(Box::new(
                             row.try_get(c.ordinal()).expect("Failed to get year"),
                         ))),
