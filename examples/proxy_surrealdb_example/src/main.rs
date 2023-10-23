@@ -176,3 +176,11 @@ async fn main() {
     let list = Entity::find().all(&db).await.unwrap().to_vec();
     println!("Result: {:?}", list);
 }
+
+#[cfg(test)]
+mod tests {
+    #[smol_potat::test]
+    async fn try_run() {
+        crate::main()
+    }
+}

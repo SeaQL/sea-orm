@@ -97,3 +97,13 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+
+    #[smol_potat::test]
+    async fn try_run() -> Result<()> {
+        crate::main()
+    }
+}

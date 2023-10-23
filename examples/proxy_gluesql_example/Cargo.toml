@@ -27,3 +27,7 @@ sea-orm = { path = "../../", features = [
 gluesql = { version = "0.13", default-features = false, features = [
   "memory-storage",
 ] }
+
+[dev-dependencies]
+smol = { version = "1.2" }
+smol-potat = { version = "1.1" }

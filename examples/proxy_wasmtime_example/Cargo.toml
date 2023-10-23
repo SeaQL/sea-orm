@@ -30,3 +30,7 @@ sea-orm = { path = "../..", features = [
   "sqlx-sqlite",
   "runtime-async-std-rustls",
 ] }
+
+[dev-dependencies]
+smol = { version = "1.2" }
+smol-potat = { version = "1.1" }

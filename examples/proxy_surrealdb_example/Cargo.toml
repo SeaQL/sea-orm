@@ -22,3 +22,7 @@ sea-orm = { path = "../../", features = [
   "debug-print",
 ] }
 surrealdb = { version = "1", features = ["kv-mem"] }
+
+[dev-dependencies]
+smol = { version = "1.2" }
+smol-potat = { version = "1.1" }
