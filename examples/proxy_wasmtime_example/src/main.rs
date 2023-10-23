@@ -72,13 +72,17 @@ async fn main() -> Result<()> {
                 tx.send(ret)?;
             }
             RequestMsg::Query(sql) => {
-                use sea_orm::FromQueryResult;
-
                 let ret: Vec<serde_json::Value> = db
                     .query_all(Statement::from_string(DatabaseBackend::Sqlite, sql))
                     .await?
                     .iter()
-                    .map(|r| sea_orm::query::JsonValue::from_query_result(&r, "").unwrap())
+                    .map(|r| sea_orm::from_query_result_to_proxy_row(&r))
+                    .map(|r| {
+                        // This demo only converts it to json value currently.
+                        // But it can be converted to any other format that includes the type information.
+                        // You can use 'match' to deal the type of the value on sea_orm::Value.
+                        r.into()
+                    })
                     .collect();
                 println!("Query result: {:?}", ret);
 
