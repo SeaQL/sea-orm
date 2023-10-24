@@ -47,6 +47,7 @@ pub struct EntityWriterContext {
     pub(crate) serde_skip_deserializing_primary_key: bool,
     pub(crate) model_extra_derives: TokenStream,
     pub(crate) model_extra_attributes: TokenStream,
+    pub(crate) enum_extra_derives: TokenStream,
     pub(crate) seaography: bool,
 }
 
@@ -79,19 +80,19 @@ impl WithSerde {
     }
 }
 
-/// Converts model_extra_derives argument to token stream
-fn bonus_derive<T, I>(model_extra_derives: I) -> TokenStream
+/// Converts *_extra_derives argument to token stream
+fn bonus_derive<T, I>(extra_derives: I) -> TokenStream
 where
     T: Into<String>,
     I: IntoIterator<Item = T>,
 {
-    model_extra_derives
-        .into_iter()
-        .map(Into::<String>::into)
-        .fold(TokenStream::default(), |acc, derive| {
+    extra_derives.into_iter().map(Into::<String>::into).fold(
+        TokenStream::default(),
+        |acc, derive| {
             let tokens: TokenStream = derive.parse().unwrap();
             quote! { #acc, #tokens }
-        })
+        },
+    )
 }
 
 /// convert attributes argument to token stream
@@ -143,6 +144,7 @@ impl EntityWriterContext {
         serde_skip_hidden_column: bool,
         model_extra_derives: Vec<String>,
         model_extra_attributes: Vec<String>,
+        enum_extra_derives: Vec<String>,
         seaography: bool,
     ) -> Self {
         Self {
@@ -156,6 +158,7 @@ impl EntityWriterContext {
             serde_skip_hidden_column,
             model_extra_derives: bonus_derive(model_extra_derives),
             model_extra_attributes: bonus_attributes(model_extra_attributes),
+            enum_extra_derives: bonus_derive(enum_extra_derives),
             seaography,
         }
     }
@@ -168,9 +171,11 @@ impl EntityWriter {
         files.push(self.write_index_file(context.lib));
         files.push(self.write_prelude());
         if !self.enums.is_empty() {
-            files.push(
-                self.write_sea_orm_active_enums(&context.with_serde, context.with_copy_enums),
-            );
+            files.push(self.write_sea_orm_active_enums(
+                &context.with_serde,
+                context.with_copy_enums,
+                &context.enum_extra_derives,
+            ));
         }
         WriterOutput { files }
     }
@@ -283,6 +288,7 @@ impl EntityWriter {
         &self,
         with_serde: &WithSerde,
         with_copy_enums: bool,
+        extra_derives: &TokenStream,
     ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
@@ -291,7 +297,9 @@ impl EntityWriter {
         let code_blocks = self
             .enums
             .values()
-            .map(|active_enum| active_enum.impl_active_enum(with_serde, with_copy_enums))
+            .map(|active_enum| {
+                active_enum.impl_active_enum(with_serde, with_copy_enums, extra_derives)
+            })
             .collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
