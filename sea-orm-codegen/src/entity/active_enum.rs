@@ -130,6 +130,7 @@ mod tests {
             )
             .to_string(),
             quote!(
+                #[rustfmt::skip]
                 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy, specta :: Type, ts_rs :: TS)]
                 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "media_type")]
                 pub enum MediaType {
