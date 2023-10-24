@@ -104,6 +104,19 @@ mod tests {
 
     #[smol_potat::test]
     async fn try_run() -> Result<()> {
+        // Build the wasm component binary
+        use std::{env, path::Path, process::Command};
+        let pwd = Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf();
+        Command::new("cargo")
+            .current_dir(pwd.clone())
+            .arg("build")
+            .arg("--target")
+            .arg("wasm32-wasi")
+            .arg("--package")
+            .arg("module")
+            .arg("--release")
+            .status()?;
+
         crate::main()
     }
 }
