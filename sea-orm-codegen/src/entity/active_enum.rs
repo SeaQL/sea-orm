@@ -51,6 +51,8 @@ impl ActiveEnum {
 
 #[cfg(test)]
 mod tests {
+    use crate::entity::writer::bonus_derive;
+
     use super::*;
     use pretty_assertions::assert_eq;
     use sea_query::{Alias, IntoIden};
@@ -105,6 +107,36 @@ mod tests {
                     Archive,
                     #[sea_orm(string_value = "3D")]
                     _3D,
+                }
+            )
+            .to_string()
+        )
+    }
+
+    #[test]
+    fn test_enum_extra_derives() {
+        assert_eq!(
+            ActiveEnum {
+                enum_name: Alias::new("media_type").into_iden(),
+                values: vec!["UNKNOWN", "BITMAP",]
+                    .into_iter()
+                    .map(|variant| Alias::new(variant).into_iden())
+                    .collect(),
+            }
+            .impl_active_enum(
+                &WithSerde::None,
+                true,
+                &bonus_derive(["specta::Type", "ts_rs::TS"])
+            )
+            .to_string(),
+            quote!(
+                #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy, specta :: Type, ts_rs :: TS)]
+                #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "media_type")]
+                pub enum MediaType {
+                    #[sea_orm(string_value = "UNKNOWN")]
+                    Unknown,
+                    #[sea_orm(string_value = "BITMAP")]
+                    Bitmap,
                 }
             )
             .to_string()

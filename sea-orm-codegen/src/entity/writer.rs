@@ -81,7 +81,7 @@ impl WithSerde {
 }
 
 /// Converts *_extra_derives argument to token stream
-fn bonus_derive<T, I>(extra_derives: I) -> TokenStream
+pub(crate) fn bonus_derive<T, I>(extra_derives: I) -> TokenStream
 where
     T: Into<String>,
     I: IntoIterator<Item = T>,
