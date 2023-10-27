@@ -118,21 +118,17 @@ impl From<ExecResult> for ProxyExecResult {
         match result.result {
             #[cfg(feature = "sqlx-mysql")]
             ExecResultHolder::SqlxMySql(result) => Self {
-                last_insert_id: ProxyInsertResult::Inserted(vec![json!(
-                    result.last_insert_id() as u64
-                )]),
+                last_insert_id: result.last_insert_id(),
                 rows_affected: result.rows_affected(),
             },
             #[cfg(feature = "sqlx-postgres")]
             ExecResultHolder::SqlxPostgres(result) => Self {
-                last_insert_id: ProxyInsertResult::Empty,
+                last_insert_id: ProxyExecResult::Empty,
                 rows_affected: result.rows_affected(),
             },
             #[cfg(feature = "sqlx-sqlite")]
             ExecResultHolder::SqlxSqlite(result) => Self {
-                last_insert_id: ProxyInsertResult::Inserted(vec![json!(
-                    result.last_insert_rowid() as u64
-                )]),
+                last_insert_id: result.last_insert_id(),
                 rows_affected: result.rows_affected(),
             },
             #[cfg(feature = "mock")]
