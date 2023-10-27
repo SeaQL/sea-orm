@@ -117,20 +117,19 @@ impl From<ExecResult> for ProxyExecResult {
     fn from(result: ExecResult) -> Self {
         match result.result {
             #[cfg(feature = "sqlx-mysql")]
-            ExecResultHolder::SqlxMySql(result) => Self {
-                last_insert_id: result.last_insert_id(),
-                rows_affected: result.rows_affected(),
-            },
+            ExecResultHolder::SqlxMySql(result) => {
+                ProxyExecResult::Inserted(vec![ProxyExecResultIdType::Integer(
+                    result.last_insert_id().unwrap_or(0),
+                )])
+            }
             #[cfg(feature = "sqlx-postgres")]
-            ExecResultHolder::SqlxPostgres(result) => Self {
-                last_insert_id: ProxyExecResult::Empty,
-                rows_affected: result.rows_affected(),
-            },
+            ExecResultHolder::SqlxPostgres(result) => ProxyExecResult::Inserted(vec![]),
             #[cfg(feature = "sqlx-sqlite")]
-            ExecResultHolder::SqlxSqlite(result) => Self {
-                last_insert_id: result.last_insert_id(),
-                rows_affected: result.rows_affected(),
-            },
+            ExecResultHolder::SqlxSqlite(result) => {
+                ProxyExecResult::Inserted(vec![ProxyExecResultIdType::Integer(
+                    result.last_insert_rowid() as u64,
+                )])
+            }
             #[cfg(feature = "mock")]
             ExecResultHolder::Mock(result) => {
                 ProxyExecResult::Inserted(vec![ProxyExecResultIdType::Integer(
