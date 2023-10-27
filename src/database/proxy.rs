@@ -1,7 +1,6 @@
 use crate::{error::*, ExecResult, ExecResultHolder, QueryResult, QueryResultRow, Statement};
 
 use sea_query::{Value, ValueType};
-use serde_json::json;
 use std::{collections::BTreeMap, fmt::Debug};
 
 /// Defines the [ProxyDatabaseTrait] to save the functions
@@ -27,33 +26,75 @@ pub trait ProxyDatabaseTrait: Send + Sync + std::fmt::Debug {
     }
 }
 
-/// The types of results for a proxy INSERT operation
+/// The id type for [ProxyExecResult]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum ProxyExecResultIdType {
+    /// Integer
+    Integer(u64),
+    /// UUID
+    Uuid(uuid::Uuid),
+    /// String
+    String(String),
+    /// Bytes
+    Bytes(Vec<u8>),
+}
+
+impl Into<u64> for ProxyExecResultIdType {
+    fn into(self) -> u64 {
+        match self {
+            Self::Integer(val) => val,
+            Self::String(val) => val.parse().unwrap_or(0),
+            Self::Bytes(val) => {
+                // It would crash if it's longer than 8 bytes
+                if val.len() > 8 {
+                    panic!("Bytes is longer than 8 bytes")
+                }
+
+                let mut bytes = [0u8; 8];
+                bytes.copy_from_slice(&val[..8]);
+                u64::from_le_bytes(bytes)
+            }
+            Self::Uuid(_) => panic!("Uuid cannot be converted to u64 that not lose precision"),
+        }
+    }
+}
+
+/// Defines the results obtained from a [ProxyDatabase]
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
-pub enum ProxyInsertResult {
+pub enum ProxyExecResult {
     /// The INSERT statement did not have any value to insert
     #[default]
     Empty,
     /// The INSERT operation did not insert any valid value
     Conflicted,
     /// Successfully inserted
-    Inserted(Vec<serde_json::Value>),
-}
-
-/// Defines the results obtained from a [ProxyDatabase]
-#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
-pub struct ProxyExecResult {
-    /// The last inserted id on auto-increment
-    pub last_insert_id: ProxyInsertResult,
-    /// The number of rows affected by the database operation
-    pub rows_affected: u64,
+    Inserted(Vec<ProxyExecResultIdType>),
 }
 
 impl ProxyExecResult {
-    /// Create a new [ProxyExecResult] from the last inserted id and the number of rows affected
-    pub fn new(last_insert_id: ProxyInsertResult, rows_affected: u64) -> Self {
-        Self {
-            last_insert_id,
-            rows_affected,
+    /// Get the last id after `AUTOINCREMENT` is done on the primary key
+    ///
+    /// # Panics
+    ///
+    /// The proxy list is empty or the last value cannot convert to u64
+    pub fn last_insert_id(&self) -> u64 {
+        match self {
+            Self::Empty | Self::Conflicted => 0,
+            Self::Inserted(val) => {
+                let ret = val
+                    .last()
+                    .expect("Cannot get last value of proxy insert result");
+                let ret: u64 = ret.clone().into();
+                ret
+            }
+        }
+    }
+
+    /// Get the number of rows affected by the operation
+    pub fn rows_affected(&self) -> u64 {
+        match self {
+            Self::Empty | Self::Conflicted => 0,
+            Self::Inserted(val) => val.len() as u64,
         }
     }
 }
@@ -95,10 +136,11 @@ impl From<ExecResult> for ProxyExecResult {
                 rows_affected: result.rows_affected(),
             },
             #[cfg(feature = "mock")]
-            ExecResultHolder::Mock(result) => Self {
-                last_insert_id: ProxyInsertResult::Inserted(vec![json!(result.last_insert_id)]),
-                rows_affected: result.rows_affected,
-            },
+            ExecResultHolder::Mock(result) => {
+                ProxyExecResult::Inserted(vec![ProxyExecResultIdType::Integer(
+                    result.last_insert_id,
+                )])
+            }
             ExecResultHolder::Proxy(result) => result,
         }
     }
@@ -883,11 +925,9 @@ impl ProxyRow {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
-
     use crate::{
         entity::*, tests_cfg::*, Database, DbBackend, DbErr, ProxyDatabaseTrait, ProxyExecResult,
-        ProxyRow, Statement,
+        ProxyExecResultIdType, ProxyRow, Statement,
     };
     use std::sync::{Arc, Mutex};
 
@@ -902,10 +942,9 @@ mod tests {
 
         fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
             println!("SQL execute: {}", statement.sql);
-            Ok(ProxyExecResult {
-                last_insert_id: crate::ProxyInsertResult::Inserted(vec![json!(1)]),
-                rows_affected: 1,
-            })
+            Ok(ProxyExecResult::Inserted(vec![
+                ProxyExecResultIdType::Integer(1),
+            ]))
         }
     }
 

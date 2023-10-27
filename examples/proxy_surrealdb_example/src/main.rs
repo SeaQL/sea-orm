@@ -12,7 +12,7 @@ use std::{
 
 use sea_orm::{
     ActiveValue::Set, Database, DbBackend, DbErr, EntityTrait, ProxyDatabaseTrait, ProxyExecResult,
-    ProxyInsertResult, ProxyRow, Statement,
+    ProxyExecResultIdType, ProxyRow, Statement,
 };
 use surrealdb::{
     engine::local::{Db, Mem},
@@ -134,10 +134,9 @@ impl ProxyDatabaseTrait for ProxyDb {
         })
         .unwrap();
 
-        Ok(ProxyExecResult {
-            last_insert_id: ProxyInsertResult::Inserted(vec![json!(1)]),
-            rows_affected: 1,
-        })
+        Ok(ProxyExecResult::Inserted(vec![
+            ProxyExecResultIdType::Integer(1),
+        ]))
     }
 }
 

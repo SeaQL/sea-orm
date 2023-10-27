@@ -13,7 +13,7 @@ use std::{
 use gluesql::{memory_storage::MemoryStorage, prelude::Glue};
 use sea_orm::{
     ActiveValue::Set, Database, DbBackend, DbErr, EntityTrait, ProxyDatabaseTrait, ProxyExecResult,
-    ProxyInsertResult, ProxyRow, Statement,
+    ProxyExecResultIdType, ProxyRow, Statement,
 };
 
 use entity::post::{ActiveModel, Entity};
@@ -81,10 +81,9 @@ impl ProxyDatabaseTrait for ProxyDb {
             self.mem.lock().unwrap().execute(statement.sql).unwrap();
         }
 
-        Ok(ProxyExecResult {
-            last_insert_id: ProxyInsertResult::Inserted(vec![json!(1)]),
-            rows_affected: 1,
-        })
+        Ok(ProxyExecResult::Inserted(vec![
+            ProxyExecResultIdType::Integer(1),
+        ]))
     }
 }
 
