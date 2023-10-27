@@ -1,3 +1,5 @@
+use crate::ProxyInsertResult;
+
 /// Defines the result of executing an operation
 #[derive(Debug)]
 pub struct ExecResult {
@@ -55,7 +57,14 @@ impl ExecResult {
             #[cfg(feature = "mock")]
             ExecResultHolder::Mock(result) => result.last_insert_id,
             #[cfg(feature = "proxy")]
-            ExecResultHolder::Proxy(result) => result.last_insert_id,
+            ExecResultHolder::Proxy(result) => match &result.last_insert_id {
+                ProxyInsertResult::Empty | ProxyInsertResult::Conflicted => 0,
+                ProxyInsertResult::Inserted(val) => val
+                    .first()
+                    .expect("Cannot get first value of proxy insert result")
+                    .as_u64()
+                    .expect("Cannot convert proxy id to u64"),
+            },
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }

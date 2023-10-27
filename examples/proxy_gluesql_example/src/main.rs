@@ -4,6 +4,7 @@
 
 mod entity;
 
+use serde_json::json;
 use std::{
     collections::BTreeMap,
     sync::{Arc, Mutex},
@@ -12,7 +13,7 @@ use std::{
 use gluesql::{memory_storage::MemoryStorage, prelude::Glue};
 use sea_orm::{
     ActiveValue::Set, Database, DbBackend, DbErr, EntityTrait, ProxyDatabaseTrait, ProxyExecResult,
-    ProxyRow, Statement,
+    ProxyInsertResult, ProxyRow, Statement,
 };
 
 use entity::post::{ActiveModel, Entity};
@@ -81,7 +82,7 @@ impl ProxyDatabaseTrait for ProxyDb {
         }
 
         Ok(ProxyExecResult {
-            last_insert_id: 1,
+            last_insert_id: ProxyInsertResult::Inserted(vec![json!(1)]),
             rows_affected: 1,
         })
     }

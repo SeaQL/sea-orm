@@ -1,6 +1,7 @@
 use crate::{error::*, ExecResult, ExecResultHolder, QueryResult, QueryResultRow, Statement};
 
 use sea_query::{Value, ValueType};
+use serde_json::json;
 use std::{collections::BTreeMap, fmt::Debug};
 
 /// Defines the [ProxyDatabaseTrait] to save the functions
@@ -26,18 +27,30 @@ pub trait ProxyDatabaseTrait: Send + Sync + std::fmt::Debug {
     }
 }
 
+/// The types of results for a proxy INSERT operation
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+pub enum ProxyInsertResult {
+    /// The INSERT statement did not have any value to insert
+    #[default]
+    Empty,
+    /// The INSERT operation did not insert any valid value
+    Conflicted,
+    /// Successfully inserted
+    Inserted(Vec<serde_json::Value>),
+}
+
 /// Defines the results obtained from a [ProxyDatabase]
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct ProxyExecResult {
     /// The last inserted id on auto-increment
-    pub last_insert_id: u64,
+    pub last_insert_id: ProxyInsertResult,
     /// The number of rows affected by the database operation
     pub rows_affected: u64,
 }
 
 impl ProxyExecResult {
     /// Create a new [ProxyExecResult] from the last inserted id and the number of rows affected
-    pub fn new(last_insert_id: u64, rows_affected: u64) -> Self {
+    pub fn new(last_insert_id: ProxyInsertResult, rows_affected: u64) -> Self {
         Self {
             last_insert_id,
             rows_affected,
@@ -64,22 +77,26 @@ impl From<ExecResult> for ProxyExecResult {
         match result.result {
             #[cfg(feature = "sqlx-mysql")]
             ExecResultHolder::SqlxMySql(result) => Self {
-                last_insert_id: result.last_insert_id() as u64,
+                last_insert_id: ProxyInsertResult::Inserted(vec![json!(
+                    result.last_insert_id() as u64
+                )]),
                 rows_affected: result.rows_affected(),
             },
             #[cfg(feature = "sqlx-postgres")]
             ExecResultHolder::SqlxPostgres(result) => Self {
-                last_insert_id: 0,
+                last_insert_id: ProxyInsertResult::Empty,
                 rows_affected: result.rows_affected(),
             },
             #[cfg(feature = "sqlx-sqlite")]
             ExecResultHolder::SqlxSqlite(result) => Self {
-                last_insert_id: result.last_insert_rowid() as u64,
+                last_insert_id: ProxyInsertResult::Inserted(vec![json!(
+                    result.last_insert_rowid() as u64
+                )]),
                 rows_affected: result.rows_affected(),
             },
             #[cfg(feature = "mock")]
             ExecResultHolder::Mock(result) => Self {
-                last_insert_id: result.last_insert_id,
+                last_insert_id: ProxyInsertResult::Inserted(vec![json!(result.last_insert_id)]),
                 rows_affected: result.rows_affected,
             },
             ExecResultHolder::Proxy(result) => result,
@@ -866,6 +883,8 @@ impl ProxyRow {
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+
     use crate::{
         entity::*, tests_cfg::*, Database, DbBackend, DbErr, ProxyDatabaseTrait, ProxyExecResult,
         ProxyRow, Statement,
@@ -884,7 +903,7 @@ mod tests {
         fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
             println!("SQL execute: {}", statement.sql);
             Ok(ProxyExecResult {
-                last_insert_id: 1,
+                last_insert_id: crate::ProxyInsertResult::Inserted(vec![json!(1)]),
                 rows_affected: 1,
             })
         }
