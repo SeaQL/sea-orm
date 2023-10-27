@@ -59,6 +59,23 @@ impl Into<u64> for ProxyExecResultIdType {
     }
 }
 
+impl Into<String> for ProxyExecResultIdType {
+    fn into(self) -> String {
+        self.to_string()
+    }
+}
+
+impl ToString for ProxyExecResultIdType {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Integer(val) => val.to_string(),
+            Self::String(val) => val.to_owned(),
+            Self::Bytes(val) => String::from_utf8_lossy(&val).to_string(),
+            Self::Uuid(val) => val.to_string(),
+        }
+    }
+}
+
 /// Defines the results obtained from a [ProxyDatabase]
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub enum ProxyExecResult {
