@@ -38,7 +38,7 @@ pub use ActiveValue::NotSet;
 /// );
 /// ```
 #[derive(Clone, Debug)]
-#[cfg(feature = "with-json", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "with-json", derive(Serialize, Deserialize))]
 pub enum ActiveValue<V>
 where
     V: Into<Value>,
