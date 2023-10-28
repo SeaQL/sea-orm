@@ -287,6 +287,26 @@ pub enum GenerateSubcommands {
         )]
         seaography: bool,
     },
+    #[command(about = "Extract Custom Entity Code")]
+    ExtractCustom {
+        #[arg(
+            short = 'o',
+            long,
+            default_value = "./",
+            help = "Entity file output directory"
+        )]
+        output_dir: String,
+    },
+    #[command(about = "Apply Custom Entity Code")]
+    ApplyCustom {
+        #[arg(
+            short = 'o',
+            long,
+            default_value = "./",
+            help = "Entity file output directory"
+        )]
+        output_dir: String,
+    },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Default)]
