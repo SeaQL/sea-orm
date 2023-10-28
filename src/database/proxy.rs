@@ -136,7 +136,7 @@ impl From<ExecResult> for ProxyExecResult {
             #[cfg(feature = "sqlx-mysql")]
             ExecResultHolder::SqlxMySql(result) => {
                 ProxyExecResult::Inserted(vec![ProxyExecResultIdType::Integer(
-                    result.last_insert_id().unwrap_or(0),
+                    result.last_insert_id(),
                 )])
             }
             #[cfg(feature = "sqlx-postgres")]
