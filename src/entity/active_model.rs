@@ -37,7 +37,7 @@ pub use ActiveValue::NotSet;
 ///     r#"UPDATE "fruit" SET "name" = 'Orange' WHERE "fruit"."id" = 1"#
 /// );
 /// ```
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 #[cfg(feature = "with-json", derive(Serialize, Deserialize))]
 pub enum ActiveValue<V>
 where
@@ -48,7 +48,6 @@ where
     /// A defined [Value] remain unchanged
     Unchanged(V),
     /// An undefined [Value]
-    #[default]
     NotSet,
 }
 
