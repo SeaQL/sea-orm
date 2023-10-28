@@ -26,92 +26,21 @@ pub trait ProxyDatabaseTrait: Send + Sync + std::fmt::Debug {
     }
 }
 
-/// The id type for [ProxyExecResult]
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-pub enum ProxyExecResultIdType {
-    /// Integer
-    Integer(u64),
-    /// UUID
-    Uuid(uuid::Uuid),
-    /// String
-    String(String),
-    /// Bytes
-    Bytes(Vec<u8>),
-}
-
-impl Into<u64> for ProxyExecResultIdType {
-    fn into(self) -> u64 {
-        match self {
-            Self::Integer(val) => val,
-            Self::String(val) => val.parse().unwrap_or(0),
-            Self::Bytes(val) => {
-                // It would crash if it's longer than 8 bytes
-                if val.len() > 8 {
-                    panic!("Bytes is longer than 8 bytes")
-                }
-
-                let mut bytes = [0u8; 8];
-                bytes.copy_from_slice(&val[..8]);
-                u64::from_le_bytes(bytes)
-            }
-            Self::Uuid(_) => panic!("Uuid cannot be converted to u64 that not lose precision"),
-        }
-    }
-}
-
-impl Into<String> for ProxyExecResultIdType {
-    fn into(self) -> String {
-        self.to_string()
-    }
-}
-
-impl ToString for ProxyExecResultIdType {
-    fn to_string(&self) -> String {
-        match self {
-            Self::Integer(val) => val.to_string(),
-            Self::String(val) => val.to_owned(),
-            Self::Bytes(val) => String::from_utf8_lossy(&val).to_string(),
-            Self::Uuid(val) => val.to_string(),
-        }
-    }
-}
-
 /// Defines the results obtained from a [ProxyDatabase]
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
-pub enum ProxyExecResult {
-    /// The INSERT statement did not have any value to insert
-    #[default]
-    Empty,
-    /// The INSERT operation did not insert any valid value
-    Conflicted,
-    /// Successfully inserted
-    Inserted(Vec<ProxyExecResultIdType>),
+pub struct ProxyExecResult {
+    /// The last inserted id on auto-increment
+    pub last_insert_id: u64,
+    /// The number of rows affected by the database operation
+    pub rows_affected: u64,
 }
 
 impl ProxyExecResult {
-    /// Get the last id after `AUTOINCREMENT` is done on the primary key
-    ///
-    /// # Panics
-    ///
-    /// The proxy list is empty or the last value cannot convert to u64
-    pub fn last_insert_id(&self) -> u64 {
-        match self {
-            Self::Empty | Self::Conflicted => 0,
-            Self::Inserted(val) => {
-                let ret = val
-                    .last()
-                    .expect("Cannot get last value of proxy insert result");
-                let ret: u64 = ret.clone().into();
-                ret
-            }
-        }
-    }
-
-    /// Get the number of rows affected by the operation
-    pub fn rows_affected(&self) -> u64 {
-        match self {
-            Self::Empty | Self::Conflicted => 0,
-            Self::Inserted(val) => val.len() as u64,
+    /// Create a new [ProxyExecResult] from the last inserted id and the number of rows affected
+    pub fn new(last_insert_id: u64, rows_affected: u64) -> Self {
+        Self {
+            last_insert_id,
+            rows_affected,
         }
     }
 }
@@ -134,25 +63,25 @@ impl From<ExecResult> for ProxyExecResult {
     fn from(result: ExecResult) -> Self {
         match result.result {
             #[cfg(feature = "sqlx-mysql")]
-            ExecResultHolder::SqlxMySql(result) => {
-                ProxyExecResult::Inserted(vec![ProxyExecResultIdType::Integer(
-                    result.last_insert_id(),
-                )])
-            }
+            ExecResultHolder::SqlxMySql(result) => Self {
+                last_insert_id: result.last_insert_id() as u64,
+                rows_affected: result.rows_affected(),
+            },
             #[cfg(feature = "sqlx-postgres")]
-            ExecResultHolder::SqlxPostgres(result) => ProxyExecResult::Inserted(vec![]),
+            ExecResultHolder::SqlxPostgres(result) => Self {
+                last_insert_id: 0,
+                rows_affected: result.rows_affected(),
+            },
             #[cfg(feature = "sqlx-sqlite")]
-            ExecResultHolder::SqlxSqlite(result) => {
-                ProxyExecResult::Inserted(vec![ProxyExecResultIdType::Integer(
-                    result.last_insert_rowid() as u64,
-                )])
-            }
+            ExecResultHolder::SqlxSqlite(result) => Self {
+                last_insert_id: result.last_insert_rowid() as u64,
+                rows_affected: result.rows_affected(),
+            },
             #[cfg(feature = "mock")]
-            ExecResultHolder::Mock(result) => {
-                ProxyExecResult::Inserted(vec![ProxyExecResultIdType::Integer(
-                    result.last_insert_id,
-                )])
-            }
+            ExecResultHolder::Mock(result) => Self {
+                last_insert_id: result.last_insert_id,
+                rows_affected: result.rows_affected,
+            },
             ExecResultHolder::Proxy(result) => result,
         }
     }
@@ -939,7 +868,7 @@ impl ProxyRow {
 mod tests {
     use crate::{
         entity::*, tests_cfg::*, Database, DbBackend, DbErr, ProxyDatabaseTrait, ProxyExecResult,
-        ProxyExecResultIdType, ProxyRow, Statement,
+        ProxyRow, Statement,
     };
     use std::sync::{Arc, Mutex};
 
@@ -954,9 +883,10 @@ mod tests {
 
         fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
             println!("SQL execute: {}", statement.sql);
-            Ok(ProxyExecResult::Inserted(vec![
-                ProxyExecResultIdType::Integer(1),
-            ]))
+            Ok(ProxyExecResult {
+                last_insert_id: 1,
+                rows_affected: 1,
+            })
         }
     }
 

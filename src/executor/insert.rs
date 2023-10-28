@@ -1,7 +1,7 @@
 use crate::{
-    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, ExecResultHolder,
-    Insert, IntoActiveModel, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, ProxyExecResult,
-    ProxyExecResultIdType, SelectModel, SelectorRaw, Statement, TryFromU64, TryInsert,
+    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert, IntoActiveModel,
+    Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
+    TryInsert,
 };
 use sea_query::{Expr, FromValueTuple, Iden, InsertStatement, IntoColumnRef, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};
@@ -241,41 +241,8 @@ where
             if res.rows_affected() == 0 {
                 return Err(DbErr::RecordNotInserted);
             }
-            match res.result {
-                ExecResultHolder::Proxy(val) => match val {
-                    ProxyExecResult::Empty | ProxyExecResult::Conflicted => {
-                        return Err(DbErr::RecordNotInserted);
-                    }
-                    ProxyExecResult::Inserted(val) => {
-                        match val.last().ok_or(DbErr::UnpackInsertId)? {
-                            ProxyExecResultIdType::Integer(val) => {
-                                ValueTypeOf::<A>::try_from_u64(*val)
-                                    .map_err(|_| DbErr::UnpackInsertId)?
-                            }
-                            ProxyExecResultIdType::String(val) => {
-                                ValueTypeOf::<A>::from_value_tuple(ValueTuple::One(
-                                    sea_query::Value::String(Some(Box::new(val.to_owned()))),
-                                ))
-                            }
-                            ProxyExecResultIdType::Uuid(val) => {
-                                ValueTypeOf::<A>::from_value_tuple(ValueTuple::One(
-                                    sea_query::Value::Uuid(Some(Box::new(val.to_owned()))),
-                                ))
-                            }
-                            ProxyExecResultIdType::Bytes(val) => {
-                                ValueTypeOf::<A>::from_value_tuple(ValueTuple::One(
-                                    sea_query::Value::Bytes(Some(Box::new(val.to_owned()))),
-                                ))
-                            }
-                        }
-                    }
-                },
-                _ => {
-                    let last_insert_id = res.last_insert_id();
-                    ValueTypeOf::<A>::try_from_u64(last_insert_id)
-                        .map_err(|_| DbErr::UnpackInsertId)?
-                }
-            }
+            let last_insert_id = res.last_insert_id();
+            ValueTypeOf::<A>::try_from_u64(last_insert_id).map_err(|_| DbErr::UnpackInsertId)?
         }
     };
 

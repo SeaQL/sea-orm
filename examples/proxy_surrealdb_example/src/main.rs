@@ -4,7 +4,6 @@
 
 mod entity;
 
-use serde_json::json;
 use std::{
     collections::BTreeMap,
     sync::{Arc, Mutex},
@@ -12,7 +11,7 @@ use std::{
 
 use sea_orm::{
     ActiveValue::Set, Database, DbBackend, DbErr, EntityTrait, ProxyDatabaseTrait, ProxyExecResult,
-    ProxyExecResultIdType, ProxyRow, Statement,
+    ProxyRow, Statement,
 };
 use surrealdb::{
     engine::local::{Db, Mem},
@@ -134,9 +133,10 @@ impl ProxyDatabaseTrait for ProxyDb {
         })
         .unwrap();
 
-        Ok(ProxyExecResult::Inserted(vec![
-            ProxyExecResultIdType::Integer(1),
-        ]))
+        Ok(ProxyExecResult {
+            last_insert_id: 1,
+            rows_affected: 1,
+        })
     }
 }
 
