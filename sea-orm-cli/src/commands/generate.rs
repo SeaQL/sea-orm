@@ -32,6 +32,7 @@ pub async fn run_generate_command(
             model_extra_derives,
             model_extra_attributes,
             seaography,
+            gen_impl_active_model_behavior,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -181,6 +182,7 @@ pub async fn run_generate_command(
                 model_extra_derives,
                 model_extra_attributes,
                 seaography,
+                gen_impl_active_model_behavior,
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
