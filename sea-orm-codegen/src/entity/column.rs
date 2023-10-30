@@ -279,6 +279,14 @@ impl From<&ColumnDef> for Column {
             .get_column_spec()
             .iter()
             .any(|spec| matches!(spec, ColumnSpec::NotNull));
+        let is_default = col_def
+            .get_column_spec()
+            .iter()
+            .any(|spec| matches!(spec, ColumnSpec::Default(_)));
+        let is_primary_key = col_def
+            .get_column_spec()
+            .iter()
+            .any(|spec| matches!(spec, ColumnSpec::PrimaryKey));
         let unique = col_def
             .get_column_spec()
             .iter()
@@ -287,7 +295,7 @@ impl From<&ColumnDef> for Column {
             name,
             col_type,
             auto_increment,
-            not_null,
+            not_null: not_null && !is_default && !is_primary_key,
             unique,
         }
     }
