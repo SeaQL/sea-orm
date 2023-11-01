@@ -95,8 +95,8 @@ where
         })
 }
 
-/// convert attributes argument to token stream
-fn bonus_attributes<T, I>(attributes: I) -> TokenStream
+/// convert *_extra_attributes argument to token stream
+pub(crate) fn bonus_attributes<T, I>(attributes: I) -> TokenStream
 where
     T: Into<String>,
     I: IntoIterator<Item = T>,

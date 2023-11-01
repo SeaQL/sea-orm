@@ -53,6 +53,7 @@ impl ActiveEnum {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entity::writer::bonus_attributes;
     use pretty_assertions::assert_eq;
     use sea_query::{Alias, IntoIden};
 
@@ -106,6 +107,73 @@ mod tests {
                     Archive,
                     #[sea_orm(string_value = "3D")]
                     _3D,
+                }
+            )
+            .to_string()
+        )
+    }
+
+    #[test]
+    fn test_enum_extra_attributes() {
+        assert_eq!(
+            ActiveEnum {
+                enum_name: Alias::new("coinflip_result_type").into_iden(),
+                values: vec!["HEADS", "TAILS"]
+                    .into_iter()
+                    .map(|variant| Alias::new(variant).into_iden())
+                    .collect(),
+            }
+            .impl_active_enum(
+                &WithSerde::None,
+                true,
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#])
+            )
+            .to_string(),
+            quote!(
+                #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
+                #[sea_orm(
+                    rs_type = "String",
+                    db_type = "Enum",
+                    enum_name = "coinflip_result_type"
+                )]
+                #[serde(rename_all = "camelCase")]
+                pub enum CoinflipResultType {
+                    #[sea_orm(string_value = "HEADS")]
+                    Heads,
+                    #[sea_orm(string_value = "TAILS")]
+                    Tails,
+                }
+            )
+            .to_string()
+        );
+        assert_eq!(
+            ActiveEnum {
+                enum_name: Alias::new("coinflip_result_type").into_iden(),
+                values: vec!["HEADS", "TAILS"]
+                    .into_iter()
+                    .map(|variant| Alias::new(variant).into_iden())
+                    .collect(),
+            }
+            .impl_active_enum(
+                &WithSerde::None,
+                true,
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"])
+            )
+            .to_string(),
+            quote!(
+                #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
+                #[sea_orm(
+                    rs_type = "String",
+                    db_type = "Enum",
+                    enum_name = "coinflip_result_type"
+                )]
+                #[serde(rename_all = "camelCase")]
+                #[ts(export)]
+                pub enum CoinflipResultType {
+                    #[sea_orm(string_value = "HEADS")]
+                    Heads,
+                    #[sea_orm(string_value = "TAILS")]
+                    Tails,
                 }
             )
             .to_string()
