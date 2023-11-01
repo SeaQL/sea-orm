@@ -31,6 +31,7 @@ pub async fn run_generate_command(
             lib,
             model_extra_derives,
             model_extra_attributes,
+            enum_extra_attributes,
             seaography,
         } => {
             if verbose {
@@ -180,6 +181,7 @@ pub async fn run_generate_command(
                 serde_skip_hidden_column,
                 model_extra_derives,
                 model_extra_attributes,
+                enum_extra_attributes,
                 seaography,
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);

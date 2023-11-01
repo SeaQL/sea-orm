@@ -12,7 +12,12 @@ pub struct ActiveEnum {
 }
 
 impl ActiveEnum {
-    pub fn impl_active_enum(&self, with_serde: &WithSerde, with_copy_enums: bool) -> TokenStream {
+    pub fn impl_active_enum(
+        &self,
+        with_serde: &WithSerde,
+        with_copy_enums: bool,
+        enum_extra_attributes: &TokenStream,
+    ) -> TokenStream {
         let enum_name = &self.enum_name.to_string();
         let enum_iden = format_ident!("{}", enum_name.to_upper_camel_case());
         let values: Vec<String> = self.values.iter().map(|v| v.to_string()).collect();
@@ -34,6 +39,7 @@ impl ActiveEnum {
         quote! {
             #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum #copy_derive #extra_derive)]
             #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = #enum_name)]
+            #enum_extra_attributes
             pub enum #enum_iden {
                 #(
                     #[sea_orm(string_value = #values)]
@@ -72,7 +78,7 @@ mod tests {
                 .map(|variant| Alias::new(variant).into_iden())
                 .collect(),
             }
-            .impl_active_enum(&WithSerde::None, true)
+            .impl_active_enum(&WithSerde::None, true, &TokenStream::new())
             .to_string(),
             quote!(
                 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
