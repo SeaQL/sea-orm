@@ -64,7 +64,7 @@ pub fn derive_database(input: TokenStream) -> TokenStream {
                     ) -> rocket::request::Outcome<Self, Self::Error> {
                         match #db_ty::fetch(req.rocket()) {
                             Some(db) => rocket::outcome::Outcome::Success(db),
-                            None => rocket::outcome::Outcome::Error((
+                            None => rocket::outcome::Outcome::Failure((
                                 rocket::http::Status::InternalServerError, ()))
                         }
                     }

@@ -131,10 +131,10 @@ pub trait Database:
         }
 
         let dbtype = std::any::type_name::<Self>();
-        let fairing = Paint::new(format!("{dbtype}::init()")).bold();
+        let fairing = Paint::default(format!("{dbtype}::init()")).bold();
         error!(
             "Attempted to fetch unattached database `{}`.",
-            Paint::new(dbtype).bold()
+            Paint::default(dbtype).bold()
         );
         info_!(
             "`{}` fairing must be attached prior to using this database.",
@@ -261,7 +261,7 @@ impl<'r, D: Database> FromRequest<'r> for Connection<'r, D> {
     async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         match D::fetch(req.rocket()) {
             Some(pool) => Outcome::Success(Connection(pool.borrow())),
-            None => Outcome::Error((Status::InternalServerError, None)),
+            None => Outcome::Failure((Status::InternalServerError, None)),
         }
     }
 }
