@@ -11,12 +11,8 @@ async-trait = { version = "0.1" }
 rocket-okapi-example-service = { path = "../service" }
 futures = { version = "0.3" }
 futures-util = { version = "0.3" }
-rocket = { version = "0.5.0-rc.1", features = [
-  "json",
-] }
-rocket_dyn_templates = { version = "0.1.0-rc.1", features = [
-  "tera",
-] }
+rocket = { version = "0.5.0-rc.4", features = ["json"] }
+rocket_dyn_templates = { version = "0.1.0-rc.1", features = ["tera"] }
 serde_json = { version = "1" }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
@@ -26,12 +22,14 @@ dto = { path = "../dto" }
 
 [dependencies.sea-orm-rocket]
 path = "../../../sea-orm-rocket/lib" # remove this line in your own project and use the version line
-features = ["rocket_okapi"] # enables rocket_okapi so to have open api features enabled
+features = [
+  "rocket_okapi",
+] # enables rocket_okapi so to have open api features enabled
 # version = "0.5.1"
 
 [dependencies.rocket_okapi]
 version = "0.8.0-rc.2"
-features = ["swagger", "rapidoc","rocket_db_pools"]
+features = ["swagger", "rapidoc", "rocket_db_pools"]
 
 [dependencies.rocket_cors]
 git = "https://github.com/lawliet89/rocket_cors.git"
