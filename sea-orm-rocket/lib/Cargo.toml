@@ -20,12 +20,15 @@ default-features = false
 path = "../codegen"
 version = "0.5.1"
 
-[dependencies.rocket_okapi]
-version = "0.8.0-rc.3"
-default-features = false
-optional = true
+# [dependencies.rocket_okapi]
+# version = "0.8.0-rc.4"
+# default-features = false
+# optional = true
 
 [dev-dependencies.rocket]
 version = "0.5.0-rc.4"
 default-features = false
 features = ["json"]
+
+[features]
+rocket_okapi = []
