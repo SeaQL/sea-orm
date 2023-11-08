@@ -578,6 +578,28 @@ pub async fn related() -> Result<(), DbErr> {
     }
 
     // get all bakery and baker's name and put them into tuples
+    let tuple_bakers_in_bakery: Vec<(String, Option<String>)> = Bakery::find()
+        .find_also_related(Baker)
+        .select_only()
+        .column_as(bakery::Column::Name, (SelectA, bakery::Column::Name))
+        .column_as(baker::Column::Name, (SelectB, baker::Column::Name))
+        .order_by_asc(bakery::Column::Id)
+        .order_by_asc(baker::Column::Id)
+        .into_tuple::<(String, Option<String>)>()
+        .all(&ctx.db)
+        .await?;
+
+    assert_eq!(
+        tuple_bakers_in_bakery,
+        [
+            ("SeaSide Bakery".to_string(), Some("Baker Bob".to_owned())),
+            ("SeaSide Bakery".to_string(), Some("Baker Bobby".to_owned())),
+            ("Terres Bakery".to_string(), Some("Baker Ada".to_owned())),
+            ("Stone Bakery".to_string(), None),
+        ]
+    );
+
+    // get all bakery and baker's name and put them into tuples
     let bakers_in_bakery: Vec<(BakeryLite, Option<BakerLite>)> = Bakery::find()
         .find_also_related(Baker)
         .select_only()
