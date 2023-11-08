@@ -129,8 +129,12 @@ mod tests {
                 &bonus_derive(["specta::Type", "ts_rs::TS"])
             )
             .to_string(),
+            build_generated_enum(),
+        );
+
+        #[rustfmt::skip]
+        fn build_generated_enum() -> String {
             quote!(
-                #[rustfmt::skip]
                 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy, specta :: Type, ts_rs :: TS)]
                 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "media_type")]
                 pub enum MediaType {
@@ -141,6 +145,6 @@ mod tests {
                 }
             )
             .to_string()
-        )
+        }
     }
 }
