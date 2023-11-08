@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
-* Added `#[sea_orm(skip)]` for `FromQueryResult` derive macro
+* Added `#[sea_orm(skip)]` for `FromQueryResult` derive macro https://github.com/SeaQL/sea-orm/pull/1954
+
+### Bug Fixes
+
+* [sea-orm-cli] Fix duplicated active enum use statements on generated entities https://github.com/SeaQL/sea-orm/pull/1953
 
 ## 0.12.5 - skipped
 
