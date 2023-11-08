@@ -283,6 +283,13 @@ pub enum GenerateSubcommands {
         #[arg(
             long,
             value_delimiter = ',',
+            help = "Add extra derive macros to generated enums (comma separated), e.g. `--enum-extra-derives 'ts_rs::Ts','CustomDerive'`"
+        )]
+        enum_extra_derives: Vec<String>,
+
+        #[arg(
+            long,
+            value_delimiter = ',',
             help = r#"Add extra attributes to generated enums, no need for `#[]` (comma separated), e.g. `--enum-extra-attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
         )]
         enum_extra_attributes: Vec<String>,
