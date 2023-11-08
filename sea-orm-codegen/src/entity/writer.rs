@@ -303,7 +303,12 @@ impl EntityWriter {
             .enums
             .values()
             .map(|active_enum| {
-                active_enum.impl_active_enum(with_serde, with_copy_enums, extra_derives, extra_attributes)
+                active_enum.impl_active_enum(
+                    with_serde,
+                    with_copy_enums,
+                    extra_derives,
+                    extra_attributes,
+                )
             })
             .collect();
         Self::write(&mut lines, code_blocks);

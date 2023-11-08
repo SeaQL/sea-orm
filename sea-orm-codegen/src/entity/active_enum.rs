@@ -53,10 +53,8 @@ impl ActiveEnum {
 
 #[cfg(test)]
 mod tests {
-    use crate::entity::writer::bonus_derive;
-
     use super::*;
-    use crate::entity::writer::bonus_attributes;
+    use crate::entity::writer::{bonus_attributes, bonus_derive};
     use pretty_assertions::assert_eq;
     use sea_query::{Alias, IntoIden};
 
@@ -82,7 +80,12 @@ mod tests {
                 .map(|variant| Alias::new(variant).into_iden())
                 .collect(),
             }
-            .impl_active_enum(&WithSerde::None, true, &TokenStream::new(), &TokenStream::new())
+            .impl_active_enum(
+                &WithSerde::None,
+                true,
+                &TokenStream::new(),
+                &TokenStream::new(),
+            )
             .to_string(),
             quote!(
                 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
@@ -129,7 +132,8 @@ mod tests {
             .impl_active_enum(
                 &WithSerde::None,
                 true,
-                &bonus_derive(["specta::Type", "ts_rs::TS"])
+                &bonus_derive(["specta::Type", "ts_rs::TS"]),
+                &TokenStream::new(),
             )
             .to_string(),
             build_generated_enum(),
@@ -164,6 +168,7 @@ mod tests {
             .impl_active_enum(
                 &WithSerde::None,
                 true,
+                &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#])
             )
             .to_string(),
@@ -195,6 +200,7 @@ mod tests {
             .impl_active_enum(
                 &WithSerde::None,
                 true,
+                &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"])
             )
             .to_string(),
