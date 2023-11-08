@@ -14,8 +14,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Bug Fixes
 
 * [sea-orm-cli] Fix duplicated active enum use statements on generated entities https://github.com/SeaQL/sea-orm/pull/1953
-* [sea-orm-cli] Added `--enum-extra-attributes` https://github.com/SeaQL/sea-orm/pull/1952
 * [sea-orm-cli] Added `--enum-extra-derives` https://github.com/SeaQL/sea-orm/pull/1934
+* [sea-orm-cli] Added `--enum-extra-attributes` https://github.com/SeaQL/sea-orm/pull/1952
 
 ## 0.12.5 - skipped
 
