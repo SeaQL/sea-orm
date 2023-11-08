@@ -289,6 +289,13 @@ pub enum GenerateSubcommands {
 
         #[arg(
             long,
+            value_delimiter = ',',
+            help = r#"Add extra attributes to generated enums, no need for `#[]` (comma separated), e.g. `--enum-extra-attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
+        )]
+        enum_extra_attributes: Vec<String>,
+
+        #[arg(
+            long,
             default_value = "false",
             long_help = "Generate helper Enumerations that are used by Seaography."
         )]

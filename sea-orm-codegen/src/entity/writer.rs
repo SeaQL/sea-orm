@@ -48,6 +48,7 @@ pub struct EntityWriterContext {
     pub(crate) model_extra_derives: TokenStream,
     pub(crate) model_extra_attributes: TokenStream,
     pub(crate) enum_extra_derives: TokenStream,
+    pub(crate) enum_extra_attributes: TokenStream,
     pub(crate) seaography: bool,
 }
 
@@ -95,8 +96,8 @@ where
     )
 }
 
-/// convert attributes argument to token stream
-fn bonus_attributes<T, I>(attributes: I) -> TokenStream
+/// convert *_extra_attributes argument to token stream
+pub(crate) fn bonus_attributes<T, I>(attributes: I) -> TokenStream
 where
     T: Into<String>,
     I: IntoIterator<Item = T>,
@@ -145,6 +146,7 @@ impl EntityWriterContext {
         model_extra_derives: Vec<String>,
         model_extra_attributes: Vec<String>,
         enum_extra_derives: Vec<String>,
+        enum_extra_attributes: Vec<String>,
         seaography: bool,
     ) -> Self {
         Self {
@@ -159,6 +161,7 @@ impl EntityWriterContext {
             model_extra_derives: bonus_derive(model_extra_derives),
             model_extra_attributes: bonus_attributes(model_extra_attributes),
             enum_extra_derives: bonus_derive(enum_extra_derives),
+            enum_extra_attributes: bonus_attributes(enum_extra_attributes),
             seaography,
         }
     }
@@ -175,6 +178,7 @@ impl EntityWriter {
                 &context.with_serde,
                 context.with_copy_enums,
                 &context.enum_extra_derives,
+                &context.enum_extra_attributes,
             ));
         }
         WriterOutput { files }
@@ -289,6 +293,7 @@ impl EntityWriter {
         with_serde: &WithSerde,
         with_copy_enums: bool,
         extra_derives: &TokenStream,
+        extra_attributes: &TokenStream,
     ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
@@ -298,7 +303,7 @@ impl EntityWriter {
             .enums
             .values()
             .map(|active_enum| {
-                active_enum.impl_active_enum(with_serde, with_copy_enums, extra_derives)
+                active_enum.impl_active_enum(with_serde, with_copy_enums, extra_derives, extra_attributes)
             })
             .collect();
         Self::write(&mut lines, code_blocks);
