@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.12.6 - pending
+
+### New Features
+
+* Added `#[sea_orm(skip)]` for `FromQueryResult` derive macro
+
+## 0.12.5 - skipped
+
 ## 0.12.4 - 2023-10-19
 
 ### New Features
