@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.12.6 - pending
+## 0.12.5 - 2023-11-12
 
 ### New Features
 
@@ -16,8 +16,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * [sea-orm-cli] Fix duplicated active enum use statements on generated entities https://github.com/SeaQL/sea-orm/pull/1953
 * [sea-orm-cli] Added `--enum-extra-derives` https://github.com/SeaQL/sea-orm/pull/1934
 * [sea-orm-cli] Added `--enum-extra-attributes` https://github.com/SeaQL/sea-orm/pull/1952
-
-## 0.12.5 - skipped
 
 ## 0.12.4 - 2023-10-19
 
