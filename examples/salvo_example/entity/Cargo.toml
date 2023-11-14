@@ -14,4 +14,4 @@ salvo = { version = "0.50" }
 
 [dependencies.sea-orm]
 path = "../../../" # remove this line in your own project
-version = "0.12.4" # sea-orm version
+version = "0.12.6" # sea-orm version
