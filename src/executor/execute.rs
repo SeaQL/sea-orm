@@ -22,6 +22,9 @@ pub(crate) enum ExecResultHolder {
     /// Holds the result of executing an operation on the Mock database
     #[cfg(feature = "mock")]
     Mock(crate::MockExecResult),
+    /// Holds the result of executing an operation on the Proxy database
+    #[cfg(feature = "proxy")]
+    Proxy(crate::ProxyExecResult),
 }
 
 // ExecResult //
@@ -51,6 +54,8 @@ impl ExecResult {
             }
             #[cfg(feature = "mock")]
             ExecResultHolder::Mock(result) => result.last_insert_id,
+            #[cfg(feature = "proxy")]
+            ExecResultHolder::Proxy(result) => result.last_insert_id,
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -67,6 +72,8 @@ impl ExecResult {
             ExecResultHolder::SqlxSqlite(result) => result.rows_affected(),
             #[cfg(feature = "mock")]
             ExecResultHolder::Mock(result) => result.rows_affected,
+            #[cfg(feature = "proxy")]
+            ExecResultHolder::Proxy(result) => result.rows_affected,
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }

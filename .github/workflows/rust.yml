@@ -1,15 +1,15 @@
 # GitHub Actions with Conditional Job Running Based on Commit Message
-# 
+#
 # --------------------------------------------------------------------------------
-# 
+#
 # Following jobs will always run
-# 
+#
 #   - `clippy`
 #   - `test`
 #   - `examples`
-# 
+#
 # Following jobs will be run when no keywords were found in commit message)
-# 
+#
 #   - `compile-sqlite`
 #   - `sqlite`
 #   - `compile-mysql`
@@ -17,36 +17,35 @@
 #   - `mariadb`
 #   - `compile-postgres`
 #   - `postgres`
-# 
+#
 # Following jobs will be run if keywords `[issues]` were found in commit message
-# 
+#
 #   - Jobs that will always run
 #   - `issues`
-# 
+#
 # Following jobs will be run if keywords `[cli]` were found in commit message
-# 
+#
 #   - Jobs that will always run
 #   - `cli`
-# 
+#
 # Following jobs will be run if keywords `[sqlite]` were found in commit message
-# 
+#
 #   - Jobs that will always run
 #   - `compile-sqlite`
 #   - `sqlite`
-# 
+#
 # Following jobs will be run if keywords `[mysql]` were found in commit message
-# 
+#
 #   - Jobs that will always run
 #   - `compile-mysql`
 #   - `mysql`
 #   - `mariadb`
-# 
+#
 # Following jobs will be run if keywords `[postgres]` were found in commit message
-# 
+#
 #   - Jobs that will always run
 #   - `compile-postgres`
 #   - `postgres`
-
 
 name: tests
 
@@ -73,7 +72,6 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-
   init:
     name: Init
     runs-on: ubuntu-latest
@@ -252,8 +250,10 @@ jobs:
         with:
           toolchain: nightly
           components: rustfmt
+      - run: rustup target add wasm32-wasi
       - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo fmt --manifest-path {} -- --check
       - uses: dtolnay/rust-toolchain@stable
+      - run: rustup target add wasm32-wasi
       - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo build --manifest-path {}
       - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
       - run: ${{'! '}}${{ '[ -d "' }}${{ matrix.path }}${{ '/service" ]' }} || find ${{ matrix.path }}/service -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {} --features mock
@@ -299,7 +299,7 @@ jobs:
       }}
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: "sqlite::memory:"
+      DATABASE_URL: 'sqlite::memory:'
     strategy:
       fail-fast: false
       matrix:
@@ -331,7 +331,7 @@ jobs:
       }}
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: "mysql://root:@localhost"
+      DATABASE_URL: 'mysql://root:@localhost'
     strategy:
       fail-fast: false
       matrix:
@@ -349,7 +349,7 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: yes
           MYSQL_ROOT_PASSWORD:
         ports:
-          - "3306:3306"
+          - '3306:3306'
         options: >-
           --health-cmd="mysqladmin ping"
           --health-interval=10s
@@ -381,7 +381,7 @@ jobs:
       }}
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: "mysql://root:@localhost"
+      DATABASE_URL: 'mysql://root:@localhost'
     strategy:
       fail-fast: false
       matrix:
@@ -399,7 +399,7 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: yes
           MYSQL_ROOT_PASSWORD:
         ports:
-          - "3306:3306"
+          - '3306:3306'
         options: >-
           --health-cmd="mysqladmin ping"
           --health-interval=10s
@@ -430,7 +430,7 @@ jobs:
       }}
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: "postgres://root:root@localhost"
+      DATABASE_URL: 'postgres://root:root@localhost'
     strategy:
       fail-fast: false
       matrix:
@@ -445,7 +445,7 @@ jobs:
           POSTGRES_USER: root
           POSTGRES_PASSWORD: root
         ports:
-          - "5432:5432"
+          - '5432:5432'
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
