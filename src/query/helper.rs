@@ -511,7 +511,7 @@ pub trait QuerySelect: Sized {
     ///     "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
     /// );
     /// ```
-    fn expr_as<T, A>(&mut self, expr: T, alias: A) -> &mut Self
+    fn expr_as<T, A>(mut self, expr: T, alias: A) -> Self
     where
         T: Into<SimpleExpr>,
         A: IntoIdentity,
@@ -822,5 +822,41 @@ pub(crate) fn unpack_table_alias(table_ref: &TableRef) -> Option<DynIden> {
         | TableRef::SchemaTableAlias(_, _, alias)
         | TableRef::DatabaseSchemaTableAlias(_, _, _, alias)
         | TableRef::FunctionCall(_, alias) => Some(SeaRc::clone(alias)),
+    }
+}
+
+#[cfg(test)]
+mod ownership {
+    #[test]
+    fn expr_as_should_not_require_conversion_to_owned() {
+        use sea_orm::sea_query::{Expr, Func};
+        use sea_orm::{entity::*, tests_cfg::cake, QuerySelect, Select};
+
+        let _query: Select<_> = cake::Entity::find()
+            .select_only()
+            .expr_as(
+                Func::upper(Expr::col((cake::Entity, cake::Column::Name))),
+                "name_upper",
+            )
+            // <- When expr_as() accepted and returned `&mut Self`,
+            //    the test didn't compile without adding a noisy `.to_owned()` here.
+            .column(cake::Column::Id);
+    }
+
+    #[test]
+    fn to_owned_after_expr_as_should_still_compile() {
+        use sea_orm::sea_query::{Expr, Func};
+        use sea_orm::{entity::*, tests_cfg::cake, QuerySelect, Select};
+
+        let _query: Select<_> = cake::Entity::find()
+            .select_only()
+            .expr_as(
+                Func::upper(Expr::col((cake::Entity, cake::Column::Name))),
+                "name_upper",
+            )
+            // With by-value `expr_as()`, this call is no longer necessary,
+            // but it will be present in codebases that used sea-orm <= 0.12.6.
+            .to_owned()
+            .column(cake::Column::Id);
     }
 }
