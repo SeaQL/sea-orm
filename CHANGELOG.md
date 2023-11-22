@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.12.7 - 2023-11-22
+
+### Enhancements
+
+* Added method `expr_as_` that accepts `self` https://github.com/SeaQL/sea-orm/pull/1979
+
 ## 0.12.6 - 2023-11-13
 
 ### New Features
