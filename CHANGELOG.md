@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Added method `expr_as_` that accepts `self` https://github.com/SeaQL/sea-orm/pull/1979
 
+### Upgrades
+
+* Updated `sea-query` to `0.30.3` https://github.com/SeaQL/sea-query/releases/tag/0.30.3
+
 ## 0.12.6 - 2023-11-13
 
 ### New Features
