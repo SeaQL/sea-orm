@@ -33,37 +33,39 @@ impl ProxyDatabaseTrait for ProxyDb {
         let sql = statement.sql.clone();
 
         let mut ret: Vec<ProxyRow> = vec![];
-        for payload in self.mem.lock().unwrap().execute(sql).unwrap().iter() {
-            match payload {
-                gluesql::prelude::Payload::Select { labels, rows } => {
-                    for row in rows.iter() {
-                        let mut map = BTreeMap::new();
-                        for (label, column) in labels.iter().zip(row.iter()) {
-                            map.insert(
-                                label.to_owned(),
-                                match column {
-                                    gluesql::prelude::Value::I64(val) => {
-                                        sea_orm::Value::BigInt(Some(*val))
-                                    }
-                                    gluesql::prelude::Value::Str(val) => {
-                                        sea_orm::Value::String(Some(Box::new(val.to_owned())))
-                                    }
-                                    _ => unreachable!("Unsupported value: {:?}", column),
-                                },
-                            );
+        async_std::task::block_on(async {
+            for payload in self.mem.lock().unwrap().execute(sql).await.unwrap().iter() {
+                match payload {
+                    gluesql::prelude::Payload::Select { labels, rows } => {
+                        for row in rows.iter() {
+                            let mut map = BTreeMap::new();
+                            for (label, column) in labels.iter().zip(row.iter()) {
+                                map.insert(
+                                    label.to_owned(),
+                                    match column {
+                                        gluesql::prelude::Value::I64(val) => {
+                                            sea_orm::Value::BigInt(Some(*val))
+                                        }
+                                        gluesql::prelude::Value::Str(val) => {
+                                            sea_orm::Value::String(Some(Box::new(val.to_owned())))
+                                        }
+                                        _ => unreachable!("Unsupported value: {:?}", column),
+                                    },
+                                );
+                            }
+                            ret.push(map.into());
                         }
-                        ret.push(map.into());
                     }
+                    _ => unreachable!("Unsupported payload: {:?}", payload),
                 }
-                _ => unreachable!("Unsupported payload: {:?}", payload),
             }
-        }
+        });
 
         Ok(ret)
     }
 
     fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
-        if let Some(values) = statement.values {
+        let sql = if let Some(values) = statement.values {
             // Replace all the '?' with the statement values
             let mut new_sql = statement.sql.clone();
             let mark_count = new_sql.matches('?').count();
@@ -73,12 +75,15 @@ impl ProxyDatabaseTrait for ProxyDb {
                 }
                 new_sql = new_sql.replacen('?', &v.to_string(), 1);
             }
-            println!("SQL execute: {}", new_sql);
-
-            self.mem.lock().unwrap().execute(new_sql).unwrap();
+            new_sql
         } else {
-            self.mem.lock().unwrap().execute(statement.sql).unwrap();
-        }
+            statement.sql
+        };
+
+        println!("SQL execute: {}", sql);
+        async_std::task::block_on(async {
+            self.mem.lock().unwrap().execute(sql).await.unwrap();
+        });
 
         Ok(ProxyExecResult {
             last_insert_id: 1,
@@ -101,6 +106,7 @@ async fn main() {
             )
         "#,
     )
+    .await
     .unwrap();
 
     let db = Database::connect_proxy(

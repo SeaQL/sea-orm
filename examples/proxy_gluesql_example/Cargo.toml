@@ -21,10 +21,7 @@ sea-orm = { path = "../../", features = [
   "runtime-async-std-native-tls",
   "debug-print",
 ] }
-# Since it's newer version (0.14.0) locked the chrono's version to 0.4.23,
-# we need to lock it on older version too.
-# Related to https://github.com/gluesql/gluesql/pull/1427
-gluesql = { version = "0.13", default-features = false, features = [
+gluesql = { version = "0.15", default-features = false, features = [
   "memory-storage",
 ] }
 
