@@ -11,7 +11,7 @@ tokio = { version = "1.34.0", features = ["full"] }
 axum = "0.7.1"
 tower = "0.4.13"
 tower-http = { version = "0.5.0", features = ["fs"] }
-tower-cookies = "0.9.0"
+tower-cookies = "0.10.0"
 anyhow = "1.0.75"
 dotenvy = "0.15.7"
 serde = "1.0.193"
