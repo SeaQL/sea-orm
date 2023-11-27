@@ -5,7 +5,7 @@ use axum::{
     http::StatusCode,
     response::Html,
     routing::{get, get_service, post},
-    Router, Server,
+    Router,
 };
 use axum_example_service::{
     sea_orm::{Database, DatabaseConnection},
@@ -15,8 +15,7 @@ use entity::post;
 use flash::{get_flash_cookie, post_response, PostResponse};
 use migration::{Migrator, MigratorTrait};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
-use std::{env, net::SocketAddr};
+use std::env;
 use tera::Tera;
 use tower_cookies::{CookieManagerLayer, Cookies};
 use tower_http::services::ServeDir;
@@ -63,8 +62,8 @@ async fn start() -> anyhow::Result<()> {
         .layer(CookieManagerLayer::new())
         .with_state(state);
 
-    let addr = SocketAddr::from_str(&server_url).unwrap();
-    Server::bind(&addr).serve(app.into_make_service()).await?;
+    let listener = tokio::net::TcpListener::bind(&server_url).await.unwrap();
+    axum::serve(listener, app).await?;
 
     Ok(())
 }
