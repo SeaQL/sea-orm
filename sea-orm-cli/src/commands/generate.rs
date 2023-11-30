@@ -209,6 +209,18 @@ pub async fn run_generate_command(
 
             println!("... Done.");
         }
+
+        GenerateSubcommands::ExtractCustom {
+            output_dir,
+        } => {
+            println!("ExtractCustom: Output directory = {}",output_dir);
+        }
+
+        GenerateSubcommands::ApplyCustom {
+            output_dir,
+        } => {
+            println!("ApplyCustom: Output directory = {}",output_dir);
+        }
     }
 
     Ok(())
@@ -326,6 +338,8 @@ mod tests {
             "sea-orm-cli",
             "generate",
             "entity",
+            "extract",
+            "apply",
             "--database-url",
             "mysql://root:@localhost:3306/database",
         ]);
