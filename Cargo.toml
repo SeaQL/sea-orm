@@ -125,3 +125,7 @@ runtime-tokio-rustls = [
 ]
 tests-cfg = ["serde/derive"]
 seaography = ["sea-orm-macros/seaography"]
+
+# This allows us to develop using a local version of sea-query
+# [patch.crates-io]
+# sea-query = { path = "../sea-query" }
