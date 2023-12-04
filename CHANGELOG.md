@@ -9,11 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Enhancements
 
-* Implement `StatementBuilder` for `sea_query::WithQuery` https://github.com/SeaQL/sea-orm/pull/1960
+* Implement `StatementBuilder` for `sea_query::WithQuery` https://github.com/SeaQL/sea-orm/issues/1960
 
 ### Upgrades
 
-* Upgrade `axum` example to `0.7`
+* Upgrade `axum` example to `0.7` https://github.com/SeaQL/sea-orm/pull/1984
 
 ## 0.12.7 - 2023-11-22
 
