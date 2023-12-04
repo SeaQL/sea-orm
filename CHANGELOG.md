@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## Main Branch
+## 0.12.8 - 2023-12-04
+
+### Enhancements
+
+* Implement `StatementBuilder` for `sea_query::WithQuery` https://github.com/SeaQL/sea-orm/pull/1960
 
 ### Upgrades
 
