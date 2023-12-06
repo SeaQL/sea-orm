@@ -67,15 +67,53 @@ impl ProxyDatabaseTrait for ProxyDb {
     fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
         let sql = if let Some(values) = statement.values {
             // Replace all the '?' with the statement values
-            let mut new_sql = statement.sql.clone();
-            let mark_count = new_sql.matches('?').count();
-            for (i, v) in values.0.iter().enumerate() {
-                if i >= mark_count {
-                    break;
+            use sqlparser::ast::{Expr, Value};
+            use sqlparser::dialect::GenericDialect;
+            use sqlparser::parser::Parser;
+
+            let dialect = GenericDialect {};
+            let mut ast = Parser::parse_sql(&dialect, statement.sql.as_str()).unwrap();
+            match &mut ast[0] {
+                sqlparser::ast::Statement::Insert {
+                    columns, source, ..
+                } => {
+                    for item in columns.iter_mut() {
+                        item.quote_style = Some('"');
+                    }
+
+                    if let Some(obj) = source {
+                        match &mut *obj.body {
+                            sqlparser::ast::SetExpr::Values(obj) => {
+                                for (mut item, val) in obj.rows[0].iter_mut().zip(values.0.iter()) {
+                                    match &mut item {
+                                        Expr::Value(item) => {
+                                            *item = match val {
+                                                sea_orm::Value::String(val) => {
+                                                    Value::SingleQuotedString(match val {
+                                                        Some(val) => val.to_string(),
+                                                        None => "".to_string(),
+                                                    })
+                                                }
+                                                sea_orm::Value::BigInt(val) => Value::Number(
+                                                    val.unwrap_or(0).to_string(),
+                                                    false,
+                                                ),
+                                                _ => todo!(),
+                                            };
+                                        }
+                                        _ => todo!(),
+                                    }
+                                }
+                            }
+                            _ => todo!(),
+                        }
+                    }
                 }
-                new_sql = new_sql.replacen('?', &v.to_string(), 1);
+                _ => todo!(),
             }
-            new_sql
+
+            let statement = &ast[0];
+            statement.to_string()
         } else {
             statement.sql
         };
