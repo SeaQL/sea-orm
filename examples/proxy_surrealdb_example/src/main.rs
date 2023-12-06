@@ -28,21 +28,58 @@ struct ProxyDb {
 impl ProxyDatabaseTrait for ProxyDb {
     fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr> {
         println!("SQL query: {:?}", statement);
-        let sql = statement.sql.clone();
         let mut ret = async_std::task::block_on(async {
             // Surrealdb's grammar is not compatible with sea-orm's
             // so we need to remove the extra clauses
             // from "SELECT `from`.`col` FROM `from` WHERE `from`.`col` = xx"
             // to "SELECT `col` FROM `from` WHERE `col` = xx"
 
-            // Get the first index of "FROM"
-            let from_index = sql.find("FROM").unwrap();
-            // Get the name after "FROM"
-            let from_name = sql[from_index + 5..].split(' ').next().unwrap();
-            // Delete the name before all the columns
-            let new_sql = sql.replace(&format!("{}.", from_name), "");
+            use sqlparser::ast::{Expr, SelectItem, SetExpr, TableFactor};
+            use sqlparser::dialect::GenericDialect;
+            use sqlparser::parser::Parser;
 
-            self.mem.query(new_sql).await
+            let dialect = GenericDialect {};
+            let mut ast = Parser::parse_sql(&dialect, statement.sql.as_str()).unwrap();
+            match &mut ast[0] {
+                sqlparser::ast::Statement::Query(query) => match &mut *query.body {
+                    SetExpr::Select(body) => {
+                        body.projection.iter_mut().for_each(|item| {
+                            match item {
+                                SelectItem::UnnamedExpr(expr) => {
+                                    match expr {
+                                        Expr::CompoundIdentifier(idents) => {
+                                            // Remove the head of the identifier
+                                            // e.g. `from`.`col` -> `col`
+                                            let ident = idents.pop().unwrap();
+                                            *expr = Expr::Identifier(ident);
+                                        }
+                                        _ => todo!(),
+                                    }
+                                }
+                                _ => todo!(),
+                            }
+                        });
+                        body.from.iter_mut().for_each(|item| {
+                            match &mut item.relation {
+                                TableFactor::Table { name, .. } => {
+                                    // Remove the head of the identifier
+                                    // e.g. `from`.`col` -> `col`
+                                    let ident = name.0.pop().unwrap();
+                                    name.0 = vec![ident];
+                                }
+                                _ => todo!(),
+                            }
+                        });
+                    }
+                    _ => todo!(),
+                },
+                _ => todo!(),
+            };
+
+            let statement = &ast[0];
+            let sql = statement.to_string();
+            println!("SQL: {}", sql);
+            self.mem.query(sql).await
         })
         .unwrap();
 
@@ -173,7 +210,7 @@ impl ProxyDatabaseTrait for ProxyDb {
 
                 let statement = &ast[0];
                 let sql = statement.to_string();
-                println!("sql: {}", sql);
+                println!("SQL: {}", sql);
                 self.mem.query(sql).await
             } else {
                 self.mem.query(statement.sql).await
