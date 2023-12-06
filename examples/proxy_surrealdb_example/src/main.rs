@@ -116,17 +116,65 @@ impl ProxyDatabaseTrait for ProxyDb {
         async_std::task::block_on(async {
             if let Some(values) = statement.values {
                 // Replace all the '?' with the statement values
-                let mut new_sql = statement.sql.clone();
-                let mark_count = new_sql.matches('?').count();
-                for (i, v) in values.0.iter().enumerate() {
-                    if i >= mark_count {
-                        break;
-                    }
-                    new_sql = new_sql.replacen('?', &v.to_string(), 1);
-                }
-                println!("SQL execute: {}", new_sql);
+                use sqlparser::ast::{Expr, Value};
+                use sqlparser::dialect::GenericDialect;
+                use sqlparser::parser::Parser;
 
-                self.mem.query(new_sql).await
+                let dialect = GenericDialect {};
+                let mut ast = Parser::parse_sql(&dialect, statement.sql.as_str()).unwrap();
+                match &mut ast[0] {
+                    sqlparser::ast::Statement::Insert {
+                        table_name,
+                        columns,
+                        source,
+                        ..
+                    } => {
+                        // Replace the table name's quote style
+                        table_name.0[0].quote_style = Some('`');
+
+                        // Replace all the column names' quote style
+                        for item in columns.iter_mut() {
+                            item.quote_style = Some('`');
+                        }
+
+                        // Convert the values to sea-orm's format
+                        if let Some(obj) = source {
+                            match &mut *obj.body {
+                                sqlparser::ast::SetExpr::Values(obj) => {
+                                    for (mut item, val) in
+                                        obj.rows[0].iter_mut().zip(values.0.iter())
+                                    {
+                                        match &mut item {
+                                            Expr::Value(item) => {
+                                                *item = match val {
+                                                    sea_orm::Value::String(val) => {
+                                                        Value::SingleQuotedString(match val {
+                                                            Some(val) => val.to_string(),
+                                                            None => "".to_string(),
+                                                        })
+                                                    }
+                                                    sea_orm::Value::BigInt(val) => Value::Number(
+                                                        val.unwrap_or(0).to_string(),
+                                                        false,
+                                                    ),
+                                                    _ => todo!(),
+                                                };
+                                            }
+                                            _ => todo!(),
+                                        }
+                                    }
+                                }
+                                _ => todo!(),
+                            }
+                        }
+                    }
+                    _ => todo!(),
+                }
+
+                let statement = &ast[0];
+                let sql = statement.to_string();
+                println!("sql: {}", sql);
+                self.mem.query(sql).await
             } else {
                 self.mem.query(statement.sql).await
             }
