@@ -21,7 +21,7 @@ pub fn run_migrate_command(
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
     match command {
-        Some(MigrateSubcommands::Init { force }) => run_migrate_init(migration_dir, force)?,
+        Some(MigrateSubcommands::Init) => run_migrate_init(migration_dir)?,
         Some(MigrateSubcommands::Generate {
             migration_name,
             universal_time: _,
@@ -78,16 +78,11 @@ pub fn run_migrate_command(
     Ok(())
 }
 
-pub fn run_migrate_init(migration_dir: &str, force: bool) -> Result<(), Box<dyn Error>> {
+pub fn run_migrate_init(migration_dir: &str) -> Result<(), Box<dyn Error>> {
     let migration_dir = match migration_dir.ends_with('/') {
         true => migration_dir.to_string(),
         false => format!("{migration_dir}/"),
     };
-    if !force && Path::new(&migration_dir).is_dir() {
-        if fs::read_dir(&migration_dir)?.next().transpose()?.is_some() {
-            return Err(Box::new(MigrationCommandError::DirAlreadyExists));
-        }
-    }
     println!("Initializing migration directory...");
     macro_rules! write_file {
         ($filename: literal) => {
@@ -257,17 +252,13 @@ fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<
 
 #[derive(Debug)]
 enum MigrationCommandError {
-    DirAlreadyExists,
     InvalidName(String),
 }
 
 impl Display for MigrationCommandError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::DirAlreadyExists => {
-                write!(f, "Migration directory already exists! Use `--force` flag if you want to overwrite it anyway.")
-            }
-            Self::InvalidName(name) => {
+            MigrationCommandError::InvalidName(name) => {
                 write!(f, "Invalid migration name: {name}")
             }
         }

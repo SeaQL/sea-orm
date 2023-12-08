@@ -101,10 +101,7 @@ you should provide the directory of that submodule.",
 #[derive(Subcommand, PartialEq, Eq, Debug)]
 pub enum MigrateSubcommands {
     #[command(about = "Initialize migration directory", display_order = 10)]
-    Init {
-        #[arg(short, long, help = "Overwrite files if the folder already exists")]
-        force: bool,
-    },
+    Init,
     #[command(about = "Generate a new, empty migration", display_order = 20)]
     Generate {
         #[arg(required = true, help = "Name of the new migration")]
