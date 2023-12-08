@@ -17,9 +17,7 @@ futures-util = { version = "0.3" }
 
 sqlparser = "0.40"
 sea-orm = { path = "../../", features = [
-  "sqlx-all",
   "proxy",
-  "runtime-async-std-native-tls",
   "debug-print",
 ] }
 surrealdb = { version = "1", features = ["kv-mem"] }

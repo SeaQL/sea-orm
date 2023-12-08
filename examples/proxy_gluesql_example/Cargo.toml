@@ -17,9 +17,7 @@ futures-util = { version = "0.3" }
 
 sqlparser = "0.40"
 sea-orm = { path = "../../", features = [
-  "sqlx-all",
   "proxy",
-  "runtime-async-std-native-tls",
   "debug-print",
 ] }
 gluesql = { version = "0.15", default-features = false, features = [

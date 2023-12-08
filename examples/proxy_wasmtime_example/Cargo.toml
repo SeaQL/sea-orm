@@ -27,8 +27,6 @@ wasmtime-wasi = "14"
 surrealdb = { version = "1", features = ["kv-mem"] }
 sea-orm = { path = "../..", features = [
   "proxy",
-  "sqlx-sqlite",
-  "runtime-async-std-rustls",
 ] }
 
 [dev-dependencies]
