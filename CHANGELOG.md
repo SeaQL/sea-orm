@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.12.9 - 2023-12-08
 
+### Enhancements
+
+* Add source annotations to errors https://github.com/SeaQL/sea-orm/pull/1999
+
+### Upgrades
+
 * Updated `sea-query` to `0.30.4` https://github.com/SeaQL/sea-query/releases/tag/0.30.4
 
 ## 0.12.8 - 2023-12-04
