@@ -33,52 +33,95 @@ impl ProxyDatabaseTrait for ProxyDb {
         let sql = statement.sql.clone();
 
         let mut ret: Vec<ProxyRow> = vec![];
-        for payload in self.mem.lock().unwrap().execute(sql).unwrap().iter() {
-            match payload {
-                gluesql::prelude::Payload::Select { labels, rows } => {
-                    for row in rows.iter() {
-                        let mut map = BTreeMap::new();
-                        for (label, column) in labels.iter().zip(row.iter()) {
-                            map.insert(
-                                label.to_owned(),
-                                match column {
-                                    gluesql::prelude::Value::I64(val) => {
-                                        sea_orm::Value::BigInt(Some(*val))
-                                    }
-                                    gluesql::prelude::Value::Str(val) => {
-                                        sea_orm::Value::String(Some(Box::new(val.to_owned())))
-                                    }
-                                    _ => unreachable!("Unsupported value: {:?}", column),
-                                },
-                            );
+        async_std::task::block_on(async {
+            for payload in self.mem.lock().unwrap().execute(sql).await.unwrap().iter() {
+                match payload {
+                    gluesql::prelude::Payload::Select { labels, rows } => {
+                        for row in rows.iter() {
+                            let mut map = BTreeMap::new();
+                            for (label, column) in labels.iter().zip(row.iter()) {
+                                map.insert(
+                                    label.to_owned(),
+                                    match column {
+                                        gluesql::prelude::Value::I64(val) => {
+                                            sea_orm::Value::BigInt(Some(*val))
+                                        }
+                                        gluesql::prelude::Value::Str(val) => {
+                                            sea_orm::Value::String(Some(Box::new(val.to_owned())))
+                                        }
+                                        _ => unreachable!("Unsupported value: {:?}", column),
+                                    },
+                                );
+                            }
+                            ret.push(map.into());
                         }
-                        ret.push(map.into());
                     }
+                    _ => unreachable!("Unsupported payload: {:?}", payload),
                 }
-                _ => unreachable!("Unsupported payload: {:?}", payload),
             }
-        }
+        });
 
         Ok(ret)
     }
 
     fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
-        if let Some(values) = statement.values {
+        let sql = if let Some(values) = statement.values {
             // Replace all the '?' with the statement values
-            let mut new_sql = statement.sql.clone();
-            let mark_count = new_sql.matches('?').count();
-            for (i, v) in values.0.iter().enumerate() {
-                if i >= mark_count {
-                    break;
-                }
-                new_sql = new_sql.replacen('?', &v.to_string(), 1);
-            }
-            println!("SQL execute: {}", new_sql);
+            use sqlparser::ast::{Expr, Value};
+            use sqlparser::dialect::GenericDialect;
+            use sqlparser::parser::Parser;
 
-            self.mem.lock().unwrap().execute(new_sql).unwrap();
+            let dialect = GenericDialect {};
+            let mut ast = Parser::parse_sql(&dialect, statement.sql.as_str()).unwrap();
+            match &mut ast[0] {
+                sqlparser::ast::Statement::Insert {
+                    columns, source, ..
+                } => {
+                    for item in columns.iter_mut() {
+                        item.quote_style = Some('"');
+                    }
+
+                    if let Some(obj) = source {
+                        match &mut *obj.body {
+                            sqlparser::ast::SetExpr::Values(obj) => {
+                                for (mut item, val) in obj.rows[0].iter_mut().zip(values.0.iter()) {
+                                    match &mut item {
+                                        Expr::Value(item) => {
+                                            *item = match val {
+                                                sea_orm::Value::String(val) => {
+                                                    Value::SingleQuotedString(match val {
+                                                        Some(val) => val.to_string(),
+                                                        None => "".to_string(),
+                                                    })
+                                                }
+                                                sea_orm::Value::BigInt(val) => Value::Number(
+                                                    val.unwrap_or(0).to_string(),
+                                                    false,
+                                                ),
+                                                _ => todo!(),
+                                            };
+                                        }
+                                        _ => todo!(),
+                                    }
+                                }
+                            }
+                            _ => todo!(),
+                        }
+                    }
+                }
+                _ => todo!(),
+            }
+
+            let statement = &ast[0];
+            statement.to_string()
         } else {
-            self.mem.lock().unwrap().execute(statement.sql).unwrap();
-        }
+            statement.sql
+        };
+
+        println!("SQL execute: {}", sql);
+        async_std::task::block_on(async {
+            self.mem.lock().unwrap().execute(sql).await.unwrap();
+        });
 
         Ok(ProxyExecResult {
             last_insert_id: 1,
@@ -101,6 +144,7 @@ async fn main() {
             )
         "#,
     )
+    .await
     .unwrap();
 
     let db = Database::connect_proxy(

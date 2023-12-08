@@ -15,6 +15,7 @@ futures = { version = "0.3" }
 async-stream = { version = "0.3" }
 futures-util = { version = "0.3" }
 
+sqlparser = "0.40"
 sea-orm = { path = "../../", features = [
   "sqlx-all",
   "proxy",
