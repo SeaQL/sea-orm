@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.12.9 - 2023-12-08
+
+* Updated `sea-query` to `0.30.4` https://github.com/SeaQL/sea-query/releases/tag/0.30.4
+
 ## 0.12.8 - 2023-12-04
 
 ### Enhancements
