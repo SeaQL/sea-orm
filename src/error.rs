@@ -17,7 +17,7 @@ use thiserror::Error;
 pub enum DbErr {
     /// This error can happen when the connection pool is fully-utilized
     #[error("Failed to acquire connection from pool: {0}")]
-    ConnectionAcquire(ConnAcquireErr),
+    ConnectionAcquire(#[source] ConnAcquireErr),
     /// Runtime type conversion error
     #[error("Error converting `{from}` into `{into}`: {source}")]
     TryIntoErr {
@@ -92,7 +92,7 @@ pub enum RuntimeErr {
     /// SQLx Error
     #[cfg(feature = "sqlx-dep")]
     #[error("{0}")]
-    SqlxError(sqlx::error::Error),
+    SqlxError(#[source] sqlx::error::Error),
     /// Error generated from within SeaORM
     #[error("{0}")]
     Internal(String),
