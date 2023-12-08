@@ -250,7 +250,6 @@ jobs:
         with:
           toolchain: nightly
           components: rustfmt
-          targets: wasm32-wasi
       - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo fmt --manifest-path {} -- --check
       - uses: dtolnay/rust-toolchain@stable
       - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo build --manifest-path {}
