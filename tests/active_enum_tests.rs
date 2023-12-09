@@ -101,10 +101,7 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(
         model,
         Entity::find()
-            .filter(
-                Expr::col(Column::Tea)
-                    .binary(BinOper::In, Expr::tuple([Tea::EverydayTea.as_enum()]))
-            )
+            .filter(Column::Tea.is_in([Tea::EverydayTea]))
             .one(db)
             .await?
             .unwrap()
@@ -113,10 +110,7 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
         model,
         Entity::find()
             .filter(Column::Tea.is_not_null())
-            .filter(
-                Expr::col(Column::Tea)
-                    .binary(BinOper::NotIn, Expr::tuple([Tea::BreakfastTea.as_enum()]))
-            )
+            .filter(Column::Tea.is_not_in([Tea::BreakfastTea]))
             .one(db)
             .await?
             .unwrap()

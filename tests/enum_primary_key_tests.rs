@@ -105,10 +105,7 @@ pub async fn insert_teas(db: &DatabaseConnection) -> Result<(), DbErr> {
     assert_eq!(
         model,
         Entity::find()
-            .filter(
-                Expr::col(Column::Id)
-                    .binary(BinOper::In, Expr::tuple([Tea::EverydayTea.as_enum()]))
-            )
+            .filter(Column::Id.is_in([Tea::EverydayTea]))
             .one(db)
             .await?
             .unwrap()
