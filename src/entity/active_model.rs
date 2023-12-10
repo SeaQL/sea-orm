@@ -3,6 +3,8 @@ use crate::{
 };
 use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
+use serde::{Deserialize, Serialize};
+
 use std::fmt::Debug;
 
 pub use ActiveValue::NotSet;
@@ -36,6 +38,7 @@ pub use ActiveValue::NotSet;
 /// );
 /// ```
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "with-json", derive(Serialize, Deserialize))]
 pub enum ActiveValue<V>
 where
     V: Into<Value>,
