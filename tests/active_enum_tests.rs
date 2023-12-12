@@ -8,7 +8,7 @@ use sea_orm::{
     entity::prelude::*,
     entity::*,
     sea_query::{BinOper, Expr},
-    ActiveEnum as ActiveEnumTrait, DatabaseConnection,
+    ActiveEnum as ActiveEnumTrait, DatabaseConnection, QueryTrait,
 };
 
 #[sea_orm_macros::test]
@@ -98,23 +98,68 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             .await?
             .unwrap()
     );
+
     assert_eq!(
         model,
         Entity::find()
-            .filter(Column::Tea.is_in([Tea::EverydayTea]))
+            .filter(
+                Expr::col(Column::Tea)
+                    .binary(BinOper::In, Expr::tuple([Tea::EverydayTea.as_enum()]))
+            )
             .one(db)
             .await?
             .unwrap()
     );
+    // Equivalent to the above.
+    let select_with_tea_in = Entity::find().filter(Column::Tea.is_in([Tea::EverydayTea]));
+    assert_eq!(
+        select_with_tea_in
+            .build(sea_orm::DatabaseBackend::Postgres)
+            .to_string(),
+        [
+            "SELECT \"active_enum\".\"id\",",
+            "\"active_enum\".\"category\",",
+            "\"active_enum\".\"color\",",
+            "CAST(\"active_enum\".\"tea\" AS text)",
+            "FROM \"active_enum\"",
+            "WHERE \"active_enum\".\"tea\" IN (CAST('EverydayTea' AS tea))",
+        ]
+        .join(" ")
+    );
+    assert_eq!(model, select_with_tea_in.one(db).await?.unwrap());
+
     assert_eq!(
         model,
         Entity::find()
             .filter(Column::Tea.is_not_null())
-            .filter(Column::Tea.is_not_in([Tea::BreakfastTea]))
+            .filter(
+                Expr::col(Column::Tea)
+                    .binary(BinOper::NotIn, Expr::tuple([Tea::BreakfastTea.as_enum()]))
+            )
             .one(db)
             .await?
             .unwrap()
     );
+    // Equivalent to the above.
+    let select_with_tea_not_in = Entity::find()
+        .filter(Column::Tea.is_not_null())
+        .filter(Column::Tea.is_not_in([Tea::BreakfastTea]));
+    assert_eq!(
+        select_with_tea_not_in
+            .build(sea_orm::DatabaseBackend::Postgres)
+            .to_string(),
+        [
+            "SELECT \"active_enum\".\"id\",",
+            "\"active_enum\".\"category\",",
+            "\"active_enum\".\"color\",",
+            "CAST(\"active_enum\".\"tea\" AS text)",
+            "FROM \"active_enum\"",
+            "WHERE \"active_enum\".\"tea\" IS NOT NULL",
+            "AND \"active_enum\".\"tea\" NOT IN (CAST('BreakfastTea' AS tea))",
+        ]
+        .join(" ")
+    );
+    assert_eq!(model, select_with_tea_not_in.one(db).await?.unwrap());
 
     let res = model.delete(db).await?;
 
