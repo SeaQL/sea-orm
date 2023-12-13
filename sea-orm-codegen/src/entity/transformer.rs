@@ -117,7 +117,7 @@ impl EntityTransformer {
                             .collect::<Vec<_>>()
                     }),
             );
-            let comment = table_create.get_comment().map(|v| v.clone());
+            let comment = table_create.get_comment().cloned();
             let entity = Entity {
                 table_name: table_name.clone(),
                 columns,
