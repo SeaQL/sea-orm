@@ -19,7 +19,6 @@ pub struct Entity {
 }
 
 impl Entity {
-    
     pub fn get_table_comment(&self) -> Option<&String> {
         self.comment.as_ref()
     }

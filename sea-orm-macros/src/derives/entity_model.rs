@@ -10,7 +10,7 @@ use syn::{
 pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
     // if #[sea_orm(table_name = "foo", schema_name = "bar")] specified, create Entity struct
     let mut table_name = None;
-    let mut comment = quote!{None};
+    let mut comment = quote! {None};
     let mut schema_name = quote! { None };
     let mut table_iden = false;
     attrs
@@ -21,7 +21,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                 if meta.path.is_ident("comment") {
                     let name: Lit = meta.value()?.parse()?;
                     comment = quote! { Some(#name) };
-                } else if  meta.path.is_ident("table_name") {
+                } else if meta.path.is_ident("table_name") {
                     table_name = Some(meta.value()?.parse::<Lit>()?);
                 } else if meta.path.is_ident("schema_name") {
                     let name: Lit = meta.value()?.parse()?;
@@ -145,7 +145,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                 }
                             } else if meta.path.is_ident("comment") {
                                 comment = Some(meta.value()?.parse::<Lit>()?);
-                            }  else if meta.path.is_ident("default_value") {
+                            } else if meta.path.is_ident("default_value") {
                                 default_value = Some(meta.value()?.parse::<Lit>()?);
                             } else if meta.path.is_ident("default_expr") {
                                 let lit = meta.value()?.parse()?;

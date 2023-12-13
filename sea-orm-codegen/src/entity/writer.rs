@@ -785,7 +785,7 @@ impl EntityWriter {
             },
             None => quote! {},
         };
-        
+
         let extra_derive = with_serde.extra_derive();
 
         quote! {

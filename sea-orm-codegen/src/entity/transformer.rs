@@ -117,10 +117,7 @@ impl EntityTransformer {
                             .collect::<Vec<_>>()
                     }),
             );
-            let comment = match table_create.get_comment() {
-                Some(v) => Some(v.clone()),
-                None => None,
-            };
+            let comment = table_create.get_comment().map(|v| v.clone());
             let entity = Entity {
                 table_name: table_name.clone(),
                 columns,
