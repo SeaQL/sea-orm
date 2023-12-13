@@ -10,6 +10,7 @@ use syn::{
 pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
     // if #[sea_orm(table_name = "foo", schema_name = "bar")] specified, create Entity struct
     let mut table_name = None;
+    let mut comment = quote!{None};
     let mut schema_name = quote! { None };
     let mut table_iden = false;
     attrs
@@ -17,7 +18,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
         .filter(|attr| attr.path().is_ident("sea_orm"))
         .try_for_each(|attr| {
             attr.parse_nested_meta(|meta| {
-                if meta.path.is_ident("table_name") {
+                if meta.path.is_ident("comment") {
+                    let name: Lit = meta.value()?.parse()?;
+                    comment = quote! { Some(#name) };
+                } else if  meta.path.is_ident("table_name") {
                     table_name = Some(meta.value()?.parse::<Lit>()?);
                 } else if meta.path.is_ident("schema_name") {
                     let name: Lit = meta.value()?.parse()?;
@@ -50,6 +54,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
                     fn table_name(&self) -> &str {
                         #table_name
+                    }
+
+                    fn comment(&self) -> Option<&str> {
+                        #comment
                     }
                 }
             }
@@ -90,6 +98,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
                     let mut nullable = false;
                     let mut default_value = None;
+                    let mut comment = None;
                     let mut default_expr = None;
                     let mut select_as = None;
                     let mut save_as = None;
@@ -134,7 +143,9 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                         meta.error(format!("Invalid auto_increment = {:?}", lit))
                                     );
                                 }
-                            } else if meta.path.is_ident("default_value") {
+                            } else if meta.path.is_ident("comment") {
+                                comment = Some(meta.value()?.parse::<Lit>()?);
+                            }  else if meta.path.is_ident("default_value") {
                                 default_value = Some(meta.value()?.parse::<Lit>()?);
                             } else if meta.path.is_ident("default_expr") {
                                 let lit = meta.value()?.parse()?;
@@ -274,9 +285,13 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     if let Some(default_value) = default_value {
                         match_row = quote! { #match_row.default_value(#default_value) };
                     }
+                    if let Some(comment) = comment {
+                        match_row = quote! { #match_row.comment(#comment) };
+                    }
                     if let Some(default_expr) = default_expr {
                         match_row = quote! { #match_row.default(#default_expr) };
                     }
+                    // match_row = quote! { #match_row.comment() };
                     columns_trait.push(match_row);
                 }
             }

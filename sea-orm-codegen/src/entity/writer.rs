@@ -785,6 +785,7 @@ impl EntityWriter {
             },
             None => quote! {},
         };
+        
         let extra_derive = with_serde.extra_derive();
 
         quote! {
@@ -882,9 +883,11 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                comment: None,
             },
             Entity {
                 table_name: "_cake_filling_".to_owned(),
+                comment: None,
                 columns: vec![
                     Column {
                         name: "cake_id".to_owned(),
@@ -980,6 +983,7 @@ mod tests {
                         name: "filling_id".to_owned(),
                     },
                 ],
+                comment: None,
             },
             Entity {
                 table_name: "filling".to_owned(),
@@ -1007,6 +1011,7 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                comment: None,
             },
             Entity {
                 table_name: "fruit".to_owned(),
@@ -1061,6 +1066,7 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                comment: None,
             },
             Entity {
                 table_name: "vendor".to_owned(),
@@ -1102,6 +1108,7 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                comment: None,
             },
             Entity {
                 table_name: "rust_keyword".to_owned(),
@@ -1259,6 +1266,7 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                comment: None,
             },
             Entity {
                 table_name: "cake_with_float".to_owned(),
@@ -1303,6 +1311,7 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                comment: None,
             },
             Entity {
                 table_name: "cake_with_double".to_owned(),
@@ -1347,6 +1356,7 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                comment: None,
             },
             Entity {
                 table_name: "collection".to_owned(),
@@ -1378,6 +1388,7 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                comment: None,
             },
             Entity {
                 table_name: "collection_float".to_owned(),
@@ -1409,6 +1420,7 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                comment: None,
             },
         ]
     }
@@ -1770,6 +1782,7 @@ mod tests {
     fn test_gen_with_seaography() -> io::Result<()> {
         let cake_entity = Entity {
             table_name: "cake".to_owned(),
+            comment: None,
             columns: vec![
                 Column {
                     name: "id".to_owned(),
@@ -2225,6 +2238,7 @@ mod tests {
                 primary_keys: vec![PrimaryKey {
                     name: "id".to_owned(),
                 }],
+                comment: None,
             },
         ];
         const ENTITY_FILES: [&str; 1] = [include_str!("../../tests/postgres/binary_json.rs")];
@@ -2308,6 +2322,7 @@ mod tests {
         let entities = vec![
             Entity {
                 table_name: "tea_pairing".to_owned(),
+                comment: None,
                 columns: vec![
                     Column {
                         name: "id".to_owned(),
@@ -2351,6 +2366,7 @@ mod tests {
             },
             Entity {
                 table_name: "tea_pairing_with_size".to_owned(),
+                comment: None,
                 columns: vec![
                     Column {
                         name: "id".to_owned(),

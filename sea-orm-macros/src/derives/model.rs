@@ -182,7 +182,6 @@ impl DeriveModel {
 /// Method to derive an ActiveModel
 pub fn expand_derive_model(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     let ident_span = input.ident.span();
-
     match DeriveModel::new(input) {
         Ok(model) => model.expand(),
         Err(Error::InputNotStruct) => Ok(quote_spanned! {

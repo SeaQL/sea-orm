@@ -117,12 +117,17 @@ impl EntityTransformer {
                             .collect::<Vec<_>>()
                     }),
             );
+            let comment = match table_create.get_comment() {
+                Some(v) => Some(v.clone()),
+                None => None,
+            };
             let entity = Entity {
                 table_name: table_name.clone(),
                 columns,
                 relations: relations.clone(),
                 conjunct_relations: vec![],
                 primary_keys,
+                comment,
             };
             entities.insert(table_name.clone(), entity.clone());
             for mut rel in relations.into_iter() {
