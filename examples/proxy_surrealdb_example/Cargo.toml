@@ -1,0 +1,27 @@
+[package]
+name = "sea-orm-proxy-surrealdb-example"
+version = "0.1.0"
+authors = ["Langyo <langyo.china@gmail.com>"]
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+async-std = { version = "1.12", features = ["attributes", "tokio1"] }
+serde_json = { version = "1" }
+serde = { version = "1" }
+futures = { version = "0.3" }
+async-stream = { version = "0.3" }
+futures-util = { version = "0.3" }
+
+sqlparser = "0.40"
+sea-orm = { path = "../../", features = [
+  "proxy",
+  "debug-print",
+] }
+surrealdb = { version = "1", features = ["kv-mem"] }
+
+[dev-dependencies]
+smol = { version = "1.2" }
+smol-potat = { version = "1.1" }

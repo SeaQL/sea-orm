@@ -95,6 +95,22 @@ impl DatabaseTransaction {
         .await
     }
 
+    #[cfg(feature = "proxy")]
+    pub(crate) async fn new_proxy(
+        inner: Arc<crate::ProxyDatabaseConnection>,
+        metric_callback: Option<crate::metric::Callback>,
+    ) -> Result<DatabaseTransaction, DbErr> {
+        let backend = inner.get_database_backend();
+        Self::begin(
+            Arc::new(Mutex::new(InnerConnection::Proxy(inner))),
+            backend,
+            metric_callback,
+            None,
+            None,
+        )
+        .await
+    }
+
     #[instrument(level = "trace", skip(metric_callback))]
     async fn begin(
         conn: Arc<Mutex<InnerConnection>>,
