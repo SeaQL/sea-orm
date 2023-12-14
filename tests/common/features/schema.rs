@@ -72,9 +72,9 @@ pub async fn create_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
             ColumnDef::new(applog::Column::Id)
                 .integer()
                 .not_null()
+                .comment("ID")
                 .auto_increment()
-                .primary_key()
-                .comment("ID"),
+                .primary_key(),
         )
         .col(
             ColumnDef::new(applog::Column::Action)
