@@ -31,7 +31,7 @@ pub struct MockExecResult {
 #[derive(Clone, Debug)]
 pub struct MockRow {
     /// The values of the single row
-    pub values: BTreeMap<String, Value>,
+    pub(crate) values: BTreeMap<String, Value>,
 }
 
 /// A trait to get a [MockRow] from a type useful for testing in the [MockDatabase]

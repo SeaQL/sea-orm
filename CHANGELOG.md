@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.12.10 - 2023-12-14
+
+* [sea-orm-macro] Comment attribute for Entity (`#[sea_orm(comment = "action")]`); `create_table_from_entity` supports comment https://github.com/SeaQL/sea-orm/pull/2009
+* Added "proxy" (feature flag `proxy`) to database backend https://github.com/SeaQL/sea-orm/pull/1881, https://github.com/SeaQL/sea-orm/pull/2000
+
 ## 0.12.9 - 2023-12-08
 
 ### Enhancements
