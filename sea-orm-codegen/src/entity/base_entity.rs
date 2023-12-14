@@ -15,14 +15,9 @@ pub struct Entity {
     pub(crate) relations: Vec<Relation>,
     pub(crate) conjunct_relations: Vec<ConjunctRelation>,
     pub(crate) primary_keys: Vec<PrimaryKey>,
-    pub(crate) comment: Option<String>,
 }
 
 impl Entity {
-    pub fn get_table_comment(&self) -> Option<&String> {
-        self.comment.as_ref()
-    }
-
     pub fn get_table_name_snake_case(&self) -> String {
         self.table_name.to_snake_case()
     }
@@ -323,7 +318,6 @@ mod tests {
             primary_keys: vec![PrimaryKey {
                 name: "id".to_owned(),
             }],
-            comment: None,
         }
     }
 
