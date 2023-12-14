@@ -113,6 +113,15 @@ pub async fn insert_teas(db: &DatabaseConnection) -> Result<(), DbErr> {
             .await?
             .unwrap()
     );
+    // Equivalent to the above.
+    assert_eq!(
+        model,
+        Entity::find()
+            .filter(Column::Id.is_in([Tea::EverydayTea]))
+            .one(db)
+            .await?
+            .unwrap()
+    );
 
     let res = model.delete(db).await?;
 

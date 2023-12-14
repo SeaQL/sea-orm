@@ -62,7 +62,8 @@ macro_rules! bind_vec_func {
             V: Into<Value>,
             I: IntoIterator<Item = V>,
         {
-            Expr::col((self.entity_name(), *self)).$func(v)
+            let v_with_enum_cast = v.into_iter().map(|v| self.save_as(Expr::val(v)));
+            Expr::col((self.entity_name(), *self)).$func(v_with_enum_cast)
         }
     };
 }
