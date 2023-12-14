@@ -113,7 +113,6 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     // Equivalent to the above.
     let select_with_tea_in =
         Entity::find().filter(Column::Tea.is_in([Tea::EverydayTea, Tea::BreakfastTea]));
-    #[cfg(feature = "sqlx-postgres")]
     assert_eq!(
         select_with_tea_in
             .build(sea_orm::DatabaseBackend::Postgres)
@@ -146,7 +145,6 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     let select_with_tea_not_in = Entity::find()
         .filter(Column::Tea.is_not_null())
         .filter(Column::Tea.is_not_in([Tea::BreakfastTea]));
-    #[cfg(feature = "sqlx-postgres")]
     assert_eq!(
         select_with_tea_not_in
             .build(sea_orm::DatabaseBackend::Postgres)
