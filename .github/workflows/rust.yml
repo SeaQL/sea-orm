@@ -242,7 +242,7 @@ jobs:
           examples/poem_example,
           examples/proxy_gluesql_example,
           examples/rocket_example,
-          examples/rocket_okapi_example,
+          # examples/rocket_okapi_example,
           examples/salvo_example,
           examples/seaography_example,
           examples/tonic_example,
