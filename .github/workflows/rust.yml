@@ -235,16 +235,17 @@ jobs:
         path: [
           examples/actix_example,
           examples/actix3_example,
-          # examples/rocket_okapi_example,
-          examples/jsonrpsee_example,
-          examples/basic,
-          examples/salvo_example,
-          examples/rocket_example,
           examples/axum_example,
-          examples/tonic_example,
-          examples/seaography_example,
+          examples/basic,
           examples/graphql_example,
+          examples/jsonrpsee_example,
           examples/poem_example,
+          examples/proxy_gluesql_example,
+          examples/rocket_example,
+          examples/rocket_okapi_example,
+          examples/salvo_example,
+          examples/seaography_example,
+          examples/tonic_example,
         ]
     steps:
       - uses: actions/checkout@v3
