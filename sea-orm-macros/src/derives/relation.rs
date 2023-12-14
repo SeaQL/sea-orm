@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 
-use crate::attributes::{derive_attr, field_attr};
+use super::attributes::{derive_attr, field_attr};
 
 enum Error {
     InputNotEnum,
@@ -44,7 +44,7 @@ impl DeriveRelation {
     fn impl_relation_trait(&self) -> syn::Result<TokenStream> {
         let ident = &self.ident;
         let entity_ident = &self.entity_ident;
-        let no_relation_def_msg = format!("No RelationDef for {}", ident);
+        let no_relation_def_msg = format!("No RelationDef for {ident}");
 
         let variant_relation_defs: Vec<TokenStream> = self
             .variants
@@ -134,6 +134,55 @@ impl DeriveRelation {
                             syn::Error::new_spanned(variant, "Missing value for 'on_delete'")
                         })??;
                     result = quote! { #result.on_delete(sea_orm::prelude::ForeignKeyAction::#on_delete) };
+                }
+
+                if attr.on_condition.is_some() {
+                    let on_condition = attr
+                        .on_condition
+                        .as_ref()
+                        .map(Self::parse_lit_string)
+                        .ok_or_else(|| {
+                            syn::Error::new_spanned(variant, "Missing value for 'on_condition'")
+                        })??;
+                    result = quote! { #result.on_condition(|_, _| sea_orm::sea_query::IntoCondition::into_condition(#on_condition)) };
+                }
+
+                if attr.fk_name.is_some() {
+                    let fk_name = attr
+                        .fk_name
+                        .as_ref()
+                        .map(|lit| {
+                            match lit {
+                                syn::Lit::Str(lit_str) => Ok(lit_str.value()),
+                                _ => Err(syn::Error::new_spanned(lit, "attribute must be a string")),
+                            }
+                        })
+                        .ok_or_else(|| {
+                            syn::Error::new_spanned(variant, "Missing value for 'fk_name'")
+                        })??;
+                    result = quote! { #result.fk_name(#fk_name) };
+                }
+
+                if attr.condition_type.is_some() {
+                    let condition_type = attr
+                        .condition_type
+                        .as_ref()
+                        .map(|lit| {
+                            match lit {
+                                syn::Lit::Str(lit_str) => {
+                                    match lit_str.value().to_ascii_lowercase().as_str() {
+                                        "all" => Ok(quote!( sea_orm::sea_query::ConditionType::All )),
+                                        "any" => Ok(quote!( sea_orm::sea_query::ConditionType::Any )),
+                                        _ => Err(syn::Error::new_spanned(lit, "Condition type must be one of `all` or `any`")),
+                                    }
+                                },
+                                _ => Err(syn::Error::new_spanned(lit, "attribute must be a string")),
+                            }
+                        })
+                        .ok_or_else(|| {
+                            syn::Error::new_spanned(variant, "Missing value for 'condition_type'")
+                        })??;
+                    result = quote! { #result.condition_type(#condition_type) };
                 }
 
                 result = quote! { #result.into() };

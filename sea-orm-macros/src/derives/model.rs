@@ -1,12 +1,12 @@
-use crate::{
+use super::{
     attributes::derive_attr,
     util::{escape_rust_keyword, field_not_ignored, trim_starting_raw_identifier},
 };
-use heck::CamelCase;
+use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use std::iter::FromIterator;
-use syn::{punctuated::Punctuated, token::Comma, Ident, Lit, Meta};
+use syn::{Expr, Ident, LitStr};
 
 enum Error {
     InputNotStruct,
@@ -47,36 +47,32 @@ impl DeriveModel {
             .iter()
             .map(|field| {
                 let ident = field.ident.as_ref().unwrap().to_string();
-                let ident = trim_starting_raw_identifier(ident).to_camel_case();
+                let ident = trim_starting_raw_identifier(ident).to_upper_camel_case();
                 let ident = escape_rust_keyword(ident);
                 let mut ident = format_ident!("{}", &ident);
-                for attr in field.attrs.iter() {
-                    if let Some(ident) = attr.path.get_ident() {
-                        if ident != "sea_orm" {
-                            continue;
-                        }
-                    } else {
-                        continue;
-                    }
-                    if let Ok(list) =
-                        attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                    {
-                        for meta in list.iter() {
-                            if let Meta::NameValue(nv) = meta {
-                                if let Some(name) = nv.path.get_ident() {
-                                    if name == "enum_name" {
-                                        if let Lit::Str(litstr) = &nv.lit {
-                                            ident = syn::parse_str(&litstr.value()).unwrap();
-                                        }
-                                    }
-                                }
+                field
+                    .attrs
+                    .iter()
+                    .filter(|attr| attr.path().is_ident("sea_orm"))
+                    .try_for_each(|attr| {
+                        attr.parse_nested_meta(|meta| {
+                            if meta.path.is_ident("enum_name") {
+                                ident = syn::parse_str(&meta.value()?.parse::<LitStr>()?.value())
+                                    .unwrap();
+                            } else {
+                                // Reads the value expression to advance the parse stream.
+                                // Some parameters, such as `primary_key`, do not have any value,
+                                // so ignoring an error occurred here.
+                                let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
                             }
-                        }
-                    }
-                }
-                ident
+
+                            Ok(())
+                        })
+                        .map_err(Error::Syn)
+                    })?;
+                Ok(ident)
             })
-            .collect();
+            .collect::<Result<_, _>>()?;
 
         let ignore_attrs = fields
             .iter()
@@ -125,7 +121,7 @@ impl DeriveModel {
         quote!(
             #[automatically_derived]
             impl sea_orm::FromQueryResult for #ident {
-                fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::DbErr> {
+                fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
                     Ok(Self {
                         #(#field_idents: #field_values),*
                     })
@@ -158,7 +154,7 @@ impl DeriveModel {
             .filter_map(ignore)
             .collect();
 
-        let missing_field_msg = format!("field does not exist on {}", ident);
+        let missing_field_msg = format!("field does not exist on {ident}");
 
         quote!(
             #[automatically_derived]
@@ -186,7 +182,6 @@ impl DeriveModel {
 /// Method to derive an ActiveModel
 pub fn expand_derive_model(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     let ident_span = input.ident.span();
-
     match DeriveModel::new(input) {
         Ok(model) => model.expand(),
         Err(Error::InputNotStruct) => Ok(quote_spanned! {

@@ -1,7 +1,7 @@
 use crate as sea_orm;
 use crate::entity::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "vendor")]
 pub struct Model {
     #[sea_orm(primary_key)]
@@ -9,14 +9,8 @@ pub struct Model {
     pub name: String,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        panic!()
-    }
-}
 
 impl Related<super::filling::Entity> for Entity {
     fn to() -> RelationDef {

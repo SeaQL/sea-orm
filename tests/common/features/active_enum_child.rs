@@ -1,7 +1,7 @@
 use super::sea_orm_active_enums::*;
 use sea_orm::entity::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[cfg_attr(feature = "sqlx-postgres", sea_orm(schema_name = "public"))]
 #[sea_orm(table_name = "active_enum_child")]
 pub struct Model {
@@ -16,6 +16,7 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
+        fk_name = "fk-active_enum_child-active_enum",
         belongs_to = "super::active_enum::Entity",
         from = "Column::ParentId",
         to = "super::active_enum::Column::Id"

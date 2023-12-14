@@ -2,19 +2,19 @@
 
 use sea_orm::entity::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "rust_keyword")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    pub testing: i32,
-    pub rust: i32,
-    pub keywords: i32,
-    pub r#type: i32,
+    pub testing: i8,
+    pub rust: u8,
+    pub keywords: i16,
+    pub r#type: u16,
     pub r#typeof: i32,
-    pub crate_: i32,
-    pub self_: i32,
-    pub self_id1: i32,
+    pub crate_: u32,
+    pub self_: i64,
+    pub self_id1: u64,
     pub self_id2: i32,
     pub fruit_id1: i32,
     pub fruit_id2: i32,

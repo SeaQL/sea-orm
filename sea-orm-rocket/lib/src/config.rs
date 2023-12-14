@@ -29,14 +29,17 @@ use rocket::serde::{Deserialize, Serialize};
 /// # use rocket::launch;
 /// #[launch]
 /// fn rocket() -> _ {
-///     let figment = rocket::Config::figment()
-///         .merge(("databases.name", sea_orm_rocket::Config {
+///     let figment = rocket::Config::figment().merge((
+///         "databases.name",
+///         sea_orm_rocket::Config {
 ///             url: "db:specific@config&url".into(),
 ///             min_connections: None,
 ///             max_connections: 1024,
 ///             connect_timeout: 3,
 ///             idle_timeout: None,
-///         }));
+///             sqlx_logging: true,
+///         },
+///     ));
 ///
 ///     rocket::custom(figment)
 /// }
@@ -45,7 +48,7 @@ use rocket::serde::{Deserialize, Serialize};
 /// For general information on configuration in Rocket, see [`rocket::config`].
 /// For higher-level details on configuring a database, see the [crate-level
 /// docs](crate#configuration).
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(crate = "rocket::serde")]
 pub struct Config {
     /// Database-specific connection and configuration URL.
@@ -80,4 +83,7 @@ pub struct Config {
     ///
     /// _Default:_ `None`.
     pub idle_timeout: Option<u64>,
+
+    /// Enable SQLx statement logging (default true)
+    pub sqlx_logging: bool,
 }

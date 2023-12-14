@@ -11,17 +11,17 @@ impl EntityName for Entity {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Eq)]
 pub struct Model {
     pub id: i32,
-    pub testing: i32,
-    pub rust: i32,
-    pub keywords: i32,
-    pub r#type: i32,
+    pub testing: i8,
+    pub rust: u8,
+    pub keywords: i16,
+    pub r#type: u16,
     pub r#typeof: i32,
-    pub crate_: i32,
-    pub self_: i32,
-    pub self_id1: i32,
+    pub crate_: u32,
+    pub self_: i64,
+    pub self_id1: u64,
     pub self_id2: i32,
     pub fruit_id1: i32,
     pub fruit_id2: i32,
@@ -73,14 +73,14 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::Id => ColumnType::Integer.def(),
-            Self::Testing => ColumnType::Integer.def(),
-            Self::Rust => ColumnType::Integer.def(),
-            Self::Keywords => ColumnType::Integer.def(),
-            Self::Type => ColumnType::Integer.def(),
+            Self::Testing => ColumnType::TinyInteger.def(),
+            Self::Rust => ColumnType::TinyUnsigned.def(),
+            Self::Keywords => ColumnType::SmallInteger.def(),
+            Self::Type => ColumnType::SmallUnsigned.def(),
             Self::Typeof => ColumnType::Integer.def(),
-            Self::Crate => ColumnType::Integer.def(),
-            Self::Self_ => ColumnType::Integer.def(),
-            Self::SelfId1 => ColumnType::Integer.def(),
+            Self::Crate => ColumnType::Unsigned.def(),
+            Self::Self_ => ColumnType::BigInteger.def(),
+            Self::SelfId1 => ColumnType::BigUnsigned.def(),
             Self::SelfId2 => ColumnType::Integer.def(),
             Self::FruitId1 => ColumnType::Integer.def(),
             Self::FruitId2 => ColumnType::Integer.def(),

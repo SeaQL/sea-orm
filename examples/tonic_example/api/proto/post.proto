@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package Post;
+
+service Blogpost {
+  rpc GetPosts(PostPerPage) returns (PostList) {}
+  rpc AddPost(Post) returns (PostId) {}
+  rpc UpdatePost(Post) returns (ProcessStatus) {}
+  rpc DeletePost(PostId) returns (ProcessStatus) {}
+  rpc GetPostById(PostId) returns (Post) {}
+}
+
+message PostPerPage { uint64 per_page = 1; }
+
+message ProcessStatus { bool success = 1; }
+
+message PostId { int32 id = 1; }
+
+message Post {
+  int32 id = 1;
+  string title = 2;
+  string content = 3;
+}
+
+message PostList { repeated Post post = 1; }

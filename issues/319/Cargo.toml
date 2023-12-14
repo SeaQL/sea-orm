@@ -8,11 +8,12 @@ edition = "2021"
 publish = false
 
 [dependencies]
-async-std = { version = "^1", features = ["attributes"] }
-serde = { version = "^1", features = ["derive"] }
+async-std = { version = "1", features = ["attributes", "tokio1"] }
+serde = { version = "1", features = ["derive"] }
 sea-orm = { path = "../../", features = [
     "sqlx-mysql",
     "runtime-async-std-native-tls",
     "with-json",
+    "with-chrono",
     "macros",
 ], default-features = false }

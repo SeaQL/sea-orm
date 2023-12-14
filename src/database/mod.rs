@@ -3,7 +3,11 @@ use std::time::Duration;
 mod connection;
 mod db_connection;
 #[cfg(feature = "mock")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 mod mock;
+#[cfg(feature = "proxy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
+mod proxy;
 mod statement;
 mod stream;
 mod transaction;
@@ -11,20 +15,25 @@ mod transaction;
 pub use connection::*;
 pub use db_connection::*;
 #[cfg(feature = "mock")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 pub use mock::*;
+#[cfg(feature = "proxy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
+pub use proxy::*;
 pub use statement::*;
+use std::borrow::Cow;
 pub use stream::*;
 use tracing::instrument;
 pub use transaction::*;
 
-use crate::DbErr;
+use crate::error::*;
 
 /// Defines a database
 #[derive(Debug, Default)]
 pub struct Database;
 
 /// Defines the configuration options of a database
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConnectOptions {
     /// The URI of the database
     pub(crate) url: String,
@@ -37,8 +46,18 @@ pub struct ConnectOptions {
     /// Maximum idle time for a particular connection to prevent
     /// network resource exhaustion
     pub(crate) idle_timeout: Option<Duration>,
+    /// Set the maximum amount of time to spend waiting for acquiring a connection
+    pub(crate) acquire_timeout: Option<Duration>,
+    /// Set the maximum lifetime of individual connections
+    pub(crate) max_lifetime: Option<Duration>,
     /// Enable SQLx statement logging
     pub(crate) sqlx_logging: bool,
+    /// SQLx statement logging level (ignored if `sqlx_logging` is false)
+    pub(crate) sqlx_logging_level: log::LevelFilter,
+    /// set sqlcipher key
+    pub(crate) sqlcipher_key: Option<Cow<'static, str>>,
+    /// Schema search path (PostgreSQL only)
+    pub(crate) schema_search_path: Option<String>,
 }
 
 impl Database {
@@ -66,46 +85,71 @@ impl Database {
         if crate::MockDatabaseConnector::accepts(&opt.url) {
             return crate::MockDatabaseConnector::connect(&opt.url).await;
         }
-        Err(DbErr::Conn(format!(
+
+        Err(conn_err(format!(
             "The connection string '{}' has no supporting driver.",
             opt.url
         )))
     }
-}
 
-impl From<&str> for ConnectOptions {
-    fn from(string: &str) -> ConnectOptions {
-        ConnectOptions::from_str(string)
+    /// Method to create a [DatabaseConnection] on a proxy database
+    #[cfg(feature = "proxy")]
+    #[instrument(level = "trace", skip(proxy_func_arc))]
+    pub async fn connect_proxy(
+        db_type: DbBackend,
+        proxy_func_arc: std::sync::Arc<std::sync::Mutex<Box<dyn ProxyDatabaseTrait>>>,
+    ) -> Result<DatabaseConnection, DbErr> {
+        match db_type {
+            DbBackend::MySql => {
+                return crate::ProxyDatabaseConnector::connect(
+                    DbBackend::MySql,
+                    proxy_func_arc.to_owned(),
+                );
+            }
+            DbBackend::Postgres => {
+                return crate::ProxyDatabaseConnector::connect(
+                    DbBackend::Postgres,
+                    proxy_func_arc.to_owned(),
+                );
+            }
+            DbBackend::Sqlite => {
+                return crate::ProxyDatabaseConnector::connect(
+                    DbBackend::Sqlite,
+                    proxy_func_arc.to_owned(),
+                );
+            }
+        }
     }
 }
 
-impl From<&String> for ConnectOptions {
-    fn from(string: &String) -> ConnectOptions {
-        ConnectOptions::from_str(string.as_str())
-    }
-}
-
-impl From<String> for ConnectOptions {
-    fn from(string: String) -> ConnectOptions {
-        ConnectOptions::new(string)
+impl<T> From<T> for ConnectOptions
+where
+    T: Into<String>,
+{
+    fn from(s: T) -> ConnectOptions {
+        ConnectOptions::new(s.into())
     }
 }
 
 impl ConnectOptions {
     /// Create new [ConnectOptions] for a [Database] by passing in a URI string
-    pub fn new(url: String) -> Self {
+    pub fn new<T>(url: T) -> Self
+    where
+        T: Into<String>,
+    {
         Self {
-            url,
+            url: url.into(),
             max_connections: None,
             min_connections: None,
             connect_timeout: None,
             idle_timeout: None,
+            acquire_timeout: None,
+            max_lifetime: None,
             sqlx_logging: true,
+            sqlx_logging_level: log::LevelFilter::Info,
+            sqlcipher_key: None,
+            schema_search_path: None,
         }
-    }
-
-    fn from_str(url: &str) -> Self {
-        Self::new(url.to_owned())
     }
 
     #[cfg(feature = "sqlx-dep")]
@@ -122,10 +166,16 @@ impl ConnectOptions {
             opt = opt.min_connections(min_connections);
         }
         if let Some(connect_timeout) = self.connect_timeout {
-            opt = opt.connect_timeout(connect_timeout);
+            opt = opt.acquire_timeout(connect_timeout);
         }
         if let Some(idle_timeout) = self.idle_timeout {
             opt = opt.idle_timeout(Some(idle_timeout));
+        }
+        if let Some(acquire_timeout) = self.acquire_timeout {
+            opt = opt.acquire_timeout(acquire_timeout);
+        }
+        if let Some(max_lifetime) = self.max_lifetime {
+            opt = opt.max_lifetime(Some(max_lifetime));
         }
         opt
     }
@@ -179,6 +229,28 @@ impl ConnectOptions {
         self.idle_timeout
     }
 
+    /// Set the maximum amount of time to spend waiting for acquiring a connection
+    pub fn acquire_timeout(&mut self, value: Duration) -> &mut Self {
+        self.acquire_timeout = Some(value);
+        self
+    }
+
+    /// Get the maximum amount of time to spend waiting for acquiring a connection
+    pub fn get_acquire_timeout(&self) -> Option<Duration> {
+        self.acquire_timeout
+    }
+
+    /// Set the maximum lifetime of individual connections
+    pub fn max_lifetime(&mut self, lifetime: Duration) -> &mut Self {
+        self.max_lifetime = Some(lifetime);
+        self
+    }
+
+    /// Get the maximum lifetime of individual connections, if set
+    pub fn get_max_lifetime(&self) -> Option<Duration> {
+        self.max_lifetime
+    }
+
     /// Enable SQLx statement logging (default true)
     pub fn sqlx_logging(&mut self, value: bool) -> &mut Self {
         self.sqlx_logging = value;
@@ -188,5 +260,35 @@ impl ConnectOptions {
     /// Get whether SQLx statement logging is enabled
     pub fn get_sqlx_logging(&self) -> bool {
         self.sqlx_logging
+    }
+
+    /// Set SQLx statement logging level (default INFO)
+    /// (ignored if `sqlx_logging` is `false`)
+    pub fn sqlx_logging_level(&mut self, level: log::LevelFilter) -> &mut Self {
+        self.sqlx_logging_level = level;
+        self
+    }
+
+    /// Get the level of SQLx statement logging
+    pub fn get_sqlx_logging_level(&self) -> log::LevelFilter {
+        self.sqlx_logging_level
+    }
+
+    /// set key for sqlcipher
+    pub fn sqlcipher_key<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<Cow<'static, str>>,
+    {
+        self.sqlcipher_key = Some(value.into());
+        self
+    }
+
+    /// Set schema search path (PostgreSQL only)
+    pub fn set_schema_search_path<T>(&mut self, schema_search_path: T) -> &mut Self
+    where
+        T: Into<String>,
+    {
+        self.schema_search_path = Some(schema_search_path.into());
+        self
     }
 }

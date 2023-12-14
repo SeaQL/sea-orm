@@ -1,7 +1,11 @@
 use crate as sea_orm;
 use crate::entity::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[cfg(feature = "with-json")]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[cfg_attr(feature = "with-json", derive(Serialize, Deserialize))]
 #[sea_orm(table_name = "cake")]
 pub struct Model {
     #[sea_orm(primary_key)]
@@ -14,6 +18,17 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::fruit::Entity")]
     Fruit,
+    #[sea_orm(
+        has_many = "super::fruit::Entity",
+        on_condition = r#"super::fruit::Column::Name.like("%tropical%")"#
+    )]
+    TropicalFruit,
+    #[sea_orm(
+        has_many = "super::fruit::Entity",
+        condition_type = "any",
+        on_condition = r#"super::fruit::Column::Name.like("%tropical%")"#
+    )]
+    OrTropicalFruit,
 }
 
 impl Related<super::fruit::Entity> for Entity {

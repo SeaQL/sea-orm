@@ -19,7 +19,7 @@ pub async fn test_update_cake(db: &DbConn) {
         price: Set(dec!(10.25)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
-        bakery_id: Set(Some(bakery_insert_res.last_insert_id as i32)),
+        bakery_id: Set(Some(bakery_insert_res.last_insert_id)),
         ..Default::default()
     };
 
@@ -52,6 +52,7 @@ pub async fn test_update_cake(db: &DbConn) {
     let cake_model = cake.unwrap();
     assert_eq!(cake_model.name, "Extra chocolate mud cake");
     assert_eq!(cake_model.price, dec!(20.00));
+    assert!(!cake_model.gluten_free);
 }
 
 pub async fn test_update_bakery(db: &DbConn) {
@@ -121,12 +122,7 @@ pub async fn test_update_deleted_customer(db: &DbConn) {
 
     let customer_update_res = customer.update(db).await;
 
-    assert_eq!(
-        customer_update_res,
-        Err(DbErr::RecordNotFound(
-            "None of the database rows are affected".to_owned()
-        ))
-    );
+    assert_eq!(customer_update_res, Err(DbErr::RecordNotUpdated));
 
     assert_eq!(Customer::find().count(db).await.unwrap(), init_n_customers);
 

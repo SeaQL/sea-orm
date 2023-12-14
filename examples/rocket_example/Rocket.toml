@@ -1,5 +1,5 @@
 [default]
-template_dir = "templates/"
+template_dir = "api/templates/"
 
 [default.databases.sea_orm]
 # Mysql

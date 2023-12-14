@@ -1,0 +1,17 @@
+[workspace]
+# A separate workspace
+
+[package]
+name = "sea-orm-issues-892"
+version = "0.1.0"
+authors = []
+edition = "2021"
+publish = false
+
+[dependencies]
+tokio = { version = "1.20.0", features = ["rt-multi-thread", "macros"] }
+
+[dependencies.sea-orm]
+path = "../../" # remove this line in your own project
+features = ["runtime-tokio-rustls", "tests-cfg", "sqlx-sqlite", "macros"]
+default-features = false

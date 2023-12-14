@@ -1,6 +1,8 @@
-use heck::{CamelCase, SnakeCase};
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::Ident;
 use quote::format_ident;
+
+use crate::util::escape_rust_keyword;
 
 #[derive(Clone, Debug)]
 pub struct ConjunctRelation {
@@ -10,15 +12,15 @@ pub struct ConjunctRelation {
 
 impl ConjunctRelation {
     pub fn get_via_snake_case(&self) -> Ident {
-        format_ident!("{}", self.via.to_snake_case())
+        format_ident!("{}", escape_rust_keyword(self.via.to_snake_case()))
     }
 
     pub fn get_to_snake_case(&self) -> Ident {
-        format_ident!("{}", self.to.to_snake_case())
+        format_ident!("{}", escape_rust_keyword(self.to.to_snake_case()))
     }
 
-    pub fn get_to_camel_case(&self) -> Ident {
-        format_ident!("{}", self.to.to_camel_case())
+    pub fn get_to_upper_camel_case(&self) -> Ident {
+        format_ident!("{}", self.to.to_upper_camel_case())
     }
 }
 
@@ -58,11 +60,11 @@ mod tests {
     }
 
     #[test]
-    fn test_get_to_camel_case() {
+    fn test_get_to_upper_camel_case() {
         let conjunct_relations = setup();
         let to_vec = vec!["Cake", "Filling"];
         for (con_rel, to) in conjunct_relations.into_iter().zip(to_vec) {
-            assert_eq!(con_rel.get_to_camel_case(), to);
+            assert_eq!(con_rel.get_to_upper_camel_case(), to);
         }
     }
 }

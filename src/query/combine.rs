@@ -1,12 +1,9 @@
 use crate::{
-    ColumnTrait, EntityTrait, IdenStatic, IntoSimpleExpr, Iterable, QueryTrait, Select, SelectTwo,
-    SelectTwoMany,
+    ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectTwo, SelectTwoMany,
 };
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{
-    Alias, ColumnRef, DynIden, Expr, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr,
-};
+use sea_query::{Alias, ColumnRef, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
 
 macro_rules! select_def {
     ( $ident: ident, $str: expr ) => {
@@ -40,16 +37,26 @@ where
             match &sel.alias {
                 Some(alias) => {
                     let alias = format!("{}{}", pre, alias.to_string().as_str());
-                    sel.alias = Some(SeaRc::new(Alias::new(&alias)));
+                    sel.alias = Some(SeaRc::new(Alias::new(alias)));
                 }
                 None => {
                     let col = match &sel.expr {
                         SimpleExpr::Column(col_ref) => match &col_ref {
-                            ColumnRef::Column(col) | ColumnRef::TableColumn(_, col) => col,
+                            ColumnRef::Column(col)
+                            | ColumnRef::TableColumn(_, col)
+                            | ColumnRef::SchemaTableColumn(_, _, col) => col,
+                            ColumnRef::Asterisk | ColumnRef::TableAsterisk(_) => {
+                                panic!("cannot apply alias for Column with asterisk")
+                            }
                         },
                         SimpleExpr::AsEnum(_, simple_expr) => match simple_expr.as_ref() {
                             SimpleExpr::Column(col_ref) => match &col_ref {
-                                ColumnRef::Column(col) | ColumnRef::TableColumn(_, col) => col,
+                                ColumnRef::Column(col)
+                                | ColumnRef::TableColumn(_, col)
+                                | ColumnRef::SchemaTableColumn(_, _, col) => col,
+                                ColumnRef::Asterisk | ColumnRef::TableAsterisk(_) => {
+                                    panic!("cannot apply alias for AsEnum with asterisk")
+                                }
                             },
                             _ => {
                                 panic!("cannot apply alias for AsEnum with expr other than Column")
@@ -58,7 +65,7 @@ where
                         _ => panic!("cannot apply alias for expr other than Column or AsEnum"),
                     };
                     let alias = format!("{}{}", pre, col.to_string().as_str());
-                    sel.alias = Some(SeaRc::new(Alias::new(&alias)));
+                    sel.alias = Some(SeaRc::new(Alias::new(alias)));
                 }
             };
         });
@@ -112,12 +119,16 @@ where
     F: EntityTrait,
 {
     pub(crate) fn new(query: SelectStatement) -> Self {
+        Self::new_without_prepare(query)
+            .prepare_select()
+            .prepare_order_by()
+    }
+
+    pub(crate) fn new_without_prepare(query: SelectStatement) -> Self {
         Self {
             query,
             entity: PhantomData,
         }
-        .prepare_select()
-        .prepare_order_by()
     }
 
     fn prepare_select(mut self) -> Self {
@@ -138,19 +149,12 @@ where
     F: EntityTrait,
     S: QueryTrait<QueryStatement = SelectStatement>,
 {
-    let text_type = SeaRc::new(Alias::new("text")) as DynIden;
     for col in <F::Column as Iterable>::iter() {
-        let col_def = col.def();
-        let col_type = col_def.get_column_type();
         let alias = format!("{}{}", SelectB.as_str(), col.as_str());
-        let expr = Expr::expr(col.into_simple_expr());
-        let expr = match col_type.get_enum_name() {
-            Some(_) => expr.as_enum(text_type.clone()),
-            None => expr.into(),
-        };
         selector.query().expr(SelectExpr {
-            expr,
-            alias: Some(SeaRc::new(Alias::new(&alias))),
+            expr: col.select_as(col.into_expr()),
+            alias: Some(SeaRc::new(Alias::new(alias))),
+            window: None,
         });
     }
 }

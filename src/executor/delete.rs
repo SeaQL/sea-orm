@@ -11,7 +11,7 @@ pub struct Deleter {
 }
 
 /// The result of a DELETE operation
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeleteResult {
     /// The number of rows affected by the DELETE operation
     pub rows_affected: u64,
@@ -24,7 +24,7 @@ where
     /// Execute a DELETE operation on one ActiveModel
     pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<DeleteResult, DbErr>> + '_
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         // so that self is dropped before entering await
         exec_delete_only(self.query, db)
@@ -38,7 +38,7 @@ where
     /// Execute a DELETE operation on many ActiveModels
     pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<DeleteResult, DbErr>> + '_
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         // so that self is dropped before entering await
         exec_delete_only(self.query, db)
@@ -52,25 +52,25 @@ impl Deleter {
     }
 
     /// Execute a DELETE operation
-    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<DeleteResult, DbErr>> + '_
+    pub fn exec<C>(self, db: &C) -> impl Future<Output = Result<DeleteResult, DbErr>> + '_
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let builder = db.get_database_backend();
         exec_delete(builder.build(&self.query), db)
     }
 }
 
-async fn exec_delete_only<'a, C>(query: DeleteStatement, db: &'a C) -> Result<DeleteResult, DbErr>
+async fn exec_delete_only<C>(query: DeleteStatement, db: &C) -> Result<DeleteResult, DbErr>
 where
-    C: ConnectionTrait<'a>,
+    C: ConnectionTrait,
 {
     Deleter::new(query).exec(db).await
 }
 
-async fn exec_delete<'a, C>(statement: Statement, db: &'a C) -> Result<DeleteResult, DbErr>
+async fn exec_delete<C>(statement: Statement, db: &C) -> Result<DeleteResult, DbErr>
 where
-    C: ConnectionTrait<'a>,
+    C: ConnectionTrait,
 {
     let result = db.execute(statement).await?;
     Ok(DeleteResult {

@@ -1,0 +1,16 @@
+[package]
+name = "entity"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "entity"
+path = "src/lib.rs"
+
+[dependencies]
+rocket = { version = "0.5.0-rc.4", features = ["json"] }
+
+[dependencies.sea-orm]
+path = "../../../" # remove this line in your own project
+version = "0.12.10" # sea-orm version

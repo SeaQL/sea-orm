@@ -18,15 +18,19 @@ pub enum Error<A, B = A> {
 impl<A: fmt::Display, B: fmt::Display> fmt::Display for Error<A, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Init(e) => write!(f, "failed to initialize database: {}", e),
-            Error::Get(e) => write!(f, "failed to get db connection: {}", e),
-            Error::Config(e) => write!(f, "bad configuration: {}", e),
+            Error::Init(e) => write!(f, "failed to initialize database: {e}"),
+            Error::Get(e) => write!(f, "failed to get db connection: {e}"),
+            Error::Config(e) => write!(f, "bad configuration: {e}"),
         }
     }
 }
 
 impl<A, B> std::error::Error for Error<A, B>
-    where A: fmt::Debug + fmt::Display, B: fmt::Debug + fmt::Display {}
+where
+    A: fmt::Debug + fmt::Display,
+    B: fmt::Debug + fmt::Display,
+{
+}
 
 impl<A, B> From<crate::figment::Error> for Error<A, B> {
     fn from(e: crate::figment::Error) -> Self {

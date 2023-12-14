@@ -15,7 +15,7 @@ pub struct Statement {
     pub db_backend: DbBackend,
 }
 
-/// Constraints for building a [Statement]
+/// Any type that can build a [Statement]
 pub trait StatementBuilder {
     /// Method to call in order to build a [Statement]
     fn build(&self, db_backend: &DbBackend) -> Statement;
@@ -23,9 +23,12 @@ pub trait StatementBuilder {
 
 impl Statement {
     /// Create a [Statement] from a [crate::DatabaseBackend] and a raw SQL statement
-    pub fn from_string(db_backend: DbBackend, stmt: String) -> Statement {
+    pub fn from_string<T>(db_backend: DbBackend, stmt: T) -> Statement
+    where
+        T: Into<String>,
+    {
         Statement {
-            sql: stmt,
+            sql: stmt.into(),
             values: None,
             db_backend,
         }
@@ -33,22 +36,20 @@ impl Statement {
 
     /// Create a SQL statement from a [crate::DatabaseBackend], a
     /// raw SQL statement and param values
-    pub fn from_sql_and_values<I>(db_backend: DbBackend, sql: &str, values: I) -> Self
+    pub fn from_sql_and_values<I, T>(db_backend: DbBackend, sql: T, values: I) -> Self
     where
         I: IntoIterator<Item = Value>,
+        T: Into<String>,
     {
-        Self::from_string_values_tuple(
-            db_backend,
-            (sql.to_owned(), Values(values.into_iter().collect())),
-        )
+        Self::from_string_values_tuple(db_backend, (sql, Values(values.into_iter().collect())))
     }
 
-    pub(crate) fn from_string_values_tuple(
-        db_backend: DbBackend,
-        stmt: (String, Values),
-    ) -> Statement {
+    pub(crate) fn from_string_values_tuple<T>(db_backend: DbBackend, stmt: (T, Values)) -> Statement
+    where
+        T: Into<String>,
+    {
         Statement {
-            sql: stmt.0,
+            sql: stmt.0.into(),
             values: Some(stmt.1),
             db_backend,
         }
@@ -107,6 +108,7 @@ build_query_stmt!(sea_query::InsertStatement);
 build_query_stmt!(sea_query::SelectStatement);
 build_query_stmt!(sea_query::UpdateStatement);
 build_query_stmt!(sea_query::DeleteStatement);
+build_query_stmt!(sea_query::WithQuery);
 
 macro_rules! build_schema_stmt {
     ($stmt: ty) => {
@@ -124,6 +126,10 @@ build_schema_stmt!(sea_query::TableDropStatement);
 build_schema_stmt!(sea_query::TableAlterStatement);
 build_schema_stmt!(sea_query::TableRenameStatement);
 build_schema_stmt!(sea_query::TableTruncateStatement);
+build_schema_stmt!(sea_query::IndexCreateStatement);
+build_schema_stmt!(sea_query::IndexDropStatement);
+build_schema_stmt!(sea_query::ForeignKeyCreateStatement);
+build_schema_stmt!(sea_query::ForeignKeyDropStatement);
 
 macro_rules! build_type_stmt {
     ($stmt: ty) => {

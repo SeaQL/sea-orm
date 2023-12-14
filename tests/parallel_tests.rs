@@ -20,15 +20,15 @@ async fn main() -> Result<(), DbErr> {
 }
 
 pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
-    let metadata = vec![
+    let metadata = [
         metadata::Model {
             uuid: Uuid::new_v4(),
             ty: "Type".to_owned(),
             key: "markup".to_owned(),
             value: "1.18".to_owned(),
             bytes: vec![1, 2, 3],
-            date: Some(Date::from_ymd(2021, 9, 27)),
-            time: Some(Time::from_hms(11, 32, 55)),
+            date: Some(Date::from_ymd_opt(2021, 9, 27).unwrap()),
+            time: Some(Time::from_hms_opt(11, 32, 55).unwrap()),
         },
         metadata::Model {
             uuid: Uuid::new_v4(),
@@ -36,8 +36,8 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
             key: "exchange_rate".to_owned(),
             value: "0.78".to_owned(),
             bytes: vec![1, 2, 3],
-            date: Some(Date::from_ymd(2021, 9, 27)),
-            time: Some(Time::from_hms(11, 32, 55)),
+            date: Some(Date::from_ymd_opt(2021, 9, 27).unwrap()),
+            time: Some(Time::from_hms_opt(11, 32, 55).unwrap()),
         },
         metadata::Model {
             uuid: Uuid::new_v4(),
@@ -64,7 +64,7 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     assert_eq!(
         metadata,
-        vec![
+        [
             find_res.0.clone().unwrap(),
             find_res.1.clone().unwrap(),
             find_res.2.clone().unwrap(),
@@ -94,12 +94,12 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
     )?;
 
     assert_eq!(
-        vec![
+        [
             active_models.0.bytes.clone().unwrap(),
             active_models.1.bytes.clone().unwrap(),
             active_models.2.bytes.clone().unwrap(),
         ],
-        vec![
+        [
             find_res.0.clone().unwrap().bytes,
             find_res.1.clone().unwrap().bytes,
             find_res.2.clone().unwrap().bytes,
@@ -112,7 +112,7 @@ pub async fn crud_in_parallel(db: &DatabaseConnection) -> Result<(), DbErr> {
         active_models.2.delete(db),
     )?;
 
-    assert_eq!(Metadata::find().all(db).await?, vec![]);
+    assert_eq!(Metadata::find().all(db).await?, []);
 
     Ok(())
 }

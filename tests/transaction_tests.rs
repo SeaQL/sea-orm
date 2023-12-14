@@ -2,8 +2,7 @@ pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-pub use sea_orm::entity::*;
-pub use sea_orm::*;
+use sea_orm::{prelude::*, AccessMode, DatabaseTransaction, IsolationLevel, Set, TransactionTrait};
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -331,14 +330,14 @@ pub async fn transaction_closure_rollback() -> Result<(), DbErr> {
                     id: Set(1),
                     name: Set("Duplicated primary key".to_owned()),
                     profit_margin: Set(20.0),
-                    ..Default::default()
                 }
                 .insert(txn)
                 .await?; // Throw error and rollback
 
                 // This line won't be reached
-                assert!(false);
+                unreachable!();
 
+                #[allow(unreachable_code)]
                 Ok(())
             })
         })
@@ -508,7 +507,9 @@ pub async fn transaction_nested() {
                                     assert_eq!(bakeries.len(), 4);
 
                                     if true {
-                                        Err(DbErr::Query("Force Rollback!".to_owned()))
+                                        Err(DbErr::Query(RuntimeErr::Internal(
+                                            "Force Rollback!".to_owned(),
+                                        )))
                                     } else {
                                         Ok(())
                                     }
@@ -633,7 +634,9 @@ pub async fn transaction_nested() {
                                         assert_eq!(bakeries.len(), 7);
 
                                         if true {
-                                            Err(DbErr::Query("Force Rollback!".to_owned()))
+                                            Err(DbErr::Query(RuntimeErr::Internal(
+                                                "Force Rollback!".to_owned(),
+                                            )))
                                         } else {
                                             Ok(())
                                         }
@@ -652,7 +655,9 @@ pub async fn transaction_nested() {
                             assert_eq!(bakeries.len(), 6);
 
                             if true {
-                                Err(DbErr::Query("Force Rollback!".to_owned()))
+                                Err(DbErr::Query(RuntimeErr::Internal(
+                                    "Force Rollback!".to_owned(),
+                                )))
                             } else {
                                 Ok(())
                             }
@@ -685,4 +690,93 @@ pub async fn transaction_nested() {
     assert_eq!(bakeries.len(), 4);
 
     ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+#[cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
+pub async fn transaction_with_config() {
+    let ctx = TestContext::new("transaction_with_config").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    for (i, (isolation_level, access_mode)) in [
+        (IsolationLevel::RepeatableRead, None),
+        (IsolationLevel::ReadCommitted, None),
+        (IsolationLevel::ReadUncommitted, Some(AccessMode::ReadWrite)),
+        (IsolationLevel::Serializable, Some(AccessMode::ReadWrite)),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let name1 = format!("SeaSide Bakery {}", i);
+        let name2 = format!("Top Bakery {}", i);
+        let search_name = format!("Bakery {}", i);
+        ctx.db
+            .transaction_with_config(
+                |txn| _transaction_with_config(txn, name1, name2, search_name),
+                Some(isolation_level),
+                access_mode,
+            )
+            .await
+            .unwrap();
+    }
+
+    ctx.db
+        .transaction_with_config::<_, _, DbErr>(
+            |txn| {
+                Box::pin(async move {
+                    let bakeries = Bakery::find()
+                        .filter(bakery::Column::Name.contains("Bakery"))
+                        .all(txn)
+                        .await?;
+
+                    assert_eq!(bakeries.len(), 8);
+
+                    Ok(())
+                })
+            },
+            None,
+            Some(AccessMode::ReadOnly),
+        )
+        .await
+        .unwrap();
+
+    ctx.delete().await;
+}
+
+fn _transaction_with_config<'a>(
+    txn: &'a DatabaseTransaction,
+    name1: String,
+    name2: String,
+    search_name: String,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), DbErr>> + Send + 'a>> {
+    Box::pin(async move {
+        let _ = bakery::ActiveModel {
+            name: Set(name1),
+            profit_margin: Set(10.4),
+            ..Default::default()
+        }
+        .save(txn)
+        .await?;
+
+        let _ = bakery::ActiveModel {
+            name: Set(name2),
+            profit_margin: Set(15.0),
+            ..Default::default()
+        }
+        .save(txn)
+        .await?;
+
+        let bakeries = Bakery::find()
+            .filter(bakery::Column::Name.contains(&search_name))
+            .all(txn)
+            .await?;
+
+        assert_eq!(bakeries.len(), 2);
+
+        Ok(())
+    })
 }

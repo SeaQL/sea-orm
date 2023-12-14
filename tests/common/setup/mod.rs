@@ -1,76 +1,77 @@
 use pretty_assertions::assert_eq;
 use sea_orm::{
-    ColumnTrait, ColumnType, ConnectionTrait, Database, DatabaseBackend, DatabaseConnection,
-    DbBackend, DbConn, DbErr, EntityTrait, ExecResult, Iterable, Schema, Statement,
+    ColumnTrait, ColumnType, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
+    DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, ExecResult, Iterable, Schema,
+    Statement,
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
-    Alias, Table, TableCreateStatement,
+    SeaRc, Table, TableCreateStatement,
 };
 
 pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
-    let db = if cfg!(feature = "sqlx-mysql") {
-        let url = format!("{}/mysql", base_url);
+    if cfg!(feature = "sqlx-mysql") {
+        let url = format!("{base_url}/mysql");
         let db = Database::connect(&url).await.unwrap();
         let _drop_db_result = db
             .execute(Statement::from_string(
                 DatabaseBackend::MySql,
-                format!("DROP DATABASE IF EXISTS `{}`;", db_name),
+                format!("DROP DATABASE IF EXISTS `{db_name}`;"),
             ))
             .await;
 
         let _create_db_result = db
             .execute(Statement::from_string(
                 DatabaseBackend::MySql,
-                format!("CREATE DATABASE `{}`;", db_name),
+                format!("CREATE DATABASE `{db_name}`;"),
             ))
             .await;
 
-        let url = format!("{}/{}", base_url, db_name);
+        let url = format!("{base_url}/{db_name}");
         Database::connect(&url).await.unwrap()
     } else if cfg!(feature = "sqlx-postgres") {
-        let url = format!("{}/postgres", base_url);
+        let url = format!("{base_url}/postgres");
         let db = Database::connect(&url).await.unwrap();
         let _drop_db_result = db
             .execute(Statement::from_string(
                 DatabaseBackend::Postgres,
-                format!("DROP DATABASE IF EXISTS \"{}\";", db_name),
+                format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
             ))
             .await;
 
         let _create_db_result = db
             .execute(Statement::from_string(
                 DatabaseBackend::Postgres,
-                format!("CREATE DATABASE \"{}\";", db_name),
+                format!("CREATE DATABASE \"{db_name}\";"),
             ))
             .await;
 
-        let url = format!("{}/{}", base_url, db_name);
+        let url = format!("{base_url}/{db_name}");
         Database::connect(&url).await.unwrap()
     } else {
-        Database::connect(base_url).await.unwrap()
-    };
-
-    db
+        let mut options: ConnectOptions = base_url.into();
+        options.sqlx_logging(false);
+        Database::connect(options).await.unwrap()
+    }
 }
 
 pub async fn tear_down(base_url: &str, db_name: &str) {
     if cfg!(feature = "sqlx-mysql") {
-        let url = format!("{}/mysql", base_url);
+        let url = format!("{base_url}/mysql");
         let db = Database::connect(&url).await.unwrap();
         let _ = db
             .execute(Statement::from_string(
                 DatabaseBackend::MySql,
-                format!("DROP DATABASE IF EXISTS \"{}\";", db_name),
+                format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
             ))
             .await;
     } else if cfg!(feature = "sqlx-postgres") {
-        let url = format!("{}/postgres", base_url);
+        let url = format!("{base_url}/postgres");
         let db = Database::connect(&url).await.unwrap();
         let _ = db
             .execute(Statement::from_string(
                 DatabaseBackend::Postgres,
-                format!("DROP DATABASE IF EXISTS \"{}\";", db_name),
+                format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
             ))
             .await;
     } else {
@@ -90,15 +91,15 @@ where
         for col in E::Column::iter() {
             let col_def = col.def();
             let col_type = col_def.get_column_type();
-            if !matches!(col_type, ColumnType::Enum(_, _)) {
+            if !matches!(col_type, ColumnType::Enum { .. }) {
                 continue;
             }
             let name = match col_type {
-                ColumnType::Enum(s, _) => s.as_str(),
+                ColumnType::Enum { name, .. } => name,
                 _ => unreachable!(),
             };
             let drop_type_stmt = Type::drop()
-                .name(Alias::new(name))
+                .name(SeaRc::clone(name))
                 .if_exists()
                 .cascade()
                 .to_owned();

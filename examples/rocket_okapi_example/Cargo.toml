@@ -1,0 +1,12 @@
+[package]
+name = "sea-orm-rocket-okapi-example"
+version = "0.1.0"
+authors = ["Sam Samai <sam@studio2pi.com.au>", "Erick Pacheco <eum602@gmail.com"]
+edition = "2021"
+publish = false
+
+[workspace]
+members = [".", "api", "service", "entity", "migration", "dto"]
+
+[dependencies]
+rocket-example-api = { path = "api" }

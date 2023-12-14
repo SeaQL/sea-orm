@@ -41,19 +41,14 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
     };
 
     let update_res = Entity::update(updated_active_model.clone())
-        .filter(Column::Id.eq(vec![1, 2, 4]))
+        .filter(Column::Id.eq(vec![1_u8, 2_u8, 4_u8])) // annotate it as Vec<u8> explicitly
         .exec(db)
         .await;
 
-    assert_eq!(
-        update_res,
-        Err(DbErr::RecordNotFound(
-            "None of the database rows are affected".to_owned()
-        ))
-    );
+    assert_eq!(update_res, Err(DbErr::RecordNotUpdated));
 
     let update_res = Entity::update(updated_active_model)
-        .filter(Column::Id.eq(vec![1, 2, 3]))
+        .filter(Column::Id.eq(vec![1_u8, 2_u8, 3_u8])) // annotate it as Vec<u8> explicitly
         .exec(db)
         .await?;
 
@@ -67,13 +62,31 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     assert_eq!(
         Entity::find()
-            .filter(Column::Id.eq(vec![1, 2, 3]))
+            .filter(Column::Id.eq(vec![1_u8, 2_u8, 3_u8])) // annotate it as Vec<u8> explicitly
             .one(db)
             .await?,
         Some(Model {
             id: vec![1, 2, 3],
             value: "First Row (Updated)".to_owned(),
         })
+    );
+
+    assert_eq!(
+        Entity::find()
+            .filter(Column::Id.eq(vec![1_u8, 2_u8, 3_u8])) // annotate it as Vec<u8> explicitly
+            .into_values::<_, Column>()
+            .one(db)
+            .await?,
+        Some((vec![1_u8, 2_u8, 3_u8], "First Row (Updated)".to_owned(),))
+    );
+
+    assert_eq!(
+        Entity::find()
+            .filter(Column::Id.eq(vec![1_u8, 2_u8, 3_u8])) // annotate it as Vec<u8> explicitly
+            .into_tuple()
+            .one(db)
+            .await?,
+        Some((vec![1_u8, 2_u8, 3_u8], "First Row (Updated)".to_owned(),))
     );
 
     Ok(())

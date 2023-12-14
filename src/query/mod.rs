@@ -5,6 +5,7 @@ mod insert;
 mod join;
 #[cfg(feature = "with-json")]
 mod json;
+mod loader;
 mod select;
 mod traits;
 mod update;
@@ -17,11 +18,13 @@ pub use insert::*;
 pub use join::*;
 #[cfg(feature = "with-json")]
 pub use json::*;
+pub use loader::*;
 pub use select::*;
 pub use traits::*;
 pub use update::*;
 pub use util::*;
 
 pub use crate::{
-    ConnectionTrait, InsertResult, PaginatorTrait, Statement, UpdateResult, Value, Values,
+    ConnectionTrait, CursorTrait, InsertResult, PaginatorTrait, Statement, StreamTrait,
+    TransactionTrait, UpdateResult, Value, Values,
 };

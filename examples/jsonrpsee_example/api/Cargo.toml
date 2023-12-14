@@ -1,0 +1,19 @@
+[package]
+name = "jsonrpsee-example-api"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+jsonrpsee-example-service = { path = "../service" }
+jsonrpsee = { version = "0.18.2", features = ["full"] }
+jsonrpsee-core = "0.18.2"
+tokio = { version = "1.29.1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+dotenvy = "0.15"
+entity = { path = "../entity" }
+migration = { path = "../migration" }
+anyhow = "1.0.71"
+async-trait = "0.1.71"
+log = { version = "0.4", features = ["std"] }
+simplelog = "0.12"

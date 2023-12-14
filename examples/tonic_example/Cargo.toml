@@ -1,0 +1,23 @@
+[package]
+name = "sea-orm-tonic-example"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[workspace]
+members = [".", "api", "service", "entity", "migration"]
+
+[dependencies]
+tonic-example-api = { path = "api" }
+tonic = "0.9.2"
+tokio = { version = "1.29", features = ["macros", "rt-multi-thread", "full"] }
+
+[[bin]]
+name = "server"
+path = "./src/server.rs"
+
+[[bin]]
+name = "client"
+path = "./src/client.rs"

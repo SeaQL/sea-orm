@@ -3,7 +3,7 @@ use crate::{
     Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
 };
 pub use sea_query::JoinType;
-use sea_query::{Alias, DynIden, Expr, IntoIden, SeaRc, SelectExpr};
+use sea_query::{Alias, Condition, Expr, IntoIden, SeaRc, SelectExpr};
 
 impl<E> Select<E>
 where
@@ -69,50 +69,101 @@ where
         T: EntityTrait,
     {
         let mut slf = self;
-        for (i, rel) in l.link().into_iter().enumerate() {
-            let to_tbl = Alias::new(&format!("r{}", i)).into_iden();
+        for (i, mut rel) in l.link().into_iter().enumerate() {
+            let to_tbl = Alias::new(format!("r{i}")).into_iden();
             let from_tbl = if i > 0 {
-                Alias::new(&format!("r{}", i - 1)).into_iden()
+                Alias::new(format!("r{}", i - 1)).into_iden()
             } else {
                 unpack_table_ref(&rel.from_tbl)
             };
+            let table_ref = rel.to_tbl;
 
-            slf.query().join_as(
-                JoinType::LeftJoin,
-                rel.to_tbl,
+            let mut condition = Condition::all().add(join_tbl_on_condition(
+                SeaRc::clone(&from_tbl),
                 SeaRc::clone(&to_tbl),
-                join_tbl_on_condition(from_tbl, to_tbl, rel.from_col, rel.to_col),
-            );
+                rel.from_col,
+                rel.to_col,
+            ));
+            if let Some(f) = rel.on_condition.take() {
+                condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
+            }
+
+            slf.query()
+                .join_as(JoinType::LeftJoin, table_ref, to_tbl, condition);
         }
         slf = slf.apply_alias(SelectA.as_str());
-        let text_type = SeaRc::new(Alias::new("text")) as DynIden;
         let mut select_two = SelectTwo::new_without_prepare(slf.query);
         for col in <T::Column as Iterable>::iter() {
-            let col_def = col.def();
-            let col_type = col_def.get_column_type();
             let alias = format!("{}{}", SelectB.as_str(), col.as_str());
-            let expr = Expr::tbl(
-                Alias::new(&format!("r{}", l.link().len() - 1)).into_iden(),
+            let expr = Expr::col((
+                Alias::new(format!("r{}", l.link().len() - 1)).into_iden(),
                 col.into_iden(),
-            );
-            let expr = match col_type.get_enum_name() {
-                Some(_) => expr.as_enum(text_type.clone()),
-                None => expr.into(),
-            };
+            ));
             select_two.query().expr(SelectExpr {
-                expr,
-                alias: Some(SeaRc::new(Alias::new(&alias))),
+                expr: col.select_as(expr),
+                alias: Some(SeaRc::new(Alias::new(alias))),
+                window: None,
             });
         }
         select_two
+    }
+
+    /// Left Join with a Linked Entity and select Entity as a `Vec`.
+    pub fn find_with_linked<L, T>(self, l: L) -> SelectTwoMany<E, T>
+    where
+        L: Linked<FromEntity = E, ToEntity = T>,
+        T: EntityTrait,
+    {
+        let mut slf = self;
+        for (i, mut rel) in l.link().into_iter().enumerate() {
+            let to_tbl = Alias::new(format!("r{i}")).into_iden();
+            let from_tbl = if i > 0 {
+                Alias::new(format!("r{}", i - 1)).into_iden()
+            } else {
+                unpack_table_ref(&rel.from_tbl)
+            };
+            let table_ref = rel.to_tbl;
+
+            let mut condition = Condition::all().add(join_tbl_on_condition(
+                SeaRc::clone(&from_tbl),
+                SeaRc::clone(&to_tbl),
+                rel.from_col,
+                rel.to_col,
+            ));
+            if let Some(f) = rel.on_condition.take() {
+                condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
+            }
+
+            slf.query()
+                .join_as(JoinType::LeftJoin, table_ref, to_tbl, condition);
+        }
+        slf = slf.apply_alias(SelectA.as_str());
+        let mut select_two_many = SelectTwoMany::new_without_prepare(slf.query);
+        for col in <T::Column as Iterable>::iter() {
+            let alias = format!("{}{}", SelectB.as_str(), col.as_str());
+            let expr = Expr::col((
+                Alias::new(format!("r{}", l.link().len() - 1)).into_iden(),
+                col.into_iden(),
+            ));
+            select_two_many.query().expr(SelectExpr {
+                expr: col.select_as(expr),
+                alias: Some(SeaRc::new(Alias::new(alias))),
+                window: None,
+            });
+        }
+        select_two_many
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::tests_cfg::{cake, cake_filling, cake_filling_price, entity_linked, filling, fruit};
-    use crate::{ColumnTrait, DbBackend, EntityTrait, ModelTrait, QueryFilter, QueryTrait};
+    use crate::{
+        ColumnTrait, DbBackend, EntityTrait, ModelTrait, QueryFilter, QuerySelect, QueryTrait,
+        RelationTrait,
+    };
     use pretty_assertions::assert_eq;
+    use sea_query::{Alias, ConditionType, Expr, IntoCondition, JoinType};
 
     #[test]
     fn join_1() {
@@ -245,8 +296,8 @@ mod tests {
                 r#"SELECT "cake_filling_price"."cake_id", "cake_filling_price"."filling_id", "cake_filling_price"."price""#,
                 r#"FROM "public"."cake_filling_price""#,
                 r#"INNER JOIN "cake_filling" ON"#,
-                r#"("cake_filling"."cake_id" = "cake_filling_price"."cake_id") AND"#,
-                r#"("cake_filling"."filling_id" = "cake_filling_price"."filling_id")"#,
+                r#""cake_filling"."cake_id" = "cake_filling_price"."cake_id" AND"#,
+                r#""cake_filling"."filling_id" = "cake_filling_price"."filling_id""#,
             ]
             .join(" ")
         );
@@ -264,8 +315,8 @@ mod tests {
                 r#"SELECT "cake_filling"."cake_id", "cake_filling"."filling_id""#,
                 r#"FROM "cake_filling""#,
                 r#"INNER JOIN "public"."cake_filling_price" ON"#,
-                r#"("cake_filling_price"."cake_id" = "cake_filling"."cake_id") AND"#,
-                r#"("cake_filling_price"."filling_id" = "cake_filling"."filling_id")"#,
+                r#""cake_filling_price"."cake_id" = "cake_filling"."cake_id" AND"#,
+                r#""cake_filling_price"."filling_id" = "cake_filling"."filling_id""#,
             ]
             .join(" ")
         );
@@ -350,6 +401,238 @@ mod tests {
                 r#"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id`"#,
                 r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
                 r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_14() {
+        assert_eq!(
+            cake::Entity::find()
+                .join(JoinType::LeftJoin, cake::Relation::TropicalFruit.def())
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id` AND `fruit`.`name` LIKE '%tropical%'",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_15() {
+        let cake_model = cake::Model {
+            id: 18,
+            name: "".to_owned(),
+        };
+
+        assert_eq!(
+            cake_model
+                .find_linked(entity_linked::CheeseCakeToFillingVendor)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                r#"SELECT `vendor`.`id`, `vendor`.`name`"#,
+                r#"FROM `vendor`"#,
+                r#"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`"#,
+                r#"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`"#,
+                r#"INNER JOIN `cake` AS `r2` ON `r2`.`id` = `r1`.`cake_id` AND `r2`.`name` LIKE '%cheese%'"#,
+                r#"WHERE `r2`.`id` = 18"#,
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_16() {
+        let cake_model = cake::Model {
+            id: 18,
+            name: "".to_owned(),
+        };
+        assert_eq!(
+            cake_model
+                .find_linked(entity_linked::JoinWithoutReverse)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                r#"SELECT `vendor`.`id`, `vendor`.`name`"#,
+                r#"FROM `vendor`"#,
+                r#"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`"#,
+                r#"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`"#,
+                r#"INNER JOIN `cake_filling` AS `r2` ON `r2`.`cake_id` = `r1`.`id` AND `r2`.`name` LIKE '%cheese%'"#,
+                r#"WHERE `r2`.`id` = 18"#,
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_17() {
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_linked(entity_linked::CheeseCakeToFillingVendor)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
+                r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
+                r#"FROM `cake`"#,
+                r#"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id` AND `cake`.`name` LIKE '%cheese%'"#,
+                r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
+                r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_18() {
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_linked(entity_linked::JoinWithoutReverse)
+                .build(DbBackend::MySql)
+                .to_string(),
+                [
+                    r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
+                    r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
+                    r#"FROM `cake`"#,
+                    r#"LEFT JOIN `cake` AS `r0` ON `cake_filling`.`cake_id` = `r0`.`id` AND `cake_filling`.`name` LIKE '%cheese%'"#,
+                    r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
+                    r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
+                ]
+                .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_19() {
+        assert_eq!(
+            cake::Entity::find()
+                .join(JoinType::LeftJoin, cake::Relation::TropicalFruit.def())
+                .join(
+                    JoinType::LeftJoin,
+                    cake_filling::Relation::Cake
+                        .def()
+                        .rev()
+                        .on_condition(|_left, right| {
+                            Expr::col((right, cake_filling::Column::CakeId))
+                                .gt(10)
+                                .into_condition()
+                        })
+                )
+                .join(
+                    JoinType::LeftJoin,
+                    cake_filling::Relation::Filling
+                        .def()
+                        .on_condition(|_left, right| {
+                            Expr::col((right, filling::Column::Name))
+                                .like("%lemon%")
+                                .into_condition()
+                        })
+                )
+                .join(JoinType::LeftJoin, filling::Relation::Vendor.def())
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id` AND `fruit`.`name` LIKE '%tropical%'",
+                "LEFT JOIN `cake_filling` ON `cake`.`id` = `cake_filling`.`cake_id` AND `cake_filling`.`cake_id` > 10",
+                "LEFT JOIN `filling` ON `cake_filling`.`filling_id` = `filling`.`id` AND `filling`.`name` LIKE '%lemon%'",
+                "LEFT JOIN `vendor` ON `filling`.`vendor_id` = `vendor`.`id`",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_20() {
+        assert_eq!(
+            cake::Entity::find()
+                .column_as(
+                    Expr::col((Alias::new("fruit_alias"), fruit::Column::Name)),
+                    "fruit_name"
+                )
+                .join_as(
+                    JoinType::LeftJoin,
+                    cake::Relation::Fruit
+                        .def()
+                        .on_condition(|_left, right| {
+                            Expr::col((right, fruit::Column::Name))
+                                .like("%tropical%")
+                                .into_condition()
+                        }),
+                    Alias::new("fruit_alias")
+                )
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name`, `fruit_alias`.`name` AS `fruit_name` FROM `cake`",
+                "LEFT JOIN `fruit` AS `fruit_alias` ON `cake`.`id` = `fruit_alias`.`cake_id` AND `fruit_alias`.`name` LIKE '%tropical%'",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_21() {
+        assert_eq!(
+            cake::Entity::find()
+                .column_as(
+                    Expr::col((Alias::new("cake_filling_alias"), cake_filling::Column::CakeId)),
+                    "cake_filling_cake_id"
+                )
+                .join(JoinType::LeftJoin, cake::Relation::TropicalFruit.def())
+                .join_as_rev(
+                    JoinType::LeftJoin,
+                    cake_filling::Relation::Cake
+                        .def()
+                        .on_condition(|left, _right| {
+                            Expr::col((left, cake_filling::Column::CakeId))
+                                .gt(10)
+                                .into_condition()
+                        }),
+                    Alias::new("cake_filling_alias")
+                )
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name`, `cake_filling_alias`.`cake_id` AS `cake_filling_cake_id` FROM `cake`",
+                "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id` AND `fruit`.`name` LIKE '%tropical%'",
+                "LEFT JOIN `cake_filling` AS `cake_filling_alias` ON `cake_filling_alias`.`cake_id` = `cake`.`id` AND `cake_filling_alias`.`cake_id` > 10",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_22() {
+        assert_eq!(
+            cake::Entity::find()
+                .column_as(
+                    Expr::col((Alias::new("cake_filling_alias"), cake_filling::Column::CakeId)),
+                    "cake_filling_cake_id"
+                )
+                .join(JoinType::LeftJoin, cake::Relation::OrTropicalFruit.def())
+                .join_as_rev(
+                    JoinType::LeftJoin,
+                    cake_filling::Relation::Cake
+                        .def()
+                        .condition_type(ConditionType::Any)
+                        .on_condition(|left, _right| {
+                            Expr::col((left, cake_filling::Column::CakeId))
+                                .gt(10)
+                                .into_condition()
+                        }),
+                    Alias::new("cake_filling_alias")
+                )
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name`, `cake_filling_alias`.`cake_id` AS `cake_filling_cake_id` FROM `cake`",
+                "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id` OR `fruit`.`name` LIKE '%tropical%'",
+                "LEFT JOIN `cake_filling` AS `cake_filling_alias` ON `cake_filling_alias`.`cake_id` = `cake`.`id` OR `cake_filling_alias`.`cake_id` > 10",
             ]
             .join(" ")
         );

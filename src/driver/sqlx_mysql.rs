@@ -1,17 +1,18 @@
+use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
-    mysql::{MySqlArguments, MySqlConnectOptions, MySqlQueryResult, MySqlRow},
-    MySql, MySqlPool,
+    mysql::{MySqlConnectOptions, MySqlQueryResult, MySqlRow},
+    pool::PoolConnection,
+    Connection, Executor, MySql, MySqlPool,
 };
 
-sea_query::sea_query_driver_mysql!();
-use sea_query_driver_mysql::bind_query;
+use sea_query_binder::SqlxValues;
 use tracing::instrument;
 
 use crate::{
-    debug_print, error::*, executor::*, ConnectOptions, DatabaseConnection, DatabaseTransaction,
-    QueryStream, Statement, TransactionError,
+    debug_print, error::*, executor::*, AccessMode, ConnectOptions, DatabaseConnection,
+    DatabaseTransaction, DbBackend, IsolationLevel, QueryStream, Statement, TransactionError,
 };
 
 use super::sqlx_common::*;
@@ -23,7 +24,7 @@ pub struct SqlxMySqlConnector;
 /// Defines a sqlx MySQL pool
 #[derive(Clone)]
 pub struct SqlxMySqlPoolConnection {
-    pool: MySqlPool,
+    pub(crate) pool: MySqlPool,
     metric_callback: Option<crate::metric::Callback>,
 }
 
@@ -45,10 +46,12 @@ impl SqlxMySqlConnector {
         let mut opt = options
             .url
             .parse::<MySqlConnectOptions>()
-            .map_err(|e| DbErr::Conn(e.to_string()))?;
+            .map_err(sqlx_error_to_conn_err)?;
+        use sqlx::ConnectOptions;
         if !options.sqlx_logging {
-            use sqlx::ConnectOptions;
-            opt.disable_statement_logging();
+            opt = opt.disable_statement_logging();
+        } else {
+            opt = opt.log_statements(options.sqlx_logging_level);
         }
         match options.pool_options().connect_with(opt).await {
             Ok(pool) => Ok(DatabaseConnection::SqlxMySqlPoolConnection(
@@ -79,17 +82,24 @@ impl SqlxMySqlPoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        if let Ok(conn) = &mut self.pool.acquire().await {
-            crate::metric::metric!(self.metric_callback, &stmt, {
-                match query.execute(conn).await {
-                    Ok(res) => Ok(res.into()),
-                    Err(err) => Err(sqlx_error_to_exec_err(err)),
-                }
-            })
-        } else {
-            Err(DbErr::Exec(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
+        let mut conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
+        crate::metric::metric!(self.metric_callback, &stmt, {
+            match query.execute(&mut *conn).await {
+                Ok(res) => Ok(res.into()),
+                Err(err) => Err(sqlx_error_to_exec_err(err)),
+            }
+        })
+    }
+
+    /// Execute an unprepared SQL statement on a MySQL backend
+    #[instrument(level = "trace")]
+    pub async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
+        debug_print!("{}", sql);
+
+        let conn = &mut self.pool.acquire().await.map_err(conn_acquire_err)?;
+        match conn.execute(sql).await {
+            Ok(res) => Ok(res.into()),
+            Err(err) => Err(sqlx_error_to_exec_err(err)),
         }
     }
 
@@ -99,21 +109,16 @@ impl SqlxMySqlPoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        if let Ok(conn) = &mut self.pool.acquire().await {
-            crate::metric::metric!(self.metric_callback, &stmt, {
-                match query.fetch_one(conn).await {
-                    Ok(row) => Ok(Some(row.into())),
-                    Err(err) => match err {
-                        sqlx::Error::RowNotFound => Ok(None),
-                        _ => Err(DbErr::Query(err.to_string())),
-                    },
-                }
-            })
-        } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
-        }
+        let mut conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
+        crate::metric::metric!(self.metric_callback, &stmt, {
+            match query.fetch_one(&mut *conn).await {
+                Ok(row) => Ok(Some(row.into())),
+                Err(err) => match err {
+                    sqlx::Error::RowNotFound => Ok(None),
+                    _ => Err(sqlx_error_to_query_err(err)),
+                },
+            }
+        })
     }
 
     /// Get the results of a query returning them as a Vec<[QueryResult]>
@@ -122,18 +127,13 @@ impl SqlxMySqlPoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        if let Ok(conn) = &mut self.pool.acquire().await {
-            crate::metric::metric!(self.metric_callback, &stmt, {
-                match query.fetch_all(conn).await {
-                    Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
-                    Err(err) => Err(sqlx_error_to_query_err(err)),
-                }
-            })
-        } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
-        }
+        let mut conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
+        crate::metric::metric!(self.metric_callback, &stmt, {
+            match query.fetch_all(&mut *conn).await {
+                Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
+                Err(err) => Err(sqlx_error_to_query_err(err)),
+            }
+        })
     }
 
     /// Stream the results of executing a SQL query
@@ -141,34 +141,39 @@ impl SqlxMySqlPoolConnection {
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
 
-        if let Ok(conn) = self.pool.acquire().await {
-            Ok(QueryStream::from((
-                conn,
-                stmt,
-                self.metric_callback.clone(),
-            )))
-        } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
-        }
+        let conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
+        Ok(QueryStream::from((
+            conn,
+            stmt,
+            self.metric_callback.clone(),
+        )))
     }
 
     /// Bundle a set of SQL statements that execute together.
     #[instrument(level = "trace")]
-    pub async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
-        if let Ok(conn) = self.pool.acquire().await {
-            DatabaseTransaction::new_mysql(conn, self.metric_callback.clone()).await
-        } else {
-            Err(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            ))
-        }
+    pub async fn begin(
+        &self,
+        isolation_level: Option<IsolationLevel>,
+        access_mode: Option<AccessMode>,
+    ) -> Result<DatabaseTransaction, DbErr> {
+        let conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
+        DatabaseTransaction::new_mysql(
+            conn,
+            self.metric_callback.clone(),
+            isolation_level,
+            access_mode,
+        )
+        .await
     }
 
     /// Create a MySQL transaction
     #[instrument(level = "trace", skip(callback))]
-    pub async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
+    pub async fn transaction<F, T, E>(
+        &self,
+        callback: F,
+        isolation_level: Option<IsolationLevel>,
+        access_mode: Option<AccessMode>,
+    ) -> Result<T, TransactionError<E>>
     where
         F: for<'b> FnOnce(
                 &'b DatabaseTransaction,
@@ -177,16 +182,16 @@ impl SqlxMySqlPoolConnection {
         T: Send,
         E: std::error::Error + Send,
     {
-        if let Ok(conn) = self.pool.acquire().await {
-            let transaction = DatabaseTransaction::new_mysql(conn, self.metric_callback.clone())
-                .await
-                .map_err(|e| TransactionError::Connection(e))?;
-            transaction.run(callback).await
-        } else {
-            Err(TransactionError::Connection(DbErr::Query(
-                "Failed to acquire connection from pool.".to_owned(),
-            )))
-        }
+        let conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
+        let transaction = DatabaseTransaction::new_mysql(
+            conn,
+            self.metric_callback.clone(),
+            isolation_level,
+            access_mode,
+        )
+        .await
+        .map_err(|e| TransactionError::Connection(e))?;
+        transaction.run(callback).await
     }
 
     pub(crate) fn set_metric_callback<F>(&mut self, callback: F)
@@ -194,6 +199,21 @@ impl SqlxMySqlPoolConnection {
         F: Fn(&crate::metric::Info<'_>) + Send + Sync + 'static,
     {
         self.metric_callback = Some(Arc::new(callback));
+    }
+
+    /// Checks if a connection to the database is still valid.
+    pub async fn ping(&self) -> Result<(), DbErr> {
+        let conn = &mut self.pool.acquire().await.map_err(conn_acquire_err)?;
+        match conn.ping().await {
+            Ok(_) => Ok(()),
+            Err(err) => Err(sqlx_error_to_conn_err(err)),
+        }
+    }
+
+    /// Explicitly close the MySQL connection
+    pub async fn close(self) -> Result<(), DbErr> {
+        self.pool.close().await;
+        Ok(())
     }
 }
 
@@ -213,10 +233,36 @@ impl From<MySqlQueryResult> for ExecResult {
     }
 }
 
-pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, MySqlArguments> {
-    let mut query = sqlx::query(&stmt.sql);
-    if let Some(values) = &stmt.values {
-        query = bind_query(query, values);
+pub(crate) fn sqlx_query(stmt: &Statement) -> sqlx::query::Query<'_, MySql, SqlxValues> {
+    let values = stmt
+        .values
+        .as_ref()
+        .map_or(Values(Vec::new()), |values| values.clone());
+    sqlx::query_with(&stmt.sql, SqlxValues(values))
+}
+
+pub(crate) async fn set_transaction_config(
+    conn: &mut PoolConnection<MySql>,
+    isolation_level: Option<IsolationLevel>,
+    access_mode: Option<AccessMode>,
+) -> Result<(), DbErr> {
+    if let Some(isolation_level) = isolation_level {
+        let stmt = Statement {
+            sql: format!("SET TRANSACTION ISOLATION LEVEL {isolation_level}"),
+            values: None,
+            db_backend: DbBackend::MySql,
+        };
+        let query = sqlx_query(&stmt);
+        conn.execute(query).await.map_err(sqlx_error_to_exec_err)?;
     }
-    query
+    if let Some(access_mode) = access_mode {
+        let stmt = Statement {
+            sql: format!("SET TRANSACTION {access_mode}"),
+            values: None,
+            db_backend: DbBackend::MySql,
+        };
+        let query = sqlx_query(&stmt);
+        conn.execute(query).await.map_err(sqlx_error_to_exec_err)?;
+    }
+    Ok(())
 }

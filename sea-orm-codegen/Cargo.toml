@@ -1,30 +1,29 @@
 [package]
 name = "sea-orm-codegen"
-version = "0.5.0-rc.1"
+version = "0.12.10"
 authors = ["Billy Chan <ccw.billy.123@gmail.com>"]
 edition = "2021"
 description = "Code Generator for SeaORM"
 license = "MIT OR Apache-2.0"
+homepage = "https://www.sea-ql.org/SeaORM"
 documentation = "https://docs.rs/sea-orm"
 repository = "https://github.com/SeaQL/sea-orm"
 categories = ["database"]
 keywords = ["sql", "mysql", "postgres", "sqlite"]
+rust-version = "1.65"
 
 [lib]
 name = "sea_orm_codegen"
 path = "src/lib.rs"
 
 [dependencies]
-sea-query = { version = "0.20.0" }
-syn = { version = "^1", default-features = false, features = [
-    "derive",
-    "parsing",
-    "proc-macro",
-    "printing",
-] }
-quote = "^1"
-heck = "^0.3"
-proc-macro2 = "^1"
+sea-query = { version = "0.30.0", default-features = false, features = ["thread-safe"] }
+syn = { version = "2", default-features = false, features = ["parsing", "proc-macro", "derive", "printing"] }
+quote = { version = "1", default-features = false }
+heck = { version = "0.4", default-features = false }
+proc-macro2 = { version = "1", default-features = false }
+tracing = { version = "0.1", default-features = false, features = ["log"] }
 
 [dev-dependencies]
-pretty_assertions = { version = "^0.7" }
+pretty_assertions = { version = "0.7" }
+sea-orm = { path = "../", default-features = false, features = ["macros"] }

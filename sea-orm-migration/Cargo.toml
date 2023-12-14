@@ -1,0 +1,53 @@
+[workspace]
+# A separate workspace
+
+[package]
+name = "sea-orm-migration"
+version = "0.12.10"
+authors = ["Billy Chan <ccw.billy.123@gmail.com>"]
+edition = "2021"
+description = "Migration utility for SeaORM"
+license = "MIT OR Apache-2.0"
+homepage = "https://www.sea-ql.org/SeaORM"
+documentation = "https://docs.rs/sea-orm"
+repository = "https://github.com/SeaQL/sea-orm"
+categories = ["database"]
+keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
+rust-version = "1.65"
+
+[lib]
+name = "sea_orm_migration"
+path = "src/lib.rs"
+
+[dependencies]
+async-trait = { version = "0.1", default-features = false }
+clap = { version = "4.3", features = ["env", "derive"], optional = true }
+dotenvy = { version = "0.15", default-features = false, optional = true }
+sea-orm = { version = "0.12.10", path = "../", default-features = false, features = ["macros"] }
+sea-orm-cli = { version = "0.12.10", path = "../sea-orm-cli", default-features = false, optional = true }
+sea-schema = { version = "0.14.1" }
+tracing = { version = "0.1", default-features = false, features = ["log"] }
+tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
+futures = { version = "0.3", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+async-std = { version = "1", features = ["attributes", "tokio1"] }
+
+[features]
+default = ["cli"]
+cli = ["clap", "dotenvy", "sea-orm-cli/cli"]
+sqlx-mysql = ["sea-orm/sqlx-mysql"]
+sqlx-postgres = ["sea-orm/sqlx-postgres"]
+sqlx-sqlite = ["sea-orm/sqlx-sqlite"]
+runtime-actix-native-tls = ["sea-orm/runtime-actix-native-tls"]
+runtime-async-std-native-tls = ["sea-orm/runtime-async-std-native-tls"]
+runtime-tokio-native-tls = ["sea-orm/runtime-tokio-native-tls"]
+runtime-actix-rustls = ["sea-orm/runtime-actix-rustls"]
+runtime-async-std-rustls = ["sea-orm/runtime-async-std-rustls"]
+runtime-tokio-rustls = ["sea-orm/runtime-tokio-rustls"]
+with-json = ["sea-orm/with-json"]
+with-chrono = ["sea-orm/with-chrono"]
+with-rust_decimal = ["sea-orm/with-rust_decimal"]
+with-bigdecimal = ["sea-orm/with-bigdecimal"]
+with-uuid = ["sea-orm/with-uuid"]
+with-time = ["sea-orm/with-time"]

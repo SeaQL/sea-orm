@@ -1,13 +1,19 @@
 use std::marker::PhantomData;
-use std::ops::{DerefMut};
+use std::ops::DerefMut;
 
-use rocket::{error, info_, Build, Ignite, Phase, Rocket, Sentinel};
 use rocket::fairing::{self, Fairing, Info, Kind};
-use rocket::request::{FromRequest, Outcome, Request};
 use rocket::http::Status;
+use rocket::request::{FromRequest, Outcome, Request};
+use rocket::{error, info_, Build, Ignite, Phase, Rocket, Sentinel};
 
-use rocket::yansi::Paint;
 use rocket::figment::providers::Serialized;
+use rocket::yansi::Paint;
+
+#[cfg(feature = "rocket_okapi")]
+use rocket_okapi::{
+    gen::OpenApiGenerator,
+    request::{OpenApiFromRequest, RequestHeaderInput},
+};
 
 use crate::Pool;
 
@@ -31,7 +37,9 @@ use crate::Pool;
 /// ```
 ///
 /// See the [`Database` derive](derive@crate::Database) for details.
-pub trait Database: From<Self::Pool> + DerefMut<Target = Self::Pool> + Send + Sync + 'static {
+pub trait Database:
+    From<Self::Pool> + DerefMut<Target = Self::Pool> + Send + Sync + 'static
+{
     /// The [`Pool`] type of connections to this database.
     ///
     /// When `Database` is derived, this takes the value of the `Inner` type in
@@ -51,7 +59,7 @@ pub trait Database: From<Self::Pool> + DerefMut<Target = Self::Pool> + Send + Sy
     /// ```rust
     /// # mod _inner {
     /// # use rocket::launch;
-    /// use sea_orm_rocket::{Database};
+    /// use sea_orm_rocket::Database;
     /// # use sea_orm_rocket::MockPool as SeaOrmPool;
     ///
     /// #[derive(Database)]
@@ -90,10 +98,10 @@ pub trait Database: From<Self::Pool> + DerefMut<Target = Self::Pool> + Send + Sy
     /// ```rust
     /// # mod _inner {
     /// # use rocket::launch;
-    /// use rocket::{Rocket, Build};
     /// use rocket::fairing::{self, AdHoc};
+    /// use rocket::{Build, Rocket};
     ///
-    /// use sea_orm_rocket::{Database};
+    /// use sea_orm_rocket::Database;
     /// # use sea_orm_rocket::MockPool as SeaOrmPool;
     ///
     /// #[derive(Database)]
@@ -123,9 +131,15 @@ pub trait Database: From<Self::Pool> + DerefMut<Target = Self::Pool> + Send + Sy
         }
 
         let dbtype = std::any::type_name::<Self>();
-        let fairing = Paint::default(format!("{}::init()", dbtype)).bold();
-        error!("Attempted to fetch unattached database `{}`.", Paint::default(dbtype).bold());
-        info_!("`{}` fairing must be attached prior to using this database.", fairing);
+        let fairing = Paint::new(format!("{dbtype}::init()")).bold();
+        error!(
+            "Attempted to fetch unattached database `{}`.",
+            Paint::new(dbtype).bold()
+        );
+        info_!(
+            "`{}` fairing must be attached prior to using this database.",
+            fairing
+        );
         None
     }
 }
@@ -168,7 +182,6 @@ pub struct Initializer<D: Database>(Option<&'static str>, PhantomData<fn() -> D>
 ///   * If a connection is not available within `connect_timeout` seconds or
 ///   another error occurs, the gaurd _fails_ with status `ServiceUnavailable`
 ///   and the error is returned in `Some`.
-///
 pub struct Connection<'a, D: Database>(&'a <D::Pool as Pool>::Connection);
 
 impl<D: Database> Initializer<D> {
@@ -176,6 +189,7 @@ impl<D: Database> Initializer<D> {
     ///
     /// This method should never need to be called manually. See the [crate
     /// docs](crate) for usage information.
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self(None, std::marker::PhantomData)
     }
@@ -197,6 +211,17 @@ impl<'a, D: Database> Connection<'a, D> {
     }
 }
 
+#[cfg(feature = "rocket_okapi")]
+impl<'r, D: Database> OpenApiFromRequest<'r> for Connection<'r, D> {
+    fn from_request_input(
+        _gen: &mut OpenApiGenerator,
+        _name: String,
+        _required: bool,
+    ) -> rocket_okapi::Result<RequestHeaderInput> {
+        Ok(RequestHeaderInput::None)
+    }
+}
+
 #[rocket::async_trait]
 impl<D: Database> Fairing for Initializer<D> {
     fn info(&self) -> Info {
@@ -207,14 +232,17 @@ impl<D: Database> Fairing for Initializer<D> {
     }
 
     async fn on_ignite(&self, rocket: Rocket<Build>) -> fairing::Result {
-        let workers: usize = rocket.figment()
+        let workers: usize = rocket
+            .figment()
             .extract_inner(rocket::Config::WORKERS)
             .unwrap_or_else(|_| rocket::Config::default().workers);
 
-        let figment = rocket.figment()
+        let figment = rocket
+            .figment()
             .focus(&format!("databases.{}", D::NAME))
             .merge(Serialized::default("max_connections", workers * 4))
-            .merge(Serialized::default("connect_timeout", 5));
+            .merge(Serialized::default("connect_timeout", 5))
+            .merge(Serialized::default("sqlx_logging", true));
 
         match <D::Pool>::init(&figment).await {
             Ok(pool) => Ok(rocket.manage(D::from(pool))),
@@ -233,7 +261,7 @@ impl<'r, D: Database> FromRequest<'r> for Connection<'r, D> {
     async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         match D::fetch(req.rocket()) {
             Some(pool) => Outcome::Success(Connection(pool.borrow())),
-            None => Outcome::Failure((Status::InternalServerError, None)),
+            None => Outcome::Error((Status::InternalServerError, None)),
         }
     }
 }

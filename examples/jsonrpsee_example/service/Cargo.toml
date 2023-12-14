@@ -1,0 +1,30 @@
+[package]
+name = "jsonrpsee-example-service"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+entity = { path = "../entity" }
+
+[dependencies.sea-orm]
+path = "../../../" # remove this line in your own project
+version = "0.12.10" # sea-orm version
+features = [
+    "debug-print",
+    "runtime-tokio-native-tls",
+    "sqlx-sqlite",
+    # "sqlx-postgres",
+    # "sqlx-mysql",
+]
+
+[dev-dependencies]
+tokio = { version = "1.20.0", features = ["macros", "rt"] }
+
+[features]
+mock = ["sea-orm/mock"]
+
+[[test]]
+name = "mock"
+required-features = ["mock"]

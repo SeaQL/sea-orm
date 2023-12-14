@@ -1,7 +1,7 @@
-use heck::SnakeCase;
+use heck::ToSnakeCase;
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
-use syn::{Data, DataEnum, Fields, Variant};
+use syn::{Data, DataEnum, Expr, Fields, LitStr, Variant};
 
 /// Method to derive a Primary Key for a Model using the [PrimaryKeyTrait](sea_orm::PrimaryKeyTrait)
 pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenStream> {
@@ -13,6 +13,12 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
             })
         }
     };
+
+    if variants.is_empty() {
+        return Ok(quote_spanned! {
+            ident.span() => compile_error!("Entity must have a primary key column. See <https://github.com/SeaQL/sea-orm/issues/485> for details.");
+        });
+    }
 
     let variant: Vec<TokenStream> = variants
         .iter()
@@ -26,16 +32,34 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
     let name: Vec<TokenStream> = variants
         .iter()
         .map(|v| {
-            let ident = v.ident.to_string().to_snake_case();
-            quote! { #ident }
+            let mut column_name = v.ident.to_string().to_snake_case();
+            for attr in v.attrs.iter() {
+                if !attr.path().is_ident("sea_orm") {
+                    continue;
+                }
+
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("column_name") {
+                        column_name = meta.value()?.parse::<LitStr>()?.value();
+                    } else {
+                        // Reads the value expression to advance the parse stream.
+                        // Some parameters, such as `primary_key`, do not have any value,
+                        // so ignoring an error occurred here.
+                        let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
+                    }
+
+                    Ok(())
+                })?;
+            }
+            Ok::<TokenStream, syn::Error>(quote! { #column_name })
         })
-        .collect();
+        .collect::<Result<_, _>>()?;
 
     Ok(quote!(
         #[automatically_derived]
         impl sea_orm::Iden for #ident {
             fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-                write!(s, "{}", self.as_str()).unwrap();
+                write!(s, "{}", sea_orm::IdenStatic::as_str(self)).unwrap();
             }
         }
 

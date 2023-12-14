@@ -1,0 +1,19 @@
+[package]
+name = "entity"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "entity"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+
+[dependencies.async-graphql]
+version = "5.0.10"
+
+[dependencies.sea-orm]
+path = "../../../" # remove this line in your own project
+version = "0.12.10" # sea-orm version

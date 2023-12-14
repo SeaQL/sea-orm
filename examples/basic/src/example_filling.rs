@@ -1,5 +1,8 @@
+//! The `filling` entity.
+
 use sea_orm::entity::prelude::*;
 
+/// Filling entity
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 pub struct Entity;
 
@@ -9,20 +12,28 @@ impl EntityName for Entity {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
+/// Filling model
+#[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
+    /// id field
     pub id: i32,
+    /// name field
     pub name: String,
 }
 
+/// Filling column
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
+    /// Id column
     Id,
+    /// Name column
     Name,
 }
 
+/// Filling primary key
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
 pub enum PrimaryKey {
+    /// Id primary key
     Id,
 }
 
@@ -34,6 +45,7 @@ impl PrimaryKeyTrait for PrimaryKey {
     }
 }
 
+/// Filling relation
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {}
 
