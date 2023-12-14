@@ -16,6 +16,7 @@ pub struct ColumnDef {
     pub(crate) unique: bool,
     pub(crate) indexed: bool,
     pub(crate) default: Option<SimpleExpr>,
+    pub(crate) comment: Option<String>,
 }
 
 macro_rules! bind_oper {
@@ -312,6 +313,7 @@ impl ColumnTypeTrait for ColumnType {
             unique: false,
             indexed: false,
             default: None,
+            comment: None,
         }
     }
 
@@ -342,6 +344,11 @@ impl ColumnDef {
     /// Marks the column as `UNIQUE`
     pub fn unique(mut self) -> Self {
         self.unique = true;
+        self
+    }
+    /// Set column comment
+    pub fn comment(mut self, v: &str) -> Self {
+        self.comment = Some(v.into());
         self
     }
 

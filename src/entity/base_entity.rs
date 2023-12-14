@@ -20,6 +20,11 @@ pub trait EntityName: IdenStatic + Default {
         None
     }
 
+    /// Method to get the comment for the schema, defaults to [Option::None] if not set
+    fn comment(&self) -> Option<&str> {
+        None
+    }
+
     /// Get the name of the table
     fn table_name(&self) -> &str;
 
