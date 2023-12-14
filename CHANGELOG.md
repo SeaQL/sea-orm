@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * [sea-orm-macro] Comment attribute for Entity (`#[sea_orm(comment = "action")]`); `create_table_from_entity` supports comment https://github.com/SeaQL/sea-orm/pull/2009
 * Added "proxy" (feature flag `proxy`) to database backend https://github.com/SeaQL/sea-orm/pull/1881, https://github.com/SeaQL/sea-orm/pull/2000
 
+### Enhancements
+
+* Cast enums in `is_in` and `is_not_in` https://github.com/SeaQL/sea-orm/pull/2002
+
 ### Upgrades
 
 * Updated `sea-query` to `0.30.5` https://github.com/SeaQL/sea-query/releases/tag/0.30.5
