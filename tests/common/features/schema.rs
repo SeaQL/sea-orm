@@ -67,19 +67,32 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
 pub async fn create_log_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = sea_query::Table::create()
         .table(applog::Entity)
+        .comment("app logs")
         .col(
             ColumnDef::new(applog::Column::Id)
                 .integer()
                 .not_null()
                 .auto_increment()
-                .primary_key(),
+                .primary_key()
+                .comment("ID"),
         )
-        .col(ColumnDef::new(applog::Column::Action).string().not_null())
-        .col(ColumnDef::new(applog::Column::Json).json().not_null())
+        .col(
+            ColumnDef::new(applog::Column::Action)
+                .string()
+                .not_null()
+                .comment("action"),
+        )
+        .col(
+            ColumnDef::new(applog::Column::Json)
+                .json()
+                .not_null()
+                .comment("action data"),
+        )
         .col(
             ColumnDef::new(applog::Column::CreatedAt)
                 .timestamp_with_time_zone()
-                .not_null(),
+                .not_null()
+                .comment("create time"),
         )
         .to_owned();
 
