@@ -111,18 +111,19 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             .unwrap()
     );
     // Equivalent to the above.
-    let select_with_tea_in = Entity::find().filter(Column::Tea.is_in([Tea::EverydayTea]));
+    let select_with_tea_in =
+        Entity::find().filter(Column::Tea.is_in([Tea::EverydayTea, Tea::BreakfastTea]));
     assert_eq!(
         select_with_tea_in
             .build(sea_orm::DatabaseBackend::Postgres)
             .to_string(),
         [
-            "SELECT \"active_enum\".\"id\",",
-            "\"active_enum\".\"category\",",
-            "\"active_enum\".\"color\",",
-            "CAST(\"active_enum\".\"tea\" AS text)",
-            "FROM \"active_enum\"",
-            "WHERE \"active_enum\".\"tea\" IN (CAST('EverydayTea' AS tea))",
+            r#"SELECT "active_enum"."id","#,
+            r#""active_enum"."category","#,
+            r#""active_enum"."color","#,
+            r#"CAST("active_enum"."tea" AS text)"#,
+            r#"FROM "public"."active_enum""#,
+            r#"WHERE "active_enum"."tea" IN (CAST('EverydayTea' AS tea), CAST('BreakfastTea' AS tea))"#,
         ]
         .join(" ")
     );
@@ -149,13 +150,13 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             .build(sea_orm::DatabaseBackend::Postgres)
             .to_string(),
         [
-            "SELECT \"active_enum\".\"id\",",
-            "\"active_enum\".\"category\",",
-            "\"active_enum\".\"color\",",
-            "CAST(\"active_enum\".\"tea\" AS text)",
-            "FROM \"active_enum\"",
-            "WHERE \"active_enum\".\"tea\" IS NOT NULL",
-            "AND \"active_enum\".\"tea\" NOT IN (CAST('BreakfastTea' AS tea))",
+            r#"SELECT "active_enum"."id","#,
+            r#""active_enum"."category","#,
+            r#""active_enum"."color","#,
+            r#"CAST("active_enum"."tea" AS text)"#,
+            r#"FROM "public"."active_enum""#,
+            r#"WHERE "active_enum"."tea" IS NOT NULL"#,
+            r#"AND "active_enum"."tea" NOT IN (CAST('BreakfastTea' AS tea))"#,
         ]
         .join(" ")
     );
