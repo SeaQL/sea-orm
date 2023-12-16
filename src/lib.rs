@@ -282,21 +282,9 @@
 //! 1. [Engineering](https://www.sea-ql.org/blog/2022-07-30-engineering/)
 //! 1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 //!
-//! ## Who's using SeaORM?
+//! ### Who's using SeaORM?
 //!
-//! The following products are powered by SeaORM:
-//!
-//! <table>
-//!   <tbody>
-//!     <tr>
-//!       <td><br><a href="https://caido.io/"><img src="https://www.sea-ql.org/SeaORM/img/other/caido-logo.png" width="250"/></a><br>A lightweight web security auditing toolkit</td>
-//!       <td><a href="https://www.svix.com/"><img src="https://www.sea-ql.org/SeaORM/img/other/svix-logo.svg" width="250"/></a><br>The enterprise ready webhooks service</td>
-//!       <td><a href="https://docs.spyglass.fyi/"><img src="https://www.sea-ql.org/SeaORM/img/other/spyglass-logo.svg" width="250"/></a><br/>A personal search engine</td>
-//!     </tr>
-//!   </tbody>
-//! </table>
-//!
-//! For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to [submit yours](https://github.com/SeaQL/sea-orm/issues/403)!
+//! See [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to [submit yours](https://github.com/SeaQL/sea-orm/issues/403)!
 //!
 //! ## License
 //!
