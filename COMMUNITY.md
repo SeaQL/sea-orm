@@ -97,13 +97,10 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 ### Frameworks
 
-- [actix-admin](https://github.com/mgugger/actix-admin/) | An admin panel for Actix Web built with Tera, HTMX and SeaOrm | DB: MySQL, Postgres, SQLite
-- [awto](https://github.com/awto-rs/awto) | Awtomate your 🦀 microservices with awto | DB: Postgres
+- [actix-admin](https://github.com/mgugger/actix-admin) | An admin panel for Actix Web built with Tera, HTMX and SeaOrm | DB: MySQL, Postgres, SQLite
 - [poem_admin](https://github.com/lingdu1234/poem_admin) | An admin panel built with poems, SeaORM and Vue 3. | DB: MySQL, Postgres, SQLite
-- [Quasar](https://github.com/Technik97/Quasar) | Rust REST API using Actix Web, SeaORM and Postgres with Svelte Typescript Frontend | DB: Postgres
 - [Loco.rs](https://github.com/loco-rs/loco) | A full stack Web and API productivity framework similar to Rails, based on SeaORM with db tooling and migrations code generation | DB: Postgres, SQLite
 - [tardis](https://github.com/ideal-world/tardis) | Elegant, Clean Rust development framework🛸 | DB: MySQL, Postgres, SQLite
-- [ZAPP](https://zapp.epics.dev) ([repository](https://github.com/EpicsDAO/zapp)) | ZAPP is a serverless framework made by Rust. Quickly build a scalable GraphQL API web server.
 
 ### Scaffolding
 
