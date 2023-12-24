@@ -52,6 +52,7 @@ pub async fn create_baker_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .json()
                 .not_null(),
         )
+        .col(ColumnDef::new(baker::Column::WorkingTime).time())
         .col(ColumnDef::new(baker::Column::BakeryId).integer())
         .foreign_key(
             ForeignKey::create()

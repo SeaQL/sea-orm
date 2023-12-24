@@ -7,6 +7,22 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub contact_details: Json,
+    /// This column is not supposed to test datetime behavior,
+    /// but typecasting as declared with select_as and save_as
+    #[cfg_attr(
+        feature = "sqlx-postgres",
+        sea_orm(
+            column_type = "Time",
+            select_as = "VARCHAR",
+            save_as = "Time",
+            nullable
+        )
+    )]
+    #[cfg_attr(
+        feature = "sqlx-mysql",
+        sea_orm(column_type = "Time", select_as = "CHAR", save_as = "Time", nullable)
+    )]
+    pub working_time: Option<String>,
     pub bakery_id: Option<i32>,
 }
 

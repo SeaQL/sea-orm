@@ -2,7 +2,7 @@ use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySe
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{Expr, IntoColumnRef, SelectStatement, SimpleExpr};
+use sea_query::{BinOper, DynIden, Expr, IntoColumnRef, SeaRc, SelectStatement, SimpleExpr};
 
 /// Defines a structure to perform select operations
 #[derive(Clone, Debug)]
@@ -126,7 +126,15 @@ where
 
     fn column_list(&self) -> Vec<SimpleExpr> {
         E::Column::iter()
-            .map(|col| col.select_as(col.into_expr()))
+            .map(|col| {
+                let expr = col.select_as(col.into_expr());
+                match expr {
+                    SimpleExpr::FunctionCall(_) => {
+                        expr.binary(BinOper::As, Expr::col(SeaRc::new(col) as DynIden))
+                    }
+                    _ => expr,
+                }
+            })
             .collect()
     }
 

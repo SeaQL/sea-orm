@@ -28,6 +28,7 @@ pub async fn test_create_baker(db: &DbConn) {
         name: Set("Baker Bob".to_owned()),
         contact_details: Set(serde_json::json!(baker_bob_contact)),
         bakery_id: Set(Some(bakery_insert_res.last_insert_id)),
+        working_time: Set(Some("08:30:00".into())),
         ..Default::default()
     };
     let res = Baker::insert(baker_bob)
@@ -43,6 +44,7 @@ pub async fn test_create_baker(db: &DbConn) {
     assert!(baker.is_some());
     let baker_model = baker.unwrap();
     assert_eq!(baker_model.name, "Baker Bob");
+    assert_eq!(baker_model.working_time, Some("08:30:00".to_owned()));
     assert_eq!(
         baker_model.contact_details["mobile"],
         baker_bob_contact.mobile

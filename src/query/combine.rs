@@ -3,7 +3,9 @@ use crate::{
 };
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{Alias, ColumnRef, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
+use sea_query::{
+    Alias, BinOper, ColumnRef, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr,
+};
 
 macro_rules! select_def {
     ( $ident: ident, $str: expr ) => {
@@ -62,7 +64,28 @@ where
                                 panic!("cannot apply alias for AsEnum with expr other than Column")
                             }
                         },
-                        _ => panic!("cannot apply alias for expr other than Column or AsEnum"),
+                        SimpleExpr::Binary(_, bin_oper, simple_expr)
+                            if BinOper::As.eq(bin_oper) =>
+                        {
+                            match simple_expr.as_ref() {
+                                SimpleExpr::Column(col_ref) => match &col_ref {
+                                    ColumnRef::Column(col)
+                                    | ColumnRef::TableColumn(_, col)
+                                    | ColumnRef::SchemaTableColumn(_, _, col) => col,
+                                    ColumnRef::Asterisk | ColumnRef::TableAsterisk(_) => {
+                                        panic!("cannot apply alias for Binary with asterisk")
+                                    }
+                                },
+                                _ => {
+                                    panic!(
+                                        "cannot apply alias for Binary with expr other than Column"
+                                    )
+                                }
+                            }
+                        }
+                        _ => panic!(
+                            "cannot apply alias for expr other than Column or AsEnum or Binary"
+                        ),
                     };
                     let alias = format!("{}{}", pre, col.to_string().as_str());
                     sel.alias = Some(SeaRc::new(Alias::new(alias)));
