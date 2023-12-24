@@ -2,7 +2,10 @@ use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySe
 use core::fmt::Debug;
 use core::marker::PhantomData;
 pub use sea_query::JoinType;
-use sea_query::{Expr, IntoColumnRef, SelectStatement, SimpleExpr};
+use sea_query::{
+    CaseStatement, ColumnRef, Expr, FunctionCall, IntoColumnRef, Keyword, SelectStatement,
+    SimpleExpr,
+};
 
 /// Defines a structure to perform select operations
 #[derive(Clone, Debug)]
@@ -103,6 +106,30 @@ impl IntoSimpleExpr for Expr {
 impl IntoSimpleExpr for SimpleExpr {
     fn into_simple_expr(self) -> SimpleExpr {
         self
+    }
+}
+
+impl IntoSimpleExpr for FunctionCall {
+    fn into_simple_expr(self) -> SimpleExpr {
+        self.into()
+    }
+}
+
+impl IntoSimpleExpr for ColumnRef {
+    fn into_simple_expr(self) -> SimpleExpr {
+        self.into()
+    }
+}
+
+impl IntoSimpleExpr for Keyword {
+    fn into_simple_expr(self) -> SimpleExpr {
+        self.into()
+    }
+}
+
+impl IntoSimpleExpr for CaseStatement {
+    fn into_simple_expr(self) -> SimpleExpr {
+        self.into()
     }
 }
 
