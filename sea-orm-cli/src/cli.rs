@@ -1,6 +1,8 @@
 use clap::{ArgGroup, Parser, Subcommand, ValueEnum};
+#[cfg(feature = "codegen")]
 use dotenvy::dotenv;
 
+#[cfg(feature = "codegen")]
 use crate::{handle_error, run_generate_command, run_migrate_command};
 
 #[derive(Parser, Debug)]
@@ -315,6 +317,7 @@ pub enum DateTimeCrate {
 
 /// Use this to build a local, version-controlled `sea-orm-cli` in dependent projects
 /// (see [example use case](https://github.com/SeaQL/sea-orm/discussions/1889)).
+#[cfg(feature = "codegen")]
 pub async fn main() {
     dotenv().ok();
 
