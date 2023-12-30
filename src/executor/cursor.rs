@@ -23,7 +23,12 @@ where
     table: DynIden,
     order_columns: Identity,
     secondary_order_by: Vec<(DynIden, Identity)>,
-    last: bool,
+    first: Option<u64>,
+    last: Option<u64>,
+    before: Option<ValueTuple>,
+    after: Option<ValueTuple>,
+    sort_asc: bool,
+    is_result_reversed: bool,
     phantom: PhantomData<S>,
 }
 
@@ -40,7 +45,12 @@ where
             query,
             table,
             order_columns: order_columns.into_identity(),
-            last: false,
+            last: None,
+            first: None,
+            after: None,
+            before: None,
+            sort_asc: true,
+            is_result_reversed: false,
             phantom: PhantomData,
             secondary_order_by: Default::default(),
         }
@@ -51,10 +61,7 @@ where
     where
         V: IntoValueTuple,
     {
-        let condition = self.apply_filter(values, |c, v| {
-            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c))).lt(v)
-        });
-        self.query.cond_where(condition);
+        self.before = Some(values.into_value_tuple());
         self
     }
 
@@ -63,19 +70,41 @@ where
     where
         V: IntoValueTuple,
     {
-        let condition = self.apply_filter(values, |c, v| {
-            Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c))).gt(v)
-        });
-        self.query.cond_where(condition);
+        self.after = Some(values.into_value_tuple());
         self
     }
 
-    fn apply_filter<V, F>(&self, values: V, f: F) -> Condition
+    fn apply_filters(&mut self) {
+        if let Some(values) = self.after.clone() {
+            let condition = self.apply_filter(values, |c, v| {
+                let exp = Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c)));
+                if self.sort_asc {
+                    exp.gt(v)
+                } else {
+                    exp.lt(v)
+                }
+            });
+            self.query.cond_where(condition);
+        }
+
+        if let Some(values) = self.before.clone() {
+            let condition = self.apply_filter(values, |c, v| {
+                let exp = Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c)));
+                if self.sort_asc {
+                    exp.lt(v)
+                } else {
+                    exp.gt(v)
+                }
+            });
+            self.query.cond_where(condition);
+        }
+    }
+
+    fn apply_filter<F>(&self, values: ValueTuple, f: F) -> Condition
     where
-        V: IntoValueTuple,
         F: Fn(&DynIden, Value) -> SimpleExpr,
     {
-        match (&self.order_columns, values.into_value_tuple()) {
+        match (&self.order_columns, values) {
             (Identity::Unary(c1), ValueTuple::One(v1)) => Condition::all().add(f(c1, v1)),
             (Identity::Binary(c1, c2), ValueTuple::Two(v1, v2)) => Condition::any()
                 .add(
@@ -159,26 +188,62 @@ where
         }
     }
 
+    /// Use ascending sort order
+    pub fn asc(&mut self) -> &mut Self {
+        self.sort_asc = true;
+        self
+    }
+
+    /// Use descending sort order
+    pub fn desc(&mut self) -> &mut Self {
+        self.sort_asc = false;
+        self
+    }
+
     /// Limit result set to only first N rows in ascending order of the order by column
     pub fn first(&mut self, num_rows: u64) -> &mut Self {
-        self.query.limit(num_rows).clear_order_by();
-        self.apply_order_by(self.table.clone(), Order::Asc);
-        self.last = false;
+        self.last = None;
+        self.first = Some(num_rows);
         self
     }
 
     /// Limit result set to only last N rows in ascending order of the order by column
     pub fn last(&mut self, num_rows: u64) -> &mut Self {
-        self.query.limit(num_rows).clear_order_by();
-        self.apply_order_by(self.table.clone(), Order::Desc);
-        self.last = true;
+        self.first = None;
+        self.last = Some(num_rows);
         self
     }
 
-    fn apply_order_by(&mut self, table: DynIden, ord: Order) {
+    fn resolve_sort_order(&mut self) -> Order {
+        let should_reverse_order = self.last.is_some();
+
+        if should_reverse_order {
+            self.is_result_reversed = true;
+        } else {
+            self.is_result_reversed = false;
+        }
+
+        if (self.sort_asc && !should_reverse_order) || (!self.sort_asc && should_reverse_order) {
+            Order::Asc
+        } else {
+            Order::Desc
+        }
+    }
+
+    fn apply_limit(&mut self) {
+        if let Some(num_rows) = self.first {
+            self.query.limit(num_rows);
+        } else if let Some(num_rows) = self.last {
+            self.query.limit(num_rows);
+        }
+    }
+
+    fn apply_order_by(&mut self) {
+        let ord = self.resolve_sort_order();
+
         let query = &mut self.query;
         let order = |query: &mut SelectStatement, col| {
-            query.order_by((SeaRc::clone(&table), SeaRc::clone(col)), ord.clone());
+            query.order_by((SeaRc::clone(&self.table), SeaRc::clone(col)), ord.clone());
         };
         match &self.order_columns {
             Identity::Unary(c1) => {
@@ -212,13 +277,17 @@ where
     where
         C: ConnectionTrait,
     {
+        self.apply_limit();
+        self.apply_order_by();
+        self.apply_filters();
+
         let stmt = db.get_database_backend().build(&self.query);
         let rows = db.query_all(stmt).await?;
         let mut buffer = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
             buffer.push(S::from_raw_query_result(row)?);
         }
-        if self.last {
+        if self.is_result_reversed {
             buffer.reverse()
         }
         Ok(buffer)
@@ -234,6 +303,11 @@ where
             table: self.table,
             order_columns: self.order_columns,
             last: self.last,
+            first: self.first,
+            after: self.after,
+            before: self.before,
+            sort_asc: self.sort_asc,
+            is_result_reversed: self.is_result_reversed,
             phantom: PhantomData,
             secondary_order_by: self.secondary_order_by,
         }
@@ -255,6 +329,11 @@ where
             table: self.table,
             order_columns: self.order_columns,
             last: self.last,
+            first: self.first,
+            after: self.after,
+            before: self.before,
+            sort_asc: self.sort_asc,
+            is_result_reversed: self.is_result_reversed,
             phantom: PhantomData,
             secondary_order_by: self.secondary_order_by,
         }
