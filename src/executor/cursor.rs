@@ -74,7 +74,7 @@ where
         self
     }
 
-    fn apply_filters(&mut self) {
+    fn apply_filters(&mut self) -> &mut Self {
         if let Some(values) = self.after.clone() {
             let condition = self.apply_filter(values, |c, v| {
                 let exp = Expr::col((SeaRc::clone(&self.table), SeaRc::clone(c)));
@@ -98,6 +98,8 @@ where
             });
             self.query.cond_where(condition);
         }
+
+        self
     }
 
     fn apply_filter<F>(&self, values: ValueTuple, f: F) -> Condition
@@ -230,15 +232,17 @@ where
         }
     }
 
-    fn apply_limit(&mut self) {
+    fn apply_limit(&mut self) -> &mut Self {
         if let Some(num_rows) = self.first {
             self.query.limit(num_rows);
         } else if let Some(num_rows) = self.last {
             self.query.limit(num_rows);
         }
+
+        self
     }
 
-    fn apply_order_by(&mut self) {
+    fn apply_order_by(&mut self) -> &mut Self {
         let ord = self.resolve_sort_order();
 
         let query = &mut self.query;
@@ -270,6 +274,8 @@ where
                 query.order_by((tbl, c1), ord.clone());
             };
         }
+
+        self
     }
 
     /// Fetch the paginated result
@@ -1171,14 +1177,14 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4))
-                .after(("val_1", "val_2", "val_3", "val_4"))
-                .query
+                .after(("val_1", "val_2", "val_3", "val_4")).apply_limit().apply_order_by().apply_filters().query
             ).to_string(),
             format!("{base_sql} {}", [
                 r#"("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" = 'val_3' AND "t"."col_4" > 'val_4')"#,
                 r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" > 'val_3')"#,
                 r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" > 'val_2')"#,
                 r#"OR "t"."col_1" > 'val_1'"#,
+                r#"ORDER BY "t"."col_1" ASC, "t"."col_2" ASC, "t"."col_3" ASC, "t"."col_4" ASC"#,
             ].join(" "))
         );
 
@@ -1186,7 +1192,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5))
-                .after(("val_1", "val_2", "val_3", "val_4", "val_5"))
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5")).apply_limit().apply_order_by().apply_filters()
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1195,6 +1201,7 @@ mod tests {
                 r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" > 'val_3')"#,
                 r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" > 'val_2')"#,
                 r#"OR "t"."col_1" > 'val_1'"#,
+                r#"ORDER BY "t"."col_1" ASC, "t"."col_2" ASC, "t"."col_3" ASC, "t"."col_4" ASC, "t"."col_5" ASC"#,
             ].join(" "))
         );
 
@@ -1202,7 +1209,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6))
-                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6"))
+                .after(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6")).apply_limit().apply_order_by().apply_filters()
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1212,6 +1219,7 @@ mod tests {
                 r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" > 'val_3')"#,
                 r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" > 'val_2')"#,
                 r#"OR "t"."col_1" > 'val_1'"#,
+                r#"ORDER BY "t"."col_1" ASC, "t"."col_2" ASC, "t"."col_3" ASC, "t"."col_4" ASC, "t"."col_5" ASC, "t"."col_6" ASC"#,
             ].join(" "))
         );
 
@@ -1219,7 +1227,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7))
-                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7"))
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7")).apply_limit().apply_order_by().apply_filters()
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1230,6 +1238,7 @@ mod tests {
                 r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" < 'val_3')"#,
                 r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" < 'val_2')"#,
                 r#"OR "t"."col_1" < 'val_1'"#,
+                r#"ORDER BY "t"."col_1" ASC, "t"."col_2" ASC, "t"."col_3" ASC, "t"."col_4" ASC, "t"."col_5" ASC, "t"."col_6" ASC, "t"."col_7" ASC"#,
             ].join(" "))
         );
 
@@ -1237,7 +1246,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7, Column::Col8))
-                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8"))
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8")).apply_limit().apply_order_by().apply_filters()
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1249,6 +1258,7 @@ mod tests {
                 r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" < 'val_3')"#,
                 r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" < 'val_2')"#,
                 r#"OR "t"."col_1" < 'val_1'"#,
+                r#"ORDER BY "t"."col_1" ASC, "t"."col_2" ASC, "t"."col_3" ASC, "t"."col_4" ASC, "t"."col_5" ASC, "t"."col_6" ASC, "t"."col_7" ASC, "t"."col_8" ASC"#,
             ].join(" "))
         );
 
@@ -1256,7 +1266,7 @@ mod tests {
             DbBackend::Postgres.build(&
                 Entity::find()
                 .cursor_by((Column::Col1, Column::Col2, Column::Col3, Column::Col4, Column::Col5, Column::Col6, Column::Col7, Column::Col8, Column::Col9))
-                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8", "val_9"))
+                .before(("val_1", "val_2", "val_3", "val_4", "val_5", "val_6", "val_7", "val_8", "val_9")).apply_limit().apply_order_by().apply_filters()
                 .query
             ).to_string(),
             format!("{base_sql} {}", [
@@ -1269,6 +1279,7 @@ mod tests {
                 r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" = 'val_2' AND "t"."col_3" < 'val_3')"#,
                 r#"OR ("t"."col_1" = 'val_1' AND "t"."col_2" < 'val_2')"#,
                 r#"OR "t"."col_1" < 'val_1'"#,
+                r#"ORDER BY "t"."col_1" ASC, "t"."col_2" ASC, "t"."col_3" ASC, "t"."col_4" ASC, "t"."col_5" ASC, "t"."col_6" ASC, "t"."col_7" ASC, "t"."col_8" ASC, "t"."col_9" ASC"#,
             ].join(" "))
         );
 
