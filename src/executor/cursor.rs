@@ -1344,6 +1344,44 @@ mod tests {
     }
 
     #[smol_potat::test]
+    async fn composite_keys_1_desc() -> Result<(), DbErr> {
+        use test_entity::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[Model {
+                id: 1,
+                category: "CAT".into(),
+            }]])
+            .into_connection();
+
+        assert!(!Entity::find()
+            .cursor_by((Column::Category, Column::Id))
+            .last(3)
+            .desc()
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "example"."id", "example"."category""#,
+                    r#"FROM "example""#,
+                    r#"ORDER BY "example"."category" ASC, "example"."id" ASC"#,
+                    r#"LIMIT $1"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [3_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
     async fn composite_keys_2() -> Result<(), DbErr> {
         use test_entity::*;
 
@@ -1358,6 +1396,52 @@ mod tests {
             .cursor_by((Column::Category, Column::Id))
             .after(("A".to_owned(), 2))
             .first(3)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "example"."id", "example"."category""#,
+                    r#"FROM "example""#,
+                    r#"WHERE ("example"."category" = $1 AND "example"."id" > $2)"#,
+                    r#"OR "example"."category" > $3"#,
+                    r#"ORDER BY "example"."category" ASC, "example"."id" ASC"#,
+                    r#"LIMIT $4"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [
+                    "A".to_string().into(),
+                    2i32.into(),
+                    "A".to_string().into(),
+                    3_u64.into(),
+                ]
+            )])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn composite_keys_2_desc() -> Result<(), DbErr> {
+        use test_entity::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[Model {
+                id: 1,
+                category: "CAT".into(),
+            }]])
+            .into_connection();
+
+        assert!(!Entity::find()
+            .cursor_by((Column::Category, Column::Id))
+            .before(("A".to_owned(), 2))
+            .last(3)
+            .desc()
             .all(&db)
             .await?
             .is_empty());
@@ -1434,6 +1518,52 @@ mod tests {
     }
 
     #[smol_potat::test]
+    async fn composite_keys_3_desc() -> Result<(), DbErr> {
+        use test_entity::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[Model {
+                id: 1,
+                category: "CAT".into(),
+            }]])
+            .into_connection();
+
+        assert!(!Entity::find()
+            .cursor_by((Column::Category, Column::Id))
+            .after(("A".to_owned(), 2))
+            .first(3)
+            .desc()
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "example"."id", "example"."category""#,
+                    r#"FROM "example""#,
+                    r#"WHERE ("example"."category" = $1 AND "example"."id" < $2)"#,
+                    r#"OR "example"."category" < $3"#,
+                    r#"ORDER BY "example"."category" DESC, "example"."id" DESC"#,
+                    r#"LIMIT $4"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [
+                    "A".to_string().into(),
+                    2i32.into(),
+                    "A".to_string().into(),
+                    3_u64.into(),
+                ]
+            )])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
     async fn composite_keys_4() -> Result<(), DbErr> {
         use xyz_entity::*;
 
@@ -1448,6 +1578,45 @@ mod tests {
         assert!(!Entity::find()
             .cursor_by((Column::X, Column::Y, Column::Z))
             .first(4)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "m"."x", "m"."y", "m"."z""#,
+                    r#"FROM "m""#,
+                    r#"ORDER BY "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
+                    r#"LIMIT $1"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [4_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn composite_keys_4_desc() -> Result<(), DbErr> {
+        use xyz_entity::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[Model {
+                x: 'x' as i32,
+                y: "y".into(),
+                z: 'z' as i64,
+            }]])
+            .into_connection();
+
+        assert!(!Entity::find()
+            .cursor_by((Column::X, Column::Y, Column::Z))
+            .last(4)
+            .desc()
             .all(&db)
             .await?
             .is_empty());
@@ -1487,6 +1656,57 @@ mod tests {
             .cursor_by((Column::X, Column::Y, Column::Z))
             .after(('x' as i32, "y".to_owned(), 'z' as i64))
             .first(4)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "m"."x", "m"."y", "m"."z""#,
+                    r#"FROM "m""#,
+                    r#"WHERE ("m"."x" = $1 AND "m"."y" = $2 AND "m"."z" > $3)"#,
+                    r#"OR ("m"."x" = $4 AND "m"."y" > $5)"#,
+                    r#"OR "m"."x" > $6"#,
+                    r#"ORDER BY "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
+                    r#"LIMIT $7"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [
+                    ('x' as i32).into(),
+                    "y".into(),
+                    ('z' as i64).into(),
+                    ('x' as i32).into(),
+                    "y".into(),
+                    ('x' as i32).into(),
+                    4_u64.into(),
+                ]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn composite_keys_5_desc() -> Result<(), DbErr> {
+        use xyz_entity::*;
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[Model {
+                x: 'x' as i32,
+                y: "y".into(),
+                z: 'z' as i64,
+            }]])
+            .into_connection();
+
+        assert!(!Entity::find()
+            .cursor_by((Column::X, Column::Y, Column::Z))
+            .before(('x' as i32, "y".to_owned(), 'z' as i64))
+            .last(4)
+            .desc()
             .all(&db)
             .await?
             .is_empty());
