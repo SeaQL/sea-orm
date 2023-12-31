@@ -600,6 +600,17 @@ pub async fn cursor_related_pagination(db: &DatabaseConnection) -> Result<(), Db
 
     assert_eq!(
         bakery::Entity::find()
+            .cursor_by(bakery::Column::Id)
+            .before(5)
+            .first(4)
+            .desc()
+            .all(db)
+            .await?,
+        [bakery(10), bakery(9), bakery(8), bakery(7),]
+    );
+
+    assert_eq!(
+        bakery::Entity::find()
             .find_also_related(Baker)
             .cursor_by(bakery::Column::Id)
             .before(5)
@@ -626,6 +637,31 @@ pub async fn cursor_related_pagination(db: &DatabaseConnection) -> Result<(), Db
         bakery::Entity::find()
             .find_also_related(Baker)
             .cursor_by(bakery::Column::Id)
+            .after(5)
+            .last(20)
+            .desc()
+            .all(db)
+            .await?,
+        [
+            (bakery(4), Some(baker('X'))),
+            (bakery(4), Some(baker('N'))),
+            (bakery(4), Some(baker('D'))),
+            (bakery(3), Some(baker('W'))),
+            (bakery(3), Some(baker('M'))),
+            (bakery(3), Some(baker('C'))),
+            (bakery(2), Some(baker('V'))),
+            (bakery(2), Some(baker('L'))),
+            (bakery(2), Some(baker('B'))),
+            (bakery(1), Some(baker('U'))),
+            (bakery(1), Some(baker('K'))),
+            (bakery(1), Some(baker('A'))),
+        ]
+    );
+
+    assert_eq!(
+        bakery::Entity::find()
+            .find_also_related(Baker)
+            .cursor_by(bakery::Column::Id)
             .before(5)
             .first(4)
             .all(db)
@@ -635,6 +671,41 @@ pub async fn cursor_related_pagination(db: &DatabaseConnection) -> Result<(), Db
             (bakery(1), Some(baker('K'))),
             (bakery(1), Some(baker('U'))),
             (bakery(2), Some(baker('B'))),
+        ]
+    );
+
+    assert_eq!(
+        bakery::Entity::find()
+            .find_also_related(Baker)
+            .cursor_by(bakery::Column::Id)
+            .after(5)
+            .last(4)
+            .desc()
+            .all(db)
+            .await?,
+        [
+            (bakery(2), Some(baker('B'))),
+            (bakery(1), Some(baker('U'))),
+            (bakery(1), Some(baker('K'))),
+            (bakery(1), Some(baker('A'))),
+        ]
+    );
+
+    // since "10" is before "2" lexicologically, it return that first
+    assert_eq!(
+        bakery::Entity::find()
+            .find_also_related(Baker)
+            .cursor_by(bakery::Column::Name)
+            .after("3")
+            .last(4)
+            .desc()
+            .all(db)
+            .await?,
+        [
+            (bakery(10), Some(baker('J'))),
+            (bakery(1), Some(baker('U'))),
+            (bakery(1), Some(baker('K'))),
+            (bakery(1), Some(baker('A'))),
         ]
     );
 
@@ -652,6 +723,24 @@ pub async fn cursor_related_pagination(db: &DatabaseConnection) -> Result<(), Db
             (bakery(1), Some(baker('K'))),
             (bakery(1), Some(baker('U'))),
             (bakery(10), Some(baker('J'))),
+        ]
+    );
+
+    // since "10" is before "2" lexicologically, it return that first
+    assert_eq!(
+        bakery::Entity::find()
+            .find_also_related(Baker)
+            .cursor_by(bakery::Column::Name)
+            .after("3")
+            .last(4)
+            .desc()
+            .all(db)
+            .await?,
+        [
+            (bakery(10), Some(baker('J'))),
+            (bakery(1), Some(baker('U'))),
+            (bakery(1), Some(baker('K'))),
+            (bakery(1), Some(baker('A'))),
         ]
     );
 
@@ -692,13 +781,54 @@ pub async fn cursor_related_pagination(db: &DatabaseConnection) -> Result<(), Db
             .column_as(cake::Column::Name, QueryAs::CakeName)
             .column_as(baker::Column::Name, QueryAs::BakerName)
             .cursor_by(cake::Column::Name)
+            .after("e")
+            .last(4)
+            .desc()
+            .clone()
+            .into_model::<CakeBakerlite>()
+            .all(db)
+            .await?,
+        vec![
+            cakebaker('b', 'B'),
+            cakebaker('b', 'A'),
+            cakebaker('a', 'B'),
+            cakebaker('a', 'A')
+        ]
+    );
+
+    assert_eq!(
+        cake::Entity::find()
+            .find_also_related(Baker)
+            .select_only()
+            .column_as(cake::Column::Id, QueryAs::CakeId)
+            .column_as(cake::Column::Name, QueryAs::CakeName)
+            .column_as(baker::Column::Name, QueryAs::BakerName)
+            .cursor_by(cake::Column::Name)
             .before("b")
             .first(4)
             .clone()
             .into_model::<CakeBakerlite>()
             .all(db)
             .await?,
-        vec![cakebaker('a', 'A'), cakebaker('a', 'B'),]
+        vec![cakebaker('a', 'A'), cakebaker('a', 'B')]
+    );
+
+    assert_eq!(
+        cake::Entity::find()
+            .find_also_related(Baker)
+            .select_only()
+            .column_as(cake::Column::Id, QueryAs::CakeId)
+            .column_as(cake::Column::Name, QueryAs::CakeName)
+            .column_as(baker::Column::Name, QueryAs::BakerName)
+            .cursor_by(cake::Column::Name)
+            .after("b")
+            .last(4)
+            .desc()
+            .clone()
+            .into_model::<CakeBakerlite>()
+            .all(db)
+            .await?,
+        vec![cakebaker('a', 'B'), cakebaker('a', 'A')]
     );
 
     assert_eq!(
@@ -726,6 +856,24 @@ pub async fn cursor_related_pagination(db: &DatabaseConnection) -> Result<(), Db
             .column_as(cake::Column::Name, QueryAs::CakeName)
             .column_as(baker::Column::Name, QueryAs::BakerName)
             .cursor_by_other(baker::Column::Name)
+            .after("B")
+            .last(4)
+            .desc()
+            .clone()
+            .into_model::<CakeBakerlite>()
+            .all(db)
+            .await?,
+        vec![cakebaker('b', 'A'), cakebaker('a', 'A'),]
+    );
+
+    assert_eq!(
+        cake::Entity::find()
+            .find_also_related(Baker)
+            .select_only()
+            .column_as(cake::Column::Id, QueryAs::CakeId)
+            .column_as(cake::Column::Name, QueryAs::CakeName)
+            .column_as(baker::Column::Name, QueryAs::BakerName)
+            .cursor_by_other(baker::Column::Name)
             .before("E")
             .first(20)
             .clone()
@@ -739,6 +887,31 @@ pub async fn cursor_related_pagination(db: &DatabaseConnection) -> Result<(), Db
             cakebaker('b', 'B'),
             cakebaker('c', 'C'),
             cakebaker('d', 'D'),
+        ]
+    );
+
+    assert_eq!(
+        cake::Entity::find()
+            .find_also_related(Baker)
+            .select_only()
+            .column_as(cake::Column::Id, QueryAs::CakeId)
+            .column_as(cake::Column::Name, QueryAs::CakeName)
+            .column_as(baker::Column::Name, QueryAs::BakerName)
+            .cursor_by_other(baker::Column::Name)
+            .after("E")
+            .last(20)
+            .desc()
+            .clone()
+            .into_model::<CakeBakerlite>()
+            .all(db)
+            .await?,
+        vec![
+            cakebaker('d', 'D'),
+            cakebaker('c', 'C'),
+            cakebaker('b', 'B'),
+            cakebaker('a', 'B'),
+            cakebaker('b', 'A'),
+            cakebaker('a', 'A'),
         ]
     );
 
