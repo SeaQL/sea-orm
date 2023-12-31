@@ -477,7 +477,7 @@ mod tests {
     async fn first_2_before_10() -> Result<(), DbErr> {
         use fruit::*;
 
-        let models = [
+        let mut models = [
             Model {
                 id: 1,
                 name: "Blueberry".into(),
@@ -499,6 +499,60 @@ mod tests {
                 .cursor_by(Column::Id)
                 .before(10)
                 .first(2)
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
+                    r#"FROM "fruit""#,
+                    r#"WHERE "fruit"."id" < $1"#,
+                    r#"ORDER BY "fruit"."id" ASC"#,
+                    r#"LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn last_2_after_10_desc() -> Result<(), DbErr> {
+        use fruit::*;
+
+        let mut models = [
+            Model {
+                id: 1,
+                name: "Blueberry".into(),
+                cake_id: Some(1),
+            },
+            Model {
+                id: 2,
+                name: "Rasberry".into(),
+                cake_id: Some(1),
+            },
+        ];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        models.reverse();
+
+        assert_eq!(
+            Entity::find()
+                .cursor_by(Column::Id)
+                .after(10)
+                .last(2)
+                .desc()
                 .all(&db)
                 .await?,
             models
@@ -588,6 +642,72 @@ mod tests {
     }
 
     #[smol_potat::test]
+    async fn last_2_after_10_also_related_select_desc() -> Result<(), DbErr> {
+        let mut models = [
+            (
+                cake::Model {
+                    id: 2,
+                    name: "Rasberry Cheese Cake".into(),
+                },
+                Some(fruit::Model {
+                    id: 10,
+                    name: "Rasberry".into(),
+                    cake_id: Some(1),
+                }),
+            ),
+            (
+                cake::Model {
+                    id: 1,
+                    name: "Blueberry Cheese Cake".into(),
+                },
+                Some(fruit::Model {
+                    id: 9,
+                    name: "Blueberry".into(),
+                    cake_id: Some(1),
+                }),
+            ),
+        ];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        models.reverse();
+
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_related(Fruit)
+                .cursor_by(cake::Column::Id)
+                .after(10)
+                .last(2)
+                .desc()
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
+                    r#""fruit"."id" AS "B_id", "fruit"."name" AS "B_name", "fruit"."cake_id" AS "B_cake_id""#,
+                    r#"FROM "cake""#,
+                    r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
+                    r#"WHERE "cake"."id" < $1"#,
+                    r#"ORDER BY "cake"."id" ASC, "fruit"."id" ASC LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
     async fn first_2_before_10_also_related_select_cursor_other() -> Result<(), DbErr> {
         let models = [(
             cake::Model {
@@ -611,6 +731,57 @@ mod tests {
                 .cursor_by_other(fruit::Column::Id)
                 .before(10)
                 .first(2)
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
+                    r#""fruit"."id" AS "B_id", "fruit"."name" AS "B_name", "fruit"."cake_id" AS "B_cake_id""#,
+                    r#"FROM "cake""#,
+                    r#"LEFT JOIN "fruit" ON "cake"."id" = "fruit"."cake_id""#,
+                    r#"WHERE "fruit"."id" < $1"#,
+                    r#"ORDER BY "fruit"."id" ASC, "cake"."id" ASC LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn last_2_after_10_also_related_select_cursor_other_desc() -> Result<(), DbErr> {
+        let models = [(
+            cake::Model {
+                id: 1,
+                name: "Blueberry Cheese Cake".into(),
+            },
+            Some(fruit::Model {
+                id: 9,
+                name: "Blueberry".into(),
+                cake_id: Some(1),
+            }),
+        )];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_related(Fruit)
+                .cursor_by_other(fruit::Column::Id)
+                .after(10)
+                .last(2)
+                .desc()
                 .all(&db)
                 .await?,
             models
@@ -700,6 +871,71 @@ mod tests {
     }
 
     #[smol_potat::test]
+    async fn last_2_after_10_also_linked_select_desc() -> Result<(), DbErr> {
+        let mut models = [
+            (
+                cake::Model {
+                    id: 2,
+                    name: "Rasberry Cheese Cake".into(),
+                },
+                Some(vendor::Model {
+                    id: 10,
+                    name: "Rasberry".into(),
+                }),
+            ),
+            (
+                cake::Model {
+                    id: 1,
+                    name: "Blueberry Cheese Cake".into(),
+                },
+                Some(vendor::Model {
+                    id: 9,
+                    name: "Blueberry".into(),
+                }),
+            ),
+        ];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        models.reverse();
+
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_linked(entity_linked::CakeToFillingVendor)
+                .cursor_by(cake::Column::Id)
+                .after(10)
+                .last(2)
+                .desc()
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
+                    r#""r2"."id" AS "B_id", "r2"."name" AS "B_name""#,
+                    r#"FROM "cake""#,
+                    r#"LEFT JOIN "cake_filling" AS "r0" ON "cake"."id" = "r0"."cake_id""#,
+                    r#"LEFT JOIN "filling" AS "r1" ON "r0"."filling_id" = "r1"."id""#,
+                    r#"LEFT JOIN "vendor" AS "r2" ON "r1"."vendor_id" = "r2"."id""#,
+                    r#"WHERE "cake"."id" < $1 ORDER BY "cake"."id" ASC, "vendor"."id" ASC LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
     async fn first_2_before_10_also_linked_select_cursor_other() -> Result<(), DbErr> {
         let models = [(
             cake::Model {
@@ -722,6 +958,59 @@ mod tests {
                 .cursor_by_other(vendor::Column::Id)
                 .before(10)
                 .first(2)
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "cake"."id" AS "A_id", "cake"."name" AS "A_name","#,
+                    r#""r2"."id" AS "B_id", "r2"."name" AS "B_name""#,
+                    r#"FROM "cake""#,
+                    r#"LEFT JOIN "cake_filling" AS "r0" ON "cake"."id" = "r0"."cake_id""#,
+                    r#"LEFT JOIN "filling" AS "r1" ON "r0"."filling_id" = "r1"."id""#,
+                    r#"LEFT JOIN "vendor" AS "r2" ON "r1"."vendor_id" = "r2"."id""#,
+                    r#"WHERE "vendor"."id" < $1 ORDER BY "vendor"."id" ASC, "cake"."id" ASC LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn last_2_after_10_also_linked_select_cursor_other_desc() -> Result<(), DbErr> {
+        let mut models = [(
+            cake::Model {
+                id: 1,
+                name: "Blueberry Cheese Cake".into(),
+            },
+            Some(vendor::Model {
+                id: 9,
+                name: "Blueberry".into(),
+            }),
+        )];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        models.reverse();
+
+        assert_eq!(
+            cake::Entity::find()
+                .find_also_linked(entity_linked::CakeToFillingVendor)
+                .cursor_by_other(vendor::Column::Id)
+                .after(10)
+                .last(2)
+                .desc()
                 .all(&db)
                 .await?,
             models
@@ -810,6 +1099,58 @@ mod tests {
     }
 
     #[smol_potat::test]
+    async fn first_2_before_10_desc() -> Result<(), DbErr> {
+        use fruit::*;
+
+        let models = [
+            Model {
+                id: 22,
+                name: "Rasberry".into(),
+                cake_id: Some(1),
+            },
+            Model {
+                id: 21,
+                name: "Blueberry".into(),
+                cake_id: Some(1),
+            },
+        ];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        assert_eq!(
+            Entity::find()
+                .cursor_by(Column::Id)
+                .before(10)
+                .first(2)
+                .desc()
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
+                    r#"FROM "fruit""#,
+                    r#"WHERE "fruit"."id" > $1"#,
+                    r#"ORDER BY "fruit"."id" DESC"#,
+                    r#"LIMIT $2"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [10_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
     async fn last_2_after_25_before_30() -> Result<(), DbErr> {
         use fruit::*;
 
@@ -865,6 +1206,60 @@ mod tests {
                 .join(" ")
                 .as_str(),
                 [25_i32.into(), 30_i32.into(), 2_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn first_2_after_30_before_25_desc() -> Result<(), DbErr> {
+        use fruit::*;
+
+        let models = [
+            Model {
+                id: 27,
+                name: "Rasberry".into(),
+                cake_id: Some(1),
+            },
+            Model {
+                id: 26,
+                name: "Blueberry".into(),
+                cake_id: Some(1),
+            },
+        ];
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([models.clone()])
+            .into_connection();
+
+        assert_eq!(
+            Entity::find()
+                .cursor_by(Column::Id)
+                .after(30)
+                .before(25)
+                .first(2)
+                .desc()
+                .all(&db)
+                .await?,
+            models
+        );
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id""#,
+                    r#"FROM "fruit""#,
+                    r#"WHERE "fruit"."id" < $1"#,
+                    r#"AND "fruit"."id" > $2"#,
+                    r#"ORDER BY "fruit"."id" DESC"#,
+                    r#"LIMIT $3"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [30_i32.into(), 25_i32.into(), 2_u64.into()]
             ),])]
         );
 
