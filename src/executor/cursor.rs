@@ -477,7 +477,7 @@ mod tests {
     async fn first_2_before_10() -> Result<(), DbErr> {
         use fruit::*;
 
-        let mut models = [
+        let models = [
             Model {
                 id: 1,
                 name: "Blueberry".into(),
