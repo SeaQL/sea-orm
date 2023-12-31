@@ -243,6 +243,7 @@ where
     }
 
     fn apply_order_by(&mut self) -> &mut Self {
+        self.query.clear_order_by();
         let ord = self.resolve_sort_order();
 
         let query = &mut self.query;

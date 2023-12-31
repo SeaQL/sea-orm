@@ -13,7 +13,7 @@ use serde_json::json;
     feature = "sqlx-sqlite",
     feature = "sqlx-postgres"
 ))]
-async fn main() -> Result<(), DbErr> {
+async fn cursor_tests() -> Result<(), DbErr> {
     let ctx = TestContext::new("cursor_tests").await;
     create_tables(&ctx.db).await?;
     create_insert_default(&ctx.db).await?;
@@ -105,6 +105,54 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
         ]
     );
 
+    // Before 5 DESC, i.e. id > 5
+
+    let mut cursor = Entity::find().cursor_by(Column::Id);
+
+    cursor.before(5).desc();
+
+    assert_eq!(
+        cursor.first(4).all(db).await?,
+        [
+            Model { id: 10 },
+            Model { id: 9 },
+            Model { id: 8 },
+            Model { id: 7 },
+        ]
+    );
+
+    assert_eq!(
+        cursor.first(5).all(db).await?,
+        [
+            Model { id: 10 },
+            Model { id: 9 },
+            Model { id: 8 },
+            Model { id: 7 },
+            Model { id: 6 },
+        ]
+    );
+
+    assert_eq!(
+        cursor.last(4).all(db).await?,
+        [
+            Model { id: 9 },
+            Model { id: 8 },
+            Model { id: 7 },
+            Model { id: 6 },
+        ]
+    );
+
+    assert_eq!(
+        cursor.last(5).all(db).await?,
+        [
+            Model { id: 10 },
+            Model { id: 9 },
+            Model { id: 8 },
+            Model { id: 7 },
+            Model { id: 6 },
+        ]
+    );
+
     // After 5, i.e. id > 5
 
     let mut cursor = Entity::find().cursor_by(Column::Id);
@@ -175,6 +223,62 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
         ]
     );
 
+    // After 5 DESC, i.e. id < 5
+
+    let mut cursor = Entity::find().cursor_by(Column::Id);
+
+    cursor.after(5).desc();
+
+    assert_eq!(
+        cursor.first(3).all(db).await?,
+        [Model { id: 4 }, Model { id: 3 }, Model { id: 2 },]
+    );
+
+    assert_eq!(
+        cursor.first(4).all(db).await?,
+        [
+            Model { id: 4 },
+            Model { id: 3 },
+            Model { id: 2 },
+            Model { id: 1 },
+        ]
+    );
+
+    assert_eq!(
+        cursor.first(5).all(db).await?,
+        [
+            Model { id: 4 },
+            Model { id: 3 },
+            Model { id: 2 },
+            Model { id: 1 },
+        ]
+    );
+
+    assert_eq!(
+        cursor.last(3).all(db).await?,
+        [Model { id: 3 }, Model { id: 2 }, Model { id: 1 },]
+    );
+
+    assert_eq!(
+        cursor.last(4).all(db).await?,
+        [
+            Model { id: 4 },
+            Model { id: 3 },
+            Model { id: 2 },
+            Model { id: 1 },
+        ]
+    );
+
+    assert_eq!(
+        cursor.last(5).all(db).await?,
+        [
+            Model { id: 4 },
+            Model { id: 3 },
+            Model { id: 2 },
+            Model { id: 1 },
+        ]
+    );
+
     // Between 5 and 8, i.e. id > 5 AND id < 8
 
     let mut cursor = Entity::find().cursor_by(Column::Id);
@@ -205,12 +309,46 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
         [Model { id: 6 }, Model { id: 7 }]
     );
 
+    // Between 8 and 5 DESC, i.e. id < 8 AND id > 5
+
+    let mut cursor = Entity::find().cursor_by(Column::Id);
+
+    cursor.after(8).before(5).desc();
+
+    assert_eq!(cursor.first(1).all(db).await?, [Model { id: 7 }]);
+
+    assert_eq!(
+        cursor.first(2).all(db).await?,
+        [Model { id: 7 }, Model { id: 6 }]
+    );
+
+    assert_eq!(
+        cursor.first(3).all(db).await?,
+        [Model { id: 7 }, Model { id: 6 }]
+    );
+
+    assert_eq!(cursor.last(1).all(db).await?, [Model { id: 6 }]);
+
+    assert_eq!(
+        cursor.last(2).all(db).await?,
+        [Model { id: 7 }, Model { id: 6 }]
+    );
+
+    assert_eq!(
+        cursor.last(3).all(db).await?,
+        [Model { id: 7 }, Model { id: 6 }]
+    );
+
     // Fetch custom struct
 
     #[derive(FromQueryResult, Debug, PartialEq, Clone)]
     struct Row {
         id: i32,
     }
+
+    let mut cursor = Entity::find().cursor_by(Column::Id);
+
+    cursor.after(5).before(8);
 
     let mut cursor = cursor.into_model::<Row>();
 
@@ -224,7 +362,29 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
         [Row { id: 6 }, Row { id: 7 }]
     );
 
+    // Fetch custom struct desc
+
+    let mut cursor = Entity::find().cursor_by(Column::Id);
+
+    cursor.after(8).before(5).desc();
+
+    let mut cursor = cursor.into_model::<Row>();
+
+    assert_eq!(
+        cursor.first(2).all(db).await?,
+        [Row { id: 7 }, Row { id: 6 }]
+    );
+
+    assert_eq!(
+        cursor.first(3).all(db).await?,
+        [Row { id: 7 }, Row { id: 6 }]
+    );
+
     // Fetch JSON value
+
+    let mut cursor = Entity::find().cursor_by(Column::Id);
+
+    cursor.after(5).before(8);
 
     let mut cursor = cursor.into_json();
 
@@ -274,6 +434,54 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
                 id: 7,
                 id_shifted: 1007,
             }
+        ]
+    );
+
+    // Fetch JSON value desc
+
+    let mut cursor = Entity::find().cursor_by(Column::Id);
+
+    cursor.after(8).before(5).desc();
+
+    let mut cursor = cursor.into_json();
+
+    assert_eq!(
+        cursor.first(2).all(db).await?,
+        [json!({ "id": 7 }), json!({ "id": 6 })]
+    );
+
+    assert_eq!(
+        cursor.first(3).all(db).await?,
+        [json!({ "id": 7 }), json!({ "id": 6 })]
+    );
+
+    let mut cursor = cursor.into_partial_model::<PartialRow>();
+
+    assert_eq!(
+        cursor.first(2).all(db).await?,
+        [
+            PartialRow {
+                id: 7,
+                id_shifted: 1007,
+            },
+            PartialRow {
+                id: 6,
+                id_shifted: 1006,
+            }
+        ]
+    );
+
+    assert_eq!(
+        cursor.first(3).all(db).await?,
+        [
+            PartialRow {
+                id: 7,
+                id_shifted: 1007,
+            },
+            PartialRow {
+                id: 6,
+                id_shifted: 1006,
+            },
         ]
     );
 
