@@ -339,6 +339,34 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
         [Model { id: 7 }, Model { id: 6 }]
     );
 
+    // Ensure asc/desc order can be changed
+
+    let mut cursor = Entity::find().cursor_by(Column::Id);
+
+    cursor.first(2);
+
+    assert_eq!(cursor.all(db).await?, [Model { id: 1 }, Model { id: 2 },]);
+
+    assert_eq!(
+        cursor.asc().all(db).await?,
+        [Model { id: 1 }, Model { id: 2 },]
+    );
+
+    assert_eq!(
+        cursor.desc().all(db).await?,
+        [Model { id: 10 }, Model { id: 9 },]
+    );
+
+    assert_eq!(
+        cursor.asc().all(db).await?,
+        [Model { id: 1 }, Model { id: 2 },]
+    );
+
+    assert_eq!(
+        cursor.desc().all(db).await?,
+        [Model { id: 10 }, Model { id: 9 },]
+    );
+
     // Fetch custom struct
 
     #[derive(FromQueryResult, Debug, PartialEq, Clone)]
