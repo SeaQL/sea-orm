@@ -2131,6 +2131,51 @@ mod tests {
     }
 
     #[smol_potat::test]
+    async fn related_composite_keys_1_desc() -> Result<(), DbErr> {
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[(
+                test_base_entity::Model {
+                    id: 1,
+                    name: "CAT".into(),
+                },
+                test_related_entity::Model {
+                    id: 1,
+                    name: "CATE".into(),
+                    test_id: 1,
+                },
+            )]])
+            .into_connection();
+
+        assert!(!test_base_entity::Entity::find()
+            .find_also_related(test_related_entity::Entity)
+            .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
+            .last(1)
+            .desc()
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "base"."id" AS "A_id", "base"."name" AS "A_name","#,
+                    r#""related"."id" AS "B_id", "related"."name" AS "B_name", "related"."test_id" AS "B_test_id""#,
+                    r#"FROM "base""#,
+                    r#"LEFT JOIN "related" ON "base"."id" = "related"."test_id""#,
+                    r#"ORDER BY "base"."id" ASC, "base"."name" ASC, "related"."id" ASC, "related"."name" ASC LIMIT $1"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [1_u64.into()]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
     async fn related_composite_keys_2() -> Result<(), DbErr> {
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([[(
@@ -2151,6 +2196,58 @@ mod tests {
             .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
             .after((1, "C".to_string()))
             .first(2)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "base"."id" AS "A_id", "base"."name" AS "A_name","#,
+                    r#""related"."id" AS "B_id", "related"."name" AS "B_name", "related"."test_id" AS "B_test_id""#,
+                    r#"FROM "base""#,
+                    r#"LEFT JOIN "related" ON "base"."id" = "related"."test_id""#,
+                    r#"WHERE ("base"."id" = $1 AND "base"."name" > $2) OR "base"."id" > $3"#,
+                    r#"ORDER BY "base"."id" ASC, "base"."name" ASC, "related"."id" ASC, "related"."name" ASC LIMIT $4"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [
+                    1_i32.into(),
+                    "C".into(),
+                    1_i32.into(),
+                    2_u64.into(),
+                ]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn related_composite_keys_2_desc() -> Result<(), DbErr> {
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[(
+                test_base_entity::Model {
+                    id: 1,
+                    name: "CAT".into(),
+                },
+                test_related_entity::Model {
+                    id: 1,
+                    name: "CATE".into(),
+                    test_id: 1,
+                },
+            )]])
+            .into_connection();
+
+        assert!(!test_base_entity::Entity::find()
+            .find_also_related(test_related_entity::Entity)
+            .cursor_by((test_base_entity::Column::Id, test_base_entity::Column::Name))
+            .before((1, "C".to_string()))
+            .last(2)
+            .desc()
             .all(&db)
             .await?
             .is_empty());
@@ -2205,6 +2302,61 @@ mod tests {
             ))
             .after((1, "CAT".to_string()))
             .first(2)
+            .all(&db)
+            .await?
+            .is_empty());
+
+        assert_eq!(
+            db.into_transaction_log(),
+            [Transaction::many([Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                [
+                    r#"SELECT "base"."id" AS "A_id", "base"."name" AS "A_name","#,
+                    r#""related"."id" AS "B_id", "related"."name" AS "B_name", "related"."test_id" AS "B_test_id""#,
+                    r#"FROM "base""#,
+                    r#"LEFT JOIN "related" ON "base"."id" = "related"."test_id""#,
+                    r#"WHERE ("related"."id" = $1 AND "related"."name" > $2) OR "related"."id" > $3"#,
+                    r#"ORDER BY "related"."id" ASC, "related"."name" ASC, "base"."id" ASC, "base"."name" ASC LIMIT $4"#,
+                ]
+                .join(" ")
+                .as_str(),
+                [
+                    1_i32.into(),
+                    "CAT".into(),
+                    1_i32.into(),
+                    2_u64.into(),
+                ]
+            ),])]
+        );
+
+        Ok(())
+    }
+
+    #[smol_potat::test]
+    async fn related_composite_keys_3_desc() -> Result<(), DbErr> {
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[(
+                test_base_entity::Model {
+                    id: 1,
+                    name: "CAT".into(),
+                },
+                test_related_entity::Model {
+                    id: 1,
+                    name: "CATE".into(),
+                    test_id: 1,
+                },
+            )]])
+            .into_connection();
+
+        assert!(!test_base_entity::Entity::find()
+            .find_also_related(test_related_entity::Entity)
+            .cursor_by_other((
+                test_related_entity::Column::Id,
+                test_related_entity::Column::Name
+            ))
+            .before((1, "CAT".to_string()))
+            .last(2)
+            .desc()
             .all(&db)
             .await?
             .is_empty());
