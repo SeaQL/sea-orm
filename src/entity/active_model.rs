@@ -893,6 +893,21 @@ where
     }
 }
 
+impl<V> From<ActiveValue<Option<V>>> for ActiveValue<V>
+where
+    V: Into<Value> + Nullable,
+{
+    fn from(value: ActiveValue<Option<V>>) -> Self {
+        match value {
+            ActiveValue::Set(Some(value)) => ActiveValue::set(value),
+            ActiveValue::Unchanged(Some(value)) => ActiveValue::unchanged(value),
+            ActiveValue::Set(None) => ActiveValue::not_set(),
+            ActiveValue::Unchanged(None) => ActiveValue::not_set(),
+            ActiveValue::NotSet => ActiveValue::not_set(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{entity::*, tests_cfg::*, DbErr};
