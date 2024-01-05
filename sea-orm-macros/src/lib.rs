@@ -838,6 +838,19 @@ pub fn enum_iter(input: TokenStream) -> TokenStream {
         .into()
 }
 
+/// Implements traits for types that wrap a database value type.
+///
+/// This procedure macro implements `From<T> for Value`, `sea_orm::TryGetTable`, and
+/// `sea_query::ValueType` for the wrapper type `T`.
+///
+/// ## Usage
+///
+/// ```rust
+/// use sea_orm::DeriveValueType;
+///
+/// #[derive(DeriveValueType)]
+/// struct MyString(String);
+/// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveValueType, attributes(sea_orm))]
 pub fn derive_value_type(input: TokenStream) -> TokenStream {
