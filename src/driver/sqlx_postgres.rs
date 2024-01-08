@@ -52,6 +52,10 @@ impl SqlxPostgresConnector {
             opt = opt.disable_statement_logging();
         } else {
             opt = opt.log_statements(options.sqlx_logging_level);
+            opt = opt.log_slow_statements(
+                options.sqlx_slow_statements_logging_level,
+                options.sqlx_slow_statements_logging_threshold,
+            );
         }
         let set_search_path_sql = options
             .schema_search_path
