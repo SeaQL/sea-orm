@@ -2,6 +2,8 @@ use crate::{
     ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectTwo, SelectTwoMany,
 };
 use core::marker::PhantomData;
+#[allow(unused_imports)]
+pub use sea_query::JoinType;
 use sea_query::{Alias, ColumnRef, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
 
 macro_rules! select_def {
