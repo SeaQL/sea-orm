@@ -426,7 +426,7 @@ impl DatabaseConnection {
     /// # Panics
     ///
     /// Panics if [DbConn] is not a proxy connection.
-    pub fn as_proxy_connection(&self) -> &crate::ProxyDatabaseConnection {
+    pub fn as_proxy_connection(&self) -> &crate::driver::ProxyDatabaseConnection {
         match self {
             DatabaseConnection::ProxyDatabaseConnection(proxy_conn) => proxy_conn,
             _ => panic!("Not proxy connection"),

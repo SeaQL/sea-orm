@@ -108,14 +108,14 @@ impl
 #[cfg(feature = "proxy")]
 impl
     From<(
-        Arc<crate::ProxyDatabaseConnection>,
+        Arc<crate::driver::ProxyDatabaseConnection>,
         Statement,
         Option<crate::metric::Callback>,
     )> for QueryStream
 {
     fn from(
         (conn, stmt, metric_callback): (
-            Arc<crate::ProxyDatabaseConnection>,
+            Arc<crate::driver::ProxyDatabaseConnection>,
             Statement,
             Option<crate::metric::Callback>,
         ),

@@ -97,7 +97,7 @@ impl DatabaseTransaction {
 
     #[cfg(feature = "proxy")]
     pub(crate) async fn new_proxy(
-        inner: Arc<crate::ProxyDatabaseConnection>,
+        inner: Arc<crate::driver::ProxyDatabaseConnection>,
         metric_callback: Option<crate::metric::Callback>,
     ) -> Result<DatabaseTransaction, DbErr> {
         let backend = inner.get_database_backend();
