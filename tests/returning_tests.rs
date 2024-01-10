@@ -79,7 +79,7 @@ async fn main() -> Result<(), DbErr> {
     should_panic(expected = "Database backend doesn't support RETURNING")
 )]
 async fn update_many() {
-    pub use common::{features::*, setup::*, TestContext};
+    pub use common::{features::*, TestContext};
     use edit_log::*;
 
     let run = || async {

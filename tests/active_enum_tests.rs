@@ -1,14 +1,15 @@
 pub mod common;
 
-use active_enum::Entity as ActiveEnum;
-use active_enum_child::Entity as ActiveEnumChild;
+use active_enum::Entity as ActiveEnumEntity;
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
+#[cfg(feature = "sqlx-postgres")]
+use sea_orm::QueryTrait;
 use sea_orm::{
     entity::prelude::*,
     entity::*,
     sea_query::{BinOper, Expr},
-    ActiveEnum as ActiveEnumTrait, DatabaseConnection, QueryTrait,
+    ActiveEnum as ActiveEnumTrait, DatabaseConnection,
 };
 
 #[sea_orm_macros::test]
@@ -146,6 +147,7 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     let select_with_tea_not_in = Entity::find()
         .filter(Column::Tea.is_not_null())
         .filter(Column::Tea.is_not_in([Tea::BreakfastTea]));
+
     #[cfg(feature = "sqlx-postgres")]
     assert_eq!(
         select_with_tea_not_in
@@ -162,6 +164,7 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
         ]
         .join(" ")
     );
+
     assert_eq!(model, select_with_tea_not_in.one(db).await?.unwrap());
 
     let res = model.delete(db).await?;
@@ -338,7 +341,7 @@ pub async fn find_related_active_enum(db: &DatabaseConnection) -> Result<(), DbE
         }]
     );
     assert_eq!(
-        ActiveEnum::find()
+        ActiveEnumEntity::find()
             .find_with_related(ActiveEnumChild)
             .all(db)
             .await?,
@@ -359,7 +362,7 @@ pub async fn find_related_active_enum(db: &DatabaseConnection) -> Result<(), DbE
         )]
     );
     assert_eq!(
-        ActiveEnum::find()
+        ActiveEnumEntity::find()
             .find_also_related(ActiveEnumChild)
             .all(db)
             .await?,
@@ -464,7 +467,7 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
         }]
     );
     assert_eq!(
-        ActiveEnum::find()
+        ActiveEnumEntity::find()
             .find_also_linked(active_enum::ActiveEnumChildLink)
             .all(db)
             .await?,
@@ -485,7 +488,7 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
         )]
     );
     assert_eq!(
-        ActiveEnum::find()
+        ActiveEnumEntity::find()
             .find_with_linked(active_enum::ActiveEnumChildLink)
             .all(db)
             .await?,
@@ -620,7 +623,7 @@ mod tests {
             .join(" ")
         );
 
-        let _select = ActiveEnum::find().find_also_related(ActiveEnumChild);
+        let _select = ActiveEnumEntity::find().find_also_related(ActiveEnumChild);
         #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
         {
             assert_eq!(
@@ -707,7 +710,7 @@ mod tests {
             .join(" ")
         );
 
-        let _select = ActiveEnum::find().find_also_linked(active_enum::ActiveEnumChildLink);
+        let _select = ActiveEnumEntity::find().find_also_linked(active_enum::ActiveEnumChildLink);
         #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
         {
             assert_eq!(
