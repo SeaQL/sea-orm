@@ -8,7 +8,7 @@ use sea_orm::{
     entity::prelude::*,
     entity::*,
     sea_query::{BinOper, Expr},
-    ActiveEnum as ActiveEnumTrait, DatabaseConnection, QueryTrait,
+    ActiveEnum as ActiveEnumTrait, DatabaseConnection,
 };
 
 #[sea_orm_macros::test]

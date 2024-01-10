@@ -1,7 +1,7 @@
 use crate::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySelect, QueryTrait};
 use core::fmt::Debug;
 use core::marker::PhantomData;
-pub use sea_query::JoinType;
+
 use sea_query::{Expr, IntoColumnRef, SelectStatement, SimpleExpr};
 
 /// Defines a structure to perform select operations

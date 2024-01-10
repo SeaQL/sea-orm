@@ -100,6 +100,8 @@ impl MockDatabaseConnector {
 }
 
 impl MockDatabaseConnection {
+    /// # Panics
+    ///
     /// Create a connection to the [MockDatabase]
     pub fn new<M: 'static>(m: M) -> Self
     where
@@ -116,6 +118,8 @@ impl MockDatabaseConnection {
         &self.mocker
     }
 
+    /// # Panics
+    ///
     /// Get the [DatabaseBackend](crate::DatabaseBackend) being used by the [MockDatabase]
     pub fn get_database_backend(&self) -> DbBackend {
         self.mocker

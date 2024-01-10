@@ -23,9 +23,9 @@ impl TryGetableFromJson for StringVec {}
 impl From<StringVec> for Value {
     fn from(source: StringVec) -> Self {
         sea_orm::Value::Json(
-            serde_json::to_value(&source)
+            serde_json::to_value(source)
                 .ok()
-                .map(|s| std::boxed::Box::new(s)),
+                .map(std::boxed::Box::new),
         )
     }
 }

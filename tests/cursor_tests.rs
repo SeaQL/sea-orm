@@ -3,7 +3,7 @@ pub mod common;
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
 use sea_orm::{
-    entity::prelude::*, DerivePartialModel, FromQueryResult, QueryOrder, QuerySelect, Set,
+    entity::prelude::*, DerivePartialModel, FromQueryResult, QuerySelect, Set,
 };
 use serde_json::json;
 
@@ -281,7 +281,7 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
 }
 
 use common::bakery_chain::{
-    baker, bakery, cake, cakes_bakers, schema, Baker, Bakery, Cake, CakesBakers,
+    baker, bakery, cake, cakes_bakers, Baker, Bakery, Cake, CakesBakers,
 };
 
 fn bakery(i: i32) -> bakery::Model {
@@ -318,7 +318,7 @@ fn cakebaker(cake: char, baker: char) -> CakeBakerlite {
 }
 
 pub async fn create_baker_cake(db: &DatabaseConnection) -> Result<(), DbErr> {
-    use sea_orm::IntoActiveModel;
+    
 
     let mut bakeries: Vec<bakery::ActiveModel> = vec![];
     // bakeries named from 1 to 10
