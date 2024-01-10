@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.12.11 - Pending
+
+### Enhancements
+
+* Improve query performance of `Paginator`'s `COUNT` query https://github.com/SeaQL/sea-orm/pull/2030
+
 ## 0.12.10 - 2023-12-14
 
 ### New Features
