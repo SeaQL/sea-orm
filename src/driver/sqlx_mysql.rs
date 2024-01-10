@@ -36,7 +36,7 @@ impl std::fmt::Debug for SqlxMySqlPoolConnection {
 
 impl SqlxMySqlConnector {
     /// Check if the URI provided corresponds to `mysql://` for a MySQL database
-    #[cfg(feature = "mock")]
+    #[allow(unused_variables)]
     pub fn accepts(string: &str) -> bool {
         string.starts_with("mysql://") && string.parse::<MySqlConnectOptions>().is_ok()
     }

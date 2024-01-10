@@ -36,7 +36,7 @@ impl std::fmt::Debug for SqlxSqlitePoolConnection {
 
 impl SqlxSqliteConnector {
     /// Check if the URI provided corresponds to `sqlite:` for a SQLite database
-    #[cfg(feature = "mock")]
+    #[allow(unused_variables)]
     pub fn accepts(string: &str) -> bool {
         string.starts_with("sqlite:") && string.parse::<SqliteConnectOptions>().is_ok()
     }
