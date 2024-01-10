@@ -36,6 +36,7 @@ impl std::fmt::Debug for SqlxPostgresPoolConnection {
 
 impl SqlxPostgresConnector {
     /// Check if the URI provided corresponds to `postgres://` for a PostgreSQL database
+    #[cfg(feature = "mock")]
     pub fn accepts(string: &str) -> bool {
         string.starts_with("postgres://") && string.parse::<PgConnectOptions>().is_ok()
     }
