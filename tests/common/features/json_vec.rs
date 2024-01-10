@@ -22,11 +22,7 @@ impl TryGetableFromJson for StringVec {}
 
 impl From<StringVec> for Value {
     fn from(source: StringVec) -> Self {
-        sea_orm::Value::Json(
-            serde_json::to_value(source)
-                .ok()
-                .map(std::boxed::Box::new),
-        )
+        sea_orm::Value::Json(serde_json::to_value(source).ok().map(std::boxed::Box::new))
     }
 }
 
