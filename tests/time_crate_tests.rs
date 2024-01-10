@@ -2,7 +2,7 @@ pub mod common;
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
 use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
-
+use serde_json::json;
 use time::macros::{date, time};
 
 #[sea_orm_macros::test]
@@ -40,7 +40,7 @@ pub async fn create_transaction_log(db: &DatabaseConnection) -> Result<(), DbErr
         Some(transaction_log.clone())
     );
 
-    let _json = TransactionLog::find().into_json().one(db).await?.unwrap();
+    let json = TransactionLog::find().into_json().one(db).await?.unwrap();
 
     #[cfg(feature = "sqlx-postgres")]
     assert_eq!(

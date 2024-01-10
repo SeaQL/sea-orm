@@ -10,7 +10,6 @@ pub use crud::*;
 // use common::bakery_chain::*;
 use sea_orm::{DbConn, TryInsertResult};
 
-
 #[sea_orm_macros::test]
 #[cfg(any(
     feature = "sqlx-mysql",

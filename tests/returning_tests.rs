@@ -1,9 +1,9 @@
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
-
+use sea_orm::{entity::prelude::*, IntoActiveModel};
 pub use sea_query::{Expr, Query};
-
+use serde_json::json;
 
 #[sea_orm_macros::test]
 #[cfg(any(
@@ -79,7 +79,7 @@ async fn main() -> Result<(), DbErr> {
     should_panic(expected = "Database backend doesn't support RETURNING")
 )]
 async fn update_many() {
-    pub use common::{features::*, setup::*, TestContext};
+    pub use common::{features::*, TestContext};
     use edit_log::*;
 
     let run = || async {
