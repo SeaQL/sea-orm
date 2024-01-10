@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use crate::{
     driver::{MockDatabaseConnection, MockDatabaseTrait},
     error::*,

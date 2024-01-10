@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use crate::{error::*, FromQueryResult, QueryResult};
 use serde_json::Map;
 pub use serde_json::Value as JsonValue;
