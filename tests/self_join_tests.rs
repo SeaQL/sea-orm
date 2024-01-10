@@ -90,12 +90,6 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
     Ok(())
 }
 
-#[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 fn find_linked_001() {
     use self_join::*;
 
@@ -120,12 +114,6 @@ fn find_linked_001() {
     );
 }
 
-#[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 fn find_also_linked_001() {
     use self_join::*;
 
