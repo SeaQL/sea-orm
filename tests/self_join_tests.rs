@@ -115,7 +115,6 @@ fn find_linked_001() {
     );
 }
 
-#[cfg(feature = "test")]
 fn find_also_linked_001() {
     use self_join::*;
 
