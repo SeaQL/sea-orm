@@ -90,7 +90,6 @@ pub async fn create_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
     Ok(())
 }
 
-#[cfg(feature = "test")]
 fn find_linked_001() {
     use self_join::*;
 
