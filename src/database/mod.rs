@@ -71,15 +71,15 @@ impl Database {
 
         #[cfg(feature = "sqlx-mysql")]
         if DbBackend::MySql.is_prefix_of(&opt.url) {
-            return crate::SqlxMySqlConnector::connect(opt).await;
+            return crate::driver::SqlxMySqlConnector::connect(opt).await;
         }
         #[cfg(feature = "sqlx-postgres")]
         if DbBackend::Postgres.is_prefix_of(&opt.url) {
-            return crate::SqlxPostgresConnector::connect(opt).await;
+            return crate::driver::SqlxPostgresConnector::connect(opt).await;
         }
         #[cfg(feature = "sqlx-sqlite")]
         if DbBackend::Sqlite.is_prefix_of(&opt.url) {
-            return crate::SqlxSqliteConnector::connect(opt).await;
+            return crate::driver::SqlxSqliteConnector::connect(opt).await;
         }
         #[cfg(feature = "mock")]
         if crate::driver::MockDatabaseConnector::accepts(&opt.url) {
@@ -101,19 +101,19 @@ impl Database {
     ) -> Result<DatabaseConnection, DbErr> {
         match db_type {
             DbBackend::MySql => {
-                return crate::ProxyDatabaseConnector::connect(
+                return crate::driver::ProxyDatabaseConnector::connect(
                     DbBackend::MySql,
                     proxy_func_arc.to_owned(),
                 );
             }
             DbBackend::Postgres => {
-                return crate::ProxyDatabaseConnector::connect(
+                return crate::driver::ProxyDatabaseConnector::connect(
                     DbBackend::Postgres,
                     proxy_func_arc.to_owned(),
                 );
             }
             DbBackend::Sqlite => {
-                return crate::ProxyDatabaseConnector::connect(
+                return crate::driver::ProxyDatabaseConnector::connect(
                     DbBackend::Sqlite,
                     proxy_func_arc.to_owned(),
                 );

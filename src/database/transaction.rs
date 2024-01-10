@@ -1,10 +1,10 @@
+#[cfg(feature = "sqlx-dep")]
+use crate::driver::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 use crate::{
     debug_print, error::*, AccessMode, ConnectionTrait, DbBackend, DbErr, ExecResult,
     InnerConnection, IsolationLevel, QueryResult, Statement, StreamTrait, TransactionStream,
     TransactionTrait,
 };
-#[cfg(feature = "sqlx-dep")]
-use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 use futures::lock::Mutex;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::{pool::PoolConnection, TransactionManager};

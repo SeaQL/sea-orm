@@ -19,15 +19,15 @@ use std::sync::Arc;
 pub enum DatabaseConnection {
     /// Create a MYSQL database connection and pool
     #[cfg(feature = "sqlx-mysql")]
-    SqlxMySqlPoolConnection(crate::SqlxMySqlPoolConnection),
+    SqlxMySqlPoolConnection(crate::driver::SqlxMySqlPoolConnection),
 
     /// Create a PostgreSQL database connection and pool
     #[cfg(feature = "sqlx-postgres")]
-    SqlxPostgresPoolConnection(crate::SqlxPostgresPoolConnection),
+    SqlxPostgresPoolConnection(crate::driver::SqlxPostgresPoolConnection),
 
     /// Create a SQLite database connection and pool
     #[cfg(feature = "sqlx-sqlite")]
-    SqlxSqlitePoolConnection(crate::SqlxSqlitePoolConnection),
+    SqlxSqlitePoolConnection(crate::driver::SqlxSqlitePoolConnection),
 
     /// Create a Mock database connection useful for testing
     #[cfg(feature = "mock")]
@@ -35,7 +35,7 @@ pub enum DatabaseConnection {
 
     /// Create a Proxy database connection useful for proxying
     #[cfg(feature = "proxy")]
-    ProxyDatabaseConnection(Arc<crate::ProxyDatabaseConnection>),
+    ProxyDatabaseConnection(Arc<crate::driver::ProxyDatabaseConnection>),
 
     /// The connection to the database has been severed
     Disconnected,
@@ -76,7 +76,7 @@ pub(crate) enum InnerConnection {
     #[cfg(feature = "mock")]
     Mock(Arc<crate::driver::MockDatabaseConnection>),
     #[cfg(feature = "proxy")]
-    Proxy(Arc<crate::ProxyDatabaseConnection>),
+    Proxy(Arc<crate::driver::ProxyDatabaseConnection>),
 }
 
 impl std::fmt::Debug for DatabaseConnection {

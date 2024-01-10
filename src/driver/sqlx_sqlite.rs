@@ -72,16 +72,6 @@ impl SqlxSqliteConnector {
     }
 }
 
-impl SqlxSqliteConnector {
-    /// Instantiate a sqlx pool connection to a [DatabaseConnection]
-    pub fn from_sqlx_sqlite_pool(pool: SqlitePool) -> DatabaseConnection {
-        DatabaseConnection::SqlxSqlitePoolConnection(SqlxSqlitePoolConnection {
-            pool,
-            metric_callback: None,
-        })
-    }
-}
-
 impl SqlxSqlitePoolConnection {
     /// Execute a [Statement] on a SQLite backend
     #[instrument(level = "trace")]

@@ -80,16 +80,6 @@ impl SqlxPostgresConnector {
     }
 }
 
-impl SqlxPostgresConnector {
-    /// Instantiate a sqlx pool connection to a [DatabaseConnection]
-    pub fn from_sqlx_postgres_pool(pool: PgPool) -> DatabaseConnection {
-        DatabaseConnection::SqlxPostgresPoolConnection(SqlxPostgresPoolConnection {
-            pool,
-            metric_callback: None,
-        })
-    }
-}
-
 impl SqlxPostgresPoolConnection {
     /// Execute a [Statement] on a PostgreSQL backend
     #[instrument(level = "trace")]

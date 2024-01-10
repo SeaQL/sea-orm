@@ -65,16 +65,6 @@ impl SqlxMySqlConnector {
     }
 }
 
-impl SqlxMySqlConnector {
-    /// Instantiate a sqlx pool connection to a [DatabaseConnection]
-    pub fn from_sqlx_mysql_pool(pool: MySqlPool) -> DatabaseConnection {
-        DatabaseConnection::SqlxMySqlPoolConnection(SqlxMySqlPoolConnection {
-            pool,
-            metric_callback: None,
-        })
-    }
-}
-
 impl SqlxMySqlPoolConnection {
     /// Execute a [Statement] on a MySQL backend
     #[instrument(level = "trace")]
