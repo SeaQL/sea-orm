@@ -345,6 +345,7 @@ pub mod tests_cfg;
 mod util;
 
 pub use database::*;
+#[allow(unused_imports)]
 pub use driver::*;
 pub use entity::*;
 pub use error::*;
