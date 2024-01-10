@@ -117,6 +117,10 @@ impl MockDatabaseConnection {
     }
 
     /// Get the [DatabaseBackend](crate::DatabaseBackend) being used by the [MockDatabase]
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the lock cannot be acquired.
     pub fn get_database_backend(&self) -> DbBackend {
         self.mocker
             .lock()

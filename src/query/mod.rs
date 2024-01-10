@@ -15,7 +15,6 @@ pub use combine::{SelectA, SelectB};
 pub use delete::*;
 pub use helper::*;
 pub use insert::*;
-pub use join::*;
 #[cfg(feature = "with-json")]
 pub use json::*;
 pub use loader::*;

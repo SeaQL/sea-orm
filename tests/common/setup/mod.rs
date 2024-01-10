@@ -74,7 +74,6 @@ pub async fn tear_down(base_url: &str, db_name: &str) {
                 format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
             ))
             .await;
-    } else {
     };
 }
 

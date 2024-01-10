@@ -2,9 +2,7 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{
-    entity::prelude::*, DerivePartialModel, FromQueryResult, QueryOrder, QuerySelect, Set,
-};
+use sea_orm::{entity::prelude::*, DerivePartialModel, FromQueryResult, QuerySelect, Set};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -18,7 +16,7 @@ async fn main() -> Result<(), DbErr> {
     create_tables(&ctx.db).await?;
     create_insert_default(&ctx.db).await?;
     cursor_pagination(&ctx.db).await?;
-    schema::create_tables(&ctx.db).await?;
+    bakery_chain_schema::create_tables(&ctx.db).await?;
     create_baker_cake(&ctx.db).await?;
     cursor_related_pagination(&ctx.db).await?;
     ctx.delete().await;
@@ -281,7 +279,8 @@ pub async fn cursor_pagination(db: &DatabaseConnection) -> Result<(), DbErr> {
 }
 
 use common::bakery_chain::{
-    baker, bakery, cake, cakes_bakers, schema, Baker, Bakery, Cake, CakesBakers,
+    baker, bakery, cake, cakes_bakers, schema as bakery_chain_schema, Baker, Bakery, Cake,
+    CakesBakers,
 };
 
 fn bakery(i: i32) -> bakery::Model {
@@ -318,8 +317,6 @@ fn cakebaker(cake: char, baker: char) -> CakeBakerlite {
 }
 
 pub async fn create_baker_cake(db: &DatabaseConnection) -> Result<(), DbErr> {
-    use sea_orm::IntoActiveModel;
-
     let mut bakeries: Vec<bakery::ActiveModel> = vec![];
     // bakeries named from 1 to 10
     for i in 1..=10 {
