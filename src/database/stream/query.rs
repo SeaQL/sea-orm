@@ -89,14 +89,14 @@ impl
 #[cfg(feature = "mock")]
 impl
     From<(
-        Arc<crate::MockDatabaseConnection>,
+        Arc<crate::driver::MockDatabaseConnection>,
         Statement,
         Option<crate::metric::Callback>,
     )> for QueryStream
 {
     fn from(
         (conn, stmt, metric_callback): (
-            Arc<crate::MockDatabaseConnection>,
+            Arc<crate::driver::MockDatabaseConnection>,
             Statement,
             Option<crate::metric::Callback>,
         ),

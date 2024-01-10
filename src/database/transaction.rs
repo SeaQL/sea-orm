@@ -81,7 +81,7 @@ impl DatabaseTransaction {
 
     #[cfg(feature = "mock")]
     pub(crate) async fn new_mock(
-        inner: Arc<crate::MockDatabaseConnection>,
+        inner: Arc<crate::driver::MockDatabaseConnection>,
         metric_callback: Option<crate::metric::Callback>,
     ) -> Result<DatabaseTransaction, DbErr> {
         let backend = inner.get_database_backend();

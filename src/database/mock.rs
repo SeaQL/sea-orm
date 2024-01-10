@@ -1,7 +1,8 @@
 use crate::{
-    error::*, DatabaseConnection, DbBackend, EntityTrait, ExecResult, ExecResultHolder, Iden,
-    IdenStatic, Iterable, MockDatabaseConnection, MockDatabaseTrait, ModelTrait, QueryResult,
-    QueryResultRow, SelectA, SelectB, Statement,
+    driver::{MockDatabaseConnection, MockDatabaseTrait},
+    error::*,
+    DatabaseConnection, DbBackend, EntityTrait, ExecResult, ExecResultHolder, Iden, IdenStatic,
+    Iterable, ModelTrait, QueryResult, QueryResultRow, SelectA, SelectB, Statement,
 };
 use sea_query::{Value, ValueType, Values};
 use std::{collections::BTreeMap, sync::Arc};

@@ -31,7 +31,7 @@ pub enum DatabaseConnection {
 
     /// Create a Mock database connection useful for testing
     #[cfg(feature = "mock")]
-    MockDatabaseConnection(Arc<crate::MockDatabaseConnection>),
+    MockDatabaseConnection(Arc<crate::driver::MockDatabaseConnection>),
 
     /// Create a Proxy database connection useful for proxying
     #[cfg(feature = "proxy")]
@@ -74,7 +74,7 @@ pub(crate) enum InnerConnection {
     #[cfg(feature = "sqlx-sqlite")]
     Sqlite(PoolConnection<sqlx::Sqlite>),
     #[cfg(feature = "mock")]
-    Mock(Arc<crate::MockDatabaseConnection>),
+    Mock(Arc<crate::driver::MockDatabaseConnection>),
     #[cfg(feature = "proxy")]
     Proxy(Arc<crate::ProxyDatabaseConnection>),
 }
@@ -397,7 +397,7 @@ impl DatabaseConnection {
     /// # Panics
     ///
     /// Panics if [DbConn] is not a mock connection.
-    pub fn as_mock_connection(&self) -> &crate::MockDatabaseConnection {
+    pub fn as_mock_connection(&self) -> &crate::driver::MockDatabaseConnection {
         match self {
             DatabaseConnection::MockDatabaseConnection(mock_conn) => mock_conn,
             _ => panic!("Not mock connection"),

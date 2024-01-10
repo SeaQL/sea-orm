@@ -82,8 +82,8 @@ impl Database {
             return crate::SqlxSqliteConnector::connect(opt).await;
         }
         #[cfg(feature = "mock")]
-        if crate::MockDatabaseConnector::accepts(&opt.url) {
-            return crate::MockDatabaseConnector::connect(&opt.url).await;
+        if crate::driver::MockDatabaseConnector::accepts(&opt.url) {
+            return crate::driver::MockDatabaseConnector::connect(&opt.url).await;
         }
 
         Err(conn_err(format!(
