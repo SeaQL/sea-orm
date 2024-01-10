@@ -345,6 +345,7 @@ pub mod tests_cfg;
 mod util;
 
 pub use database::*;
+pub use driver::*;
 pub use entity::*;
 pub use error::*;
 pub use executor::*;
