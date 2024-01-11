@@ -151,7 +151,7 @@ impl ConnectOptions {
             max_lifetime: None,
             sqlx_logging: true,
             sqlx_logging_level: log::LevelFilter::Info,
-            sqlx_slow_statements_logging_level: log::LevelFilter::Warn,
+            sqlx_slow_statements_logging_level: log::LevelFilter::Off,
             sqlx_slow_statements_logging_threshold: Duration::from_secs(1),
             sqlcipher_key: None,
             schema_search_path: None,
@@ -275,7 +275,7 @@ impl ConnectOptions {
         self
     }
 
-    /// Set SQLx slow statements logging level and duration threshold (default INFO, 1s)
+    /// Set SQLx slow statements logging level and duration threshold
     /// (ignored if `sqlx_logging` is `false`)
     pub fn sqlx_slow_statements_logging_settings(
         &mut self,
