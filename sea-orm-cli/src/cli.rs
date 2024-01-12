@@ -1,4 +1,9 @@
 use clap::{ArgGroup, Parser, Subcommand, ValueEnum};
+#[cfg(feature = "codegen")]
+use dotenvy::dotenv;
+
+#[cfg(feature = "codegen")]
+use crate::{handle_error, run_generate_command, run_migrate_command};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -308,4 +313,35 @@ pub enum DateTimeCrate {
     #[default]
     Chrono,
     Time,
+}
+
+/// Use this to build a local, version-controlled `sea-orm-cli` in dependent projects
+/// (see [example use case](https://github.com/SeaQL/sea-orm/discussions/1889)).
+#[cfg(feature = "codegen")]
+pub async fn main() {
+    dotenv().ok();
+
+    let cli = Cli::parse();
+    let verbose = cli.verbose;
+
+    match cli.command {
+        Commands::Generate { command } => {
+            run_generate_command(command, verbose)
+                .await
+                .unwrap_or_else(handle_error);
+        }
+        Commands::Migrate {
+            migration_dir,
+            database_schema,
+            database_url,
+            command,
+        } => run_migrate_command(
+            command,
+            &migration_dir,
+            database_schema,
+            database_url,
+            verbose,
+        )
+        .unwrap_or_else(handle_error),
+    }
 }
