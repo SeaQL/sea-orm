@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Enhancements
 
 * Improve query performance of `Paginator`'s `COUNT` query https://github.com/SeaQL/sea-orm/pull/2030
+* Added SQLx slow statements logging to `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/2055
 
 ### House keeping
 
