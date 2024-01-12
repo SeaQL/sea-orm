@@ -260,6 +260,14 @@ pub enum GenerateSubcommands {
 
         #[arg(
             long,
+            default_value_t,
+            value_enum,
+            help = "The decimal crate to use for generating entities."
+        )]
+        decimal_crate: DecimalCrate,
+
+        #[arg(
+            long,
             short = 'l',
             default_value = "false",
             help = "Generate index file as `lib.rs` instead of `mod.rs`."
@@ -308,4 +316,11 @@ pub enum DateTimeCrate {
     #[default]
     Chrono,
     Time,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum, Default)]
+pub enum DecimalCrate {
+    #[default]
+    Decimal,
+    BigDecimal,
 }

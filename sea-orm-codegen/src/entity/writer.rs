@@ -36,11 +36,18 @@ pub enum DateTimeCrate {
 }
 
 #[derive(Debug)]
+pub enum DecimalCrate {
+    Decimal,
+    BigDecimal,
+}
+
+#[derive(Debug)]
 pub struct EntityWriterContext {
     pub(crate) expanded_format: bool,
     pub(crate) with_serde: WithSerde,
     pub(crate) with_copy_enums: bool,
     pub(crate) date_time_crate: DateTimeCrate,
+    pub(crate) decimal_crate: DecimalCrate,
     pub(crate) schema_name: Option<String>,
     pub(crate) lib: bool,
     pub(crate) serde_skip_hidden_column: bool,
@@ -139,6 +146,7 @@ impl EntityWriterContext {
         with_serde: WithSerde,
         with_copy_enums: bool,
         date_time_crate: DateTimeCrate,
+        decimal_crate: DecimalCrate,
         schema_name: Option<String>,
         lib: bool,
         serde_skip_deserializing_primary_key: bool,
@@ -154,6 +162,7 @@ impl EntityWriterContext {
             with_serde,
             with_copy_enums,
             date_time_crate,
+            decimal_crate,
             schema_name,
             lib,
             serde_skip_deserializing_primary_key,
@@ -192,7 +201,7 @@ impl EntityWriter {
                 let column_info = entity
                     .columns
                     .iter()
-                    .map(|column| column.get_info(&context.date_time_crate))
+                    .map(|column| column.get_info(&context.date_time_crate, &context.decimal_crate))
                     .collect::<Vec<String>>();
                 // Serde must be enabled to use this
                 let serde_skip_deserializing_primary_key = context
@@ -216,6 +225,7 @@ impl EntityWriter {
                         entity,
                         &context.with_serde,
                         &context.date_time_crate,
+                        &context.decimal_crate,
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
                         serde_skip_hidden_column,
@@ -228,6 +238,7 @@ impl EntityWriter {
                         entity,
                         &context.with_serde,
                         &context.date_time_crate,
+                        &context.decimal_crate,
                         &context.schema_name,
                         serde_skip_deserializing_primary_key,
                         serde_skip_hidden_column,
@@ -341,6 +352,7 @@ impl EntityWriter {
         entity: &Entity,
         with_serde: &WithSerde,
         date_time_crate: &DateTimeCrate,
+        decimal_crate: &DecimalCrate,
         schema_name: &Option<String>,
         serde_skip_deserializing_primary_key: bool,
         serde_skip_hidden_column: bool,
@@ -358,6 +370,7 @@ impl EntityWriter {
                 entity,
                 with_serde,
                 date_time_crate,
+                decimal_crate,
                 serde_skip_deserializing_primary_key,
                 serde_skip_hidden_column,
                 model_extra_derives,
@@ -365,7 +378,7 @@ impl EntityWriter {
             ),
             Self::gen_column_enum(entity),
             Self::gen_primary_key_enum(entity),
-            Self::gen_impl_primary_key(entity, date_time_crate),
+            Self::gen_impl_primary_key(entity, date_time_crate, decimal_crate),
             Self::gen_relation_enum(entity),
             Self::gen_impl_column_trait(entity),
             Self::gen_impl_relation_trait(entity),
@@ -384,6 +397,7 @@ impl EntityWriter {
         entity: &Entity,
         with_serde: &WithSerde,
         date_time_crate: &DateTimeCrate,
+        decimal_crate: &DecimalCrate,
         schema_name: &Option<String>,
         serde_skip_deserializing_primary_key: bool,
         serde_skip_hidden_column: bool,
@@ -399,6 +413,7 @@ impl EntityWriter {
                 entity,
                 with_serde,
                 date_time_crate,
+                decimal_crate,
                 schema_name,
                 serde_skip_deserializing_primary_key,
                 serde_skip_hidden_column,
@@ -497,17 +512,19 @@ impl EntityWriter {
             .0
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn gen_model_struct(
         entity: &Entity,
         with_serde: &WithSerde,
         date_time_crate: &DateTimeCrate,
+        decimal_crate: &DecimalCrate,
         serde_skip_deserializing_primary_key: bool,
         serde_skip_hidden_column: bool,
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
     ) -> TokenStream {
         let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types(date_time_crate);
+        let column_rs_types = entity.get_column_rs_types(date_time_crate, decimal_crate);
         let if_eq_needed = entity.get_eq_needed();
         let serde_attributes = entity.get_column_serde_attributes(
             serde_skip_deserializing_primary_key,
@@ -558,9 +575,13 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_impl_primary_key(entity: &Entity, date_time_crate: &DateTimeCrate) -> TokenStream {
+    pub fn gen_impl_primary_key(
+        entity: &Entity,
+        date_time_crate: &DateTimeCrate,
+        decimal_crate: &DecimalCrate,
+    ) -> TokenStream {
         let primary_key_auto_increment = entity.get_primary_key_auto_increment();
-        let value_type = entity.get_primary_key_rs_type(date_time_crate);
+        let value_type = entity.get_primary_key_rs_type(date_time_crate, decimal_crate);
         quote! {
             impl PrimaryKeyTrait for PrimaryKey {
                 type ValueType = #value_type;
@@ -717,6 +738,7 @@ impl EntityWriter {
         entity: &Entity,
         with_serde: &WithSerde,
         date_time_crate: &DateTimeCrate,
+        decimal_crate: &DecimalCrate,
         schema_name: &Option<String>,
         serde_skip_deserializing_primary_key: bool,
         serde_skip_hidden_column: bool,
@@ -725,7 +747,7 @@ impl EntityWriter {
     ) -> TokenStream {
         let table_name = entity.table_name.as_str();
         let column_names_snake_case = entity.get_column_names_snake_case();
-        let column_rs_types = entity.get_column_rs_types(date_time_crate);
+        let column_rs_types = entity.get_column_rs_types(date_time_crate, decimal_crate);
         let if_eq_needed = entity.get_eq_needed();
         let primary_keys: Vec<String> = entity
             .primary_keys
@@ -835,8 +857,8 @@ impl EntityWriter {
 mod tests {
     use crate::{
         entity::writer::{bonus_attributes, bonus_derive},
-        Column, ConjunctRelation, DateTimeCrate, Entity, EntityWriter, PrimaryKey, Relation,
-        RelationType, WithSerde,
+        Column, ConjunctRelation, DateTimeCrate, DecimalCrate, Entity, EntityWriter, PrimaryKey,
+        Relation, RelationType, WithSerde,
     };
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
@@ -1470,6 +1492,7 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
+                    &crate::DecimalCrate::Decimal,
                     &None,
                     false,
                     false,
@@ -1491,6 +1514,7 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
+                    &crate::DecimalCrate::Decimal,
                     &Some("public".to_owned()),
                     false,
                     false,
@@ -1512,6 +1536,7 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
+                    &crate::DecimalCrate::Decimal,
                     &Some("schema_name".to_owned()),
                     false,
                     false,
@@ -1571,6 +1596,7 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
+                    &crate::DecimalCrate::Decimal,
                     &None,
                     false,
                     false,
@@ -1592,6 +1618,7 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
+                    &crate::DecimalCrate::Decimal,
                     &Some("public".to_owned()),
                     false,
                     false,
@@ -1613,6 +1640,7 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
+                    &crate::DecimalCrate::Decimal,
                     &Some("schema_name".to_owned()),
                     false,
                     false,
@@ -1646,6 +1674,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -1662,6 +1691,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::Serialize,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -1678,6 +1708,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::Deserialize,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 true,
                 false,
@@ -1692,6 +1723,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::Both,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 true,
                 false,
@@ -1708,6 +1740,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -1724,6 +1757,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::Serialize,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -1740,6 +1774,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::Deserialize,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 true,
                 false,
@@ -1754,6 +1789,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::Both,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 true,
                 false,
@@ -1835,6 +1871,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -1851,6 +1888,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -1878,6 +1916,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -1892,6 +1931,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -1908,6 +1948,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -1926,6 +1967,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -1942,6 +1984,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -1958,6 +2001,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -2003,6 +2047,7 @@ mod tests {
                 &Entity,
                 &WithSerde,
                 &DateTimeCrate,
+                &DecimalCrate,
                 &Option<String>,
                 bool,
                 bool,
@@ -2034,6 +2079,7 @@ mod tests {
             cake_entity,
             &entity_serde_variant.1,
             &DateTimeCrate::Chrono,
+            &DecimalCrate::Decimal,
             &entity_serde_variant.2,
             serde_skip_deserializing_primary_key,
             serde_skip_hidden_column,
@@ -2066,6 +2112,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -2082,6 +2129,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -2098,6 +2146,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -2116,6 +2165,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -2132,6 +2182,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -2148,6 +2199,7 @@ mod tests {
                 &cake_entity,
                 &WithSerde::None,
                 &DateTimeCrate::Chrono,
+                &DecimalCrate::Decimal,
                 &None,
                 false,
                 false,
@@ -2241,6 +2293,7 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
+                    &crate::DecimalCrate::Decimal,
                     &None,
                     false,
                     false,
@@ -2262,6 +2315,7 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
+                    &crate::DecimalCrate::Decimal,
                     &Some("public".to_owned()),
                     false,
                     false,
@@ -2283,6 +2337,7 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
+                    &crate::DecimalCrate::Decimal,
                     &Some("schema_name".to_owned()),
                     false,
                     false,

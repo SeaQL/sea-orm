@@ -381,6 +381,7 @@ mod tests {
                     entity,
                     &crate::WithSerde::None,
                     &crate::DateTimeCrate::Chrono,
+                    &crate::DecimalCrate::Decimal,
                     &None,
                     false,
                     false,
