@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Fix clippy warnings on 1.75 https://github.com/SeaQL/sea-orm/pull/2057
 
+### Bug Fixes
+
+* [sea-orm-macro] Qualify types in `DeriveValueType` macro https://github.com/SeaQL/sea-orm/pull/2054
+
 ## 0.12.10 - 2023-12-14
 
 ### New Features
