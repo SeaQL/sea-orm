@@ -218,12 +218,7 @@ where
 
     fn resolve_sort_order(&mut self) -> Order {
         let should_reverse_order = self.last.is_some();
-
-        if should_reverse_order {
-            self.is_result_reversed = true;
-        } else {
-            self.is_result_reversed = false;
-        }
+        self.is_result_reversed = should_reverse_order;
 
         if (self.sort_asc && !should_reverse_order) || (!self.sort_asc && should_reverse_order) {
             Order::Asc
