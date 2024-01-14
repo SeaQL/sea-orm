@@ -17,13 +17,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Added SQLx slow statements logging to `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/2055
 * Added `QuerySelect::lock_with_behavior` https://github.com/SeaQL/sea-orm/pull/1867
 
-### House keeping
-
-* Fix clippy warnings on 1.75 https://github.com/SeaQL/sea-orm/pull/2057
-
 ### Bug Fixes
 
 * [sea-orm-macro] Qualify types in `DeriveValueType` macro https://github.com/SeaQL/sea-orm/pull/2054
+
+### House keeping
+
+* Fix clippy warnings on 1.75 https://github.com/SeaQL/sea-orm/pull/2057
 
 ## 0.12.10 - 2023-12-14
 
