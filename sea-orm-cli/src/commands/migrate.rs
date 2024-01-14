@@ -226,7 +226,11 @@ fn update_migrator(migration_name: &str, migration_dir: &str) -> Result<(), Box<
     // find existing mod declarations, add new line
     let mod_regex = Regex::new(r"mod\s+(?P<name>m\d{8}_\d{6}_\w+);")?;
     let mods: Vec<_> = mod_regex.captures_iter(&migrator_content).collect();
-    let mods_end = mods.last().unwrap().get(0).unwrap().end() + 1;
+    let mods_end = if let Some(last_match) = mods.last() {
+        last_match.get(0).unwrap().end() + 1
+    } else {
+        migrator_content.len()
+    };
     updated_migrator_content.insert_str(mods_end, format!("mod {migration_name};\n").as_str());
 
     // build new vector from declared migration modules
