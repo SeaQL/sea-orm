@@ -449,7 +449,7 @@ pub trait QuerySelect: Sized {
 
     /// Row locking with behavior (if supported).
     ///
-    /// See [`SelectStatement::lock_with_behavior`].
+    /// See [`SelectStatement::lock_with_behavior`](https://docs.rs/sea-query/*/sea_query/query/struct.SelectStatement.html#method.lock_with_behavior).
     fn lock_with_behavior(mut self, r#type: LockType, behavior: LockBehavior) -> Self {
         self.query().lock_with_behavior(r#type, behavior);
         self
