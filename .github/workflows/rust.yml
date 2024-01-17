@@ -134,7 +134,7 @@ jobs:
         needs.init.outputs.run-partial == 'false' ||
         (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-sqlite == 'true')
       }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -220,7 +220,10 @@ jobs:
     name: CLI
     needs: init
     if: ${{ (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-cli == 'true') }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
@@ -300,7 +303,7 @@ jobs:
         needs.init.outputs.run-partial == 'false' ||
         (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-sqlite == 'true')
       }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       DATABASE_URL: "sqlite::memory:"
     strategy:
