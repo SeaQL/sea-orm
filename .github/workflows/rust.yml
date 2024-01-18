@@ -308,6 +308,7 @@ jobs:
       matrix:
         runtime: [async-std]
         tls: [native-tls, rustls]
+        sqlite_flavor: ["", returning_clauses_for_sqlite_3_35]
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
@@ -319,8 +320,8 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-sqlite-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: cargo test --test '*' --features default,sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }},${{ matrix.sqlite_flavor }}
+      - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-sqlite,runtime-${{ matrix.runtime }}-${{ matrix.tls }},${{ matrix.sqlite_flavor }}
 
   mysql:
     name: MySQL

@@ -91,6 +91,7 @@ sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
 sqlx-mysql = ["sqlx-dep", "sea-query-binder/sqlx-mysql", "sqlx/mysql"]
 sqlx-postgres = ["sqlx-dep", "sea-query-binder/sqlx-postgres", "sqlx/postgres", "postgres-array"]
 sqlx-sqlite = ["sqlx-dep", "sea-query-binder/sqlx-sqlite", "sqlx/sqlite"]
+returning_clauses_for_sqlite_3_35 = []
 runtime-async-std = []
 runtime-async-std-native-tls = [
     "sqlx?/runtime-async-std-native-tls",

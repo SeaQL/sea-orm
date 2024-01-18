@@ -578,7 +578,15 @@ impl DbBackend {
 
     /// Check if the database supports `RETURNING` syntax on insert and update
     pub fn support_returning(&self) -> bool {
-        matches!(self, Self::Postgres)
+        #[cfg(not(feature = "returning_clauses_for_sqlite_3_35"))]
+        {
+            matches!(self, Self::Postgres)
+        }
+
+        #[cfg(feature = "returning_clauses_for_sqlite_3_35")]
+        {
+            matches!(self, Self::Postgres | Self::Sqlite)
+        }
     }
 }
 
