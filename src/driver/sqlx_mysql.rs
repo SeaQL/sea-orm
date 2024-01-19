@@ -1,3 +1,4 @@
+use log::LevelFilter;
 use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
@@ -52,6 +53,12 @@ impl SqlxMySqlConnector {
             opt = opt.disable_statement_logging();
         } else {
             opt = opt.log_statements(options.sqlx_logging_level);
+            if options.sqlx_slow_statements_logging_level != LevelFilter::Off {
+                opt = opt.log_slow_statements(
+                    options.sqlx_slow_statements_logging_level,
+                    options.sqlx_slow_statements_logging_threshold,
+                );
+            }
         }
         match options.pool_options().connect_with(opt).await {
             Ok(pool) => Ok(DatabaseConnection::SqlxMySqlPoolConnection(

@@ -1,7 +1,8 @@
 use pretty_assertions::assert_eq;
 use sea_orm::{
-    ColumnTrait, ColumnType, ConnectionTrait, Database, DatabaseBackend, DatabaseConnection,
-    DbBackend, DbConn, DbErr, EntityTrait, ExecResult, Iterable, Schema, Statement,
+    ColumnTrait, ColumnType, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
+    DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, ExecResult, Iterable, Schema,
+    Statement,
 };
 use sea_query::{
     extension::postgres::{Type, TypeCreateStatement},
@@ -48,7 +49,9 @@ pub async fn setup(base_url: &str, db_name: &str) -> DatabaseConnection {
         let url = format!("{base_url}/{db_name}");
         Database::connect(&url).await.unwrap()
     } else {
-        Database::connect(base_url).await.unwrap()
+        let mut options: ConnectOptions = base_url.into();
+        options.sqlx_logging(false);
+        Database::connect(options).await.unwrap()
     }
 }
 
@@ -71,7 +74,6 @@ pub async fn tear_down(base_url: &str, db_name: &str) {
                 format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
             ))
             .await;
-    } else {
     };
 }
 

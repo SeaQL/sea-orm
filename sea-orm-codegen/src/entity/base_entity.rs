@@ -108,7 +108,7 @@ impl Entity {
         self.get_relation_enum_name()
             .into_iter()
             .chain(self_relations_reverse)
-            .chain(conjunct_related_names.into_iter())
+            .chain(conjunct_related_names)
             .collect()
     }
 

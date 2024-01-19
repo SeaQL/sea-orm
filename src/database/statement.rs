@@ -108,6 +108,7 @@ build_query_stmt!(sea_query::InsertStatement);
 build_query_stmt!(sea_query::SelectStatement);
 build_query_stmt!(sea_query::UpdateStatement);
 build_query_stmt!(sea_query::DeleteStatement);
+build_query_stmt!(sea_query::WithQuery);
 
 macro_rules! build_schema_stmt {
     ($stmt: ty) => {

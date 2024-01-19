@@ -100,7 +100,7 @@ impl DeriveValueType {
 
         quote!(
             #[automatically_derived]
-            impl std::convert::From<#name> for Value {
+            impl std::convert::From<#name> for sea_orm::Value {
                 fn from(source: #name) -> Self {
                     source.0.into()
                 }
@@ -108,18 +108,19 @@ impl DeriveValueType {
 
             #[automatically_derived]
             impl sea_orm::TryGetable for #name {
-                fn try_get_by<I: sea_orm::ColIdx>(res: &QueryResult, idx: I) -> Result<Self, sea_orm::TryGetError> {
+                fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, idx: I)
+                    -> std::result::Result<Self, sea_orm::TryGetError> {
                     <#field_type as sea_orm::TryGetable>::try_get_by(res, idx).map(|v| #name(v))
                 }
             }
 
             #[automatically_derived]
             impl sea_orm::sea_query::ValueType for #name {
-                fn try_from(v: Value) -> Result<Self, sea_orm::sea_query::ValueTypeErr> {
+                fn try_from(v: sea_orm::Value) -> std::result::Result<Self, sea_orm::sea_query::ValueTypeErr> {
                     <#field_type as sea_orm::sea_query::ValueType>::try_from(v).map(|v| #name(v))
                 }
 
-                fn type_name() -> String {
+                fn type_name() -> std::string::String {
                     stringify!(#name).to_owned()
                 }
 

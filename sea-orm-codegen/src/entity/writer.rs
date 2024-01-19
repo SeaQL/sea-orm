@@ -47,6 +47,8 @@ pub struct EntityWriterContext {
     pub(crate) serde_skip_deserializing_primary_key: bool,
     pub(crate) model_extra_derives: TokenStream,
     pub(crate) model_extra_attributes: TokenStream,
+    pub(crate) enum_extra_derives: TokenStream,
+    pub(crate) enum_extra_attributes: TokenStream,
     pub(crate) seaography: bool,
 }
 
@@ -79,23 +81,23 @@ impl WithSerde {
     }
 }
 
-/// Converts model_extra_derives argument to token stream
-fn bonus_derive<T, I>(model_extra_derives: I) -> TokenStream
+/// Converts *_extra_derives argument to token stream
+pub(crate) fn bonus_derive<T, I>(extra_derives: I) -> TokenStream
 where
     T: Into<String>,
     I: IntoIterator<Item = T>,
 {
-    model_extra_derives
-        .into_iter()
-        .map(Into::<String>::into)
-        .fold(TokenStream::default(), |acc, derive| {
+    extra_derives.into_iter().map(Into::<String>::into).fold(
+        TokenStream::default(),
+        |acc, derive| {
             let tokens: TokenStream = derive.parse().unwrap();
             quote! { #acc, #tokens }
-        })
+        },
+    )
 }
 
-/// convert attributes argument to token stream
-fn bonus_attributes<T, I>(attributes: I) -> TokenStream
+/// convert *_extra_attributes argument to token stream
+pub(crate) fn bonus_attributes<T, I>(attributes: I) -> TokenStream
 where
     T: Into<String>,
     I: IntoIterator<Item = T>,
@@ -143,6 +145,8 @@ impl EntityWriterContext {
         serde_skip_hidden_column: bool,
         model_extra_derives: Vec<String>,
         model_extra_attributes: Vec<String>,
+        enum_extra_derives: Vec<String>,
+        enum_extra_attributes: Vec<String>,
         seaography: bool,
     ) -> Self {
         Self {
@@ -156,6 +160,8 @@ impl EntityWriterContext {
             serde_skip_hidden_column,
             model_extra_derives: bonus_derive(model_extra_derives),
             model_extra_attributes: bonus_attributes(model_extra_attributes),
+            enum_extra_derives: bonus_derive(enum_extra_derives),
+            enum_extra_attributes: bonus_attributes(enum_extra_attributes),
             seaography,
         }
     }
@@ -168,9 +174,12 @@ impl EntityWriter {
         files.push(self.write_index_file(context.lib));
         files.push(self.write_prelude());
         if !self.enums.is_empty() {
-            files.push(
-                self.write_sea_orm_active_enums(&context.with_serde, context.with_copy_enums),
-            );
+            files.push(self.write_sea_orm_active_enums(
+                &context.with_serde,
+                context.with_copy_enums,
+                &context.enum_extra_derives,
+                &context.enum_extra_attributes,
+            ));
         }
         WriterOutput { files }
     }
@@ -283,6 +292,8 @@ impl EntityWriter {
         &self,
         with_serde: &WithSerde,
         with_copy_enums: bool,
+        extra_derives: &TokenStream,
+        extra_attributes: &TokenStream,
     ) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
@@ -291,7 +302,14 @@ impl EntityWriter {
         let code_blocks = self
             .enums
             .values()
-            .map(|active_enum| active_enum.impl_active_enum(with_serde, with_copy_enums))
+            .map(|active_enum| {
+                active_enum.impl_active_enum(
+                    with_serde,
+                    with_copy_enums,
+                    extra_derives,
+                    extra_attributes,
+                )
+            })
             .collect();
         Self::write(&mut lines, code_blocks);
         OutputFile {
@@ -460,15 +478,23 @@ impl EntityWriter {
         entity
             .columns
             .iter()
-            .fold(TokenStream::new(), |mut ts, col| {
-                if let sea_query::ColumnType::Enum { name, .. } = col.get_inner_col_type() {
-                    let enum_name = format_ident!("{}", name.to_string().to_upper_camel_case());
-                    ts.extend([quote! {
-                        use super::sea_orm_active_enums::#enum_name;
-                    }]);
-                }
-                ts
-            })
+            .fold(
+                (TokenStream::new(), Vec::new()),
+                |(mut ts, mut enums), col| {
+                    if let sea_query::ColumnType::Enum { name, .. } = col.get_inner_col_type() {
+                        if !enums.contains(&name) {
+                            enums.push(name);
+                            let enum_name =
+                                format_ident!("{}", name.to_string().to_upper_camel_case());
+                            ts.extend([quote! {
+                                use super::sea_orm_active_enums::#enum_name;
+                            }]);
+                        }
+                    }
+                    (ts, enums)
+                },
+            )
+            .0
     }
 
     pub fn gen_model_struct(
@@ -814,7 +840,8 @@ mod tests {
     };
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
-    use sea_query::{ColumnType, ForeignKeyAction, RcOrArc};
+    use quote::quote;
+    use sea_query::{Alias, ColumnType, ForeignKeyAction, RcOrArc, SeaRc};
     use std::io::{self, BufRead, BufReader, Read};
 
     fn setup() -> Vec<Entity> {
@@ -898,6 +925,52 @@ mod tests {
                         impl_related: true,
                     },
                 ],
+                conjunct_relations: vec![],
+                primary_keys: vec![
+                    PrimaryKey {
+                        name: "cake_id".to_owned(),
+                    },
+                    PrimaryKey {
+                        name: "filling_id".to_owned(),
+                    },
+                ],
+            },
+            Entity {
+                table_name: "cake_filling_price".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "cake_id".to_owned(),
+                        col_type: ColumnType::Integer,
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "filling_id".to_owned(),
+                        col_type: ColumnType::Integer,
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "price".to_owned(),
+                        col_type: ColumnType::Decimal(None),
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                ],
+                relations: vec![Relation {
+                    ref_table: "cake_filling".to_owned(),
+                    columns: vec!["cake_id".to_owned(), "filling_id".to_owned()],
+                    ref_columns: vec!["cake_id".to_owned(), "filling_id".to_owned()],
+                    rel_type: RelationType::BelongsTo,
+                    on_delete: None,
+                    on_update: None,
+                    self_referencing: false,
+                    num_suffix: 0,
+                    impl_related: true,
+                }],
                 conjunct_relations: vec![],
                 primary_keys: vec![
                     PrimaryKey {
@@ -1361,9 +1434,10 @@ mod tests {
     #[test]
     fn test_gen_expanded_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 10] = [
+        const ENTITY_FILES: [&str; 11] = [
             include_str!("../../tests/expanded/cake.rs"),
             include_str!("../../tests/expanded/cake_filling.rs"),
+            include_str!("../../tests/expanded/cake_filling_price.rs"),
             include_str!("../../tests/expanded/filling.rs"),
             include_str!("../../tests/expanded/fruit.rs"),
             include_str!("../../tests/expanded/vendor.rs"),
@@ -1373,9 +1447,10 @@ mod tests {
             include_str!("../../tests/expanded/collection.rs"),
             include_str!("../../tests/expanded/collection_float.rs"),
         ];
-        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 10] = [
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 11] = [
             include_str!("../../tests/expanded_with_schema_name/cake.rs"),
             include_str!("../../tests/expanded_with_schema_name/cake_filling.rs"),
+            include_str!("../../tests/expanded_with_schema_name/cake_filling_price.rs"),
             include_str!("../../tests/expanded_with_schema_name/filling.rs"),
             include_str!("../../tests/expanded_with_schema_name/fruit.rs"),
             include_str!("../../tests/expanded_with_schema_name/vendor.rs"),
@@ -1460,9 +1535,10 @@ mod tests {
     #[test]
     fn test_gen_compact_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 10] = [
+        const ENTITY_FILES: [&str; 11] = [
             include_str!("../../tests/compact/cake.rs"),
             include_str!("../../tests/compact/cake_filling.rs"),
+            include_str!("../../tests/compact/cake_filling_price.rs"),
             include_str!("../../tests/compact/filling.rs"),
             include_str!("../../tests/compact/fruit.rs"),
             include_str!("../../tests/compact/vendor.rs"),
@@ -1472,9 +1548,10 @@ mod tests {
             include_str!("../../tests/compact/collection.rs"),
             include_str!("../../tests/compact/collection_float.rs"),
         ];
-        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 10] = [
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 11] = [
             include_str!("../../tests/compact_with_schema_name/cake.rs"),
             include_str!("../../tests/compact_with_schema_name/cake_filling.rs"),
+            include_str!("../../tests/compact_with_schema_name/cake_filling_price.rs"),
             include_str!("../../tests/compact_with_schema_name/filling.rs"),
             include_str!("../../tests/compact_with_schema_name/fruit.rs"),
             include_str!("../../tests/compact_with_schema_name/vendor.rs"),
@@ -2222,6 +2299,131 @@ mod tests {
                 .to_string()
             );
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_gen_import_active_enum() -> io::Result<()> {
+        let entities = vec![
+            Entity {
+                table_name: "tea_pairing".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "id".to_owned(),
+                        col_type: ColumnType::Integer,
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "first_tea".to_owned(),
+                        col_type: ColumnType::Enum {
+                            name: SeaRc::new(Alias::new("tea_enum")),
+                            variants: vec![
+                                SeaRc::new(Alias::new("everyday_tea")),
+                                SeaRc::new(Alias::new("breakfast_tea")),
+                            ],
+                        },
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "second_tea".to_owned(),
+                        col_type: ColumnType::Enum {
+                            name: SeaRc::new(Alias::new("tea_enum")),
+                            variants: vec![
+                                SeaRc::new(Alias::new("everyday_tea")),
+                                SeaRc::new(Alias::new("breakfast_tea")),
+                            ],
+                        },
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                ],
+                relations: vec![],
+                conjunct_relations: vec![],
+                primary_keys: vec![PrimaryKey {
+                    name: "id".to_owned(),
+                }],
+            },
+            Entity {
+                table_name: "tea_pairing_with_size".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "id".to_owned(),
+                        col_type: ColumnType::Integer,
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "first_tea".to_owned(),
+                        col_type: ColumnType::Enum {
+                            name: SeaRc::new(Alias::new("tea_enum")),
+                            variants: vec![
+                                SeaRc::new(Alias::new("everyday_tea")),
+                                SeaRc::new(Alias::new("breakfast_tea")),
+                            ],
+                        },
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "second_tea".to_owned(),
+                        col_type: ColumnType::Enum {
+                            name: SeaRc::new(Alias::new("tea_enum")),
+                            variants: vec![
+                                SeaRc::new(Alias::new("everyday_tea")),
+                                SeaRc::new(Alias::new("breakfast_tea")),
+                            ],
+                        },
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "size".to_owned(),
+                        col_type: ColumnType::Enum {
+                            name: SeaRc::new(Alias::new("tea_size")),
+                            variants: vec![
+                                SeaRc::new(Alias::new("small")),
+                                SeaRc::new(Alias::new("medium")),
+                                SeaRc::new(Alias::new("huge")),
+                            ],
+                        },
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                ],
+                relations: vec![],
+                conjunct_relations: vec![],
+                primary_keys: vec![PrimaryKey {
+                    name: "id".to_owned(),
+                }],
+            },
+        ];
+
+        assert_eq!(
+            quote!(
+                use super::sea_orm_active_enums::TeaEnum;
+            )
+            .to_string(),
+            EntityWriter::gen_import_active_enum(&entities[0]).to_string()
+        );
+
+        assert_eq!(
+            quote!(
+                use super::sea_orm_active_enums::TeaEnum;
+                use super::sea_orm_active_enums::TeaSize;
+            )
+            .to_string(),
+            EntityWriter::gen_import_active_enum(&entities[1]).to_string()
+        );
 
         Ok(())
     }

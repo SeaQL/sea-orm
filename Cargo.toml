@@ -3,7 +3,7 @@ members = [".", "sea-orm-macros", "sea-orm-codegen"]
 
 [package]
 name = "sea-orm"
-version = "0.12.2"
+version = "0.12.11"
 authors = ["Chris Tsang <chris.2y3@outlook.com>"]
 edition = "2021"
 description = "🐚 An async & dynamic ORM for Rust"
@@ -16,7 +16,7 @@ keywords = ["async", "orm", "mysql", "postgres", "sqlite"]
 rust-version = "1.65"
 
 [package.metadata.docs.rs]
-features = ["default", "sqlx-all", "mock", "runtime-async-std-native-tls", "postgres-array", "sea-orm-internal"]
+features = ["default", "sqlx-all", "mock", "proxy", "runtime-async-std-native-tls", "postgres-array", "sea-orm-internal"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
@@ -26,15 +26,15 @@ path = "src/lib.rs"
 [dependencies]
 async-stream = { version = "0.3", default-features = false }
 async-trait = { version = "0.1", default-features = false }
-chrono = { version = "0.4.20", default-features = false, optional = true }
+chrono = { version = "0.4.30", default-features = false, optional = true }
 time = { version = "0.3", default-features = false, optional = true }
 futures = { version = "0.3", default-features = false, features = ["std"] }
 log = { version = "0.4", default-features = false }
 tracing = { version = "0.1", default-features = false, features = ["attributes", "log"] }
 rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.3", default-features = false, optional = true }
-sea-orm-macros = { version = "0.12.2", path = "sea-orm-macros", default-features = false, features = ["strum"] }
-sea-query = { version = "0.30.0", default-features = false, features = ["thread-safe", "hashable-value", "backend-mysql", "backend-postgres", "backend-sqlite"] }
+sea-orm-macros = { version = "0.12.11", path = "sea-orm-macros", default-features = false, features = ["strum"] }
+sea-query = { version = "0.30.4", default-features = false, features = ["thread-safe", "hashable-value", "backend-mysql", "backend-postgres", "backend-sqlite"] }
 sea-query-binder = { version = "0.5.0", default-features = false, optional = true }
 strum = { version = "0.25", default-features = false }
 serde = { version = "1.0", default-features = false }
@@ -76,6 +76,7 @@ default = [
 ]
 macros = ["sea-orm-macros/derive"]
 mock = []
+proxy = ["serde_json", "serde/derive"]
 with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "time?/serde", "uuid?/serde", "sea-query-binder?/with-json", "sqlx?/json"]
 with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-binder?/with-chrono", "sqlx?/chrono"]
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-binder?/with-rust_decimal", "sqlx?/rust_decimal"]
@@ -83,6 +84,7 @@ with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-binder?
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
 with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
 postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array", "sea-orm-macros/postgres-array"]
+json-array = ["postgres-array"] # this does not actually enable sqlx-postgres, but only a few traits to support array in sea-query
 sea-orm-internal = []
 sqlx-dep = []
 sqlx-all = ["sqlx-mysql", "sqlx-postgres", "sqlx-sqlite"]
@@ -124,3 +126,7 @@ runtime-tokio-rustls = [
 ]
 tests-cfg = ["serde/derive"]
 seaography = ["sea-orm-macros/seaography"]
+
+# This allows us to develop using a local version of sea-query
+# [patch.crates-io]
+# sea-query = { path = "../sea-query" }

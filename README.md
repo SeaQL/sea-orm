@@ -16,19 +16,16 @@
 
 #### SeaORM is a relational ORM to help you build web services in Rust with the familiarity of dynamic languages.
 
-## Getting Started
-
 [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
 If you like what we do, consider starring, sharing and contributing!
+
+Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2023](https://sea-ql.org/community-survey)!
+
+## Getting Started
 
 + [Documentation](https://www.sea-ql.org/SeaORM)
 + [Tutorial](https://www.sea-ql.org/sea-orm-tutorial)
 + [Cookbook](https://www.sea-ql.org/sea-orm-cookbook)
-
-[![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
-Join our Discord server to chat with others in the SeaQL community!
-
-Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2023](https://sea-ql.org/community-survey)!
 
 Integration examples:
 
@@ -42,6 +39,13 @@ Integration examples:
 + [Salvo Example](https://github.com/SeaQL/sea-orm/tree/master/examples/salvo_example)
 + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
 + [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example)
+
+## Support
+
+[![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
+Join our Discord server to chat with other members of the SeaQL community!
+
+Professional support on Rust programming and best practices is available. You can email us for a quote!
 
 ## Features
 
@@ -205,21 +209,9 @@ Look at the [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/ex
 1. [Engineering](https://www.sea-ql.org/blog/2022-07-30-engineering/)
 1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 
-## Who's using SeaORM?
+### Who's using SeaORM?
 
-The following products are powered by SeaORM:
-
-<table>
-  <tbody>
-    <tr>
-      <td><br><a href="https://caido.io/"><img src="https://www.sea-ql.org/SeaORM/img/other/caido-logo.png" width="250"/></a><br>A lightweight web security auditing toolkit</td>
-      <td><a href="https://www.svix.com/"><img src="https://www.sea-ql.org/SeaORM/img/other/svix-logo.svg" width="250"/></a><br>The enterprise ready webhooks service</td>
-      <td><a href="https://www.spyglass.fyi/"><img src="https://www.sea-ql.org/SeaORM/img/other/spyglass-logo.svg" width="250"/></a><br/>A personal search engine</td>
-    </tr>
-  </tbody>
-</table>
-
-For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to [submit yours](https://github.com/SeaQL/sea-orm/issues/403)!
+See [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to [submit yours](https://github.com/SeaQL/sea-orm/issues/403)!
 
 ## License
 

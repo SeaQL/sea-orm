@@ -1,4 +1,9 @@
 use clap::{ArgGroup, Parser, Subcommand, ValueEnum};
+#[cfg(feature = "codegen")]
+use dotenvy::dotenv;
+
+#[cfg(feature = "codegen")]
+use crate::{handle_error, run_generate_command, run_migrate_command};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -282,6 +287,20 @@ pub enum GenerateSubcommands {
 
         #[arg(
             long,
+            value_delimiter = ',',
+            help = "Add extra derive macros to generated enums (comma separated), e.g. `--enum-extra-derives 'ts_rs::Ts','CustomDerive'`"
+        )]
+        enum_extra_derives: Vec<String>,
+
+        #[arg(
+            long,
+            value_delimiter = ',',
+            help = r#"Add extra attributes to generated enums, no need for `#[]` (comma separated), e.g. `--enum-extra-attributes 'serde(rename_all = "camelCase")','ts(export)'`"#
+        )]
+        enum_extra_attributes: Vec<String>,
+
+        #[arg(
+            long,
             default_value = "false",
             long_help = "Generate helper Enumerations that are used by Seaography."
         )]
@@ -294,4 +313,35 @@ pub enum DateTimeCrate {
     #[default]
     Chrono,
     Time,
+}
+
+/// Use this to build a local, version-controlled `sea-orm-cli` in dependent projects
+/// (see [example use case](https://github.com/SeaQL/sea-orm/discussions/1889)).
+#[cfg(feature = "codegen")]
+pub async fn main() {
+    dotenv().ok();
+
+    let cli = Cli::parse();
+    let verbose = cli.verbose;
+
+    match cli.command {
+        Commands::Generate { command } => {
+            run_generate_command(command, verbose)
+                .await
+                .unwrap_or_else(handle_error);
+        }
+        Commands::Migrate {
+            migration_dir,
+            database_schema,
+            database_url,
+            command,
+        } => run_migrate_command(
+            command,
+            &migration_dir,
+            database_schema,
+            database_url,
+            verbose,
+        )
+        .unwrap_or_else(handle_error),
+    }
 }

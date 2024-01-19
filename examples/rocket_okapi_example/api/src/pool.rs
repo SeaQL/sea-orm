@@ -1,4 +1,4 @@
-use rocket_example_service::sea_orm;
+use rocket_okapi_example_service::sea_orm;
 
 use async_trait::async_trait;
 use sea_orm::ConnectOptions;

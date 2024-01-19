@@ -71,7 +71,12 @@ where
             SelectStatement::new()
                 .expr(Expr::cust("COUNT(*) AS num_items"))
                 .from_subquery(
-                    self.query.clone().reset_limit().reset_offset().to_owned(),
+                    self.query
+                        .clone()
+                        .reset_limit()
+                        .reset_offset()
+                        .clear_order_by()
+                        .to_owned(),
                     Alias::new("sub_query"),
                 ),
         );

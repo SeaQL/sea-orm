@@ -226,24 +226,27 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo install --path sea-orm-cli --debug
 
-  examples-matrix:
-    name: Examples Matrix
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - id: set-matrix
-        run: echo "path_matrix=$(find examples -mindepth 1 -maxdepth 1 -type d -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "examples/\(.)" ]')" >> $GITHUB_OUTPUT
-    outputs:
-      path_matrix: ${{ steps.set-matrix.outputs.path_matrix }}
-
   examples:
     name: Examples
     runs-on: ubuntu-latest
-    needs: examples-matrix
     strategy:
       fail-fast: false
       matrix:
-        path: ${{ fromJson(needs.examples-matrix.outputs.path_matrix) }}
+        path: [
+          examples/actix_example,
+          examples/actix3_example,
+          examples/axum_example,
+          examples/basic,
+          examples/graphql_example,
+          examples/jsonrpsee_example,
+          examples/poem_example,
+          examples/proxy_gluesql_example,
+          examples/rocket_example,
+          # examples/rocket_okapi_example,
+          examples/salvo_example,
+          examples/seaography_example,
+          examples/tonic_example,
+        ]
     steps:
       - uses: actions/checkout@v3
       - if: ${{ contains(matrix.path, 'tonic_example') }}

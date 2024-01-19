@@ -16,21 +16,10 @@ pub struct ColumnDef {
     pub(crate) unique: bool,
     pub(crate) indexed: bool,
     pub(crate) default: Option<SimpleExpr>,
+    pub(crate) comment: Option<String>,
 }
 
 macro_rules! bind_oper {
-    ( $op: ident ) => {
-        #[allow(missing_docs)]
-        fn $op<V>(&self, v: V) -> SimpleExpr
-        where
-            V: Into<Value>,
-        {
-            Expr::col((self.entity_name(), *self)).$op(v)
-        }
-    };
-}
-
-macro_rules! bind_oper_with_enum_casting {
     ( $op: ident, $bin_op: ident ) => {
         #[allow(missing_docs)]
         fn $op<V>(&self, v: V) -> SimpleExpr
@@ -61,7 +50,8 @@ macro_rules! bind_vec_func {
             V: Into<Value>,
             I: IntoIterator<Item = V>,
         {
-            Expr::col((self.entity_name(), *self)).$func(v)
+            let v_with_enum_cast = v.into_iter().map(|v| self.save_as(Expr::val(v)));
+            Expr::col((self.entity_name(), *self)).$func(v_with_enum_cast)
         }
     };
 }
@@ -95,12 +85,12 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         (self.entity_name(), SeaRc::new(*self) as DynIden)
     }
 
-    bind_oper_with_enum_casting!(eq, Equal);
-    bind_oper_with_enum_casting!(ne, NotEqual);
-    bind_oper!(gt);
-    bind_oper!(gte);
-    bind_oper!(lt);
-    bind_oper!(lte);
+    bind_oper!(eq, Equal);
+    bind_oper!(ne, NotEqual);
+    bind_oper!(gt, GreaterThan);
+    bind_oper!(gte, GreaterThanOrEqual);
+    bind_oper!(lt, SmallerThan);
+    bind_oper!(lte, SmallerThanOrEqual);
 
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
@@ -281,6 +271,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     }
 
     /// Cast value of an enum column as enum type; do nothing if `self` is not an enum.
+    /// Will also transform `Array(Vec<Json>)` into `Json(Vec<Json>)` if the column type is `Json`.
     fn save_enum_as(&self, val: Expr) -> SimpleExpr {
         cast_enum_as(val, self, |col, enum_name, col_type| {
             let type_name = match col_type {
@@ -311,6 +302,7 @@ impl ColumnTypeTrait for ColumnType {
             unique: false,
             indexed: false,
             default: None,
+            comment: None,
         }
     }
 
@@ -341,6 +333,11 @@ impl ColumnDef {
     /// Marks the column as `UNIQUE`
     pub fn unique(mut self) -> Self {
         self.unique = true;
+        self
+    }
+    /// Set column comment
+    pub fn comment(mut self, v: &str) -> Self {
+        self.comment = Some(v.into());
         self
     }
 
@@ -412,9 +409,41 @@ where
 {
     let col_def = col.def();
     let col_type = col_def.get_column_type();
-    match col_type.get_enum_name() {
-        Some(enum_name) => f(expr, SeaRc::clone(enum_name), col_type),
-        None => expr.into(),
+
+    match col_type {
+        #[cfg(all(feature = "with-json", feature = "postgres-array"))]
+        ColumnType::Json | ColumnType::JsonBinary => {
+            use sea_query::ArrayType;
+            use serde_json::Value as Json;
+
+            #[allow(clippy::boxed_local)]
+            fn unbox<T>(boxed: Box<T>) -> T {
+                *boxed
+            }
+
+            let expr = expr.into();
+            match expr {
+                SimpleExpr::Value(Value::Array(ArrayType::Json, Some(json_vec))) => {
+                    // flatten Array(Vec<Json>) into Json
+                    let json_vec: Vec<Json> = json_vec
+                        .into_iter()
+                        .filter_map(|val| match val {
+                            Value::Json(Some(json)) => Some(unbox(json)),
+                            _ => None,
+                        })
+                        .collect();
+                    SimpleExpr::Value(Value::Json(Some(Box::new(json_vec.into()))))
+                }
+                SimpleExpr::Value(Value::Array(ArrayType::Json, None)) => {
+                    SimpleExpr::Value(Value::Json(None))
+                }
+                _ => expr,
+            }
+        }
+        _ => match col_type.get_enum_name() {
+            Some(enum_name) => f(expr, SeaRc::clone(enum_name), col_type),
+            None => expr.into(),
+        },
     }
 }
 

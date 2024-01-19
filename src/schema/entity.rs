@@ -163,6 +163,10 @@ where
 {
     let mut stmt = TableCreateStatement::new();
 
+    if let Some(comment) = entity.comment() {
+        stmt.comment(comment);
+    }
+
     for column in E::Column::iter() {
         let mut column_def = column_def_from_entity_column::<E>(column, backend);
         stmt.col(&mut column_def);
@@ -212,6 +216,9 @@ where
     }
     if let Some(default) = orm_column_def.default {
         column_def.default(default);
+    }
+    if let Some(comment) = orm_column_def.comment {
+        column_def.comment(comment);
     }
     for primary_key in E::PrimaryKey::iter() {
         if column.to_string() == primary_key.into_column().to_string() {

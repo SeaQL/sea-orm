@@ -5,6 +5,142 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.12.11 - 2023-01-14
+
+### New Features
+
+* Added `desc` to `Cursor` paginator https://github.com/SeaQL/sea-orm/pull/2037
+
+### Enhancements
+
+* Improve query performance of `Paginator`'s `COUNT` query https://github.com/SeaQL/sea-orm/pull/2030
+* Added SQLx slow statements logging to `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/2055
+* Added `QuerySelect::lock_with_behavior` https://github.com/SeaQL/sea-orm/pull/1867
+
+### Bug Fixes
+
+* [sea-orm-macro] Qualify types in `DeriveValueType` macro https://github.com/SeaQL/sea-orm/pull/2054
+
+### House keeping
+
+* Fix clippy warnings on 1.75 https://github.com/SeaQL/sea-orm/pull/2057
+
+## 0.12.10 - 2023-12-14
+
+### New Features
+
+* [sea-orm-macro] Comment attribute for Entity (`#[sea_orm(comment = "action")]`); `create_table_from_entity` supports comment https://github.com/SeaQL/sea-orm/pull/2009
+* Added "proxy" (feature flag `proxy`) to database backend https://github.com/SeaQL/sea-orm/pull/1881, https://github.com/SeaQL/sea-orm/pull/2000
+
+### Enhancements
+
+* Cast enums in `is_in` and `is_not_in` https://github.com/SeaQL/sea-orm/pull/2002
+
+### Upgrades
+
+* Updated `sea-query` to `0.30.5` https://github.com/SeaQL/sea-query/releases/tag/0.30.5
+
+## 0.12.9 - 2023-12-08
+
+### Enhancements
+
+* Add source annotations to errors https://github.com/SeaQL/sea-orm/pull/1999
+
+### Upgrades
+
+* Updated `sea-query` to `0.30.4` https://github.com/SeaQL/sea-query/releases/tag/0.30.4
+
+## 0.12.8 - 2023-12-04
+
+### Enhancements
+
+* Implement `StatementBuilder` for `sea_query::WithQuery` https://github.com/SeaQL/sea-orm/issues/1960
+
+### Upgrades
+
+* Upgrade `axum` example to `0.7` https://github.com/SeaQL/sea-orm/pull/1984
+
+## 0.12.7 - 2023-11-22
+
+### Enhancements
+
+* Added method `expr_as_` that accepts `self` https://github.com/SeaQL/sea-orm/pull/1979
+
+### Upgrades
+
+* Updated `sea-query` to `0.30.3` https://github.com/SeaQL/sea-query/releases/tag/0.30.3
+
+## 0.12.6 - 2023-11-13
+
+### New Features
+
+* Added `#[sea_orm(skip)]` for `FromQueryResult` derive macro https://github.com/SeaQL/sea-orm/pull/1954
+
+## 0.12.5 - 2023-11-12
+
+### Bug Fixes
+
+* [sea-orm-cli] Fix duplicated active enum use statements on generated entities https://github.com/SeaQL/sea-orm/pull/1953
+* [sea-orm-cli] Added `--enum-extra-derives` https://github.com/SeaQL/sea-orm/pull/1934
+* [sea-orm-cli] Added `--enum-extra-attributes` https://github.com/SeaQL/sea-orm/pull/1952
+
+## 0.12.4 - 2023-10-19
+
+### New Features
+
+* Add support for root JSON arrays https://github.com/SeaQL/sea-orm/pull/1898
+    Now the following works (requires the `json-array` / `postgres-array` feature)!
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "json_struct_vec")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    #[sea_orm(column_type = "Json")]
+    pub struct_vec: Vec<JsonColumn>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
+pub struct JsonColumn {
+    pub value: String,
+}
+```
+
+### Enhancements
+
+* Loader: use `ValueTuple` as hash key https://github.com/SeaQL/sea-orm/pull/1868
+
+### Upgrades
+
+* Updated `sea-query` to `0.30.2` https://github.com/SeaQL/sea-query/releases/tag/0.30.2
+
+## 0.12.3 - 2023-09-22
+
+### New Features
+
+* [sea-orm-migration] Check if an index exists https://github.com/SeaQL/sea-orm/pull/1828
+* Added `cursor_by` to `SelectTwo` https://github.com/SeaQL/sea-orm/pull/1826
+
+### Enhancements
+
+* [sea-orm-cli] Support generation of related entity with composite foreign key https://github.com/SeaQL/sea-orm/pull/1693
+
+### Bug Fixes
+
+* [sea-orm-macro] Fixed `DeriveValueType` by qualifying `QueryResult` https://github.com/SeaQL/sea-orm/pull/1855
+* Fixed `Loader` panic on empty inputs
+
+### Upgrades
+
+* Upgraded `salvo` to `0.50`
+* Upgraded `chrono` to `0.4.30` https://github.com/SeaQL/sea-orm/pull/1858
+* Updated `sea-query` to `0.30.1`
+* Updated `sea-schema` to `0.14.1`
+
+### House keeping
+
+* Added test cases for `find_xxx_related/linked` https://github.com/SeaQL/sea-orm/pull/1811
+
 ## 0.12.2 - 2023-08-04
 
 ### Enhancements

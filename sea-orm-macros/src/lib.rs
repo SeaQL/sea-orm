@@ -579,6 +579,9 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 
 /// Convert a query result into the corresponding Model.
 ///
+/// ### Attributes
+/// - `skip`: Will not try to pull this field from the query result. And set it to the default value of the type.
+///
 /// ### Usage
 ///
 /// ```
@@ -588,10 +591,12 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 /// struct SelectResult {
 ///     name: String,
 ///     num_of_fruits: i32,
+///     #[sea_orm(skip)]
+///     skip_me: i32,
 /// }
 /// ```
 #[cfg(feature = "derive")]
-#[proc_macro_derive(FromQueryResult)]
+#[proc_macro_derive(FromQueryResult, attributes(sea_orm))]
 pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
     let DeriveInput {
         ident,
@@ -833,6 +838,19 @@ pub fn enum_iter(input: TokenStream) -> TokenStream {
         .into()
 }
 
+/// Implements traits for types that wrap a database value type.
+///
+/// This procedure macro implements `From<T> for Value`, `sea_orm::TryGetTable`, and
+/// `sea_query::ValueType` for the wrapper type `T`.
+///
+/// ## Usage
+///
+/// ```rust
+/// use sea_orm::DeriveValueType;
+///
+/// #[derive(DeriveValueType)]
+/// struct MyString(String);
+/// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveValueType, attributes(sea_orm))]
 pub fn derive_value_type(input: TokenStream) -> TokenStream {

@@ -143,6 +143,10 @@ where
             return Err(query_err("Relation is HasMany instead of HasOne"));
         }
 
+        if self.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let keys: Vec<ValueTuple> = self
             .iter()
             .map(|model: &M| extract_key(&rel_def.from_col, model))
@@ -154,24 +158,20 @@ where
 
         let data = stmt.all(db).await?;
 
-        let hashmap: HashMap<String, <R as EntityTrait>::Model> = data.into_iter().fold(
-            HashMap::<String, <R as EntityTrait>::Model>::new(),
-            |mut acc: HashMap<String, <R as EntityTrait>::Model>,
-             value: <R as EntityTrait>::Model| {
+        let hashmap: HashMap<ValueTuple, <R as EntityTrait>::Model> = data.into_iter().fold(
+            HashMap::new(),
+            |mut acc, value: <R as EntityTrait>::Model| {
                 {
                     let key = extract_key(&rel_def.to_col, &value);
-
-                    acc.insert(format!("{key:?}"), value);
+                    acc.insert(key, value);
                 }
 
                 acc
             },
         );
 
-        let result: Vec<Option<<R as EntityTrait>::Model>> = keys
-            .iter()
-            .map(|key| hashmap.get(&format!("{key:?}")).cloned())
-            .collect();
+        let result: Vec<Option<<R as EntityTrait>::Model>> =
+            keys.iter().map(|key| hashmap.get(key).cloned()).collect();
 
         Ok(result)
     }
@@ -194,6 +194,10 @@ where
             return Err(query_err("Relation is HasOne instead of HasMany"));
         }
 
+        if self.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let keys: Vec<ValueTuple> = self
             .iter()
             .map(|model: &M| extract_key(&rel_def.from_col, model))
@@ -205,11 +209,10 @@ where
 
         let data = stmt.all(db).await?;
 
-        let mut hashmap: HashMap<String, Vec<<R as EntityTrait>::Model>> =
+        let mut hashmap: HashMap<ValueTuple, Vec<<R as EntityTrait>::Model>> =
             keys.iter()
                 .fold(HashMap::new(), |mut acc, key: &ValueTuple| {
-                    acc.insert(format!("{key:?}"), Vec::new());
-
+                    acc.insert(key.clone(), Vec::new());
                     acc
                 });
 
@@ -218,7 +221,7 @@ where
                 let key = extract_key(&rel_def.to_col, &value);
 
                 let vec = hashmap
-                    .get_mut(&format!("{key:?}"))
+                    .get_mut(&key)
                     .expect("Failed at finding key on hashmap");
 
                 vec.push(value);
@@ -226,12 +229,7 @@ where
 
         let result: Vec<Vec<R::Model>> = keys
             .iter()
-            .map(|key: &ValueTuple| {
-                hashmap
-                    .get(&format!("{key:?}"))
-                    .cloned()
-                    .unwrap_or_default()
-            })
+            .map(|key: &ValueTuple| hashmap.get(key).cloned().unwrap_or_default())
             .collect();
 
         Ok(result)
@@ -269,20 +267,24 @@ where
                 )));
             }
 
+            if self.is_empty() {
+                return Ok(Vec::new());
+            }
+
             let pkeys: Vec<ValueTuple> = self
                 .iter()
                 .map(|model: &M| extract_key(&via_rel.from_col, model))
                 .collect();
 
             // Map of M::PK -> Vec<R::PK>
-            let mut keymap: HashMap<String, Vec<ValueTuple>> = Default::default();
+            let mut keymap: HashMap<ValueTuple, Vec<ValueTuple>> = Default::default();
 
             let keys: Vec<ValueTuple> = {
                 let condition = prepare_condition(&via_rel.to_tbl, &via_rel.to_col, &pkeys);
                 let stmt = V::find().filter(condition);
                 let data = stmt.all(db).await?;
                 data.into_iter().for_each(|model| {
-                    let pk = format!("{:?}", extract_key(&via_rel.to_col, &model));
+                    let pk = extract_key(&via_rel.to_col, &model);
                     let entry = keymap.entry(pk).or_default();
 
                     let fk = extract_key(&rel_def.from_col, &model);
@@ -297,11 +299,12 @@ where
             let stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
 
             let data = stmt.all(db).await?;
+
             // Map of R::PK -> R::Model
-            let data: HashMap<String, <R as EntityTrait>::Model> = data
+            let data: HashMap<ValueTuple, <R as EntityTrait>::Model> = data
                 .into_iter()
                 .map(|model| {
-                    let key = format!("{:?}", extract_key(&rel_def.to_col, &model));
+                    let key = extract_key(&rel_def.to_col, &model);
                     (key, model)
                 })
                 .collect();
@@ -309,14 +312,11 @@ where
             let result: Vec<Vec<R::Model>> = pkeys
                 .into_iter()
                 .map(|pkey| {
-                    let fkeys = keymap
-                        .get(&format!("{pkey:?}"))
-                        .cloned()
-                        .unwrap_or_default();
+                    let fkeys = keymap.get(&pkey).cloned().unwrap_or_default();
 
                     let models: Vec<_> = fkeys
                         .into_iter()
-                        .filter_map(|fkey| data.get(&format!("{fkey:?}")).cloned())
+                        .filter_map(|fkey| data.get(&fkey).cloned())
                         .collect();
 
                     models
@@ -587,14 +587,11 @@ mod tests {
         );
     }
 
-    // FIXME: load many with empty vector will panic
-    // #[tokio::test]
+    #[tokio::test]
     async fn test_load_many_empty() {
         use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, MockDatabase};
 
-        let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[fruit_model(1, Some(1)), fruit_model(2, Some(1))]])
-            .into_connection();
+        let db = MockDatabase::new(DbBackend::Postgres).into_connection();
 
         let cakes: Vec<cake::Model> = vec![];
 
@@ -610,9 +607,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_to_many_base() {
-        use sea_orm::{
-            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
-        };
+        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
@@ -633,9 +628,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_to_many_complex() {
-        use sea_orm::{
-            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
-        };
+        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
@@ -675,9 +668,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_load_many_to_many_empty() {
-        use sea_orm::{
-            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
-        };
+        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([
