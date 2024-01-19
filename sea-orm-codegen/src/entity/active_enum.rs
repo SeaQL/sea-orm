@@ -26,7 +26,18 @@ impl ActiveEnum {
             if v.chars().next().map(char::is_numeric).unwrap_or(false) {
                 format_ident!("_{}", v)
             } else {
-                format_ident!("{}", v.to_upper_camel_case())
+                let variant_name = v.to_upper_camel_case();
+                if variant_name.is_empty() {
+                    println!("Warning: item '{}' in the enumeration '{}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.", v, enum_name);
+                    let mut utf_string = String::new();
+                    for c in v.chars() {
+                        utf_string.push('U');
+                        utf_string.push_str(&format!("{:04X}", c as u32));
+                    }
+                    format_ident!("{}", utf_string)
+                } else {
+                    format_ident!("{}", variant_name)
+                }
             }
         });
 
@@ -218,6 +229,55 @@ mod tests {
                     Heads,
                     #[sea_orm(string_value = "TAILS")]
                     Tails,
+                }
+            )
+            .to_string()
+        )
+    }
+
+    #[test]
+    fn test_enum_variant_utf8_encode() {
+        assert_eq!(
+            ActiveEnum {
+                enum_name: Alias::new("ty").into_iden(),
+                values: vec![
+                    "Question",
+                    "QuestionsAdditional",
+                    "Answer",
+                    "Other",
+                    "/",
+                    "//",
+                    "A-B-C",
+                ]
+                .into_iter()
+                .map(|variant| Alias::new(variant).into_iden())
+                .collect(),
+            }
+            .impl_active_enum(
+                &WithSerde::None,
+                true,
+                &TokenStream::new(),
+                &TokenStream::new(),
+            )
+            .to_string(),
+            quote!(
+                #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
+                #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "ty")]
+                pub enum Ty {
+                    #[sea_orm(string_value = "Question")]
+                    Question,
+                    #[sea_orm(string_value = "QuestionsAdditional")]
+                    QuestionsAdditional,
+                    #[sea_orm(string_value = "Answer")]
+                    Answer,
+                    #[sea_orm(string_value = "Other")]
+                    Other,
+                    #[sea_orm(string_value = "/")]
+                    U002F,
+                    #[sea_orm(string_value = "//")]
+                    U002FU002F,
+                    #[sea_orm(string_value = "A-B-C")]
+                    ABC,
                 }
             )
             .to_string()
