@@ -1410,6 +1410,86 @@ mod tests {
                     name: "id".to_owned(),
                 }],
             },
+            Entity {
+                table_name: "parent".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "id1".to_owned(),
+                        col_type: ColumnType::Integer,
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "id2".to_owned(),
+                        col_type: ColumnType::Integer,
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                ],
+                relations: vec![Relation {
+                    ref_table: "child".to_owned(),
+                    columns: vec![],
+                    ref_columns: vec![],
+                    rel_type: RelationType::HasMany,
+                    on_delete: None,
+                    on_update: None,
+                    self_referencing: false,
+                    num_suffix: 0,
+                    impl_related: true,
+                }],
+                conjunct_relations: vec![],
+                primary_keys: vec![
+                    PrimaryKey {
+                        name: "id1".to_owned(),
+                    },
+                    PrimaryKey {
+                        name: "id2".to_owned(),
+                    },
+                ],
+            },
+            Entity {
+                table_name: "child".to_owned(),
+                columns: vec![
+                    Column {
+                        name: "id".to_owned(),
+                        col_type: ColumnType::Integer,
+                        auto_increment: true,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "parent_id1".to_owned(),
+                        col_type: ColumnType::Integer,
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                    Column {
+                        name: "parent_id2".to_owned(),
+                        col_type: ColumnType::Integer,
+                        auto_increment: false,
+                        not_null: true,
+                        unique: false,
+                    },
+                ],
+                relations: vec![Relation {
+                    ref_table: "parent".to_owned(),
+                    columns: vec!["parent_id1".to_owned(), "parent_id2".to_owned()],
+                    ref_columns: vec!["id1".to_owned(), "id2".to_owned()],
+                    rel_type: RelationType::BelongsTo,
+                    on_delete: None,
+                    on_update: None,
+                    self_referencing: false,
+                    num_suffix: 0,
+                    impl_related: true,
+                }],
+                conjunct_relations: vec![],
+                primary_keys: vec![PrimaryKey {
+                    name: "id".to_owned(),
+                }],
+            },
         ]
     }
 
@@ -1434,7 +1514,7 @@ mod tests {
     #[test]
     fn test_gen_expanded_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 11] = [
+        const ENTITY_FILES: [&str; 13] = [
             include_str!("../../tests/expanded/cake.rs"),
             include_str!("../../tests/expanded/cake_filling.rs"),
             include_str!("../../tests/expanded/cake_filling_price.rs"),
@@ -1446,8 +1526,10 @@ mod tests {
             include_str!("../../tests/expanded/cake_with_double.rs"),
             include_str!("../../tests/expanded/collection.rs"),
             include_str!("../../tests/expanded/collection_float.rs"),
+            include_str!("../../tests/expanded/parent.rs"),
+            include_str!("../../tests/expanded/child.rs"),
         ];
-        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 11] = [
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 13] = [
             include_str!("../../tests/expanded_with_schema_name/cake.rs"),
             include_str!("../../tests/expanded_with_schema_name/cake_filling.rs"),
             include_str!("../../tests/expanded_with_schema_name/cake_filling_price.rs"),
@@ -1459,6 +1541,8 @@ mod tests {
             include_str!("../../tests/expanded_with_schema_name/cake_with_double.rs"),
             include_str!("../../tests/expanded_with_schema_name/collection.rs"),
             include_str!("../../tests/expanded_with_schema_name/collection_float.rs"),
+            include_str!("../../tests/expanded_with_schema_name/parent.rs"),
+            include_str!("../../tests/expanded_with_schema_name/child.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
@@ -1535,7 +1619,7 @@ mod tests {
     #[test]
     fn test_gen_compact_code_blocks() -> io::Result<()> {
         let entities = setup();
-        const ENTITY_FILES: [&str; 11] = [
+        const ENTITY_FILES: [&str; 13] = [
             include_str!("../../tests/compact/cake.rs"),
             include_str!("../../tests/compact/cake_filling.rs"),
             include_str!("../../tests/compact/cake_filling_price.rs"),
@@ -1547,8 +1631,10 @@ mod tests {
             include_str!("../../tests/compact/cake_with_double.rs"),
             include_str!("../../tests/compact/collection.rs"),
             include_str!("../../tests/compact/collection_float.rs"),
+            include_str!("../../tests/compact/parent.rs"),
+            include_str!("../../tests/compact/child.rs"),
         ];
-        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 11] = [
+        const ENTITY_FILES_WITH_SCHEMA_NAME: [&str; 13] = [
             include_str!("../../tests/compact_with_schema_name/cake.rs"),
             include_str!("../../tests/compact_with_schema_name/cake_filling.rs"),
             include_str!("../../tests/compact_with_schema_name/cake_filling_price.rs"),
@@ -1560,6 +1646,8 @@ mod tests {
             include_str!("../../tests/compact_with_schema_name/cake_with_double.rs"),
             include_str!("../../tests/compact_with_schema_name/collection.rs"),
             include_str!("../../tests/compact_with_schema_name/collection_float.rs"),
+            include_str!("../../tests/compact_with_schema_name/parent.rs"),
+            include_str!("../../tests/compact_with_schema_name/child.rs"),
         ];
 
         assert_eq!(entities.len(), ENTITY_FILES.len());
