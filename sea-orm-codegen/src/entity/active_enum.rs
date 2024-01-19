@@ -116,4 +116,48 @@ mod tests {
             .to_string()
         )
     }
+
+    #[test]
+    fn test_enum_variant_utf8_encode() {
+        assert_eq!(
+            ActiveEnum {
+                enum_name: Alias::new("ty").into_iden(),
+                values: vec![
+                    "Question",
+                    "QuestionsAdditional",
+                    "Answer",
+                    "Other",
+                    "/",
+                    "//",
+                    "A-B-C",
+                ]
+                .into_iter()
+                .map(|variant| Alias::new(variant).into_iden())
+                .collect(),
+            }
+            .impl_active_enum(&WithSerde::None, true)
+            .to_string(),
+            quote!(
+                #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Copy)]
+                #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "ty")]
+                pub enum Ty {
+                    #[sea_orm(string_value = "Question")]
+                    Question,
+                    #[sea_orm(string_value = "QuestionsAdditional")]
+                    QuestionsAdditional,
+                    #[sea_orm(string_value = "Answer")]
+                    Answer,
+                    #[sea_orm(string_value = "Other")]
+                    Other,
+                    #[sea_orm(string_value = "/")]
+                    U002F,
+                    #[sea_orm(string_value = "//")]
+                    U002FU002F,
+                    #[sea_orm(string_value = "A-B-C")]
+                    ABC,
+                }
+            )
+            .to_string()
+        )
+    }
 }
