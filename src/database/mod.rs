@@ -321,7 +321,7 @@ impl ConnectOptions {
         self
     }
 
-    /// If true, the connection will be pinged after acquiring from the pool (default true).
+    /// If true, the connection will be pinged upon acquiring from the pool (default true).
     pub fn test_before_acquire(&mut self, value: bool) -> &mut Self {
         self.test_before_acquire = value;
         self
