@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * [sea-orm-cli] Fix entity generation for non-alphanumeric enum variants https://github.com/SeaQL/sea-orm/pull/1821
 * [sea-orm-cli] Fix entity generation for relations with composite keys https://github.com/SeaQL/sea-orm/pull/2071
 
+### Enhancements
+
+* Added `ConnectOptions::test_before_acquire`
+
 ## 0.12.11 - 2023-01-14
 
 ### New Features
