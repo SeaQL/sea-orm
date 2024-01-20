@@ -62,6 +62,7 @@ pub struct ConnectOptions {
     pub(crate) sqlcipher_key: Option<Cow<'static, str>>,
     /// Schema search path (PostgreSQL only)
     pub(crate) schema_search_path: Option<String>,
+    pub(crate) test_before_acquire: bool,
 }
 
 impl Database {
@@ -155,6 +156,7 @@ impl ConnectOptions {
             sqlx_slow_statements_logging_threshold: Duration::from_secs(1),
             sqlcipher_key: None,
             schema_search_path: None,
+            test_before_acquire: true,
         }
     }
 
@@ -183,6 +185,7 @@ impl ConnectOptions {
         if let Some(max_lifetime) = self.max_lifetime {
             opt = opt.max_lifetime(Some(max_lifetime));
         }
+        opt = opt.test_before_acquire(self.test_before_acquire);
         opt
     }
 
@@ -268,14 +271,14 @@ impl ConnectOptions {
         self.sqlx_logging
     }
 
-    /// Set SQLx statement logging level (default INFO)
+    /// Set SQLx statement logging level (default INFO).
     /// (ignored if `sqlx_logging` is `false`)
     pub fn sqlx_logging_level(&mut self, level: log::LevelFilter) -> &mut Self {
         self.sqlx_logging_level = level;
         self
     }
 
-    /// Set SQLx slow statements logging level and duration threshold
+    /// Set SQLx slow statements logging level and duration threshold (default `LevelFilter::Off`).
     /// (ignored if `sqlx_logging` is `false`)
     pub fn sqlx_slow_statements_logging_settings(
         &mut self,
@@ -315,6 +318,12 @@ impl ConnectOptions {
         T: Into<String>,
     {
         self.schema_search_path = Some(schema_search_path.into());
+        self
+    }
+
+    /// If true, the connection will be pinged after acquiring from the pool (default true).
+    pub fn test_before_acquire(&mut self, value: bool) -> &mut Self {
+        self.test_before_acquire = value;
         self
     }
 }
