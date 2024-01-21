@@ -1,6 +1,6 @@
 [package]
 name = "sea-orm-rocket"
-version = "0.5.3"
+version = "0.5.4"
 authors = ["Sergio Benitez <sb@sergio.bz>", "Jeb Rosen <jeb@jebrosen.com>"]
 description = "SeaORM Rocket support crate"
 repository = "https://github.com/SeaQL/sea-orm"

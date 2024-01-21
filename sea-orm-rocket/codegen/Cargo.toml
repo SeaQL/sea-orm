@@ -1,6 +1,6 @@
 [package]
 name = "sea-orm-rocket-codegen"
-version = "0.5.1"
+version = "0.5.4"
 authors = ["Sergio Benitez <sb@sergio.bz>", "Jeb Rosen <jeb@jebrosen.com>"]
 description = "Procedural macros for sea_orm_rocket."
 repository = "https://github.com/SergioBenitez/Rocket/contrib/db_pools"
