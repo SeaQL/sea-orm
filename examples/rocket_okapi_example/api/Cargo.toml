@@ -25,7 +25,7 @@ path = "../../../sea-orm-rocket/lib" # remove this line in your own project and 
 features = [
   "rocket_okapi",
 ] # enables rocket_okapi so to have open api features enabled
-# version = "0.5.1"
+# version = "0.5"
 
 [dependencies.rocket_okapi]
 version = "0.8.0-rc.2"
