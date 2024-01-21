@@ -17,6 +17,6 @@ devise = "0.3"
 quote = "1"
 
 [dev-dependencies]
-rocket = { version = "0.5.0-rc.4", default-features = false }
+rocket = { version = "0.5.0", default-features = false }
 trybuild = "1.0"
 version_check = "0.9"
