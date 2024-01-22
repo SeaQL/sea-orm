@@ -13,4 +13,4 @@ rocket = { version = "0.5.0", features = ["json"] }
 
 [dependencies.sea-orm]
 path = "../../../" # remove this line in your own project
-version = "0.12.11" # sea-orm version
+version = "0.12.12" # sea-orm version
