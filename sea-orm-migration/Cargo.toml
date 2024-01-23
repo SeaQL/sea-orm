@@ -25,7 +25,7 @@ clap = { version = "4.3", features = ["env", "derive"], optional = true }
 dotenvy = { version = "0.15", default-features = false, optional = true }
 sea-orm = { version = "0.12.12", path = "../", default-features = false, features = ["macros"] }
 sea-orm-cli = { version = "0.12.12", path = "../sea-orm-cli", default-features = false, optional = true }
-sea-schema = { version = "0.14.1" }
+sea-schema = { version = "0.14.1", git = "https://github.com/seaql/sea-schema", branch = "sqlite-types" }
 tracing = { version = "0.1", default-features = false, features = ["log"] }
 tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
 futures = { version = "0.3", default-features = false, features = ["std"] }
