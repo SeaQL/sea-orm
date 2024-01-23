@@ -481,13 +481,13 @@ impl TryGetable for Decimal {
                 .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => {
-                let val: Option<f64> = row
+                let val: Option<&str> = row
                     .try_get(idx.as_sqlx_sqlite_index())
                     .map_err(sqlx_error_to_query_err)?;
-                match val {
+                match dbg!(val) {
                     Some(v) => Decimal::try_from(v).map_err(|e| {
                         DbErr::TryIntoErr {
-                            from: "f64",
+                            from: "&str",
                             into: "Decimal",
                             source: Box::new(e),
                         }
@@ -534,13 +534,14 @@ impl TryGetable for BigDecimal {
                 .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
             #[cfg(feature = "sqlx-sqlite")]
             QueryResultRow::SqlxSqlite(row) => {
-                let val: Option<f64> = row
+                use std::str::FromStr;
+                let val: Option<&str> = row
                     .try_get(idx.as_sqlx_sqlite_index())
                     .map_err(sqlx_error_to_query_err)?;
                 match val {
-                    Some(v) => BigDecimal::try_from(v).map_err(|e| {
+                    Some(v) => BigDecimal::from_str(v).map_err(|e| {
                         DbErr::TryIntoErr {
-                            from: "f64",
+                            from: "&str",
                             into: "BigDecimal",
                             source: Box::new(e),
                         }

@@ -197,13 +197,13 @@ where
 {
     let orm_column_def = column.def();
     let types = match orm_column_def.col_type {
-        ColumnType::Enum { name, variants } => match backend {
+        ColumnType::Enum { ref name, ref variants } => match backend {
             DbBackend::MySql => {
                 let variants: Vec<String> = variants.iter().map(|v| v.to_string()).collect();
                 ColumnType::custom(format!("ENUM('{}')", variants.join("', '")).as_str())
             }
             DbBackend::Postgres => ColumnType::Custom(SeaRc::clone(&name)),
-            DbBackend::Sqlite => ColumnType::Text,
+            DbBackend::Sqlite => orm_column_def.col_type,
         },
         _ => orm_column_def.col_type,
     };
