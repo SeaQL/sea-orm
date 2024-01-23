@@ -6,7 +6,7 @@ use pretty_assertions::assert_eq;
 pub use rust_decimal::prelude::*;
 pub use rust_decimal_macros::dec;
 use sea_orm::{entity::*, query::*, DbErr, DerivePartialModel, FromQueryResult};
-use sea_query::{Expr, Func, SimpleExpr};
+use sea_query::{Expr, Func, SimpleExpr, Alias, IntoIden};
 pub use uuid::Uuid;
 
 // Run the test locally:
@@ -355,9 +355,9 @@ pub async fn group_by() {
         .select_only()
         .column(customer::Column::Name)
         .column_as(order::Column::Total.count(), "number_orders")
-        .column_as(order::Column::Total.sum(), "total_spent")
-        .column_as(order::Column::Total.min(), "min_spent")
-        .column_as(order::Column::Total.max(), "max_spent")
+        .column_as(Expr::expr(Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).sum()).cast_as(Alias::new("text")), "total_spent")
+        .column_as(Expr::expr(Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).min()).cast_as(Alias::new("text")), "min_spent")
+        .column_as(Expr::expr(Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).max()).cast_as(Alias::new("text")), "max_spent")
         .group_by(customer::Column::Name);
 
     let result = select
@@ -481,7 +481,7 @@ pub async fn having() {
         .column_as(order::Column::Total, "order_total")
         .group_by(customer::Column::Name)
         .group_by(order::Column::Total)
-        .having(order::Column::Total.gt(dec!(90.00)))
+        .having(Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).gt(dec!(90.00)))
         .into_model::<SelectResult>()
         .all(&ctx.db)
         .await
