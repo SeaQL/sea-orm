@@ -579,7 +579,7 @@ pub async fn create_baker_cake(db: &DatabaseConnection) -> Result<(), DbErr> {
         });
         cakes.push(cake::ActiveModel {
             name: Set(c.to_ascii_lowercase().to_string()),
-            price: Set(rust_decimal_macros::dec!(10.25)),
+            price: Set(rust_dec(10.25)),
             gluten_free: Set(false),
             serial: Set(Uuid::new_v4()),
             bakery_id: Set(Some((c as i32 - 65) % 10 + 1)),

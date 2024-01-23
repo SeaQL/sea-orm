@@ -1,8 +1,7 @@
 pub mod common;
 
-use common::{features::*, TestContext};
+use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use rust_decimal_macros::dec;
 use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 use std::str::FromStr;
 
@@ -24,7 +23,7 @@ async fn main() -> Result<(), DbErr> {
 pub async fn create_and_update_pi(db: &DatabaseConnection) -> Result<(), DbErr> {
     let pi = pi::Model {
         id: 1,
-        decimal: dec!(3.1415926536),
+        decimal: rust_dec(3.1415926536),
         big_decimal: BigDecimal::from_str("3.1415926536").unwrap(),
         decimal_opt: None,
         big_decimal_opt: None,
@@ -37,7 +36,7 @@ pub async fn create_and_update_pi(db: &DatabaseConnection) -> Result<(), DbErr> 
     assert_eq!(model, Some(pi.clone()));
 
     let res = pi::ActiveModel {
-        decimal_opt: Set(Some(dec!(3.1415926536))),
+        decimal_opt: Set(Some(rust_dec(3.1415926536))),
         big_decimal_opt: Set(Some(BigDecimal::from_str("3.1415926536").unwrap())),
         ..pi.clone().into_active_model()
     }
@@ -50,9 +49,9 @@ pub async fn create_and_update_pi(db: &DatabaseConnection) -> Result<(), DbErr> 
         model,
         Some(pi::Model {
             id: 1,
-            decimal: dec!(3.1415926536),
+            decimal: rust_dec(3.1415926536),
             big_decimal: BigDecimal::from_str("3.1415926536").unwrap(),
-            decimal_opt: Some(dec!(3.1415926536)),
+            decimal_opt: Some(rust_dec(3.1415926536)),
             big_decimal_opt: Some(BigDecimal::from_str("3.1415926536").unwrap()),
         })
     );
