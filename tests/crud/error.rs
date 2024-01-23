@@ -1,5 +1,4 @@
 pub use super::*;
-use rust_decimal_macros::dec;
 use sea_orm::error::*;
 #[cfg(any(
     feature = "sqlx-mysql",
@@ -12,7 +11,7 @@ use uuid::Uuid;
 pub async fn test_cake_error_sqlx(db: &DbConn) {
     let mud_cake = cake::ActiveModel {
         name: Set("Moldy Cake".to_owned()),
-        price: Set(dec!(10.25)),
+        price: Set(rust_dec(10.25)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
         bakery_id: Set(None),

@@ -1,6 +1,5 @@
 pub use super::*;
 use chrono::offset::Utc;
-use rust_decimal_macros::dec;
 use uuid::Uuid;
 
 pub async fn test_create_lineitem(db: &DbConn) {
@@ -34,7 +33,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
     // Cake
     let mud_cake = cake::ActiveModel {
         name: Set("Mud Cake".to_owned()),
-        price: Set(dec!(10.25)),
+        price: Set(rust_dec(10.25)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
         bakery_id: Set(Some(bakery_insert_res.last_insert_id)),
@@ -75,7 +74,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
     let order_1 = order::ActiveModel {
         bakery_id: Set(bakery_insert_res.last_insert_id),
         customer_id: Set(customer_insert_res.last_insert_id),
-        total: Set(dec!(7.55)),
+        total: Set(rust_dec(7.55)),
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
@@ -88,7 +87,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
     let lineitem_1 = lineitem::ActiveModel {
         cake_id: Set(cake_insert_res.last_insert_id),
         order_id: Set(order_insert_res.last_insert_id),
-        price: Set(dec!(7.55)),
+        price: Set(rust_dec(7.55)),
         quantity: Set(1),
         ..Default::default()
     };
@@ -106,7 +105,7 @@ pub async fn test_create_lineitem(db: &DbConn) {
     assert!(lineitem.is_some());
     let lineitem_model = lineitem.unwrap();
 
-    assert_eq!(lineitem_model.price, dec!(7.55));
+    assert_eq!(lineitem_model.price, rust_dec(7.55));
 
     let cake: Option<cake::Model> = Cake::find_by_id(lineitem_model.cake_id)
         .one(db)

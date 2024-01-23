@@ -1,3 +1,4 @@
+use crate::common::setup::rust_dec;
 use sea_orm::{entity::prelude::*, ConnectionTrait};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -63,8 +64,7 @@ impl ActiveModelBehavior for ActiveModel {
     where
         C: ConnectionTrait,
     {
-        use rust_decimal_macros::dec;
-        if self.price.as_ref() == &dec!(0) {
+        if self.price.as_ref() == &rust_dec(0) {
             Err(DbErr::Custom(format!(
                 "[before_save] Invalid Price, insert: {insert}"
             )))
@@ -77,8 +77,7 @@ impl ActiveModelBehavior for ActiveModel {
     where
         C: ConnectionTrait,
     {
-        use rust_decimal_macros::dec;
-        if model.price < dec!(0) {
+        if model.price < rust_dec(0) {
             Err(DbErr::Custom(format!(
                 "[after_save] Invalid Price, insert: {insert}"
             )))

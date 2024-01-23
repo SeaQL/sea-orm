@@ -358,7 +358,6 @@ pub async fn transaction_closure_rollback() -> Result<(), DbErr> {
     feature = "sqlx-postgres"
 ))]
 pub async fn transaction_with_active_model_behaviour() -> Result<(), DbErr> {
-    use rust_decimal_macros::dec;
     let ctx = TestContext::new("transaction_with_active_model_behaviour_test").await;
     create_tables(&ctx.db).await?;
 
@@ -366,7 +365,7 @@ pub async fn transaction_with_active_model_behaviour() -> Result<(), DbErr> {
         assert_eq!(
             cake::ActiveModel {
                 name: Set("Cake with invalid price".to_owned()),
-                price: Set(dec!(0)),
+                price: Set(rust_dec(0)),
                 gluten_free: Set(false),
                 ..Default::default()
             }
@@ -382,7 +381,7 @@ pub async fn transaction_with_active_model_behaviour() -> Result<(), DbErr> {
         assert_eq!(
             cake::ActiveModel {
                 name: Set("Cake with invalid price".to_owned()),
-                price: Set(dec!(-10)),
+                price: Set(rust_dec(-10)),
                 gluten_free: Set(false),
                 ..Default::default()
             }
@@ -397,7 +396,7 @@ pub async fn transaction_with_active_model_behaviour() -> Result<(), DbErr> {
 
         let readonly_cake_1 = cake::ActiveModel {
             name: Set("Readonly cake (err_on_before_delete)".to_owned()),
-            price: Set(dec!(10)),
+            price: Set(rust_dec(10)),
             gluten_free: Set(true),
             ..Default::default()
         }
@@ -417,7 +416,7 @@ pub async fn transaction_with_active_model_behaviour() -> Result<(), DbErr> {
 
         let readonly_cake_2 = cake::ActiveModel {
             name: Set("Readonly cake (err_on_after_delete)".to_owned()),
-            price: Set(dec!(10)),
+            price: Set(rust_dec(10)),
             gluten_free: Set(true),
             ..Default::default()
         }

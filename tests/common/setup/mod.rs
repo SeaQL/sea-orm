@@ -158,3 +158,8 @@ pub async fn create_table_without_asserts(
     }
     db.execute(builder.build(create)).await
 }
+
+pub fn rust_dec<T: ToString>(v: T) -> rust_decimal::Decimal {
+    use std::str::FromStr;
+    rust_decimal::Decimal::from_str(&v.to_string()).unwrap()
+}

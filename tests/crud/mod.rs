@@ -15,6 +15,7 @@ pub use error::*;
 pub use updates::*;
 
 pub use super::common::bakery_chain::*;
+pub use crate::common::setup::rust_dec;
 use sea_orm::{entity::*, DbConn};
 
 pub async fn test_create_bakery(db: &DbConn) {
