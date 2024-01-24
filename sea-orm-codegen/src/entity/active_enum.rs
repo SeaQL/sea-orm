@@ -2,6 +2,7 @@ use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use sea_query::DynIden;
+use std::fmt::Write;
 
 use crate::WithSerde;
 
@@ -29,12 +30,15 @@ impl ActiveEnum {
                 let variant_name = v.to_upper_camel_case();
                 if variant_name.is_empty() {
                     println!("Warning: item '{}' in the enumeration '{}' cannot be converted into a valid Rust enum member name. It will be converted to its corresponding UTF-8 encoding. You can modify it later as needed.", v, enum_name);
-                    let mut utf_string = String::new();
+                    let mut ss = String::new();
                     for c in v.chars() {
-                        utf_string.push('U');
-                        utf_string.push_str(&format!("{:04X}", c as u32));
+                        if c.len_utf8() > 1 {
+                            write!(&mut ss, "{c}").unwrap();
+                        } else {
+                            write!(&mut ss, "U{:04X}", c as u32).unwrap();
+                        }
                     }
-                    format_ident!("{}", utf_string)
+                    format_ident!("{}", ss)
                 } else {
                     format_ident!("{}", variant_name)
                 }
@@ -248,6 +252,7 @@ mod tests {
                     "/",
                     "//",
                     "A-B-C",
+                    "你好",
                 ]
                 .into_iter()
                 .map(|variant| Alias::new(variant).into_iden())
@@ -278,6 +283,8 @@ mod tests {
                     U002FU002F,
                     #[sea_orm(string_value = "A-B-C")]
                     ABC,
+                    #[sea_orm(string_value = "你好")]
+                    你好,
                 }
             )
             .to_string()
