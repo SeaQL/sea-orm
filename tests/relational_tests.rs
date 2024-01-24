@@ -349,41 +349,15 @@ pub async fn group_by() {
         max_spent: Option<Decimal>,
     }
 
-    let mut select = customer::Entity::find()
+    let select = customer::Entity::find()
         .left_join(order::Entity)
         .select_only()
         .column(customer::Column::Name)
-        .column_as(order::Column::Total.count(), "number_orders");
-    select = if cfg!(feature = "sqlx-sqlite") {
-        select
-            .column_as(
-                Expr::expr(
-                    Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).sum(),
-                )
-                .cast_as(Alias::new("text")),
-                "total_spent",
-            )
-            .column_as(
-                Expr::expr(
-                    Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).min(),
-                )
-                .cast_as(Alias::new("text")),
-                "min_spent",
-            )
-            .column_as(
-                Expr::expr(
-                    Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).max(),
-                )
-                .cast_as(Alias::new("text")),
-                "max_spent",
-            )
-    } else {
-        select
-            .column_as(order::Column::Total.sum(), "total_spent")
-            .column_as(order::Column::Total.min(), "min_spent")
-            .column_as(order::Column::Total.max(), "max_spent")
-    };
-    select = select.group_by(customer::Column::Name);
+        .column_as(order::Column::Total.count(), "number_orders")
+        .column_as(order::Column::Total.sum(), "total_spent")
+        .column_as(order::Column::Total.min(), "min_spent")
+        .column_as(order::Column::Total.max(), "max_spent")
+        .group_by(customer::Column::Name);
 
     let result = select
         .into_model::<SelectResult>()
@@ -499,22 +473,14 @@ pub async fn having() {
         order_total: Option<Decimal>,
     }
 
-    let mut select = customer::Entity::find()
+    let results = customer::Entity::find()
         .inner_join(order::Entity)
         .select_only()
         .column(customer::Column::Name)
         .column_as(order::Column::Total, "order_total")
         .group_by(customer::Column::Name)
-        .group_by(order::Column::Total);
-    select = if cfg!(feature = "sqlx-sqlite") {
-        select.having(
-            Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real")))
-                .gt(rust_dec(90.00)),
-        )
-    } else {
-        select.having(order::Column::Total.gt(rust_dec(90.00)))
-    };
-    let results = select
+        .group_by(order::Column::Total)
+        .having(order::Column::Total.gt(rust_dec(90.00)))
         .into_model::<SelectResult>()
         .all(&ctx.db)
         .await

@@ -38,7 +38,7 @@ pub async fn test_update_cake(db: &DbConn) {
     assert_eq!(cake_model.price, rust_dec(10.25));
     assert!(!cake_model.gluten_free);
 
-    let large_number = (u64::MAX as u128 + 1).to_string().parse().unwrap();
+    let large_number = "1234_5678_9012.3456".parse().unwrap();
 
     let mut cake_am: cake::ActiveModel = cake_model.into();
     cake_am.name = Set("Extra chocolate mud cake".to_owned());

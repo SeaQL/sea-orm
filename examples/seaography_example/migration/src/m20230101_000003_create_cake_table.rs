@@ -18,7 +18,7 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Cake::Name).string().not_null())
-                    .col(ColumnDef::new(Cake::Price).decimal_len(19, 4).not_null())
+                    .col(ColumnDef::new(Cake::Price).decimal_len(16, 4).not_null())
                     .col(ColumnDef::new(Cake::BakeryId).integer())
                     .foreign_key(
                         ForeignKey::create()
