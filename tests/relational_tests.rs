@@ -6,7 +6,7 @@ use pretty_assertions::assert_eq;
 pub use rust_decimal::prelude::*;
 pub use rust_decimal_macros::dec;
 use sea_orm::{entity::*, query::*, DbErr, DerivePartialModel, FromQueryResult};
-use sea_query::{Expr, Func, SimpleExpr, Alias, IntoIden};
+use sea_query::{Expr, Func, SimpleExpr, Alias};
 pub use uuid::Uuid;
 
 // Run the test locally:
@@ -350,15 +350,21 @@ pub async fn group_by() {
         max_spent: Option<Decimal>,
     }
 
-    let select = customer::Entity::find()
+    let mut select = customer::Entity::find()
         .left_join(order::Entity)
         .select_only()
         .column(customer::Column::Name)
-        .column_as(order::Column::Total.count(), "number_orders")
-        .column_as(Expr::expr(Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).sum()).cast_as(Alias::new("text")), "total_spent")
-        .column_as(Expr::expr(Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).min()).cast_as(Alias::new("text")), "min_spent")
-        .column_as(Expr::expr(Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).max()).cast_as(Alias::new("text")), "max_spent")
-        .group_by(customer::Column::Name);
+        .column_as(order::Column::Total.count(), "number_orders");
+    if cfg!(feature = "sqlx-sqlite") {
+        select = select.column_as(Expr::expr(Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).sum()).cast_as(Alias::new("text")), "total_spent")
+            .column_as(Expr::expr(Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).min()).cast_as(Alias::new("text")), "min_spent")
+            .column_as(Expr::expr(Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).max()).cast_as(Alias::new("text")), "max_spent");
+    } else {
+        select = select.column_as(order::Column::Total.sum(), "total_spent")
+            .column_as(order::Column::Total.min(), "min_spent")
+            .column_as(order::Column::Total.max(), "max_spent");
+    }
+    select = select.group_by(customer::Column::Name);
 
     let result = select
         .into_model::<SelectResult>()
@@ -474,15 +480,19 @@ pub async fn having() {
         order_total: Option<Decimal>,
     }
 
-    let results = customer::Entity::find()
+    let mut select = customer::Entity::find()
         .inner_join(order::Entity)
         .select_only()
         .column(customer::Column::Name)
         .column_as(order::Column::Total, "order_total")
         .group_by(customer::Column::Name)
-        .group_by(order::Column::Total)
-        .having(Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).gt(dec!(90.00)))
-        .into_model::<SelectResult>()
+        .group_by(order::Column::Total);
+    if cfg!(feature = "sqlx-sqlite") {
+        select = select.having(Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).gt(dec!(90.00)));
+    } else {
+        select = select.having(order::Column::Total.gt(dec!(90.00)));
+    }
+    let results = select.into_model::<SelectResult>()
         .all(&ctx.db)
         .await
         .unwrap();
