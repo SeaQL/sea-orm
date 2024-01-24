@@ -509,11 +509,10 @@ pub async fn having() {
         .group_by(order::Column::Total);
     select = if cfg!(feature = "sqlx-sqlite") {
         select.having(
-            Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real")))
-                .gt(rust_dec(90.00)),
+            Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).gt(dec!(90.00)),
         )
     } else {
-        select.having(order::Column::Total.gt(rust_dec(90.00)))
+        select.having(order::Column::Total.gt(dec!(90.00)))
     };
     let results = select
         .into_model::<SelectResult>()
