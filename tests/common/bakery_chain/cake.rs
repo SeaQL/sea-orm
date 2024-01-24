@@ -6,7 +6,7 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub name: String,
-    #[sea_orm(column_type = "Decimal(Some((19, 4)))")]
+    #[sea_orm(column_type = "Decimal(Some((20, 4)))")]
     pub price: Decimal,
     pub bakery_id: Option<i32>,
     pub gluten_free: bool,
