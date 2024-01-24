@@ -205,7 +205,7 @@ where
                 let variants: Vec<String> = variants.iter().map(|v| v.to_string()).collect();
                 ColumnType::custom(format!("ENUM('{}')", variants.join("', '")).as_str())
             }
-            DbBackend::Postgres => ColumnType::Custom(SeaRc::clone(&name)),
+            DbBackend::Postgres => ColumnType::Custom(SeaRc::clone(name)),
             DbBackend::Sqlite => orm_column_def.col_type,
         },
         _ => orm_column_def.col_type,
