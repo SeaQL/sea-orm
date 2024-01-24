@@ -355,8 +355,8 @@ pub async fn group_by() {
         .select_only()
         .column(customer::Column::Name)
         .column_as(order::Column::Total.count(), "number_orders");
-    if cfg!(feature = "sqlx-sqlite") {
-        select = select
+    select = if cfg!(feature = "sqlx-sqlite") {
+        select
             .column_as(
                 Expr::expr(
                     Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).sum(),
@@ -377,13 +377,13 @@ pub async fn group_by() {
                 )
                 .cast_as(Alias::new("text")),
                 "max_spent",
-            );
+            )
     } else {
-        select = select
+        select
             .column_as(order::Column::Total.sum(), "total_spent")
             .column_as(order::Column::Total.min(), "min_spent")
-            .column_as(order::Column::Total.max(), "max_spent");
-    }
+            .column_as(order::Column::Total.max(), "max_spent")
+    };
     select = select.group_by(customer::Column::Name);
 
     let result = select
@@ -507,13 +507,14 @@ pub async fn having() {
         .column_as(order::Column::Total, "order_total")
         .group_by(customer::Column::Name)
         .group_by(order::Column::Total);
-    if cfg!(feature = "sqlx-sqlite") {
-        select = select.having(
-            Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).gt(dec!(90.00)),
-        );
+    select = if cfg!(feature = "sqlx-sqlite") {
+        select.having(
+            Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real")))
+                .gt(rust_dec(90.00)),
+        )
     } else {
-        select = select.having(order::Column::Total.gt(dec!(90.00)));
-    }
+        select.having(order::Column::Total.gt(rust_dec(90.00)))
+    };
     let results = select
         .into_model::<SelectResult>()
         .all(&ctx.db)
