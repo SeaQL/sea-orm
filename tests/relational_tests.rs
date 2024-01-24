@@ -4,7 +4,6 @@ pub use chrono::offset::Utc;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
 pub use rust_decimal::prelude::*;
-pub use rust_decimal_macros::dec;
 use sea_orm::{entity::*, query::*, DbErr, DerivePartialModel, FromQueryResult};
 use sea_query::{Alias, Expr, Func, SimpleExpr};
 pub use uuid::Uuid;
@@ -151,7 +150,7 @@ pub async fn right_join() {
     let _order = order::ActiveModel {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
-        total: Set(dec!(15.10)),
+        total: Set(rust_dec(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
 
         ..Default::default()
@@ -180,7 +179,7 @@ pub async fn right_join() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(result.order_total, Some(dec!(15.10)));
+    assert_eq!(result.order_total, Some(rust_dec(15.10)));
 
     let select = order::Entity::find()
         .right_join(customer::Entity)
@@ -238,7 +237,7 @@ pub async fn inner_join() {
     let kate_order_1 = order::ActiveModel {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
-        total: Set(dec!(15.10)),
+        total: Set(rust_dec(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
 
         ..Default::default()
@@ -250,7 +249,7 @@ pub async fn inner_join() {
     let kate_order_2 = order::ActiveModel {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
-        total: Set(dec!(100.00)),
+        total: Set(rust_dec(100.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
         ..Default::default()
@@ -320,7 +319,7 @@ pub async fn group_by() {
     let kate_order_1 = order::ActiveModel {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
-        total: Set(dec!(99.95)),
+        total: Set(rust_dec(99.95)),
         placed_at: Set(Utc::now().naive_utc()),
 
         ..Default::default()
@@ -332,7 +331,7 @@ pub async fn group_by() {
     let kate_order_2 = order::ActiveModel {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
-        total: Set(dec!(200.00)),
+        total: Set(rust_dec(200.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
         ..Default::default()
@@ -441,7 +440,7 @@ pub async fn having() {
     let kate_order_1 = order::ActiveModel {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
-        total: Set(dec!(100.00)),
+        total: Set(rust_dec(100.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
         ..Default::default()
@@ -453,7 +452,7 @@ pub async fn having() {
     let _kate_order_2 = order::ActiveModel {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_kate.id),
-        total: Set(dec!(12.00)),
+        total: Set(rust_dec(12.00)),
         placed_at: Set(Utc::now().naive_utc()),
 
         ..Default::default()
@@ -473,7 +472,7 @@ pub async fn having() {
     let _bob_order_1 = order::ActiveModel {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_bob.id),
-        total: Set(dec!(50.0)),
+        total: Set(rust_dec(50.0)),
         placed_at: Set(Utc::now().naive_utc()),
 
         ..Default::default()
@@ -485,7 +484,7 @@ pub async fn having() {
     let _bob_order_2 = order::ActiveModel {
         bakery_id: Set(bakery.id),
         customer_id: Set(customer_bob.id),
-        total: Set(dec!(50.0)),
+        total: Set(rust_dec(50.0)),
         placed_at: Set(Utc::now().naive_utc()),
 
         ..Default::default()
@@ -509,10 +508,11 @@ pub async fn having() {
         .group_by(order::Column::Total);
     select = if cfg!(feature = "sqlx-sqlite") {
         select.having(
-            Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real"))).gt(dec!(90.00)),
+            Expr::expr(Expr::col(order::Column::Total).cast_as(Alias::new("real")))
+                .gt(rust_dec(90.00)),
         )
     } else {
-        select.having(order::Column::Total.gt(dec!(90.00)))
+        select.having(order::Column::Total.gt(rust_dec(90.00)))
     };
     let results = select
         .into_model::<SelectResult>()
@@ -812,7 +812,7 @@ pub async fn linked() -> Result<(), DbErr> {
     let baker_bob_res = Baker::insert(baker_bob).exec(&ctx.db).await?;
     let mud_cake = cake::ActiveModel {
         name: Set("Mud Cake".to_owned()),
-        price: Set(dec!(10.25)),
+        price: Set(rust_dec(10.25)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
         bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
@@ -837,7 +837,7 @@ pub async fn linked() -> Result<(), DbErr> {
     let baker_bobby_res = Baker::insert(baker_bobby).exec(&ctx.db).await?;
     let cheese_cake = cake::ActiveModel {
         name: Set("Cheese Cake".to_owned()),
-        price: Set(dec!(20.5)),
+        price: Set(rust_dec(20.5)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
         bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
@@ -853,7 +853,7 @@ pub async fn linked() -> Result<(), DbErr> {
         .await?;
     let chocolate_cake = cake::ActiveModel {
         name: Set("Chocolate Cake".to_owned()),
-        price: Set(dec!(30.15)),
+        price: Set(rust_dec(30.15)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
         bakery_id: Set(Some(seaside_bakery_res.last_insert_id)),
@@ -889,7 +889,7 @@ pub async fn linked() -> Result<(), DbErr> {
     let kate_order_1 = order::ActiveModel {
         bakery_id: Set(seaside_bakery_res.last_insert_id),
         customer_id: Set(customer_kate_res.last_insert_id),
-        total: Set(dec!(15.10)),
+        total: Set(rust_dec(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
@@ -897,7 +897,7 @@ pub async fn linked() -> Result<(), DbErr> {
     lineitem::ActiveModel {
         cake_id: Set(cheese_cake_res.last_insert_id),
         order_id: Set(kate_order_1_res.last_insert_id),
-        price: Set(dec!(7.55)),
+        price: Set(rust_dec(7.55)),
         quantity: Set(2),
         ..Default::default()
     }
@@ -906,7 +906,7 @@ pub async fn linked() -> Result<(), DbErr> {
     let kate_order_2 = order::ActiveModel {
         bakery_id: Set(seaside_bakery_res.last_insert_id),
         customer_id: Set(customer_kate_res.last_insert_id),
-        total: Set(dec!(29.7)),
+        total: Set(rust_dec(29.7)),
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
@@ -914,7 +914,7 @@ pub async fn linked() -> Result<(), DbErr> {
     lineitem::ActiveModel {
         cake_id: Set(chocolate_cake_res.last_insert_id),
         order_id: Set(kate_order_2_res.last_insert_id),
-        price: Set(dec!(9.9)),
+        price: Set(rust_dec(9.9)),
         quantity: Set(3),
         ..Default::default()
     }
@@ -931,7 +931,7 @@ pub async fn linked() -> Result<(), DbErr> {
     let kara_order_1 = order::ActiveModel {
         bakery_id: Set(seaside_bakery_res.last_insert_id),
         customer_id: Set(customer_kara_res.last_insert_id),
-        total: Set(dec!(15.10)),
+        total: Set(rust_dec(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
@@ -939,7 +939,7 @@ pub async fn linked() -> Result<(), DbErr> {
     lineitem::ActiveModel {
         cake_id: Set(mud_cake_res.last_insert_id),
         order_id: Set(kara_order_1_res.last_insert_id),
-        price: Set(dec!(7.55)),
+        price: Set(rust_dec(7.55)),
         quantity: Set(2),
         ..Default::default()
     }
@@ -948,7 +948,7 @@ pub async fn linked() -> Result<(), DbErr> {
     let kara_order_2 = order::ActiveModel {
         bakery_id: Set(seaside_bakery_res.last_insert_id),
         customer_id: Set(customer_kara_res.last_insert_id),
-        total: Set(dec!(29.7)),
+        total: Set(rust_dec(29.7)),
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
     };
@@ -956,7 +956,7 @@ pub async fn linked() -> Result<(), DbErr> {
     lineitem::ActiveModel {
         cake_id: Set(cheese_cake_res.last_insert_id),
         order_id: Set(kara_order_2_res.last_insert_id),
-        price: Set(dec!(9.9)),
+        price: Set(rust_dec(9.9)),
         quantity: Set(3),
         ..Default::default()
     }

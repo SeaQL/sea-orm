@@ -1,6 +1,5 @@
 pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
-use rust_decimal_macros::dec;
 pub use sea_orm::{
     entity::*, error::DbErr, error::SqlErr, tests_cfg, DatabaseConnection, DbBackend, EntityName,
     ExecResult,
@@ -23,7 +22,7 @@ async fn main() {
 pub async fn test_error(db: &DatabaseConnection) {
     let mud_cake = cake::ActiveModel {
         name: Set("Moldy Cake".to_owned()),
-        price: Set(dec!(10.25)),
+        price: Set(rust_dec(10.25)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
         bakery_id: Set(None),
@@ -48,7 +47,7 @@ pub async fn test_error(db: &DatabaseConnection) {
 
     let fk_cake = cake::ActiveModel {
         name: Set("fk error Cake".to_owned()),
-        price: Set(dec!(10.25)),
+        price: Set(rust_dec(10.25)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
         bakery_id: Set(Some(1000)),
