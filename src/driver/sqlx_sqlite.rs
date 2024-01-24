@@ -78,7 +78,7 @@ impl SqlxSqliteConnector {
                 #[cfg(feature = "returning_clauses_for_sqlite_3_35")]
                 {
                     let version = get_version(&pool).await?;
-                    enure_returning_version(&version)?;
+                    ensure_returning_version(&version)?;
                 }
 
                 Ok(DatabaseConnection::SqlxSqlitePoolConnection(pool))
@@ -294,7 +294,7 @@ async fn get_version(conn: &SqlxSqlitePoolConnection) -> Result<String, DbErr> {
         .try_get_by(0)
 }
 
-fn enure_returning_version(version: &str) -> Result<(), DbErr> {
+fn ensure_returning_version(version: &str) -> Result<(), DbErr> {
     let mut parts = version.trim().split(".").map(|part| {
         part.parse::<u32>().map_err(|_| {
             DbErr::Conn(RuntimeErr::Internal(
@@ -318,7 +318,7 @@ fn enure_returning_version(version: &str) -> Result<(), DbErr> {
         Ok(())
     } else {
         Err(DbErr::Conn(RuntimeErr::Internal(
-            "SQLite library does not support returning".to_string(),
+            "SQLite version does not support returning".to_string(),
         )))
     }
 }
