@@ -5,7 +5,7 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(column_type = "Decimal(Some((20, 4)))")]
+    #[sea_orm(column_type = "Decimal(Some((26, 4)))")]
     pub price: Decimal,
     pub quantity: i32,
     pub order_id: i32,

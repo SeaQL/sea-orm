@@ -95,7 +95,7 @@ pub async fn create_order_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(order::Column::Total)
-                .decimal_len(20, 4)
+                .decimal_len(26, 4)
                 .not_null(),
         )
         .col(ColumnDef::new(order::Column::BakeryId).integer().not_null())
@@ -142,7 +142,7 @@ pub async fn create_lineitem_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(lineitem::Column::Price)
-                .decimal_len(20, 4)
+                .decimal_len(26, 4)
                 .not_null(),
         )
         .col(
@@ -234,7 +234,7 @@ pub async fn create_cake_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(cake::Column::Name).string().not_null())
         .col(
             ColumnDef::new(cake::Column::Price)
-                .decimal_len(20, 4)
+                .decimal_len(26, 4)
                 .not_null(),
         )
         .col(ColumnDef::new(cake::Column::BakeryId).integer())
