@@ -308,7 +308,7 @@ jobs:
       matrix:
         runtime: [async-std]
         tls: [native-tls, rustls]
-        sqlite_flavor: ["", returning_clauses_for_sqlite_3_35]
+        sqlite_flavor: ["", sqlite-use-returning-for-3_35]
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable

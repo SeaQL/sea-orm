@@ -79,7 +79,7 @@ async fn main() -> Result<(), DbErr> {
         feature = "sqlx-mysql",
         all(
             feature = "sqlx-sqlite",
-            not(feature = "returning_clauses_for_sqlite_3_35")
+            not(feature = "sqlite-use-returning-for-3_35")
         )
     ),
     should_panic(expected = "Database backend doesn't support RETURNING")

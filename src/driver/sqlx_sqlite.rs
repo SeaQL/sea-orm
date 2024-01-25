@@ -75,7 +75,7 @@ impl SqlxSqliteConnector {
                     metric_callback: None,
                 };
 
-                #[cfg(feature = "returning_clauses_for_sqlite_3_35")]
+                #[cfg(feature = "sqlite-use-returning-for-3_35")]
                 {
                     let version = get_version(&pool).await?;
                     ensure_returning_version(&version)?;
@@ -278,7 +278,7 @@ pub(crate) async fn set_transaction_config(
     Ok(())
 }
 
-#[cfg(feature = "returning_clauses_for_sqlite_3_35")]
+#[cfg(feature = "sqlite-use-returning-for-3_35")]
 async fn get_version(conn: &SqlxSqlitePoolConnection) -> Result<String, DbErr> {
     let stmt = Statement {
         sql: "SELECT sqlite_version()".to_string(),
@@ -295,7 +295,7 @@ async fn get_version(conn: &SqlxSqlitePoolConnection) -> Result<String, DbErr> {
         .try_get_by(0)
 }
 
-#[cfg(feature = "returning_clauses_for_sqlite_3_35")]
+#[cfg(feature = "sqlite-use-returning-for-3_35")]
 fn ensure_returning_version(version: &str) -> Result<(), DbErr> {
     let mut parts = version.trim().split('.').map(|part| {
         part.parse::<u32>().map_err(|_| {

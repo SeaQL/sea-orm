@@ -41,7 +41,7 @@ pub async fn test_cake_error_sqlx(db: &DbConn) {
             }
             _ => panic!("Unexpected sqlx-error kind"),
         },
-        #[cfg(all(feature = "sqlx-sqlite", feature = "returning_clauses_for_sqlite_3_35"))]
+        #[cfg(all(feature = "sqlx-sqlite", feature = "sqlite-use-returning-for-3_35"))]
         DbErr::Query(RuntimeErr::SqlxError(Error::Database(e))) => {
             assert_eq!(e.code().unwrap(), "1555");
         }
