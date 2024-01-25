@@ -13,7 +13,7 @@ use tracing::{instrument, warn};
 
 use crate::{
     debug_print, error::*, executor::*, sqlx_error_to_exec_err, AccessMode, ConnectOptions,
-    DatabaseConnection, DatabaseTransaction, DbBackend, IsolationLevel, QueryStream, Statement,
+    DatabaseConnection, DatabaseTransaction, IsolationLevel, QueryStream, Statement,
     TransactionError,
 };
 
@@ -278,11 +278,12 @@ pub(crate) async fn set_transaction_config(
     Ok(())
 }
 
+#[cfg(feature = "returning_clauses_for_sqlite_3_35")]
 async fn get_version(conn: &SqlxSqlitePoolConnection) -> Result<String, DbErr> {
     let stmt = Statement {
-        sql: format!("SELECT sqlite_version()"),
+        sql: "SELECT sqlite_version()".to_string(),
         values: None,
-        db_backend: DbBackend::Sqlite,
+        db_backend: crate::DbBackend::Sqlite,
     };
     conn.query_one(stmt)
         .await?
@@ -294,8 +295,9 @@ async fn get_version(conn: &SqlxSqlitePoolConnection) -> Result<String, DbErr> {
         .try_get_by(0)
 }
 
+#[cfg(feature = "returning_clauses_for_sqlite_3_35")]
 fn ensure_returning_version(version: &str) -> Result<(), DbErr> {
-    let mut parts = version.trim().split(".").map(|part| {
+    let mut parts = version.trim().split('.').map(|part| {
         part.parse::<u32>().map_err(|_| {
             DbErr::Conn(RuntimeErr::Internal(
                 "Error parsing SQLite version".to_string(),
@@ -329,26 +331,26 @@ mod tests {
 
     #[test]
     fn test_ensure_returning_version() {
-        assert!(enure_returning_version("").is_err());
-        assert!(enure_returning_version(".").is_err());
-        assert!(enure_returning_version(".a").is_err());
-        assert!(enure_returning_version(".4.9").is_err());
-        assert!(enure_returning_version("a").is_err());
-        assert!(enure_returning_version("1.").is_err());
-        assert!(enure_returning_version("1.a").is_err());
+        assert!(ensure_returning_version("").is_err());
+        assert!(ensure_returning_version(".").is_err());
+        assert!(ensure_returning_version(".a").is_err());
+        assert!(ensure_returning_version(".4.9").is_err());
+        assert!(ensure_returning_version("a").is_err());
+        assert!(ensure_returning_version("1.").is_err());
+        assert!(ensure_returning_version("1.a").is_err());
 
-        assert!(enure_returning_version("1.1").is_err());
-        assert!(enure_returning_version("1.0.").is_err());
-        assert!(enure_returning_version("1.0.0").is_err());
-        assert!(enure_returning_version("2.0.0").is_err());
-        assert!(enure_returning_version("3.34.0").is_err());
-        assert!(enure_returning_version("3.34.999").is_err());
+        assert!(ensure_returning_version("1.1").is_err());
+        assert!(ensure_returning_version("1.0.").is_err());
+        assert!(ensure_returning_version("1.0.0").is_err());
+        assert!(ensure_returning_version("2.0.0").is_err());
+        assert!(ensure_returning_version("3.34.0").is_err());
+        assert!(ensure_returning_version("3.34.999").is_err());
 
         // valid version
-        assert!(enure_returning_version("3.35.0").is_ok());
-        assert!(enure_returning_version("3.35.1").is_ok());
-        assert!(enure_returning_version("3.36.0").is_ok());
-        assert!(enure_returning_version("4.0.0").is_ok());
-        assert!(enure_returning_version("99.0.0").is_ok());
+        assert!(ensure_returning_version("3.35.0").is_ok());
+        assert!(ensure_returning_version("3.35.1").is_ok());
+        assert!(ensure_returning_version("3.36.0").is_ok());
+        assert!(ensure_returning_version("4.0.0").is_ok());
+        assert!(ensure_returning_version("99.0.0").is_ok());
     }
 }
