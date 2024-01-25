@@ -325,7 +325,7 @@ fn ensure_returning_version(version: &str) -> Result<(), DbErr> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "sqlite-use-returning-for-3_35"))]
 mod tests {
     use super::*;
 
