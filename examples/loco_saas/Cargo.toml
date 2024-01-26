@@ -1,0 +1,44 @@
+[workspace]
+
+[package]
+name = "loco_starter_template"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+loco-rs = { version = "0.2.3" }
+migration = { path = "migration" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+eyre = "0.6"
+tokio = { version = "1.33.0", default-features = false }
+async-trait = "0.1.74"
+tracing = "0.1.40"
+chrono = "0.4"
+validator = { version = "0.16" }
+sea-orm = { version = "0.12.4", features = [
+  "sqlx-sqlite",
+  "sqlx-postgres",
+  "runtime-tokio-rustls",
+  "macros",
+] }
+
+axum = "0.7.1"
+include_dir = "0.7"
+uuid = { version = "1.6.0", features = ["v4"] }
+tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
+
+[[bin]]
+name = "loco_starter_template-cli"
+path = "src/bin/main.rs"
+required-features = []
+
+[dev-dependencies]
+serial_test = "2.0.0"
+rstest = "0.18.2"
+loco-rs = { version = "0.2.3", features = ["testing"] }
+insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
