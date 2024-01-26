@@ -3,6 +3,7 @@ use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use std::{collections::BTreeMap, str::FromStr};
+use sea_query::ColumnType;
 use syn::{punctuated::Punctuated, token::Comma};
 use tracing::info;
 
@@ -754,6 +755,11 @@ impl EntityWriter {
                         attrs.push(quote! { nullable });
                     }
                 };
+                if let ColumnType::Custom(typ) = &col.col_type {
+                    let type_string = typ.to_string();
+                    attrs.push(quote! { select_as = "text" });
+                    attrs.push(quote! { save_as = #type_string });
+                }
                 if col.unique {
                     attrs.push(quote! { unique });
                 }
