@@ -889,7 +889,7 @@ pub fn derive_active_enum_display(input: TokenStream) -> TokenStream {
 ///
 /// #[derive(DeriveIden)]
 /// struct MyOther;
-/// 
+///
 /// assert_eq!(MyClass::Table.to_string(), "my_class");
 /// assert_eq!(MyClass::Id.to_string(), "id");
 /// assert_eq!(MyClass::Title.to_string(), "turtle"); // renamed!
