@@ -876,7 +876,7 @@ pub fn derive_active_enum_display(input: TokenStream) -> TokenStream {
 /// ## Usage
 ///
 /// ```rust
-/// use sea_orm::{Iden, DeriveIden};
+/// use sea_orm::{DeriveIden, Iden};
 ///
 /// #[derive(DeriveIden)]
 /// pub enum MyClass {
