@@ -876,31 +876,25 @@ pub fn derive_active_enum_display(input: TokenStream) -> TokenStream {
 /// ## Usage
 ///
 /// ```rust
-/// use sea_orm::DeriveIden;
+/// use sea_orm::{Iden, DeriveIden};
 ///
 /// #[derive(DeriveIden)]
-/// pub enum Class {
-///     Id,
-///     Title,
-///     Text,
-/// }
-///
-/// #[derive(DeriveIden)]
-/// struct Glyph;
-/// ```
-///
-/// You can use iden = "" to customize the name
-/// ```
-/// use sea_orm::DeriveIden;
-///
-/// #[derive(DeriveIden)]
-/// pub enum Class {
+/// pub enum MyClass {
+///     Table, // this is a special case, which maps to the enum's name
 ///     Id,
 ///     #[sea_orm(iden = "turtle")]
 ///     Title,
-///     #[sea_orm(iden = "TeXt")]
 ///     Text,
 /// }
+///
+/// #[derive(DeriveIden)]
+/// struct MyOther;
+/// 
+/// assert_eq!(MyClass::Table.to_string(), "my_class");
+/// assert_eq!(MyClass::Id.to_string(), "id");
+/// assert_eq!(MyClass::Title.to_string(), "turtle"); // renamed!
+/// assert_eq!(MyClass::Text.to_string(), "text");
+/// assert_eq!(MyOther.to_string(), "my_other");
 /// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveIden, attributes(sea_orm))]
