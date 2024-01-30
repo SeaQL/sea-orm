@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Master - Pending
 
 * Added feature flag `sqlite-use-returning-for-3_35` to use SQLite's returning https://github.com/SeaQL/sea-orm/pull/2070
+* Update Strum to version 0.26 https://github.com/SeaQL/sea-orm/pull/2088
 
 ## 0.12.12 - 2023-01-22
 
