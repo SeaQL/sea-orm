@@ -993,7 +993,7 @@ mod tests {
                     },
                     Column {
                         name: "name".to_owned(),
-                        col_type: ColumnType::String(Some(255)),
+                        col_type: ColumnType::string(Some(255)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
@@ -1020,7 +1020,7 @@ mod tests {
                     },
                     Column {
                         name: "name".to_owned(),
-                        col_type: ColumnType::String(Some(255)),
+                        col_type: ColumnType::string(Some(255)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
@@ -1074,7 +1074,7 @@ mod tests {
                     },
                     Column {
                         name: "_name_".to_owned(),
-                        col_type: ColumnType::String(Some(255)),
+                        col_type: ColumnType::string(Some(255)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,

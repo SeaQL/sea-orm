@@ -620,11 +620,11 @@ mod tests {
         );
         assert_eq!(
             hello::Column::Twelve.def(),
-            ColumnType::String(None).def().default("twelve_value")
+            ColumnType::string(None).def().default("twelve_value")
         );
         assert_eq!(
             hello::Column::TwelveTwo.def(),
-            ColumnType::String(None).def().default("twelve_value")
+            ColumnType::string(None).def().default("twelve_value")
         );
     }
 
