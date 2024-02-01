@@ -36,7 +36,7 @@ pub fn col_type_match(
                 "Json" => quote! { Json },
                 "Decimal" => quote! { Decimal(None) },
                 "Vec<u8>" => {
-                    quote! { var_binary(None) }
+                    quote! { VarBinary(sea_orm::sea_query::StringLen::None) }
                 }
                 _ => {
                     // Assumed it's ActiveEnum if none of the above type matches
