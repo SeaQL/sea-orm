@@ -9,6 +9,7 @@ pub struct Model {
     pub ty: String,
     pub key: String,
     pub value: String,
+    #[sea_orm(column_type = "VarBinary(StringLen::Max)")]
     pub bytes: Vec<u8>,
     pub date: Option<Date>,
     pub time: Option<Time>,

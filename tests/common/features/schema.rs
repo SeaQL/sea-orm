@@ -111,7 +111,13 @@ pub async fn create_metadata_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(metadata::Column::Type).string().not_null())
         .col(ColumnDef::new(metadata::Column::Key).string().not_null())
         .col(ColumnDef::new(metadata::Column::Value).string().not_null())
-        .col(ColumnDef::new(metadata::Column::Bytes).binary().not_null())
+        .col(
+            ColumnDef::new_with_type(
+                metadata::Column::Bytes,
+                ColumnType::VarBinary(StringLen::Max),
+            )
+            .not_null(),
+        )
         .col(ColumnDef::new(metadata::Column::Date).date())
         .col(ColumnDef::new(metadata::Column::Time).time())
         .to_owned();
