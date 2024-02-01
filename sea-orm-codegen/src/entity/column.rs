@@ -99,8 +99,8 @@ impl Column {
             ColumnType::Binary(s) => Some(format!("Binary({s})")),
             ColumnType::VarBinary(s) => match s {
                 StringLen::N(s) => Some(format!("VarBinary(StringLen::N({s}))")),
-                StringLen::Max => Some("VarBinary(StringLen::Max)".to_owned()),
                 StringLen::None => Some("VarBinary(StringLen::None)".to_owned()),
+                StringLen::Max => Some("VarBinary(StringLen::Max)".to_owned()),
             },
             _ => None,
         };
@@ -146,8 +146,8 @@ impl Column {
                 }
                 ColumnType::VarBinary(s) => match s {
                     StringLen::N(s) => quote! { ColumnType::VarBinary(StringLen::N(#s)) },
-                    StringLen::Max => quote! { ColumnType::VarBinary(StringLen::Max) },
                     StringLen::None => quote! { ColumnType::VarBinary(StringLen::None) },
+                    StringLen::Max => quote! { ColumnType::VarBinary(StringLen::Max) },
                 },
                 ColumnType::Boolean => quote! { ColumnType::Boolean },
                 ColumnType::Money(s) => match s {
