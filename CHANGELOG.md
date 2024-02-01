@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Added feature flag `sqlite-use-returning-for-3_35` to use SQLite's returning https://github.com/SeaQL/sea-orm/pull/2070
 
-## 0.12.12 - 2023-01-22
+## 0.12.12 - 2024-01-22
 
 ### Bug Fixes
 
@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Added `ConnectOptions::test_before_acquire`
 
-## 0.12.11 - 2023-01-14
+## 0.12.11 - 2024-01-14
 
 ### New Features
 
