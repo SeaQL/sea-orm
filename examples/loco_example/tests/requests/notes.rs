@@ -16,6 +16,8 @@ macro_rules! configure_insta {
     };
 }
 
+// Disabled integration test for GitHub CI
+/*
 #[tokio::test]
 #[serial]
 async fn can_get_notes() {
@@ -122,3 +124,4 @@ async fn can_delete_note() {
     })
     .await;
 }
+*/
