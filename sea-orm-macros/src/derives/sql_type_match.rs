@@ -12,7 +12,7 @@ pub fn col_type_match(
         None => {
             let col_type = match field_type {
                 "char" => quote! { Char(None) },
-                "String" | "&str" => quote! { String(sea_orm::sea_query::StringLen::None) },
+                "String" | "&str" => quote! { string(None) },
                 "i8" => quote! { TinyInteger },
                 "u8" => quote! { TinyUnsigned },
                 "i16" => quote! { SmallInteger },
@@ -36,7 +36,7 @@ pub fn col_type_match(
                 "Json" => quote! { Json },
                 "Decimal" => quote! { Decimal(None) },
                 "Vec<u8>" => {
-                    quote! { VarBinary(sea_orm::sea_query::StringLen::None) }
+                    quote! { var_binary(None) }
                 }
                 _ => {
                     // Assumed it's ActiveEnum if none of the above type matches
