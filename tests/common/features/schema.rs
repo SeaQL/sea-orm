@@ -114,7 +114,7 @@ pub async fn create_metadata_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(
             ColumnDef::new_with_type(
                 metadata::Column::Bytes,
-                ColumnType::VarBinary(StringLen::Max),
+                ColumnType::VarBinary(StringLen::N(32)),
             )
             .not_null(),
         )
