@@ -1,0 +1,72 @@
+# Loco configuration file documentation
+
+# Application logging configuration
+logger:
+  # Enable or disable logging.
+  enable: true
+  # Log level, options: trace, debug, info, warn or error.
+  level: debug
+  # Define the logging format. options: compact, pretty or Json
+  format: compact
+  # By default the logger has filtering only logs that came from your code or logs that came from `loco` framework. to see all third party libraries
+  # Uncomment the line below to override to see all third party libraries you can enable this config and override the logger filters.
+  # override_filter: trace
+
+# Web server configuration
+server:
+  # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
+  port: 3000
+  # The UI hostname or IP address that mailers will point to.
+  host: http://localhost
+  # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
+  middlewares:
+    # Allows to limit the payload size request. payload that bigger than this file will blocked the request.
+    limit_payload:
+      # Enable/Disable the middleware.
+      enable: true
+      # the limit size. can be b,kb,kib,mb,mib,gb,gib
+      body_limit: 5mb
+    # Generating a unique request ID and enhancing logging with additional information such as the start and completion of request processing, latency, status code, and other request details.
+    logger:
+      # Enable/Disable the middleware.
+      enable: true
+    # when your code is panicked, the request still returns 500 status code.
+    catch_panic:
+      # Enable/Disable the middleware.
+      enable: true
+    # Timeout for incoming requests middleware. requests that take more time from the configuration will cute and 408 status code will returned.
+    timeout_request:
+      # Enable/Disable the middleware.
+      enable: true
+      # Duration time in milliseconds.
+      timeout: 5000
+    cors:
+      enable: true
+    static:
+      enable: true
+      must_exist: true
+      folder:
+        uri: "/"
+        path: "frontend/dist"
+      fallback: "frontend/dist/index.html"
+
+# Database Configuration
+database:
+  # Database connection URI
+  uri: postgres://loco:loco@localhost:5432/loco_app
+  # When enabled, the sql query will be logged.
+  enable_logging: false
+  # Set the timeout duration when acquiring a connection.
+  connect_timeout: 500
+  # Set the idle duration before closing a connection.
+  idle_timeout: 500
+  # Minimum number of connections for a pool.
+  min_connections: 1
+  # Maximum number of connections for a pool.
+  max_connections: 1
+  # Run migration up when application loaded
+  auto_migrate: true
+  # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
+  dangerously_truncate: false
+  # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
+  dangerously_recreate: false
