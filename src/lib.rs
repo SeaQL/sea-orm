@@ -317,20 +317,12 @@
 //!
 //! ### Gold Sponsors
 //!
-//! <table>
-//!   <tbody>
-//!     <tr>
-//!       <td>
-//!         <a href="https://www.digitalocean.com/">
-//!           <picture>
-//!             <source media="(prefers-color-scheme: dark)" srcset="https://www.sea-ql.org/static/sponsors/Osmos-dark.svg">
-//!             <img src="https://www.sea-ql.org/static/sponsors/Osmos.svg" width="180">
-//!           </picture>
-//!         </a>
-//!       </td>
-//!     </tr>
-//!   </tbody>
-//! </table>
+//! <a href="https://www.digitalocean.com/">
+//!   <picture>
+//!     <source media="(prefers-color-scheme: dark)" srcset="https://www.sea-ql.org/static/sponsors/Osmos-dark.svg">
+//!     <img src="https://www.sea-ql.org/static/sponsors/Osmos.svg" width="238">
+//!   </picture>
+//! </a>
 //!
 //! ## Mascot
 //!
