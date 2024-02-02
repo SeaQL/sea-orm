@@ -20,17 +20,20 @@ async-trait = "0.1.74"
 tracing = "0.1.40"
 chrono = "0.4"
 validator = { version = "0.16" }
-sea-orm = { version = "0.12.4", features = [
-  "sqlx-sqlite",
-  "sqlx-postgres",
-  "runtime-tokio-rustls",
-  "macros",
-] }
-
 axum = "0.7.1"
 include_dir = "0.7"
 uuid = { version = "1.6.0", features = ["v4"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
+
+[dependencies.sea-orm]
+# path = "../../" # remove this line in your own project
+version = "0.12.4" # sea-orm version
+features = [
+  "sqlx-sqlite",
+  "sqlx-postgres",
+  "runtime-tokio-rustls",
+  "macros",
+]
 
 [[bin]]
 name = "todolist-cli"
