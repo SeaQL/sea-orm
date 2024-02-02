@@ -244,7 +244,7 @@ We invite you to participate, contribute and together help build Rust's future.
 
 ### Gold Sponsors
 
-<a href="https://www.digitalocean.com/">
+<a href="https://osmos.io/">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://www.sea-ql.org/static/sponsors/Osmos-dark.svg">
     <img src="https://www.sea-ql.org/static/sponsors/Osmos.svg" width="238">
