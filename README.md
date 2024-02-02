@@ -238,9 +238,26 @@ A big shout out to our contributors!
 
 ## Sponsorship
 
+### Gold Sponsors
+
 [SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers. If you enjoy using our libraries, please star and share our repositories. If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
 
 We invite you to participate, contribute and together help build Rust's future.
+
+<table>
+  <tbody>
+    <tr>
+      <td>
+        <a href="https://www.digitalocean.com/">
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="https://www.sea-ql.org/static/sponsors/Osmos-dark.svg">
+            <img src="https://www.sea-ql.org/static/sponsors/Osmos.svg" width="160">
+          </picture>
+        </a>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 ## Mascot
 
