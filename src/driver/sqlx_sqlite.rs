@@ -12,8 +12,9 @@ use sea_query_binder::SqlxValues;
 use tracing::{instrument, warn};
 
 use crate::{
-    debug_print, error::*, executor::*, AccessMode, ConnectOptions, DatabaseConnection,
-    DatabaseTransaction, IsolationLevel, QueryStream, Statement, TransactionError,
+    debug_print, error::*, executor::*, sqlx_error_to_exec_err, AccessMode, ConnectOptions,
+    DatabaseConnection, DatabaseTransaction, IsolationLevel, QueryStream, Statement,
+    TransactionError,
 };
 
 use super::sqlx_common::*;
@@ -68,12 +69,20 @@ impl SqlxSqliteConnector {
             options.max_connections(1);
         }
         match options.pool_options().connect_with(opt).await {
-            Ok(pool) => Ok(DatabaseConnection::SqlxSqlitePoolConnection(
-                SqlxSqlitePoolConnection {
+            Ok(pool) => {
+                let pool = SqlxSqlitePoolConnection {
                     pool,
                     metric_callback: None,
-                },
-            )),
+                };
+
+                #[cfg(feature = "sqlite-use-returning-for-3_35")]
+                {
+                    let version = get_version(&pool).await?;
+                    ensure_returning_version(&version)?;
+                }
+
+                Ok(DatabaseConnection::SqlxSqlitePoolConnection(pool))
+            }
             Err(e) => Err(sqlx_error_to_conn_err(e)),
         }
     }
@@ -267,4 +276,81 @@ pub(crate) async fn set_transaction_config(
         warn!("Setting access mode in a SQLite transaction isn't supported");
     }
     Ok(())
+}
+
+#[cfg(feature = "sqlite-use-returning-for-3_35")]
+async fn get_version(conn: &SqlxSqlitePoolConnection) -> Result<String, DbErr> {
+    let stmt = Statement {
+        sql: "SELECT sqlite_version()".to_string(),
+        values: None,
+        db_backend: crate::DbBackend::Sqlite,
+    };
+    conn.query_one(stmt)
+        .await?
+        .ok_or_else(|| {
+            DbErr::Conn(RuntimeErr::Internal(
+                "Error reading SQLite version".to_string(),
+            ))
+        })?
+        .try_get_by(0)
+}
+
+#[cfg(feature = "sqlite-use-returning-for-3_35")]
+fn ensure_returning_version(version: &str) -> Result<(), DbErr> {
+    let mut parts = version.trim().split('.').map(|part| {
+        part.parse::<u32>().map_err(|_| {
+            DbErr::Conn(RuntimeErr::Internal(
+                "Error parsing SQLite version".to_string(),
+            ))
+        })
+    });
+
+    let mut extract_next = || {
+        parts.next().transpose().and_then(|part| {
+            part.ok_or_else(|| {
+                DbErr::Conn(RuntimeErr::Internal("SQLite version too short".to_string()))
+            })
+        })
+    };
+
+    let major = extract_next()?;
+    let minor = extract_next()?;
+
+    if major > 3 || (major == 3 && minor >= 35) {
+        Ok(())
+    } else {
+        Err(DbErr::Conn(RuntimeErr::Internal(
+            "SQLite version does not support returning".to_string(),
+        )))
+    }
+}
+
+#[cfg(all(test, feature = "sqlite-use-returning-for-3_35"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ensure_returning_version() {
+        assert!(ensure_returning_version("").is_err());
+        assert!(ensure_returning_version(".").is_err());
+        assert!(ensure_returning_version(".a").is_err());
+        assert!(ensure_returning_version(".4.9").is_err());
+        assert!(ensure_returning_version("a").is_err());
+        assert!(ensure_returning_version("1.").is_err());
+        assert!(ensure_returning_version("1.a").is_err());
+
+        assert!(ensure_returning_version("1.1").is_err());
+        assert!(ensure_returning_version("1.0.").is_err());
+        assert!(ensure_returning_version("1.0.0").is_err());
+        assert!(ensure_returning_version("2.0.0").is_err());
+        assert!(ensure_returning_version("3.34.0").is_err());
+        assert!(ensure_returning_version("3.34.999").is_err());
+
+        // valid version
+        assert!(ensure_returning_version("3.35.0").is_ok());
+        assert!(ensure_returning_version("3.35.1").is_ok());
+        assert!(ensure_returning_version("3.36.0").is_ok());
+        assert!(ensure_returning_version("4.0.0").is_ok());
+        assert!(ensure_returning_version("99.0.0").is_ok());
+    }
 }

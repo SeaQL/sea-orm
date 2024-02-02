@@ -29,7 +29,7 @@
 //! [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
 //! If you like what we do, consider starring, sharing and contributing!
 //!
-//! Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2023](https://sea-ql.org/community-survey)!
+//! Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2024](https://sea-ql.org/community-survey)!
 //!
 //! ## Getting Started
 //!
@@ -314,6 +314,15 @@
 //! [SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers. If you enjoy using our libraries, please star and share our repositories. If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
 //!
 //! We invite you to participate, contribute and together help build Rust's future.
+//!
+//! ### Gold Sponsors
+//!
+//! <a href="https://osmos.io/">
+//!   <picture>
+//!     <source media="(prefers-color-scheme: dark)" srcset="https://www.sea-ql.org/static/sponsors/Osmos-dark.svg">
+//!     <img src="https://www.sea-ql.org/static/sponsors/Osmos.svg" width="238">
+//!   </picture>
+//! </a>
 //!
 //! ## Mascot
 //!

@@ -38,7 +38,7 @@ AUTHORS:
   Join our Discord server to chat with others in the SeaQL community!
     - Invitation: https://discord.com/invite/uCPdDXzbdv
 
-  SeaQL Community Survey 2023
+  SeaQL Community Survey 2024
     - Link: https://sea-ql.org/community-survey
 
   If you like what we do, consider starring, sharing and contributing!
