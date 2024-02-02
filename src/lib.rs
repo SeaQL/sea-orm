@@ -310,13 +310,13 @@
 //! [![Contributors](https://opencollective.com/sea-orm/contributors.svg?width=1000&button=false)](https://github.com/SeaQL/sea-orm/graphs/contributors)
 //!
 //! ## Sponsorship
-//! 
+//!
 //! [SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers. If you enjoy using our libraries, please star and share our repositories. If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
 //!
 //! We invite you to participate, contribute and together help build Rust's future.
-//! 
+//!
 //! ### Gold Sponsors
-//! 
+//!
 //! <table>
 //!   <tbody>
 //!     <tr>
@@ -324,7 +324,7 @@
 //!         <a href="https://www.digitalocean.com/">
 //!           <picture>
 //!             <source media="(prefers-color-scheme: dark)" srcset="https://www.sea-ql.org/static/sponsors/Osmos-dark.svg">
-//!             <img src="https://www.sea-ql.org/static/sponsors/Osmos.svg" width="160">
+//!             <img src="https://www.sea-ql.org/static/sponsors/Osmos.svg" width="180">
 //!           </picture>
 //!         </a>
 //!       </td>
