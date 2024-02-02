@@ -4,6 +4,7 @@ pub mod connection;
 pub mod manager;
 pub mod migrator;
 pub mod prelude;
+pub mod schema;
 pub mod seaql_migrations;
 pub mod util;
 
