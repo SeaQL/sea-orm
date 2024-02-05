@@ -53,7 +53,9 @@
 //! ```
 
 use crate::{prelude::Iden, sea_query};
-use sea_orm::sea_query::{Alias, ColumnDef, Expr, IntoIden, Table, TableCreateStatement, PgInterval, ColumnType};
+use sea_orm::sea_query::{
+    Alias, ColumnDef, ColumnType, Expr, IntoIden, PgInterval, Table, TableCreateStatement,
+};
 
 #[derive(Iden)]
 enum GeneralIds {
@@ -68,10 +70,7 @@ pub fn table_auto<T: IntoIden + 'static>(name: T) -> TableCreateStatement {
 
 /// Create a primary key column with auto-increment feature.
 pub fn pk_auto<T: IntoIden>(name: T) -> ColumnDef {
-    integer(name)
-        .auto_increment()
-        .primary_key()
-        .take()
+    integer(name).auto_increment().primary_key().take()
 }
 
 pub fn char_len<T: IntoIden>(col: T, length: u32) -> ColumnDef {
@@ -290,15 +289,27 @@ pub fn date_time_uniq<T: IntoIden>(col: T) -> ColumnDef {
     date_time(col).unique_key().take()
 }
 
-pub fn interval<T: IntoIden>(col: T, fields: Option<PgInterval>, precision: Option<u32>) -> ColumnDef {
+pub fn interval<T: IntoIden>(
+    col: T,
+    fields: Option<PgInterval>,
+    precision: Option<u32>,
+) -> ColumnDef {
     interval_null(col, fields, precision).not_null().take()
 }
 
-pub fn interval_null<T: IntoIden>(col: T, fields: Option<PgInterval>, precision: Option<u32>) -> ColumnDef {
+pub fn interval_null<T: IntoIden>(
+    col: T,
+    fields: Option<PgInterval>,
+    precision: Option<u32>,
+) -> ColumnDef {
     ColumnDef::new(col).interval(fields, precision).take()
 }
 
-pub fn interval_uniq<T: IntoIden>(col: T, fields: Option<PgInterval>, precision: Option<u32>) -> ColumnDef {
+pub fn interval_uniq<T: IntoIden>(
+    col: T,
+    fields: Option<PgInterval>,
+    precision: Option<u32>,
+) -> ColumnDef {
     interval(col, fields, precision).unique_key().take()
 }
 
@@ -516,30 +527,30 @@ pub fn custom_null<T: IntoIden>(col: T, name: T) -> ColumnDef {
 
 pub fn enumeration<T, N, S, V>(col: T, name: N, variants: V) -> ColumnDef
 where
-        T: IntoIden,
-        N: IntoIden,
-        S: IntoIden,
-        V: IntoIterator<Item = S>,
+    T: IntoIden,
+    N: IntoIden,
+    S: IntoIden,
+    V: IntoIterator<Item = S>,
 {
     enumeration_null(col, name, variants).not_null().take()
 }
 
 pub fn enumeration_null<T, N, S, V>(col: T, name: N, variants: V) -> ColumnDef
 where
-        T: IntoIden,
-        N: IntoIden,
-        S: IntoIden,
-        V: IntoIterator<Item = S>,
+    T: IntoIden,
+    N: IntoIden,
+    S: IntoIden,
+    V: IntoIterator<Item = S>,
 {
     ColumnDef::new(col).enumeration(name, variants).take()
 }
 
 pub fn enumeration_uniq<T, N, S, V>(col: T, name: N, variants: V) -> ColumnDef
 where
-        T: IntoIden,
-        N: IntoIden,
-        S: IntoIden,
-        V: IntoIterator<Item = S>,
+    T: IntoIden,
+    N: IntoIden,
+    S: IntoIden,
+    V: IntoIterator<Item = S>,
 {
     enumeration(col, name, variants).unique_key().take()
 }
@@ -560,8 +571,8 @@ pub fn array_uniq<T: IntoIden>(col: T, elem_type: ColumnType) -> ColumnDef {
 pub fn timestamps(t: TableCreateStatement) -> TableCreateStatement {
     let mut t = t;
     t.col(timestamp(GeneralIds::CreatedAt).default(Expr::current_timestamp()))
-    .col(timestamp(GeneralIds::UpdatedAt).default(Expr::current_timestamp()))
-    .take()
+        .col(timestamp(GeneralIds::UpdatedAt).default(Expr::current_timestamp()))
+        .take()
 }
 
 /// Create an Alias.
