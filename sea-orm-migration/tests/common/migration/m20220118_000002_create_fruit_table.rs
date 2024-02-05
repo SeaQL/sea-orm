@@ -12,9 +12,15 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(Fruit::Table)
-                    .col(pk_auto(Fruit::Id))
-                    .col(string(Fruit::Name))
-                    .col(integer(Fruit::CakeId))
+                    .col(
+                        ColumnDef::new(Fruit::Id)
+                            .integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(Fruit::Name).string().not_null())
+                    .col(ColumnDef::new(Fruit::CakeId).integer().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-fruit-cake_id")
