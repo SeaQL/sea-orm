@@ -22,7 +22,7 @@ impl MigrationTrait for Migration {
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )
-                    .col(bool(Cake::GlutenFree))
+                    .col(boolean(Cake::GlutenFree))
                     .to_owned(),
             )
             .await
