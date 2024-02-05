@@ -5,18 +5,12 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(column_type = "Binary(BlobSize::Blob(None))")]
+    #[sea_orm(column_type = "Binary(1)")]
     pub binary: Vec<u8>,
-    #[sea_orm(column_type = "Binary(BlobSize::Blob(Some(10)))")]
+    #[sea_orm(column_type = "Binary(10)")]
     pub binary_10: Vec<u8>,
-    #[sea_orm(column_type = "Binary(BlobSize::Tiny)")]
-    pub binary_tiny: Vec<u8>,
-    #[sea_orm(column_type = "Binary(BlobSize::Medium)")]
-    pub binary_medium: Vec<u8>,
-    #[sea_orm(column_type = "Binary(BlobSize::Long)")]
-    pub binary_long: Vec<u8>,
-    #[sea_orm(column_type = "VarBinary(10)")]
-    pub var_binary: Vec<u8>,
+    #[sea_orm(column_type = "VarBinary(StringLen::N(16))")]
+    pub var_binary_16: Vec<u8>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
