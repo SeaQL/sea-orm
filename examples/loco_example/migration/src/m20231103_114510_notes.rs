@@ -1,7 +1,4 @@
-use std::borrow::BorrowMut;
-
-use loco_rs::schema::*;
-use sea_orm_migration::prelude::*;
+use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -12,9 +9,9 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 table_auto(Notes::Table)
-                    .col(pk_auto(Notes::Id).borrow_mut())
-                    .col(string_null(Notes::Title).borrow_mut())
-                    .col(string_null(Notes::Content).borrow_mut())
+                    .col(pk_auto(Notes::Id))
+                    .col(string_null(Notes::Title))
+                    .col(string_null(Notes::Content))
                     .to_owned(),
             )
             .await
