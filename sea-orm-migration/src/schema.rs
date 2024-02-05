@@ -20,13 +20,13 @@
 //! impl MigrationTrait for Migration {
 //!     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
 //!         let table = table_auto(Users::Table)
-//!             .col(&mut pk_auto(Users::Id)) // TODO: remove `&mut` after upgraded to sea-query 0.31.0
-//!             .col(&mut uuid(Users::Pid))
-//!             .col(&mut string_uniq(Users::Email))
-//!             .col(&mut string(Users::Password))
-//!             .col(&mut string(Users::Name))
-//!             .col(&mut string_null(Users::ResetToken))
-//!             .col(&mut timestamp_null(Users::ResetSentAt))
+//!             .col(pk_auto(Users::Id))
+//!             .col(uuid(Users::Pid))
+//!             .col(string_uniq(Users::Email))
+//!             .col(string(Users::Password))
+//!             .col(string(Users::Name))
+//!             .col(string_null(Users::ResetToken))
+//!             .col(timestamp_null(Users::ResetSentAt))
 //!             .to_owned();
 //!         manager.create_table(table).await?;
 //!         Ok(())
