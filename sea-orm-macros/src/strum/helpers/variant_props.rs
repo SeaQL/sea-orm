@@ -1,7 +1,6 @@
 use std::default::Default;
 use syn::{Ident, LitStr, Variant};
 
-use super::case_style::{CaseStyle, CaseStyleHelpers};
 use super::metadata::{kw, VariantExt, VariantMeta};
 use super::occurrence_error;
 
@@ -13,45 +12,14 @@ pub trait HasStrumVariantProperties {
 pub struct StrumVariantProperties {
     pub disabled: Option<kw::disabled>,
     pub default: Option<kw::default>,
-    pub default_with: Option<LitStr>,
     pub ascii_case_insensitive: Option<bool>,
     pub message: Option<LitStr>,
     pub detailed_message: Option<LitStr>,
     pub documentation: Vec<LitStr>,
     pub string_props: Vec<(LitStr, LitStr)>,
     serialize: Vec<LitStr>,
-    pub to_string: Option<LitStr>,
+    to_string: Option<LitStr>,
     ident: Option<Ident>,
-}
-
-impl StrumVariantProperties {
-    fn ident_as_str(&self, case_style: Option<CaseStyle>) -> LitStr {
-        let ident = self.ident.as_ref().expect("identifier");
-        LitStr::new(&ident.convert_case(case_style), ident.span())
-    }
-
-    pub fn get_preferred_name(&self, case_style: Option<CaseStyle>) -> LitStr {
-        self.to_string.as_ref().cloned().unwrap_or_else(|| {
-            self.serialize
-                .iter()
-                .max_by_key(|s| s.value().len())
-                .cloned()
-                .unwrap_or_else(|| self.ident_as_str(case_style))
-        })
-    }
-
-    pub fn get_serializations(&self, case_style: Option<CaseStyle>) -> Vec<LitStr> {
-        let mut attrs = self.serialize.clone();
-        if let Some(to_string) = &self.to_string {
-            attrs.push(to_string.clone());
-        }
-
-        if attrs.is_empty() {
-            attrs.push(self.ident_as_str(case_style));
-        }
-
-        attrs
-    }
 }
 
 impl HasStrumVariantProperties for Variant {
@@ -63,10 +31,9 @@ impl HasStrumVariantProperties for Variant {
 
         let mut message_kw = None;
         let mut detailed_message_kw = None;
+        let mut to_string_kw = None;
         let mut disabled_kw = None;
         let mut default_kw = None;
-        let mut default_with_kw = None;
-        let mut to_string_kw = None;
         let mut ascii_case_insensitive_kw = None;
         for meta in self.get_metadata()? {
             match meta {
@@ -115,14 +82,6 @@ impl HasStrumVariantProperties for Variant {
 
                     default_kw = Some(kw);
                     output.default = Some(kw);
-                }
-                VariantMeta::DefaultWith { kw, value } => {
-                    if let Some(fst_kw) = default_with_kw {
-                        return Err(occurrence_error(fst_kw, kw, "default_with"));
-                    }
-
-                    default_with_kw = Some(kw);
-                    output.default_with = Some(value);
                 }
                 VariantMeta::AsciiCaseInsensitive { kw, value } => {
                     if let Some(fst_kw) = ascii_case_insensitive_kw {

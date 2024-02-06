@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::default::Default;
-use syn::{parse_quote, DeriveInput, Ident, LitStr, Path, Visibility};
+use syn::{parse_quote, DeriveInput, Ident, Path, Visibility};
 
 use super::case_style::CaseStyle;
 use super::metadata::{DeriveInputExt, EnumDiscriminantsMeta, EnumMeta};
@@ -21,8 +21,6 @@ pub struct StrumTypeProperties {
     pub discriminant_others: Vec<TokenStream>,
     pub discriminant_vis: Option<Visibility>,
     pub use_phf: bool,
-    pub prefix: Option<LitStr>,
-    pub enum_repr: Option<TokenStream>,
 }
 
 impl HasTypeProperties for DeriveInput {
@@ -36,7 +34,6 @@ impl HasTypeProperties for DeriveInput {
         let mut ascii_case_insensitive_kw = None;
         let mut use_phf_kw = None;
         let mut crate_module_path_kw = None;
-        let mut prefix_kw = None;
         for meta in strum_meta {
             match meta {
                 EnumMeta::SerializeAll { case_style, kw } => {
@@ -74,14 +71,6 @@ impl HasTypeProperties for DeriveInput {
                     crate_module_path_kw = Some(kw);
                     output.crate_module_path = Some(crate_module_path);
                 }
-                EnumMeta::Prefix { prefix, kw } => {
-                    if let Some(fst_kw) = prefix_kw {
-                        return Err(occurrence_error(fst_kw, kw, "prefix"));
-                    }
-
-                    prefix_kw = Some(kw);
-                    output.prefix = Some(prefix);
-                }
             }
         }
 
@@ -110,17 +99,6 @@ impl HasTypeProperties for DeriveInput {
                 }
                 EnumDiscriminantsMeta::Other { path, nested } => {
                     output.discriminant_others.push(quote! { #path(#nested) });
-                }
-            }
-        }
-
-        let attrs = &self.attrs;
-        for attr in attrs {
-            if let Ok(list) = attr.meta.require_list() {
-                if let Some(ident) = list.path.get_ident() {
-                    if ident == "repr" {
-                        output.enum_repr = Some(list.tokens.clone())
-                    }
                 }
             }
         }
