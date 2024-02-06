@@ -1,4 +1,4 @@
-use sea_orm_migration::prelude::*;
+use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -9,17 +9,11 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Notes::Table)
+                    .table(Posts::Table)
                     .if_not_exists()
-                    .col(
-                        ColumnDef::new(Notes::Id)
-                            .integer()
-                            .not_null()
-                            .auto_increment()
-                            .primary_key(),
-                    )
-                    .col(ColumnDef::new(Notes::Title).string().not_null())
-                    .col(ColumnDef::new(Notes::Text).string().not_null())
+                    .col(pk_auto(Posts::Id))
+                    .col(string(Posts::Title))
+                    .col(string(Posts::Text))
                     .to_owned(),
             )
             .await
@@ -27,13 +21,13 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Notes::Table).to_owned())
+            .drop_table(Table::drop().table(Posts::Table).to_owned())
             .await
     }
 }
 
 #[derive(DeriveIden)]
-enum Notes {
+enum Posts {
     Table,
     Id,
     Title,

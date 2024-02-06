@@ -1,4 +1,4 @@
-use sea_orm_migration::prelude::*;
+use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -10,16 +10,10 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(Baker::Table)
-                    .col(
-                        ColumnDef::new(Baker::Id)
-                            .integer()
-                            .not_null()
-                            .auto_increment()
-                            .primary_key(),
-                    )
-                    .col(ColumnDef::new(Baker::Name).string().not_null())
-                    .col(ColumnDef::new(Baker::Contact).string().not_null())
-                    .col(ColumnDef::new(Baker::BakeryId).integer())
+                    .col(pk_auto(Baker::Id))
+                    .col(string(Baker::Name))
+                    .col(string(Baker::Contact))
+                    .col(integer_null(Baker::BakeryId))
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-baker-bakery_id")
