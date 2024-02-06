@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.0.0-rc.2 - Pending
+
+### Breaking Changes
+
+* Updated Strum to version 0.26 https://github.com/SeaQL/sea-orm/pull/2088
+
 ## 1.0.0-rc.1 - 2024-02-06
 
 ### Breaking Changes
