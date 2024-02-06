@@ -284,7 +284,7 @@ mod tests {
                 },
                 Column {
                     name: "name".to_owned(),
-                    col_type: ColumnType::String(None),
+                    col_type: ColumnType::string(None),
                     auto_increment: false,
                     not_null: false,
                     unique: false,

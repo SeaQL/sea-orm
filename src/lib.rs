@@ -315,6 +315,15 @@
 //!
 //! We invite you to participate, contribute and together help build Rust's future.
 //!
+//! ### Gold Sponsors
+//!
+//! <a href="https://osmos.io/">
+//!   <picture>
+//!     <source media="(prefers-color-scheme: dark)" srcset="https://www.sea-ql.org/static/sponsors/Osmos-dark.svg">
+//!     <img src="https://www.sea-ql.org/static/sponsors/Osmos.svg" width="238">
+//!   </picture>
+//! </a>
+//!
 //! ## Mascot
 //!
 //! A friend of Ferris, Terres the hermit crab is the official mascot of SeaORM. His hobby is collecting shells.

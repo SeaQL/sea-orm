@@ -5,12 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## Master - Pending
+## 1.0.0-rc.2 - Pending
+
+### Breaking Changes
+
+* Updated Strum to version 0.26 https://github.com/SeaQL/sea-orm/pull/2088
+
+## 1.0.0-rc.1 - 2024-02-06
+
+### Breaking Changes
+
+* Rework SQLite type mappings https://github.com/SeaQL/sea-orm/pull/2078
+* Updated `sea-query` to `0.31`
+
+## 0.12.14 - 2024-02-05
 
 * Added feature flag `sqlite-use-returning-for-3_35` to use SQLite's returning https://github.com/SeaQL/sea-orm/pull/2070
-* Update Strum to version 0.26 https://github.com/SeaQL/sea-orm/pull/2088
+* Added Loco example https://github.com/SeaQL/sea-orm/pull/2092
 
-## 0.12.12 - 2023-01-22
+## 0.12.12 - 2024-01-22
 
 ### Bug Fixes
 
@@ -21,7 +34,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Added `ConnectOptions::test_before_acquire`
 
-## 0.12.11 - 2023-01-14
+## 0.12.11 - 2024-01-14
 
 ### New Features
 

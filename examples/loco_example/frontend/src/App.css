@@ -1,0 +1,37 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.logo {
+  height: 10em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #ff1111aa);
+}
+
+.todo-list {
+  text-align: left;
+}
+
+.todo-list .todo{
+  margin-top: 10px;
+}
+
+.todo-add {
+  margin-top: 20px;
+  text-align: left;
+  
+}
+
+.todo-add input{
+  width: 70%;
+  height: 30px;
+}
+.todo-add button{
+  float: right;
+}
