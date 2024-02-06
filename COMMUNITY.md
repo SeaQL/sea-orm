@@ -11,6 +11,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Prefix.dev](https://prefix.dev/) | Conda Package Search, Environment Management and Deployment built for [mamba](https://github.com/mamba-org/mamba)  | DB: Postgres, SQLite
 - [Spyglass](https://www.spyglass.fyi/) ([repository](https://github.com/a5huynh/spyglass)) ![GitHub stars](https://img.shields.io/github/stars/a5huynh/spyglass.svg?style=social) | 🔭 A personal search engine that indexes what you want w/ a simple set of rules. | DB: SQLite
 - [Svix](https://www.svix.com/) ([repository](https://github.com/svix/svix-webhooks)) ![GitHub stars](https://img.shields.io/github/stars/svix/svix-webhooks.svg?style=social) | The enterprise ready webhooks service | DB: Postgres
+- [Templateless](https://templateless.com/) | Email design using just code | DB: Postgres
 - [UpVPN](https://upvpn.app) ([repository](https://github.com/upvpn/upvpn-app)) | Serverless VPN on WireGuard® | DB: SQLite, Postgres
 
 ### Open Source Projects
@@ -50,6 +51,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [SophyCore](https://github.com/FarDragi/SophyCore) | Main system that centralizes all rules, to be used by both the discord bot and the future site | DB: Postgres
 
 #### Crypto
+- [Barreleye](https://github.com/barreleye/barreleye) ![GitHub stars](https://img.shields.io/github/stars/barreleye/barreleye.svg?style=social) | Open-source blockchain analytics | DB: MySQL, Postgres, SQLite
 - [MoonRamp](https://github.com/MoonRamp/MoonRamp) | A free and open source crypto payment gateway | DB: MySQL, Postgres, SQLite
 - [Oura Postgres Sink](https://github.com/dcSpark/oura-postgres-sink) | Sync a postgres database with the cardano blockchain using Oura | DB: Postgres
 - [RGB Lib](https://github.com/RGB-Tools/rgb-lib) | A library to manage wallets for RGB assets | DB: MySQL, Postgres, SQLite
