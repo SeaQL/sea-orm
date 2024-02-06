@@ -1,5 +1,6 @@
 use heck::{
-    ToKebabCase, ToLowerCamelCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase, ToUpperCamelCase,
+    ToKebabCase, ToLowerCamelCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase, ToTrainCase,
+    ToUpperCamelCase,
 };
 use std::str::FromStr;
 use syn::{
@@ -20,6 +21,7 @@ pub enum CaseStyle {
     LowerCase,
     ScreamingKebabCase,
     PascalCase,
+    TrainCase,
 }
 
 const VALID_CASE_STYLES: &[&str] = &[
@@ -33,6 +35,7 @@ const VALID_CASE_STYLES: &[&str] = &[
     "UPPERCASE",
     "title_case",
     "mixed_case",
+    "Train-Case",
 ];
 
 impl Parse for CaseStyle {
@@ -57,18 +60,21 @@ impl FromStr for CaseStyle {
 
     fn from_str(text: &str) -> Result<Self, ()> {
         Ok(match text {
-            "camel_case" | "PascalCase" => CaseStyle::PascalCase,
+            // "camel_case" is a soft-deprecated case-style left for backward compatibility.
+            // <https://github.com/Peternator7/strum/pull/250#issuecomment-1374682221>
+            "PascalCase" | "camel_case" => CaseStyle::PascalCase,
             "camelCase" => CaseStyle::CamelCase,
             "snake_case" | "snek_case" => CaseStyle::SnakeCase,
-            "kebab_case" | "kebab-case" => CaseStyle::KebabCase,
+            "kebab-case" | "kebab_case" => CaseStyle::KebabCase,
             "SCREAMING-KEBAB-CASE" => CaseStyle::ScreamingKebabCase,
-            "shouty_snake_case" | "shouty_snek_case" | "SCREAMING_SNAKE_CASE" => {
+            "SCREAMING_SNAKE_CASE" | "shouty_snake_case" | "shouty_snek_case" => {
                 CaseStyle::ShoutySnakeCase
             }
             "title_case" => CaseStyle::TitleCase,
             "mixed_case" => CaseStyle::MixedCase,
             "lowercase" => CaseStyle::LowerCase,
             "UPPERCASE" => CaseStyle::UpperCase,
+            "Train-Case" => CaseStyle::TrainCase,
             _ => return Err(()),
         })
     }
@@ -92,6 +98,7 @@ impl CaseStyleHelpers for Ident {
                 CaseStyle::UpperCase => ident_string.to_uppercase(),
                 CaseStyle::LowerCase => ident_string.to_lowercase(),
                 CaseStyle::ScreamingKebabCase => ident_string.to_kebab_case().to_uppercase(),
+                CaseStyle::TrainCase => ident_string.to_train_case(),
                 CaseStyle::CamelCase => {
                     let camel_case = ident_string.to_upper_camel_case();
                     let mut pascal = String::with_capacity(camel_case.len());
@@ -109,9 +116,63 @@ impl CaseStyleHelpers for Ident {
     }
 }
 
-#[test]
-fn test_convert_case() {
-    let id = Ident::new("test_me", proc_macro2::Span::call_site());
-    assert_eq!("testMe", id.convert_case(Some(CaseStyle::CamelCase)));
-    assert_eq!("TestMe", id.convert_case(Some(CaseStyle::PascalCase)));
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_convert_case() {
+        let id = Ident::new("test_me", proc_macro2::Span::call_site());
+        assert_eq!("testMe", id.convert_case(Some(CaseStyle::CamelCase)));
+        assert_eq!("TestMe", id.convert_case(Some(CaseStyle::PascalCase)));
+        assert_eq!("Test-Me", id.convert_case(Some(CaseStyle::TrainCase)));
+    }
+
+    #[test]
+    fn test_impl_from_str_for_case_style_pascal_case() {
+        use CaseStyle::*;
+        let f = CaseStyle::from_str;
+
+        assert_eq!(PascalCase, f("PascalCase").unwrap());
+        assert_eq!(PascalCase, f("camel_case").unwrap());
+
+        assert_eq!(CamelCase, f("camelCase").unwrap());
+
+        assert_eq!(SnakeCase, f("snake_case").unwrap());
+        assert_eq!(SnakeCase, f("snek_case").unwrap());
+
+        assert_eq!(KebabCase, f("kebab-case").unwrap());
+        assert_eq!(KebabCase, f("kebab_case").unwrap());
+
+        assert_eq!(ScreamingKebabCase, f("SCREAMING-KEBAB-CASE").unwrap());
+
+        assert_eq!(ShoutySnakeCase, f("SCREAMING_SNAKE_CASE").unwrap());
+        assert_eq!(ShoutySnakeCase, f("shouty_snake_case").unwrap());
+        assert_eq!(ShoutySnakeCase, f("shouty_snek_case").unwrap());
+
+        assert_eq!(LowerCase, f("lowercase").unwrap());
+
+        assert_eq!(UpperCase, f("UPPERCASE").unwrap());
+
+        assert_eq!(TitleCase, f("title_case").unwrap());
+
+        assert_eq!(MixedCase, f("mixed_case").unwrap());
+    }
+}
+
+/// heck doesn't treat numbers as new words, but this function does.
+/// E.g. for input `Hello2You`, heck would output `hello2_you`, and snakify would output `hello_2_you`.
+pub fn snakify(s: &str) -> String {
+    let mut output: Vec<char> = s.to_string().to_snake_case().chars().collect();
+    let mut num_starts = vec![];
+    for (pos, c) in output.iter().enumerate() {
+        if c.is_digit(10) && pos != 0 && !output[pos - 1].is_digit(10) {
+            num_starts.push(pos);
+        }
+    }
+    // need to do in reverse, because after inserting, all chars after the point of insertion are off
+    for i in num_starts.into_iter().rev() {
+        output.insert(i, '_')
+    }
+    output.into_iter().collect()
 }

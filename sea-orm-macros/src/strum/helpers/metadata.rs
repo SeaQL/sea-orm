@@ -4,8 +4,8 @@ use syn::{
     parse::{Parse, ParseStream},
     parse2, parse_str,
     punctuated::Punctuated,
-    Attribute, DeriveInput, Expr, ExprLit, Ident, Lit, LitBool, LitStr, Meta, MetaNameValue, Path,
-    Token, Variant, Visibility,
+    Attribute, DeriveInput, Expr, ExprLit, Field, Ident, Lit, LitBool, LitStr, Meta, MetaNameValue,
+    Path, Token, Variant, Visibility,
 };
 
 use super::case_style::CaseStyle;
@@ -17,6 +17,7 @@ pub mod kw {
     // enum metadata
     custom_keyword!(serialize_all);
     custom_keyword!(use_phf);
+    custom_keyword!(prefix);
 
     // enum discriminant metadata
     custom_keyword!(derive);
@@ -30,6 +31,7 @@ pub mod kw {
     custom_keyword!(to_string);
     custom_keyword!(disabled);
     custom_keyword!(default);
+    custom_keyword!(default_with);
     custom_keyword!(props);
     custom_keyword!(ascii_case_insensitive);
 }
@@ -45,6 +47,10 @@ pub enum EnumMeta {
         crate_module_path: Path,
     },
     UsePhf(kw::use_phf),
+    Prefix {
+        kw: kw::prefix,
+        prefix: LitStr,
+    },
 }
 
 impl Parse for EnumMeta {
@@ -69,6 +75,11 @@ impl Parse for EnumMeta {
             Ok(EnumMeta::AsciiCaseInsensitive(input.parse()?))
         } else if lookahead.peek(kw::use_phf) {
             Ok(EnumMeta::UsePhf(input.parse()?))
+        } else if lookahead.peek(kw::prefix) {
+            let kw = input.parse::<kw::prefix>()?;
+            input.parse::<Token![=]>()?;
+            let prefix = input.parse()?;
+            Ok(EnumMeta::Prefix { kw, prefix })
         } else {
             Err(lookahead.error())
         }
@@ -155,6 +166,10 @@ pub enum VariantMeta {
     },
     Disabled(kw::disabled),
     Default(kw::default),
+    DefaultWith {
+        kw: kw::default_with,
+        value: LitStr,
+    },
     AsciiCaseInsensitive {
         kw: kw::ascii_case_insensitive,
         value: bool,
@@ -192,6 +207,11 @@ impl Parse for VariantMeta {
             Ok(VariantMeta::Disabled(input.parse()?))
         } else if lookahead.peek(kw::default) {
             Ok(VariantMeta::Default(input.parse()?))
+        } else if lookahead.peek(kw::default_with) {
+            let kw = input.parse()?;
+            let _: Token![=] = input.parse()?;
+            let value = input.parse()?;
+            Ok(VariantMeta::DefaultWith { kw, value })
         } else if lookahead.peek(kw::ascii_case_insensitive) {
             let kw = input.parse()?;
             let value = if input.peek(Token![=]) {
@@ -243,7 +263,7 @@ impl VariantExt for Variant {
         let result = get_metadata_inner("strum", &self.attrs)?;
         self.attrs
             .iter()
-            .filter(|attr| attr.path().is_ident("doc"))
+            .filter(|attr| attr.meta.path().is_ident("doc"))
             .try_fold(result, |mut vec, attr| {
                 if let Meta::NameValue(MetaNameValue {
                     value:
@@ -273,4 +293,38 @@ fn get_metadata_inner<'a, T: Parse>(
             vec.extend(attr.parse_args_with(Punctuated::<T, Token![,]>::parse_terminated)?);
             Ok(vec)
         })
+}
+
+#[derive(Debug)]
+pub enum InnerVariantMeta {
+    DefaultWith { kw: kw::default_with, value: LitStr },
+}
+
+impl Parse for InnerVariantMeta {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let lookahead = input.lookahead1();
+        if lookahead.peek(kw::default_with) {
+            let kw = input.parse()?;
+            let _: Token![=] = input.parse()?;
+            let value = input.parse()?;
+            Ok(InnerVariantMeta::DefaultWith { kw, value })
+        } else {
+            Err(lookahead.error())
+        }
+    }
+}
+
+pub trait InnerVariantExt {
+    /// Get all the metadata associated with an enum variant inner.
+    fn get_named_metadata(&self) -> syn::Result<Vec<InnerVariantMeta>>;
+}
+
+impl InnerVariantExt for Field {
+    fn get_named_metadata(&self) -> syn::Result<Vec<InnerVariantMeta>> {
+        let result = get_metadata_inner("strum", &self.attrs)?;
+        self.attrs
+            .iter()
+            .filter(|attr| attr.meta.path().is_ident("default_with"))
+            .try_fold(result, |vec, _attr| Ok(vec))
+    }
 }
