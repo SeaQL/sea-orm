@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 1.0.0-rc.1 - 2024-02-06
 
+### New Features
+
+* [sea-orm-migration] schema helper https://github.com/SeaQL/sea-orm/pull/2099
+
 ### Breaking Changes
 
 * Rework SQLite type mappings https://github.com/SeaQL/sea-orm/pull/2078
