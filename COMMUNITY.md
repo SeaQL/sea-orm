@@ -9,7 +9,6 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Caido](https://caido.io/) | A lightweight web security auditing toolkit
 - [My Data My Consent](https://mydatamyconsent.com/) | Online data sharing for people and businesses simplified
 - [Prefix.dev](https://prefix.dev/) | Conda Package Search, Environment Management and Deployment built for [mamba](https://github.com/mamba-org/mamba)  | DB: Postgres, SQLite
-- [Spyglass](https://www.spyglass.fyi/) ([repository](https://github.com/a5huynh/spyglass)) ![GitHub stars](https://img.shields.io/github/stars/a5huynh/spyglass.svg?style=social) | 🔭 A personal search engine that indexes what you want w/ a simple set of rules. | DB: SQLite
 - [Svix](https://www.svix.com/) ([repository](https://github.com/svix/svix-webhooks)) ![GitHub stars](https://img.shields.io/github/stars/svix/svix-webhooks.svg?style=social) | The enterprise ready webhooks service | DB: Postgres
 - [Templateless](https://templateless.com/) | Email design using just code | DB: Postgres
 - [UpVPN](https://upvpn.app) ([repository](https://github.com/upvpn/upvpn-app)) | Serverless VPN on WireGuard® | DB: SQLite, Postgres
@@ -82,6 +81,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [pansy](https://github.com/niuhuan/pansy) | An illustration app using SeaORM, SQLite, flutter. runs on the desktop and mobile terminals | DB: SQLite
 - [todo-rs](https://github.com/anshulxyz/todo-rs/) | A TUI ToDo-app written in Rust using Cursive library and SeaORM for SQLite | DB: SQLite
 - [Warpgate](https://github.com/warp-tech/warpgate) ![GitHub stars](https://img.shields.io/github/stars/warp-tech/warpgate.svg?style=social) | Smart SSH bastion that works with any SSH client | DB: SQLite
+- [Spyglass](https://www.spyglass.fyi/) ([repository](https://github.com/a5huynh/spyglass)) ![GitHub stars](https://img.shields.io/github/stars/a5huynh/spyglass.svg?style=social) | 🔭 A personal search engine that indexes what you want w/ a simple set of rules. | DB: SQLite
 
 #### Audio and Music
 
