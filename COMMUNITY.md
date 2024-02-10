@@ -50,7 +50,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [SophyCore](https://github.com/FarDragi/SophyCore) | Main system that centralizes all rules, to be used by both the discord bot and the future site | DB: Postgres
 
 #### Crypto
-- [Barreleye](https://github.com/barreleye/barreleye) ![GitHub stars](https://img.shields.io/github/stars/barreleye/barreleye.svg?style=social) | Open-source blockchain analytics | DB: MySQL, Postgres, SQLite
+- [Barreleye](https://github.com/barreleye/barreleye) | Open-source blockchain analytics | DB: MySQL, Postgres, SQLite
 - [MoonRamp](https://github.com/MoonRamp/MoonRamp) | A free and open source crypto payment gateway | DB: MySQL, Postgres, SQLite
 - [Oura Postgres Sink](https://github.com/dcSpark/oura-postgres-sink) | Sync a postgres database with the cardano blockchain using Oura | DB: Postgres
 - [RGB Lib](https://github.com/RGB-Tools/rgb-lib) | A library to manage wallets for RGB assets | DB: MySQL, Postgres, SQLite
@@ -79,9 +79,9 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 #### Desktop / CLI Apps
 
 - [pansy](https://github.com/niuhuan/pansy) | An illustration app using SeaORM, SQLite, flutter. runs on the desktop and mobile terminals | DB: SQLite
+- [Spyglass](https://www.spyglass.fyi/) ([repository](https://github.com/a5huynh/spyglass)) ![GitHub stars](https://img.shields.io/github/stars/a5huynh/spyglass.svg?style=social) | 🔭 A personal search engine that indexes what you want w/ a simple set of rules. | DB: SQLite
 - [todo-rs](https://github.com/anshulxyz/todo-rs/) | A TUI ToDo-app written in Rust using Cursive library and SeaORM for SQLite | DB: SQLite
 - [Warpgate](https://github.com/warp-tech/warpgate) ![GitHub stars](https://img.shields.io/github/stars/warp-tech/warpgate.svg?style=social) | Smart SSH bastion that works with any SSH client | DB: SQLite
-- [Spyglass](https://www.spyglass.fyi/) ([repository](https://github.com/a5huynh/spyglass)) ![GitHub stars](https://img.shields.io/github/stars/a5huynh/spyglass.svg?style=social) | 🔭 A personal search engine that indexes what you want w/ a simple set of rules. | DB: SQLite
 
 #### Audio and Music
 
