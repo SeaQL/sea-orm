@@ -34,7 +34,7 @@ tracing = { version = "0.1", default-features = false, features = ["attributes",
 rust_decimal = { version = "1", default-features = false, optional = true }
 bigdecimal = { version = "0.3", default-features = false, optional = true }
 sea-orm-macros = { version = "0.12.0-rc.3", path = "sea-orm-macros", default-features = false, features = ["strum"] }
-sea-query = { version = "0.29.0-rc.2", features = ["thread-safe", "with-ipnetwork"] }
+sea-query = { version = "0.29.0-rc.2", features = ["thread-safe", "with-ipnetwork", "with-mac_address"], optional = true }
 sea-query-binder = { version = "0.4.0-rc.2", default-features = false, optional = true }
 strum = { version = "0.24", default-features = false }
 serde = { version = "1.0", default-features = false }
@@ -85,7 +85,7 @@ with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-binder?
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
 with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
 with-ipnetwork = ["sea-query/with-ipnetwork", "ipnetwork", "sea-query-binder/with-ipnetwork"]
-with-mac_address = ["sea-query/mac_address", "sea-query-binder/mac_address", "mac_address"]
+with-mac_address = ["sea-query/with-mac_address", "sea-query-binder/with-mac_address", "mac_address"]
 postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array", "sea-orm-macros/postgres-array"]
 sea-orm-internal = []
 sqlx-dep = []
