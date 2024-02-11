@@ -8,6 +8,8 @@ use crate::debug_print;
 use crate::driver::*;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::Row;
+#[cfg(feature = "with-ipnetwork")]
+use ipnetwork::IpNetwork;
 
 /// Defines the result of a query operation on a Model
 #[derive(Debug)]
@@ -519,6 +521,28 @@ impl TryGetable for BigDecimal {
                     None => Err(err_null_idx_col(idx)),
                 }
             }
+            #[cfg(feature = "mock")]
+            #[allow(unused_variables)]
+            QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
+                debug_print!("{:#?}", e.to_string());
+                err_null_idx_col(idx)
+            }),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[cfg(feature = "with-ipnetwork")]
+impl TryGetable for IpNetwork {
+    #[allow(unused_variables)]
+    fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+        match &res.row {
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => row
+                .try_get::<Option<IpNetwork>, _>(idx.as_sqlx_postgres_index())
+                .map_err(|e| sqlx_error_to_query_err(e).into())
+                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
             #[cfg(feature = "mock")]
             #[allow(unused_variables)]
             QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
