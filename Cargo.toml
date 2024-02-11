@@ -44,7 +44,8 @@ uuid = { version = "1", default-features = false, optional = true }
 ouroboros = { version = "0.15", default-features = false }
 url = { version = "2.2", default-features = false }
 thiserror = { version = "1", default-features = false }
-ipnetwork = {version = "0.19", features = ["serde"], optional = true}
+ipnetwork = {version = "0.19", default-features = false, optional = true}
+mac_address = { version = "1.1.5", default-features = false, optional = true}
 
 [dev-dependencies]
 smol = { version = "1.2" }
@@ -77,13 +78,14 @@ default = [
 ]
 macros = ["sea-orm-macros/derive", "sea-query/derive"]
 mock = []
-with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "time?/serde", "uuid?/serde", "sea-query-binder?/with-json", "sqlx?/json", "serde/derive"]
+with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "time?/serde", "uuid?/serde", "sea-query-binder?/with-json", "sqlx?/json", "serde/derive", "ipnetwork?/serde", "mac_address?/serde"]
 with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-binder?/with-chrono", "sqlx?/chrono"]
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-binder?/with-rust_decimal", "sqlx?/decimal"]
 with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-binder?/with-bigdecimal", "sqlx?/bigdecimal"]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
 with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
 with-ipnetwork = ["sea-query/with-ipnetwork", "ipnetwork", "sea-query-binder/with-ipnetwork"]
+with-mac_address = ["sea-query/mac_address", "sea-query-binder/mac_address", "mac_address"]
 postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array", "sea-orm-macros/postgres-array"]
 sea-orm-internal = []
 sqlx-dep = []
