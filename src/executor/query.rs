@@ -10,6 +10,8 @@ use crate::driver::*;
 use sqlx::Row;
 #[cfg(feature = "with-ipnetwork")]
 use ipnetwork::IpNetwork;
+#[cfg(feature = "with-mac_address")]
+use mac_address::MacAddress;
 
 /// Defines the result of a query operation on a Model
 #[derive(Debug)]
@@ -541,6 +543,28 @@ impl TryGetable for IpNetwork {
             #[cfg(feature = "sqlx-postgres")]
             QueryResultRow::SqlxPostgres(row) => row
                 .try_get::<Option<IpNetwork>, _>(idx.as_sqlx_postgres_index())
+                .map_err(|e| sqlx_error_to_query_err(e).into())
+                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+            #[cfg(feature = "mock")]
+            #[allow(unused_variables)]
+            QueryResultRow::Mock(row) => row.try_get(idx).map_err(|e| {
+                debug_print!("{:#?}", e.to_string());
+                err_null_idx_col(idx)
+            }),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[cfg(feature = "with-mac_address")]
+impl TryGetable for MacAddress {
+    #[allow(unused_variables)]
+    fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+        match &res.row {
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => row
+                .try_get::<Option<MacAddress>, _>(idx.as_sqlx_postgres_index())
                 .map_err(|e| sqlx_error_to_query_err(e).into())
                 .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
             #[cfg(feature = "mock")]
