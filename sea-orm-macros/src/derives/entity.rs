@@ -11,7 +11,7 @@ struct DeriveEntity {
     model_ident: syn::Ident,
     primary_key_ident: syn::Ident,
     relation_ident: syn::Ident,
-    schema_name: Option<syn::Lit>,
+    schema_name: Option<syn::Expr>,
     table_name: Option<syn::Lit>,
 }
 
