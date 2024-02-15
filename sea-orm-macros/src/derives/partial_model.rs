@@ -16,7 +16,7 @@ use self::util::GetAsKVMeta;
 #[derive(Debug)]
 enum Error {
     InputNotStruct,
-    EntityNotSpecific,
+    EntityNotSpecified,
     NotSupportGeneric(Span),
     BothFromColAndFromExpr(Span),
     Syn(syn::Error),
@@ -32,7 +32,7 @@ enum ColumnAs {
 }
 
 struct DerivePartialModel {
-    entity_ident: Option<syn::Ident>,
+    entity_path: Option<syn::Path>,
     ident: syn::Ident,
     fields: Vec<ColumnAs>,
 }
@@ -54,7 +54,7 @@ impl DerivePartialModel {
             return Err(Error::InputNotStruct);
         };
 
-        let mut entity_ident = None;
+        let mut entity_path = None;
 
         for attr in input.attrs.iter() {
             if !attr.path().is_ident("sea_orm") {
@@ -63,9 +63,9 @@ impl DerivePartialModel {
 
             if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
                 for meta in list {
-                    entity_ident = meta
+                    entity_path = meta
                         .get_as_kv("entity")
-                        .map(|s| syn::parse_str::<syn::Ident>(&s).map_err(Error::Syn))
+                        .map(|s| syn::parse_str::<syn::Path>(&s).map_err(Error::Syn))
                         .transpose()?;
                 }
             }
@@ -102,8 +102,8 @@ impl DerivePartialModel {
 
             let col_as = match (from_col, from_expr) {
                 (None, None) => {
-                    if entity_ident.is_none() {
-                        return Err(Error::EntityNotSpecific);
+                    if entity_path.is_none() {
+                        return Err(Error::EntityNotSpecified);
                     }
                     ColumnAs::Col(format_ident!(
                         "{}",
@@ -115,8 +115,8 @@ impl DerivePartialModel {
                     field_name: field_name.to_string(),
                 },
                 (Some(col), None) => {
-                    if entity_ident.is_none() {
-                        return Err(Error::EntityNotSpecific);
+                    if entity_path.is_none() {
+                        return Err(Error::EntityNotSpecified);
                     }
 
                     let field = field_name.to_string();
@@ -128,7 +128,7 @@ impl DerivePartialModel {
         }
 
         Ok(Self {
-            entity_ident,
+            entity_path,
             ident: input.ident,
             fields: column_as_list,
         })
@@ -141,18 +141,18 @@ impl DerivePartialModel {
     fn impl_partial_model_trait(&self) -> TokenStream {
         let select_ident = format_ident!("select");
         let DerivePartialModel {
-            entity_ident,
+            entity_path,
             ident,
             fields,
         } = self;
         let select_col_code_gen = fields.iter().map(|col_as| match col_as {
             ColumnAs::Col(ident) => {
-                let entity = entity_ident.as_ref().unwrap();
+                let entity = entity_path.as_ref().unwrap();
                 let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #ident);
                 quote!(let #select_ident =  sea_orm::SelectColumns::select_column(#select_ident, #col_value);)
             },
             ColumnAs::ColAlias { col, field } => {
-                let entity = entity_ident.as_ref().unwrap();
+                let entity = entity_path.as_ref().unwrap();
                 let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #col);
                 quote!(let #select_ident =  sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, #field);)
             },
@@ -184,8 +184,8 @@ pub fn expand_derive_partial_model(input: syn::DeriveInput) -> syn::Result<Token
         Err(Error::BothFromColAndFromExpr(span)) => Ok(quote_spanned! {
             span => compile_error!("you can only use one of `from_col` or `from_expr`");
         }),
-        Err(Error::EntityNotSpecific) => Ok(quote_spanned! {
-            ident_span => compile_error!("you need specific which entity you are using")
+        Err(Error::EntityNotSpecified) => Ok(quote_spanned! {
+            ident_span => compile_error!("you need to specify which entity you are using")
         }),
         Err(Error::InputNotStruct) => Ok(quote_spanned! {
             ident_span => compile_error!("you can only derive `DerivePartialModel` on named struct");
@@ -234,11 +234,12 @@ mod test {
 
     use super::DerivePartialModel;
 
-    #[cfg(test)]
     type StdResult<T> = Result<T, Box<dyn std::error::Error>>;
 
     #[cfg(test)]
-    const CODE_SNIPPET: &str = r#"
+    #[test]
+    fn test_load_macro_input() -> StdResult<()> {
+        const CODE_SNIPPET: &str = r#"
 #[sea_orm(entity = "Entity")]
 struct PartialModel{
     default_field: i32,
@@ -248,13 +249,14 @@ struct PartialModel{
     expr_field : i32
 }
 "#;
-    #[test]
-    fn test_load_macro_input() -> StdResult<()> {
         let input = syn::parse_str::<DeriveInput>(CODE_SNIPPET)?;
 
         let middle = DerivePartialModel::new(input).unwrap();
 
-        assert_eq!(middle.entity_ident, Some(format_ident!("Entity")));
+        let entity_ident = middle.entity_path.unwrap();
+        assert_eq!(entity_ident.segments.len(), 1);
+        assert_eq!(entity_ident.segments[0].ident, format_ident!("Entity"));
+
         assert_eq!(middle.ident, format_ident!("PartialModel"));
         assert_eq!(middle.fields.len(), 3);
         assert_eq!(
@@ -275,6 +277,29 @@ struct PartialModel{
                 field_name: "expr_field".to_string()
             }
         );
+
+        Ok(())
+    }
+
+    #[cfg(test)]
+    #[test]
+    fn test_load_macro_input_entity_path() -> StdResult<()> {
+        const CODE_SNIPPET: &str = r#"
+#[sea_orm(entity = "test::Entity")]
+struct PartialModel {}
+"#;
+
+        let input = syn::parse_str::<DeriveInput>(CODE_SNIPPET)?;
+
+        let middle = DerivePartialModel::new(input).unwrap();
+
+        let entity_ident = middle.entity_path.unwrap();
+        assert_eq!(entity_ident.segments.len(), 2);
+        assert_eq!(entity_ident.segments[0].ident, format_ident!("test"));
+        assert_eq!(entity_ident.segments[1].ident, format_ident!("Entity"));
+
+        assert_eq!(middle.ident, format_ident!("PartialModel"));
+        assert!(middle.fields.is_empty());
 
         Ok(())
     }
