@@ -13,8 +13,9 @@ use sqlx::pool::PoolConnection;
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use std::sync::Arc;
 
-/// Handle a database connection depending on the backend
-/// enabled by the feature flags. This creates a database pool.
+/// Handle a database connection depending on the backend enabled by the feature
+/// flags. This creates a database pool. This will be `Clone` unless the feature
+/// flag `mock` is enabled.
 #[cfg_attr(not(feature = "mock"), derive(Clone))]
 pub enum DatabaseConnection {
     /// Create a MYSQL database connection and pool
