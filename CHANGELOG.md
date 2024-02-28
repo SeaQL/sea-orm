@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Updated Strum to version 0.26 https://github.com/SeaQL/sea-orm/pull/2088
 
+### Enhancements
+
+* [sea-orm-cli] Fix `migrate generate` on empty `mod.rs` files
+
 ## 1.0.0-rc.1 - 2024-02-06
 
 ### New Features
