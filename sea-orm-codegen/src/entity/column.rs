@@ -115,8 +115,8 @@ impl Column {
                     None => quote! { ColumnType::Char(None) },
                 },
                 ColumnType::String(s) => match s {
-                    StringLen::N(s) => quote! { ColumnType::string(Some(#s)) },
-                    StringLen::None => quote! { ColumnType::string(None) },
+                    StringLen::N(s) => quote! { ColumnType::String(StringLen::N(#s)) },
+                    StringLen::None => quote! { ColumnType::String(StringLen::None) },
                     StringLen::Max => quote! { ColumnType::String(StringLen::Max) },
                 },
                 ColumnType::Text => quote! { ColumnType::Text },
@@ -302,8 +302,8 @@ mod tests {
             };
         }
         vec![
-            make_col!("id", ColumnType::string(Some(255))),
-            make_col!("id", ColumnType::string(None)),
+            make_col!("id", ColumnType::String(StringLen::N(255))),
+            make_col!("id", ColumnType::String(StringLen::None)),
             make_col!(
                 "cake_id",
                 ColumnType::Custom(SeaRc::new(Alias::new("cus_col")))
@@ -493,8 +493,8 @@ mod tests {
     fn test_get_def() {
         let columns = setup();
         let col_defs = vec![
-            "ColumnType::string(Some(255u32)).def()",
-            "ColumnType::string(None).def()",
+            "ColumnType::String(StringLen::N(255u32)).def()",
+            "ColumnType::String(StringLen::None).def()",
             "ColumnType::custom(\"cus_col\").def()",
             "ColumnType::TinyInteger.def()",
             "ColumnType::TinyUnsigned.def()",
@@ -681,7 +681,7 @@ mod tests {
         assert_eq!(
             column.get_def().to_string(),
             quote! {
-                ColumnType::string(None).def().null()
+                ColumnType::String(StringLen::None).def().null()
             }
             .to_string()
         );

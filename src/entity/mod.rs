@@ -80,7 +80,7 @@
 ///     fn def(&self) -> ColumnDef {
 ///         match self {
 ///             Self::Id => ColumnType::Integer.def(),
-///             Self::Name => ColumnType::string(None).def(),
+///             Self::Name => ColumnType::String(StringLen::None).def(),
 ///         }
 ///     }
 /// }

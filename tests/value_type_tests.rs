@@ -75,7 +75,7 @@ pub fn type_test() {
     // self implied
     assert_eq!(
         StringVec::column_type(),
-        ColumnType::Array(Arc::new(ColumnType::string(None)))
+        ColumnType::Array(Arc::new(ColumnType::String(StringLen::None)))
     );
     assert_eq!(StringVec::array_type(), ArrayType::String);
 }

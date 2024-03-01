@@ -508,7 +508,7 @@ pub async fn create_event_trigger_table(db: &DbConn) -> Result<ExecResult, DbErr
         )
         .col(
             ColumnDef::new(event_trigger::Column::Events)
-                .array(sea_query::ColumnType::string(None))
+                .array(sea_query::ColumnType::String(StringLen::None))
                 .not_null(),
         )
         .to_owned();
@@ -590,7 +590,10 @@ pub async fn create_categories_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .not_null()
                 .primary_key(),
         )
-        .col(ColumnDef::new(categories::Column::Categories).array(ColumnType::string(Some(1))))
+        .col(
+            ColumnDef::new(categories::Column::Categories)
+                .array(ColumnType::String(StringLen::N(1))),
+        )
         .to_owned();
 
     create_table(db, &create_table_stmt, Categories).await
@@ -733,7 +736,7 @@ pub async fn create_value_type_postgres_table(db: &DbConn) -> Result<ExecResult,
         )
         .col(
             ColumnDef::new(json_vec::Column::StrVec)
-                .array(sea_query::ColumnType::string(None))
+                .array(sea_query::ColumnType::String(StringLen::None))
                 .not_null(),
         )
         .to_owned();
