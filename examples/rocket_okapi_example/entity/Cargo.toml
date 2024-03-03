@@ -16,4 +16,4 @@ path = "../../../" # remove this line in your own project
 version = "1.0.0-rc.1" # sea-orm version
 
 [dependencies.rocket_okapi]
-version = "0.8.0-rc.2"
+version = "0.8.0"

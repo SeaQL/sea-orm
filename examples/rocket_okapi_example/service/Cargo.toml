@@ -13,9 +13,9 @@ path = "../../../" # remove this line in your own project
 version = "1.0.0-rc.1" # sea-orm version
 features = [
     "runtime-tokio-native-tls",
-    "sqlx-postgres",
-    # "sqlx-mysql",
-    # "sqlx-sqlite",
+#    "sqlx-postgres",
+#    "sqlx-mysql",
+    "sqlx-sqlite",
 ]
 
 [dev-dependencies]
