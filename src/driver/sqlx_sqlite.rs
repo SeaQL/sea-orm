@@ -1,3 +1,4 @@
+use log::LevelFilter;
 use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
 
@@ -11,8 +12,9 @@ use sea_query_binder::SqlxValues;
 use tracing::{instrument, warn};
 
 use crate::{
-    debug_print, error::*, executor::*, AccessMode, ConnectOptions, DatabaseConnection,
-    DatabaseTransaction, IsolationLevel, QueryStream, Statement, TransactionError,
+    debug_print, error::*, executor::*, sqlx_error_to_exec_err, AccessMode, ConnectOptions,
+    DatabaseConnection, DatabaseTransaction, IsolationLevel, QueryStream, Statement,
+    TransactionError,
 };
 
 use super::sqlx_common::*;
@@ -53,20 +55,34 @@ impl SqlxSqliteConnector {
         }
         use sqlx::ConnectOptions;
         if !options.sqlx_logging {
-            opt.disable_statement_logging();
+            opt = opt.disable_statement_logging();
         } else {
-            opt.log_statements(options.sqlx_logging_level);
+            opt = opt.log_statements(options.sqlx_logging_level);
+            if options.sqlx_slow_statements_logging_level != LevelFilter::Off {
+                opt = opt.log_slow_statements(
+                    options.sqlx_slow_statements_logging_level,
+                    options.sqlx_slow_statements_logging_threshold,
+                );
+            }
         }
         if options.get_max_connections().is_none() {
             options.max_connections(1);
         }
         match options.pool_options().connect_with(opt).await {
-            Ok(pool) => Ok(DatabaseConnection::SqlxSqlitePoolConnection(
-                SqlxSqlitePoolConnection {
+            Ok(pool) => {
+                let pool = SqlxSqlitePoolConnection {
                     pool,
                     metric_callback: None,
-                },
-            )),
+                };
+
+                #[cfg(feature = "sqlite-use-returning-for-3_35")]
+                {
+                    let version = get_version(&pool).await?;
+                    ensure_returning_version(&version)?;
+                }
+
+                Ok(DatabaseConnection::SqlxSqlitePoolConnection(pool))
+            }
             Err(e) => Err(sqlx_error_to_conn_err(e)),
         }
     }
@@ -89,16 +105,13 @@ impl SqlxSqlitePoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        if let Ok(conn) = &mut self.pool.acquire().await {
-            crate::metric::metric!(self.metric_callback, &stmt, {
-                match query.execute(conn).await {
-                    Ok(res) => Ok(res.into()),
-                    Err(err) => Err(sqlx_error_to_exec_err(err)),
-                }
-            })
-        } else {
-            Err(DbErr::ConnectionAcquire)
-        }
+        let mut conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
+        crate::metric::metric!(self.metric_callback, &stmt, {
+            match query.execute(&mut *conn).await {
+                Ok(res) => Ok(res.into()),
+                Err(err) => Err(sqlx_error_to_exec_err(err)),
+            }
+        })
     }
 
     /// Execute an unprepared SQL statement on a SQLite backend
@@ -106,13 +119,10 @@ impl SqlxSqlitePoolConnection {
     pub async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
         debug_print!("{}", sql);
 
-        if let Ok(conn) = &mut self.pool.acquire().await {
-            match conn.execute(sql).await {
-                Ok(res) => Ok(res.into()),
-                Err(err) => Err(sqlx_error_to_exec_err(err)),
-            }
-        } else {
-            Err(DbErr::ConnectionAcquire)
+        let conn = &mut self.pool.acquire().await.map_err(conn_acquire_err)?;
+        match conn.execute(sql).await {
+            Ok(res) => Ok(res.into()),
+            Err(err) => Err(sqlx_error_to_exec_err(err)),
         }
     }
 
@@ -122,19 +132,16 @@ impl SqlxSqlitePoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        if let Ok(conn) = &mut self.pool.acquire().await {
-            crate::metric::metric!(self.metric_callback, &stmt, {
-                match query.fetch_one(conn).await {
-                    Ok(row) => Ok(Some(row.into())),
-                    Err(err) => match err {
-                        sqlx::Error::RowNotFound => Ok(None),
-                        _ => Err(sqlx_error_to_query_err(err)),
-                    },
-                }
-            })
-        } else {
-            Err(DbErr::ConnectionAcquire)
-        }
+        let mut conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
+        crate::metric::metric!(self.metric_callback, &stmt, {
+            match query.fetch_one(&mut *conn).await {
+                Ok(row) => Ok(Some(row.into())),
+                Err(err) => match err {
+                    sqlx::Error::RowNotFound => Ok(None),
+                    _ => Err(sqlx_error_to_query_err(err)),
+                },
+            }
+        })
     }
 
     /// Get the results of a query returning them as a Vec<[QueryResult]>
@@ -143,16 +150,13 @@ impl SqlxSqlitePoolConnection {
         debug_print!("{}", stmt);
 
         let query = sqlx_query(&stmt);
-        if let Ok(conn) = &mut self.pool.acquire().await {
-            crate::metric::metric!(self.metric_callback, &stmt, {
-                match query.fetch_all(conn).await {
-                    Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
-                    Err(err) => Err(sqlx_error_to_query_err(err)),
-                }
-            })
-        } else {
-            Err(DbErr::ConnectionAcquire)
-        }
+        let mut conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
+        crate::metric::metric!(self.metric_callback, &stmt, {
+            match query.fetch_all(&mut *conn).await {
+                Ok(rows) => Ok(rows.into_iter().map(|r| r.into()).collect()),
+                Err(err) => Err(sqlx_error_to_query_err(err)),
+            }
+        })
     }
 
     /// Stream the results of executing a SQL query
@@ -160,15 +164,12 @@ impl SqlxSqlitePoolConnection {
     pub async fn stream(&self, stmt: Statement) -> Result<QueryStream, DbErr> {
         debug_print!("{}", stmt);
 
-        if let Ok(conn) = self.pool.acquire().await {
-            Ok(QueryStream::from((
-                conn,
-                stmt,
-                self.metric_callback.clone(),
-            )))
-        } else {
-            Err(DbErr::ConnectionAcquire)
-        }
+        let conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
+        Ok(QueryStream::from((
+            conn,
+            stmt,
+            self.metric_callback.clone(),
+        )))
     }
 
     /// Bundle a set of SQL statements that execute together.
@@ -178,17 +179,14 @@ impl SqlxSqlitePoolConnection {
         isolation_level: Option<IsolationLevel>,
         access_mode: Option<AccessMode>,
     ) -> Result<DatabaseTransaction, DbErr> {
-        if let Ok(conn) = self.pool.acquire().await {
-            DatabaseTransaction::new_sqlite(
-                conn,
-                self.metric_callback.clone(),
-                isolation_level,
-                access_mode,
-            )
-            .await
-        } else {
-            Err(DbErr::ConnectionAcquire)
-        }
+        let conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
+        DatabaseTransaction::new_sqlite(
+            conn,
+            self.metric_callback.clone(),
+            isolation_level,
+            access_mode,
+        )
+        .await
     }
 
     /// Create a MySQL transaction
@@ -207,19 +205,16 @@ impl SqlxSqlitePoolConnection {
         T: Send,
         E: std::error::Error + Send,
     {
-        if let Ok(conn) = self.pool.acquire().await {
-            let transaction = DatabaseTransaction::new_sqlite(
-                conn,
-                self.metric_callback.clone(),
-                isolation_level,
-                access_mode,
-            )
-            .await
-            .map_err(|e| TransactionError::Connection(e))?;
-            transaction.run(callback).await
-        } else {
-            Err(DbErr::ConnectionAcquire.into())
-        }
+        let conn = self.pool.acquire().await.map_err(conn_acquire_err)?;
+        let transaction = DatabaseTransaction::new_sqlite(
+            conn,
+            self.metric_callback.clone(),
+            isolation_level,
+            access_mode,
+        )
+        .await
+        .map_err(|e| TransactionError::Connection(e))?;
+        transaction.run(callback).await
     }
 
     pub(crate) fn set_metric_callback<F>(&mut self, callback: F)
@@ -231,13 +226,10 @@ impl SqlxSqlitePoolConnection {
 
     /// Checks if a connection to the database is still valid.
     pub async fn ping(&self) -> Result<(), DbErr> {
-        if let Ok(conn) = &mut self.pool.acquire().await {
-            match conn.ping().await {
-                Ok(_) => Ok(()),
-                Err(err) => Err(sqlx_error_to_conn_err(err)),
-            }
-        } else {
-            Err(DbErr::ConnectionAcquire)
+        let conn = &mut self.pool.acquire().await.map_err(conn_acquire_err)?;
+        match conn.ping().await {
+            Ok(_) => Ok(()),
+            Err(err) => Err(sqlx_error_to_conn_err(err)),
         }
     }
 
@@ -284,4 +276,81 @@ pub(crate) async fn set_transaction_config(
         warn!("Setting access mode in a SQLite transaction isn't supported");
     }
     Ok(())
+}
+
+#[cfg(feature = "sqlite-use-returning-for-3_35")]
+async fn get_version(conn: &SqlxSqlitePoolConnection) -> Result<String, DbErr> {
+    let stmt = Statement {
+        sql: "SELECT sqlite_version()".to_string(),
+        values: None,
+        db_backend: crate::DbBackend::Sqlite,
+    };
+    conn.query_one(stmt)
+        .await?
+        .ok_or_else(|| {
+            DbErr::Conn(RuntimeErr::Internal(
+                "Error reading SQLite version".to_string(),
+            ))
+        })?
+        .try_get_by(0)
+}
+
+#[cfg(feature = "sqlite-use-returning-for-3_35")]
+fn ensure_returning_version(version: &str) -> Result<(), DbErr> {
+    let mut parts = version.trim().split('.').map(|part| {
+        part.parse::<u32>().map_err(|_| {
+            DbErr::Conn(RuntimeErr::Internal(
+                "Error parsing SQLite version".to_string(),
+            ))
+        })
+    });
+
+    let mut extract_next = || {
+        parts.next().transpose().and_then(|part| {
+            part.ok_or_else(|| {
+                DbErr::Conn(RuntimeErr::Internal("SQLite version too short".to_string()))
+            })
+        })
+    };
+
+    let major = extract_next()?;
+    let minor = extract_next()?;
+
+    if major > 3 || (major == 3 && minor >= 35) {
+        Ok(())
+    } else {
+        Err(DbErr::Conn(RuntimeErr::Internal(
+            "SQLite version does not support returning".to_string(),
+        )))
+    }
+}
+
+#[cfg(all(test, feature = "sqlite-use-returning-for-3_35"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ensure_returning_version() {
+        assert!(ensure_returning_version("").is_err());
+        assert!(ensure_returning_version(".").is_err());
+        assert!(ensure_returning_version(".a").is_err());
+        assert!(ensure_returning_version(".4.9").is_err());
+        assert!(ensure_returning_version("a").is_err());
+        assert!(ensure_returning_version("1.").is_err());
+        assert!(ensure_returning_version("1.a").is_err());
+
+        assert!(ensure_returning_version("1.1").is_err());
+        assert!(ensure_returning_version("1.0.").is_err());
+        assert!(ensure_returning_version("1.0.0").is_err());
+        assert!(ensure_returning_version("2.0.0").is_err());
+        assert!(ensure_returning_version("3.34.0").is_err());
+        assert!(ensure_returning_version("3.34.999").is_err());
+
+        // valid version
+        assert!(ensure_returning_version("3.35.0").is_ok());
+        assert!(ensure_returning_version("3.35.1").is_ok());
+        assert!(ensure_returning_version("3.36.0").is_ok());
+        assert!(ensure_returning_version("4.0.0").is_ok());
+        assert!(ensure_returning_version("99.0.0").is_ok());
+    }
 }

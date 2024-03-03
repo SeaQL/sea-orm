@@ -3,6 +3,7 @@ pub mod common;
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
 use sea_orm::entity::prelude::*;
+use sea_orm::TryInsertResult;
 use sea_orm::{sea_query::OnConflict, Set};
 
 #[sea_orm_macros::test]
@@ -50,11 +51,24 @@ pub async fn create_insert_default(db: &DatabaseConnection) -> Result<(), DbErr>
         ActiveModel { id: Set(3) },
         ActiveModel { id: Set(4) },
     ])
-    .on_conflict(on_conflict)
+    .on_conflict(on_conflict.clone())
     .exec(db)
     .await;
 
-    assert_eq!(res.err(), Some(DbErr::RecordNotInserted));
+    assert!(matches!(res, Err(DbErr::RecordNotInserted)));
+
+    let res = Entity::insert_many([
+        ActiveModel { id: Set(1) },
+        ActiveModel { id: Set(2) },
+        ActiveModel { id: Set(3) },
+        ActiveModel { id: Set(4) },
+    ])
+    .on_conflict(on_conflict)
+    .do_nothing()
+    .exec(db)
+    .await;
+
+    assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
 
     Ok(())
 }

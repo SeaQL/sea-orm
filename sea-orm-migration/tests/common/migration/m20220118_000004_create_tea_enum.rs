@@ -15,7 +15,7 @@ impl MigrationTrait for Migration {
                 manager
                     .create_type(
                         Type::create()
-                            .as_enum(Tea::Table)
+                            .as_enum(Tea::Enum)
                             .values([Tea::EverydayTea, Tea::BreakfastTea])
                             .to_owned(),
                     )
@@ -33,7 +33,7 @@ impl MigrationTrait for Migration {
             DbBackend::MySql | DbBackend::Sqlite => {}
             DbBackend::Postgres => {
                 manager
-                    .drop_type(Type::drop().name(Tea::Table).to_owned())
+                    .drop_type(Type::drop().name(Tea::Enum).to_owned())
                     .await?;
             }
         }
@@ -42,12 +42,12 @@ impl MigrationTrait for Migration {
     }
 }
 
-/// Learn more at https://docs.rs/sea-query#iden
-#[derive(Iden)]
+#[derive(DeriveIden)]
 pub enum Tea {
-    Table,
-    #[iden = "EverydayTea"]
+    #[sea_orm(iden = "tea")]
+    Enum,
+    #[sea_orm(iden = "EverydayTea")]
     EverydayTea,
-    #[iden = "BreakfastTea"]
+    #[sea_orm(iden = "BreakfastTea")]
     BreakfastTea,
 }

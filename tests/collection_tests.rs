@@ -5,6 +5,7 @@ use pretty_assertions::assert_eq;
 use sea_orm::{
     entity::prelude::*, entity::*, DatabaseConnection, DerivePartialModel, FromQueryResult,
 };
+use serde_json::json;
 
 #[sea_orm_macros::test]
 #[cfg(all(feature = "sqlx-postgres", feature = "postgres-array"))]
@@ -112,6 +113,54 @@ pub async fn insert_collection(db: &DatabaseConnection) -> Result<(), DbErr> {
             uuid: vec![uuid],
             uuid_hyphenated: vec![uuid.hyphenated()],
         }
+    );
+
+    assert_eq!(
+        Entity::find_by_id(1).into_json().one(db).await?,
+        Some(json!({
+            "id": 1,
+            "name": "Collection 1",
+            "integers": [1, 2, 3],
+            "integers_opt": [1, 2, 3],
+            "teas": ["BreakfastTea"],
+            "teas_opt": ["BreakfastTea"],
+            "colors": [0],
+            "colors_opt": [0],
+            "uuid": [uuid],
+            "uuid_hyphenated": [uuid.hyphenated()],
+        }))
+    );
+
+    assert_eq!(
+        Entity::find_by_id(2).into_json().one(db).await?,
+        Some(json!({
+            "id": 2,
+            "name": "Collection 2",
+            "integers": [10, 9],
+            "integers_opt": null,
+            "teas": ["BreakfastTea"],
+            "teas_opt": null,
+            "colors": [0],
+            "colors_opt": null,
+            "uuid": [uuid],
+            "uuid_hyphenated": [uuid.hyphenated()],
+        }))
+    );
+
+    assert_eq!(
+        Entity::find_by_id(3).into_json().one(db).await?,
+        Some(json!({
+            "id": 3,
+            "name": "Collection 3",
+            "integers": [],
+            "integers_opt": [],
+            "teas": [],
+            "teas_opt": [],
+            "colors": [],
+            "colors_opt": [],
+            "uuid": [uuid],
+            "uuid_hyphenated": [uuid.hyphenated()],
+        }))
     );
 
     Ok(())

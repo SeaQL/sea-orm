@@ -31,6 +31,8 @@ pub async fn run_generate_command(
             lib,
             model_extra_derives,
             model_extra_attributes,
+            enum_extra_derives,
+            enum_extra_attributes,
             seaography,
         } => {
             if verbose {
@@ -110,9 +112,11 @@ pub async fn run_generate_command(
                     use sea_schema::mysql::discovery::SchemaDiscovery;
                     use sqlx::MySql;
 
+                    println!("Connecting to MySQL ...");
                     let connection = connect::<MySql>(max_connections, url.as_str(), None).await?;
+                    println!("Discovering schema ...");
                     let schema_discovery = SchemaDiscovery::new(connection, database_name);
-                    let schema = schema_discovery.discover().await;
+                    let schema = schema_discovery.discover().await?;
                     let table_stmts = schema
                         .tables
                         .into_iter()
@@ -127,7 +131,9 @@ pub async fn run_generate_command(
                     use sea_schema::sqlite::discovery::SchemaDiscovery;
                     use sqlx::Sqlite;
 
+                    println!("Connecting to SQLite ...");
                     let connection = connect::<Sqlite>(max_connections, url.as_str(), None).await?;
+                    println!("Discovering schema ...");
                     let schema_discovery = SchemaDiscovery::new(connection);
                     let schema = schema_discovery.discover().await?;
                     let table_stmts = schema
@@ -144,11 +150,13 @@ pub async fn run_generate_command(
                     use sea_schema::postgres::discovery::SchemaDiscovery;
                     use sqlx::Postgres;
 
+                    println!("Connecting to Postgres ...");
                     let schema = &database_schema;
                     let connection =
                         connect::<Postgres>(max_connections, url.as_str(), Some(schema)).await?;
+                    println!("Discovering schema ...");
                     let schema_discovery = SchemaDiscovery::new(connection, schema);
-                    let schema = schema_discovery.discover().await;
+                    let schema = schema_discovery.discover().await?;
                     let table_stmts = schema
                         .tables
                         .into_iter()
@@ -161,6 +169,7 @@ pub async fn run_generate_command(
                 }
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
+            println!("... discovered.");
 
             let writer_context = EntityWriterContext::new(
                 expanded_format,
@@ -173,6 +182,8 @@ pub async fn run_generate_command(
                 serde_skip_hidden_column,
                 model_extra_derives,
                 model_extra_attributes,
+                enum_extra_derives,
+                enum_extra_attributes,
                 seaography,
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
@@ -182,6 +193,7 @@ pub async fn run_generate_command(
 
             for OutputFile { name, content } in output.files.iter() {
                 let file_path = dir.join(name);
+                println!("Writing {}", file_path.display());
                 let mut file = fs::File::create(file_path)?;
                 file.write_all(content.as_bytes())?;
             }
@@ -194,6 +206,8 @@ pub async fn run_generate_command(
                     return Err(format!("Fail to format file `{name}`").into());
                 }
             }
+
+            println!("... Done.");
         }
     }
 

@@ -143,6 +143,10 @@ where
             return Err(query_err("Relation is HasMany instead of HasOne"));
         }
 
+        if self.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let keys: Vec<ValueTuple> = self
             .iter()
             .map(|model: &M| extract_key(&rel_def.from_col, model))
@@ -154,24 +158,20 @@ where
 
         let data = stmt.all(db).await?;
 
-        let hashmap: HashMap<String, <R as EntityTrait>::Model> = data.into_iter().fold(
-            HashMap::<String, <R as EntityTrait>::Model>::new(),
-            |mut acc: HashMap<String, <R as EntityTrait>::Model>,
-             value: <R as EntityTrait>::Model| {
+        let hashmap: HashMap<ValueTuple, <R as EntityTrait>::Model> = data.into_iter().fold(
+            HashMap::new(),
+            |mut acc, value: <R as EntityTrait>::Model| {
                 {
                     let key = extract_key(&rel_def.to_col, &value);
-
-                    acc.insert(format!("{key:?}"), value);
+                    acc.insert(key, value);
                 }
 
                 acc
             },
         );
 
-        let result: Vec<Option<<R as EntityTrait>::Model>> = keys
-            .iter()
-            .map(|key| hashmap.get(&format!("{key:?}")).cloned())
-            .collect();
+        let result: Vec<Option<<R as EntityTrait>::Model>> =
+            keys.iter().map(|key| hashmap.get(key).cloned()).collect();
 
         Ok(result)
     }
@@ -194,6 +194,10 @@ where
             return Err(query_err("Relation is HasOne instead of HasMany"));
         }
 
+        if self.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let keys: Vec<ValueTuple> = self
             .iter()
             .map(|model: &M| extract_key(&rel_def.from_col, model))
@@ -205,11 +209,10 @@ where
 
         let data = stmt.all(db).await?;
 
-        let mut hashmap: HashMap<String, Vec<<R as EntityTrait>::Model>> =
+        let mut hashmap: HashMap<ValueTuple, Vec<<R as EntityTrait>::Model>> =
             keys.iter()
                 .fold(HashMap::new(), |mut acc, key: &ValueTuple| {
-                    acc.insert(format!("{key:?}"), Vec::new());
-
+                    acc.insert(key.clone(), Vec::new());
                     acc
                 });
 
@@ -218,7 +221,7 @@ where
                 let key = extract_key(&rel_def.to_col, &value);
 
                 let vec = hashmap
-                    .get_mut(&format!("{key:?}"))
+                    .get_mut(&key)
                     .expect("Failed at finding key on hashmap");
 
                 vec.push(value);
@@ -226,12 +229,7 @@ where
 
         let result: Vec<Vec<R::Model>> = keys
             .iter()
-            .map(|key: &ValueTuple| {
-                hashmap
-                    .get(&format!("{key:?}"))
-                    .cloned()
-                    .unwrap_or_default()
-            })
+            .map(|key: &ValueTuple| hashmap.get(key).cloned().unwrap_or_default())
             .collect();
 
         Ok(result)
@@ -269,20 +267,24 @@ where
                 )));
             }
 
+            if self.is_empty() {
+                return Ok(Vec::new());
+            }
+
             let pkeys: Vec<ValueTuple> = self
                 .iter()
                 .map(|model: &M| extract_key(&via_rel.from_col, model))
                 .collect();
 
             // Map of M::PK -> Vec<R::PK>
-            let mut keymap: HashMap<String, Vec<ValueTuple>> = Default::default();
+            let mut keymap: HashMap<ValueTuple, Vec<ValueTuple>> = Default::default();
 
             let keys: Vec<ValueTuple> = {
                 let condition = prepare_condition(&via_rel.to_tbl, &via_rel.to_col, &pkeys);
                 let stmt = V::find().filter(condition);
                 let data = stmt.all(db).await?;
                 data.into_iter().for_each(|model| {
-                    let pk = format!("{:?}", extract_key(&via_rel.to_col, &model));
+                    let pk = extract_key(&via_rel.to_col, &model);
                     let entry = keymap.entry(pk).or_default();
 
                     let fk = extract_key(&rel_def.from_col, &model);
@@ -297,11 +299,12 @@ where
             let stmt = <Select<R> as QueryFilter>::filter(stmt.select(), condition);
 
             let data = stmt.all(db).await?;
+
             // Map of R::PK -> R::Model
-            let data: HashMap<String, <R as EntityTrait>::Model> = data
+            let data: HashMap<ValueTuple, <R as EntityTrait>::Model> = data
                 .into_iter()
                 .map(|model| {
-                    let key = format!("{:?}", extract_key(&rel_def.to_col, &model));
+                    let key = extract_key(&rel_def.to_col, &model);
                     (key, model)
                 })
                 .collect();
@@ -309,14 +312,11 @@ where
             let result: Vec<Vec<R::Model>> = pkeys
                 .into_iter()
                 .map(|pkey| {
-                    let fkeys = keymap
-                        .get(&format!("{pkey:?}"))
-                        .cloned()
-                        .unwrap_or_default();
+                    let fkeys = keymap.get(&pkey).cloned().unwrap_or_default();
 
                     let models: Vec<_> = fkeys
                         .into_iter()
-                        .filter_map(|fkey| data.get(&format!("{fkey:?}")).cloned())
+                        .filter_map(|fkey| data.get(&fkey).cloned())
                         .collect();
 
                     models
@@ -440,72 +440,138 @@ fn table_column(tbl: &TableRef, col: &DynIden) -> ColumnRef {
 
 #[cfg(test)]
 mod tests {
+    fn cake_model(id: i32) -> sea_orm::tests_cfg::cake::Model {
+        let name = match id {
+            1 => "apple cake",
+            2 => "orange cake",
+            3 => "fruit cake",
+            4 => "chocolate cake",
+            _ => "",
+        }
+        .to_string();
+        sea_orm::tests_cfg::cake::Model { id, name }
+    }
+
+    fn fruit_model(id: i32, cake_id: Option<i32>) -> sea_orm::tests_cfg::fruit::Model {
+        let name = match id {
+            1 => "apple",
+            2 => "orange",
+            3 => "grape",
+            4 => "strawberry",
+            _ => "",
+        }
+        .to_string();
+        sea_orm::tests_cfg::fruit::Model { id, name, cake_id }
+    }
+
+    fn filling_model(id: i32) -> sea_orm::tests_cfg::filling::Model {
+        let name = match id {
+            1 => "apple juice",
+            2 => "orange jam",
+            3 => "chocolate crust",
+            4 => "strawberry jam",
+            _ => "",
+        }
+        .to_string();
+        sea_orm::tests_cfg::filling::Model {
+            id,
+            name,
+            vendor_id: Some(1),
+            ignored_attr: 0,
+        }
+    }
+
+    fn cake_filling_model(
+        cake_id: i32,
+        filling_id: i32,
+    ) -> sea_orm::tests_cfg::cake_filling::Model {
+        sea_orm::tests_cfg::cake_filling::Model {
+            cake_id,
+            filling_id,
+        }
+    }
+
     #[tokio::test]
     async fn test_load_one() {
-        use crate::{
-            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
-        };
+        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[
-                cake::Model {
-                    id: 1,
-                    name: "New York Cheese".to_owned(),
-                }
-                .into_mock_row(),
-                cake::Model {
-                    id: 2,
-                    name: "London Cheese".to_owned(),
-                }
-                .into_mock_row(),
-            ]])
+            .append_query_results([[cake_model(1), cake_model(2)]])
             .into_connection();
 
-        let fruits = vec![fruit::Model {
-            id: 1,
-            name: "Apple".to_owned(),
-            cake_id: Some(1),
-        }];
+        let fruits = vec![fruit_model(1, Some(1))];
 
         let cakes = fruits
             .load_one(cake::Entity::find(), &db)
             .await
             .expect("Should return something");
 
-        assert_eq!(
-            cakes,
-            [Some(cake::Model {
-                id: 1,
-                name: "New York Cheese".to_owned(),
-            })]
-        );
+        assert_eq!(cakes, [Some(cake_model(1))]);
+    }
+
+    #[tokio::test]
+    async fn test_load_one_same_cake() {
+        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[cake_model(1), cake_model(2)]])
+            .into_connection();
+
+        let fruits = vec![fruit_model(1, Some(1)), fruit_model(2, Some(1))];
+
+        let cakes = fruits
+            .load_one(cake::Entity::find(), &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(cakes, [Some(cake_model(1)), Some(cake_model(1))]);
+    }
+
+    #[tokio::test]
+    async fn test_load_one_empty() {
+        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[cake_model(1), cake_model(2)]])
+            .into_connection();
+
+        let fruits: Vec<fruit::Model> = vec![];
+
+        let cakes = fruits
+            .load_one(cake::Entity::find(), &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(cakes, []);
     }
 
     #[tokio::test]
     async fn test_load_many() {
-        use crate::{
-            entity::prelude::*, tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase,
-        };
+        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
 
         let db = MockDatabase::new(DbBackend::Postgres)
-            .append_query_results([[fruit::Model {
-                id: 1,
-                name: "Apple".to_owned(),
-                cake_id: Some(1),
-            }
-            .into_mock_row()]])
+            .append_query_results([[fruit_model(1, Some(1))]])
             .into_connection();
 
-        let cakes = vec![
-            cake::Model {
-                id: 1,
-                name: "New York Cheese".to_owned(),
-            },
-            cake::Model {
-                id: 2,
-                name: "London Cheese".to_owned(),
-            },
-        ];
+        let cakes = vec![cake_model(1), cake_model(2)];
+
+        let fruits = cakes
+            .load_many(fruit::Entity::find(), &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(fruits, [vec![fruit_model(1, Some(1))], vec![]]);
+    }
+
+    #[tokio::test]
+    async fn test_load_many_same_fruit() {
+        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, LoaderTrait, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([[fruit_model(1, Some(1)), fruit_model(2, Some(1))]])
+            .into_connection();
+
+        let cakes = vec![cake_model(1), cake_model(2)];
 
         let fruits = cakes
             .load_many(fruit::Entity::find(), &db)
@@ -515,13 +581,111 @@ mod tests {
         assert_eq!(
             fruits,
             [
-                vec![fruit::Model {
-                    id: 1,
-                    name: "Apple".to_owned(),
-                    cake_id: Some(1),
-                }],
+                vec![fruit_model(1, Some(1)), fruit_model(2, Some(1))],
                 vec![]
             ]
         );
+    }
+
+    #[tokio::test]
+    async fn test_load_many_empty() {
+        use sea_orm::{entity::prelude::*, tests_cfg::*, DbBackend, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres).into_connection();
+
+        let cakes: Vec<cake::Model> = vec![];
+
+        let fruits = cakes
+            .load_many(fruit::Entity::find(), &db)
+            .await
+            .expect("Should return something");
+
+        let empty_vec: Vec<Vec<fruit::Model>> = vec![];
+
+        assert_eq!(fruits, empty_vec);
+    }
+
+    #[tokio::test]
+    async fn test_load_many_to_many_base() {
+        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([
+                [cake_filling_model(1, 1).into_mock_row()],
+                [filling_model(1).into_mock_row()],
+            ])
+            .into_connection();
+
+        let cakes = vec![cake_model(1)];
+
+        let fillings = cakes
+            .load_many_to_many(Filling, CakeFilling, &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(fillings, vec![vec![filling_model(1)]]);
+    }
+
+    #[tokio::test]
+    async fn test_load_many_to_many_complex() {
+        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([
+                [
+                    cake_filling_model(1, 1).into_mock_row(),
+                    cake_filling_model(1, 2).into_mock_row(),
+                    cake_filling_model(1, 3).into_mock_row(),
+                    cake_filling_model(2, 1).into_mock_row(),
+                    cake_filling_model(2, 2).into_mock_row(),
+                ],
+                [
+                    filling_model(1).into_mock_row(),
+                    filling_model(2).into_mock_row(),
+                    filling_model(3).into_mock_row(),
+                    filling_model(4).into_mock_row(),
+                    filling_model(5).into_mock_row(),
+                ],
+            ])
+            .into_connection();
+
+        let cakes = vec![cake_model(1), cake_model(2), cake_model(3)];
+
+        let fillings = cakes
+            .load_many_to_many(Filling, CakeFilling, &db)
+            .await
+            .expect("Should return something");
+
+        assert_eq!(
+            fillings,
+            vec![
+                vec![filling_model(1), filling_model(2), filling_model(3)],
+                vec![filling_model(1), filling_model(2)],
+                vec![],
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn test_load_many_to_many_empty() {
+        use sea_orm::{tests_cfg::*, DbBackend, IntoMockRow, LoaderTrait, MockDatabase};
+
+        let db = MockDatabase::new(DbBackend::Postgres)
+            .append_query_results([
+                [cake_filling_model(1, 1).into_mock_row()],
+                [filling_model(1).into_mock_row()],
+            ])
+            .into_connection();
+
+        let cakes: Vec<cake::Model> = vec![];
+
+        let fillings = cakes
+            .load_many_to_many(Filling, CakeFilling, &db)
+            .await
+            .expect("Should return something");
+
+        let empty_vec: Vec<Vec<filling::Model>> = vec![];
+
+        assert_eq!(fillings, empty_vec);
     }
 }

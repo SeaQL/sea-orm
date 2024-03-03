@@ -1,44 +1,43 @@
 use super::util::{escape_rust_keyword, trim_starting_raw_identifier};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{quote, quote_spanned};
+use quote::quote;
 use syn::{
-    parse::Error, punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, Fields,
-    Lit, LitStr, Meta, Type,
+    punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, Expr, Fields, Lit,
 };
 
 /// Method to derive an Model
 pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
     // if #[sea_orm(table_name = "foo", schema_name = "bar")] specified, create Entity struct
     let mut table_name = None;
+    let mut comment = quote! {None};
     let mut schema_name = quote! { None };
     let mut table_iden = false;
-    attrs.iter().for_each(|attr| {
-        if attr.path.get_ident().map(|i| i == "sea_orm") != Some(true) {
-            return;
-        }
-
-        if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
-            for meta in list.iter() {
-                if let Meta::NameValue(nv) = meta {
-                    if let Some(ident) = nv.path.get_ident() {
-                        if ident == "table_name" {
-                            table_name = Some(nv.lit.clone());
-                        } else if ident == "schema_name" {
-                            let name = &nv.lit;
-                            schema_name = quote! { Some(#name) };
-                        }
-                    }
-                } else if let Meta::Path(path) = meta {
-                    if let Some(ident) = path.get_ident() {
-                        if ident == "table_iden" {
-                            table_iden = true;
-                        }
-                    }
+    attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident("sea_orm"))
+        .try_for_each(|attr| {
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("comment") {
+                    let name: Lit = meta.value()?.parse()?;
+                    comment = quote! { Some(#name) };
+                } else if meta.path.is_ident("table_name") {
+                    table_name = Some(meta.value()?.parse::<Lit>()?);
+                } else if meta.path.is_ident("schema_name") {
+                    let name: Lit = meta.value()?.parse()?;
+                    schema_name = quote! { Some(#name) };
+                } else if meta.path.is_ident("table_iden") {
+                    table_iden = true;
+                } else {
+                    // Reads the value expression to advance the parse stream.
+                    // Some parameters, such as `primary_key`, do not have any value,
+                    // so ignoring an error occurred here.
+                    let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
                 }
-            }
-        }
-    });
+
+                Ok(())
+            })
+        })?;
     let entity_def = table_name
         .as_ref()
         .map(|table_name| {
@@ -55,6 +54,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
                     fn table_name(&self) -> &str {
                         #table_name
+                    }
+
+                    fn comment(&self) -> Option<&str> {
+                        #comment
                     }
                 }
             }
@@ -95,6 +98,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
                     let mut nullable = false;
                     let mut default_value = None;
+                    let mut comment = None;
                     let mut default_expr = None;
                     let mut select_as = None;
                     let mut save_as = None;
@@ -114,111 +118,96 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut is_primary_key = false;
                     // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(Some(255))", default_value = "new user", default_expr = "gen_random_uuid()", column_name = "name", enum_name = "Name", nullable, indexed, unique)]
                     for attr in field.attrs.iter() {
-                        if let Some(ident) = attr.path.get_ident() {
-                            if ident != "sea_orm" {
-                                continue;
-                            }
-                        } else {
+                        if !attr.path().is_ident("sea_orm") {
                             continue;
                         }
 
                         // single param
-                        if let Ok(list) =
-                            attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                        {
-                            for meta in list.iter() {
-                                match meta {
-                                    Meta::NameValue(nv) => {
-                                        if let Some(name) = nv.path.get_ident() {
-                                            if name == "column_type" {
-                                                if let Lit::Str(litstr) = &nv.lit {
-                                                    let ty: TokenStream =
-                                                        syn::parse_str(&litstr.value())?;
-                                                    sql_type = Some(ty);
-                                                } else {
-                                                    return Err(Error::new(
-                                                        field.span(),
-                                                        format!("Invalid column_type {:?}", nv.lit),
-                                                    ));
-                                                }
-                                            } else if name == "auto_increment" {
-                                                if let Lit::Bool(litbool) = &nv.lit {
-                                                    auto_increment = litbool.value();
-                                                } else {
-                                                    return Err(Error::new(
-                                                        field.span(),
-                                                        format!(
-                                                            "Invalid auto_increment = {:?}",
-                                                            nv.lit
-                                                        ),
-                                                    ));
-                                                }
-                                            } else if name == "default_value" {
-                                                default_value = Some(nv.lit.to_owned());
-                                            } else if name == "default_expr" {
-                                                default_expr = Some(nv.lit.to_owned());
-                                            } else if name == "column_name" {
-                                                if let Lit::Str(litstr) = &nv.lit {
-                                                    column_name = Some(litstr.value());
-                                                } else {
-                                                    return Err(Error::new(
-                                                        field.span(),
-                                                        format!("Invalid column_name {:?}", nv.lit),
-                                                    ));
-                                                }
-                                            } else if name == "enum_name" {
-                                                if let Lit::Str(litstr) = &nv.lit {
-                                                    let ty: Ident =
-                                                        syn::parse_str(&litstr.value())?;
-                                                    enum_name = Some(ty);
-                                                } else {
-                                                    return Err(Error::new(
-                                                        field.span(),
-                                                        format!("Invalid enum_name {:?}", nv.lit),
-                                                    ));
-                                                }
-                                            } else if name == "select_as" {
-                                                if let Lit::Str(litstr) = &nv.lit {
-                                                    select_as = Some(litstr.value());
-                                                } else {
-                                                    return Err(Error::new(
-                                                        field.span(),
-                                                        format!("Invalid select_as {:?}", nv.lit),
-                                                    ));
-                                                }
-                                            } else if name == "save_as" {
-                                                if let Lit::Str(litstr) = &nv.lit {
-                                                    save_as = Some(litstr.value());
-                                                } else {
-                                                    return Err(Error::new(
-                                                        field.span(),
-                                                        format!("Invalid save_as {:?}", nv.lit),
-                                                    ));
-                                                }
-                                            }
-                                        }
-                                    }
-                                    Meta::Path(p) => {
-                                        if let Some(name) = p.get_ident() {
-                                            if name == "ignore" {
-                                                ignore = true;
-                                                break;
-                                            } else if name == "primary_key" {
-                                                is_primary_key = true;
-                                                primary_key_types.push(field.ty.clone());
-                                            } else if name == "nullable" {
-                                                nullable = true;
-                                            } else if name == "indexed" {
-                                                indexed = true;
-                                            } else if name == "unique" {
-                                                unique = true;
-                                            }
-                                        }
-                                    }
-                                    _ => {}
+                        attr.parse_nested_meta(|meta| {
+                            if meta.path.is_ident("column_type") {
+                                let lit = meta.value()?.parse()?;
+                                if let Lit::Str(litstr) = lit {
+                                    let ty: TokenStream = syn::parse_str(&litstr.value())?;
+                                    sql_type = Some(ty);
+                                } else {
+                                    return Err(
+                                        meta.error(format!("Invalid column_type {:?}", lit))
+                                    );
                                 }
+                            } else if meta.path.is_ident("auto_increment") {
+                                let lit = meta.value()?.parse()?;
+                                if let Lit::Bool(litbool) = lit {
+                                    auto_increment = litbool.value();
+                                } else {
+                                    return Err(
+                                        meta.error(format!("Invalid auto_increment = {:?}", lit))
+                                    );
+                                }
+                            } else if meta.path.is_ident("comment") {
+                                comment = Some(meta.value()?.parse::<Lit>()?);
+                            } else if meta.path.is_ident("default_value") {
+                                default_value = Some(meta.value()?.parse::<Lit>()?);
+                            } else if meta.path.is_ident("default_expr") {
+                                let lit = meta.value()?.parse()?;
+                                if let Lit::Str(litstr) = lit {
+                                    let value_expr: TokenStream = syn::parse_str(&litstr.value())?;
+                                    default_expr = Some(value_expr);
+                                } else {
+                                    return Err(
+                                        meta.error(format!("Invalid column_type {:?}", lit))
+                                    );
+                                }
+                            } else if meta.path.is_ident("column_name") {
+                                let lit = meta.value()?.parse()?;
+                                if let Lit::Str(litstr) = lit {
+                                    column_name = Some(litstr.value());
+                                } else {
+                                    return Err(
+                                        meta.error(format!("Invalid column_name {:?}", lit))
+                                    );
+                                }
+                            } else if meta.path.is_ident("enum_name") {
+                                let lit = meta.value()?.parse()?;
+                                if let Lit::Str(litstr) = lit {
+                                    let ty: Ident = syn::parse_str(&litstr.value())?;
+                                    enum_name = Some(ty);
+                                } else {
+                                    return Err(meta.error(format!("Invalid enum_name {:?}", lit)));
+                                }
+                            } else if meta.path.is_ident("select_as") {
+                                let lit = meta.value()?.parse()?;
+                                if let Lit::Str(litstr) = lit {
+                                    select_as = Some(litstr.value());
+                                } else {
+                                    return Err(meta.error(format!("Invalid select_as {:?}", lit)));
+                                }
+                            } else if meta.path.is_ident("save_as") {
+                                let lit = meta.value()?.parse()?;
+                                if let Lit::Str(litstr) = lit {
+                                    save_as = Some(litstr.value());
+                                } else {
+                                    return Err(meta.error(format!("Invalid save_as {:?}", lit)));
+                                }
+                            } else if meta.path.is_ident("ignore") {
+                                ignore = true;
+                            } else if meta.path.is_ident("primary_key") {
+                                is_primary_key = true;
+                                primary_key_types.push(field.ty.clone());
+                            } else if meta.path.is_ident("nullable") {
+                                nullable = true;
+                            } else if meta.path.is_ident("indexed") {
+                                indexed = true;
+                            } else if meta.path.is_ident("unique") {
+                                unique = true;
+                            } else {
+                                // Reads the value expression to advance the parse stream.
+                                // Some parameters, such as `primary_key`, do not have any value,
+                                // so ignoring an error occurred here.
+                                let _: Option<Expr> = meta.value().and_then(|v| v.parse()).ok();
                             }
-                        }
+
+                            Ok(())
+                        })?;
                     }
 
                     if let Some(enum_name) = enum_name {
@@ -274,57 +263,12 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     } else {
                         field_type.as_str()
                     };
+                    let field_span = field.span();
 
-                    let sea_query_col_type = match sql_type {
-                        Some(t) => quote! { sea_orm::prelude::ColumnType::#t },
-                        None => {
-                            let col_type = match field_type {
-                                "char" => quote! { Char(None) },
-                                "String" | "&str" => quote! { String(None) },
-                                "i8" => quote! { TinyInteger },
-                                "u8" => quote! { TinyUnsigned },
-                                "i16" => quote! { SmallInteger },
-                                "u16" => quote! { SmallUnsigned },
-                                "i32" => quote! { Integer },
-                                "u32" => quote! { Unsigned },
-                                "i64" => quote! { BigInteger },
-                                "u64" => quote! { BigUnsigned },
-                                "f32" => quote! { Float },
-                                "f64" => quote! { Double },
-                                "bool" => quote! { Boolean },
-                                "Date" | "NaiveDate" => quote! { Date },
-                                "Time" | "NaiveTime" => quote! { Time },
-                                "DateTime" | "NaiveDateTime" => {
-                                    quote! { DateTime }
-                                }
-                                "DateTimeUtc" | "DateTimeLocal" | "DateTimeWithTimeZone" => {
-                                    quote! { TimestampWithTimeZone }
-                                }
-                                "Uuid" => quote! { Uuid },
-                                "Json" => quote! { Json },
-                                "Decimal" => quote! { Decimal(None) },
-                                "Vec<u8>" => {
-                                    quote! { Binary(sea_orm::sea_query::BlobSize::Blob(None)) }
-                                }
-                                _ => {
-                                    // Assumed it's ActiveEnum if none of the above type matches
-                                    quote! {}
-                                }
-                            };
-                            if col_type.is_empty() {
-                                let field_span = field.span();
-                                let ty: Type = LitStr::new(field_type, field_span).parse()?;
-                                let def = quote_spanned! { field_span =>
-                                    std::convert::Into::<sea_orm::ColumnType>::into(
-                                        <#ty as sea_orm::sea_query::ValueType>::column_type()
-                                    )
-                                };
-                                quote! { #def }
-                            } else {
-                                quote! { sea_orm::prelude::ColumnType::#col_type }
-                            }
-                        }
-                    };
+                    let sea_query_col_type = crate::derives::sql_type_match::col_type_match(
+                        sql_type, field_type, field_span,
+                    );
+
                     let col_def =
                         quote! { sea_orm::prelude::ColumnTypeTrait::def(#sea_query_col_type) };
 
@@ -341,9 +285,13 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     if let Some(default_value) = default_value {
                         match_row = quote! { #match_row.default_value(#default_value) };
                     }
-                    if let Some(default_expr) = default_expr {
-                        match_row = quote! { #match_row.default_expr(#default_expr) };
+                    if let Some(comment) = comment {
+                        match_row = quote! { #match_row.comment(#comment) };
                     }
+                    if let Some(default_expr) = default_expr {
+                        match_row = quote! { #match_row.default(#default_expr) };
+                    }
+                    // match_row = quote! { #match_row.comment() };
                     columns_trait.push(match_row);
                 }
             }

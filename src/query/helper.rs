@@ -3,8 +3,8 @@ use crate::{
     PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
-    Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockType, SeaRc, SelectExpr,
-    SelectStatement, SimpleExpr, TableRef,
+    Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockBehavior, LockType, SeaRc,
+    SelectExpr, SelectStatement, SimpleExpr, TableRef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -447,6 +447,14 @@ pub trait QuerySelect: Sized {
         self
     }
 
+    /// Row locking with behavior (if supported).
+    ///
+    /// See [`SelectStatement::lock_with_behavior`](https://docs.rs/sea-query/*/sea_query/query/struct.SelectStatement.html#method.lock_with_behavior).
+    fn lock_with_behavior(mut self, r#type: LockType, behavior: LockBehavior) -> Self {
+        self.query().lock_with_behavior(r#type, behavior);
+        self
+    }
+
     /// Add an expression to the select expression list.
     /// ```
     /// use sea_orm::sea_query::Expr;
@@ -511,7 +519,37 @@ pub trait QuerySelect: Sized {
     ///     "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
     /// );
     /// ```
+    ///
+    /// FIXME: change signature to `mut self`
     fn expr_as<T, A>(&mut self, expr: T, alias: A) -> &mut Self
+    where
+        T: Into<SimpleExpr>,
+        A: IntoIdentity,
+    {
+        self.query().expr_as(expr, alias.into_identity());
+        self
+    }
+
+    /// Owned version of `expr_as`.
+    ///
+    /// Select column.
+    ///
+    /// ```
+    /// use sea_orm::sea_query::{Alias, Expr, Func};
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .expr_as(
+    ///             Func::upper(Expr::col((cake::Entity, cake::Column::Name))),
+    ///             "name_upper"
+    ///         )
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
+    /// );
+    /// ```
+    fn expr_as_<T, A>(mut self, expr: T, alias: A) -> Self
     where
         T: Into<SimpleExpr>,
         A: IntoIdentity,

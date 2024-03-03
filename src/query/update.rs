@@ -311,7 +311,7 @@ mod tests {
                 .filter(lunch_set::Column::Tea.eq(Tea::BreakfastTea))
                 .build(DbBackend::Postgres)
                 .to_string(),
-            r#"UPDATE "lunch_set" SET "tea" = CAST('EverydayTea' AS tea) WHERE "lunch_set"."tea" = CAST('BreakfastTea' AS tea)"#,
+            r#"UPDATE "lunch_set" SET "tea" = CAST('EverydayTea' AS tea) WHERE "lunch_set"."tea" = (CAST('BreakfastTea' AS tea))"#,
         );
     }
 

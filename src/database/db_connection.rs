@@ -10,25 +10,34 @@ use url::Url;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::pool::PoolConnection;
 
-#[cfg(feature = "mock")]
+#[cfg(any(feature = "mock", feature = "proxy"))]
 use std::sync::Arc;
 
-/// Handle a database connection depending on the backend
-/// enabled by the feature flags. This creates a database pool.
+/// Handle a database connection depending on the backend enabled by the feature
+/// flags. This creates a database pool. This will be `Clone` unless the feature
+/// flag `mock` is enabled.
 #[cfg_attr(not(feature = "mock"), derive(Clone))]
 pub enum DatabaseConnection {
     /// Create a MYSQL database connection and pool
     #[cfg(feature = "sqlx-mysql")]
     SqlxMySqlPoolConnection(crate::SqlxMySqlPoolConnection),
-    /// Create a  PostgreSQL database connection and pool
+
+    /// Create a PostgreSQL database connection and pool
     #[cfg(feature = "sqlx-postgres")]
     SqlxPostgresPoolConnection(crate::SqlxPostgresPoolConnection),
-    /// Create a  SQLite database connection and pool
+
+    /// Create a SQLite database connection and pool
     #[cfg(feature = "sqlx-sqlite")]
     SqlxSqlitePoolConnection(crate::SqlxSqlitePoolConnection),
-    /// Create a  Mock database connection useful for testing
+
+    /// Create a Mock database connection useful for testing
     #[cfg(feature = "mock")]
     MockDatabaseConnection(Arc<crate::MockDatabaseConnection>),
+
+    /// Create a Proxy database connection useful for proxying
+    #[cfg(feature = "proxy")]
+    ProxyDatabaseConnection(Arc<crate::ProxyDatabaseConnection>),
+
     /// The connection to the database has been severed
     Disconnected,
 }
@@ -66,7 +75,9 @@ pub(crate) enum InnerConnection {
     #[cfg(feature = "sqlx-sqlite")]
     Sqlite(PoolConnection<sqlx::Sqlite>),
     #[cfg(feature = "mock")]
-    Mock(std::sync::Arc<crate::MockDatabaseConnection>),
+    Mock(Arc<crate::MockDatabaseConnection>),
+    #[cfg(feature = "proxy")]
+    Proxy(Arc<crate::ProxyDatabaseConnection>),
 }
 
 impl std::fmt::Debug for DatabaseConnection {
@@ -83,6 +94,8 @@ impl std::fmt::Debug for DatabaseConnection {
                 Self::SqlxSqlitePoolConnection(_) => "SqlxSqlitePoolConnection",
                 #[cfg(feature = "mock")]
                 Self::MockDatabaseConnection(_) => "MockDatabaseConnection",
+                #[cfg(feature = "proxy")]
+                Self::ProxyDatabaseConnection(_) => "ProxyDatabaseConnection",
                 Self::Disconnected => "Disconnected",
             }
         )
@@ -101,6 +114,8 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(_) => DbBackend::Sqlite,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.get_database_backend(),
+            #[cfg(feature = "proxy")]
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.get_database_backend(),
             DatabaseConnection::Disconnected => panic!("Disconnected"),
         }
     }
@@ -117,6 +132,8 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.execute(stmt).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.execute(stmt),
+            #[cfg(feature = "proxy")]
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.execute(stmt),
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -141,6 +158,12 @@ impl ConnectionTrait for DatabaseConnection {
                 let stmt = Statement::from_string(db_backend, sql);
                 conn.execute(stmt)
             }
+            #[cfg(feature = "proxy")]
+            DatabaseConnection::ProxyDatabaseConnection(conn) => {
+                let db_backend = conn.get_database_backend();
+                let stmt = Statement::from_string(db_backend, sql);
+                conn.execute(stmt)
+            }
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -157,6 +180,8 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.query_one(stmt).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.query_one(stmt),
+            #[cfg(feature = "proxy")]
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.query_one(stmt),
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -173,6 +198,8 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.query_all(stmt).await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.query_all(stmt),
+            #[cfg(feature = "proxy")]
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.query_all(stmt),
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -205,6 +232,10 @@ impl StreamTrait for DatabaseConnection {
                 DatabaseConnection::MockDatabaseConnection(conn) => {
                     Ok(crate::QueryStream::from((Arc::clone(conn), stmt, None)))
                 }
+                #[cfg(feature = "proxy")]
+                DatabaseConnection::ProxyDatabaseConnection(conn) => {
+                    Ok(crate::QueryStream::from((Arc::clone(conn), stmt, None)))
+                }
                 DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
             }
         })
@@ -225,6 +256,10 @@ impl TransactionTrait for DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => {
                 DatabaseTransaction::new_mock(Arc::clone(conn), None).await
+            }
+            #[cfg(feature = "proxy")]
+            DatabaseConnection::ProxyDatabaseConnection(conn) => {
+                DatabaseTransaction::new_proxy(conn.clone(), None).await
             }
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
@@ -252,6 +287,10 @@ impl TransactionTrait for DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => {
                 DatabaseTransaction::new_mock(Arc::clone(conn), None).await
+            }
+            #[cfg(feature = "proxy")]
+            DatabaseConnection::ProxyDatabaseConnection(conn) => {
+                DatabaseTransaction::new_proxy(conn.clone(), None).await
             }
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
@@ -285,6 +324,13 @@ impl TransactionTrait for DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => {
                 let transaction = DatabaseTransaction::new_mock(Arc::clone(conn), None)
+                    .await
+                    .map_err(TransactionError::Connection)?;
+                transaction.run(_callback).await
+            }
+            #[cfg(feature = "proxy")]
+            DatabaseConnection::ProxyDatabaseConnection(conn) => {
+                let transaction = DatabaseTransaction::new_proxy(conn.clone(), None)
                     .await
                     .map_err(TransactionError::Connection)?;
                 transaction.run(_callback).await
@@ -333,6 +379,13 @@ impl TransactionTrait for DatabaseConnection {
                     .map_err(TransactionError::Connection)?;
                 transaction.run(_callback).await
             }
+            #[cfg(feature = "proxy")]
+            DatabaseConnection::ProxyDatabaseConnection(conn) => {
+                let transaction = DatabaseTransaction::new_proxy(conn.clone(), None)
+                    .await
+                    .map_err(TransactionError::Connection)?;
+                transaction.run(_callback).await
+            }
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected").into()),
         }
     }
@@ -364,6 +417,21 @@ impl DatabaseConnection {
             .lock()
             .expect("Fail to acquire mocker");
         mocker.drain_transaction_log()
+    }
+}
+
+#[cfg(feature = "proxy")]
+impl DatabaseConnection {
+    /// Generate a database connection for testing the Proxy database
+    ///
+    /// # Panics
+    ///
+    /// Panics if [DbConn] is not a proxy connection.
+    pub fn as_proxy_connection(&self) -> &crate::ProxyDatabaseConnection {
+        match self {
+            DatabaseConnection::ProxyDatabaseConnection(proxy_conn) => proxy_conn,
+            _ => panic!("Not proxy connection"),
+        }
     }
 }
 
@@ -401,6 +469,8 @@ impl DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.ping().await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.ping(),
+            #[cfg(feature = "proxy")]
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.ping(),
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -416,6 +486,11 @@ impl DatabaseConnection {
             DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.close().await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(_) => {
+                // Nothing to cleanup, we just consume the `DatabaseConnection`
+                Ok(())
+            }
+            #[cfg(feature = "proxy")]
+            DatabaseConnection::ProxyDatabaseConnection(_) => {
                 // Nothing to cleanup, we just consume the `DatabaseConnection`
                 Ok(())
             }
@@ -470,6 +545,10 @@ impl DatabaseConnection {
 impl DbBackend {
     /// Check if the URI is the same as the specified database backend.
     /// Returns true if they match.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `base_url` cannot be parsed as `Url`.
     pub fn is_prefix_of(self, base_url: &str) -> bool {
         let base_url_parsed = Url::parse(base_url).expect("Fail to parse database URL");
         match self {
@@ -500,7 +579,15 @@ impl DbBackend {
 
     /// Check if the database supports `RETURNING` syntax on insert and update
     pub fn support_returning(&self) -> bool {
-        matches!(self, Self::Postgres)
+        #[cfg(not(feature = "sqlite-use-returning-for-3_35"))]
+        {
+            matches!(self, Self::Postgres)
+        }
+
+        #[cfg(feature = "sqlite-use-returning-for-3_35")]
+        {
+            matches!(self, Self::Postgres | Self::Sqlite)
+        }
     }
 }
 

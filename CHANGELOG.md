@@ -5,63 +5,217 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.12.0 - Pending
+## 1.0.0-rc.2 - Pending
 
-+ 2023-05-19: `0.12.0-rc.2`
+### Breaking Changes
+
+* Updated Strum to version 0.26 https://github.com/SeaQL/sea-orm/pull/2088
+
+### Enhancements
+
+* [sea-orm-cli] Fix `migrate generate` on empty `mod.rs` files
+
+## 1.0.0-rc.1 - 2024-02-06
 
 ### New Features
 
-* Supports for partial select of `Option<T>` model field. A `None` value will be filled when the select result does not contain the `Option<T>` field without throwing an error. https://github.com/SeaQL/sea-orm/pull/1513
-```rs
-customer::ActiveModel {
-    name: Set("Alice".to_owned()),
-    notes: Set(Some("Want to communicate with Bob".to_owned())),
-    ..Default::default()
+* [sea-orm-migration] schema helper https://github.com/SeaQL/sea-orm/pull/2099
+
+### Breaking Changes
+
+* Rework SQLite type mappings https://github.com/SeaQL/sea-orm/pull/2078
+* Updated `sea-query` to `0.31`
+
+## 0.12.14 - 2024-02-05
+
+* Added feature flag `sqlite-use-returning-for-3_35` to use SQLite's returning https://github.com/SeaQL/sea-orm/pull/2070
+* Added Loco example https://github.com/SeaQL/sea-orm/pull/2092
+
+## 0.12.12 - 2024-01-22
+
+### Bug Fixes
+
+* [sea-orm-cli] Fix entity generation for non-alphanumeric enum variants https://github.com/SeaQL/sea-orm/pull/1821
+* [sea-orm-cli] Fix entity generation for relations with composite keys https://github.com/SeaQL/sea-orm/pull/2071
+
+### Enhancements
+
+* Added `ConnectOptions::test_before_acquire`
+
+## 0.12.11 - 2024-01-14
+
+### New Features
+
+* Added `desc` to `Cursor` paginator https://github.com/SeaQL/sea-orm/pull/2037
+
+### Enhancements
+
+* Improve query performance of `Paginator`'s `COUNT` query https://github.com/SeaQL/sea-orm/pull/2030
+* Added SQLx slow statements logging to `ConnectOptions` https://github.com/SeaQL/sea-orm/pull/2055
+* Added `QuerySelect::lock_with_behavior` https://github.com/SeaQL/sea-orm/pull/1867
+
+### Bug Fixes
+
+* [sea-orm-macro] Qualify types in `DeriveValueType` macro https://github.com/SeaQL/sea-orm/pull/2054
+
+### House keeping
+
+* Fix clippy warnings on 1.75 https://github.com/SeaQL/sea-orm/pull/2057
+
+## 0.12.10 - 2023-12-14
+
+### New Features
+
+* [sea-orm-macro] Comment attribute for Entity (`#[sea_orm(comment = "action")]`); `create_table_from_entity` supports comment https://github.com/SeaQL/sea-orm/pull/2009
+* Added "proxy" (feature flag `proxy`) to database backend https://github.com/SeaQL/sea-orm/pull/1881, https://github.com/SeaQL/sea-orm/pull/2000
+
+### Enhancements
+
+* Cast enums in `is_in` and `is_not_in` https://github.com/SeaQL/sea-orm/pull/2002
+
+### Upgrades
+
+* Updated `sea-query` to `0.30.5` https://github.com/SeaQL/sea-query/releases/tag/0.30.5
+
+## 0.12.9 - 2023-12-08
+
+### Enhancements
+
+* Add source annotations to errors https://github.com/SeaQL/sea-orm/pull/1999
+
+### Upgrades
+
+* Updated `sea-query` to `0.30.4` https://github.com/SeaQL/sea-query/releases/tag/0.30.4
+
+## 0.12.8 - 2023-12-04
+
+### Enhancements
+
+* Implement `StatementBuilder` for `sea_query::WithQuery` https://github.com/SeaQL/sea-orm/issues/1960
+
+### Upgrades
+
+* Upgrade `axum` example to `0.7` https://github.com/SeaQL/sea-orm/pull/1984
+
+## 0.12.7 - 2023-11-22
+
+### Enhancements
+
+* Added method `expr_as_` that accepts `self` https://github.com/SeaQL/sea-orm/pull/1979
+
+### Upgrades
+
+* Updated `sea-query` to `0.30.3` https://github.com/SeaQL/sea-query/releases/tag/0.30.3
+
+## 0.12.6 - 2023-11-13
+
+### New Features
+
+* Added `#[sea_orm(skip)]` for `FromQueryResult` derive macro https://github.com/SeaQL/sea-orm/pull/1954
+
+## 0.12.5 - 2023-11-12
+
+### Bug Fixes
+
+* [sea-orm-cli] Fix duplicated active enum use statements on generated entities https://github.com/SeaQL/sea-orm/pull/1953
+* [sea-orm-cli] Added `--enum-extra-derives` https://github.com/SeaQL/sea-orm/pull/1934
+* [sea-orm-cli] Added `--enum-extra-attributes` https://github.com/SeaQL/sea-orm/pull/1952
+
+## 0.12.4 - 2023-10-19
+
+### New Features
+
+* Add support for root JSON arrays https://github.com/SeaQL/sea-orm/pull/1898
+    Now the following works (requires the `json-array` / `postgres-array` feature)!
+```rust
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "json_struct_vec")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    #[sea_orm(column_type = "Json")]
+    pub struct_vec: Vec<JsonColumn>,
 }
-.save(db)
-.await?;
 
-// The `notes` field was intentionally leaved out
-let customer = Customer::find()
-    .select_only()
-    .column(customer::Column::Id)
-    .column(customer::Column::Name)
-    .one(db)
-    .await
-    .unwrap();
-
-// The select result does not contain `notes` field.
-// Since it's of type `Option<String>`, it'll be `None` and no error will be thrown.
-assert_eq!(customers.notes, None);
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
+pub struct JsonColumn {
+    pub value: String,
+}
 ```
-* [sea-orm-cli] the `migrate init` command will create a `.gitignore` file when the migration folder reside in a Git repository https://github.com/SeaQL/sea-orm/pull/1334
+
+### Enhancements
+
+* Loader: use `ValueTuple` as hash key https://github.com/SeaQL/sea-orm/pull/1868
+
+### Upgrades
+
+* Updated `sea-query` to `0.30.2` https://github.com/SeaQL/sea-query/releases/tag/0.30.2
+
+## 0.12.3 - 2023-09-22
+
+### New Features
+
+* [sea-orm-migration] Check if an index exists https://github.com/SeaQL/sea-orm/pull/1828
+* Added `cursor_by` to `SelectTwo` https://github.com/SeaQL/sea-orm/pull/1826
+
+### Enhancements
+
+* [sea-orm-cli] Support generation of related entity with composite foreign key https://github.com/SeaQL/sea-orm/pull/1693
+
+### Bug Fixes
+
+* [sea-orm-macro] Fixed `DeriveValueType` by qualifying `QueryResult` https://github.com/SeaQL/sea-orm/pull/1855
+* Fixed `Loader` panic on empty inputs
+
+### Upgrades
+
+* Upgraded `salvo` to `0.50`
+* Upgraded `chrono` to `0.4.30` https://github.com/SeaQL/sea-orm/pull/1858
+* Updated `sea-query` to `0.30.1`
+* Updated `sea-schema` to `0.14.1`
+
+### House keeping
+
+* Added test cases for `find_xxx_related/linked` https://github.com/SeaQL/sea-orm/pull/1811
+
+## 0.12.2 - 2023-08-04
+
+### Enhancements
+
+* Added support for Postgres arrays in `FromQueryResult` impl of `JsonValue` https://github.com/SeaQL/sea-orm/pull/1598
+
+### Bug fixes
+
+* Fixed `find_with_related` consolidation logic https://github.com/SeaQL/sea-orm/issues/1800
+
+## 0.12.1 - 2023-07-27
+
++ `0.12.0-rc.1`: Yanked    
++ `0.12.0-rc.2`: 2023-05-19
++ `0.12.0-rc.3`: 2023-06-22
++ `0.12.0-rc.4`: 2023-07-08
++ `0.12.0-rc.5`: 2023-07-22
+
+### New Features
+
 * Added `MigratorTrait::migration_table_name()` method to configure the name of migration table https://github.com/SeaQL/sea-orm/pull/1511
-```rs
+```rust
 #[async_trait::async_trait]
 impl MigratorTrait for Migrator {
-    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
-        vec![
-            Box::new(m20220118_000001_create_cake_table::Migration),
-            Box::new(m20220118_000002_create_fruit_table::Migration),
-        ]
-    }
-
     // Override the name of migration table
     fn migration_table_name() -> sea_orm::DynIden {
         Alias::new("override_migration_table_name").into_iden()
     }
+    ...
 }
 ```
 * Added option to construct chained AND / OR join on condition https://github.com/SeaQL/sea-orm/pull/1433
-```rs
-use sea_orm::entity::prelude::*;
-
+```rust
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "cake")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(column_name = "name", enum_name = "Name")]
     pub name: String,
 }
 
@@ -83,90 +237,22 @@ pub enum Relation {
     )]
     OrTropicalFruit,
 }
-
-impl ActiveModelBehavior for ActiveModel {}
 ```
-You can also override it in custom join.
-```rs
-assert_eq!(
-    cake::Entity::find()
-        .column_as(
-            Expr::col((Alias::new("cake_filling_alias"), cake_filling::Column::CakeId)),
-            "cake_filling_cake_id"
-        )
-        .join(JoinType::LeftJoin, cake::Relation::OrTropicalFruit.def())
-        .join_as_rev(
-            JoinType::LeftJoin,
-            cake_filling::Relation::Cake
-                .def()
-                // chained AND / OR join on condition
-                .condition_type(ConditionType::Any)
-                .on_condition(|left, _right| {
-                    Expr::col((left, cake_filling::Column::CakeId))
-                        .gt(10)
-                        .into_condition()
-                }),
-            Alias::new("cake_filling_alias")
-        )
-        .build(DbBackend::MySql)
-        .to_string(),
-    [
-        "SELECT `cake`.`id`, `cake`.`name`, `cake_filling_alias`.`cake_id` AS `cake_filling_cake_id` FROM `cake`",
-        "LEFT JOIN `fruit` ON `cake`.`id` = `fruit`.`cake_id` OR `fruit`.`name` LIKE '%tropical%'",
-        "LEFT JOIN `cake_filling` AS `cake_filling_alias` ON `cake_filling_alias`.`cake_id` = `cake`.`id` OR `cake_filling_alias`.`cake_id` > 10",
-    ]
-    .join(" ")
-);
-```
-* Supports entity with composite primary key of length 12 https://github.com/SeaQL/sea-orm/pull/1508
-    * Implemented `IntoIdentity` for `Identity` https://github.com/SeaQL/sea-orm/pull/1508
-    * `Identity` supports up to identity tuple of `DynIden` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
-    * Implemented `IntoIdentity` for tuple of `IdenStatic` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
-    * Implemented `IdentityOf` for tuple of `ColumnTrait` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
-    * Implemented `TryGetableMany` for tuple of `TryGetable` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
-    * Implemented `TryFromU64` for tuple of `TryFromU64` with length up to 12 https://github.com/SeaQL/sea-orm/pull/1508
-```rs
-use sea_orm::entity::prelude::*;
-
+* Supports entity with composite primary key of arity 12 https://github.com/SeaQL/sea-orm/pull/1508
+    * `Identity` supports tuple of `DynIden` with arity up to 12
+```rust
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 #[sea_orm(table_name = "primary_key_of_12")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id_1: String,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_2: i8,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_3: u8,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_4: i16,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_5: u16,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_6: i32,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_7: u32,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_8: i64,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_9: u64,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_10: f32,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id_11: f64,
+    ...
     #[sea_orm(primary_key, auto_increment = false)]
     pub id_12: bool,
-    pub owner: String,
-    pub name: String,
-    pub description: String,
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
-
-impl ActiveModelBehavior for ActiveModel {}
 ```
 * Added macro `DerivePartialModel` https://github.com/SeaQL/sea-orm/pull/1597
-```rs
+```rust
 #[derive(DerivePartialModel, FromQueryResult)]
 #[sea_orm(entity = "Cake")]
 struct PartialCake {
@@ -185,98 +271,119 @@ assert_eq!(
     r#"SELECT "cake"."name", UPPER("cake"."name") AS "name_upper" FROM "cake""#
 );
 ```
-* [sea-orm-cli] Added support for generating migration of space separated name, for example executing `sea-orm-cli migrate generate "create accounts table"` command will create `m20230503_000000_create_accounts_table.rs` for you https://github.com/SeaQL/sea-orm/pull/1570
-
-* Add `seaography` flag to `sea-orm`, `sea-orm-orm-macros` and `sea-orm-cli` https://github.com/SeaQL/sea-orm/pull/1599
-* Add generation of `seaography` related information to `sea-orm-codegen` https://github.com/SeaQL/sea-orm/pull/1599
-
-    The following information is added in entities files by `sea-orm-cli` when flag `seaography` is `true`
+* Added `DbErr::sql_err()` method to convert error into common database errors `SqlErr`, such as unique constraint or foreign key violation errors. https://github.com/SeaQL/sea-orm/pull/1707
 ```rust
-/// ... Entity File ...
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
-pub enum RelatedEntity {
-    #[sea_orm(entity = "super::address::Entity")]
-    Address,
-    #[sea_orm(entity = "super::payment::Entity")]
-    Payment,
-    #[sea_orm(entity = "super::rental::Entity")]
-    Rental,
-    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def()")]
-    SelfRef,
-    #[sea_orm(entity = "super::store::Entity")]
-    Store,
-    #[sea_orm(entity = "Entity", def = "Relation::SelfRef.def().rev()")]
-    SelfRefRev,
-}
-```
-* Add `DeriveEntityRelated` macro https://github.com/SeaQL/sea-orm/pull/1599
-
-    The DeriveRelatedEntity derive macro will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration when the `seaography` feature is enabled
-
-* Add `expr`, `exprs` and `expr_as` methods to `QuerySelect` trait
-```rs
-use sea_orm::sea_query::Expr;
-use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
-
-assert_eq!(
-    cake::Entity::find()
-        .select_only()
-        .expr(Expr::col((cake::Entity, cake::Column::Id)))
-        .build(DbBackend::MySql)
-        .to_string(),
-    "SELECT `cake`.`id` FROM `cake`"
-);
-
-assert_eq!(
-    cake::Entity::find()
-        .select_only()
-        .exprs([
-            Expr::col((cake::Entity, cake::Column::Id)),
-            Expr::col((cake::Entity, cake::Column::Name)),
-        ])
-        .build(DbBackend::MySql)
-        .to_string(),
-    "SELECT `cake`.`id`, `cake`.`name` FROM `cake`"
-);
-
-assert_eq!(
-    cake::Entity::find()
-        .expr_as(
-            Func::upper(Expr::col((cake::Entity, cake::Column::Name))),
-            "name_upper"
-        )
-        .build(DbBackend::MySql)
-        .to_string(),
-    "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
-);
-```
-* Add `DbErr::sql_err()` method to convert error into common database errors `SqlErr`, such as unique constraint or foreign key violation errors. https://github.com/SeaQL/sea-orm/pull/1707
-```rs
 assert!(matches!(
-    cake
-        .into_active_model()
-        .insert(db)
-        .await
+    cake.into_active_model().insert(db).await
         .expect_err("Insert a row with duplicated primary key")
         .sql_err(),
     Some(SqlErr::UniqueConstraintViolation(_))
 ));
 
 assert!(matches!(
-    fk_cake
-        .insert(db)
-        .await
+    fk_cake.insert(db).await
         .expect_err("Insert a row with invalid foreign key")
         .sql_err(),
     Some(SqlErr::ForeignKeyConstraintViolation(_))
 ));
 ```
+* Added `Select::find_with_linked`, similar to `find_with_related`: https://github.com/SeaQL/sea-orm/pull/1728, https://github.com/SeaQL/sea-orm/pull/1743
+```rust
+fn find_with_related<R>(self, r: R) -> SelectTwoMany<E, R>
+    where R: EntityTrait, E: Related<R>;
+fn find_with_linked<L, T>(self, l: L) -> SelectTwoMany<E, T>
+    where L: Linked<FromEntity = E, ToEntity = T>, T: EntityTrait;
+
+// boths yields `Vec<(E::Model, Vec<F::Model>)>`
+```
+* Added `DeriveValueType` derive macro for custom wrapper types, implementations of the required traits will be provided, you can customize the `column_type` and `array_type` if needed https://github.com/SeaQL/sea-orm/pull/1720
+```rust
+#[derive(DeriveValueType)]
+#[sea_orm(array_type = "Int")]
+pub struct Integer(i32);
+
+#[derive(DeriveValueType)]
+#[sea_orm(column_type = "Boolean", array_type = "Bool")]
+pub struct Boolbean(pub String);
+
+#[derive(DeriveValueType)]
+pub struct StringVec(pub Vec<String>);
+```
+* Added `DeriveDisplay` derive macro to implements `std::fmt::Display` for enum https://github.com/SeaQL/sea-orm/pull/1726
+```rust
+#[derive(DeriveDisplay)]
+enum DisplayTea {
+    EverydayTea,
+    #[sea_orm(display_value = "Breakfast Tea")]
+    BreakfastTea,
+}
+assert_eq!(format!("{}", DisplayTea::EverydayTea), "EverydayTea");
+assert_eq!(format!("{}", DisplayTea::BreakfastTea), "Breakfast Tea");
+```
+* Added `UpdateMany::exec_with_returning()` https://github.com/SeaQL/sea-orm/pull/1677
+```rust
+let models: Vec<Model> = Entity::update_many()
+    .col_expr(Column::Values, Expr::expr(..))
+    .exec_with_returning(db)
+    .await?;
+```
+* Supporting `default_expr` in `DeriveEntityModel` https://github.com/SeaQL/sea-orm/pull/1474
+```rust
+#[derive(DeriveEntityModel)]
+#[sea_orm(table_name = "hello")]
+pub struct Model {
+    #[sea_orm(default_expr = "Expr::current_timestamp()")]
+    pub timestamp: DateTimeUtc,
+}
+
+assert_eq!(
+    Column::Timestamp.def(),
+    ColumnType::TimestampWithTimeZone.def()
+        .default(Expr::current_timestamp())
+);
+```
+* Introduced new `ConnAcquireErr` https://github.com/SeaQL/sea-orm/pull/1737
+```rust
+enum DbErr {
+    ConnectionAcquire(ConnAcquireErr),
+    ..
+}
+
+enum ConnAcquireErr {
+    Timeout,
+    ConnectionClosed,
+}
+```
+
+#### Seaography
+
+Added Seaography integration https://github.com/SeaQL/sea-orm/pull/1599
+
+* Added `DeriveEntityRelated` macro which will implement `seaography::RelationBuilder` for `RelatedEntity` enumeration when the `seaography` feature is enabled
+* Added generation of `seaography` related information to `sea-orm-codegen`.
+
+    The `RelatedEntity` enum is added in entities files by `sea-orm-cli` when flag `seaography` is set:
+```rust
+/// SeaORM Entity
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+pub enum RelatedEntity {
+    #[sea_orm(entity = "super::bakery::Entity")]
+    Bakery,
+    #[sea_orm(entity = "super::cake_baker::Entity")]
+    CakeBaker,
+    #[sea_orm(entity = "super::cake::Entity")]
+    Cake,
+}
+```
+* Added [`seaography_example`](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example)
 
 ### Enhancements
 
+* Supports for partial select of `Option<T>` model field. A `None` value will be filled when the select result does not contain the `Option<T>` field without throwing an error. https://github.com/SeaQL/sea-orm/pull/1513
+* [sea-orm-cli] the `migrate init` command will create a `.gitignore` file when the migration folder reside in a Git repository https://github.com/SeaQL/sea-orm/pull/1334
+* [sea-orm-cli] Added support for generating migration of space separated name, for example executing `sea-orm-cli migrate generate "create accounts table"` command will create `m20230503_000000_create_accounts_table.rs` for you https://github.com/SeaQL/sea-orm/pull/1570
 * Added `Migration::name()` and `Migration::status()` getters for the name and status of `sea_orm_migration::Migration` https://github.com/SeaQL/sea-orm/pull/1519
-```rs
+```rust
 let migrations = Migrator::get_pending_migrations(db).await?;
 assert_eq!(migrations.len(), 5);
 
@@ -294,7 +401,8 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
     * Changed the parameter of method `Transaction::from_sql_and_values(DbBackend, T, I) where I: IntoIterator<Item = Value>, T: Into<String>` to takes any string SQL
     * Changed the parameter of method `ConnectOptions::set_schema_search_path(T) where T: Into<String>` to takes any string
     * Changed the parameter of method `ColumnTrait::like()`, `ColumnTrait::not_like()`, `ColumnTrait::starts_with()`, `ColumnTrait::ends_with()` and `ColumnTrait::contains()` to takes any string
-* Re-export `sea_query::{DynIden, RcOrArc, SeaRc}` in `sea_orm::entity::prelude` module https://github.com/SeaQL/sea-orm/pull/1661
+* Added `sea_query::{DynIden, RcOrArc, SeaRc}` to entity prelude https://github.com/SeaQL/sea-orm/pull/1661
+* Added `expr`, `exprs` and `expr_as` methods to `QuerySelect` trait https://github.com/SeaQL/sea-orm/pull/1702
 * Added `DatabaseConnection::ping` https://github.com/SeaQL/sea-orm/pull/1627
 ```rust
 |db: DatabaseConnection| {
@@ -306,108 +414,49 @@ assert_eq!(migration.status(), MigrationStatus::Pending);
 * Added `TryInsert` that does not panic on empty inserts https://github.com/SeaQL/sea-orm/pull/1708
 ```rust
 // now, you can do:
-let empty_insert = Bakery::insert_many(std::iter::empty())
+let res = Bakery::insert_many(std::iter::empty())
     .on_empty_do_nothing()
     .exec(db)
     .await;
 
-assert!(matches!(empty_insert, TryInsertResult::Empty));
+assert!(matches!(res, Ok(TryInsertResult::Empty)));
 ```
+* Insert on conflict do nothing to return Ok https://github.com/SeaQL/sea-orm/pull/1712
+```rust
+let on = OnConflict::column(Column::Id).do_nothing().to_owned();
 
-### Upgrades
+// Existing behaviour
+let res = Entity::insert_many([..]).on_conflict(on).exec(db).await;
+assert!(matches!(res, Err(DbErr::RecordNotInserted)));
 
-* Upgrade `heck` dependency in `sea-orm-macros` and `sea-orm-codegen` to 0.4 https://github.com/SeaQL/sea-orm/pull/1520, https://github.com/SeaQL/sea-orm/pull/1544
-* Upgrade `strum` to 0.24
-* Upgrade `sea-query` to `0.29` https://github.com/SeaQL/sea-orm/pull/1562
-* Upgrade `sea-query-binder` to `0.4` https://github.com/SeaQL/sea-orm/pull/1562
-* Upgrade `sea-schema` to `0.12` https://github.com/SeaQL/sea-orm/pull/1562
-* Upgrade `clap` to `4.3` https://github.com/SeaQL/sea-orm/pull/1468
+// New API; now you can:
+let res =
+Entity::insert_many([..]).on_conflict(on).do_nothing().exec(db).await;
+assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
+```
 
 ### Bug Fixes
 
 * Fixed `DeriveActiveEnum` throwing errors because `string_value` consists non-UAX#31 compliant characters https://github.com/SeaQL/sea-orm/pull/1374
-
-For example,
 ```rust
-#[derive(Clone, Debug, PartialEq, EnumIter, DeriveActiveEnum)]
+#[derive(DeriveActiveEnum)]
 #[sea_orm(rs_type = "String", db_type = "String(None)")]
 pub enum StringValue {
     #[sea_orm(string_value = "")]
     Member1,
-    #[sea_orm(string_value = "$")]
-    Member2,
     #[sea_orm(string_value = "$$")]
-    Member3,
-    #[sea_orm(string_value = "AB")]
-    Member4,
-    #[sea_orm(string_value = "A_B")]
-    Member5,
-    #[sea_orm(string_value = "A$B")]
-    Member6,
-    #[sea_orm(string_value = "0 123")]
-    Member7,
+    Member2,
 }
-```
-will now produce the following Variant Enum:
-```rust
+// will now produce the following enum:
 pub enum StringValueVariant {
     __Empty,
-    _0x24,
     _0x240x24,
-    Ab,
-    A0x5Fb,
-    A0x24B,
-    _0x300x20123,
 }
 ```
-* [sea-orm-cli] The implementation of `Related<R>` with `via` and `to` methods will not be generated if there exists multiple paths via an intermediate table. Like in the schema defined below - Path 1. `users <-> users_votes <-> bills`, Path 2. `users <-> users_saved_bills <-> bills` https://github.com/SeaQL/sea-orm/pull/1435
-```sql
-CREATE TABLE users
-(
-  id uuid  PRIMARY KEY  DEFAULT uuid_generate_v1mc(),
-  email TEXT UNIQUE NOT NULL,
-  ...
-);
-```
-```sql
-CREATE TABLE bills
-(
-  id uuid  PRIMARY KEY  DEFAULT uuid_generate_v1mc(),
-  ...
-);
-```
-```sql
-CREATE TABLE users_votes
-(
-  user_id uuid REFERENCES users (id) ON UPDATE CASCADE ON DELETE CASCADE,
-  bill_id uuid REFERENCES bills (id) ON UPDATE CASCADE ON DELETE CASCADE,
-  vote boolean NOT NULL,
-  CONSTRAINT users_bills_pkey PRIMARY KEY (user_id, bill_id)
-);
-```
-```sql
-CREATE TABLE users_saved_bills
-(
-  user_id uuid REFERENCES users (id) ON UPDATE CASCADE ON DELETE CASCADE,
-  bill_id uuid REFERENCES bills (id) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT users_saved_bills_pkey PRIMARY KEY (user_id, bill_id)
-);
-```
+* [sea-orm-cli] Fix Postgres enum arrays https://github.com/SeaQL/sea-orm/pull/1678
+* [sea-orm-cli] The implementation of `Related<R>` with `via` and `to` methods will not be generated if there exists multiple paths via an intermediate table https://github.com/SeaQL/sea-orm/pull/1435
 * [sea-orm-cli] fixed entity generation includes partitioned tables https://github.com/SeaQL/sea-orm/issues/1582, https://github.com/SeaQL/sea-schema/pull/105
 * Fixed `ActiveEnum::db_type()` return type does not implement `ColumnTypeTrait` https://github.com/SeaQL/sea-orm/pull/1576
-```rs
-impl ColumnTrait for Column {
-    type EntityName = Entity;
-    fn def(&self) -> ColumnDef {
-        match self {
-...
-            // `db_type()` returns `ColumnDef`; now it implements `ColumnTypeTrait`
-            Self::Thing => AnActiveEnumThing::db_type().def(),
-...
-        }
-    }
-}
-```
 * Resolved `insert_many` failing if the models iterator is empty https://github.com/SeaQL/sea-orm/issues/873
 
 ### Breaking changes
@@ -417,7 +466,55 @@ impl ColumnTrait for Column {
     * Added `derive` and `strum` features to `sea-orm-macros`
     * The derive macro `EnumIter` is now shipped by `sea-orm-macros`
 * Added a new variant `Many` to `Identity` https://github.com/SeaQL/sea-orm/pull/1508
-* Replace the use of `SeaRc<T>` where `T` isn't `dyn Iden` with `RcOrArc<T>` https://github.com/SeaQL/sea-orm/pull/1661
+* Enabled `hashable-value` feature in SeaQuery, thus `Value::Float(NaN) == Value::Float(NaN)` would be true https://github.com/SeaQL/sea-orm/pull/1728, https://github.com/SeaQL/sea-orm/pull/1743
+* The `DeriveActiveEnum` derive macro no longer implement `std::fmt::Display`. You can use the new `DeriveDisplay` macro https://github.com/SeaQL/sea-orm/pull/1726
+* `sea-query/derive` is no longer enabled by `sea-orm`, as such, `Iden` no longer works as a derive macro (it's still a trait). Instead, we are shipping a new macro `DeriveIden` https://github.com/SeaQL/sea-orm/pull/1740 https://github.com/SeaQL/sea-orm/pull/1755
+```rust
+// then:
+
+#[derive(Iden)]
+#[iden = "category"]
+pub struct CategoryEnum;
+
+#[derive(Iden)]
+pub enum Tea {
+    Table,
+    #[iden = "EverydayTea"]
+    EverydayTea,
+}
+
+// now:
+
+#[derive(DeriveIden)]
+#[sea_orm(iden = "category")]
+pub struct CategoryEnum;
+
+#[derive(DeriveIden)]
+pub enum Tea {
+    Table,
+    #[sea_orm(iden = "EverydayTea")]
+    EverydayTea,
+}
+```
+* Definition of `DbErr::ConnectionAcquire` changed to `ConnectionAcquire(ConnAcquireErr)` https://github.com/SeaQL/sea-orm/pull/1737
+* `FromJsonQueryResult` removed from entity prelude
+
+### Upgrades
+
+* Upgraded `sqlx` to `0.7` https://github.com/SeaQL/sea-orm/pull/1742
+* Upgraded `sea-query` to `0.30` https://github.com/SeaQL/sea-orm/pull/1742
+* Upgraded `sea-schema` to `0.14` https://github.com/SeaQL/sea-orm/pull/1742
+* Upgraded `syn` to `2` https://github.com/SeaQL/sea-orm/pull/1713
+* Upgraded `heck` to `0.4` https://github.com/SeaQL/sea-orm/pull/1520, https://github.com/SeaQL/sea-orm/pull/1544
+* Upgraded `strum` to `0.25` https://github.com/SeaQL/sea-orm/pull/1752
+* Upgraded `clap` to `4.3` https://github.com/SeaQL/sea-orm/pull/1468
+* Upgraded `ouroboros` to `0.17` https://github.com/SeaQL/sea-orm/pull/1724
+
+### House keeping
+
+* Replaced `bae` with `sea-bae` https://github.com/SeaQL/sea-orm/pull/1739
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.11.1...0.12.1
 
 ## 0.11.3 - 2023-04-24
 
@@ -425,14 +522,14 @@ impl ColumnTrait for Column {
 
 * Re-export `sea_orm::ConnectionTrait` in `sea_orm_migration::prelude` https://github.com/SeaQL/sea-orm/pull/1577
 * Support generic structs in `FromQueryResult` derive macro https://github.com/SeaQL/sea-orm/pull/1464, https://github.com/SeaQL/sea-orm/pull/1603
-```rs
+```rust
 #[derive(FromQueryResult)]
 struct GenericTest<T: TryGetable> {
     foo: i32,
     bar: T,
 }
 ```
-```rs
+```rust
 trait MyTrait {
     type Item: TryGetable;
 }
@@ -463,7 +560,7 @@ where
 
 * Fixes `DeriveActiveEnum` (by qualifying `ColumnTypeTrait::def`) https://github.com/SeaQL/sea-orm/issues/1478
 * The CLI command `sea-orm-cli generate entity -u '<DB-URL>'` will now generate the following code for each `Binary` or `VarBinary` columns in compact format https://github.com/SeaQL/sea-orm/pull/1529
-```rs
+```rust
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "binary")]
 pub struct Model {
@@ -484,7 +581,7 @@ pub struct Model {
 }
 ```
 * The CLI command `sea-orm-cli generate entity -u '<DB-URL>' --expanded-format` will now generate the following code for each `Binary` or `VarBinary` columns in expanded format https://github.com/SeaQL/sea-orm/pull/1529
-```rs
+```rust
 impl ColumnTrait for Column {
     type EntityName = Entity;
     fn def(&self) -> ColumnDef {
@@ -667,7 +764,7 @@ impl ColumnTrait for Column {
 * Fixed a small typo https://github.com/SeaQL/sea-orm/pull/1391
 * `axum` example should use tokio runtime https://github.com/SeaQL/sea-orm/pull/1428
 
-Full Changelog: https://github.com/SeaQL/sea-orm/compare/0.10.0...0.11.0
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.10.0...0.11.0
 
 ## 0.10.7 - 2023-01-19
 
@@ -1179,8 +1276,6 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 * Temporary Fix: Handling MySQL & SQLite timestamp columns by @billy1624 in https://github.com/SeaQL/sea-orm/pull/379
 * Add feature to generate table Iden by @Sytten in https://github.com/SeaQL/sea-orm/pull/360
 
-**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.4.1...0.4.2
-
 ## 0.4.1 - 2021-12-05
 
 ### Fixed Issues
@@ -1193,8 +1288,6 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 * For some reason the `axum_example` fail to compile by @billy1624 in https://github.com/SeaQL/sea-orm/pull/355
 * Support Up to 6 Values Composite Primary Key by @billy1624 in https://github.com/SeaQL/sea-orm/pull/353
 * Codegen Handle Self Referencing & Multiple Relations to the Same Related Entity by @billy1624 in https://github.com/SeaQL/sea-orm/pull/347
-
-**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.4.0...0.4.1
 
 ## 0.4.0 - 2021-11-19
 
@@ -1302,8 +1395,6 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 * Documentation for sea-orm by @charleschege in https://github.com/SeaQL/sea-orm/pull/280
 * Support `Vec<u8>` primary key by @billy1624 in https://github.com/SeaQL/sea-orm/pull/287
 
-**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.3.1...0.3.2
-
 ## 0.3.1 - 2021-10-23
 
 (We are changing our Changelog format from now on)
@@ -1320,8 +1411,6 @@ In this minor release, we removed `time` v0.1 from the dependency graph
 * Unify case-transform using the same crate by @billy1624 in https://github.com/SeaQL/sea-orm/pull/264
 * CI cleaning by @AngelOnFira in https://github.com/SeaQL/sea-orm/pull/263
 * CI install sea-orm-cli in debug mode by @billy1624 in https://github.com/SeaQL/sea-orm/pull/265
-
-**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.3.0...0.3.1
 
 ## 0.3.0 - 2021-10-15
 
@@ -1381,6 +1470,8 @@ assert_eq!(
 [#240]: https://github.com/SeaQL/sea-orm/pull/240
 [#237]: https://github.com/SeaQL/sea-orm/pull/237
 [#246]: https://github.com/SeaQL/sea-orm/pull/246
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.2.6...0.3.0
 
 ## 0.2.6 - 2021-10-09
 
@@ -1460,6 +1551,8 @@ https://www.sea-ql.org/SeaORM/blog/2021-10-01-whats-new-in-0.2.4
 [#103]: https://github.com/SeaQL/sea-orm/issues/103
 [#89]: https://github.com/SeaQL/sea-orm/issues/89
 [#59]: https://github.com/SeaQL/sea-orm/issues/59
+
+**Full Changelog**: https://github.com/SeaQL/sea-orm/compare/0.1.3...0.2.0
 
 ## 0.1.3 - 2021-08-30
 

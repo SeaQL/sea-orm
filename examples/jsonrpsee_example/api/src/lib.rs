@@ -1,11 +1,10 @@
 use std::env;
 
-use anyhow::anyhow;
 use entity::post;
 use jsonrpsee::core::{async_trait, RpcResult};
-use jsonrpsee::http_server::HttpServerBuilder;
 use jsonrpsee::proc_macros::rpc;
-use jsonrpsee::types::error::CallError;
+use jsonrpsee::server::ServerBuilder;
+use jsonrpsee::types::error::ErrorObjectOwned;
 use jsonrpsee_example_service::sea_orm::{Database, DatabaseConnection};
 use jsonrpsee_example_service::{Mutation, Query};
 use log::info;
@@ -14,7 +13,7 @@ use simplelog::*;
 use std::fmt::Display;
 use std::net::SocketAddr;
 use tokio::signal::ctrl_c;
-use tokio::signal::unix::{signal, SignalKind};
+// use tokio::signal::unix::{signal, SignalKind};
 
 const DEFAULT_POSTS_PER_PAGE: u64 = 5;
 
@@ -88,7 +87,9 @@ where
     E: Display,
 {
     fn internal_call_error(self) -> RpcResult<T> {
-        self.map_err(|e| jsonrpsee::core::Error::Call(CallError::Failed(anyhow!("{}", e))))
+        // Err(ErrorObjectOwned::owned(1, "c", None::<()>))
+        // self.map_err(|e| jsonrpsee::core::Error::Call(CallError::Failed(anyhow!("{}", e))))
+        self.map_err(|e| ErrorObjectOwned::owned(1, format!("{}", e), None::<()>))
     }
 }
 
@@ -112,8 +113,9 @@ async fn start() -> std::io::Result<()> {
     let conn = Database::connect(&db_url).await.unwrap();
     Migrator::up(&conn, None).await.unwrap();
 
-    let server = HttpServerBuilder::default()
+    let server = ServerBuilder::default()
         .build(server_url.parse::<SocketAddr>().unwrap())
+        .await
         .unwrap();
 
     let rpc_impl = PpcImpl { conn };
@@ -121,12 +123,12 @@ async fn start() -> std::io::Result<()> {
     let handle = server.start(rpc_impl.into_rpc()).unwrap();
 
     info!("starting listening {}", server_addr);
-    let mut sig_int = signal(SignalKind::interrupt()).unwrap();
-    let mut sig_term = signal(SignalKind::terminate()).unwrap();
+    // let mut sig_int = signal(SignalKind::interrupt()).unwrap();
+    // let mut sig_term = signal(SignalKind::terminate()).unwrap();
 
     tokio::select! {
-        _ = sig_int.recv() => info!("receive SIGINT"),
-        _ = sig_term.recv() => info!("receive SIGTERM"),
+        // _ = sig_int.recv() => info!("receive SIGINT"),
+        // _ = sig_term.recv() => info!("receive SIGTERM"),
         _ = ctrl_c() => info!("receive Ctrl C"),
     }
     handle.stop().unwrap();

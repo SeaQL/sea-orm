@@ -16,8 +16,8 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum DbErr {
     /// This error can happen when the connection pool is fully-utilized
-    #[error("Failed to acquire connection from pool")]
-    ConnectionAcquire,
+    #[error("Failed to acquire connection from pool: {0}")]
+    ConnectionAcquire(#[source] ConnAcquireErr),
     /// Runtime type conversion error
     #[error("Error converting `{from}` into `{into}`: {source}")]
     TryIntoErr {
@@ -75,13 +75,24 @@ pub enum DbErr {
     RecordNotUpdated,
 }
 
+/// Connection Acquire error
+#[derive(Error, Debug, PartialEq, Eq)]
+pub enum ConnAcquireErr {
+    /// Connection pool timed out
+    #[error("Connection pool timed out")]
+    Timeout,
+    /// Connection closed
+    #[error("Connection closed")]
+    ConnectionClosed,
+}
+
 /// Runtime error
 #[derive(Error, Debug)]
 pub enum RuntimeErr {
     /// SQLx Error
     #[cfg(feature = "sqlx-dep")]
     #[error("{0}")]
-    SqlxError(sqlx::error::Error),
+    SqlxError(#[source] sqlx::error::Error),
     /// Error generated from within SeaORM
     #[error("{0}")]
     Internal(String),
@@ -138,6 +149,16 @@ where
     T: ToString,
 {
     DbErr::Json(s.to_string())
+}
+
+#[allow(dead_code)]
+#[cfg(feature = "sqlx-dep")]
+pub(crate) fn conn_acquire_err(sqlx_err: sqlx::Error) -> DbErr {
+    match sqlx_err {
+        sqlx::Error::PoolTimedOut => DbErr::ConnectionAcquire(ConnAcquireErr::Timeout),
+        sqlx::Error::PoolClosed => DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed),
+        _ => DbErr::Conn(RuntimeErr::SqlxError(sqlx_err)),
+    }
 }
 
 /// An error from unsuccessful SQL query

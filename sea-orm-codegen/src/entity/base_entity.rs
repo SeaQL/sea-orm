@@ -108,7 +108,7 @@ impl Entity {
         self.get_relation_enum_name()
             .into_iter()
             .chain(self_relations_reverse)
-            .chain(conjunct_related_names.into_iter())
+            .chain(conjunct_related_names)
             .collect()
     }
 
@@ -284,7 +284,7 @@ mod tests {
                 },
                 Column {
                     name: "name".to_owned(),
-                    col_type: ColumnType::String(None),
+                    col_type: ColumnType::string(None),
                     auto_increment: false,
                     not_null: false,
                     unique: false,

@@ -17,6 +17,7 @@ jobs:
           message: |
             ### :tada: Released In [${releaseTag}](${releaseUrl}) :tada:
             
-            Your participation is what makes us unique; your adoption is what drives us forward.  
-            Thank you all in the Rust community for making SeaQL what it is today. :crab:  
-            You are also invited to shape it's future! Please star our repos, every ⭐ counts!
+            Thank you everyone for the contribution!
+            This feature is now available in the latest release. Now is a good time to upgrade!
+            Your participation is what makes us unique; your adoption is what drives us forward.
+            You can support SeaQL 🌊 by starring our repos, sharing our libraries and becoming a sponsor ⭐.

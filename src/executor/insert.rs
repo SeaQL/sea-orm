@@ -30,9 +30,9 @@ where
 /// The types of results for an INSERT operation
 #[derive(Debug)]
 pub enum TryInsertResult<T> {
-    /// The INSERT operation did not insert any value
+    /// The INSERT statement did not have any value to insert
     Empty,
-    /// Reserved
+    /// The INSERT operation did not insert any valid value
     Conflicted,
     /// Successfully inserted
     Inserted(T),
@@ -44,15 +44,19 @@ where
 {
     /// Execute an insert operation
     #[allow(unused_mut)]
-    pub async fn exec<'a, C>(self, db: &'a C) -> TryInsertResult<Result<InsertResult<A>, DbErr>>
+    pub async fn exec<'a, C>(self, db: &'a C) -> Result<TryInsertResult<InsertResult<A>>, DbErr>
     where
         C: ConnectionTrait,
         A: 'a,
     {
         if self.insert_struct.columns.is_empty() {
-            TryInsertResult::Empty
-        } else {
-            TryInsertResult::Inserted(self.insert_struct.exec(db).await)
+            return Ok(TryInsertResult::Empty);
+        }
+        let res = self.insert_struct.exec(db).await;
+        match res {
+            Ok(res) => Ok(TryInsertResult::Inserted(res)),
+            Err(DbErr::RecordNotInserted) => Ok(TryInsertResult::Conflicted),
+            Err(err) => Err(err),
         }
     }
 
@@ -61,33 +65,41 @@ where
     pub async fn exec_without_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> TryInsertResult<Result<u64, DbErr>>
+    ) -> Result<TryInsertResult<u64>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
         if self.insert_struct.columns.is_empty() {
-            TryInsertResult::Empty
-        } else {
-            TryInsertResult::Inserted(self.insert_struct.exec_without_returning(db).await)
+            return Ok(TryInsertResult::Empty);
+        }
+        let res = self.insert_struct.exec_without_returning(db).await;
+        match res {
+            Ok(res) => Ok(TryInsertResult::Inserted(res)),
+            Err(DbErr::RecordNotInserted) => Ok(TryInsertResult::Conflicted),
+            Err(err) => Err(err),
         }
     }
 
-    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
+    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
     pub async fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> TryInsertResult<Result<<A::Entity as EntityTrait>::Model, DbErr>>
+    ) -> Result<TryInsertResult<<A::Entity as EntityTrait>::Model>, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
         if self.insert_struct.columns.is_empty() {
-            TryInsertResult::Empty
-        } else {
-            TryInsertResult::Inserted(self.insert_struct.exec_with_returning(db).await)
+            return Ok(TryInsertResult::Empty);
+        }
+        let res = self.insert_struct.exec_with_returning(db).await;
+        match res {
+            Ok(res) => Ok(TryInsertResult::Inserted(res)),
+            Err(DbErr::RecordNotInserted) => Ok(TryInsertResult::Conflicted),
+            Err(err) => Err(err),
         }
     }
 }
@@ -129,7 +141,7 @@ where
         Inserter::<A>::new(self.primary_key, self.query).exec_without_returning(db)
     }
 
-    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
+    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
@@ -178,7 +190,7 @@ where
         exec_insert_without_returning(self.query, db)
     }
 
-    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if database supported)
+    /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,

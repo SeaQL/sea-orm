@@ -6,14 +6,14 @@ publish = false
 
 [dependencies]
 jsonrpsee-example-service = { path = "../service" }
-jsonrpsee = { version = "0.8.0", features = ["full"] }
-jsonrpsee-core = "0.9.0"
-tokio = { version = "1.8.0", features = ["full"] }
+jsonrpsee = { version = "0.18.2", features = ["full"] }
+jsonrpsee-core = "0.18.2"
+tokio = { version = "1.29.1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 dotenvy = "0.15"
 entity = { path = "../entity" }
 migration = { path = "../migration" }
-anyhow = "1.0.52"
-async-trait = "0.1.52"
+anyhow = "1.0.71"
+async-trait = "0.1.71"
 log = { version = "0.4", features = ["std"] }
 simplelog = "0.12"

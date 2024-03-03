@@ -5,6 +5,9 @@ mod db_connection;
 #[cfg(feature = "mock")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 mod mock;
+#[cfg(feature = "proxy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
+mod proxy;
 mod statement;
 mod stream;
 mod transaction;
@@ -14,6 +17,9 @@ pub use db_connection::*;
 #[cfg(feature = "mock")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 pub use mock::*;
+#[cfg(feature = "proxy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
+pub use proxy::*;
 pub use statement::*;
 use std::borrow::Cow;
 pub use stream::*;
@@ -48,10 +54,15 @@ pub struct ConnectOptions {
     pub(crate) sqlx_logging: bool,
     /// SQLx statement logging level (ignored if `sqlx_logging` is false)
     pub(crate) sqlx_logging_level: log::LevelFilter,
+    /// SQLx slow statements logging level (ignored if `sqlx_logging` is false)
+    pub(crate) sqlx_slow_statements_logging_level: log::LevelFilter,
+    /// SQLx slow statements duration threshold (ignored if `sqlx_logging` is false)
+    pub(crate) sqlx_slow_statements_logging_threshold: Duration,
     /// set sqlcipher key
     pub(crate) sqlcipher_key: Option<Cow<'static, str>>,
     /// Schema search path (PostgreSQL only)
     pub(crate) schema_search_path: Option<String>,
+    pub(crate) test_before_acquire: bool,
 }
 
 impl Database {
@@ -79,10 +90,40 @@ impl Database {
         if crate::MockDatabaseConnector::accepts(&opt.url) {
             return crate::MockDatabaseConnector::connect(&opt.url).await;
         }
+
         Err(conn_err(format!(
             "The connection string '{}' has no supporting driver.",
             opt.url
         )))
+    }
+
+    /// Method to create a [DatabaseConnection] on a proxy database
+    #[cfg(feature = "proxy")]
+    #[instrument(level = "trace", skip(proxy_func_arc))]
+    pub async fn connect_proxy(
+        db_type: DbBackend,
+        proxy_func_arc: std::sync::Arc<std::sync::Mutex<Box<dyn ProxyDatabaseTrait>>>,
+    ) -> Result<DatabaseConnection, DbErr> {
+        match db_type {
+            DbBackend::MySql => {
+                return crate::ProxyDatabaseConnector::connect(
+                    DbBackend::MySql,
+                    proxy_func_arc.to_owned(),
+                );
+            }
+            DbBackend::Postgres => {
+                return crate::ProxyDatabaseConnector::connect(
+                    DbBackend::Postgres,
+                    proxy_func_arc.to_owned(),
+                );
+            }
+            DbBackend::Sqlite => {
+                return crate::ProxyDatabaseConnector::connect(
+                    DbBackend::Sqlite,
+                    proxy_func_arc.to_owned(),
+                );
+            }
+        }
     }
 }
 
@@ -111,8 +152,11 @@ impl ConnectOptions {
             max_lifetime: None,
             sqlx_logging: true,
             sqlx_logging_level: log::LevelFilter::Info,
+            sqlx_slow_statements_logging_level: log::LevelFilter::Off,
+            sqlx_slow_statements_logging_threshold: Duration::from_secs(1),
             sqlcipher_key: None,
             schema_search_path: None,
+            test_before_acquire: true,
         }
     }
 
@@ -141,6 +185,7 @@ impl ConnectOptions {
         if let Some(max_lifetime) = self.max_lifetime {
             opt = opt.max_lifetime(Some(max_lifetime));
         }
+        opt = opt.test_before_acquire(self.test_before_acquire);
         opt
     }
 
@@ -226,16 +271,36 @@ impl ConnectOptions {
         self.sqlx_logging
     }
 
-    /// Set SQLx statement logging level (default INFO)
+    /// Set SQLx statement logging level (default INFO).
     /// (ignored if `sqlx_logging` is `false`)
     pub fn sqlx_logging_level(&mut self, level: log::LevelFilter) -> &mut Self {
         self.sqlx_logging_level = level;
         self
     }
 
+    /// Set SQLx slow statements logging level and duration threshold (default `LevelFilter::Off`).
+    /// (ignored if `sqlx_logging` is `false`)
+    pub fn sqlx_slow_statements_logging_settings(
+        &mut self,
+        level: log::LevelFilter,
+        duration: Duration,
+    ) -> &mut Self {
+        self.sqlx_slow_statements_logging_level = level;
+        self.sqlx_slow_statements_logging_threshold = duration;
+        self
+    }
+
     /// Get the level of SQLx statement logging
     pub fn get_sqlx_logging_level(&self) -> log::LevelFilter {
         self.sqlx_logging_level
+    }
+
+    /// Get the SQLx slow statements logging settings
+    pub fn get_sqlx_slow_statements_logging_settings(&self) -> (log::LevelFilter, Duration) {
+        (
+            self.sqlx_slow_statements_logging_level,
+            self.sqlx_slow_statements_logging_threshold,
+        )
     }
 
     /// set key for sqlcipher
@@ -253,6 +318,12 @@ impl ConnectOptions {
         T: Into<String>,
     {
         self.schema_search_path = Some(schema_search_path.into());
+        self
+    }
+
+    /// If true, the connection will be pinged upon acquiring from the pool (default true).
+    pub fn test_before_acquire(&mut self, value: bool) -> &mut Self {
+        self.test_before_acquire = value;
         self
     }
 }

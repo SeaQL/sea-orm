@@ -20,6 +20,11 @@ pub trait EntityName: IdenStatic + Default {
         None
     }
 
+    /// Method to get the comment for the schema, defaults to [Option::None] if not set
+    fn comment(&self) -> Option<&str> {
+        None
+    }
+
     /// Get the name of the table
     fn table_name(&self) -> &str;
 
@@ -960,7 +965,6 @@ mod tests {
             );
         }
 
-        delete_by_id("UUID".to_string());
         delete_by_id("UUID".to_string());
         delete_by_id("UUID");
         delete_by_id(Cow::from("UUID"));

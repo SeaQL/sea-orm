@@ -56,3 +56,10 @@ where
 {
     _foo: T::Item,
 }
+
+#[derive(FromQueryResult)]
+struct FromQueryAttributeTests {
+    #[sea_orm(skip)]
+    _foo: i32,
+    _bar: String,
+}
