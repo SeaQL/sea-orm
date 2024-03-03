@@ -228,7 +228,7 @@ mod util {
 #[cfg(test)]
 mod test {
     use quote::format_ident;
-    use syn::DeriveInput;
+    use syn::{parse_str, DeriveInput, Type};
 
     use crate::derives::partial_model::ColumnAs;
 
@@ -250,11 +250,10 @@ struct PartialModel{
 "#;
     #[test]
     fn test_load_macro_input() -> StdResult<()> {
-        let input = syn::parse_str::<DeriveInput>(CODE_SNIPPET)?;
+        let input = parse_str::<DeriveInput>(CODE_SNIPPET)?;
 
         let middle = DerivePartialModel::new(input).unwrap();
-
-        assert_eq!(middle.entity, Some(format_ident!("Entity")));
+        assert_eq!(middle.entity, Some(parse_str::<Type>("Entity").unwrap()));
         assert_eq!(middle.ident, format_ident!("PartialModel"));
         assert_eq!(middle.fields.len(), 3);
         assert_eq!(
