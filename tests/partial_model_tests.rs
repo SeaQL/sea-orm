@@ -29,7 +29,6 @@ struct SimpleTest {
     _bar: String,
 }
 
-
 #[derive(FromQueryResult, DerivePartialModel)]
 #[sea_orm(entity = "<entity::Model as ModelTrait>::Entity")]
 struct EntityNameNotAIdent {
@@ -38,6 +37,7 @@ struct EntityNameNotAIdent {
     #[sea_orm(from_col = "bar2")]
     _bar: String,
 }
+
 #[derive(FromQueryResult, DerivePartialModel)]
 #[sea_orm(entity = "Entity")]
 struct FieldFromDiffNameColumnTest {
