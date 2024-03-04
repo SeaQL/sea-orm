@@ -7,8 +7,8 @@ pub struct Model {
     pub user_id: i32,
     #[sea_orm(primary_key, auto_increment = false)]
     pub bill_id: i32,
-    pub user_idd: Option<i32>,
-    pub bill_idd: Option<i32>,
+    pub user_idd: Option<i32> ,
+    pub bill_idd: Option<i32> ,
     pub vote: bool,
 }
 
@@ -17,25 +17,25 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::bills::Entity",
         from = "Column::BillIdd",
-        to = "super::bills::Column::Id"
+        to = "super::bills::Column::Id",
     )]
     Bills2,
     #[sea_orm(
         belongs_to = "super::bills::Entity",
         from = "Column::BillId",
-        to = "super::bills::Column::Id"
+        to = "super::bills::Column::Id",
     )]
     Bills1,
     #[sea_orm(
         belongs_to = "super::users::Entity",
         from = "Column::UserIdd",
-        to = "super::users::Column::Id"
+        to = "super::users::Column::Id",
     )]
     Users2,
     #[sea_orm(
         belongs_to = "super::users::Entity",
         from = "Column::UserId",
-        to = "super::users::Column::Id"
+        to = "super::users::Column::Id",
     )]
     Users1,
 }
