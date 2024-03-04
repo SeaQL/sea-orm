@@ -295,14 +295,13 @@ impl ConnectOptions {
         self.schema_search_path = Some(schema_search_path.into());
         self
     }
-    
+
     /// If true, the connection will be pinged upon acquiring from the pool (default true).
     pub fn test_before_acquire(&mut self, value: bool) -> &mut Self {
         self.test_before_acquire = value;
         self
     }
 
-    
     /// Set the application name for the connection (PostgreSQL only)
     #[cfg(feature = "sqlx-postgres")]
     pub fn application_name(&mut self, value: &'static str) -> &mut Self {
