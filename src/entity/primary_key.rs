@@ -170,7 +170,7 @@ mod tests {
             #[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
             #[sea_orm(
                 rs_type = "String",
-                db_type = "string(Some(1))",
+                db_type = "String(StringLen::N(1))",
                 enum_name = "category"
             )]
             pub enum DeriveCategory {
