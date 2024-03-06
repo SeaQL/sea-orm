@@ -810,6 +810,11 @@ pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
 
     quote::quote! (
         #[test]
+        #[cfg(any(
+            feature = "sqlx-mysql",
+            feature = "sqlx-sqlite",
+            feature = "sqlx-postgres",
+        ))]
         #(#attrs)*
         fn #name() #ret {
             let _ = ::tracing_subscriber::fmt()

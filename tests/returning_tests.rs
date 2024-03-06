@@ -1,16 +1,11 @@
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
-use sea_orm::{entity::prelude::*, IntoActiveModel};
+use sea_orm::{entity::prelude::*, IntoActiveModel, Set};
 pub use sea_query::{Expr, Query};
 use serde_json::json;
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     use bakery::*;
 
@@ -69,11 +64,6 @@ async fn main() -> Result<(), DbErr> {
 }
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 #[cfg_attr(
     any(
         feature = "sqlx-mysql",
@@ -95,10 +85,10 @@ async fn update_many() {
         create_tables(db).await?;
 
         Entity::insert(
-            Model {
-                id: 1,
-                action: "before_save".into(),
-                values: json!({ "id": "unique-id-001" }),
+            ActiveModel {
+                action: Set("before_save".into()),
+                values: Set(json!({ "id": "unique-id-001" })),
+                ..Default::default()
             }
             .into_active_model(),
         )
@@ -106,10 +96,10 @@ async fn update_many() {
         .await?;
 
         Entity::insert(
-            Model {
-                id: 2,
-                action: "before_save".into(),
-                values: json!({ "id": "unique-id-002" }),
+            ActiveModel {
+                action: Set("before_save".into()),
+                values: Set(json!({ "id": "unique-id-002" })),
+                ..Default::default()
             }
             .into_active_model(),
         )
@@ -117,10 +107,10 @@ async fn update_many() {
         .await?;
 
         Entity::insert(
-            Model {
-                id: 3,
-                action: "before_save".into(),
-                values: json!({ "id": "unique-id-003" }),
+            ActiveModel {
+                action: Set("before_save".into()),
+                values: Set(json!({ "id": "unique-id-003" })),
+                ..Default::default()
             }
             .into_active_model(),
         )

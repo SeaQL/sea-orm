@@ -6,11 +6,6 @@ use sea_orm::{entity::prelude::*, DerivePartialModel, FromQueryResult, QuerySele
 use serde_json::json;
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn cursor_tests() -> Result<(), DbErr> {
     let ctx = TestContext::new("cursor_tests").await;
     create_tables(&ctx.db).await?;

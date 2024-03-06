@@ -3,17 +3,12 @@ pub mod common;
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
 use sea_orm::{
-    entity::prelude::*, DatabaseConnection, Delete, IntoActiveModel, Iterable, QueryTrait, Set,
-    Update,
+    entity::prelude::*, DatabaseConnection, Delete, IntoActiveModel, Iterable, NotSet, QueryTrait,
+    Set, Update,
 };
 use sea_query::{Expr, Query};
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("dyn_table_name_tests").await;
     create_tables(&ctx.db).await?;
@@ -36,7 +31,10 @@ pub async fn dyn_table_name_lazy_static(db: &DatabaseConnection) -> Result<(), D
             name: "1st Row".into(),
         };
         // Prepare insert statement
-        let mut insert = Entity::insert(model.clone().into_active_model());
+        let mut insert = Entity::insert(ActiveModel {
+            id: NotSet,
+            ..model.clone().into_active_model()
+        });
         // Reset the table name of insert statement
         insert.query().into_table(entity.table_ref());
         // Execute the insert statement

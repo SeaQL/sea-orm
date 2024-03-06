@@ -2,15 +2,10 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection, NotSet};
 use serde_json::json;
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("json_struct_tests").await;
     create_tables(&ctx.db).await?;
@@ -46,7 +41,12 @@ pub async fn insert_json_struct_1(db: &DatabaseConnection) -> Result<(), DbErr> 
         }),
     };
 
-    let result = model.clone().into_active_model().insert(db).await?;
+    let result = ActiveModel {
+        id: NotSet,
+        ..model.clone().into_active_model()
+    }
+    .insert(db)
+    .await?;
 
     assert_eq!(result, model);
 
@@ -81,7 +81,12 @@ pub async fn insert_json_struct_2(db: &DatabaseConnection) -> Result<(), DbErr> 
         json_value_opt: None,
     };
 
-    let result = model.clone().into_active_model().insert(db).await?;
+    let result = ActiveModel {
+        id: NotSet,
+        ..model.clone().into_active_model()
+    }
+    .insert(db)
+    .await?;
 
     assert_eq!(result, model);
 
