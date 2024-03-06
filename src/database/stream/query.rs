@@ -1,14 +1,14 @@
 #![allow(missing_docs, unreachable_code, unused_variables)]
 
-use tracing::instrument;
-use std::{pin::Pin, task::Poll};
 use futures::Stream;
+use std::{pin::Pin, task::Poll};
+use tracing::instrument;
 
 #[cfg(feature = "sqlx-dep")]
 use futures::TryStreamExt;
 
 #[cfg(feature = "sqlx-dep")]
-use sqlx::{pool::PoolConnection, Executor};
+use sqlx::Executor;
 
 use super::metric::MetricStream;
 #[cfg(feature = "sqlx-dep")]
