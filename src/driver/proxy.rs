@@ -138,3 +138,39 @@ impl ProxyDatabaseConnection {
         self.proxy.lock().map_err(query_err)?.ping()
     }
 }
+
+impl
+    From<(
+        Arc<crate::ProxyDatabaseConnection>,
+        Statement,
+        Option<crate::metric::Callback>,
+    )> for crate::QueryStream
+{
+    fn from(
+        (conn, stmt, metric_callback): (
+            Arc<crate::ProxyDatabaseConnection>,
+            Statement,
+            Option<crate::metric::Callback>,
+        ),
+    ) -> Self {
+        crate::QueryStream::build(stmt, crate::InnerConnection::Proxy(conn), metric_callback)
+    }
+}
+
+impl crate::DatabaseTransaction {
+    pub(crate) async fn new_proxy(
+        inner: Arc<crate::ProxyDatabaseConnection>,
+        metric_callback: Option<crate::metric::Callback>,
+    ) -> Result<crate::DatabaseTransaction, DbErr> {
+        use futures::lock::Mutex;
+        let backend = inner.get_database_backend();
+        Self::begin(
+            Arc::new(Mutex::new(crate::InnerConnection::Proxy(inner))),
+            backend,
+            metric_callback,
+            None,
+            None,
+        )
+        .await
+    }
+}

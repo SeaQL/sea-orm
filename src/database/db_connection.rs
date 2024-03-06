@@ -579,14 +579,10 @@ impl DbBackend {
 
     /// Check if the database supports `RETURNING` syntax on insert and update
     pub fn support_returning(&self) -> bool {
-        #[cfg(not(feature = "sqlite-use-returning-for-3_35"))]
-        {
-            matches!(self, Self::Postgres)
-        }
-
-        #[cfg(feature = "sqlite-use-returning-for-3_35")]
-        {
-            matches!(self, Self::Postgres | Self::Sqlite)
+        match self {
+            Self::Postgres => true,
+            Self::Sqlite if cfg!(feature = "sqlite-use-returning-for-3_35") => true,
+            _ => false,
         }
     }
 }
