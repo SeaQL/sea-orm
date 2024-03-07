@@ -248,6 +248,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     }
 
     /// Construct a returning [`Expr`].
+    #[allow(clippy::match_single_binding)]
     fn into_returning_expr(self, db_backend: DbBackend) -> Expr {
         match db_backend {
             _ => Expr::col(self),

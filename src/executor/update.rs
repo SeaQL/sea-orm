@@ -2,7 +2,7 @@ use crate::{
     error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, IntoActiveModel,
     Iterable, PrimaryKeyTrait, SelectModel, SelectorRaw, UpdateMany, UpdateOne,
 };
-use sea_query::{Expr, FromValueTuple, Query, UpdateStatement};
+use sea_query::{FromValueTuple, Query, UpdateStatement};
 
 /// Defines an update operation
 #[derive(Clone, Debug)]
