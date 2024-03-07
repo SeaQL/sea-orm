@@ -28,7 +28,9 @@ async fn main() -> Result<(), DbErr> {
         ])
         .and_where(Column::Id.eq(1));
 
-    let returning = Query::returning().columns([Column::Id, Column::Name, Column::ProfitMargin]);
+    let columns = [Column::Id, Column::Name, Column::ProfitMargin];
+    let returning =
+        Query::returning().exprs(columns.into_iter().map(|c| c.into_returning_expr(builder)));
 
     create_tables(db).await?;
 

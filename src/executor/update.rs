@@ -114,10 +114,11 @@ impl Updater {
 
         match db.support_returning() {
             true => {
-                let returning = Query::returning()
-                    .exprs(Column::<A>::iter().map(|c| c.select_as(Expr::col(c))));
-                self.query.returning(returning);
                 let db_backend = db.get_database_backend();
+                let returning = Query::returning().exprs(
+                    Column::<A>::iter().map(|c| c.select_as(c.into_returning_expr(db_backend))),
+                );
+                self.query.returning(returning);
                 let found: Option<Model<A>> = SelectorRaw::<SelectModel<Model<A>>>::from_statement(
                     db_backend.build(&self.query),
                 )
@@ -148,10 +149,11 @@ impl Updater {
 
         match db.support_returning() {
             true => {
-                let returning =
-                    Query::returning().exprs(E::Column::iter().map(|c| c.select_as(Expr::col(c))));
-                self.query.returning(returning);
                 let db_backend = db.get_database_backend();
+                let returning = Query::returning().exprs(
+                    E::Column::iter().map(|c| c.select_as(c.into_returning_expr(db_backend))),
+                );
+                self.query.returning(returning);
                 let models: Vec<E::Model> = SelectorRaw::<SelectModel<E::Model>>::from_statement(
                     db_backend.build(&self.query),
                 )
