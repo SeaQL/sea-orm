@@ -133,9 +133,9 @@ async fn seed_data(db: &DatabaseConnection) {
 
 #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-postgres"))]
 async fn find_baker_least_sales(db: &DatabaseConnection) -> Option<baker::Model> {
-    #[cfg(feature = "sqlx-postgres")]
+    #[cfg(any(feature = "sqlx-postgres"))]
     type Type = i64;
-    #[cfg(not(feature = "sqlx-postgres"))]
+    #[cfg(not(any(feature = "sqlx-postgres")))]
     type Type = Decimal;
 
     #[derive(Debug, FromQueryResult)]

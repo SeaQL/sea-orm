@@ -19,7 +19,7 @@ pub async fn execute_unprepared(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     db.execute_unprepared(
         [
-            "INSERT INTO insert_default VALUES (1), (2), (3), (4), (5)",
+            "INSERT INTO insert_default (id) VALUES (1), (2), (3), (4), (5)",
             "DELETE FROM insert_default WHERE id % 2 = 0",
         ]
         .join(";")
