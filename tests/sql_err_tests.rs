@@ -29,13 +29,11 @@ pub async fn test_error(db: &DatabaseConnection) {
     // if compiling without sqlx, this assignment will complain,
     // but the whole test is useless in that case anyway.
     #[allow(unused_variables)]
-    let error: DbErr = cake::ActiveModel {
-        id: NotSet,
-        ..cake.into_active_model()
-    }
-    .insert(db)
-    .await
-    .expect_err("inserting should fail due to duplicate primary key");
+    let error: DbErr = cake
+        .into_active_model()
+        .insert(db)
+        .await
+        .expect_err("inserting should fail due to duplicate primary key");
 
     assert!(matches!(
         error.sql_err(),
