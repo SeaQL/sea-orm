@@ -178,7 +178,12 @@ impl RelationDef {
     /// e.g. https://github.com/SeaQL/sea-orm/discussions/2133
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, DbBackend, tests_cfg::{cake, cake_filling}};
+    /// use sea_orm::{
+    ///     entity::*,
+    ///     query::*,
+    ///     DbBackend,
+    ///     tests_cfg::{cake, cake_filling}
+    /// };
     /// use sea_query::Alias;
     ///
     /// let cf = Alias::new("cf");
