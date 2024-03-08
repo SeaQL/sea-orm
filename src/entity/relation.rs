@@ -181,8 +181,8 @@ impl RelationDef {
     /// use sea_orm::{
     ///     entity::*,
     ///     query::*,
+    ///     tests_cfg::{cake, cake_filling},
     ///     DbBackend,
-    ///     tests_cfg::{cake, cake_filling}
     /// };
     /// use sea_query::Alias;
     ///
