@@ -89,24 +89,34 @@ async fn create(
         .finish())
 }
 
-#[get("/{id}")]
+#[get(r#"/{id:\d+}"#)]
 async fn edit(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
     let conn = &data.conn;
     let template = &data.templates;
     let id = id.into_inner();
 
-    let post: post::Model = Query::find_post_by_id(conn, id)
+    let post: Option<post::Model> = Query::find_post_by_id(conn, id)
         .await
-        .expect("could not find post")
-        .unwrap_or_else(|| panic!("could not find post with id {id}"));
+        .expect("could not find post");
 
     let mut ctx = tera::Context::new();
-    ctx.insert("post", &post);
+    let body = match post {
+        Some(post) => {
+            ctx.insert("post", &post);
 
-    let body = template
-        .render("edit.html.tera", &ctx)
-        .map_err(|_| error::ErrorInternalServerError("Template error"))?;
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+            template
+                .render("edit.html.tera", &ctx)
+                .map_err(|_| error::ErrorInternalServerError("Template error"))
+        }
+        None => {
+            ctx.insert("uri", &format!("/{}", id));
+
+            template
+                .render("error/404.html.tera", &ctx)
+                .map_err(|_| error::ErrorInternalServerError("Template error"))
+        }
+    };
+    Ok(HttpResponse::Ok().content_type("text/html").body(body?))
 }
 
 #[post("/{id}")]
