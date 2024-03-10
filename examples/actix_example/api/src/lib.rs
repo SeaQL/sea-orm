@@ -103,14 +103,14 @@ async fn edit(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpRespo
     let body = match post {
         Some(post) => {
             ctx.insert("post", &post);
-        
+
             template
                 .render("edit.html.tera", &ctx)
                 .map_err(|_| error::ErrorInternalServerError("Template error"))
         }
         None => {
             ctx.insert("uri", &format!("/{}", id));
-        
+
             template
                 .render("error/404.html.tera", &ctx)
                 .map_err(|_| error::ErrorInternalServerError("Template error"))
