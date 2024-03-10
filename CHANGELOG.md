@@ -27,6 +27,29 @@ struct EntityNameNotAIdent {
     _bar: String,
 }
 ```
+* Added `RelationDef::from_alias()` https://github.com/SeaQL/sea-orm/pull/2146
+```rust
+assert_eq!(
+    cake::Entity::find()
+        .join_as(
+            JoinType::LeftJoin,
+            cake_filling::Relation::Cake.def().rev(),
+            cf.clone()
+        )
+        .join(
+            JoinType::LeftJoin,
+            cake_filling::Relation::Filling.def().from_alias(cf)
+        )
+        .build(DbBackend::MySql)
+        .to_string(),
+    [
+        "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+        "LEFT JOIN `cake_filling` AS `cf` ON `cake`.`id` = `cf`.`cake_id`",
+        "LEFT JOIN `filling` ON `cf`.`filling_id` = `filling`.`id`",
+    ]
+    .join(" ")
+);
+```
 
 ### House keeping
 
