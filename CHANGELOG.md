@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Breaking Changes
 
 * Updated Strum to version 0.26 https://github.com/SeaQL/sea-orm/pull/2088
+* Renamed `ConnectOptions::pool_options()` to `ConnectOptions::sqlx_pool_options()` https://github.com/SeaQL/sea-orm/pull/2145
+* Made `sqlx_common` private, hiding `sqlx_error_to_xxx_err` https://github.com/SeaQL/sea-orm/pull/2145
 
 ### Enhancements
 
