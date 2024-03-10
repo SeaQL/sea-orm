@@ -28,6 +28,10 @@ struct EntityNameNotAIdent {
 }
 ```
 
+### House keeping
+
+* Improved Actix example to return 404 not found on unexpected inputs https://github.com/SeaQL/sea-orm/pull/2140
+
 ## 1.0.0-rc.1 - 2024-02-06
 
 ### New Features
