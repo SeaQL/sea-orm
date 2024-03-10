@@ -1,6 +1,6 @@
 use crate::{
     join_tbl_on_condition, unpack_table_ref, ColumnTrait, EntityTrait, IdenStatic, Iterable,
-    Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
+    Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectBoth, SelectTwo, SelectTwoMany,
 };
 pub use sea_query::JoinType;
 use sea_query::{Alias, Condition, Expr, IntoIden, SeaRc, SelectExpr};
@@ -51,6 +51,15 @@ where
         E: Related<R>,
     {
         self.left_join(r).select_also(r)
+    }
+
+    /// Inner Join with a Related Entity and select both Entity.
+    pub fn find_both_related<R>(self, r: R) -> SelectBoth<E, R>
+    where
+        R: EntityTrait,
+        E: Related<R>,
+    {
+        self.inner_join(r).select_both(r)
     }
 
     /// Left Join with a Related Entity and select the related Entity as a `Vec`

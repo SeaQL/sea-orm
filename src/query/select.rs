@@ -13,7 +13,7 @@ where
     pub(crate) entity: PhantomData<E>,
 }
 
-/// Defines a structure to perform a SELECT operation on two Models
+/// Defines a structure to perform a SELECT operation on two Models, with the second Model being optional
 #[derive(Clone, Debug)]
 pub struct SelectTwo<E, F>
 where
@@ -27,6 +27,17 @@ where
 /// Defines a structure to perform a SELECT operation on many Models
 #[derive(Clone, Debug)]
 pub struct SelectTwoMany<E, F>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F)>,
+}
+
+/// Defines a structure to perform a SELECT operation on two Models
+#[derive(Clone, Debug)]
+pub struct SelectBoth<E, F>
 where
     E: EntityTrait,
     F: EntityTrait,
@@ -67,6 +78,18 @@ macro_rules! impl_trait {
         }
 
         impl<E, F> $trait for SelectTwoMany<E, F>
+        where
+            E: EntityTrait,
+            F: EntityTrait,
+        {
+            type QueryStatement = SelectStatement;
+
+            fn query(&mut self) -> &mut SelectStatement {
+                &mut self.query
+            }
+        }
+
+        impl<E, F> $trait for SelectBoth<E, F>
         where
             E: EntityTrait,
             F: EntityTrait,
@@ -174,3 +197,4 @@ macro_rules! select_two {
 
 select_two!(SelectTwo);
 select_two!(SelectTwoMany);
+select_two!(SelectBoth);
