@@ -115,6 +115,27 @@ impl QueryResult {
     {
         Ok(T::try_get_many_by_index(self)?)
     }
+
+    /// Gets all column names in the order they were written.
+    #[cfg(feature = "sqlx-dep")]
+    pub fn columns(&self) -> Vec<String> {
+        use sqlx::Column;
+
+        match &self.row {
+            #[cfg(feature = "sqlx-mysql")]
+            QueryResultRow::SqlxMySql(row) => row.columns().iter().map(|c| c.name().to_string()).collect(),
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => row.columns().iter().map(|c| c.name().to_string()).collect(),
+            #[cfg(feature = "sqlx-sqlite")]
+            QueryResultRow::SqlxSqlite(row) => row.columns().iter().map(|c| c.name().to_string()).collect(),
+            #[cfg(feature = "mock")]
+            QueryResultRow::Mock(row) => row.clone().into_column_value_tuples().map(|(c, _)| c.to_string()).collect(),
+            #[cfg(feature = "proxy")]
+            QueryResultRow::Proxy(row) => row.clone().into_column_value_tuples().map(|(c, _)| c.to_string()).collect(),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[allow(unused_variables)]
