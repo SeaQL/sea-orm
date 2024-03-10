@@ -207,3 +207,39 @@ impl MockDatabaseConnection {
         self.mocker.lock().map_err(query_err)?.ping()
     }
 }
+
+impl
+    From<(
+        Arc<crate::MockDatabaseConnection>,
+        Statement,
+        Option<crate::metric::Callback>,
+    )> for crate::QueryStream
+{
+    fn from(
+        (conn, stmt, metric_callback): (
+            Arc<crate::MockDatabaseConnection>,
+            Statement,
+            Option<crate::metric::Callback>,
+        ),
+    ) -> Self {
+        crate::QueryStream::build(stmt, crate::InnerConnection::Mock(conn), metric_callback)
+    }
+}
+
+impl crate::DatabaseTransaction {
+    pub(crate) async fn new_mock(
+        inner: Arc<crate::MockDatabaseConnection>,
+        metric_callback: Option<crate::metric::Callback>,
+    ) -> Result<crate::DatabaseTransaction, DbErr> {
+        use futures::lock::Mutex;
+        let backend = inner.get_database_backend();
+        Self::begin(
+            Arc::new(Mutex::new(crate::InnerConnection::Mock(inner))),
+            backend,
+            metric_callback,
+            None,
+            None,
+        )
+        .await
+    }
+}

@@ -1,17 +1,12 @@
 pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 pub use sea_orm::{
-    entity::*, error::DbErr, error::SqlErr, tests_cfg, DatabaseConnection, DbBackend, EntityName,
-    ExecResult,
+    entity::*, error::DbErr, error::SqlErr, tests_cfg, ConnectionTrait, DatabaseConnection,
+    DbBackend, EntityName, ExecResult,
 };
 use uuid::Uuid;
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() {
     let ctx = TestContext::new("bakery_chain_sql_err_tests").await;
     create_tables(&ctx.db).await.unwrap();

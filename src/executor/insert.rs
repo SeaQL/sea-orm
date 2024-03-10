@@ -3,7 +3,7 @@ use crate::{
     Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
     TryInsert,
 };
-use sea_query::{Expr, FromValueTuple, Iden, InsertStatement, IntoColumnRef, Query, ValueTuple};
+use sea_query::{FromValueTuple, Iden, InsertStatement, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};
 
 /// Defines a structure to perform INSERT operations in an ActiveModel
@@ -118,10 +118,12 @@ where
         // so that self is dropped before entering await
         let mut query = self.query;
         if db.support_returning() && <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
-            let returning = Query::returning().exprs(
-                <A::Entity as EntityTrait>::PrimaryKey::iter()
-                    .map(|c| c.into_column().select_as(Expr::col(c.into_column_ref()))),
-            );
+            let db_backend = db.get_database_backend();
+            let returning =
+                Query::returning().exprs(<A::Entity as EntityTrait>::PrimaryKey::iter().map(|c| {
+                    c.into_column()
+                        .select_as(c.into_column().into_returning_expr(db_backend))
+                }));
             query.returning(returning);
         }
         Inserter::<A>::new(self.primary_key, query).exec(db)
@@ -275,7 +277,8 @@ where
     let found = match db.support_returning() {
         true => {
             let returning = Query::returning().exprs(
-                <A::Entity as EntityTrait>::Column::iter().map(|c| c.select_as(Expr::col(c))),
+                <A::Entity as EntityTrait>::Column::iter()
+                    .map(|c| c.select_as(c.into_returning_expr(db_backend))),
             );
             insert_statement.returning(returning);
             SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(

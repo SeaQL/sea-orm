@@ -1,14 +1,9 @@
 pub mod common;
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
+use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel, NotSet};
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("bakery_chain_schema_timestamp_tests").await;
     create_tables(&ctx.db).await?;
@@ -28,9 +23,12 @@ pub async fn create_applog(db: &DatabaseConnection) -> Result<(), DbErr> {
         created_at: "2021-09-17T17:50:20+08:00".parse().unwrap(),
     };
 
-    let res = Applog::insert(log.clone().into_active_model())
-        .exec(db)
-        .await?;
+    let res = Applog::insert(applog::ActiveModel {
+        id: NotSet,
+        ..log.clone().into_active_model()
+    })
+    .exec(db)
+    .await?;
 
     assert_eq!(log.id, res.last_insert_id);
     assert_eq!(Applog::find().one(db).await?, Some(log.clone()));
@@ -77,9 +75,12 @@ pub async fn create_satellites_log(db: &DatabaseConnection) -> Result<(), DbErr>
         deployment_date: "2022-01-07T12:11:23Z".parse().unwrap(),
     };
 
-    let res = Satellite::insert(archive.clone().into_active_model())
-        .exec(db)
-        .await?;
+    let res = Satellite::insert(satellite::ActiveModel {
+        id: NotSet,
+        ..archive.clone().into_active_model()
+    })
+    .exec(db)
+    .await?;
 
     assert_eq!(archive.id, res.last_insert_id);
     assert_eq!(Satellite::find().one(db).await?, Some(archive.clone()));

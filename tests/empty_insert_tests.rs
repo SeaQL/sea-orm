@@ -11,11 +11,6 @@ pub use crud::*;
 use sea_orm::{DbConn, TryInsertResult};
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() {
     let ctx = TestContext::new("bakery_chain_empty_insert_tests").await;
     create_tables(&ctx.db).await.unwrap();
