@@ -17,17 +17,13 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::order::Entity",
         from = "Column::OrderId",
-        to = "super::order::Column::Id",
-        on_update = "Cascade",
-        on_delete = "Cascade"
+        to = "super::order::Column::Id"
     )]
     Order,
     #[sea_orm(
         belongs_to = "super::cake::Entity",
         from = "Column::CakeId",
-        to = "super::cake::Column::Id",
-        on_update = "Cascade",
-        on_delete = "Cascade"
+        to = "super::cake::Column::Id"
     )]
     Cake,
 }

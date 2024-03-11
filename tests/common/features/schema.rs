@@ -45,7 +45,9 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_edit_log_table(db).await?;
     create_teas_table(db).await?;
     create_binary_table(db).await?;
-    create_bits_table(db).await?;
+    if matches!(db_backend, DbBackend::Postgres) {
+        create_bits_table(db).await?;
+    }
     create_dyn_table_name_lazy_static_table(db).await?;
     create_value_type_table(db).await?;
 
