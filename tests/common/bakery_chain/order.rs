@@ -23,7 +23,9 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::customer::Entity",
         from = "Column::CustomerId",
-        to = "super::customer::Column::Id"
+        to = "super::customer::Column::Id",
+        on_update = "Cascade",
+        on_delete = "Cascade"
     )]
     Customer,
     #[sea_orm(has_many = "super::lineitem::Entity")]

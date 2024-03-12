@@ -14,7 +14,9 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::cake::Entity",
         from = "Column::CakeId",
-        to = "super::cake::Column::Id"
+        to = "super::cake::Column::Id",
+        on_update = "Cascade",
+        on_delete = "Cascade"
     )]
     Cake,
     #[sea_orm(

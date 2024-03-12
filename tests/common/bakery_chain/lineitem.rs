@@ -17,7 +17,9 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::order::Entity",
         from = "Column::OrderId",
-        to = "super::order::Column::Id"
+        to = "super::order::Column::Id",
+        on_update = "Cascade",
+        on_delete = "Cascade"
     )]
     Order,
     #[sea_orm(
