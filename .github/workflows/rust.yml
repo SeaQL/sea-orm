@@ -234,7 +234,6 @@ jobs:
       matrix:
         path: [
           examples/actix_example,
-          examples/actix3_example,
           examples/axum_example,
           examples/basic,
           examples/graphql_example,
