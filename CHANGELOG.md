@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Enhancements
 
-* [sea-orm-cli] Fix `migrate generate` on empty `mod.rs` files
+* [sea-orm-cli] Fix `migrate generate` on empty `mod.rs` files https://github.com/SeaQL/sea-orm/pull/2064
 * `DerivePartialModel` macro attribute `entity` now supports `syn::Type` https://github.com/SeaQL/sea-orm/pull/2137
 ```rust
 #[derive(DerivePartialModel)]
