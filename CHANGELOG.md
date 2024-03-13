@@ -5,12 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 1.0.0-rc.1 - Pending
+## 0.12.15 - Pending
 
-### Breaking Changes
+### Enhancements
 
-* Rework SQLite type mappings https://github.com/SeaQL/sea-orm/pull/2078
-* Updated `sea-query` to `0.31`
+* `DerivePartialModel` macro attribute `entity` now supports `syn::Type` https://github.com/SeaQL/sea-orm/pull/2137
+```rust
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "<entity::Model as ModelTrait>::Entity")]
+struct EntityNameNotAIdent {
+    #[sea_orm(from_col = "foo2")]
+    _foo: i32,
+    #[sea_orm(from_col = "bar2")]
+    _bar: String,
+}
+```
+* Added `RelationDef::from_alias()` https://github.com/SeaQL/sea-orm/pull/2146
+```rust
+assert_eq!(
+    cake::Entity::find()
+        .join_as(
+            JoinType::LeftJoin,
+            cake_filling::Relation::Cake.def().rev(),
+            cf.clone()
+        )
+        .join(
+            JoinType::LeftJoin,
+            cake_filling::Relation::Filling.def().from_alias(cf)
+        )
+        .build(DbBackend::MySql)
+        .to_string(),
+    [
+        "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+        "LEFT JOIN `cake_filling` AS `cf` ON `cake`.`id` = `cf`.`cake_id`",
+        "LEFT JOIN `filling` ON `cf`.`filling_id` = `filling`.`id`",
+    ]
+    .join(" ")
+);
+```
 
 ## 0.12.14 - 2024-02-05
 
