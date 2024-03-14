@@ -214,12 +214,11 @@ pub enum GenerateSubcommands {
             short = 's',
             long,
             env = "DATABASE_SCHEMA",
-            default_value = "public",
             long_help = "Database schema\n \
                         - For MySQL, this argument is ignored.\n \
                         - For PostgreSQL, this argument is optional with default value 'public'."
         )]
-        database_schema: String,
+        database_schema: Option<String>,
 
         #[arg(short = 'u', long, env = "DATABASE_URL", help = "Database URL")]
         database_url: String,

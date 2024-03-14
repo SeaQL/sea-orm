@@ -164,12 +164,21 @@ pub trait MigratorTrait: Send {
         C: ConnectionTrait,
     {
         let builder = db.get_database_backend();
+        let table_name = Self::migration_table_name();
+        let table = table_name.to_string();
         let schema = Schema::new(builder);
         let mut stmt = schema
             .create_table_from_entity(seaql_migrations::Entity)
-            .table_name(Self::migration_table_name());
+            .table_name(table_name);
         stmt.if_not_exists();
-        db.execute(builder.build(&stmt)).await.map(|_| ())
+
+        let has_table = crate::has_table(db, None, table).await?;
+
+        if has_table {
+            Ok(())
+        } else {
+            db.execute(builder.build(&stmt)).await.map(|_| ())
+        }
     }
 
     /// Check the status of all migrations
@@ -441,9 +450,9 @@ where
     C: ConnectionTrait,
 {
     match db.get_database_backend() {
-        DbBackend::MySql => MySql::query_tables(),
-        DbBackend::Postgres => Postgres::query_tables(),
-        DbBackend::Sqlite => Sqlite::query_tables(),
+        DbBackend::MySql => MySql.query_tables(),
+        DbBackend::Postgres => Postgres.query_tables(),
+        DbBackend::Sqlite => Sqlite.query_tables(),
     }
 }
 
