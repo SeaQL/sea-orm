@@ -51,6 +51,10 @@ assert_eq!(
 );
 ```
 
+### Upgrades
+
+* Upgrade `sea-schema` to `0.15.0-rc.3`
+
 ### House keeping
 
 * Improved Actix example to return 404 not found on unexpected inputs https://github.com/SeaQL/sea-orm/pull/2140
