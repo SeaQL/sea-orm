@@ -94,7 +94,7 @@ impl<'c> SchemaManager<'c> {
     }
 }
 
-/// Schema Inspection
+/// Schema Inspection.
 impl<'c> SchemaManager<'c> {
     pub async fn has_table<T>(&self, table: T) -> Result<bool, DbErr>
     where
