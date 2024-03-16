@@ -1,9 +1,11 @@
-use super::util::camel_case_with_escaped_non_uax31;
-use crate::derives::enum_variant_rename::RenameRule;
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{parse, Expr, Lit, LitInt, LitStr, UnOp};
+use syn::{Expr, Lit, LitInt, LitStr, parse, UnOp};
+
+use crate::strum::helpers::case_style::{CaseStyle, CaseStyleHelpers};
+
+use super::util::camel_case_with_escaped_non_uax31;
 
 enum Error {
     InputNotEnum,
@@ -18,14 +20,14 @@ struct ActiveEnum {
     db_type: TokenStream,
     is_string: bool,
     variants: Vec<ActiveEnumVariant>,
-    rename_all: Option<RenameRule>,
+    rename_all: Option<CaseStyle>,
 }
 
 struct ActiveEnumVariant {
     ident: syn::Ident,
     string_value: Option<LitStr>,
     num_value: Option<LitInt>,
-    rename: Option<RenameRule>,
+    rename: Option<CaseStyle>,
 }
 
 impl ActiveEnum {
@@ -225,8 +227,7 @@ impl ActiveEnum {
                 } else if let Some(num_value) = &variant.num_value {
                     quote! { #num_value }
                 } else if let Some(rename_rule) = variant.rename.or(*rename_all) {
-                    let variant_ident = variant.ident.to_string();
-                    let variant_ident = rename_rule.apply_to_variant(&variant_ident);
+                    let variant_ident = variant.ident.convert_case(Some(rename_rule));
 
                     quote! { #variant_ident }
                 } else {
