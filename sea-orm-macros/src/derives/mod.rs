@@ -7,6 +7,7 @@ mod column;
 mod derive_iden;
 mod entity;
 mod entity_model;
+mod enum_variant_rename;
 mod from_query_result;
 mod into_active_model;
 mod migration;
