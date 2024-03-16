@@ -49,7 +49,9 @@ impl SqlxPostgresConnector {
             .url
             .parse::<PgConnectOptions>()
             .map_err(sqlx_error_to_conn_err)?;
+
         use sqlx::ConnectOptions;
+
         if !options.sqlx_logging {
             opt = opt.disable_statement_logging();
         } else {
@@ -61,10 +63,16 @@ impl SqlxPostgresConnector {
                 );
             }
         }
+
+        if let Some(application_name) = options.application_name {
+            opt = opt.application_name(application_name);
+        }
+
         let set_search_path_sql = options
             .schema_search_path
             .as_ref()
             .map(|schema| format!("SET search_path = '{schema}'"));
+
         let mut pool_options = options.sqlx_pool_options();
         if let Some(sql) = set_search_path_sql {
             pool_options = pool_options.after_connect(move |conn, _| {
