@@ -11,6 +11,7 @@ use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::S
 /// Helper struct for writing migration scripts in migration file
 pub struct SchemaManager<'c> {
     conn: SchemaManagerConnection<'c>,
+    schema: Option<String>,
 }
 
 impl<'c> SchemaManager<'c> {
@@ -20,6 +21,7 @@ impl<'c> SchemaManager<'c> {
     {
         Self {
             conn: conn.into_schema_manager_connection(),
+            schema: None,
         }
     }
 
@@ -37,6 +39,18 @@ impl<'c> SchemaManager<'c> {
 
     pub fn get_connection(&self) -> &SchemaManagerConnection<'c> {
         &self.conn
+    }
+
+    pub fn set_schema<T>(&mut self, schema: T) -> &mut Self
+    where
+        T: Into<String>,
+    {
+        self.schema = Some(schema.into());
+        self
+    }
+
+    pub fn get_schema(&self) -> &Option<String> {
+        &self.schema
     }
 }
 
@@ -100,20 +114,7 @@ impl<'c> SchemaManager<'c> {
     where
         T: AsRef<str>,
     {
-        let stmt = match self.conn.get_database_backend() {
-            DbBackend::MySql => MySql.has_table(table),
-            DbBackend::Postgres => Postgres.has_table(table),
-            DbBackend::Sqlite => Sqlite.has_table(table),
-        };
-
-        let builder = self.conn.get_database_backend();
-        let res = self
-            .conn
-            .query_one(builder.build(&stmt))
-            .await?
-            .ok_or_else(|| DbErr::Custom("Failed to check table exists".to_owned()))?;
-
-        res.try_get("", "has_table")
+        has_table(&self.conn, self.schema.as_deref(), table).await
     }
 
     pub async fn has_column<T, C>(&self, table: T, column: C) -> Result<bool, DbErr>
@@ -157,4 +158,28 @@ impl<'c> SchemaManager<'c> {
 
         res.try_get("", "has_index")
     }
+}
+
+pub(crate) async fn has_table<C, T>(
+    conn: &C,
+    _schema: Option<&str>,
+    table: T,
+) -> Result<bool, DbErr>
+where
+    C: ConnectionTrait,
+    T: AsRef<str>,
+{
+    let stmt = match conn.get_database_backend() {
+        DbBackend::MySql => MySql.has_table(table),
+        DbBackend::Postgres => Postgres.has_table(table),
+        DbBackend::Sqlite => Sqlite.has_table(table),
+    };
+
+    let builder = conn.get_database_backend();
+    let res = conn
+        .query_one(builder.build(&stmt))
+        .await?
+        .ok_or_else(|| DbErr::Custom("Failed to check table exists".to_owned()))?;
+
+    res.try_get("", "has_table")
 }

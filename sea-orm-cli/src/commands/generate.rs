@@ -113,7 +113,8 @@ pub async fn run_generate_command(
                     use sqlx::MySql;
 
                     println!("Connecting to MySQL ...");
-                    let connection = connect::<MySql>(max_connections, url.as_str(), None).await?;
+                    let connection =
+                        sqlx_connect::<MySql>(max_connections, url.as_str(), None).await?;
                     println!("Discovering schema ...");
                     let schema_discovery = SchemaDiscovery::new(connection, database_name);
                     let schema = schema_discovery.discover().await?;
@@ -132,7 +133,8 @@ pub async fn run_generate_command(
                     use sqlx::Sqlite;
 
                     println!("Connecting to SQLite ...");
-                    let connection = connect::<Sqlite>(max_connections, url.as_str(), None).await?;
+                    let connection =
+                        sqlx_connect::<Sqlite>(max_connections, url.as_str(), None).await?;
                     println!("Discovering schema ...");
                     let schema_discovery = SchemaDiscovery::new(connection);
                     let schema = schema_discovery.discover().await?;
@@ -151,9 +153,13 @@ pub async fn run_generate_command(
                     use sqlx::Postgres;
 
                     println!("Connecting to Postgres ...");
-                    let schema = &database_schema;
+                    let schema = database_schema
+                        .as_ref()
+                        .map(|s| s.as_str())
+                        .unwrap_or("public");
                     let connection =
-                        connect::<Postgres>(max_connections, url.as_str(), Some(schema)).await?;
+                        sqlx_connect::<Postgres>(max_connections, url.as_str(), Some(schema))
+                            .await?;
                     println!("Discovering schema ...");
                     let schema_discovery = SchemaDiscovery::new(connection, schema);
                     let schema = schema_discovery.discover().await?;
@@ -214,7 +220,7 @@ pub async fn run_generate_command(
     Ok(())
 }
 
-async fn connect<DB>(
+async fn sqlx_connect<DB>(
     max_connections: u32,
     url: &str,
     schema: Option<&str>,
