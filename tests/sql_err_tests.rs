@@ -1,17 +1,12 @@
 pub mod common;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 pub use sea_orm::{
-    entity::*, error::DbErr, error::SqlErr, tests_cfg, DatabaseConnection, DbBackend, EntityName,
-    ExecResult,
+    entity::*, error::DbErr, error::SqlErr, tests_cfg, ConnectionTrait, DatabaseConnection,
+    DbBackend, EntityName, ExecResult,
 };
 use uuid::Uuid;
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() {
     let ctx = TestContext::new("bakery_chain_sql_err_tests").await;
     create_tables(&ctx.db).await.unwrap();
@@ -33,12 +28,13 @@ pub async fn test_error(db: &DatabaseConnection) {
 
     // if compiling without sqlx, this assignment will complain,
     // but the whole test is useless in that case anyway.
-    #[allow(unused_variables)]
-    let error: DbErr = cake
-        .into_active_model()
-        .insert(db)
-        .await
-        .expect_err("inserting should fail due to duplicate primary key");
+    #[allow(unused_variables, clippy::match_single_binding)]
+    let error: DbErr = match db.get_database_backend() {
+        _ => cake.into_active_model(),
+    }
+    .insert(db)
+    .await
+    .expect_err("inserting should fail due to duplicate primary key");
 
     assert!(matches!(
         error.sql_err(),

@@ -13,11 +13,6 @@ use sea_orm::{
 };
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("active_enum_tests").await;
     create_tables(&ctx.db).await?;

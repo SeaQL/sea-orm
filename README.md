@@ -30,7 +30,6 @@ Please help us with maintaining SeaORM by completing the [SeaQL Community Survey
 Integration examples:
 
 + [Actix v4 Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
-+ [Actix v3 Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix3_example)
 + [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
 + [GraphQL Example](https://github.com/SeaQL/sea-orm/tree/master/examples/graphql_example)
 + [jsonrpsee Example](https://github.com/SeaQL/sea-orm/tree/master/examples/jsonrpsee_example)

@@ -60,7 +60,7 @@ mod strum;
 /// #     fn def(&self) -> ColumnDef {
 /// #         match self {
 /// #             Self::Id => ColumnType::Integer.def(),
-/// #             Self::Name => ColumnType::string(None).def(),
+/// #             Self::Name => ColumnType::String(StringLen::None).def(),
 /// #         }
 /// #     }
 /// # }
@@ -344,7 +344,7 @@ pub fn derive_custom_column(input: TokenStream) -> TokenStream {
 /// #     fn def(&self) -> ColumnDef {
 /// #         match self {
 /// #             Self::Id => ColumnType::Integer.def(),
-/// #             Self::Name => ColumnType::string(None).def(),
+/// #             Self::Name => ColumnType::String(StringLen::None).def(),
 /// #         }
 /// #     }
 /// # }
@@ -417,7 +417,7 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 /// #     fn def(&self) -> ColumnDef {
 /// #         match self {
 /// #             Self::Id => ColumnType::Integer.def(),
-/// #             Self::Name => ColumnType::string(None).def(),
+/// #             Self::Name => ColumnType::String(StringLen::None).def(),
 /// #         }
 /// #     }
 /// # }
@@ -503,7 +503,7 @@ pub fn derive_into_active_model(input: TokenStream) -> TokenStream {
 /// #     fn def(&self) -> ColumnDef {
 /// #         match self {
 /// #             Self::Id => ColumnType::Integer.def(),
-/// #             Self::Name => ColumnType::string(None).def(),
+/// #             Self::Name => ColumnType::String(StringLen::None).def(),
 /// #         }
 /// #     }
 /// # }
@@ -866,6 +866,11 @@ pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
 
     quote::quote! (
         #[test]
+        #[cfg(any(
+            feature = "sqlx-mysql",
+            feature = "sqlx-sqlite",
+            feature = "sqlx-postgres",
+        ))]
         #(#attrs)*
         fn #name() #ret {
             let _ = ::tracing_subscriber::fmt()

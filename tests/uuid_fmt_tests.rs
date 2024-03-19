@@ -2,14 +2,9 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection, NotSet};
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("uuid_fmt_tests").await;
     create_tables(&ctx.db).await?;
@@ -31,7 +26,12 @@ pub async fn insert_uuid_fmt(db: &DatabaseConnection) -> Result<(), DbErr> {
         uuid_urn: uuid.urn(),
     };
 
-    let result = uuid_fmt.clone().into_active_model().insert(db).await?;
+    let result = uuid_fmt::ActiveModel {
+        id: NotSet,
+        ..uuid_fmt.clone().into_active_model()
+    }
+    .insert(db)
+    .await?;
 
     assert_eq!(result, uuid_fmt);
 

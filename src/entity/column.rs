@@ -1,4 +1,4 @@
-use crate::{EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable};
+use crate::{DbBackend, EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable};
 use sea_query::{
     Alias, BinOper, DynIden, Expr, IntoIden, SeaRc, SelectStatement, SimpleExpr, Value,
 };
@@ -245,6 +245,14 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// Construct a [`SimpleExpr::Column`] wrapped in [`Expr`].
     fn into_expr(self) -> Expr {
         Expr::expr(self.into_simple_expr())
+    }
+
+    /// Construct a returning [`Expr`].
+    #[allow(clippy::match_single_binding)]
+    fn into_returning_expr(self, db_backend: DbBackend) -> Expr {
+        match db_backend {
+            _ => Expr::col(self),
+        }
     }
 
     /// Cast column expression used in select statement.
@@ -620,11 +628,15 @@ mod tests {
         );
         assert_eq!(
             hello::Column::Twelve.def(),
-            ColumnType::string(None).def().default("twelve_value")
+            ColumnType::String(StringLen::None)
+                .def()
+                .default("twelve_value")
         );
         assert_eq!(
             hello::Column::TwelveTwo.def(),
-            ColumnType::string(None).def().default("twelve_value")
+            ColumnType::String(StringLen::None)
+                .def()
+                .default("twelve_value")
         );
     }
 

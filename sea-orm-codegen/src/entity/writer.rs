@@ -841,7 +841,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
     use quote::quote;
-    use sea_query::{Alias, ColumnType, ForeignKeyAction, RcOrArc, SeaRc};
+    use sea_query::{Alias, ColumnType, ForeignKeyAction, RcOrArc, SeaRc, StringLen};
     use std::io::{self, BufRead, BufReader, Read};
 
     fn setup() -> Vec<Entity> {
@@ -993,7 +993,7 @@ mod tests {
                     },
                     Column {
                         name: "name".to_owned(),
-                        col_type: ColumnType::string(Some(255)),
+                        col_type: ColumnType::String(StringLen::N(255)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
@@ -1020,7 +1020,7 @@ mod tests {
                     },
                     Column {
                         name: "name".to_owned(),
-                        col_type: ColumnType::string(Some(255)),
+                        col_type: ColumnType::String(StringLen::N(255)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,
@@ -1074,7 +1074,7 @@ mod tests {
                     },
                     Column {
                         name: "_name_".to_owned(),
-                        col_type: ColumnType::string(Some(255)),
+                        col_type: ColumnType::String(StringLen::N(255)),
                         auto_increment: false,
                         not_null: true,
                         unique: false,

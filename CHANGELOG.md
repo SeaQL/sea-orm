@@ -5,15 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 1.0.0-rc.2 - Pending
+## 1.0.0-rc.2 - 2024-03-15
 
 ### Breaking Changes
 
 * Updated Strum to version 0.26 https://github.com/SeaQL/sea-orm/pull/2088
+* Renamed `ConnectOptions::pool_options()` to `ConnectOptions::sqlx_pool_options()` https://github.com/SeaQL/sea-orm/pull/2145
+* Made `sqlx_common` private, hiding `sqlx_error_to_xxx_err` https://github.com/SeaQL/sea-orm/pull/2145
 
 ### Enhancements
 
-* [sea-orm-cli] Fix `migrate generate` on empty `mod.rs` files
+* [sea-orm-cli] Fix `migrate generate` on empty `mod.rs` files https://github.com/SeaQL/sea-orm/pull/2064
+* `DerivePartialModel` macro attribute `entity` now supports `syn::Type` https://github.com/SeaQL/sea-orm/pull/2137
+```rust
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "<entity::Model as ModelTrait>::Entity")]
+struct EntityNameNotAIdent {
+    #[sea_orm(from_col = "foo2")]
+    _foo: i32,
+    #[sea_orm(from_col = "bar2")]
+    _bar: String,
+}
+```
+* Added `RelationDef::from_alias()` https://github.com/SeaQL/sea-orm/pull/2146
+```rust
+assert_eq!(
+    cake::Entity::find()
+        .join_as(
+            JoinType::LeftJoin,
+            cake_filling::Relation::Cake.def().rev(),
+            cf.clone()
+        )
+        .join(
+            JoinType::LeftJoin,
+            cake_filling::Relation::Filling.def().from_alias(cf)
+        )
+        .build(DbBackend::MySql)
+        .to_string(),
+    [
+        "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+        "LEFT JOIN `cake_filling` AS `cf` ON `cake`.`id` = `cf`.`cake_id`",
+        "LEFT JOIN `filling` ON `cf`.`filling_id` = `filling`.`id`",
+    ]
+    .join(" ")
+);
+```
+
+### Upgrades
+
+* Upgrade `sea-schema` to `0.15.0-rc.3`
+
+### House keeping
+
+* Improved Actix example to return 404 not found on unexpected inputs https://github.com/SeaQL/sea-orm/pull/2140
+* Re-enable `rocket_okapi` example https://github.com/SeaQL/sea-orm/pull/2136
 
 ## 1.0.0-rc.1 - 2024-02-06
 

@@ -2,15 +2,10 @@ pub mod common;
 
 use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
+use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection, NotSet};
 use std::str::FromStr;
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("pi_tests").await;
     create_tables(&ctx.db).await?;
@@ -29,7 +24,12 @@ pub async fn create_and_update_pi(db: &DatabaseConnection) -> Result<(), DbErr> 
         big_decimal_opt: None,
     };
 
-    let res = pi.clone().into_active_model().insert(db).await?;
+    let res = pi::ActiveModel {
+        id: NotSet,
+        ..pi.clone().into_active_model()
+    }
+    .insert(db)
+    .await?;
 
     let model = Pi::find().one(db).await?;
     assert_eq!(model, Some(res));

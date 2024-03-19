@@ -160,35 +160,6 @@ impl ConnectOptions {
         }
     }
 
-    #[cfg(feature = "sqlx-dep")]
-    /// Convert [ConnectOptions] into [sqlx::pool::PoolOptions]
-    pub fn pool_options<DB>(self) -> sqlx::pool::PoolOptions<DB>
-    where
-        DB: sqlx::Database,
-    {
-        let mut opt = sqlx::pool::PoolOptions::new();
-        if let Some(max_connections) = self.max_connections {
-            opt = opt.max_connections(max_connections);
-        }
-        if let Some(min_connections) = self.min_connections {
-            opt = opt.min_connections(min_connections);
-        }
-        if let Some(connect_timeout) = self.connect_timeout {
-            opt = opt.acquire_timeout(connect_timeout);
-        }
-        if let Some(idle_timeout) = self.idle_timeout {
-            opt = opt.idle_timeout(Some(idle_timeout));
-        }
-        if let Some(acquire_timeout) = self.acquire_timeout {
-            opt = opt.acquire_timeout(acquire_timeout);
-        }
-        if let Some(max_lifetime) = self.max_lifetime {
-            opt = opt.max_lifetime(Some(max_lifetime));
-        }
-        opt = opt.test_before_acquire(self.test_before_acquire);
-        opt
-    }
-
     /// Get the database URL of the pool
     pub fn get_url(&self) -> &str {
         &self.url
