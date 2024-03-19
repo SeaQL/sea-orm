@@ -114,7 +114,7 @@ impl<'c> SchemaManager<'c> {
     where
         T: AsRef<str>,
     {
-        has_table(&self.conn, self.schema.as_ref().map(|s| s.as_str()), table).await
+        has_table(&self.conn, self.schema.as_deref(), table).await
     }
 
     pub async fn has_column<T, C>(&self, table: T, column: C) -> Result<bool, DbErr>
@@ -160,7 +160,11 @@ impl<'c> SchemaManager<'c> {
     }
 }
 
-pub(crate) async fn has_table<C, T>(conn: &C, _schema: Option<&str>, table: T) -> Result<bool, DbErr>
+pub(crate) async fn has_table<C, T>(
+    conn: &C,
+    _schema: Option<&str>,
+    table: T,
+) -> Result<bool, DbErr>
 where
     C: ConnectionTrait,
     T: AsRef<str>,
