@@ -106,7 +106,6 @@ impl DerivePartialModel {
 
             let field_name = field.ident.unwrap();
 
-
             let col_as = match (from_col, from_expr, flatten) {
                 (None, None, false) => {
                     if entity.is_none() {
