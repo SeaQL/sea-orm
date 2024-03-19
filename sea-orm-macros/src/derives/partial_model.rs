@@ -13,12 +13,15 @@ use syn::Meta;
 
 use self::util::GetAsKVMeta;
 
+use super::util::field_attr_contain_key;
+
 #[derive(Debug)]
 enum Error {
     InputNotStruct,
     EntityNotSpecific,
     NotSupportGeneric(Span),
     BothFromColAndFromExpr(Span),
+    FlattenNotOnly(Span),
     Syn(syn::Error),
 }
 #[derive(Debug, PartialEq, Eq)]
@@ -29,6 +32,8 @@ enum ColumnAs {
     ColAlias { col: syn::Ident, field: String },
     /// from an expr
     Expr { expr: syn::Expr, field_name: String },
+    /// flatten
+    Flatten { ty: syn::Type },
 }
 
 struct DerivePartialModel {
@@ -78,6 +83,7 @@ impl DerivePartialModel {
 
             let mut from_col = None;
             let mut from_expr = None;
+            let flatten = field_attr_contain_key(&field, "flatten");
 
             for attr in field.attrs.iter() {
                 if !attr.path().is_ident("sea_orm") {
@@ -100,8 +106,9 @@ impl DerivePartialModel {
 
             let field_name = field.ident.unwrap();
 
-            let col_as = match (from_col, from_expr) {
-                (None, None) => {
+
+            let col_as = match (from_col, from_expr, flatten) {
+                (None, None, false) => {
                     if entity.is_none() {
                         return Err(Error::EntityNotSpecific);
                     }
@@ -110,11 +117,11 @@ impl DerivePartialModel {
                         field_name.to_string().to_upper_camel_case()
                     ))
                 }
-                (None, Some(expr)) => ColumnAs::Expr {
+                (None, Some(expr), false) => ColumnAs::Expr {
                     expr,
                     field_name: field_name.to_string(),
                 },
-                (Some(col), None) => {
+                (Some(col), None, false) => {
                     if entity.is_none() {
                         return Err(Error::EntityNotSpecific);
                     }
@@ -122,7 +129,11 @@ impl DerivePartialModel {
                     let field = field_name.to_string();
                     ColumnAs::ColAlias { col, field }
                 }
-                (Some(_), Some(_)) => return Err(Error::BothFromColAndFromExpr(field_span)),
+                (None, None, true) => ColumnAs::Flatten { ty: field.ty },
+                (Some(_), _, true) | (_, Some(_), true) => {
+                    return Err(Error::FlattenNotOnly(field_span))
+                }
+                (Some(_), Some(_), _) => return Err(Error::BothFromColAndFromExpr(field_span)),
             };
             column_as_list.push(col_as);
         }
@@ -159,6 +170,9 @@ impl DerivePartialModel {
             ColumnAs::Expr { expr, field_name } => {
                 quote!(let #select_ident =  sea_orm::SelectColumns::select_column_as(#select_ident, #expr, #field_name);)
             },
+            ColumnAs::Flatten { ty } => {
+                quote!(let #select_ident = <#ty as sea_orm::PartialModelTrait>::select_cols(#select_ident);)
+            }
         });
 
         quote! {
@@ -189,6 +203,9 @@ pub fn expand_derive_partial_model(input: syn::DeriveInput) -> syn::Result<Token
         }),
         Err(Error::InputNotStruct) => Ok(quote_spanned! {
             ident_span => compile_error!("you can only derive `DerivePartialModel` on named struct");
+        }),
+        Err(Error::FlattenNotOnly(span)) => Ok(quote_spanned! {
+            span => compile_error!("you can only derive `DerivePartialModel` on named struct");
         }),
         Err(Error::Syn(err)) => Err(err),
     }
