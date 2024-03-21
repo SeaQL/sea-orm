@@ -50,6 +50,7 @@ pub struct EntityWriterContext {
     pub(crate) enum_extra_derives: TokenStream,
     pub(crate) enum_extra_attributes: TokenStream,
     pub(crate) seaography: bool,
+    pub(crate) gen_impl_active_model_behavior: bool,
 }
 
 impl WithSerde {
@@ -148,6 +149,7 @@ impl EntityWriterContext {
         enum_extra_derives: Vec<String>,
         enum_extra_attributes: Vec<String>,
         seaography: bool,
+        gen_impl_active_model_behavior: bool,
     ) -> Self {
         Self {
             expanded_format,
@@ -163,6 +165,7 @@ impl EntityWriterContext {
             enum_extra_derives: bonus_derive(enum_extra_derives),
             enum_extra_attributes: bonus_attributes(enum_extra_attributes),
             seaography,
+            gen_impl_active_model_behavior,
         }
     }
 }
@@ -222,6 +225,7 @@ impl EntityWriter {
                         &context.model_extra_derives,
                         &context.model_extra_attributes,
                         context.seaography,
+                        context.gen_impl_active_model_behavior,
                     )
                 } else {
                     Self::gen_compact_code_blocks(
@@ -234,6 +238,7 @@ impl EntityWriter {
                         &context.model_extra_derives,
                         &context.model_extra_attributes,
                         context.seaography,
+                        context.gen_impl_active_model_behavior,
                     )
                 };
                 Self::write(&mut lines, code_blocks);
@@ -347,6 +352,7 @@ impl EntityWriter {
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
         seaography: bool,
+        gen_impl_active_model_behavior: bool,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
@@ -372,7 +378,9 @@ impl EntityWriter {
         ];
         code_blocks.extend(Self::gen_impl_related(entity));
         code_blocks.extend(Self::gen_impl_conjunct_related(entity));
-        code_blocks.extend([Self::gen_impl_active_model_behavior()]);
+        if gen_impl_active_model_behavior {
+            code_blocks.extend([Self::gen_impl_active_model_behavior()]);
+        }
         if seaography {
             code_blocks.extend([Self::gen_related_entity(entity)]);
         }
@@ -390,6 +398,7 @@ impl EntityWriter {
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
         seaography: bool,
+        gen_impl_active_model_behavior: bool,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
         imports.extend(Self::gen_import_active_enum(entity));
@@ -409,7 +418,9 @@ impl EntityWriter {
         ];
         code_blocks.extend(Self::gen_impl_related(entity));
         code_blocks.extend(Self::gen_impl_conjunct_related(entity));
-        code_blocks.extend([Self::gen_impl_active_model_behavior()]);
+        if gen_impl_active_model_behavior {
+            code_blocks.extend([Self::gen_impl_active_model_behavior()]);
+        }
         if seaography {
             code_blocks.extend([Self::gen_related_entity(entity)]);
         }
@@ -1559,7 +1570,8 @@ mod tests {
                     false,
                     &TokenStream::new(),
                     &TokenStream::new(),
-                    false
+                    false,
+                    true,
                 )
                 .into_iter()
                 .skip(1)
@@ -1581,6 +1593,7 @@ mod tests {
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
+                    true,
                 )
                 .into_iter()
                 .skip(1)
@@ -1602,6 +1615,7 @@ mod tests {
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
+                    true,
                 )
                 .into_iter()
                 .skip(1)
@@ -1665,6 +1679,7 @@ mod tests {
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
+                    true,
                 )
                 .into_iter()
                 .skip(1)
@@ -1686,6 +1701,7 @@ mod tests {
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
+                    true,
                 )
                 .into_iter()
                 .skip(1)
@@ -1707,6 +1723,7 @@ mod tests {
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
+                    true,
                 )
                 .into_iter()
                 .skip(1)
@@ -1740,6 +1757,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
         assert_eq!(
@@ -1756,6 +1774,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
         assert_eq!(
@@ -1772,6 +1791,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
         assert_eq!(
@@ -1786,6 +1806,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
 
@@ -1802,6 +1823,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
         assert_eq!(
@@ -1818,6 +1840,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
         assert_eq!(
@@ -1834,6 +1857,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
         assert_eq!(
@@ -1848,6 +1872,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
 
@@ -1929,6 +1954,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 true,
+                true,
             ))
         );
 
@@ -1944,6 +1970,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                true,
                 true,
             ))
         );
@@ -1972,6 +1999,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
         assert_eq!(
@@ -1986,6 +2014,7 @@ mod tests {
                 &bonus_derive(["ts_rs::TS"]),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
         assert_eq!(
@@ -2002,6 +2031,7 @@ mod tests {
                 &bonus_derive(["ts_rs::TS", "utoipa::ToSchema"]),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
 
@@ -2020,6 +2050,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
         assert_eq!(
@@ -2036,6 +2067,7 @@ mod tests {
                 &bonus_derive(["ts_rs::TS"]),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
         assert_eq!(
@@ -2052,6 +2084,7 @@ mod tests {
                 &bonus_derive(["ts_rs::TS", "utoipa::ToSchema"]),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
 
@@ -2097,6 +2130,7 @@ mod tests {
                 &TokenStream,
                 &TokenStream,
                 bool,
+                bool,
             ) -> Vec<TokenStream>,
         >,
     ) -> io::Result<()> {
@@ -2128,6 +2162,7 @@ mod tests {
             &TokenStream::new(),
             &TokenStream::new(),
             false,
+            true,
         )
         .into_iter()
         .fold(TokenStream::new(), |mut acc, tok| {
@@ -2160,6 +2195,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
         assert_eq!(
@@ -2176,6 +2212,7 @@ mod tests {
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
                 false,
+                true,
             ))
         );
         assert_eq!(
@@ -2192,6 +2229,7 @@ mod tests {
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
                 false,
+                true,
             ))
         );
 
@@ -2210,6 +2248,7 @@ mod tests {
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
+                true,
             ))
         );
         assert_eq!(
@@ -2226,6 +2265,7 @@ mod tests {
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
                 false,
+                true,
             ))
         );
         assert_eq!(
@@ -2242,6 +2282,7 @@ mod tests {
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
                 false,
+                true,
             ))
         );
 
@@ -2335,6 +2376,7 @@ mod tests {
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
+                    true,
                 )
                 .into_iter()
                 .skip(1)
@@ -2356,6 +2398,7 @@ mod tests {
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
+                    true,
                 )
                 .into_iter()
                 .skip(1)
@@ -2377,6 +2420,7 @@ mod tests {
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
+                    true,
                 )
                 .into_iter()
                 .skip(1)
