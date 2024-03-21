@@ -171,7 +171,7 @@ pub async fn run_generate_command(
                         .filter(|schema| filter_skip_tables(&schema.info.name))
                         .map(|schema| schema.write())
                         .collect();
-                    (Some(schema.schema), table_stmts)
+                    (database_schema, table_stmts)
                 }
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
