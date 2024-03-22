@@ -2,6 +2,8 @@ use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{LitInt, LitStr};
 
+use crate::strum::helpers::case_style::CaseStyle;
+
 enum Error {
     InputNotEnum,
     Syn(syn::Error),
@@ -29,6 +31,7 @@ impl Display {
         let mut variants = Vec::new();
         for variant in variant_vec {
             let mut display_value = variant.ident.to_string().to_token_stream();
+
             for attr in variant.attrs.iter() {
                 if !attr.path().is_ident("sea_orm") {
                     continue;
@@ -40,6 +43,8 @@ impl Display {
                         meta.value()?.parse::<LitInt>()?;
                     } else if meta.path.is_ident("display_value") {
                         display_value = meta.value()?.parse::<LitStr>()?.to_token_stream();
+                    } else if meta.path.is_ident("rename") {
+                        CaseStyle::try_from(&meta)?;
                     } else {
                         return Err(meta.error(format!(
                             "Unknown attribute parameter found: {:?}",
