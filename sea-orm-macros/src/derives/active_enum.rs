@@ -131,7 +131,7 @@ impl ActiveEnum {
                 .map_err(Error::Syn)?;
             }
 
-            if is_string && is_int {
+            if (is_string || rename_rule.is_some() || rename_all_rule.is_some()) && is_int {
                 return Err(Error::TT(quote_spanned! {
                     ident_span => compile_error!("All enum variants should specify the same `*_value` macro attribute, either `string_value` or `num_value` but not both");
                 }));
@@ -232,7 +232,7 @@ impl ActiveEnum {
                     quote! { #variant_ident }
                 } else {
                     quote_spanned! {
-                        variant_span => compile_error!("Missing macro attribute, either `string_value` or `num_value` should be specified");
+                        variant_span => compile_error!("Missing macro attribute, either `string_value`, `rename` or `num_value` should be specified");
                     }  
                 }
             })
@@ -253,6 +253,7 @@ impl ActiveEnum {
                     .string_value
                     .as_ref()
                     .map(|string_value| string_value.value())
+                    .or(variant.rename.map(|rename| variant.ident.convert_case(Some(rename))))
             })
             .collect();
 
