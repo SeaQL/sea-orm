@@ -1,7 +1,7 @@
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{Expr, Lit, LitInt, LitStr, parse, UnOp};
+use syn::{parse, Expr, Lit, LitInt, LitStr, UnOp};
 
 use crate::strum::helpers::case_style::{CaseStyle, CaseStyleHelpers};
 
@@ -42,7 +42,7 @@ impl ActiveEnum {
         let mut db_type = Err(Error::TT(quote_spanned! {
             ident_span => compile_error!("Missing macro attribute `db_type`");
         }));
-        
+
         let mut rename_all_rule = None;
 
         input
@@ -137,7 +137,10 @@ impl ActiveEnum {
                 }));
             }
 
-            if string_value.is_none() && num_value.is_none() && rename_rule.or(rename_all_rule).is_none() {
+            if string_value.is_none()
+                && num_value.is_none()
+                && rename_rule.or(rename_all_rule).is_none()
+            {
                 match variant.discriminant {
                     Some((_, Expr::Lit(exprlit))) => {
                         if let Lit::Int(litint) = exprlit.lit {
@@ -233,7 +236,7 @@ impl ActiveEnum {
                 } else {
                     quote_spanned! {
                         variant_span => compile_error!("Missing macro attribute, either `string_value`, `rename` or `num_value` should be specified");
-                    }  
+                    }
                 }
             })
             .collect();
@@ -253,7 +256,9 @@ impl ActiveEnum {
                     .string_value
                     .as_ref()
                     .map(|string_value| string_value.value())
-                    .or(variant.rename.map(|rename| variant.ident.convert_case(Some(rename))))
+                    .or(variant
+                        .rename
+                        .map(|rename| variant.ident.convert_case(Some(rename))))
             })
             .collect();
 
