@@ -91,7 +91,7 @@ sqlx-mysql = ["sqlx-dep", "sea-query-binder/sqlx-mysql", "sqlx/mysql"]
 sqlx-postgres = ["sqlx-dep", "sea-query-binder/sqlx-postgres", "sqlx/postgres", "postgres-array"]
 sqlx-sqlite = ["sqlx-dep", "sea-query-binder/sqlx-sqlite", "sqlx/sqlite"]
 sqlite-use-returning-for-3_35 = []
-runtime-async-std = ["sqlx/runtime-async-std"]
+runtime-async-std = ["sqlx?/runtime-async-std"]
 runtime-async-std-native-tls = [
     "sqlx?/runtime-async-std-native-tls",
     "sea-query-binder?/runtime-async-std-native-tls",
@@ -113,7 +113,7 @@ runtime-actix-rustls = [
     "sea-query-binder?/runtime-actix-rustls",
     "runtime-actix",
 ]
-runtime-tokio = ["sqlx/runtime-tokio"]
+runtime-tokio = ["sqlx?/runtime-tokio"]
 runtime-tokio-native-tls = [
     "sqlx?/runtime-tokio-native-tls",
     "sea-query-binder?/runtime-tokio-native-tls",
