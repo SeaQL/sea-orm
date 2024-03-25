@@ -71,10 +71,44 @@ assert_eq!(
 ### New Features
 
 * [sea-orm-migration] schema helper https://github.com/SeaQL/sea-orm/pull/2099
+```rust
+// Remember to import `sea_orm_migration::schema::*`
+use sea_orm_migration::{prelude::*, schema::*};
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .create_table(
+                Table::create()
+                    .table(Users::Table)
+                    .if_not_exists()
+                    .col(pk_auto(Users::Id)) // Primary key with auto-increment
+                    .col(uuid(Users::Pid)) // UUID column
+                    .col(string_uniq(Users::Email)) // String column with unique constraint
+                    .col(string(Users::Password)) // String column
+                    .col(string(Users::ApiKey).unique_key())
+                    .col(string(Users::Name))
+                    .col(string_null(Users::ResetToken)) // Nullable string column
+                    .col(timestamp_null(Users::ResetSentAt)) // Nullable timestamp column
+                    .col(string_null(Users::EmailVerificationToken))
+                    .col(timestamp_null(Users::EmailVerificationSentAt))
+                    .col(timestamp_null(Users::EmailVerifiedAt))
+                    .to_owned(),
+            )
+            .await
+    }
+
+    // ...
+}
+```
 
 ### Breaking Changes
 
-* Rework SQLite type mappings https://github.com/SeaQL/sea-orm/pull/2078
+* Rework SQLite type mappings https://github.com/SeaQL/sea-orm/pull/2077, https://github.com/SeaQL/sea-orm/pull/2078
 * Updated `sea-query` to `0.31`
 
 ## 0.12.14 - 2024-02-05
