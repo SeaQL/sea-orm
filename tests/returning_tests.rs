@@ -16,16 +16,12 @@ async fn main() -> Result<(), DbErr> {
     let mut insert = Query::insert();
     insert
         .into_table(Entity)
-        .override_table_schema(db)
-        .await
         .columns([Column::Name, Column::ProfitMargin])
         .values_panic(["Bakery Shop".into(), 0.5.into()]);
 
     let mut update = Query::update();
     update
         .table(Entity)
-        .override_table_schema(db)
-        .await
         .values([
             (Column::Name, "Bakery Shop".into()),
             (Column::ProfitMargin, 0.5.into()),
