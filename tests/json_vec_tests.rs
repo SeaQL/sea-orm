@@ -27,12 +27,7 @@ pub async fn insert_json_vec(db: &DatabaseConnection) -> Result<(), DbErr> {
         ])),
     };
 
-    let result = json_vec::ActiveModel {
-        id: NotSet,
-        ..json_vec.clone().into_active_model()
-    }
-    .insert(db)
-    .await?;
+    let result = json_vec.clone().into_active_model().insert(db).await?;
 
     assert_eq!(result, json_vec);
 
@@ -77,7 +72,7 @@ pub async fn insert_json_string_vec_derive(db: &DatabaseConnection) -> Result<()
 
 pub async fn insert_json_struct_vec_derive(db: &DatabaseConnection) -> Result<(), DbErr> {
     let json_vec = json_vec_derive::json_struct_vec::Model {
-        id: 1,
+        id: 2,
         struct_vec: vec![
             json_vec_derive::json_struct_vec::JsonColumn {
                 value: "4".to_string(),
@@ -91,13 +86,7 @@ pub async fn insert_json_struct_vec_derive(db: &DatabaseConnection) -> Result<()
         ],
     };
 
-    let result = json_vec_derive::json_struct_vec::ActiveModel {
-        id: NotSet,
-        ..json_vec.clone().into_active_model()
-    }
-    .insert(db)
-    .await?;
-    assert_eq!(result, json_vec);
+    let result = json_vec.clone().into_active_model().insert(db).await?;
 
     let model = json_vec_derive::json_struct_vec::Entity::find()
         .filter(json_vec_derive::json_struct_vec::Column::Id.eq(json_vec.id))

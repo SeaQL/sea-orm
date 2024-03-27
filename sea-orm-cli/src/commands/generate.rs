@@ -153,10 +153,7 @@ pub async fn run_generate_command(
                     use sqlx::Postgres;
 
                     println!("Connecting to Postgres ...");
-                    let schema = database_schema
-                        .as_ref()
-                        .map(|s| s.as_str())
-                        .unwrap_or("public");
+                    let schema = database_schema.as_deref().unwrap_or("public");
                     let connection =
                         sqlx_connect::<Postgres>(max_connections, url.as_str(), Some(schema))
                             .await?;
@@ -171,7 +168,7 @@ pub async fn run_generate_command(
                         .filter(|schema| filter_skip_tables(&schema.info.name))
                         .map(|schema| schema.write())
                         .collect();
-                    (Some(schema.schema), table_stmts)
+                    (database_schema, table_stmts)
                 }
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };

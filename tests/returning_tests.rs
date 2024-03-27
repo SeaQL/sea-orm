@@ -87,10 +87,10 @@ async fn update_many() {
         create_tables(db).await?;
 
         Entity::insert(
-            ActiveModel {
-                action: Set("before_save".into()),
-                values: Set(json!({ "id": "unique-id-001" })),
-                ..Default::default()
+            Model {
+                id: 1,
+                action: "before_save".into(),
+                values: json!({ "id": "unique-id-001" }),
             }
             .into_active_model(),
         )
@@ -98,10 +98,10 @@ async fn update_many() {
         .await?;
 
         Entity::insert(
-            ActiveModel {
-                action: Set("before_save".into()),
-                values: Set(json!({ "id": "unique-id-002" })),
-                ..Default::default()
+            Model {
+                id: 2,
+                action: "before_save".into(),
+                values: json!({ "id": "unique-id-002" }),
             }
             .into_active_model(),
         )
@@ -109,10 +109,10 @@ async fn update_many() {
         .await?;
 
         Entity::insert(
-            ActiveModel {
-                action: Set("before_save".into()),
-                values: Set(json!({ "id": "unique-id-003" })),
-                ..Default::default()
+            Model {
+                id: 3,
+                action: "before_save".into(),
+                values: json!({ "id": "unique-id-003" }),
             }
             .into_active_model(),
         )

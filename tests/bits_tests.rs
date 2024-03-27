@@ -2,7 +2,7 @@ pub mod common;
 
 use common::features::*;
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection, NotSet};
+use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 
 #[sea_orm_macros::test]
 #[cfg(feature = "sqlx-postgres")]
@@ -26,12 +26,7 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
         bit64: 64,
     };
 
-    let res = bits::ActiveModel {
-        id: NotSet,
-        ..bits.clone().into_active_model()
-    }
-    .insert(db)
-    .await?;
+    let res = bits.clone().into_active_model().insert(db).await?;
 
     let model = Bits::find().one(db).await?;
     assert_eq!(model, Some(res));

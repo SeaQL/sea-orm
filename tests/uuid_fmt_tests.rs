@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection, NotSet};
+use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 
 #[sea_orm_macros::test]
 async fn main() -> Result<(), DbErr> {
@@ -26,12 +26,7 @@ pub async fn insert_uuid_fmt(db: &DatabaseConnection) -> Result<(), DbErr> {
         uuid_urn: uuid.urn(),
     };
 
-    let result = uuid_fmt::ActiveModel {
-        id: NotSet,
-        ..uuid_fmt.clone().into_active_model()
-    }
-    .insert(db)
-    .await?;
+    let result = uuid_fmt.clone().into_active_model().insert(db).await?;
 
     assert_eq!(result, uuid_fmt);
 

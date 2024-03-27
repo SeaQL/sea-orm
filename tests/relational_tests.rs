@@ -325,10 +325,15 @@ pub async fn group_by() {
     .await
     .expect("could not insert order");
 
+    #[cfg(any(feature = "sqlx-postgres"))]
+    type Type = i64;
+    #[cfg(not(any(feature = "sqlx-postgres")))]
+    type Type = i32;
+
     #[derive(Debug, FromQueryResult)]
     struct SelectResult {
         name: String,
-        number_orders: Option<i64>,
+        number_orders: Option<Type>,
         total_spent: Option<Decimal>,
         min_spent: Option<Decimal>,
         max_spent: Option<Decimal>,

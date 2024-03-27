@@ -2,7 +2,7 @@ pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection, NotSet};
+use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 use serde_json::json;
 
 #[sea_orm_macros::test]
@@ -41,12 +41,7 @@ pub async fn insert_json_struct_1(db: &DatabaseConnection) -> Result<(), DbErr> 
         }),
     };
 
-    let result = ActiveModel {
-        id: NotSet,
-        ..model.clone().into_active_model()
-    }
-    .insert(db)
-    .await?;
+    let result = model.clone().into_active_model().insert(db).await?;
 
     assert_eq!(result, model);
 
@@ -81,12 +76,7 @@ pub async fn insert_json_struct_2(db: &DatabaseConnection) -> Result<(), DbErr> 
         json_value_opt: None,
     };
 
-    let result = ActiveModel {
-        id: NotSet,
-        ..model.clone().into_active_model()
-    }
-    .insert(db)
-    .await?;
+    let result = model.clone().into_active_model().insert(db).await?;
 
     assert_eq!(result, model);
 

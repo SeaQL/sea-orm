@@ -2,7 +2,7 @@ pub mod common;
 
 use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection, NotSet};
+use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 use std::str::FromStr;
 
 #[sea_orm_macros::test]
@@ -24,12 +24,7 @@ pub async fn create_and_update_pi(db: &DatabaseConnection) -> Result<(), DbErr> 
         big_decimal_opt: None,
     };
 
-    let res = pi::ActiveModel {
-        id: NotSet,
-        ..pi.clone().into_active_model()
-    }
-    .insert(db)
-    .await?;
+    let res = pi.clone().into_active_model().insert(db).await?;
 
     let model = Pi::find().one(db).await?;
     assert_eq!(model, Some(res));
