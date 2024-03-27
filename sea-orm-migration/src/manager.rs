@@ -21,7 +21,6 @@ impl<'c> SchemaManager<'c> {
     {
         Self {
             conn: conn.into_schema_manager_connection(),
-            schema: None,
         }
     }
 
@@ -39,18 +38,6 @@ impl<'c> SchemaManager<'c> {
 
     pub fn get_connection(&self) -> &SchemaManagerConnection<'c> {
         &self.conn
-    }
-
-    pub fn set_schema<T>(&mut self, schema: T) -> &mut Self
-    where
-        T: Into<String>,
-    {
-        self.schema = Some(schema.into());
-        self
-    }
-
-    pub fn get_schema(&self) -> &Option<String> {
-        &self.schema
     }
 }
 
@@ -114,7 +101,7 @@ impl<'c> SchemaManager<'c> {
     where
         T: AsRef<str>,
     {
-        has_table(&self.conn, self.schema.as_deref(), table).await
+        has_table(&self.conn, table).await
     }
 
     pub async fn has_column<T, C>(&self, table: T, column: C) -> Result<bool, DbErr>
@@ -160,11 +147,7 @@ impl<'c> SchemaManager<'c> {
     }
 }
 
-pub(crate) async fn has_table<C, T>(
-    conn: &C,
-    _schema: Option<&str>,
-    table: T,
-) -> Result<bool, DbErr>
+pub(crate) async fn has_table<C, T>(conn: &C, table: T) -> Result<bool, DbErr>
 where
     C: ConnectionTrait,
     T: AsRef<str>,
