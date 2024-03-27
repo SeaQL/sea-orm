@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.0.0-rc.3 - 2024-03-26
+
+### Enhancements
+
+* [sea-orm-macro] Qualify traits in `DeriveActiveModel` macro https://github.com/SeaQL/sea-orm/pull/1665
+
 ## 1.0.0-rc.2 - 2024-03-15
 
 ### Breaking Changes
@@ -65,10 +71,44 @@ assert_eq!(
 ### New Features
 
 * [sea-orm-migration] schema helper https://github.com/SeaQL/sea-orm/pull/2099
+```rust
+// Remember to import `sea_orm_migration::schema::*`
+use sea_orm_migration::{prelude::*, schema::*};
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .create_table(
+                Table::create()
+                    .table(Users::Table)
+                    .if_not_exists()
+                    .col(pk_auto(Users::Id)) // Primary key with auto-increment
+                    .col(uuid(Users::Pid)) // UUID column
+                    .col(string_uniq(Users::Email)) // String column with unique constraint
+                    .col(string(Users::Password)) // String column
+                    .col(string(Users::ApiKey).unique_key())
+                    .col(string(Users::Name))
+                    .col(string_null(Users::ResetToken)) // Nullable string column
+                    .col(timestamp_null(Users::ResetSentAt)) // Nullable timestamp column
+                    .col(string_null(Users::EmailVerificationToken))
+                    .col(timestamp_null(Users::EmailVerificationSentAt))
+                    .col(timestamp_null(Users::EmailVerifiedAt))
+                    .to_owned(),
+            )
+            .await
+    }
+
+    // ...
+}
+```
 
 ### Breaking Changes
 
-* Rework SQLite type mappings https://github.com/SeaQL/sea-orm/pull/2078
+* Rework SQLite type mappings https://github.com/SeaQL/sea-orm/pull/2077, https://github.com/SeaQL/sea-orm/pull/2078
 * Updated `sea-query` to `0.31`
 
 ## 0.12.14 - 2024-02-05
