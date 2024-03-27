@@ -9,7 +9,7 @@ pub use common::{
     TestContext,
 };
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection, NotSet};
+use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 
 #[sea_orm_macros::test]
 #[cfg(all(feature = "sqlx-postgres", feature = "postgres-array"))]
@@ -33,12 +33,7 @@ pub async fn insert_event_trigger(db: &DatabaseConnection) -> Result<(), DbErr> 
         ),
     };
 
-    let result = event_trigger::ActiveModel {
-        id: NotSet,
-        ..event_trigger.clone().into_active_model()
-    }
-    .insert(db)
-    .await?;
+    let result = event_trigger.clone().into_active_model().insert(db).await?;
 
     assert_eq!(result, event_trigger);
 

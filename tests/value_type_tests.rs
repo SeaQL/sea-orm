@@ -12,7 +12,7 @@ pub use common::{
     TestContext,
 };
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection, NotSet};
+use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 use sea_query::{ArrayType, ColumnType, Value, ValueType, ValueTypeErr};
 
 #[sea_orm_macros::test]
@@ -40,12 +40,7 @@ pub async fn insert_value(db: &DatabaseConnection) -> Result<(), DbErr> {
         id: 1,
         number: 48.into(),
     };
-    let result = value_type_general::ActiveModel {
-        id: NotSet,
-        ..model.clone().into_active_model()
-    }
-    .insert(db)
-    .await?;
+    let result = model.clone().into_active_model().insert(db).await?;
     assert_eq!(result, model);
 
     Ok(())
@@ -57,12 +52,7 @@ pub async fn postgres_insert_value(db: &DatabaseConnection) -> Result<(), DbErr>
         number: 48.into(),
         str_vec: StringVec(vec!["ab".to_string(), "cd".to_string()]),
     };
-    let result = value_type_pg::ActiveModel {
-        id: NotSet,
-        ..model.clone().into_active_model()
-    }
-    .insert(db)
-    .await?;
+    let result = model.clone().into_active_model().insert(db).await?;
     assert_eq!(result, model);
 
     Ok(())

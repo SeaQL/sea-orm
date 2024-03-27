@@ -16,12 +16,16 @@ async fn main() -> Result<(), DbErr> {
     let mut insert = Query::insert();
     insert
         .into_table(Entity)
+        .override_table_schema(db)
+        .await
         .columns([Column::Name, Column::ProfitMargin])
         .values_panic(["Bakery Shop".into(), 0.5.into()]);
 
     let mut update = Query::update();
     update
         .table(Entity)
+        .override_table_schema(db)
+        .await
         .values([
             (Column::Name, "Bakery Shop".into()),
             (Column::ProfitMargin, 0.5.into()),
@@ -87,10 +91,10 @@ async fn update_many() {
         create_tables(db).await?;
 
         Entity::insert(
-            ActiveModel {
-                action: Set("before_save".into()),
-                values: Set(json!({ "id": "unique-id-001" })),
-                ..Default::default()
+            Model {
+                id: 1,
+                action: "before_save".into(),
+                values: json!({ "id": "unique-id-001" }),
             }
             .into_active_model(),
         )
@@ -98,10 +102,10 @@ async fn update_many() {
         .await?;
 
         Entity::insert(
-            ActiveModel {
-                action: Set("before_save".into()),
-                values: Set(json!({ "id": "unique-id-002" })),
-                ..Default::default()
+            Model {
+                id: 2,
+                action: "before_save".into(),
+                values: json!({ "id": "unique-id-002" }),
             }
             .into_active_model(),
         )
@@ -109,10 +113,10 @@ async fn update_many() {
         .await?;
 
         Entity::insert(
-            ActiveModel {
-                action: Set("before_save".into()),
-                values: Set(json!({ "id": "unique-id-003" })),
-                ..Default::default()
+            Model {
+                id: 3,
+                action: "before_save".into(),
+                values: json!({ "id": "unique-id-003" }),
             }
             .into_active_model(),
         )

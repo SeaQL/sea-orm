@@ -28,13 +28,12 @@ pub async fn test_error(db: &DatabaseConnection) {
 
     // if compiling without sqlx, this assignment will complain,
     // but the whole test is useless in that case anyway.
-    #[allow(unused_variables, clippy::match_single_binding)]
-    let error: DbErr = match db.get_database_backend() {
-        _ => cake.into_active_model(),
-    }
-    .insert(db)
-    .await
-    .expect_err("inserting should fail due to duplicate primary key");
+    #[allow(unused_variables)]
+    let error: DbErr = cake
+        .into_active_model()
+        .insert(db)
+        .await
+        .expect_err("inserting should fail due to duplicate primary key");
 
     assert!(matches!(
         error.sql_err(),

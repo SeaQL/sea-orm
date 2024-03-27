@@ -1,7 +1,7 @@
 pub mod common;
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-use sea_orm::{entity::prelude::*, ActiveValue::NotSet, DatabaseConnection, IntoActiveModel};
+use sea_orm::{entity::prelude::*, DatabaseConnection, IntoActiveModel};
 use serde_json::json;
 use time::macros::{date, time};
 
@@ -25,12 +25,9 @@ pub async fn create_transaction_log(db: &DatabaseConnection) -> Result<(), DbErr
             .assume_utc(),
     };
 
-    let res = TransactionLog::insert(transaction_log::ActiveModel {
-        id: NotSet,
-        ..transaction_log.clone().into_active_model()
-    })
-    .exec(db)
-    .await?;
+    let res = TransactionLog::insert(transaction_log.clone().into_active_model())
+        .exec(db)
+        .await?;
 
     assert_eq!(transaction_log.id, res.last_insert_id);
     assert_eq!(
