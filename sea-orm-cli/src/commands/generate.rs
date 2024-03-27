@@ -153,10 +153,7 @@ pub async fn run_generate_command(
                     use sqlx::Postgres;
 
                     println!("Connecting to Postgres ...");
-                    let schema = database_schema
-                        .as_ref()
-                        .map(|s| s.as_str())
-                        .unwrap_or("public");
+                    let schema = database_schema.as_deref().unwrap_or("public");
                     let connection =
                         sqlx_connect::<Postgres>(max_connections, url.as_str(), Some(schema))
                             .await?;
