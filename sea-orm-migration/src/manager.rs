@@ -11,7 +11,6 @@ use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::S
 /// Helper struct for writing migration scripts in migration file
 pub struct SchemaManager<'c> {
     conn: SchemaManagerConnection<'c>,
-    schema: Option<String>,
 }
 
 impl<'c> SchemaManager<'c> {
