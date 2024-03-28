@@ -176,8 +176,7 @@ where
         C: ConnectionTrait,
         A: 'a,
     {
-        let builder = db.get_database_backend();
-        exec_insert(self.primary_key, builder.build(&self.query), db)
+        exec_insert(self.primary_key, self.query, db)
     }
 
     /// Execute an insert operation
@@ -208,13 +207,16 @@ where
 
 async fn exec_insert<A, C>(
     primary_key: Option<ValueTuple>,
-    statement: Statement,
+    statement: InsertStatement,
     db: &C,
 ) -> Result<InsertResult<A>, DbErr>
 where
     C: ConnectionTrait,
     A: ActiveModelTrait,
 {
+    let db_backend = db.get_database_backend();
+    let statement = db_backend.build(&statement);
+
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
 
@@ -259,7 +261,8 @@ where
     C: ConnectionTrait,
 {
     let db_backend = db.get_database_backend();
-    let exec_result = db.execute(db_backend.build(&insert_statement)).await?;
+    let insert_statement = db_backend.build(&insert_statement);
+    let exec_result = db.execute(insert_statement).await?;
     Ok(exec_result.rows_affected())
 }
 
@@ -281,15 +284,15 @@ where
                     .map(|c| c.select_as(c.into_returning_expr(db_backend))),
             );
             insert_statement.returning(returning);
+            let insert_statement = db_backend.build(&insert_statement);
             SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
-                db_backend.build(&insert_statement),
+                insert_statement,
             )
             .one(db)
             .await?
         }
         false => {
-            let insert_res =
-                exec_insert::<A, _>(primary_key, db_backend.build(&insert_statement), db).await?;
+            let insert_res = exec_insert::<A, _>(primary_key, insert_statement, db).await?;
             <A::Entity as EntityTrait>::find_by_id(insert_res.last_insert_id)
                 .one(db)
                 .await?
