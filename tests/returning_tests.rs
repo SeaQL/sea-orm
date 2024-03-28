@@ -1,3 +1,8 @@
+#![cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
