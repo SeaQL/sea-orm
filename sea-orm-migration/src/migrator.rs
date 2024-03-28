@@ -313,7 +313,7 @@ where
     }
 
     // Drop all tables
-    let stmt = query_tables(db);
+    let stmt = query_tables(db).await;
     let rows = db.query_all(db_backend.build(&stmt)).await?;
     for row in rows.into_iter() {
         let table_name: String = row.try_get("", "table_name")?;
@@ -437,7 +437,7 @@ where
     Ok(())
 }
 
-fn query_tables<C>(db: &C) -> SelectStatement
+async fn query_tables<C>(db: &C) -> SelectStatement
 where
     C: ConnectionTrait,
 {
