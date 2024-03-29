@@ -136,10 +136,10 @@ pub fn expand_derive_from_query_result(
     ))
 }
 
-mod util {
+pub(super) mod util {
     use syn::Meta;
 
-    pub(super) trait GetMeta {
+    pub trait GetMeta {
         fn exists(&self, k: &str) -> bool;
     }
 

@@ -56,3 +56,9 @@ struct FieldFromExpr {
     #[sea_orm(from_expr = "Expr::col(Column::Id).equals(Column::Foo)")]
     _bar: bool,
 }
+
+#[derive(FromQueryResult, DerivePartialModel)]
+struct Nest {
+    #[sea_orm(nested)]
+    _foo: SimpleTest,
+}

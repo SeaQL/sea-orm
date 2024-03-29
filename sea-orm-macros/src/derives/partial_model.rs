@@ -12,6 +12,8 @@ use syn::Expr;
 use syn::Meta;
 use syn::Type;
 
+use super::from_query_result::util::GetMeta;
+
 use self::util::GetAsKVMeta;
 
 #[derive(Debug)]
@@ -98,7 +100,7 @@ impl DerivePartialModel {
                             .get_as_kv("from_expr")
                             .map(|s| syn::parse_str::<Expr>(&s).map_err(Error::Syn))
                             .transpose()?;
-                        nested = meta.get_as_kv("nested").is_some();
+                        nested = meta.exists("nested");
                     }
                 }
             }
@@ -166,7 +168,7 @@ impl DerivePartialModel {
                 quote!(let #select_ident = sea_orm::SelectColumns::select_column_as(#select_ident, #expr, #field_name);)
             },
             ColumnAs::Nested { typ } => {
-                quote!(let #select_ident = <#typ as PartialModelTrait>::select_cols(#select_ident);)
+                quote!(let #select_ident = <#typ as sea_orm::PartialModelTrait>::select_cols(#select_ident);)
             },
         });
 
