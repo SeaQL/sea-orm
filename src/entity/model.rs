@@ -51,16 +51,30 @@ pub trait ModelTrait: Clone + Send + Debug {
 /// A Trait for implementing a [QueryResult]
 pub trait FromQueryResult: Sized {
     /// Instantiate a Model from a [QueryResult]
+    ///
+    /// NOTE: Please also override `from_query_result_nullable` when manually implementing.
+    ///       The future default implementation will be along the lines of:
+    ///
+    /// ```rust,no_compile
+    /// fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
+    ///     (Self::from_query_result_nullable(res, pre)?)
+    /// }
+    ///
+    /// ```
+    /// Internal note: Should be implemented as
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr>;
 
     /// Transform the error from instantiating a Model from a [QueryResult]
     /// and converting it to an [Option]
     fn from_query_result_optional(res: &QueryResult, pre: &str) -> Result<Option<Self>, DbErr> {
-        match Self::from_query_result_nullable(res, pre) {
-            Ok(v) => Ok(Some(v)),
-            Err(TryGetError::Null(_)) => Ok(None),
-            Err(TryGetError::DbErr(err)) => Err(err),
-        }
+        Ok(Self::from_query_result(res, pre).ok())
+
+        // would really like to do the following, but can't without version bump:
+        // match Self::from_query_result_nullable(res, pre) {
+        //     Ok(v) => Ok(Some(v)),
+        //     Err(TryGetError::Null(_)) => Ok(None),
+        //     Err(TryGetError::DbErr(err)) => Err(err),
+        // }
     }
 
     /// Transform the error from instantiating a Model from a [QueryResult]
