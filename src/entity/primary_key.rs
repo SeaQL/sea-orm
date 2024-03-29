@@ -55,6 +55,9 @@ pub trait PrimaryKeyTrait: IdenStatic + Iterable {
     fn auto_increment() -> bool;
 }
 
+/// The maximum number of parts primary keys can have
+pub const PRIMARY_KEY_MAX_ARITY: usize = 12;
+
 /// How to map a Primary Key to a column
 pub trait PrimaryKeyToColumn {
     #[allow(missing_docs)]
