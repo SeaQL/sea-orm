@@ -10,15 +10,16 @@ use syn::token::Comma;
 use syn::Expr;
 
 use syn::Meta;
+use syn::Type;
 
 use self::util::GetAsKVMeta;
 
 #[derive(Debug)]
 enum Error {
     InputNotStruct,
-    EntityNotSpecific,
+    EntityNotSpecified,
     NotSupportGeneric(Span),
-    BothFromColAndFromExpr(Span),
+    OverlappingAttributes(Span),
     Syn(syn::Error),
 }
 #[derive(Debug, PartialEq, Eq)]
@@ -29,6 +30,8 @@ enum ColumnAs {
     ColAlias { col: syn::Ident, field: String },
     /// from an expr
     Expr { expr: syn::Expr, field_name: String },
+    /// nesting another struct
+    Nested { typ: Type },
 }
 
 struct DerivePartialModel {
@@ -78,6 +81,7 @@ impl DerivePartialModel {
 
             let mut from_col = None;
             let mut from_expr = None;
+            let mut nested = false;
 
             for attr in field.attrs.iter() {
                 if !attr.path().is_ident("sea_orm") {
@@ -94,35 +98,37 @@ impl DerivePartialModel {
                             .get_as_kv("from_expr")
                             .map(|s| syn::parse_str::<Expr>(&s).map_err(Error::Syn))
                             .transpose()?;
+                        nested = meta.get_as_kv("nested").is_some();
                     }
                 }
             }
 
             let field_name = field.ident.unwrap();
 
-            let col_as = match (from_col, from_expr) {
-                (None, None) => {
+            let col_as = match (from_col, from_expr, nested) {
+                (Some(col), None, false) => {
                     if entity.is_none() {
-                        return Err(Error::EntityNotSpecific);
+                        return Err(Error::EntityNotSpecified);
+                    }
+
+                    let field = field_name.to_string();
+                    ColumnAs::ColAlias { col, field }
+                }
+                (None, Some(expr), false) => ColumnAs::Expr {
+                    expr,
+                    field_name: field_name.to_string(),
+                },
+                (None, None, true) => ColumnAs::Nested { typ: field.ty },
+                (None, None, false) => {
+                    if entity.is_none() {
+                        return Err(Error::EntityNotSpecified);
                     }
                     ColumnAs::Col(format_ident!(
                         "{}",
                         field_name.to_string().to_upper_camel_case()
                     ))
                 }
-                (None, Some(expr)) => ColumnAs::Expr {
-                    expr,
-                    field_name: field_name.to_string(),
-                },
-                (Some(col), None) => {
-                    if entity.is_none() {
-                        return Err(Error::EntityNotSpecific);
-                    }
-
-                    let field = field_name.to_string();
-                    ColumnAs::ColAlias { col, field }
-                }
-                (Some(_), Some(_)) => return Err(Error::BothFromColAndFromExpr(field_span)),
+                (_, _, _) => return Err(Error::OverlappingAttributes(field_span)),
             };
             column_as_list.push(col_as);
         }
@@ -154,10 +160,13 @@ impl DerivePartialModel {
             ColumnAs::ColAlias { col, field } => {
                 let entity = entity.as_ref().unwrap();
                 let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #col);
-                quote!(let #select_ident =  sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, #field);)
+                quote!(let #select_ident = sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, #field);)
             },
             ColumnAs::Expr { expr, field_name } => {
-                quote!(let #select_ident =  sea_orm::SelectColumns::select_column_as(#select_ident, #expr, #field_name);)
+                quote!(let #select_ident = sea_orm::SelectColumns::select_column_as(#select_ident, #expr, #field_name);)
+            },
+            ColumnAs::Nested { typ } => {
+                quote!(let #select_ident = <#typ as PartialModelTrait>::select_cols(#select_ident);)
             },
         });
 
@@ -181,10 +190,10 @@ pub fn expand_derive_partial_model(input: syn::DeriveInput) -> syn::Result<Token
         Err(Error::NotSupportGeneric(span)) => Ok(quote_spanned! {
             span => compile_error!("you can only derive `DerivePartialModel` on named struct");
         }),
-        Err(Error::BothFromColAndFromExpr(span)) => Ok(quote_spanned! {
+        Err(Error::OverlappingAttributes(span)) => Ok(quote_spanned! {
             span => compile_error!("you can only use one of `from_col` or `from_expr`");
         }),
-        Err(Error::EntityNotSpecific) => Ok(quote_spanned! {
+        Err(Error::EntityNotSpecified) => Ok(quote_spanned! {
             ident_span => compile_error!("you need specific which entity you are using")
         }),
         Err(Error::InputNotStruct) => Ok(quote_spanned! {
