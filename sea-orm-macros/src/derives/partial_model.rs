@@ -193,7 +193,7 @@ pub fn expand_derive_partial_model(input: syn::DeriveInput) -> syn::Result<Token
             span => compile_error!("you can only derive `DerivePartialModel` on named struct");
         }),
         Err(Error::OverlappingAttributes(span)) => Ok(quote_spanned! {
-            span => compile_error!("you can only use one of `from_col` or `from_expr`");
+            span => compile_error!("you can only use one of `from_col`, `from_expr`, `nested`");
         }),
         Err(Error::EntityNotSpecified) => Ok(quote_spanned! {
             ident_span => compile_error!("you need specific which entity you are using")
