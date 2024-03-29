@@ -3,49 +3,53 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::{
     ext::IdentExt, punctuated::Punctuated, token::Comma, Data, DataStruct, Fields, Generics, Meta,
+    Type,
 };
 
-struct FromQueryResultItem {
-    pub skip: bool,
-    pub ident: Ident,
+enum ItemType {
+    Normal,
+    Skipped,
+    Nested,
 }
 
-impl ToTokens for FromQueryResultItem {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Self { ident, skip } = self;
-        if *skip {
-            tokens.extend(quote! {
-                #ident: std::default::Default::default(),
-            });
-        } else {
-            let name = ident.unraw().to_string();
-            tokens.extend(quote! {
-                #ident: row.try_get(pre, #name)?,
-            });
-        }
-    }
+struct FromQueryResultItem {
+    pub typ: ItemType,
+    pub ident: Ident,
 }
 
 struct TryFromQueryResultCheck<'a>(&'a FromQueryResultItem);
 
 impl<'a> ToTokens for TryFromQueryResultCheck<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let FromQueryResultItem { ident, skip } = self.0;
-        if *skip {
-            tokens.extend(quote! {
-                let #ident = std::default::Default::default();
-            });
-        } else {
-            let name = ident.unraw().to_string();
-            tokens.extend(quote! {
-                let #ident = match row.try_get_nullable(pre, #name) {
-                    std::result::Result::Err(sea_orm::TryGetError::DbErr(err)) => {
-                        return Err(err);
-                    }
-                    std::result::Result::Err(sea_orm::TryGetError::Null(_)) =>  std::option::Option::None,
-                    std::result::Result::Ok(v) => std::option::Option::Some(v),
-                };
-            });
+        let FromQueryResultItem { ident, typ } = self.0;
+
+        match typ {
+            ItemType::Normal => {
+                let name = ident.unraw().to_string();
+                tokens.extend(quote! {
+                    let #ident = match row.try_get_nullable(pre, #name) {
+                         Err(v @ sea_orm::TryGetError::DbErr(_)) => {
+                             return Err(v);
+                         }
+                         v => v,
+                     };
+                });
+            }
+            ItemType::Skipped => {
+                tokens.extend(quote! {
+                    let #ident = std::default::Default::default();
+                });
+            }
+            ItemType::Nested => {
+                tokens.extend(quote! {
+                    let #ident = match sea_orm::FromQueryResult::from_query_result_nullable(row, pre) {
+                        Err(v @ sea_orm::TryGetError::DbErr(_)) => {
+                            return Err(v);
+                        }
+                        v => v,
+                    };
+                });
+            }
         }
     }
 }
@@ -54,20 +58,19 @@ struct TryFromQueryResultAssignment<'a>(&'a FromQueryResultItem);
 
 impl<'a> ToTokens for TryFromQueryResultAssignment<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let FromQueryResultItem { ident, skip } = self.0;
-        if *skip {
-            tokens.extend(quote! {
-                #ident,
-            });
-        } else {
-            tokens.extend(quote! {
-                #ident: match #ident {
-                    std::option::Option::Some(v) => v,
-                    std::option::Option::None => {
-                        return std::result::Result::Ok(std::option::Option::None);
-                    }
-                },
-            });
+        let FromQueryResultItem { ident, typ, .. } = self.0;
+
+        match typ {
+            ItemType::Normal | ItemType::Nested => {
+                tokens.extend(quote! {
+                    #ident: #ident?,
+                });
+            }
+            ItemType::Skipped => {
+                tokens.extend(quote! {
+                    #ident,
+                });
+            }
         }
     }
 }
@@ -92,19 +95,23 @@ pub fn expand_derive_from_query_result(
 
     let mut fields = Vec::with_capacity(parsed_fields.len());
     for parsed_field in parsed_fields.into_iter() {
-        let mut skip = false;
+        let mut typ = ItemType::Normal;
         for attr in parsed_field.attrs.iter() {
             if !attr.path().is_ident("sea_orm") {
                 continue;
             }
             if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
                 for meta in list.iter() {
-                    skip = meta.exists("skip");
+                    if meta.exists("skip") {
+                        typ = ItemType::Skipped;
+                    } else if meta.exists("nested") {
+                        typ = ItemType::Nested;
+                    }
                 }
             }
         }
         let ident = format_ident!("{}", parsed_field.ident.unwrap().to_string());
-        fields.push(FromQueryResultItem { skip, ident });
+        fields.push(FromQueryResultItem { typ, ident });
     }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
@@ -114,22 +121,21 @@ pub fn expand_derive_from_query_result(
     Ok(quote!(
         #[automatically_derived]
         impl #impl_generics sea_orm::FromQueryResult for #ident #ty_generics #where_clause {
-            fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
-                Ok(Self {
-                    #(#fields)*
-                })
+            fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::DbErr> {
+                Ok(Self::from_query_result_nullable(row, pre)?)
             }
 
-            fn from_query_result_optional(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Option<Self>, sea_orm::DbErr> {
+            fn from_query_result_nullable(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::TryGetError> {
                 #(#ident_try_init)*
 
-                std::result::Result::Ok(std::option::Option::Some(Self {
+                Ok(Self {
                     #(#ident_try_assign)*
-                }))
+                })
             }
         }
     ))
 }
+
 mod util {
     use syn::Meta;
 

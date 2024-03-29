@@ -1,7 +1,7 @@
 use crate::{
     ActiveModelBehavior, ActiveModelTrait, ConnectionTrait, DbErr, DeleteResult, EntityTrait,
     IntoActiveModel, Linked, QueryFilter, QueryResult, Related, Select, SelectModel, SelectorRaw,
-    Statement,
+    Statement, TryGetError,
 };
 use async_trait::async_trait;
 pub use sea_query::Value;
@@ -56,7 +56,19 @@ pub trait FromQueryResult: Sized {
     /// Transform the error from instantiating a Model from a [QueryResult]
     /// and converting it to an [Option]
     fn from_query_result_optional(res: &QueryResult, pre: &str) -> Result<Option<Self>, DbErr> {
-        Ok(Self::from_query_result(res, pre).ok())
+        match Self::from_query_result_nullable(res, pre) {
+            Ok(v) => Ok(Some(v)),
+            Err(TryGetError::Null(_)) => Ok(None),
+            Err(TryGetError::DbErr(err)) => Err(err),
+        }
+    }
+
+    /// Transform the error from instantiating a Model from a [QueryResult]
+    /// and converting it to an [Option]
+    ///
+    /// NOTE: This will most likely stop being a provided method in the next major version!
+    fn from_query_result_nullable(res: &QueryResult, pre: &str) -> Result<Self, TryGetError> {
+        Self::from_query_result(res, pre).map_err(TryGetError::DbErr)
     }
 
     /// ```
@@ -113,6 +125,15 @@ pub trait FromQueryResult: Sized {
     /// ```
     fn find_by_statement(stmt: Statement) -> SelectorRaw<SelectModel<Self>> {
         SelectorRaw::<SelectModel<Self>>::from_statement(stmt)
+    }
+}
+
+impl<T: FromQueryResult> FromQueryResult for Option<T> {
+    fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
+        match T::from_query_result_optional(res, pre) {
+            Ok(v) => Ok(v),
+            Err(error) => Err(error),
+        }
     }
 }
 
