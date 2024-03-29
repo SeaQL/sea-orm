@@ -55,7 +55,7 @@ pub trait FromQueryResult: Sized {
     /// NOTE: Please also override `from_query_result_nullable` when manually implementing.
     ///       The future default implementation will be along the lines of:
     ///
-    /// ```rust,no_compile
+    /// ```rust,ignore
     /// fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
     ///     (Self::from_query_result_nullable(res, pre)?)
     /// }
