@@ -172,7 +172,7 @@ where
         stmt.col(&mut column_def);
     }
 
-    if E::PrimaryKey::iter().count() > 1 {
+    if <E::PrimaryKey as PrimaryKeyTrait>::ARITY > 1 {
         let mut idx_pk = Index::create();
         for primary_key in E::PrimaryKey::iter() {
             idx_pk.col(primary_key);
@@ -228,7 +228,7 @@ where
             if E::PrimaryKey::auto_increment() {
                 column_def.auto_increment();
             }
-            if E::PrimaryKey::iter().count() == 1 {
+            if <E::PrimaryKey as PrimaryKeyTrait>::ARITY == 1 {
                 column_def.primary_key();
             }
         }
