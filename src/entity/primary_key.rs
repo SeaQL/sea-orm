@@ -38,7 +38,10 @@ use std::fmt::Debug;
 /// ```
 /// See module level docs [crate::entity] for a full example
 pub trait PrimaryKeyTrait: IdenStatic + Iterable {
-    #[allow(missing_docs)]
+    /// How many columns this Primary Key comprises
+    const ARITY: usize;
+
+    /// Rust Type of the Primary Key
     type ValueType: Sized
         + Send
         + Debug
@@ -48,7 +51,7 @@ pub trait PrimaryKeyTrait: IdenStatic + Iterable {
         + TryGetableMany
         + TryFromU64;
 
-    /// Method to call to perform `AUTOINCREMENT` operation on a Primary Kay
+    /// Method to call to perform `AUTOINCREMENT` operation on a Primary Key
     fn auto_increment() -> bool;
 }
 

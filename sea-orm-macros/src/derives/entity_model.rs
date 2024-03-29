@@ -308,6 +308,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
     let primary_key = {
         let auto_increment = auto_increment && primary_keys.len() == 1;
+        let arity = primary_key_types.len();
         let primary_key_types = if primary_key_types.len() == 1 {
             let first = primary_key_types.first();
             quote! { #first }
@@ -323,6 +324,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
             #[automatically_derived]
             impl PrimaryKeyTrait for PrimaryKey {
+                const ARITY: usize = #arity;
+
                 type ValueType = #primary_key_types;
 
                 fn auto_increment() -> bool {
