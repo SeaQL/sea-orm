@@ -157,7 +157,7 @@ impl DerivePartialModel {
             ColumnAs::Col(ident) => {
                 let entity = entity.as_ref().unwrap();
                 let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #ident);
-                quote!(let #select_ident =  sea_orm::SelectColumns::select_column(#select_ident, #col_value);)
+                quote!(let #select_ident = sea_orm::SelectColumns::select_column(#select_ident, #col_value);)
             },
             ColumnAs::ColAlias { col, field } => {
                 let entity = entity.as_ref().unwrap();

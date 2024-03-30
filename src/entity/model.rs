@@ -59,7 +59,6 @@ pub trait FromQueryResult: Sized {
     /// fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
     ///     (Self::from_query_result_nullable(res, pre)?)
     /// }
-    ///
     /// ```
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr>;
 
@@ -143,9 +142,22 @@ pub trait FromQueryResult: Sized {
 
 impl<T: FromQueryResult> FromQueryResult for Option<T> {
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
-        match T::from_query_result_optional(res, pre) {
-            Ok(v) => Ok(v),
-            Err(error) => Err(error),
+        Ok(Self::from_query_result_nullable(res, pre)?)
+    }
+
+    fn from_query_result_optional(res: &QueryResult, pre: &str) -> Result<Option<Self>, DbErr> {
+        match Self::from_query_result_nullable(res, pre) {
+            Ok(v) => Ok(Some(v)),
+            Err(TryGetError::Null(_)) => Ok(None),
+            Err(TryGetError::DbErr(err)) => Err(err),
+        }
+    }
+
+    fn from_query_result_nullable(res: &QueryResult, pre: &str) -> Result<Self, TryGetError> {
+        match T::from_query_result_nullable(res, pre) {
+            Ok(v) => Ok(Some(v)),
+            Err(TryGetError::Null(_)) => Ok(None),
+            Err(err @ TryGetError::DbErr(_)) => Err(err),
         }
     }
 }
