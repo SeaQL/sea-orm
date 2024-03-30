@@ -61,7 +61,6 @@ pub trait FromQueryResult: Sized {
     /// }
     ///
     /// ```
-    /// Internal note: Should be implemented as
     fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr>;
 
     /// Transform the error from instantiating a Model from a [QueryResult]
