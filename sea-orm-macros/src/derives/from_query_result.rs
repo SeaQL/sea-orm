@@ -16,6 +16,15 @@ struct FromQueryResultItem {
     pub ident: Ident,
 }
 
+/// Initially, we try to obtain the value for each field and check if it is an ordinary DB error
+/// (which we return immediatly), or a null error.
+///
+/// ### Background
+///
+/// Null errors do not necessarily mean that the deserialization as a whole fails,
+/// since structs embedding the current one might have wrapped the current one in an `Option`.
+/// In this case, we do not want to swallow other errors, which are very likely to actually be
+/// programming errors that should be noticed (and fixed).
 struct TryFromQueryResultCheck<'a>(&'a FromQueryResultItem);
 
 impl<'a> ToTokens for TryFromQueryResultCheck<'a> {
