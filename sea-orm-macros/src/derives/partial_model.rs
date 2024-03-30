@@ -163,7 +163,7 @@ impl DerivePartialModel {
                 );
                 let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #uppercase_ident);
                 let ident_stringified = ident.unraw().to_string();
-                quote!(let #select_ident = 
+                quote!(let #select_ident =
                        if let Some(prefix) = pre {
                            let ident = format!("{prefix}{}", #ident_stringified);
                            eprintln!("{ident}");
@@ -176,7 +176,7 @@ impl DerivePartialModel {
             ColumnAs::ColAlias { col, field } => {
                 let entity = entity.as_ref().unwrap();
                 let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #col);
-                quote!(let #select_ident = 
+                quote!(let #select_ident =
                        if let Some(prefix) = pre {
                            let ident = format!("{prefix}{}", #field);
                            sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, ident)
@@ -186,7 +186,7 @@ impl DerivePartialModel {
                 )
             },
             ColumnAs::Expr { expr, field_name } => {
-                quote!(let #select_ident = 
+                quote!(let #select_ident =
                        if let Some(prefix) = pre {
                            let ident = format!("{prefix}{}", #field_name);
                            eprintln!("{ident}");
@@ -197,9 +197,9 @@ impl DerivePartialModel {
                 )
             },
             ColumnAs::Nested { typ, field_name } => {
-                quote!(let #select_ident = 
-                       <#typ as sea_orm::PartialModelTrait>::select_cols_nested(#select_ident, 
-                                                                                Some(&if let Some(prefix) = pre { 
+                quote!(let #select_ident =
+                       <#typ as sea_orm::PartialModelTrait>::select_cols_nested(#select_ident,
+                                                                                Some(&if let Some(prefix) = pre {
                                                                                             format!("{prefix}{}_", #field_name) } 
                                                                                            else {
                                                                                             format!("{}_", #field_name)
