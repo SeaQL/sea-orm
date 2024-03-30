@@ -4,6 +4,7 @@ use proc_macro2::TokenStream;
 use quote::format_ident;
 use quote::quote;
 use quote::quote_spanned;
+use syn::ext::IdentExt;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
@@ -33,7 +34,7 @@ enum ColumnAs {
     /// from an expr
     Expr { expr: syn::Expr, field_name: String },
     /// nesting another struct
-    Nested { typ: Type },
+    Nested { typ: Type, field_name: String },
 }
 
 struct DerivePartialModel {
@@ -120,15 +121,15 @@ impl DerivePartialModel {
                     expr,
                     field_name: field_name.to_string(),
                 },
-                (None, None, true) => ColumnAs::Nested { typ: field.ty },
+                (None, None, true) => ColumnAs::Nested {
+                    typ: field.ty,
+                    field_name: field_name.unraw().to_string(),
+                },
                 (None, None, false) => {
                     if entity.is_none() {
                         return Err(Error::EntityNotSpecified);
                     }
-                    ColumnAs::Col(format_ident!(
-                        "{}",
-                        field_name.to_string().to_upper_camel_case()
-                    ))
+                    ColumnAs::Col(field_name)
                 }
                 (_, _, _) => return Err(Error::OverlappingAttributes(field_span)),
             };
@@ -156,26 +157,65 @@ impl DerivePartialModel {
         let select_col_code_gen = fields.iter().map(|col_as| match col_as {
             ColumnAs::Col(ident) => {
                 let entity = entity.as_ref().unwrap();
-                let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #ident);
-                quote!(let #select_ident = sea_orm::SelectColumns::select_column(#select_ident, #col_value);)
+                let uppercase_ident = format_ident!(
+                    "{}",
+                    ident.to_string().to_upper_camel_case()
+                );
+                let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #uppercase_ident);
+                let ident_stringified = ident.unraw().to_string();
+                quote!(let #select_ident = 
+                       if let Some(prefix) = pre {
+                           let ident = format!("{prefix}{}", #ident_stringified);
+                           eprintln!("{ident}");
+                           sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, ident)
+                       } else {
+                           sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, #ident_stringified)
+                       };
+                )
             },
             ColumnAs::ColAlias { col, field } => {
                 let entity = entity.as_ref().unwrap();
                 let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #col);
-                quote!(let #select_ident = sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, #field);)
+                quote!(let #select_ident = 
+                       if let Some(prefix) = pre {
+                           let ident = format!("{prefix}{}", #field);
+                           sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, ident)
+                       } else {
+                           sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, #field)
+                       };
+                )
             },
             ColumnAs::Expr { expr, field_name } => {
-                quote!(let #select_ident = sea_orm::SelectColumns::select_column_as(#select_ident, #expr, #field_name);)
+                quote!(let #select_ident = 
+                       if let Some(prefix) = pre {
+                           let ident = format!("{prefix}{}", #field_name);
+                           eprintln!("{ident}");
+                           sea_orm::SelectColumns::select_column_as(#select_ident, #expr, ident)
+                       } else {
+                           sea_orm::SelectColumns::select_column_as(#select_ident, #expr, #field_name)
+                       };
+                )
             },
-            ColumnAs::Nested { typ } => {
-                quote!(let #select_ident = <#typ as sea_orm::PartialModelTrait>::select_cols(#select_ident);)
+            ColumnAs::Nested { typ, field_name } => {
+                quote!(let #select_ident = 
+                       <#typ as sea_orm::PartialModelTrait>::select_cols_nested(#select_ident, 
+                                                                                Some(&if let Some(prefix) = pre { 
+                                                                                            format!("{prefix}{}_", #field_name) } 
+                                                                                           else {
+                                                                                            format!("{}_", #field_name)
+                                                                                }));
+                )
             },
         });
 
         quote! {
             #[automatically_derived]
             impl sea_orm::PartialModelTrait for #ident{
-                fn select_cols<S: sea_orm::SelectColumns>(#select_ident: S) -> S{
+                fn select_cols<S: sea_orm::SelectColumns>(#select_ident: S) -> S {
+                    Self::select_cols_nested(#select_ident, None)
+                }
+
+                fn select_cols_nested<S: sea_orm::SelectColumns>(#select_ident: S, pre: Option<&str>) -> S {
                     #(#select_col_code_gen)*
                     #select_ident
                 }
@@ -269,7 +309,7 @@ struct PartialModel{
         assert_eq!(middle.fields.len(), 3);
         assert_eq!(
             middle.fields[0],
-            ColumnAs::Col(format_ident!("DefaultField"))
+            ColumnAs::Col(format_ident!("default_field"))
         );
         assert_eq!(
             middle.fields[1],

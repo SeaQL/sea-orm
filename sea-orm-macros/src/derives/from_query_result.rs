@@ -40,8 +40,9 @@ impl<'a> ToTokens for TryFromQueryResultCheck<'a> {
                 });
             }
             ItemType::Nested => {
+                let name = ident.unraw().to_string();
                 tokens.extend(quote! {
-                    let #ident = match sea_orm::FromQueryResult::from_query_result_nullable(row, pre) {
+                    let #ident = match sea_orm::FromQueryResult::from_query_result_nullable(row, &format!("{pre}{}_", #name)) {
                         Err(v @ sea_orm::TryGetError::DbErr(_)) => {
                             return Err(v);
                         }
