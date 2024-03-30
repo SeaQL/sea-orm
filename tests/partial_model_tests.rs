@@ -72,113 +72,119 @@ struct NestOption {
     _foo: Option<SimpleTest>,
 }
 
-use common::bakery_chain::*;
+#[allow(unused)]
+mod runtime {
+    use super::*;
 
-#[derive(FromQueryResult, DerivePartialModel)]
-#[sea_orm(entity = "bakery::Entity")]
-struct Bakery {
-    _id: i32,
-    #[sea_orm(from_col = "Name")]
-    _title: String,
-}
+    use common::bakery_chain::*;
 
-#[derive(FromQueryResult, DerivePartialModel)]
-#[sea_orm(entity = "bakery::Entity")]
-struct BakeryDetails {
-    #[sea_orm(nested)]
-    _basics: Bakery,
-    _profit_margin: f64,
-}
+    #[derive(FromQueryResult, DerivePartialModel)]
+    #[sea_orm(entity = "bakery::Entity")]
+    struct Bakery {
+        id: i32,
+        #[sea_orm(from_col = "Name")]
+        title: String,
+    }
 
-#[derive(FromQueryResult, DerivePartialModel)]
-#[sea_orm(entity = "cake::Entity")]
-struct Cake {
-    _id: i32,
-    _name: String,
-    #[sea_orm(nested)]
-    _bakery: Option<Bakery>,
-}
+    #[derive(FromQueryResult, DerivePartialModel)]
+    #[sea_orm(entity = "bakery::Entity")]
+    struct BakeryDetails {
+        #[sea_orm(nested)]
+        basics: Bakery,
+        #[sea_orm(from_expr = "bakery::Column::ProfitMargin")]
+        profit: f64,
+    }
 
-async fn fill_data(ctx: &TestContext, link: bool) {
-    bakery::Entity::insert(bakery::ActiveModel {
-        id: Set(42),
-        name: Set("cool little bakery".to_string()),
-        profit_margin: Set(4.1),
-    })
-    .exec(&ctx.db)
-    .await
-    .expect("insert succeeds");
+    #[derive(FromQueryResult, DerivePartialModel)]
+    #[sea_orm(entity = "cake::Entity")]
+    struct Cake {
+        id: i32,
+        name: String,
+        #[sea_orm(nested)]
+        bakery: Option<Bakery>,
+    }
 
-    cake::Entity::insert(cake::ActiveModel {
-        id: Set(13),
-        name: Set("Test Cake".to_owned()),
-        price: Set(Decimal::ZERO),
-        bakery_id: Set(if link { Some(42) } else { None }),
-        gluten_free: Set(true),
-        serial: Set(Uuid::new_v4()),
-    })
-    .exec(&ctx.db)
-    .await
-    .expect("insert succeeds");
-}
-
-#[sea_orm_macros::test]
-async fn partial_model_left_join_does_not_exist() {
-    let ctx = TestContext::new("partial_model_left_join_does_not_exist").await;
-    create_tables(&ctx.db).await.unwrap();
-
-    fill_data(&ctx, false).await;
-
-    let cake: Cake = cake::Entity::find()
-        .left_join(bakery::Entity)
-        .into_partial_model()
-        .one(&ctx.db)
+    async fn fill_data(ctx: &TestContext, link: bool) {
+        bakery::Entity::insert(bakery::ActiveModel {
+            id: Set(42),
+            name: Set("cool little bakery".to_string()),
+            profit_margin: Set(4.1),
+        })
+        .exec(&ctx.db)
         .await
-        .expect("succeeds to get the result")
-        .expect("exactly one model in DB");
+        .expect("insert succeeds");
 
-    assert_eq!(cake._id, 13);
-    assert!(cake._bakery.is_none());
-
-    ctx.delete().await;
-}
-
-#[sea_orm_macros::test]
-async fn partial_model_left_join_exists() {
-    let ctx = TestContext::new("partial_model_left_join_exists").await;
-    create_tables(&ctx.db).await.unwrap();
-
-    fill_data(&ctx, true).await;
-
-    let cake: Cake = cake::Entity::find()
-        .left_join(bakery::Entity)
-        .into_partial_model()
-        .one(&ctx.db)
+        cake::Entity::insert(cake::ActiveModel {
+            id: Set(13),
+            name: Set("Test Cake".to_owned()),
+            price: Set(Decimal::ZERO),
+            bakery_id: Set(if link { Some(42) } else { None }),
+            gluten_free: Set(true),
+            serial: Set(Uuid::new_v4()),
+        })
+        .exec(&ctx.db)
         .await
-        .expect("succeeds to get the result")
-        .expect("exactly one model in DB");
+        .expect("insert succeeds");
+    }
 
-    assert_eq!(cake._id, 13);
-    assert!(matches!(cake._bakery, Some(Bakery { _id: 42, .. })));
+    #[sea_orm_macros::test]
+    async fn partial_model_left_join_does_not_exist() {
+        let ctx = TestContext::new("partial_model_left_join_does_not_exist").await;
+        create_tables(&ctx.db).await.unwrap();
 
-    ctx.delete().await;
-}
+        fill_data(&ctx, false).await;
 
-#[sea_orm_macros::test]
-async fn partial_model_nested_same_table() {
-    let ctx = TestContext::new("partial_model_nested_same_table").await;
-    create_tables(&ctx.db).await.unwrap();
+        let cake: Cake = cake::Entity::find()
+            .left_join(bakery::Entity)
+            .into_partial_model()
+            .one(&ctx.db)
+            .await
+            .expect("succeeds to get the result")
+            .expect("exactly one model in DB");
 
-    fill_data(&ctx, true).await;
+        assert_eq!(cake.id, 13);
+        assert!(cake.bakery.is_none());
 
-    let bakery: BakeryDetails = bakery::Entity::find()
-        .into_partial_model()
-        .one(&ctx.db)
-        .await
-        .expect("succeeds to get the result")
-        .expect("exactly one model in DB");
+        ctx.delete().await;
+    }
 
-    assert_eq!(bakery._basics._id, 42);
+    #[sea_orm_macros::test]
+    async fn partial_model_left_join_exists() {
+        let ctx = TestContext::new("partial_model_left_join_exists").await;
+        create_tables(&ctx.db).await.unwrap();
 
-    ctx.delete().await;
+        fill_data(&ctx, true).await;
+
+        let cake: Cake = cake::Entity::find()
+            .left_join(bakery::Entity)
+            .into_partial_model()
+            .one(&ctx.db)
+            .await
+            .expect("succeeds to get the result")
+            .expect("exactly one model in DB");
+
+        assert_eq!(cake.id, 13);
+        assert!(matches!(cake.bakery, Some(Bakery { id: 42, .. })));
+
+        ctx.delete().await;
+    }
+
+    #[sea_orm_macros::test]
+    async fn partial_model_nested_same_table() {
+        let ctx = TestContext::new("partial_model_nested_same_table").await;
+        create_tables(&ctx.db).await.unwrap();
+
+        fill_data(&ctx, true).await;
+
+        let bakery: BakeryDetails = bakery::Entity::find()
+            .into_partial_model()
+            .one(&ctx.db)
+            .await
+            .expect("succeeds to get the result")
+            .expect("exactly one model in DB");
+
+        assert_eq!(bakery.basics.id, 42);
+
+        ctx.delete().await;
+    }
 }
