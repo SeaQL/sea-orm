@@ -166,7 +166,6 @@ impl DerivePartialModel {
                 quote!(let #select_ident =
                        if let Some(prefix) = pre {
                            let ident = format!("{prefix}{}", #ident_stringified);
-                           eprintln!("{ident}");
                            sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, ident)
                        } else {
                            sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, #ident_stringified)
@@ -200,9 +199,9 @@ impl DerivePartialModel {
                 quote!(let #select_ident =
                        <#typ as sea_orm::PartialModelTrait>::select_cols_nested(#select_ident,
                                 Some(&if let Some(prefix) = pre {
-                                          format!("{prefix}{}_", #field_name) } 
+                                          format!("{prefix}{}-", #field_name) } 
                                       else {
-                                          format!("{}_", #field_name)
+                                          format!("{}-", #field_name)
                                       }
                                 ));
                 )
