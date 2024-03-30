@@ -199,11 +199,12 @@ impl DerivePartialModel {
             ColumnAs::Nested { typ, field_name } => {
                 quote!(let #select_ident =
                        <#typ as sea_orm::PartialModelTrait>::select_cols_nested(#select_ident,
-                                                                                Some(&if let Some(prefix) = pre {
-                                                                                            format!("{prefix}{}_", #field_name) } 
-                                                                                           else {
-                                                                                            format!("{}_", #field_name)
-                                                                                }));
+                                Some(&if let Some(prefix) = pre {
+                                          format!("{prefix}{}_", #field_name) } 
+                                      else {
+                                          format!("{}_", #field_name)
+                                      }
+                                ));
                 )
             },
         });
