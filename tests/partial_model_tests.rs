@@ -72,42 +72,64 @@ struct NestOption {
     _foo: Option<SimpleTest>,
 }
 
-#[sea_orm_macros::test]
-async fn partial_model_left_join_does_not_exist() {
-    use common::bakery_chain::*;
+use common::bakery_chain::*;
 
-    #[derive(FromQueryResult, DerivePartialModel)]
-    #[sea_orm(entity = "bakery::Entity")]
-    struct Bakery {
-        id: i32,
-        name: String,
-    }
+#[derive(FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "bakery::Entity")]
+struct Bakery {
+    _id: i32,
+    #[sea_orm(from_col = "Name")]
+    _title: String,
+}
 
-    #[derive(FromQueryResult, DerivePartialModel)]
-    #[sea_orm(entity = "cake::Entity")]
-    struct Cake {
-        id: i32,
-        name: String,
-        #[sea_orm(nested)]
-        bakery: Option<Bakery>,
-    }
+#[derive(FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "bakery::Entity")]
+struct BakeryDetails {
+    #[sea_orm(nested)]
+    _basics: Bakery,
+    _profit_margin: f64,
+}
 
-    let ctx = TestContext::new("find_one_with_result").await;
-    create_tables(&ctx.db).await.unwrap();
+#[derive(FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "cake::Entity")]
+struct Cake {
+    _id: i32,
+    _name: String,
+    #[sea_orm(nested)]
+    _bakery: Option<Bakery>,
+}
 
-    cake::Entity::insert(cake::ActiveModel {
-        name: Set("Test Cake".to_owned()),
-        price: Set(Decimal::ZERO),
-        bakery_id: Set(None),
-        gluten_free: Set(true),
-        serial: Set(Uuid::new_v4()),
-        ..Default::default()
+async fn fill_data(ctx: &TestContext, link: bool) {
+    bakery::Entity::insert(bakery::ActiveModel {
+        id: Set(42),
+        name: Set("cool little bakery".to_string()),
+        profit_margin: Set(4.1),
     })
     .exec(&ctx.db)
     .await
     .expect("insert succeeds");
 
-    let data: Cake = cake::Entity::find()
+    cake::Entity::insert(cake::ActiveModel {
+        id: Set(13),
+        name: Set("Test Cake".to_owned()),
+        price: Set(Decimal::ZERO),
+        bakery_id: Set(if link { Some(42) } else { None }),
+        gluten_free: Set(true),
+        serial: Set(Uuid::new_v4()),
+    })
+    .exec(&ctx.db)
+    .await
+    .expect("insert succeeds");
+}
+
+#[sea_orm_macros::test]
+async fn partial_model_left_join_does_not_exist() {
+    let ctx = TestContext::new("partial_model_left_join_does_not_exist").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    fill_data(&ctx, false).await;
+
+    let cake: Cake = cake::Entity::find()
         .left_join(bakery::Entity)
         .into_partial_model()
         .one(&ctx.db)
@@ -115,7 +137,48 @@ async fn partial_model_left_join_does_not_exist() {
         .expect("succeeds to get the result")
         .expect("exactly one model in DB");
 
-    assert!(data.bakery.is_none());
+    assert_eq!(cake._id, 13);
+    assert!(cake._bakery.is_none());
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+async fn partial_model_left_join_exists() {
+    let ctx = TestContext::new("partial_model_left_join_exists").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    fill_data(&ctx, true).await;
+
+    let cake: Cake = cake::Entity::find()
+        .left_join(bakery::Entity)
+        .into_partial_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(cake._id, 13);
+    assert!(matches!(cake._bakery, Some(Bakery { _id: 42, .. })));
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+async fn partial_model_nested_same_table() {
+    let ctx = TestContext::new("partial_model_nested_same_table").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    fill_data(&ctx, true).await;
+
+    let bakery: BakeryDetails = bakery::Entity::find()
+        .into_partial_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(bakery._basics._id, 42);
 
     ctx.delete().await;
 }
