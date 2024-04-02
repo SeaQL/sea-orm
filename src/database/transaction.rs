@@ -112,6 +112,12 @@ impl DatabaseTransaction {
     #[instrument(level = "trace")]
     #[allow(unreachable_code, unused_mut)]
     pub async fn commit(mut self) -> Result<(), DbErr> {
+        self.commit_by_ref().await
+    }
+
+    #[instrument(level = "trace")]
+    #[allow(unreachable_code, unused_mut)]
+    pub async fn commit_by_ref(&mut self) -> Result<(), DbErr> {
         match *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
             InnerConnection::MySql(ref mut c) => {
@@ -147,6 +153,13 @@ impl DatabaseTransaction {
     #[instrument(level = "trace")]
     #[allow(unreachable_code, unused_mut)]
     pub async fn rollback(mut self) -> Result<(), DbErr> {
+        self.rollback_by_ref().await
+    }
+
+    /// rolls back a transaction in case error are encountered during the operation
+    #[instrument(level = "trace")]
+    #[allow(unreachable_code, unused_mut)]
+    pub async fn rollback_by_ref(&mut self) -> Result<(), DbErr> {
         match *self.conn.lock().await {
             #[cfg(feature = "sqlx-mysql")]
             InnerConnection::MySql(ref mut c) => {
@@ -177,7 +190,7 @@ impl DatabaseTransaction {
         self.open = false;
         Ok(())
     }
-
+    
     // the rollback is queued and will be performed on next async operation, like returning the connection to the pool
     #[instrument(level = "trace")]
     fn start_rollback(&mut self) -> Result<(), DbErr> {
