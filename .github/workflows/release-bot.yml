@@ -11,8 +11,10 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - uses: billy1624/release-comment-on-pr@master
+      - name: Commenting on `${{ github.event.release.tag_name }}` release
+        uses: billy1624/release-comment-on-pr@master
         with:
+          release-tag: ${{ github.event.release.tag_name }}
           token: ${{ github.token }}
           message: |
             ### :tada: Released In [${releaseTag}](${releaseUrl}) :tada:
