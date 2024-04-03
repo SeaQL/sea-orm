@@ -36,6 +36,8 @@ pub enum PrimaryKey {
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
+    const ARITY: usize = 2;
+
     type ValueType = (i32, i32);
 
     fn auto_increment() -> bool {

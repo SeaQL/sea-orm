@@ -561,8 +561,12 @@ impl EntityWriter {
     pub fn gen_impl_primary_key(entity: &Entity, date_time_crate: &DateTimeCrate) -> TokenStream {
         let primary_key_auto_increment = entity.get_primary_key_auto_increment();
         let value_type = entity.get_primary_key_rs_type(date_time_crate);
+        let primary_key_len = entity.primary_keys.len();
+        let arity = proc_macro2::Literal::usize_unsuffixed(primary_key_len);
         quote! {
             impl PrimaryKeyTrait for PrimaryKey {
+                const ARITY: usize = #arity;
+
                 type ValueType = #value_type;
 
                 fn auto_increment() -> bool {

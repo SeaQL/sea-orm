@@ -44,6 +44,8 @@ mod strum;
 /// # }
 /// #
 /// # impl PrimaryKeyTrait for PrimaryKey {
+/// #     const ARITY: usize = 1;
+/// #
 /// #     type ValueType = i32;
 /// #
 /// #     fn auto_increment() -> bool {
@@ -206,6 +208,8 @@ pub fn derive_entity_model(input: TokenStream) -> TokenStream {
 /// # }
 /// #
 /// # impl PrimaryKeyTrait for PrimaryKey {
+/// #     const ARITY: usize = 2;
+/// #
 /// #     type ValueType = (i32, i32);
 /// #
 /// #     fn auto_increment() -> bool {
@@ -328,6 +332,8 @@ pub fn derive_custom_column(input: TokenStream) -> TokenStream {
 /// # }
 /// #
 /// # impl PrimaryKeyTrait for PrimaryKey {
+/// #     const ARITY: usize = 1;
+/// #
 /// #     type ValueType = i32;
 /// #
 /// #     fn auto_increment() -> bool {
@@ -401,6 +407,8 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 /// # }
 /// #
 /// # impl PrimaryKeyTrait for PrimaryKey {
+/// #     const ARITY: usize = 1;
+/// #
 /// #     type ValueType = i32;
 /// #
 /// #     fn auto_increment() -> bool {
@@ -487,6 +495,8 @@ pub fn derive_into_active_model(input: TokenStream) -> TokenStream {
 /// # }
 /// #
 /// # impl PrimaryKeyTrait for PrimaryKey {
+/// #     const ARITY: usize = 1;
+/// #
 /// #     type ValueType = i32;
 /// #
 /// #     fn auto_increment() -> bool {

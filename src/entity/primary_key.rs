@@ -17,6 +17,8 @@ use std::fmt::Debug;
 ///     Id,
 /// }
 /// impl PrimaryKeyTrait for PrimaryKey {
+///     const ARITY: usize = 1;
+///
 ///     type ValueType = i32;
 ///
 ///     fn auto_increment() -> bool {
