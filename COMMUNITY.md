@@ -50,7 +50,6 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [SophyCore](https://github.com/FarDragi/SophyCore) | Main system that centralizes all rules, to be used by both the discord bot and the future site | DB: Postgres
 
 #### Crypto
-- [Barreleye](https://github.com/barreleye/barreleye) | Open-source blockchain analytics | DB: MySQL, Postgres, SQLite
 - [MoonRamp](https://github.com/MoonRamp/MoonRamp) | A free and open source crypto payment gateway | DB: MySQL, Postgres, SQLite
 - [Oura Postgres Sink](https://github.com/dcSpark/oura-postgres-sink) | Sync a postgres database with the cardano blockchain using Oura | DB: Postgres
 - [RGB Lib](https://github.com/RGB-Tools/rgb-lib) | A library to manage wallets for RGB assets | DB: MySQL, Postgres, SQLite
