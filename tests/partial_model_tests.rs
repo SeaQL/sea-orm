@@ -187,4 +187,39 @@ mod runtime {
 
         ctx.delete().await;
     }
+
+    #[derive(Debug, FromQueryResult, DerivePartialModel)]
+    #[sea_orm(entity = "bakery::Entity")]
+    struct WrongBakery {
+        id: String,
+        #[sea_orm(from_col = "Name")]
+        title: String,
+    }
+
+    #[derive(Debug, FromQueryResult, DerivePartialModel)]
+    #[sea_orm(entity = "cake::Entity")]
+    struct WrongCake {
+        id: i32,
+        name: String,
+        #[sea_orm(nested)]
+        bakery: Option<WrongBakery>,
+    }
+
+    #[sea_orm_macros::test]
+    #[ignore = "This currently does not work, as sqlx does not perform type checking when a column is absent.."]
+    async fn partial_model_optional_field_but_type_error() {
+        let ctx = TestContext::new("partial_model_nested_same_table").await;
+        create_tables(&ctx.db).await.unwrap();
+
+        fill_data(&ctx, false).await;
+
+        let _: DbErr = cake::Entity::find()
+            .left_join(bakery::Entity)
+            .into_partial_model::<WrongCake>()
+            .one(&ctx.db)
+            .await
+            .expect_err("should error instead of returning an empty Option");
+
+        ctx.delete().await;
+    }
 }
