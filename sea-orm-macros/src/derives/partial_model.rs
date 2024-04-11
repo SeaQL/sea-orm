@@ -188,7 +188,6 @@ impl DerivePartialModel {
                 quote!(let #select_ident =
                        if let Some(prefix) = pre {
                            let ident = format!("{prefix}{}", #field_name);
-                           eprintln!("{ident}");
                            sea_orm::SelectColumns::select_column_as(#select_ident, #expr, ident)
                        } else {
                            sea_orm::SelectColumns::select_column_as(#select_ident, #expr, #field_name)
