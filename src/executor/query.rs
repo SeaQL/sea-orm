@@ -115,6 +115,41 @@ impl QueryResult {
     {
         Ok(T::try_get_many_by_index(self)?)
     }
+
+    /// Retrieves the names of the columns in the result set
+    pub fn column_names(&self) -> Vec<String> {
+        #[cfg(feature = "sqlx-dep")]
+        use sqlx::Column;
+
+        match &self.row {
+            #[cfg(feature = "sqlx-mysql")]
+            QueryResultRow::SqlxMySql(row) => {
+                row.columns().iter().map(|c| c.name().to_string()).collect()
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            QueryResultRow::SqlxPostgres(row) => {
+                row.columns().iter().map(|c| c.name().to_string()).collect()
+            }
+            #[cfg(feature = "sqlx-sqlite")]
+            QueryResultRow::SqlxSqlite(row) => {
+                row.columns().iter().map(|c| c.name().to_string()).collect()
+            }
+            #[cfg(feature = "mock")]
+            QueryResultRow::Mock(row) => row
+                .clone()
+                .into_column_value_tuples()
+                .map(|(c, _)| c.to_string())
+                .collect(),
+            #[cfg(feature = "proxy")]
+            QueryResultRow::Proxy(row) => row
+                .clone()
+                .into_column_value_tuples()
+                .map(|(c, _)| c.to_string())
+                .collect(),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[allow(unused_variables)]
@@ -1258,7 +1293,11 @@ try_from_u64_err!(uuid::Uuid);
 
 #[cfg(test)]
 mod tests {
-    use super::TryGetError;
+    use std::collections::BTreeMap;
+
+    use sea_query::Value;
+
+    use super::*;
     use crate::error::*;
 
     #[test]
@@ -1345,6 +1384,23 @@ mod tests {
                 r#"WITH RECURSIVE `cte_traversal` (`id`, `depth`, `next`, `value`) AS (SELECT `id`, ?, `next`, `value` FROM `table` UNION ALL (SELECT `id`, `depth` + ?, `next`, `value` FROM `table` INNER JOIN `cte_traversal` ON `cte_traversal`.`next` = `table`.`id`)) SELECT * FROM `cte_traversal`"#,
                 [1.into(), 1.into()]
             )
+        );
+    }
+
+    #[test]
+    fn column_names_from_query_result() {
+        let mut values = BTreeMap::new();
+        values.insert("id".to_string(), Value::Int(Some(1)));
+        values.insert(
+            "name".to_string(),
+            Value::String(Some(Box::new("Abc".to_owned()))),
+        );
+        let query_result = QueryResult {
+            row: QueryResultRow::Mock(crate::MockRow { values }),
+        };
+        assert_eq!(
+            query_result.column_names(),
+            vec!["id".to_owned(), "name".to_owned()]
         );
     }
 }
