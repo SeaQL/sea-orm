@@ -1,3 +1,8 @@
+#![cfg(any(
+    feature = "sqlx-mysql",
+    feature = "sqlx-sqlite",
+    feature = "sqlx-postgres"
+))]
 use entity::{Column, Entity};
 use sea_orm::{ColumnTrait, DerivePartialModel, EntityTrait, FromQueryResult, ModelTrait};
 use sea_query::Expr;
