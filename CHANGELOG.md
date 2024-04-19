@@ -49,6 +49,8 @@ struct EntityNameNotAIdent {
 ```
 * Added `RelationDef::from_alias()` https://github.com/SeaQL/sea-orm/pull/2146
 ```rust
+let cf = Alias::new("cf");
+
 assert_eq!(
     cake::Entity::find()
         .join_as(
