@@ -181,6 +181,7 @@ impl Column {
                     let column_type = write_col_def(column_type);
                     quote! { ColumnType::Array(RcOrArc::new(#column_type)) }
                 }
+                ColumnType::Vector => quote! { ColumnType::Vector },
                 #[allow(unreachable_patterns)]
                 _ => unimplemented!(),
             }
