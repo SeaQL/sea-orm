@@ -33,6 +33,7 @@ serde = { version = "1.0", features = ["derive"] }
 [features]
 default = ["derive"]
 postgres-array = []
+postgres-vector = []
 derive = ["bae"]
 strum = []
 seaography = ["proc-macro-crate"]
