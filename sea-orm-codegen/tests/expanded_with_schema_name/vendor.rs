@@ -6,7 +6,7 @@ use sea_orm::entity::prelude::*;
 pub struct Entity;
 
 impl EntityName for Entity {
-    fn schema_name(&self) -> Option< &str > {
+    fn schema_name(&self) -> Option<&str> {
         Some("schema_name")
     }
 
@@ -19,15 +19,15 @@ impl EntityName for Entity {
 pub struct Model {
     pub id: i32,
     pub name: String,
-    pub fruit_id: Option<i32> ,
+    pub fruit_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
-    #[sea_orm(column_name = "_name_")]
+    #[sea_orm(rename = "_name_")]
     Name,
-    #[sea_orm(column_name = "fruitId")]
+    #[sea_orm(rename = "fruitId")]
     FruitId,
 }
 

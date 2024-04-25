@@ -11,7 +11,7 @@ pub mod model {
     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
     #[sea_orm(table_name = "container")]
     pub struct Model {
-        #[sea_orm(primary_key, column_name = "db_id")]
+        #[sea_orm(primary_key, rename = "db_id")]
         pub rust_id: i32,
     }
 

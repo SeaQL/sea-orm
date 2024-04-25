@@ -8,15 +8,15 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: u32,
-    #[sea_orm(column_name = "a_b_c_d")]
+    #[sea_orm(rename = "a_b_c_d")]
     pub a_b_c_d: i32,
-    #[sea_orm(column_name = "a_b_c_dd")]
+    #[sea_orm(rename = "a_b_c_dd")]
     pub a_b_c_dd: i32,
-    #[sea_orm(column_name = "a_b_cc_d")]
+    #[sea_orm(rename = "a_b_cc_d")]
     pub a_b_cc_d: i32,
-    #[sea_orm(column_name = "a_bb_c_d")]
+    #[sea_orm(rename = "a_bb_c_d")]
     pub a_bb_c_d: i32,
-    #[sea_orm(column_name = "aa_b_c_d")]
+    #[sea_orm(rename = "aa_b_c_d")]
     pub aa_b_c_d: i32,
 }
 

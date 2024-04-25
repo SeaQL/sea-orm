@@ -6,7 +6,7 @@ use crate::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(column_name = "name", enum_name = "Name")]
+    #[sea_orm(rename = "name", enum_name = "Name")]
     pub name: String,
 }
 
@@ -49,10 +49,7 @@ pub enum RelatedEntity {
     Fruit,
     #[sea_orm(entity = "super::filling::Entity")]
     Filling,
-    #[sea_orm(
-        entity = "super::fruit::Entity",
-        def = "Relation::TropicalFruit.def()"
-    )]
+    #[sea_orm(entity = "super::fruit::Entity", def = "Relation::TropicalFruit.def()")]
     TropicalFruit,
     #[sea_orm(
         entity = "super::fruit::Entity",

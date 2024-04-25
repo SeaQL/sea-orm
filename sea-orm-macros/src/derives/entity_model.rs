@@ -16,7 +16,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
     let mut comment = quote! {None};
     let mut schema_name = quote! { None };
     let mut table_iden = false;
-    let mut all_column_name_case: Option<CaseStyle> = None;
+    let mut rename_all: Option<CaseStyle> = None;
 
     attrs
         .iter()
@@ -33,8 +33,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     schema_name = quote! { Some(#name) };
                 } else if meta.path.is_ident("table_iden") {
                     table_iden = true;
-                } else if meta.path.is_ident("column_name_case") {
-                    all_column_name_case = Some((&meta).try_into()?);
+                } else if meta.path.is_ident("rename_all") {
+                    rename_all = Some((&meta).try_into()?);
                 } else {
                     // Reads the value expression to advance the parse stream.
                     // Some parameters, such as `primary_key`, do not have any value,
@@ -114,9 +114,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut ignore = false;
                     let mut unique = false;
                     let mut sql_type = None;
-                    let mut column_name_case_present = false;
-                    let mut column_name_attr_present = false;
-                    let mut column_name = if let Some(case_style) = all_column_name_case {
+                    let mut rename_attr_present = false;
+                    let mut rename = if let Some(case_style) = rename_all {
                         Some(field_name.convert_case(Some(case_style)))
                     } else if original_field_name
                         != original_field_name.to_upper_camel_case().to_snake_case()
@@ -129,7 +128,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
                     let mut enum_name = None;
                     let mut is_primary_key = false;
-                    // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(Some(255))", default_value = "new user", default_expr = "gen_random_uuid()", column_name = "name", enum_name = "Name", nullable, indexed, unique)]
+                    // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(Some(255))", default_value = "new user", default_expr = "gen_random_uuid()", rename = "name", enum_name = "Name", nullable, indexed, unique)]
                     for attr in field.attrs.iter() {
                         if !attr.path().is_ident("sea_orm") {
                             continue;
@@ -170,18 +169,24 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                                         meta.error(format!("Invalid column_type {:?}", lit))
                                     );
                                 }
-                            } else if meta.path.is_ident("column_name_case") {
-                                let case_style: CaseStyle = (&meta).try_into()?;
-                                column_name_case_present = true;
-                                column_name = Some(field_name.convert_case(Some(case_style)));
                             } else if meta.path.is_ident("column_name") {
                                 let lit = meta.value()?.parse()?;
                                 if let Lit::Str(litstr) = lit {
-                                    column_name_attr_present = true;
-                                    column_name = Some(litstr.value());
+                                    rename_attr_present = true;
+                                    rename = Some(litstr.value());
                                 } else {
                                     return Err(
                                         meta.error(format!("Invalid column_name {:?}", lit))
+                                    );
+                                }
+                            } else if meta.path.is_ident("rename") {
+                                let lit = meta.value()?.parse()?;
+                                if let Lit::Str(litstr) = lit {
+                                    rename_attr_present = true;
+                                    rename = Some(litstr.value());
+                                } else {
+                                    return Err(
+                                        meta.error(format!("Invalid value for rename {:?}", lit))
                                     );
                                 }
                             } else if meta.path.is_ident("enum_name") {
@@ -228,19 +233,15 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                         })?;
                     }
 
-                    if column_name_attr_present && column_name_case_present {
-                        return Err(syn::Error::new_spanned(field_name, "Either `column_name_case` or `column_name` can be provided, but not both"));
-                    }
-
                     if let Some(enum_name) = enum_name {
                         field_name = enum_name;
                     }
 
                     field_name = Ident::new(&escape_rust_keyword(field_name), Span::call_site());
 
-                    let variant_attrs = match &column_name {
-                        Some(column_name) => quote! {
-                            #[sea_orm(column_name = #column_name)]
+                    let variant_attrs = match &rename {
+                        Some(rename) => quote! {
+                            #[sea_orm(rename = #rename)]
                             #[doc = " Generated by sea-orm-macros"]
                         },
                         None => quote! {

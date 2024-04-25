@@ -7,10 +7,10 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(column_name = "_name_")]
+    #[sea_orm(rename = "_name_")]
     pub name: String,
-    #[sea_orm(column_name = "fruitId")]
-    pub fruit_id: Option<i32> ,
+    #[sea_orm(rename = "fruitId")]
+    pub fruit_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -18,7 +18,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::fruit::Entity",
         from = "Column::FruitId",
-        to = "super::fruit::Column::Id",
+        to = "super::fruit::Column::Id"
     )]
     Fruit,
 }

@@ -654,10 +654,10 @@ mod tests {
             pub struct Model {
                 #[sea_orm(primary_key)]
                 pub id: i32,
-                #[sea_orm(column_name = "ONE")]
+                #[sea_orm(rename = "ONE")]
                 pub one: i32,
                 pub two: i32,
-                #[sea_orm(column_name = "3")]
+                #[sea_orm(rename = "3")]
                 pub three: i32,
             }
 
@@ -701,10 +701,10 @@ mod tests {
             #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
             pub enum Column {
                 Id,
-                #[sea_orm(column_name = "ONE")]
+                #[sea_orm(rename = "ONE")]
                 One,
                 Two,
-                #[sea_orm(column_name = "3")]
+                #[sea_orm(rename = "3")]
                 Three,
             }
 
@@ -863,12 +863,12 @@ mod tests {
             #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "hello")]
             pub struct Model {
-                #[sea_orm(primary_key, column_name = "ID", enum_name = "IdentityColumn")]
+                #[sea_orm(primary_key, rename = "ID", enum_name = "IdentityColumn")]
                 pub id: i32,
-                #[sea_orm(column_name = "ONE", enum_name = "One1")]
+                #[sea_orm(rename = "ONE", enum_name = "One1")]
                 pub one: i32,
                 pub two: i32,
-                #[sea_orm(column_name = "THREE", enum_name = "Three3")]
+                #[sea_orm(rename = "THREE", enum_name = "Three3")]
                 pub three: i32,
             }
 
@@ -915,12 +915,12 @@ mod tests {
 
             #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
             pub enum Column {
-                #[sea_orm(column_name = "ID")]
+                #[sea_orm(rename = "ID")]
                 IdentityCol,
-                #[sea_orm(column_name = "ONE")]
+                #[sea_orm(rename = "ONE")]
                 One1,
                 Two,
-                #[sea_orm(column_name = "THREE")]
+                #[sea_orm(rename = "THREE")]
                 Three3,
             }
 
@@ -974,9 +974,9 @@ mod tests {
             #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
             #[sea_orm(table_name = "my_entity")]
             pub struct Model {
-                #[sea_orm(primary_key, enum_name = "IdentityColumn", column_name = "id")]
+                #[sea_orm(primary_key, enum_name = "IdentityColumn", rename = "id")]
                 pub id: i32,
-                #[sea_orm(column_name = "type")]
+                #[sea_orm(rename = "type")]
                 pub type_: String,
             }
 
