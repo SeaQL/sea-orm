@@ -32,15 +32,15 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
     let name: Vec<TokenStream> = variants
         .iter()
         .map(|v| {
-            let mut rename = v.ident.to_string().to_snake_case();
+            let mut column_name = v.ident.to_string().to_snake_case();
             for attr in v.attrs.iter() {
                 if !attr.path().is_ident("sea_orm") {
                     continue;
                 }
 
                 attr.parse_nested_meta(|meta| {
-                    if meta.path.is_ident("column_name") || meta.path.is_ident("rename") {
-                        rename = meta.value()?.parse::<LitStr>()?.value();
+                    if meta.path.is_ident("column_name") {
+                        column_name = meta.value()?.parse::<LitStr>()?.value();
                     } else {
                         // Reads the value expression to advance the parse stream.
                         // Some parameters, such as `primary_key`, do not have any value,
@@ -51,7 +51,7 @@ pub fn expand_derive_primary_key(ident: Ident, data: Data) -> syn::Result<TokenS
                     Ok(())
                 })?;
             }
-            Ok::<TokenStream, syn::Error>(quote! { #rename })
+            Ok::<TokenStream, syn::Error>(quote! { #column_name })
         })
         .collect::<Result<_, _>>()?;
 

@@ -12,7 +12,7 @@ pub struct Model {
     username: String,
     first_name: String,
     middle_name: String,
-    #[sea_orm(rename = "lAsTnAmE")]
+    #[sea_orm(column_name = "lAsTnAmE")]
     last_name: String,
     orders_count: i32,
 }

@@ -8,7 +8,7 @@ use serde::Serialize;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(rename = "_name", column_type = "Text", nullable)]
+    #[sea_orm(column_name = "_name", column_type = "Text", nullable)]
     #[serde(skip)]
     pub name: Option<String>,
 }

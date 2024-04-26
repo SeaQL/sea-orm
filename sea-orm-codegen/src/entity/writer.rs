@@ -532,9 +532,9 @@ impl EntityWriter {
             let variant = col.get_name_camel_case();
             let mut variant = quote! { #variant };
             if !col.is_snake_case_name() {
-                let rename = &col.name;
+                let column_name = &col.name;
                 variant = quote! {
-                    #[sea_orm(rename = #rename)]
+                    #[sea_orm(column_name = #column_name)]
                     #variant
                 };
             }
@@ -739,8 +739,8 @@ impl EntityWriter {
                 let mut attrs: Punctuated<_, Comma> = Punctuated::new();
                 let is_primary_key = primary_keys.contains(&col.name);
                 if !col.is_snake_case_name() {
-                    let rename = &col.name;
-                    attrs.push(quote! { rename = #rename });
+                    let column_name = &col.name;
+                    attrs.push(quote! { column_name = #column_name });
                 }
                 if is_primary_key {
                     attrs.push(quote! { primary_key });
