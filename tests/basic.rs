@@ -8,8 +8,8 @@ pub use sea_orm::{entity::*, error::*, query::*, sea_query, tests_cfg::*, Databa
 #[sea_orm_macros::test]
 #[cfg(feature = "sqlx-sqlite")]
 async fn main() -> Result<(), DbErr> {
-    dotenv::from_filename(".env.local").ok();
-    dotenv::from_filename(".env").ok();
+    dotenvy::from_filename(".env.local").ok();
+    dotenvy::from_filename(".env").ok();
 
     let base_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_owned());
 
