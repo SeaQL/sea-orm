@@ -1,11 +1,9 @@
+use super::util::camel_case_with_escaped_non_uax31;
+use crate::strum::helpers::case_style::{CaseStyle, CaseStyleHelpers};
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse, Expr, Lit, LitInt, LitStr, UnOp};
-
-use crate::strum::helpers::case_style::{CaseStyle, CaseStyleHelpers};
-
-use super::util::camel_case_with_escaped_non_uax31;
 
 enum Error {
     InputNotEnum,
@@ -42,7 +40,6 @@ impl ActiveEnum {
         let mut db_type = Err(Error::TT(quote_spanned! {
             ident_span => compile_error!("Missing macro attribute `db_type`");
         }));
-
         let mut rename_all_rule = None;
 
         input
@@ -235,7 +232,7 @@ impl ActiveEnum {
                     quote! { #variant_ident }
                 } else {
                     quote_spanned! {
-                        variant_span => compile_error!("Missing macro attribute, either `string_value`, `rename` or `num_value` should be specified");
+                        variant_span => compile_error!("Missing macro attribute, either `string_value`, `num_value` or `rename_all` should be specified");
                     }
                 }
             })

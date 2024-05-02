@@ -1,13 +1,11 @@
+use super::util::{escape_rust_keyword, trim_starting_raw_identifier};
+use crate::strum::helpers::case_style::{CaseStyle, CaseStyleHelpers};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{
     punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Data, Expr, Fields, Lit,
 };
-
-use crate::strum::helpers::case_style::{CaseStyle, CaseStyleHelpers};
-
-use super::util::{escape_rust_keyword, trim_starting_raw_identifier};
 
 /// Method to derive an Model
 pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Result<TokenStream> {

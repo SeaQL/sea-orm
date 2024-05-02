@@ -1,8 +1,7 @@
-use std::str::FromStr;
-
 use heck::{
     ToKebabCase, ToLowerCamelCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase, ToUpperCamelCase,
 };
+use std::str::FromStr;
 use syn::meta::ParseNestedMeta;
 use syn::{
     parse::{Parse, ParseStream},

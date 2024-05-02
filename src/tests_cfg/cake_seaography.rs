@@ -49,7 +49,10 @@ pub enum RelatedEntity {
     Fruit,
     #[sea_orm(entity = "super::filling::Entity")]
     Filling,
-    #[sea_orm(entity = "super::fruit::Entity", def = "Relation::TropicalFruit.def()")]
+    #[sea_orm(
+        entity = "super::fruit::Entity",
+        def = "Relation::TropicalFruit.def()"
+    )]
     TropicalFruit,
     #[sea_orm(
         entity = "super::fruit::Entity",
