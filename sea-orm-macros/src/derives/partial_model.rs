@@ -11,7 +11,7 @@ use syn::Expr;
 
 use syn::Meta;
 
-use self::util::GetAsKVMeta;
+use self::util::{GetAsKVMeta, GetMeta};
 
 #[derive(Debug)]
 enum Error {
@@ -96,30 +96,19 @@ impl DerivePartialModel {
                             .get_as_kv("from_expr")
                             .map(|s| syn::parse_str::<Expr>(&s).map_err(Error::Syn))
                             .transpose()?;
-                        skip = meta.get_as_kv("skip").is_some();
+                        skip = meta.exists("skip");
                     }
                 }
             }
 
+            if skip {
+                continue;
+            }
+
             let field_name = field.ident.unwrap();
 
-            let col_as = match (from_col, from_expr, skip) {
-                (Some(col), None, false) => {
-                    if entity.is_none() {
-                        return Err(Error::EntityNotSpecified);
-                    }
-
-                    let field = field_name.to_string();
-                    ColumnAs::ColAlias { col, field }
-                }
-                (None, Some(expr), false) => ColumnAs::Expr {
-                    expr,
-                    field_name: field_name.to_string(),
-                },
-                (None, None, true) => {
-                    continue;
-                }
-                (None, None, false) => {
+            let col_as = match (from_col, from_expr) {
+                (None, None) => {
                     if entity.is_none() {
                         return Err(Error::EntityNotSpecified);
                     }
@@ -128,7 +117,19 @@ impl DerivePartialModel {
                         field_name.to_string().to_upper_camel_case()
                     ))
                 }
-                _ => return Err(Error::MultipleSourcesSpecified(field_span)),
+                (None, Some(expr)) => ColumnAs::Expr {
+                    expr,
+                    field_name: field_name.to_string(),
+                },
+                (Some(col), None) => {
+                    if entity.is_none() {
+                        return Err(Error::EntityNotSpecified);
+                    }
+
+                    let field = field_name.to_string();
+                    ColumnAs::ColAlias { col, field }
+                }
+                (Some(_), Some(_)) => return Err(Error::MultipleSourcesSpecified(field_span)),
             };
             column_as_list.push(col_as);
         }
@@ -227,6 +228,19 @@ mod util {
             } else {
                 None
             }
+        }
+    }
+
+    pub(super) trait GetMeta {
+        fn exists(&self, k: &str) -> bool;
+    }
+
+    impl GetMeta for Meta {
+        fn exists(&self, k: &str) -> bool {
+            let Meta::Path(path) = self else {
+                return false;
+            };
+            path.is_ident(k)
         }
     }
 }

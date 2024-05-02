@@ -56,9 +56,10 @@ struct FieldFromExpr {
 }
 
 #[derive(FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "Entity")]
 struct SkipField {
     #[sea_orm(from_col = "foo2")]
     _foo: i32,
     #[sea_orm(skip)]
-    _test_does_not_exist: Option<()>,
+    _bar: Option<()>,
 }
