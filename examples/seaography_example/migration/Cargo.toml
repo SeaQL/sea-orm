@@ -14,7 +14,7 @@ path = "src/lib.rs"
 async-std = { version = "1", features = ["attributes", "tokio1"] }
 
 [dependencies.sea-orm]
-path = "../../.." # remove this line in your own project
+path = "../../../" # remove this line in your own project
 version = "1.0.0-rc.3" # sea-orm version
 
 [dependencies.sea-orm-migration]

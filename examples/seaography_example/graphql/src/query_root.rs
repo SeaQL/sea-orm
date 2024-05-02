@@ -11,7 +11,7 @@ pub fn schema(
     depth: Option<usize>,
     complexity: Option<usize>,
 ) -> Result<Schema, SchemaError> {
-    let mut builder = Builder::new(&CONTEXT);
+    let mut builder = Builder::new(&CONTEXT, database.clone());
     seaography::register_entities!(builder, [baker, bakery, cake, cake_baker,]);
     let schema = builder.schema_builder();
     let schema = if let Some(depth) = depth {
