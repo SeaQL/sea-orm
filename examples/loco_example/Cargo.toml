@@ -9,7 +9,7 @@ edition = "2021"
 
 [dependencies]
 
-loco-rs = { version = "0.2" }
+loco-rs = { version = "0.4" }
 migration = { path = "migration" }
 
 serde = { version = "1", features = ["derive"] }
@@ -26,7 +26,7 @@ uuid = { version = "1.6.0", features = ["v4"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 
 [dependencies.sea-orm]
-# path = "../../" # remove this line in your own project
+path = "../../" # remove this line in your own project
 version = "1.0.0-rc.3" # sea-orm version
 features = [
   "sqlx-sqlite",
@@ -51,4 +51,3 @@ insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 [patch.crates-io]
 sea-orm = { path = "../../" }
 sea-orm-migration = { path = "../../sea-orm-migration" }
-loco-rs = { git = "https://github.com/billy1624/loco", branch = "sea-orm-v1.0" }
