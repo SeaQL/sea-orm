@@ -69,7 +69,9 @@ impl Column {
                 },
                 ColumnType::Decimal(_) | ColumnType::Money(_) => "Decimal".to_owned(),
                 ColumnType::Uuid => "Uuid".to_owned(),
-                ColumnType::Binary(_) | ColumnType::VarBinary(_) => "Vec<u8>".to_owned(),
+                ColumnType::Binary(_) | ColumnType::VarBinary(_) | ColumnType::Blob => {
+                    "Vec<u8>".to_owned()
+                }
                 ColumnType::Boolean => "bool".to_owned(),
                 ColumnType::Enum { name, .. } => name.to_string().to_upper_camel_case(),
                 ColumnType::Array(column_type) => {
@@ -102,6 +104,7 @@ impl Column {
                 StringLen::None => Some("VarBinary(StringLen::None)".to_owned()),
                 StringLen::Max => Some("VarBinary(StringLen::Max)".to_owned()),
             },
+            ColumnType::Blob => Some("Blob".to_owned()),
             _ => None,
         };
         col_type.map(|ty| quote! { column_type = #ty })
@@ -149,6 +152,7 @@ impl Column {
                     StringLen::None => quote! { ColumnType::VarBinary(StringLen::None) },
                     StringLen::Max => quote! { ColumnType::VarBinary(StringLen::Max) },
                 },
+                ColumnType::Blob => quote! { ColumnType::Blob },
                 ColumnType::Boolean => quote! { ColumnType::Boolean },
                 ColumnType::Money(s) => match s {
                     Some((s1, s2)) => quote! { ColumnType::Money(Some((#s1, #s2))) },
