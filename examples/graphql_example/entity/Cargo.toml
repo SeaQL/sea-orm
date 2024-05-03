@@ -16,4 +16,4 @@ version = "5.0.10"
 
 [dependencies.sea-orm]
 path = "../../../" # remove this line in your own project
-version = "1.0.0-rc.3" # sea-orm version
+version = "1.0.0-rc.4" # sea-orm version
