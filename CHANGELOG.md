@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 1.0.0-rc.4 - Pending
+## 1.0.0-rc.4 - 2024-05-13
 
 ### Enhancements
 
@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Upgrades
 
-* Upgrade `sea-query` to `0.31.0-rc.5`
+* Upgrade `sea-query` to `0.31.0-rc.6`
+* Upgrade `sea-schema` to `0.15.0-rc.6`
 
 ### House Keeping
 
