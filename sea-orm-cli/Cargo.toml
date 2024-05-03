@@ -60,3 +60,6 @@ runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls", "sea-schema/runtime
 runtime-actix-rustls = ["sqlx/runtime-tokio-rustls", "sea-schema/runtime-actix-rustls"]
 runtime-async-std-rustls = ["sqlx/runtime-async-std-rustls", "sea-schema/runtime-async-std-rustls"]
 runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls", "sea-schema/runtime-tokio-rustls"]
+
+[patch.crates-io]
+sea-schema = { git = "https://github.com/SeaQL/sea-schema", branch = "column-type-blob" }
