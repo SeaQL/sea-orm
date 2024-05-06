@@ -1,3 +1,5 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 pub use common::{features::*, setup::*, TestContext};
 use sea_orm::entity::prelude::*;
