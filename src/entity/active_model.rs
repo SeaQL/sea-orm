@@ -1,5 +1,6 @@
 use crate::{
-    error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn, Value,
+    error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyArity,
+    PrimaryKeyToColumn, PrimaryKeyTrait, Value,
 };
 use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
@@ -139,7 +140,7 @@ pub trait ActiveModelTrait: Clone + Debug {
                 }
             };
         }
-        match <Self::Entity as EntityTrait>::PrimaryKey::iter().count() {
+        match <<<Self::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY {
             1 => {
                 let s1 = next!();
                 Some(ValueTuple::One(s1))
