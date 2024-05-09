@@ -849,6 +849,26 @@ where
             None => ActiveValue::NotSet,
         };
     }
+
+    /// Get the inner value, unless `self` is [NotSet][ActiveValue::NotSet].
+    ///
+    /// There's also a panicking version: [ActiveValue::as_ref].
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// # use sea_orm::ActiveValue;
+    /// #
+    /// assert_eq!(ActiveValue::Unchanged(42).try_as_ref(), Some(&42));
+    /// assert_eq!(ActiveValue::Set(42).try_as_ref(), Some(&42));
+    /// assert_eq!(ActiveValue::NotSet.try_as_ref(), None::<&i32>);
+    /// ```
+    pub fn try_as_ref(&self) -> Option<&V> {
+        match self {
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value),
+            ActiveValue::NotSet => None,
+        }
+    }
 }
 
 impl<V> std::convert::AsRef<V> for ActiveValue<V>
@@ -857,7 +877,9 @@ where
 {
     /// # Panics
     ///
-    /// Panics if it is [ActiveValue::NotSet]
+    /// Panics if it is [ActiveValue::NotSet].
+    ///
+    /// See [ActiveValue::try_as_ref] for a fallible non-panicking version.
     fn as_ref(&self) -> &V {
         match self {
             ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,
