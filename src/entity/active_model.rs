@@ -1,5 +1,6 @@
 use crate::{
-    error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyToColumn, Value,
+    error::*, ConnectionTrait, DeleteResult, EntityTrait, Iterable, PrimaryKeyArity,
+    PrimaryKeyToColumn, PrimaryKeyTrait, Value,
 };
 use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
@@ -139,7 +140,7 @@ pub trait ActiveModelTrait: Clone + Debug {
                 }
             };
         }
-        match <Self::Entity as EntityTrait>::PrimaryKey::iter().count() {
+        match <<<Self::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY {
             1 => {
                 let s1 = next!();
                 Some(ValueTuple::One(s1))
@@ -886,6 +887,26 @@ where
             _ => *self = ActiveValue::Set(value),
         }
     }
+
+    /// Get the inner value, unless `self` is [NotSet][ActiveValue::NotSet].
+    ///
+    /// There's also a panicking version: [ActiveValue::as_ref].
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// # use sea_orm::ActiveValue;
+    /// #
+    /// assert_eq!(ActiveValue::Unchanged(42).try_as_ref(), Some(&42));
+    /// assert_eq!(ActiveValue::Set(42).try_as_ref(), Some(&42));
+    /// assert_eq!(ActiveValue::NotSet.try_as_ref(), None::<&i32>);
+    /// ```
+    pub fn try_as_ref(&self) -> Option<&V> {
+        match self {
+            ActiveValue::Set(value) | ActiveValue::Unchanged(value) => Some(value),
+            ActiveValue::NotSet => None,
+        }
+    }
 }
 
 impl<V> std::convert::AsRef<V> for ActiveValue<V>
@@ -894,7 +915,9 @@ where
 {
     /// # Panics
     ///
-    /// Panics if it is [ActiveValue::NotSet]
+    /// Panics if it is [ActiveValue::NotSet].
+    ///
+    /// See [ActiveValue::try_as_ref] for a fallible non-panicking version.
     fn as_ref(&self) -> &V {
         match self {
             ActiveValue::Set(value) | ActiveValue::Unchanged(value) => value,

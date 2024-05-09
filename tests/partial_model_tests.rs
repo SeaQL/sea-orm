@@ -1,3 +1,5 @@
+#![allow(unused_imports, dead_code)]
+
 use entity::{Column, Entity};
 use sea_orm::{ColumnTrait, DerivePartialModel, EntityTrait, FromQueryResult, ModelTrait};
 use sea_query::Expr;

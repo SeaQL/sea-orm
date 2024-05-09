@@ -116,7 +116,7 @@ where
     {
         // so that self is dropped before entering await
         let mut query = self.query;
-        if db.support_returning() && <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
+        if db.support_returning() {
             let db_backend = db.get_database_backend();
             let returning =
                 Query::returning().exprs(<A::Entity as EntityTrait>::PrimaryKey::iter().map(|c| {

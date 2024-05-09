@@ -1,3 +1,5 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
@@ -86,7 +88,7 @@ pub async fn insert_json_struct_vec_derive(db: &DatabaseConnection) -> Result<()
         ],
     };
 
-    let result = json_vec.clone().into_active_model().insert(db).await?;
+    let _result = json_vec.clone().into_active_model().insert(db).await?;
 
     let model = json_vec_derive::json_struct_vec::Entity::find()
         .filter(json_vec_derive::json_struct_vec::Column::Id.eq(json_vec.id))

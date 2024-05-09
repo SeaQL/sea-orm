@@ -284,7 +284,7 @@ pub trait QuerySelect: Sized {
 
     /// Add an AND HAVING expression
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_orm::{sea_query::{Alias, Expr}, entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -301,10 +301,10 @@ pub trait QuerySelect: Sized {
     ///         .column_as(cake::Column::Id.count(), "count")
     ///         .column_as(cake::Column::Id.sum(), "sum_of_id")
     ///         .group_by(cake::Column::Name)
-    ///         .having(cake::Column::Id.gt(6))
+    ///         .having(Expr::col(Alias::new("count")).gt(6))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
-    ///     "SELECT COUNT(`cake`.`id`) AS `count`, SUM(`cake`.`id`) AS `sum_of_id` FROM `cake` GROUP BY `cake`.`name` HAVING `cake`.`id` > 6"
+    ///     "SELECT COUNT(`cake`.`id`) AS `count`, SUM(`cake`.`id`) AS `sum_of_id` FROM `cake` GROUP BY `cake`.`name` HAVING `count` > 6"
     /// );
     /// ```
     fn having<F>(mut self, filter: F) -> Self

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.0.0-rc.4 - 2024-05-13
+
+### Enhancements
+
+* Added `QueryResult::column_names` https://github.com/SeaQL/sea-orm/pull/2148
+* [sea-orm-macro] Add `@generated` in generated code https://github.com/SeaQL/sea-orm/pull/2199
+
+### Upgrades
+
+* Upgrade `sea-query` to `0.31.0-rc.6`
+* Upgrade `sea-schema` to `0.15.0-rc.6`
+
+### House Keeping
+
+* Reduce warnings in integration tests https://github.com/SeaQL/sea-orm/pull/2177
+
 ## 1.0.0-rc.3 - 2024-03-26
 
 ### Enhancements
@@ -34,6 +50,8 @@ struct EntityNameNotAIdent {
 ```
 * Added `RelationDef::from_alias()` https://github.com/SeaQL/sea-orm/pull/2146
 ```rust
+let cf = Alias::new("cf");
+
 assert_eq!(
     cake::Entity::find()
         .join_as(
