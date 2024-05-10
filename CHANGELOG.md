@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.0.0-rc.5 - Pending
+
+### New Features
+
+* Introduce `PrimaryKeyArity` with `ARITY` constant https://github.com/SeaQL/sea-orm/pull/2185
+```rust
+fn get_arity_of<E: EntityTrait>() -> usize {
+    E::PrimaryKey::iter().count() // before; runtime
+    <<E::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY // now; compile-time
+}
+```
+* Associate `ActiveModel` to `EntityTrait` https://github.com/SeaQL/sea-orm/pull/2186
+
 ## 1.0.0-rc.4 - 2024-05-13
 
 ### Enhancements
