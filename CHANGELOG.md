@@ -18,6 +18,11 @@ fn get_arity_of<E: EntityTrait>() -> usize {
 ```
 * Associate `ActiveModel` to `EntityTrait` https://github.com/SeaQL/sea-orm/pull/2186
 
+### Enhancements
+
+* Added `ActiveValue::set_if_not_equals()` https://github.com/SeaQL/sea-orm/pull/2194
+* Added `ActiveValue::try_as_ref()` https://github.com/SeaQL/sea-orm/pull/2197
+
 ## 1.0.0-rc.4 - 2024-05-13
 
 ### Enhancements
