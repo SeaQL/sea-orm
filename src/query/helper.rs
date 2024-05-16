@@ -633,7 +633,8 @@ pub trait QueryOrder: Sized {
 
     /// Add an order_by expression with nulls ordering option
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend, NullOrdering};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_query::NullOrdering;
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
