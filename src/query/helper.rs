@@ -641,7 +641,7 @@ pub trait QueryOrder: Sized {
     ///         .order_by_with_nulls(cake::Column::Id, Order::Asc, NullOrdering::First)
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///    r#"SELECT "cake"."id", "cake"."name" FROM "cake" ORDER BY "cake"."id" ASC NULLS FIRST"#
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" ORDER BY "cake"."id" ASC NULLS FIRST"#
     /// );
     /// ```
     fn order_by_with_nulls<C>(mut self, col: C, ord: Order, nulls: NullOrdering) -> Self
