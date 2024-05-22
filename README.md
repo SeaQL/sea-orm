@@ -38,6 +38,7 @@ Integration examples:
 + [Salvo Example](https://github.com/SeaQL/sea-orm/tree/master/examples/salvo_example)
 + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
 + [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example)
++ [Loco Example](https://github.com/SeaQL/sea-orm/tree/master/examples/loco_example)
 
 ## Support
 
