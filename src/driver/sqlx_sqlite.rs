@@ -239,6 +239,11 @@ impl SqlxSqlitePoolConnection {
         self.pool.close().await;
         Ok(())
     }
+
+    /// Get SqlitePool
+    pub fn get_pool(&self) -> &SqlitePool {
+        &self.pool
+    }
 }
 
 impl From<SqliteRow> for QueryResult {
