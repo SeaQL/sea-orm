@@ -3,8 +3,8 @@ use crate::{
     PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
-    Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockBehavior, LockType, SeaRc,
-    SelectExpr, SelectStatement, SimpleExpr, TableRef,
+    Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockBehavior, LockType,
+    NullOrdering, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -628,6 +628,28 @@ pub trait QueryOrder: Sized {
     {
         self.query()
             .order_by_expr(col.into_simple_expr(), Order::Desc);
+        self
+    }
+
+    /// Add an order_by expression with nulls ordering option
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_query::NullOrdering;
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .order_by_with_nulls(cake::Column::Id, Order::Asc, NullOrdering::First)
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" ORDER BY "cake"."id" ASC NULLS FIRST"#
+    /// );
+    /// ```
+    fn order_by_with_nulls<C>(mut self, col: C, ord: Order, nulls: NullOrdering) -> Self
+    where
+        C: IntoSimpleExpr,
+    {
+        self.query()
+            .order_by_expr_with_nulls(col.into_simple_expr(), ord, nulls);
         self
     }
 }
