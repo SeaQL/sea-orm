@@ -64,7 +64,7 @@ impl SqlxPostgresConnector {
         let set_search_path_sql = options
             .schema_search_path
             .as_ref()
-            .map(|schema| format!("SET search_path = '{schema}'"));
+            .map(|schema| format!("SET search_path = {schema}"));
         let mut pool_options = options.sqlx_pool_options();
         if let Some(sql) = set_search_path_sql {
             pool_options = pool_options.after_connect(move |conn, _| {
