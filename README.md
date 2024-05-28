@@ -40,12 +40,8 @@ Integration examples:
 + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
 + [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example)
 
-## Support
-
 [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
 Join our Discord server to chat with other members of the SeaQL community!
-
-Professional support on Rust programming and best practices is available. You can email us for a quote!
 
 ## Features
 
