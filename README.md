@@ -33,6 +33,8 @@ Integration examples:
 + [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
 + [GraphQL Example](https://github.com/SeaQL/sea-orm/tree/master/examples/graphql_example)
 + [jsonrpsee Example](https://github.com/SeaQL/sea-orm/tree/master/examples/jsonrpsee_example)
++ [Loco Example](https://github.com/SeaQL/sea-orm/tree/master/examples/loco_example)
++ [Loco REST Starter Example](https://github.com/SeaQL/sea-orm/tree/master/examples/loco_starter)
 + [Poem Example](https://github.com/SeaQL/sea-orm/tree/master/examples/poem_example)
 + [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
 + [Salvo Example](https://github.com/SeaQL/sea-orm/tree/master/examples/salvo_example)
