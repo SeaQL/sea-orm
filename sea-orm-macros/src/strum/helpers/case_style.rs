@@ -2,6 +2,7 @@ use heck::{
     ToKebabCase, ToLowerCamelCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase, ToUpperCamelCase,
 };
 use std::str::FromStr;
+use syn::meta::ParseNestedMeta;
 use syn::{
     parse::{Parse, ParseStream},
     Ident, LitStr,
@@ -24,15 +25,15 @@ pub enum CaseStyle {
 
 const VALID_CASE_STYLES: &[&str] = &[
     "camelCase",
-    "PascalCase",
     "kebab-case",
-    "snake_case",
-    "SCREAMING_SNAKE_CASE",
-    "SCREAMING-KEBAB-CASE",
-    "lowercase",
-    "UPPERCASE",
-    "title_case",
     "mixed_case",
+    "SCREAMING_SNAKE_CASE",
+    "snake_case",
+    "title_case",
+    "UPPERCASE",
+    "lowercase",
+    "SCREAMING-KEBAB-CASE",
+    "PascalCase",
 ];
 
 impl Parse for CaseStyle {
@@ -105,6 +106,21 @@ impl CaseStyleHelpers for Ident {
             }
         } else {
             ident_string
+        }
+    }
+}
+
+impl<'meta> TryFrom<&ParseNestedMeta<'meta>> for CaseStyle {
+    type Error = syn::Error;
+
+    fn try_from(value: &ParseNestedMeta) -> Result<Self, Self::Error> {
+        let meta_string_literal: LitStr = value.value()?.parse()?;
+        let value_string = meta_string_literal.value();
+        match CaseStyle::from_str(value_string.as_str()) {
+            Ok(rule) => Ok(rule),
+            Err(()) => Err(value.error(format!(
+                "Unknown value for attribute parameter: `{value_string}`. Valid values are: `{VALID_CASE_STYLES:?}`"
+            ))),
         }
     }
 }
