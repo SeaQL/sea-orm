@@ -1,8 +1,10 @@
+//! Copied from https://github.com/Peternator7/strum/blob/master/strum_macros/src/helpers/case_style.rs
 use heck::{
     ToKebabCase, ToLowerCamelCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase, ToUpperCamelCase,
 };
 use std::str::FromStr;
 use syn::{
+    meta::ParseNestedMeta,
     parse::{Parse, ParseStream},
     Ident, LitStr,
 };
@@ -105,6 +107,21 @@ impl CaseStyleHelpers for Ident {
             }
         } else {
             ident_string
+        }
+    }
+}
+
+impl<'meta> TryFrom<&ParseNestedMeta<'meta>> for CaseStyle {
+    type Error = syn::Error;
+
+    fn try_from(value: &ParseNestedMeta) -> Result<Self, Self::Error> {
+        let meta_string_literal: LitStr = value.value()?.parse()?;
+        let value_string = meta_string_literal.value();
+        match CaseStyle::from_str(value_string.as_str()) {
+            Ok(rule) => Ok(rule),
+            Err(()) => Err(value.error(format!(
+                "Unknown value for attribute parameter: `{value_string}`. Valid values are: `{VALID_CASE_STYLES:?}`"
+            ))),
         }
     }
 }

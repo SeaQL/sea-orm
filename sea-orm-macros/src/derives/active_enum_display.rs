@@ -1,4 +1,4 @@
-use crate::strum::helpers::case_style::CaseStyle;
+use super::case_style::CaseStyle;
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{LitInt, LitStr};

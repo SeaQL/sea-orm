@@ -1,5 +1,5 @@
+use super::case_style::{CaseStyle, CaseStyleHelpers};
 use super::util::camel_case_with_escaped_non_uax31;
-use crate::strum::helpers::case_style::{CaseStyle, CaseStyleHelpers};
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
