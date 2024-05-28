@@ -46,8 +46,6 @@ rstest = "0.18.2"
 loco-rs = { version = "0.4", features = ["testing"] }
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 
-# This allows us to develop using a local version of sea-orm
-# remove this section in your own project
 [patch.crates-io]
 sea-orm = { path = "../../" }
 sea-orm-migration = { path = "../../sea-orm-migration" }
