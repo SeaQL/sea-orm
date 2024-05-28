@@ -21,14 +21,14 @@ If you like what we do, consider starring, sharing and contributing!
 
 Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2024](https://sea-ql.org/community-survey)!
 
+[![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
+Join our Discord server to chat with other members of the SeaQL community!
+
 ## Getting Started
 
 + [Documentation](https://www.sea-ql.org/SeaORM)
 + [Tutorial](https://www.sea-ql.org/sea-orm-tutorial)
 + [Cookbook](https://www.sea-ql.org/sea-orm-cookbook)
-
-[![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
-Join our Discord server to chat with other members of the SeaQL community!
 
 Integration examples:
 
