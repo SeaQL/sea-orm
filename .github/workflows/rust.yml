@@ -239,6 +239,7 @@ jobs:
           examples/graphql_example,
           examples/jsonrpsee_example,
           examples/loco_example,
+          examples/loco_starter,
           examples/poem_example,
           examples/proxy_gluesql_example,
           examples/rocket_example,
