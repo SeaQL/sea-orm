@@ -6,16 +6,15 @@ use std::{fs, io::Write, path::PathBuf};
 use axum::{body::Body, debug_handler, extract::Multipart};
 use loco_rs::prelude::*;
 use sea_orm::QueryOrder;
-use serde::{Deserialize, Serialize};
 use tokio_util::io::ReaderStream;
 
 use crate::models::_entities::files;
 
-const upload_dir: &str = "./uploads";
+const UPLOAD_DIR: &str = "./uploads";
 
 #[debug_handler]
 pub async fn upload(
-    auth: auth::JWT,
+    _auth: auth::JWT,
     Path(notes_id): Path<i32>,
     State(ctx): State<AppContext>,
     mut multipart: Multipart,
@@ -46,7 +45,7 @@ pub async fn upload(
             .to_string();
         let uuid = uuid::Uuid::new_v4().to_string();
         let folder = format!("{now}_{uuid}");
-        let upload_folder = PathBuf::from(upload_dir).join(&folder);
+        let upload_folder = PathBuf::from(UPLOAD_DIR).join(&folder);
         fs::create_dir_all(&upload_folder)?;
 
         // Write the file into the newly created folder
@@ -62,7 +61,7 @@ pub async fn upload(
         let file = files::ActiveModel {
             notes_id: ActiveValue::Set(notes_id),
             file_path: ActiveValue::Set(
-                path.strip_prefix(upload_dir)
+                path.strip_prefix(UPLOAD_DIR)
                     .unwrap()
                     .to_str()
                     .unwrap()
@@ -81,7 +80,7 @@ pub async fn upload(
 
 #[debug_handler]
 pub async fn list(
-    auth: auth::JWT,
+    _auth: auth::JWT,
     Path(notes_id): Path<i32>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
@@ -97,7 +96,7 @@ pub async fn list(
 
 #[debug_handler]
 pub async fn view(
-    auth: auth::JWT,
+    _auth: auth::JWT,
     Path(files_id): Path<i32>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
@@ -108,7 +107,7 @@ pub async fn view(
         .expect("File not found");
 
     // Stream the file
-    let file = tokio::fs::File::open(format!("{upload_dir}/{}", file.file_path)).await?;
+    let file = tokio::fs::File::open(format!("{UPLOAD_DIR}/{}", file.file_path)).await?;
     let stream = ReaderStream::new(file);
     let body = Body::from_stream(stream);
 
