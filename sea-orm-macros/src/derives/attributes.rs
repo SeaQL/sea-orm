@@ -14,6 +14,7 @@ pub mod derive_attr {
         pub table_name: Option<syn::Lit>,
         pub comment: Option<syn::Lit>,
         pub table_iden: Option<()>,
+        pub rename_all: Option<syn::Lit>,
     }
 }
 

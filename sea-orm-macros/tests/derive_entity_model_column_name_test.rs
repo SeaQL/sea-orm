@@ -4,8 +4,7 @@ use sea_orm::Iterable;
 use sea_orm_macros::DeriveEntityModel;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-#[sea_orm(table_name = "user")]
-#[sea_orm(rename_all = "camelCase")]
+#[sea_orm(table_name = "user", rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key)]
     id: i32,
