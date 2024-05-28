@@ -37,6 +37,9 @@
 //! + [Tutorial](https://www.sea-ql.org/sea-orm-tutorial)
 //! + [Cookbook](https://www.sea-ql.org/sea-orm-cookbook)
 //!
+//! [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
+//! Join our Discord server to chat with other members of the SeaQL community!
+//!
 //! Integration examples:
 //!
 //! + [Actix v4 Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
@@ -49,9 +52,6 @@
 //! + [Salvo Example](https://github.com/SeaQL/sea-orm/tree/master/examples/salvo_example)
 //! + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
 //! + [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example)
-//!
-//! [![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
-//! Join our Discord server to chat with other members of the SeaQL community!
 //!
 //! ## Features
 //!
