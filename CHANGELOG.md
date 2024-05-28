@@ -22,6 +22,8 @@ fn get_arity_of<E: EntityTrait>() -> usize {
 
 * Added `ActiveValue::set_if_not_equals()` https://github.com/SeaQL/sea-orm/pull/2194
 * Added `ActiveValue::try_as_ref()` https://github.com/SeaQL/sea-orm/pull/2197
+* Added `QuerySelect::order_by_with_nulls` https://github.com/SeaQL/sea-orm/pull/2228
+* Expose `get_xxx_connection_pool` by default https://github.com/SeaQL/sea-orm/pull/2233
 
 ## 1.0.0-rc.4 - 2024-05-13
 
