@@ -115,6 +115,7 @@ impl ActiveEnum {
                         // to be considered unknown attribute parameter
                         meta.value()?.parse::<LitStr>()?;
                     } else if meta.path.is_ident("rename") {
+                        is_string = true;
                         rename_rule = Some((&meta).try_into()?);
                     } else {
                         return Err(meta.error(format!(
@@ -228,7 +229,6 @@ impl ActiveEnum {
                     quote! { #num_value }
                 } else if let Some(rename_rule) = variant.rename.or(*rename_all) {
                     let variant_ident = variant.ident.convert_case(Some(rename_rule));
-
                     quote! { #variant_ident }
                 } else {
                     quote_spanned! {

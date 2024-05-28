@@ -1,4 +1,4 @@
-use sea_orm::ActiveEnum;
+use sea_orm::{entity::prelude::StringLen, ActiveEnum};
 use sea_orm_macros::{DeriveActiveEnum, EnumIter};
 
 #[derive(Debug, EnumIter, DeriveActiveEnum, Eq, PartialEq)]
@@ -32,6 +32,18 @@ enum TestEnum {
     VariantPascalCase,
     #[sea_orm(string_value = "CuStOmStRiNgVaLuE")]
     CustomStringValue,
+}
+
+#[derive(Debug, EnumIter, DeriveActiveEnum, Eq, PartialEq)]
+#[sea_orm(
+    rs_type = "String",
+    db_type = "String(StringLen::None)",
+    rename_all = "snake_case"
+)]
+pub enum TestEnum2 {
+    HelloWorld,
+    #[sea_orm(rename = "camelCase")]
+    HelloWorldTwo,
 }
 
 #[test]
@@ -106,4 +118,10 @@ fn derive_active_enum_from_value() {
         TestEnum::try_from_value(&"CuStOmStRiNgVaLuE".to_string()),
         Ok(TestEnum::CustomStringValue)
     );
+}
+
+#[test]
+fn derive_active_enum_value_2() {
+    assert_eq!(TestEnum2::HelloWorld.to_value(), "hello_world");
+    assert_eq!(TestEnum2::HelloWorldTwo.to_value(), "helloWorldTwo");
 }

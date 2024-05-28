@@ -17,7 +17,30 @@ fn get_arity_of<E: EntityTrait>() -> usize {
 }
 ```
 * Associate `ActiveModel` to `EntityTrait` https://github.com/SeaQL/sea-orm/pull/2186
+* [sea-orm-macros] Added `rename_all` attribute to `DeriveEntityModel` & `DeriveActiveEnum` https://github.com/SeaQL/sea-orm/pull/2170
+```rust
+#[derive(DeriveEntityModel)]
+#[sea_orm(table_name = "user", rename_all = "camelCase")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    id: i32,
+    first_name: String, // firstName
+    #[sea_orm(column_name = "lAsTnAmE")]
+    last_name: String, // lAsTnAmE
+}
 
+#[derive(EnumIter, DeriveActiveEnum)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)", rename_all = "camelCase")]
+pub enum TestEnum {
+    DefaultVariant, // defaultVariant
+    #[sea_orm(rename = "kebab-case")]
+    VariantKebabCase, // variant-kebab-case
+    #[sea_orm(rename = "snake_case")]
+    VariantSnakeCase, // variant_snake_case
+    #[sea_orm(string_value = "CuStOmStRiNgVaLuE")]
+    CustomStringValue, // CuStOmStRiNgVaLuE
+}
+```
 ### Enhancements
 
 * Added `ActiveValue::set_if_not_equals()` https://github.com/SeaQL/sea-orm/pull/2194
@@ -562,7 +585,7 @@ assert!(matches!(res, Ok(TryInsertResult::Conflicted)));
 
 * Fixed `DeriveActiveEnum` throwing errors because `string_value` consists non-UAX#31 compliant characters https://github.com/SeaQL/sea-orm/pull/1374
 ```rust
-#[derive(DeriveActiveEnum)]
+#[derive(EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "String", db_type = "String(None)")]
 pub enum StringValue {
     #[sea_orm(string_value = "")]
