@@ -89,7 +89,7 @@ impl ActiveEnum {
             _ => return Err(Error::InputNotEnum),
         };
 
-        let mut is_string = false;
+        let mut is_string = rename_all_rule.is_some();
         let mut is_int = false;
         let mut variants = Vec::new();
 
@@ -129,7 +129,7 @@ impl ActiveEnum {
                 .map_err(Error::Syn)?;
             }
 
-            if (is_string || rename_rule.is_some() || rename_all_rule.is_some()) && is_int {
+            if is_string && is_int {
                 return Err(Error::TT(quote_spanned! {
                     ident_span => compile_error!("All enum variants should specify the same `*_value` macro attribute, either `string_value` or `num_value` but not both");
                 }));
