@@ -1,11 +1,12 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
-use std::{fs, io::Write, path::PathBuf};
+use std::path::PathBuf;
 
 use axum::{body::Body, debug_handler, extract::Multipart};
 use loco_rs::prelude::*;
 use sea_orm::QueryOrder;
+use tokio::{fs, io::AsyncWriteExt};
 use tokio_util::io::ReaderStream;
 
 use crate::models::_entities::files;
@@ -46,16 +47,17 @@ pub async fn upload(
         let uuid = uuid::Uuid::new_v4().to_string();
         let folder = format!("{now}_{uuid}");
         let upload_folder = PathBuf::from(UPLOAD_DIR).join(&folder);
-        fs::create_dir_all(&upload_folder)?;
+        fs::create_dir_all(&upload_folder).await?;
 
         // Write the file into the newly created folder
         let path = upload_folder.join(file_name);
         let mut f = fs::OpenOptions::new()
             .create_new(true)
             .write(true)
-            .open(&path)?;
-        f.write_all(&content)?;
-        f.flush()?;
+            .open(&path)
+            .await?;
+        f.write_all(&content).await?;
+        f.flush().await?;
 
         // Record the file upload in database
         let file = files::ActiveModel {
@@ -107,7 +109,7 @@ pub async fn view(
         .expect("File not found");
 
     // Stream the file
-    let file = tokio::fs::File::open(format!("{UPLOAD_DIR}/{}", file.file_path)).await?;
+    let file = fs::File::open(format!("{UPLOAD_DIR}/{}", file.file_path)).await?;
     let stream = ReaderStream::new(file);
     let body = Body::from_stream(stream);
 
