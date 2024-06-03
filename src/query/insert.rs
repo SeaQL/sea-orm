@@ -318,7 +318,14 @@ where
     }
 
     // helper function for do_nothing in Insert<A>
-    pub fn from_insert(insert: Insert<A>) -> Self {
+    pub fn from_insert(mut insert: Insert<A>) -> Self {
+        let primary_keys = <A::Entity as EntityTrait>::PrimaryKey::iter();
+        insert.query.on_conflict(
+            OnConflict::columns(primary_keys.clone())
+                .do_nothing_on(primary_keys)
+                .to_owned(),
+        );
+
         Self {
             insert_struct: insert,
         }
