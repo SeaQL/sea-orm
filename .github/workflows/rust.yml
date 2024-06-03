@@ -440,7 +440,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [14.4]
+        version: [14, 15, 16]
         runtime: [tokio]
         tls: [native-tls]
     services:
