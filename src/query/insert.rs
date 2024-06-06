@@ -333,7 +333,7 @@ where
     }
 
     // helper function for do_nothing in Insert<A>
-    pub fn from_insert(mut insert: Insert<A>) -> Self {
+    pub fn from_insert(insert: Insert<A>) -> Self {
         Self {
             insert_struct: insert,
         }
