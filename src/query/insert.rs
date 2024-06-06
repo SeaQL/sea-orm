@@ -225,6 +225,21 @@ where
     {
         TryInsert::from_insert(self)
     }
+
+    /// On conflict do nothing
+    pub fn on_conflict_do_nothing(mut self) -> TryInsert<A>
+    where
+        A: ActiveModelTrait,
+    {
+        let primary_keys = <A::Entity as EntityTrait>::PrimaryKey::iter();
+        self.query.on_conflict(
+            OnConflict::columns(primary_keys.clone())
+                .do_nothing_on(primary_keys)
+                .to_owned(),
+        );
+
+        TryInsert::from_insert(self)
+    }
 }
 
 impl<A> QueryTrait for Insert<A>
@@ -319,13 +334,6 @@ where
 
     // helper function for do_nothing in Insert<A>
     pub fn from_insert(mut insert: Insert<A>) -> Self {
-        let primary_keys = <A::Entity as EntityTrait>::PrimaryKey::iter();
-        insert.query.on_conflict(
-            OnConflict::columns(primary_keys.clone())
-                .do_nothing_on(primary_keys)
-                .to_owned(),
-        );
-
         Self {
             insert_struct: insert,
         }

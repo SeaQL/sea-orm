@@ -41,7 +41,7 @@ pub async fn test(db: &DbConn) {
     };
 
     let conflict_insert = Bakery::insert_many([double_seaside_bakery])
-        .on_empty_do_nothing()
+        .on_conflict_do_nothing()
         .exec(db)
         .await;
 
