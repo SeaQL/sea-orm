@@ -154,7 +154,7 @@ impl EntityTransformer {
                     RelationType::HasMany
                 };
                 rel.rel_type = rel_type;
-                rel.ref_table = table_name.clone();
+                rel.ref_table = table_name.to_string();
                 rel.columns = Vec::new();
                 rel.ref_columns = Vec::new();
                 if let Some(vec) = inverse_relations.get_mut(&ref_table) {

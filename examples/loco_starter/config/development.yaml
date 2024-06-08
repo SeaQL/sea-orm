@@ -4,6 +4,8 @@
 logger:
   # Enable or disable logging.
   enable: true
+  # Enable pretty backtrace (sets RUST_BACKTRACE=1)
+  pretty_backtrace: true
   # Log level, options: trace, debug, info, warn or error.
   level: debug
   # Define the logging format. options: compact, pretty or Json
@@ -20,6 +22,9 @@ server:
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
   middlewares:
+    # Enable Etag cache header middleware
+    etag:
+      enable: true
     # Allows to limit the payload size request. payload that bigger than this file will blocked the request.
     limit_payload:
       # Enable/Disable the middleware.
@@ -37,23 +42,58 @@ server:
     # Timeout for incoming requests middleware. requests that take more time from the configuration will cute and 408 status code will returned.
     timeout_request:
       # Enable/Disable the middleware.
-      enable: true
+      enable: false
       # Duration time in milliseconds.
       timeout: 5000
     cors:
       enable: true
-    static:
-      enable: true
-      must_exist: true
-      folder:
-        uri: "/"
-        path: "frontend/dist"
-      fallback: "frontend/dist/index.html"
+      # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
+      # allow_origins:
+      #   - https://loco.rs
+      # Set the value of the [`Access-Control-Allow-Headers`][mdn] header
+      # allow_headers:
+      # - Content-Type
+      # Set the value of the [`Access-Control-Allow-Methods`][mdn] header
+      # allow_methods:
+      #   - POST
+      # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
+      # max_age: 3600
+
+# Worker Configuration
+workers:
+  # specifies the worker mode. Options:
+  #   - BackgroundQueue - Workers operate asynchronously in the background, processing queued.
+  #   - ForegroundBlocking - Workers operate in the foreground and block until tasks are completed.
+  #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
+  mode: BackgroundQueue
+
+# Mailer Configuration.
+mailer:
+  # SMTP mailer configuration.
+  smtp:
+    # Enable/Disable smtp mailer.
+    enable: true
+    # SMTP server host. e.x localhost, smtp.gmail.com
+    host: {{ get_env(name="MAILER_HOST", default="localhost") }}
+    # SMTP server port
+    port: 1025
+    # Use secure connection (SSL/TLS).
+    secure: false
+    # auth:
+    #   user:
+    #   password:
+
+# Initializers Configuration
+# initializers:
+#  oauth2:
+#    authorization_code: # Authorization code grant type
+#      - client_identifier: google # Identifier for the OAuth2 provider. Replace 'google' with your provider's name if different, must be unique within the oauth2 config.
+#        ... other fields
 
 # Database Configuration
 database:
   # Database connection URI
-  uri: sqlite://db.sqlite?mode=rwc
+  uri: {{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_starter_development") }}
   # When enabled, the sql query will be logged.
   enable_logging: false
   # Set the timeout duration when acquiring a connection.
@@ -69,4 +109,21 @@ database:
   # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_truncate: false
   # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
-  dangerously_recreate: true
+  dangerously_recreate: false
+
+# Redis Configuration
+redis:
+  # Redis connection URI
+  uri: {{ get_env(name="REDIS_URL", default="redis://127.0.0.1") }}
+  # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
+  dangerously_flush: false
+
+# Authentication Configuration
+auth:
+  # JWT authentication
+  jwt:
+    # Secret key for token generation and verification
+    secret: pByQUgg4GmXKAqQQvAGo
+    # Token expiration time in seconds
+    expiration: 604800 # 7 days
+

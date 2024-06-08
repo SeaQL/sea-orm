@@ -1,3 +1,4 @@
+use super::case_style::{CaseStyle, CaseStyleHelpers};
 use super::util::camel_case_with_escaped_non_uax31;
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
@@ -17,12 +18,14 @@ struct ActiveEnum {
     db_type: TokenStream,
     is_string: bool,
     variants: Vec<ActiveEnumVariant>,
+    rename_all: Option<CaseStyle>,
 }
 
 struct ActiveEnumVariant {
     ident: syn::Ident,
     string_value: Option<LitStr>,
     num_value: Option<LitInt>,
+    rename: Option<CaseStyle>,
 }
 
 impl ActiveEnum {
@@ -37,6 +40,7 @@ impl ActiveEnum {
         let mut db_type = Err(Error::TT(quote_spanned! {
             ident_span => compile_error!("Missing macro attribute `db_type`");
         }));
+        let mut rename_all = None;
 
         input
             .attrs
@@ -67,6 +71,8 @@ impl ActiveEnum {
                     } else if meta.path.is_ident("enum_name") {
                         let litstr: LitStr = meta.value()?.parse()?;
                         enum_name = litstr.value();
+                    } else if meta.path.is_ident("rename_all") {
+                        rename_all = Some((&meta).try_into()?);
                     } else {
                         return Err(meta.error(format!(
                             "Unknown attribute parameter found: {:?}",
@@ -83,13 +89,16 @@ impl ActiveEnum {
             _ => return Err(Error::InputNotEnum),
         };
 
-        let mut is_string = false;
+        let mut is_string = rename_all.is_some();
         let mut is_int = false;
         let mut variants = Vec::new();
+
         for variant in variant_vec {
             let variant_span = variant.ident.span();
             let mut string_value = None;
             let mut num_value = None;
+            let mut rename_rule = None;
+
             for attr in variant.attrs.iter() {
                 if !attr.path().is_ident("sea_orm") {
                     continue;
@@ -105,6 +114,9 @@ impl ActiveEnum {
                         // This is a placeholder to prevent the `display_value` proc_macro attribute of `DeriveDisplay`
                         // to be considered unknown attribute parameter
                         meta.value()?.parse::<LitStr>()?;
+                    } else if meta.path.is_ident("rename") {
+                        is_string = true;
+                        rename_rule = Some((&meta).try_into()?);
                     } else {
                         return Err(meta.error(format!(
                             "Unknown attribute parameter found: {:?}",
@@ -123,7 +135,8 @@ impl ActiveEnum {
                 }));
             }
 
-            if string_value.is_none() && num_value.is_none() {
+            if string_value.is_none() && num_value.is_none() && rename_rule.or(rename_all).is_none()
+            {
                 match variant.discriminant {
                     Some((_, Expr::Lit(exprlit))) => {
                         if let Lit::Int(litint) = exprlit.lit {
@@ -155,7 +168,7 @@ impl ActiveEnum {
                     }
                     _ => {
                         return Err(Error::TT(quote_spanned! {
-                            variant_span => compile_error!("Missing macro attribute, either `string_value` or `num_value` should be specified or specify repr[X] and have a value for every entry");
+                            variant_span => compile_error!("Missing macro attribute, either `string_value`, `num_value` or `rename` should be specified or specify repr[X] and have a value for every entry");
                         }));
                     }
                 }
@@ -165,6 +178,7 @@ impl ActiveEnum {
                 ident: variant.ident,
                 string_value,
                 num_value,
+                rename: rename_rule,
             });
         }
 
@@ -175,6 +189,7 @@ impl ActiveEnum {
             db_type: db_type?,
             is_string,
             variants,
+            rename_all,
         })
     }
 
@@ -192,6 +207,7 @@ impl ActiveEnum {
             db_type,
             is_string,
             variants,
+            rename_all,
         } = self;
 
         let variant_idents: Vec<syn::Ident> = variants
@@ -209,9 +225,12 @@ impl ActiveEnum {
                     quote! { #string }
                 } else if let Some(num_value) = &variant.num_value {
                     quote! { #num_value }
+                } else if let Some(rename_rule) = variant.rename.or(*rename_all) {
+                    let variant_ident = variant.ident.convert_case(Some(rename_rule));
+                    quote! { #variant_ident }
                 } else {
                     quote_spanned! {
-                        variant_span => compile_error!("Missing macro attribute, either `string_value` or `num_value` should be specified");
+                        variant_span => compile_error!("Missing macro attribute, either `string_value`, `num_value` or `rename_all` should be specified");
                     }
                 }
             })
@@ -232,6 +251,9 @@ impl ActiveEnum {
                     .string_value
                     .as_ref()
                     .map(|string_value| string_value.value())
+                    .or(variant
+                        .rename
+                        .map(|rename| variant.ident.convert_case(Some(rename))))
             })
             .collect();
 

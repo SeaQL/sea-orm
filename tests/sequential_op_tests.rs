@@ -1,15 +1,12 @@
-#![cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
-pub use chrono::offset::Utc;
-pub use common::{bakery_chain::*, setup::*, TestContext};
-pub use rust_decimal::prelude::*;
-pub use sea_orm::{entity::*, query::*, DatabaseConnection, FromQueryResult};
-pub use uuid::Uuid;
+use chrono::offset::Utc;
+use common::{bakery_chain::*, setup::*, TestContext};
+use rust_decimal::prelude::*;
+use sea_orm::{entity::*, query::*, DatabaseConnection, FromQueryResult};
+use uuid::Uuid;
 
 // Run the test locally:
 // DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std --test sequential_op_tests

@@ -1,7 +1,8 @@
 use crate::{
     error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, Iterable,
-    ModelTrait, PartialModelTrait, PrimaryKeyToColumn, QueryResult, QuerySelect, Select, SelectA,
-    SelectB, SelectTwo, SelectTwoMany, Statement, StreamTrait, TryGetableMany,
+    ModelTrait, PartialModelTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait,
+    QueryResult, QuerySelect, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement,
+    StreamTrait, TryGetableMany,
 };
 use futures::{Stream, TryStreamExt};
 use sea_query::{SelectStatement, Value};
@@ -990,6 +991,7 @@ where
     }
 }
 
+#[allow(clippy::unwrap_used)]
 fn consolidate_query_result<L, R>(
     rows: Vec<(L::Model, Option<R::Model>)>,
 ) -> Vec<(L::Model, Vec<R::Model>)>
@@ -997,15 +999,26 @@ where
     L: EntityTrait,
     R: EntityTrait,
 {
-    // This is a strong point to consider adding a trait associated constant
-    // to PrimaryKeyTrait to indicate the arity
-    let pkcol: Vec<_> = <L::PrimaryKey as Iterable>::iter()
-        .map(|pk| pk.into_column())
-        .collect();
-    if pkcol.len() == 1 {
-        consolidate_query_result_of::<L, R, UnitPk<L>>(rows, UnitPk(pkcol[0]))
-    } else {
-        consolidate_query_result_of::<L, R, TuplePk<L>>(rows, TuplePk(pkcol))
+    match <<L::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY {
+        1 => {
+            let col = <L::PrimaryKey as Iterable>::iter()
+                .next()
+                .unwrap()
+                .into_column();
+            consolidate_query_result_of::<L, R, UnitPk<L>>(rows, UnitPk(col))
+        }
+        2 => {
+            let mut iter = <L::PrimaryKey as Iterable>::iter();
+            let col1 = iter.next().unwrap().into_column();
+            let col2 = iter.next().unwrap().into_column();
+            consolidate_query_result_of::<L, R, PairPk<L>>(rows, PairPk(col1, col2))
+        }
+        _ => {
+            let cols: Vec<_> = <L::PrimaryKey as Iterable>::iter()
+                .map(|pk| pk.into_column())
+                .collect();
+            consolidate_query_result_of::<L, R, TuplePk<L>>(rows, TuplePk(cols))
+        }
     }
 }
 
@@ -1014,14 +1027,22 @@ trait ModelKey<E: EntityTrait> {
     fn get(&self, model: &E::Model) -> Self::Type;
 }
 
-// This could have been an array of [E::Column; <E::PrimaryKey as PrimaryKeyTrait>::ARITY]
+// This could have been an array of [E::Column; <E::PrimaryKey as PrimaryKeyTrait>::ARITY], but it still doesn't compile
 struct UnitPk<E: EntityTrait>(E::Column);
+struct PairPk<E: EntityTrait>(E::Column, E::Column);
 struct TuplePk<E: EntityTrait>(Vec<E::Column>);
 
 impl<E: EntityTrait> ModelKey<E> for UnitPk<E> {
     type Type = Value;
     fn get(&self, model: &E::Model) -> Self::Type {
         model.get(self.0)
+    }
+}
+
+impl<E: EntityTrait> ModelKey<E> for PairPk<E> {
+    type Type = (Value, Value);
+    fn get(&self, model: &E::Model) -> Self::Type {
+        (model.get(self.0), model.get(self.1))
     }
 }
 
@@ -1054,8 +1075,8 @@ where
                 } else {
                     acc.insert(key, vec![value]);
                 }
-            } else if acc.get(&key).is_none() {
-                acc.insert(key, vec![]);
+            } else {
+                acc.entry(key).or_default();
             }
 
             acc

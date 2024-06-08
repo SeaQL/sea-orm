@@ -1,7 +1,7 @@
 use crate::{
-    ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne, FromQueryResult, Insert,
-    ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related, RelationBuilder,
-    RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
+    ActiveModelBehavior, ActiveModelTrait, ColumnTrait, Delete, DeleteMany, DeleteOne,
+    FromQueryResult, Insert, ModelTrait, PrimaryKeyToColumn, PrimaryKeyTrait, QueryFilter, Related,
+    RelationBuilder, RelationTrait, RelationType, Select, Update, UpdateMany, UpdateOne,
 };
 use sea_query::{Alias, Iden, IntoIden, IntoTableRef, IntoValueTuple, TableRef};
 use std::fmt::Debug;
@@ -57,6 +57,9 @@ pub trait EntityName: IdenStatic + Default {
 pub trait EntityTrait: EntityName {
     #[allow(missing_docs)]
     type Model: ModelTrait<Entity = Self> + FromQueryResult;
+
+    #[allow(missing_docs)]
+    type ActiveModel: ActiveModelBehavior<Entity = Self>;
 
     #[allow(missing_docs)]
     type Column: ColumnTrait;

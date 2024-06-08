@@ -1,8 +1,5 @@
-#![cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
 pub use chrono::offset::Utc;

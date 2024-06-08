@@ -1298,7 +1298,6 @@ mod tests {
     use sea_query::Value;
 
     use super::*;
-    use crate::error::*;
 
     #[test]
     fn from_try_get_error() {

@@ -1,3 +1,5 @@
+#![allow(unused_imports, dead_code)]
+
 //! Configurations for test cases and examples. Not intended for actual use.
 
 pub mod cake;
