@@ -66,3 +66,5 @@ runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls", "sea-schema/runtime-tokio-r
 
 [patch.crates-io]
 sea-schema = { git = "https://github.com/seaql/sea-schema", branch = "non-tls-runtime" }
+sea-query = { git = "https://github.com/seaql/sea-query", branch = "non-tls-runtime" }
+sea-query-binder = { git = "https://github.com/seaql/sea-query", branch = "non-tls-runtime" }
