@@ -1,4 +1,21 @@
+use std::borrow::Cow;
 use std::time::Duration;
+
+use tracing::instrument;
+
+pub use connection::*;
+pub use db_connection::*;
+#[cfg(feature = "mock")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
+pub use mock::*;
+#[cfg(feature = "proxy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
+pub use proxy::*;
+pub use statement::*;
+pub use stream::*;
+pub use transaction::*;
+
+use crate::error::*;
 
 mod connection;
 mod db_connection;
@@ -11,22 +28,6 @@ mod proxy;
 mod statement;
 mod stream;
 mod transaction;
-
-pub use connection::*;
-pub use db_connection::*;
-#[cfg(feature = "mock")]
-#[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
-pub use mock::*;
-#[cfg(feature = "proxy")]
-#[cfg_attr(docsrs, doc(cfg(feature = "proxy")))]
-pub use proxy::*;
-pub use statement::*;
-use std::borrow::Cow;
-pub use stream::*;
-use tracing::instrument;
-pub use transaction::*;
-
-use crate::error::*;
 
 /// Defines a database
 #[derive(Debug, Default)]
@@ -63,6 +64,7 @@ pub struct ConnectOptions {
     /// Schema search path (PostgreSQL only)
     pub(crate) schema_search_path: Option<String>,
     pub(crate) test_before_acquire: bool,
+    pub(crate) application_name: Option<&'static str>,
 }
 
 impl Database {
@@ -157,6 +159,7 @@ impl ConnectOptions {
             sqlcipher_key: None,
             schema_search_path: None,
             test_before_acquire: true,
+            application_name: None,
         }
     }
 
@@ -296,5 +299,16 @@ impl ConnectOptions {
     pub fn test_before_acquire(&mut self, value: bool) -> &mut Self {
         self.test_before_acquire = value;
         self
+    }
+
+    /// Set the application name for the connection (PostgreSQL only)
+    pub fn application_name(&mut self, value: &'static str) -> &mut Self {
+        self.application_name = Some(value);
+        self
+    }
+
+    /// Get the application name for the connection (PostgreSQL only)
+    pub fn get_application_name(&self) -> Option<&'static str> {
+        self.application_name
     }
 }
