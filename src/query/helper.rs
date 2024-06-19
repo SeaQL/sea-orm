@@ -519,9 +519,7 @@ pub trait QuerySelect: Sized {
     ///     "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
     /// );
     /// ```
-    ///
-    /// FIXME: change signature to `mut self`
-    fn expr_as<T, A>(&mut self, expr: T, alias: A) -> &mut Self
+    fn expr_as<T, A>(mut self, expr: T, alias: A) -> Self
     where
         T: Into<SimpleExpr>,
         A: IntoIdentity,
