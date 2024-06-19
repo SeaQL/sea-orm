@@ -528,7 +528,7 @@ pub trait QuerySelect: Sized {
         self
     }
 
-    /// Same of `expr_as`. Here for legacy reasons.
+    /// Same as `expr_as`. Here for legacy reasons.
     ///
     /// Select column.
     ///
