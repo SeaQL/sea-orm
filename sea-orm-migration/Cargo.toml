@@ -55,6 +55,3 @@ with-rust_decimal = ["sea-orm/with-rust_decimal"]
 with-bigdecimal = ["sea-orm/with-bigdecimal"]
 with-uuid = ["sea-orm/with-uuid"]
 with-time = ["sea-orm/with-time"]
-
-[patch.crates-io]
-sea-schema = { git = "https://github.com/seaql/sea-schema", branch = "non-tls-runtime" }
