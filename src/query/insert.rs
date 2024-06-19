@@ -227,15 +227,15 @@ where
     }
 
     /// Set ON CONFLICT do nothing, but with MySQL specific polyfill.
-    /// 
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
-    /// 
+    ///
     /// let orange = cake::ActiveModel {
     ///     id: ActiveValue::set(2),
     ///     name: ActiveValue::set("Orange".to_owned()),
     /// };
-    /// 
+    ///
     /// assert_eq!(
     ///     cake::Entity::insert(orange.clone())
     ///         .on_conflict_do_nothing()
