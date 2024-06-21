@@ -226,7 +226,7 @@ where
         TryInsert::from_insert(self)
     }
 
-    /// Set ON CONFLICT do nothing, but with MySQL specific polyfill.
+    /// Set ON CONFLICT on primary key do nothing, but with MySQL specific polyfill.
     ///
     /// ```
     /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
