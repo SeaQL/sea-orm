@@ -27,7 +27,7 @@ path = "src/lib.rs"
 async-stream = { version = "0.3", default-features = false }
 async-trait = { version = "0.1", default-features = false }
 chrono = { version = "0.4.30", default-features = false, optional = true }
-time = { version = "0.3", default-features = false, optional = true }
+time = { version = "0.3.35", default-features = false, optional = true }
 futures = { version = "0.3", default-features = false, features = ["std"] }
 log = { version = "0.4", default-features = false }
 tracing = { version = "0.1", default-features = false, features = ["attributes", "log"] }
@@ -56,7 +56,7 @@ maplit = { version = "1" }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 sea-orm = { path = ".", features = ["mock", "debug-print", "tests-cfg", "postgres-array", "sea-orm-internal"] }
 pretty_assertions = { version = "0.7" }
-time = { version = "0.3", features = ["macros"] }
+time = { version = "0.3.35", features = ["macros"] }
 uuid = { version = "1", features = ["v4"] }
 once_cell = "1.8"
 arraystring = "0.3"
