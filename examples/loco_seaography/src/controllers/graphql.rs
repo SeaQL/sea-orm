@@ -1,5 +1,5 @@
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
-use axum::{extract::Request, body::Body};
+use axum::{body::Body, extract::Request};
 use loco_rs::prelude::*;
 use tower_service::Service;
 
@@ -7,13 +7,18 @@ use crate::graphql::query_root;
 
 // GraphQL playground UI
 async fn graphql_playground() -> Result<Response> {
-    // The `GraphQLPlaygroundConfig` take one parameter which is the URL of the GraphQL handler: `/api/graphql`
+    // The `GraphQLPlaygroundConfig` take one parameter
+    // which is the URL of the GraphQL handler: `/api/graphql`
     let res = playground_source(GraphQLPlaygroundConfig::new("/api/graphql"));
 
     Ok(Response::new(res.into()))
 }
 
-async fn graphql_handler(_auth: auth::JWT, State(ctx): State<AppContext>, req: Request<Body>) -> Result<Response> {
+async fn graphql_handler(
+    _auth: auth::JWT,
+    State(ctx): State<AppContext>,
+    req: Request<Body>,
+) -> Result<Response> {
     // Construct the the GraphQL query root
     let schema = query_root::schema(ctx.db.clone(), None, None).unwrap();
     // GraphQL handler

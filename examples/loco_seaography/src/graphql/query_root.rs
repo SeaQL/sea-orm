@@ -17,11 +17,7 @@ pub fn schema(
     seaography::register_entities!(
         builder,
         // List all models we want to include in the GraphQL endpoint here
-        [
-            files,
-            notes,
-            users,
-        ]
+        [files, notes, users]
     );
     // Configure async GraphQL limits
     let schema = builder.schema_builder();
