@@ -28,7 +28,7 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 
 [dependencies.sea-orm]
 path = "../../" # remove this line in your own project
-version = "1.0.0-rc.6" # sea-orm version
+version = "1.0.0-rc.7" # sea-orm version
 features = [
   "sqlx-sqlite",
   "sqlx-postgres",
