@@ -52,7 +52,7 @@ pub trait QuerySelect: Sized {
     ///         .column(lunch_set::Column::Tea)
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     r#"SELECT CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    ///     r#"SELECT CAST("lunch_set"."tea" AS "text") FROM "lunch_set""#
     /// );
     /// assert_eq!(
     ///     lunch_set::Entity::find()
@@ -141,7 +141,7 @@ pub trait QuerySelect: Sized {
     ///         .columns([lunch_set::Column::Name, lunch_set::Column::Tea])
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     r#"SELECT "lunch_set"."name", CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    ///     r#"SELECT "lunch_set"."name", CAST("lunch_set"."tea" AS "text") FROM "lunch_set""#
     /// );
     /// assert_eq!(
     ///     lunch_set::Entity::find()
