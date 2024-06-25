@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Upgrades
 
-* Upgrade `sea-query-binder` to `0.6.0-rc.4`
-* Upgrade `time` to `0.3.36`
+* Upgrade `sea-query-binder` to `0.6.0-rc.4` https://github.com/SeaQL/sea-orm/pull/2267
+* Upgrade `time` to `0.3.36` https://github.com/SeaQL/sea-orm/pull/2267
 
 ## 1.0.0-rc.6 - 2024-06-19
 
