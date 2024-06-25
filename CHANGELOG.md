@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.0.0-rc.7 - 2024-06-25
+
+### Upgrades
+
+* Upgrade `sea-query-binder` to `0.6.0-rc.4`
+* Upgrade `time` to `0.3.36`
+
 ## 1.0.0-rc.6 - 2024-06-19
 
 ### Enhancements
