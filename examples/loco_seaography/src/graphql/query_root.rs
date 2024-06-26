@@ -8,8 +8,8 @@ lazy_static::lazy_static! { static ref CONTEXT: BuilderContext = BuilderContext:
 
 pub fn schema(
     database: DatabaseConnection,
-    depth: Option<usize>,
-    complexity: Option<usize>,
+    depth: usize,
+    complexity: usize,
 ) -> Result<Schema, SchemaError> {
     // Builder of Seaography query root
     let mut builder = Builder::new(&CONTEXT, database.clone());
@@ -20,17 +20,12 @@ pub fn schema(
         [files, notes, users]
     );
     // Configure async GraphQL limits
-    let schema = builder.schema_builder();
-    let schema = if let Some(depth) = depth {
-        schema.limit_depth(depth)
-    } else {
-        schema
-    };
-    let schema = if let Some(complexity) = complexity {
-        schema.limit_complexity(complexity)
-    } else {
-        schema
-    };
+    let schema = builder
+        .schema_builder()
+        // The depth is the number of nesting levels of the field
+        .limit_depth(depth)
+        // The complexity is the number of fields in the query
+        .limit_complexity(complexity);
     // Finish up with including SeaORM database connection
     schema.data(database).finish()
 }
