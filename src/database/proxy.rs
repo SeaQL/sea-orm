@@ -4,24 +4,25 @@ use sea_query::{Value, ValueType};
 use std::{collections::BTreeMap, fmt::Debug};
 
 /// Defines the [ProxyDatabaseTrait] to save the functions
+#[async_trait::async_trait]
 pub trait ProxyDatabaseTrait: Send + Sync + std::fmt::Debug {
     /// Execute a query in the [ProxyDatabase], and return the query results
-    fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr>;
+    async fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr>;
 
     /// Execute a command in the [ProxyDatabase], and report the number of rows affected
-    fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr>;
+    async fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr>;
 
     /// Begin a transaction in the [ProxyDatabase]
-    fn begin(&self) {}
+    async fn begin(&self) {}
 
     /// Commit a transaction in the [ProxyDatabase]
-    fn commit(&self) {}
+    async fn commit(&self) {}
 
     /// Rollback a transaction in the [ProxyDatabase]
-    fn rollback(&self) {}
+    async fn rollback(&self) {}
 
     /// Ping the [ProxyDatabase], it should return an error if the database is not available
-    fn ping(&self) -> Result<(), DbErr> {
+    async fn ping(&self) -> Result<(), DbErr> {
         Ok(())
     }
 }
@@ -207,12 +208,12 @@ mod tests {
     struct ProxyDb {}
 
     impl ProxyDatabaseTrait for ProxyDb {
-        fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr> {
+        async fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr> {
             println!("SQL query: {}", statement.sql);
             Ok(vec![].into())
         }
 
-        fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
+        async fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
             println!("SQL execute: {}", statement.sql);
             Ok(ProxyExecResult {
                 last_insert_id: 1,

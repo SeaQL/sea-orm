@@ -58,21 +58,27 @@ impl ProxyDatabaseConnection {
 
     /// Execute the SQL statement in the [ProxyDatabase]
     #[instrument(level = "trace")]
-    pub fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
+    pub async fn execute(&self, statement: Statement) -> Result<ExecResult, DbErr> {
         debug_print!("{}", statement);
         Ok(self
             .proxy
             .lock()
             .map_err(exec_err)?
-            .execute(statement)?
+            .execute(statement)
+            .await?
             .into())
     }
 
     /// Return one [QueryResult] if the query was successful
     #[instrument(level = "trace")]
-    pub fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, DbErr> {
+    pub async fn query_one(&self, statement: Statement) -> Result<Option<QueryResult>, DbErr> {
         debug_print!("{}", statement);
-        let result = self.proxy.lock().map_err(query_err)?.query(statement)?;
+        let result = self
+            .proxy
+            .lock()
+            .map_err(query_err)?
+            .query(statement)
+            .await?;
 
         if let Some(first) = result.first() {
             return Ok(Some(QueryResult {
@@ -85,9 +91,14 @@ impl ProxyDatabaseConnection {
 
     /// Return all [QueryResult]s if the query was successful
     #[instrument(level = "trace")]
-    pub fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
+    pub async fn query_all(&self, statement: Statement) -> Result<Vec<QueryResult>, DbErr> {
         debug_print!("{}", statement);
-        let result = self.proxy.lock().map_err(query_err)?.query(statement)?;
+        let result = self
+            .proxy
+            .lock()
+            .map_err(query_err)?
+            .query(statement)
+            .await?;
 
         Ok(result
             .into_iter()
@@ -99,11 +110,11 @@ impl ProxyDatabaseConnection {
 
     /// Return [QueryResult]s  from a multi-query operation
     #[instrument(level = "trace")]
-    pub fn fetch(
+    pub async fn fetch(
         &self,
         statement: &Statement,
     ) -> Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send>> {
-        match self.query_all(statement.clone()) {
+        match self.query_all(statement.clone()).await {
             Ok(v) => Box::pin(futures::stream::iter(v.into_iter().map(Ok))),
             Err(e) => Box::pin(futures::stream::iter(Some(Err(e)).into_iter())),
         }
@@ -111,31 +122,37 @@ impl ProxyDatabaseConnection {
 
     /// Create a statement block  of SQL statements that execute together.
     #[instrument(level = "trace")]
-    pub fn begin(&self) {
-        self.proxy.lock().expect("Failed to acquire mocker").begin()
+    pub async fn begin(&self) {
+        self.proxy
+            .lock()
+            .expect("Failed to acquire mocker")
+            .begin()
+            .await
     }
 
     /// Commit a transaction atomically to the database
     #[instrument(level = "trace")]
-    pub fn commit(&self) {
+    pub async fn commit(&self) {
         self.proxy
             .lock()
             .expect("Failed to acquire mocker")
             .commit()
+            .await
     }
 
     /// Roll back a faulty transaction
     #[instrument(level = "trace")]
-    pub fn rollback(&self) {
+    pub async fn rollback(&self) {
         self.proxy
             .lock()
             .expect("Failed to acquire mocker")
             .rollback()
+            .await
     }
 
     /// Checks if a connection to the database is still valid.
-    pub fn ping(&self) -> Result<(), DbErr> {
-        self.proxy.lock().map_err(query_err)?.ping()
+    pub async fn ping(&self) -> Result<(), DbErr> {
+        self.proxy.lock().map_err(query_err)?.ping().await
     }
 }
 
