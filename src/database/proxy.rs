@@ -224,28 +224,25 @@ mod tests {
 
     #[smol_potat::test]
     async fn create_proxy_conn() {
-        let _db =
-            Database::connect_proxy(DbBackend::MySql, Arc::new(Mutex::new(Box::new(ProxyDb {}))))
-                .await
-                .unwrap();
+        let _db = Database::connect_proxy(DbBackend::MySql, Arc::new(Box::new(ProxyDb {})))
+            .await
+            .unwrap();
     }
 
     #[smol_potat::test]
     async fn select_rows() {
-        let db =
-            Database::connect_proxy(DbBackend::MySql, Arc::new(Mutex::new(Box::new(ProxyDb {}))))
-                .await
-                .unwrap();
+        let db = Database::connect_proxy(DbBackend::MySql, Arc::new(Box::new(ProxyDb {})))
+            .await
+            .unwrap();
 
         let _ = cake::Entity::find().all(&db).await;
     }
 
     #[smol_potat::test]
     async fn insert_one_row() {
-        let db =
-            Database::connect_proxy(DbBackend::MySql, Arc::new(Mutex::new(Box::new(ProxyDb {}))))
-                .await
-                .unwrap();
+        let db = Database::connect_proxy(DbBackend::MySql, Arc::new(Box::new(ProxyDb {})))
+            .await
+            .unwrap();
 
         let item = cake::ActiveModel {
             id: NotSet,

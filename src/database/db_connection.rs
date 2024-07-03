@@ -470,7 +470,7 @@ impl DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.ping(),
             #[cfg(feature = "proxy")]
-            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.ping(),
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.ping().await,
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
