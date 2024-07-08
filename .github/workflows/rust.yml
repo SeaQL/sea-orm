@@ -274,8 +274,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           target: wasm32-unknown-unknown
-      - run: npx wrangler deploy --dry-run --outdir=dist
-        working-directory: examples/proxy_cloudflare_worker_example
+      - run: cd examples/proxy_cloudflare_worker_example && npx wrangler deploy --dry-run --outdir=dist
 
   issues-matrix:
     name: Issues Matrix
