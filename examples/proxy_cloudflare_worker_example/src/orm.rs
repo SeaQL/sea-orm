@@ -106,8 +106,8 @@ impl ProxyDb {
             Some(Values(values)) => values
                 .iter()
                 .map(|val| match &val {
-                    Value::BigInt(Some(val)) => JsValue::from(*val),
-                    Value::BigUnsigned(Some(val)) => JsValue::from(*val),
+                    Value::BigInt(Some(val)) => JsValue::from(val.to_string()),
+                    Value::BigUnsigned(Some(val)) => JsValue::from(val.to_string()),
                     Value::Int(Some(val)) => JsValue::from(*val),
                     Value::Unsigned(Some(val)) => JsValue::from(*val),
                     Value::SmallInt(Some(val)) => JsValue::from(*val),
