@@ -263,6 +263,20 @@ jobs:
       - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
       - run: ${{'! '}}${{ '[ -d "' }}${{ matrix.path }}${{ '/service" ]' }} || find ${{ matrix.path }}/service -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {} --features mock
 
+  example-cloudflare-proxy:
+    name: Example on Cloudflare Worker D1
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: latest
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: wasm32-unknown-unknown
+      - run: npx wrangler deploy --dry-run --outdir=dist
+        working-directory: examples/proxy_cloudflare_worker_example
+
   issues-matrix:
     name: Issues Matrix
     needs: init
