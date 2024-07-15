@@ -5,6 +5,164 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.0.0 - Pending
+
+### Versions
+
++ `1.0.0-rc.7`: 2024-06-25
++ `1.0.0-rc.6`: 2024-06-19
++ `1.0.0-rc.5`: 2024-05-29
++ `1.0.0-rc.4`: 2024-05-13
++ `1.0.0-rc.3`: 2024-03-26
++ `1.0.0-rc.2`: 2024-03-15
++ `1.0.0-rc.1`: 2024-02-06
+
+### New Features
+
+* Introduce `PrimaryKeyArity` with `ARITY` constant https://github.com/SeaQL/sea-orm/pull/2185
+```rust
+fn get_arity_of<E: EntityTrait>() -> usize {
+    E::PrimaryKey::iter().count() // before; runtime
+    <<E::PrimaryKey as PrimaryKeyTrait>::ValueType as PrimaryKeyArity>::ARITY // now; compile-time
+}
+```
+* Associate `ActiveModel` to `EntityTrait` https://github.com/SeaQL/sea-orm/pull/2186
+* [sea-orm-macros] Added `rename_all` attribute to `DeriveEntityModel` & `DeriveActiveEnum` https://github.com/SeaQL/sea-orm/pull/2170
+```rust
+#[derive(DeriveEntityModel)]
+#[sea_orm(table_name = "user", rename_all = "camelCase")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    id: i32,
+    first_name: String, // firstName
+    #[sea_orm(column_name = "lAsTnAmE")]
+    last_name: String, // lAsTnAmE
+}
+
+#[derive(EnumIter, DeriveActiveEnum)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)", rename_all = "camelCase")]
+pub enum TestEnum {
+    DefaultVariant, // defaultVariant
+    #[sea_orm(rename = "kebab-case")]
+    VariantKebabCase, // variant-kebab-case
+    #[sea_orm(rename = "snake_case")]
+    VariantSnakeCase, // variant_snake_case
+    #[sea_orm(string_value = "CuStOmStRiNgVaLuE")]
+    CustomStringValue, // CuStOmStRiNgVaLuE
+}
+```
+* [sea-orm-migration] schema helper https://github.com/SeaQL/sea-orm/pull/2099
+```rust
+// Remember to import `sea_orm_migration::schema::*`
+use sea_orm_migration::{prelude::*, schema::*};
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .create_table(
+                Table::create()
+                    .table(Users::Table)
+                    .if_not_exists()
+                    .col(pk_auto(Users::Id)) // Primary key with auto-increment
+                    .col(uuid(Users::Pid)) // UUID column
+                    .col(string_uniq(Users::Email)) // String column with unique constraint
+                    .col(string(Users::Password)) // String column
+                    .col(string(Users::ApiKey).unique_key())
+                    .col(string(Users::Name))
+                    .col(string_null(Users::ResetToken)) // Nullable string column
+                    .col(timestamp_null(Users::ResetSentAt)) // Nullable timestamp column
+                    .col(string_null(Users::EmailVerificationToken))
+                    .col(timestamp_null(Users::EmailVerificationSentAt))
+                    .col(timestamp_null(Users::EmailVerifiedAt))
+                    .to_owned(),
+            )
+            .await
+    }
+
+    // ...
+}
+```
+
+### Enhancements
+
+* Added non-TLS runtime https://github.com/SeaQL/sea-orm/pull/2256
+* Added `QuerySelect::tbl_col_as`
+* Added `Insert::on_conflict_do_nothing` https://github.com/SeaQL/sea-orm/pull/2244
+* Migration schema nullable column set NULL explicitly https://github.com/SeaQL/sea-orm/pull/2255
+* Added `ActiveValue::set_if_not_equals()` https://github.com/SeaQL/sea-orm/pull/2194
+* Added `ActiveValue::try_as_ref()` https://github.com/SeaQL/sea-orm/pull/2197
+* Added `QuerySelect::order_by_with_nulls` https://github.com/SeaQL/sea-orm/pull/2228
+* Expose `get_xxx_connection_pool` by default https://github.com/SeaQL/sea-orm/pull/2233
+* Added `QueryResult::column_names` https://github.com/SeaQL/sea-orm/pull/2148
+* [sea-orm-macro] Add `@generated` in generated code https://github.com/SeaQL/sea-orm/pull/2199
+* [sea-orm-macro] Qualify traits in `DeriveActiveModel` macro https://github.com/SeaQL/sea-orm/pull/1665
+* [sea-orm-cli] Fix `migrate generate` on empty `mod.rs` files https://github.com/SeaQL/sea-orm/pull/2064
+* `DerivePartialModel` macro attribute `entity` now supports `syn::Type` https://github.com/SeaQL/sea-orm/pull/2137
+```rust
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "<entity::Model as ModelTrait>::Entity")]
+struct EntityNameNotAIdent {
+    #[sea_orm(from_col = "foo2")]
+    _foo: i32,
+    #[sea_orm(from_col = "bar2")]
+    _bar: String,
+}
+```
+* Added `RelationDef::from_alias()` https://github.com/SeaQL/sea-orm/pull/2146
+```rust
+let cf = Alias::new("cf");
+
+assert_eq!(
+    cake::Entity::find()
+        .join_as(
+            JoinType::LeftJoin,
+            cake_filling::Relation::Cake.def().rev(),
+            cf.clone()
+        )
+        .join(
+            JoinType::LeftJoin,
+            cake_filling::Relation::Filling.def().from_alias(cf)
+        )
+        .build(DbBackend::MySql)
+        .to_string(),
+    [
+        "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+        "LEFT JOIN `cake_filling` AS `cf` ON `cake`.`id` = `cf`.`cake_id`",
+        "LEFT JOIN `filling` ON `cf`.`filling_id` = `filling`.`id`",
+    ]
+    .join(" ")
+);
+```
+
+### Bug Fixes
+
+* Set schema search path in Postgres without enclosing single quote https://github.com/SeaQL/sea-orm/pull/2241
+* [sea-orm-cli] Generate `has_one` relation for foreign key of unique index / constraint https://github.com/SeaQL/sea-orm/pull/2254
+
+### Breaking changes
+
+* Renamed `ConnectOptions::pool_options()` to `ConnectOptions::sqlx_pool_options()` https://github.com/SeaQL/sea-orm/pull/2145
+* Made `sqlx_common` private, hiding `sqlx_error_to_xxx_err` https://github.com/SeaQL/sea-orm/pull/2145
+* Rework SQLite type mappings https://github.com/SeaQL/sea-orm/pull/2077, https://github.com/SeaQL/sea-orm/pull/2078
+
+### Upgrades
+
+* Upgrade `time` to `0.3.36` https://github.com/SeaQL/sea-orm/pull/2267
+* Upgrade `strum` to `0.26` https://github.com/SeaQL/sea-orm/pull/2088
+* Upgrade `sea-schema` to `0.15.0`
+* Upgrade `sea-query-binder` to `0.6.0`
+* Upgrade `sea-query` to `0.31.0`
+
+### House keeping
+
+* Reduce warnings in integration tests https://github.com/SeaQL/sea-orm/pull/2177
+* Improved Actix example to return 404 not found on unexpected inputs https://github.com/SeaQL/sea-orm/pull/2140
+* Re-enable `rocket_okapi` example https://github.com/SeaQL/sea-orm/pull/2136
+
 ## 1.0.0-rc.7 - 2024-06-25
 
 ### Upgrades
