@@ -735,8 +735,8 @@ pub trait QueryFilter: Sized {
     /// Like above, but using the `ANY` operator. Postgres only.
     ///
     /// ```
+    /// use sea_orm::sea_query::{extension::postgres::PgFunc, Expr};
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
-    /// use sea_orm::sea_query::{Expr, extension::postgres::PgFunc};
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
