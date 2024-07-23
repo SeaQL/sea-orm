@@ -4,10 +4,14 @@ import axios from 'axios';
 const apiUrl = 'http://localhost:3000/api/graphql';
 
 export const dataProvider: DataProvider = {
+    // Fetch data for post listing
     getList: (resource, params) => {
+        // Paginator status
         const { page, perPage } = params.pagination;
+        // Sorter status
         const { field, order } = params.sort;
 
+        // POST request to GraphQL endpoint
         return axios.post(apiUrl, {
             query: `
             query {
@@ -31,7 +35,9 @@ export const dataProvider: DataProvider = {
             `
         })
             .then((response) => {
+                // Unwrap the response
                 const { nodes, paginationInfo } = response.data.data.notes;
+                // Return the data array and total number of pages
                 return {
                     data: nodes,
                     total: paginationInfo.total,
@@ -39,7 +45,9 @@ export const dataProvider: DataProvider = {
             });
     },
 
+    // Fetch data for a single post
     getOne: (resource, params) => {
+        // POST request to GraphQL endpoint
         return axios.post(apiUrl, {
             query: `
             query {
@@ -54,7 +62,9 @@ export const dataProvider: DataProvider = {
             `
         })
             .then((response) => {
+                // Unwrap the response
                 const { nodes } = response.data.data.notes;
+                // Return the one and only data
                 return {
                     data: nodes[0],
                 };
