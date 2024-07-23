@@ -241,6 +241,7 @@ jobs:
           examples/loco_example,
           examples/loco_starter,
           examples/loco_seaography,
+          examples/loco_seaography_admin_dashboard,
           examples/poem_example,
           examples/proxy_gluesql_example,
           examples/rocket_example,
