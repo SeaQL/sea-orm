@@ -1,4 +1,3 @@
-
 import { Admin } from 'react-admin';
 import { Layout } from './Layout';
 import { authProvider } from './authProvider';
