@@ -14,10 +14,7 @@ async fn graphql_playground() -> Result<Response> {
     Ok(Response::new(res.into()))
 }
 
-async fn graphql_handler(
-    State(ctx): State<AppContext>,
-    req: Request<Body>,
-) -> Result<Response> {
+async fn graphql_handler(State(ctx): State<AppContext>, req: Request<Body>) -> Result<Response> {
     const DEPTH: usize = 1_000;
     const COMPLEXITY: usize = 1_000;
     // Construct the the GraphQL query root
