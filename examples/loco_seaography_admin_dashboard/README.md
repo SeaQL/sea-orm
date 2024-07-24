@@ -4,7 +4,7 @@ In this tutorial, we would develop a GraphQL based admin dashboard with [Seaogra
 
 Read The full tutorial [here](https://www.sea-ql.org/blog/2024-08-01-graphql-admin-dashboard-with-loco-seaography/).
 
-Read our first and second tutorial of the series, [Getting Started with Loco & SeaORM](https://www.sea-ql.org/blog/2024-05-28-getting-started-with-loco-seaorm/), [Adding GraphQL Support to Loco with Seaography](https://www.sea-ql.org/blog/2024-06-24-graphql-support-with-loco-seaography/), if you haven't.
+Read our first and second tutorial of the series, [Getting Started with Loco & SeaORM](https://www.sea-ql.org/blog/2024-05-28-getting-started-with-loco-seaorm/), [Adding GraphQL Support to Loco with Seaography](https://www.sea-ql.org/blog/2024-07-01-graphql-support-with-loco-seaography/), if you haven't.
 
 ![Screenshot List](Screenshot-List.png)
 
