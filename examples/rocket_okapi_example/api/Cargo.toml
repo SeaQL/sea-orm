@@ -6,17 +6,17 @@ edition = "2021"
 publish = false
 
 [dependencies]
-async-stream = { version = "0.3" }
-rocket-okapi-example-service = { path = "../service" }
-rocket = { version = "0.5.0", features = ["json"] }
-rocket_cors = "0.6.0"
-rocket_okapi = { version = "0.8.0", features = ["swagger", "rapidoc", "rocket_db_pools"] }
-serde_json = { version = "1" }
+async-trait = { version = "0.1" }
+dto = { path = "../dto" }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
-tokio = "1.20.0"
+rocket = { workspace = true }
+rocket-okapi-example-service = { path = "../service" }
+rocket_cors = "0.6.0"
+rocket_okapi = { workspace = true }
 serde = "1.0"
-dto = { path = "../dto" }
+serde_json = { version = "1" }
+tokio = { workspace = true }
 
 [dependencies.sea-orm-rocket]
 path = "../../../sea-orm-rocket/lib" # remove this line in your own project and use the version line

@@ -1,16 +1,13 @@
 [package]
 name = "migration"
-version = "0.1.0"
-edition = "2021"
-publish = false
-
-[lib]
-name = "migration"
-path = "src/lib.rs"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+publish = { workspace = true }
 
 [dependencies]
-rocket = { version = "0.5.0" }
-tokio = "1"
+rocket = { workspace = true }
+tokio = { workspace = true }
 
 [dependencies.sea-orm-migration]
 path = "../../../sea-orm-migration" # remove this line in your own project
