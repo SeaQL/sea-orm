@@ -1,12 +1,29 @@
-[package]
-name = "sea-orm-rocket-okapi-example"
+[workspace.package]
 version = "0.1.0"
-authors = ["Sam Samai <sam@studio2pi.com.au>", "Erick Pacheco <eum602@gmail.com"]
+authors = [
+  "Sam Samai <sam@studio2pi.com.au>",
+  "Erick Pacheco <eum602@gmail.com",
+  "Arne beer <contact@arne.beer",
+]
 edition = "2021"
 publish = false
 
 [workspace]
-members = [".", "api", "service", "entity", "migration", "dto"]
+members = ["api", "dto", "entity", "migration", "server", "service"]
+resolver = "2"
+default-members = ["server"]
 
-[dependencies]
-rocket-example-api = { path = "api" }
+[workspace.dependencies]
+rocket = { version = "0.5.0", features = ["json"] }
+rocket_okapi = { version = "0.8.0", features = [
+  "swagger",
+  "uuid",
+  "rapidoc",
+  "rocket_db_pools",
+] }
+sea-orm = { version = "1.0.0-rc.7", features = [
+  "runtime-tokio-native-tls",
+  "sqlx-postgres",
+] }
+sea-orm-migration = { version = "1.0.0-rc.7", features = ["sqlx-postgres"] }
+tokio = "1.20.0"

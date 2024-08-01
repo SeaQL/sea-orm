@@ -1,13 +1,9 @@
 [package]
-name = "dto"
+name = "server"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
 publish = { workspace = true }
 
 [dependencies]
-entity = { path = "../entity" }
-rocket = { workspace = true }
-
-[dependencies.rocket_okapi]
-version = "0.8.0"
+rocket-example-api = { path = "../api" }

@@ -1,9 +1,9 @@
 [package]
 name = "rocket-okapi-example-service"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+publish = { workspace = true }
 
 [dependencies]
 entity = { path = "../entity" }
@@ -12,14 +12,14 @@ entity = { path = "../entity" }
 path = "../../../" # remove this line in your own project
 version = "1.0.0-rc.7" # sea-orm version
 features = [
-    "runtime-tokio-native-tls",
-#    "sqlx-postgres",
-#    "sqlx-mysql",
-    "sqlx-sqlite",
+  "runtime-tokio-native-tls",
+  #    "sqlx-postgres",
+  #    "sqlx-mysql",
+  "sqlx-sqlite",
 ]
 
 [dev-dependencies]
-tokio = "1.20.0"
+tokio = { workspace = true }
 
 [features]
 mock = ["sea-orm/mock"]
