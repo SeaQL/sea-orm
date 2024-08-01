@@ -1,6 +1,6 @@
 use sea_orm_migration::prelude::*;
 
-#[async_std::main]
+#[tokio::main]
 async fn main() {
     //  Setting `DATABASE_URL` environment variable
     let key = "DATABASE_URL";
