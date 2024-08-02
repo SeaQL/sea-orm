@@ -371,3 +371,6 @@ pub use sea_query::Iden;
 
 pub use sea_orm_macros::EnumIter;
 pub use strum;
+
+#[cfg(feature = "sqlx-dep")]
+pub use sqlx;
