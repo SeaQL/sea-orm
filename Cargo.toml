@@ -92,38 +92,14 @@ sqlx-postgres = ["sqlx-dep", "sea-query-binder/sqlx-postgres", "sqlx/postgres", 
 sqlx-sqlite = ["sqlx-dep", "sea-query-binder/sqlx-sqlite", "sqlx/sqlite"]
 sqlite-use-returning-for-3_35 = []
 runtime-async-std = ["sqlx?/runtime-async-std"]
-runtime-async-std-native-tls = [
-    "sqlx?/runtime-async-std-native-tls",
-    "sea-query-binder?/runtime-async-std-native-tls",
-    "runtime-async-std",
-]
-runtime-async-std-rustls = [
-    "sqlx?/runtime-async-std-rustls",
-    "sea-query-binder?/runtime-async-std-rustls",
-    "runtime-async-std",
-]
+runtime-async-std-native-tls = ["sqlx?/runtime-async-std-native-tls", "runtime-async-std"]
+runtime-async-std-rustls = ["sqlx?/runtime-async-std-rustls", "runtime-async-std"]
 runtime-actix = []
-runtime-actix-native-tls = [
-    "sqlx?/runtime-tokio-native-tls",
-    "sea-query-binder?/runtime-actix-native-tls",
-    "runtime-actix",
-]
-runtime-actix-rustls = [
-    "sqlx?/runtime-tokio-rustls",
-    "sea-query-binder?/runtime-actix-rustls",
-    "runtime-actix",
-]
+runtime-actix-native-tls = ["sqlx?/runtime-tokio-native-tls", "runtime-actix"]
+runtime-actix-rustls = ["sqlx?/runtime-tokio-rustls", "runtime-actix"]
 runtime-tokio = ["sqlx?/runtime-tokio"]
-runtime-tokio-native-tls = [
-    "sqlx?/runtime-tokio-native-tls",
-    "sea-query-binder?/runtime-tokio-native-tls",
-    "runtime-tokio",
-]
-runtime-tokio-rustls = [
-    "sqlx?/runtime-tokio-rustls",
-    "sea-query-binder?/runtime-tokio-rustls",
-    "runtime-tokio",
-]
+runtime-tokio-native-tls = ["sqlx?/runtime-tokio-native-tls", "runtime-tokio"]
+runtime-tokio-rustls = ["sqlx?/runtime-tokio-rustls", "runtime-tokio"]
 tests-cfg = ["serde/derive"]
 seaography = ["sea-orm-macros/seaography"]
 
