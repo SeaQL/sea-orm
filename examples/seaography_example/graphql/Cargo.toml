@@ -30,3 +30,5 @@ members = []
 # remove this section in your own project
 [patch.crates-io]
 sea-orm = { path = "../../../" }
+sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "sqlx-0.8" }
+sea-query-binder = { git = "https://github.com/SeaQL/sea-query", branch = "sqlx-0.8" }
