@@ -342,7 +342,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [8.0, 5.7]
+        version: [lts, 5.7]
         runtime: [actix]
         tls: [native-tls]
     services:
@@ -354,7 +354,6 @@ jobs:
           MYSQL_USER: sea
           MYSQL_PASSWORD: sea
           MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_ROOT_PASSWORD:
         ports:
           - "3306:3306"
         options: >-
@@ -392,23 +391,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [10.6]
+        version: [lts]
         runtime: [actix]
         tls: [native-tls]
     services:
-      mysql:
+      mariadb:
         image: mariadb:${{ matrix.version }}
         env:
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_DB: mysql
-          MYSQL_USER: sea
-          MYSQL_PASSWORD: sea
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_ROOT_PASSWORD:
+          MARIADB_HOST: 127.0.0.1
+          MARIADB_DB: mysql
+          MARIADB_USER: sea
+          MARIADB_PASSWORD: sea
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
         ports:
           - "3306:3306"
         options: >-
-          --health-cmd="mysqladmin ping"
+          --health-cmd="healthcheck.sh
+          --connect
+          --innodb_initialized"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
@@ -441,7 +441,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [14, 15, 16]
+        version: [14, 16]
         runtime: [tokio]
         tls: [native-tls]
     services:
