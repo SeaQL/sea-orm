@@ -74,7 +74,8 @@ where
 ///      - `"A  B"`
 ///      - `"A_B"`
 ///      - `"A_ B"`
-///   shares the same identifier of `"AB"`;
+///
+/// All shares the same identifier of `"AB"`;
 ///
 /// This function does the PascelCase conversion with a few special escapes:
 /// - Non-Unicode Standard Annex #31 compliant characters will converted to their hex notation;

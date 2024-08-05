@@ -718,6 +718,35 @@ pub trait QueryFilter: Sized {
     /// );
     /// ```
     ///
+    /// Like above, but using the `IN` operator.
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.is_in([4, 5]))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` IN (4, 5)"
+    /// );
+    /// ```
+    ///
+    /// Like above, but using the `ANY` operator. Postgres only.
+    ///
+    /// ```
+    /// use sea_orm::sea_query::{extension::postgres::PgFunc, Expr};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(Expr::col((cake::Entity, cake::Column::Id)).eq(PgFunc::any(vec![4, 5])))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY(ARRAY [4,5])"#
+    /// );
+    /// ```
+    ///
     /// Add a runtime-built condition tree.
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
