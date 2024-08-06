@@ -5,17 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 1.0.0 - Pending
+## 1.0.0 - 2024-08-02
 
 ### Versions
 
-+ `1.0.0-rc.7`: 2024-06-25
-+ `1.0.0-rc.6`: 2024-06-19
-+ `1.0.0-rc.5`: 2024-05-29
-+ `1.0.0-rc.4`: 2024-05-13
-+ `1.0.0-rc.3`: 2024-03-26
-+ `1.0.0-rc.2`: 2024-03-15
 + `1.0.0-rc.1`: 2024-02-06
++ `1.0.0-rc.2`: 2024-03-15
++ `1.0.0-rc.3`: 2024-03-26
++ `1.0.0-rc.4`: 2024-05-13
++ `1.0.0-rc.5`: 2024-05-29
++ `1.0.0-rc.6`: 2024-06-19
++ `1.0.0-rc.7`: 2024-06-25
 
 ### New Features
 
