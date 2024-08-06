@@ -36,8 +36,11 @@ pub trait TryGetable: Sized {
 
     /// Get a value from the query result with prefixed column name
     fn try_get(res: &QueryResult, pre: &str, col: &str) -> Result<Self, TryGetError> {
-        let index = format!("{pre}{col}");
-        Self::try_get_by(res, index.as_str())
+        if pre.is_empty() {
+            Self::try_get_by(res, col)
+        } else {
+            Self::try_get_by(res, format!("{pre}{col}").as_str())
+        }
     }
 
     /// Get a value from the query result based on the order in the select expressions
