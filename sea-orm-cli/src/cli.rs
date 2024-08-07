@@ -304,6 +304,14 @@ pub enum GenerateSubcommands {
             long_help = "Generate helper Enumerations that are used by Seaography."
         )]
         seaography: bool,
+
+        #[arg(
+            long,
+            default_value = "all",
+            help = "Generate prelude.rs file (all, \
+                none, all-allow-unused-imports)"
+        )]
+        with_prelude: String,
     },
 }
 

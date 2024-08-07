@@ -1,6 +1,6 @@
 use sea_orm_codegen::{
     DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
-    WithSerde,
+    WithPrelude, WithSerde,
 };
 use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
@@ -34,6 +34,7 @@ pub async fn run_generate_command(
             enum_extra_derives,
             enum_extra_attributes,
             seaography,
+            with_prelude,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -191,6 +192,7 @@ pub async fn run_generate_command(
                 enum_extra_derives,
                 enum_extra_attributes,
                 seaography,
+                WithPrelude::from_str(&with_prelude).expect("Invalid prelude option"),
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
