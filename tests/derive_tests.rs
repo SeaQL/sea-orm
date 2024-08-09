@@ -63,3 +63,9 @@ struct FromQueryAttributeTests {
     _foo: i32,
     _bar: String,
 }
+
+#[derive(FromQueryResult)]
+struct FromQueryResultNested {
+    #[sea_orm(nested)]
+    _test: SimpleTest,
+}
