@@ -1,7 +1,9 @@
 mod common;
 
+use clap::Parser;
 use common::migrator::*;
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DbBackend, DbErr, Statement};
+use sea_orm_migration::cli::{run_migrate, Cli};
 use sea_orm_migration::{migrator::MigrationStatus, prelude::*};
 
 #[async_std::test]
@@ -38,6 +40,79 @@ async fn main() -> Result<(), DbErr> {
     .await?;
 
     Ok(())
+}
+
+#[async_std::test]
+async fn test_migration_generation_custom_dir() {
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let migration_dir = tmp_dir.path().to_str().unwrap();
+
+    let cli = Cli::parse_from(&["migrate", "init", "--migration-dir", migration_dir]);
+
+    let r = run_migrate(default::Migrator, cli).await;
+    assert!(r.is_ok());
+
+    // assert that migration dir was initialized
+    let cargo_toml_path = format!("{}/Cargo.toml", migration_dir);
+    assert!(std::path::Path::new(&cargo_toml_path).exists());
+
+    let cli = Cli::parse_from(&[
+        "migrate",
+        "generate",
+        "my_test_migration",
+        "--migration-dir",
+        migration_dir,
+    ]);
+    let r = run_migrate(default::Migrator, cli).await;
+    assert!(r.is_ok());
+
+    // assert that migration file was created
+    let src_files = std::fs::read_dir(format!("{}/src", migration_dir)).unwrap();
+    let migration_file = src_files.filter_map(Result::ok).find(|f| {
+        f.file_name()
+            .to_str()
+            .unwrap()
+            .ends_with("my_test_migration.rs")
+    });
+    assert!(migration_file.is_some());
+}
+
+#[async_std::test]
+async fn test_init_migration_default_dir() {
+    async fn _run_migrate(dir: &str, cmd: &[&str]) {
+        let curr_dir = std::env::current_dir();
+        std::env::set_current_dir(&dir).unwrap();
+
+        let cli = Cli::parse_from(cmd);
+        let r = run_migrate(default::Migrator, cli).await;
+
+        // avoid side effects in tests
+        if let Ok(d) = curr_dir {
+            std::env::set_current_dir(d).unwrap();
+        }
+
+        assert!(r.is_ok());
+    }
+
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let migration_dir = tmp_dir.path().to_str().unwrap();
+
+    _run_migrate(migration_dir, &["migrate", "init"]).await;
+    // assert that migration dir was initialized
+    let cargo_toml_path = format!("{}/Cargo.toml", migration_dir);
+    assert!(std::path::Path::new(&cargo_toml_path).exists());
+
+    _run_migrate(migration_dir, &["migrate", "generate", "my_test_migration"]).await;
+
+    // assert that migration file was created
+    let src_files = std::fs::read_dir(format!("{}/src", migration_dir)).unwrap();
+    let migration_file = src_files.filter_map(Result::ok).find(|f| {
+        f.file_name()
+            .to_str()
+            .unwrap()
+            .ends_with("my_test_migration.rs")
+    });
+    assert!(migration_file.is_some());
 }
 
 async fn run_migration<Migrator>(

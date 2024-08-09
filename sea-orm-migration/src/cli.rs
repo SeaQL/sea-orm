@@ -3,7 +3,7 @@ use dotenvy::dotenv;
 use std::{error::Error, fmt::Display, process::exit};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
-use sea_orm::{ConnectOptions, Database, DbConn};
+use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use sea_orm_cli::{run_migrate_generate, run_migrate_init, MigrateSubcommands};
 
 use super::MigratorTrait;
@@ -17,40 +17,14 @@ where
     dotenv().ok();
     let cli = Cli::parse();
 
-    let url = cli
-        .database_url
-        .expect("Environment variable 'DATABASE_URL' not set");
-    let schema = cli.database_schema.unwrap_or_else(|| "public".to_owned());
-
-    let connect_options = ConnectOptions::new(url)
-        .set_schema_search_path(schema)
-        .to_owned();
-    let db = &Database::connect(connect_options)
-        .await
-        .expect("Fail to acquire database connection");
-
-    run_migrate(migrator, db, cli.command, cli.verbose)
-        .await
-        .unwrap_or_else(handle_error);
-}
-
-pub async fn run_migrate<M>(
-    _: M,
-    db: &DbConn,
-    command: Option<MigrateSubcommands>,
-    verbose: bool,
-) -> Result<(), Box<dyn Error>>
-where
-    M: MigratorTrait,
-{
-    let filter = match verbose {
+    let filter = match cli.verbose {
         true => "debug",
         false => "sea_orm_migration=info",
     };
 
     let filter_layer = EnvFilter::try_new(filter).unwrap();
 
-    if verbose {
+    if cli.verbose {
         let fmt_layer = tracing_subscriber::fmt::layer();
         tracing_subscriber::registry()
             .with(filter_layer)
@@ -67,23 +41,57 @@ where
             .init()
     };
 
-    match command {
-        Some(MigrateSubcommands::Fresh) => M::fresh(db).await?,
-        Some(MigrateSubcommands::Refresh) => M::refresh(db).await?,
-        Some(MigrateSubcommands::Reset) => M::reset(db).await?,
-        Some(MigrateSubcommands::Status) => M::status(db).await?,
-        Some(MigrateSubcommands::Up { num }) => M::up(db, num).await?,
-        Some(MigrateSubcommands::Down { num }) => M::down(db, Some(num)).await?,
-        Some(MigrateSubcommands::Init) => run_migrate_init(MIGRATION_DIR)?,
+    run_migrate(migrator, cli)
+        .await
+        .unwrap_or_else(handle_error);
+}
+
+pub async fn run_migrate<M>(_: M, cli: Cli) -> Result<(), Box<dyn Error>>
+where
+    M: MigratorTrait,
+{
+    let db_res = db_connect(&cli.database_url, &cli.database_schema).await;
+    let db = match db_res {
+        Ok(ref d) => Ok(d),
+        Err(e) => Err(e),
+    };
+
+    match cli.command {
+        Some(MigrateSubcommands::Fresh) => M::fresh(db?).await?,
+        Some(MigrateSubcommands::Refresh) => M::refresh(db?).await?,
+        Some(MigrateSubcommands::Reset) => M::reset(db?).await?,
+        Some(MigrateSubcommands::Status) => M::status(db?).await?,
+        Some(MigrateSubcommands::Up { num }) => M::up(db?, num).await?,
+        Some(MigrateSubcommands::Down { num }) => M::down(db?, Some(num)).await?,
+        Some(MigrateSubcommands::Init) => run_migrate_init(&cli.migration_dir)?,
         Some(MigrateSubcommands::Generate {
             migration_name,
             universal_time: _,
             local_time,
-        }) => run_migrate_generate(MIGRATION_DIR, &migration_name, !local_time)?,
-        _ => M::up(db, None).await?,
+        }) => run_migrate_generate(&cli.migration_dir, &migration_name, !local_time)?,
+        _ => M::up(db?, None).await?,
     };
 
     Ok(())
+}
+
+async fn db_connect(
+    db_url: &Option<String>,
+    schema: &Option<String>,
+) -> Result<DatabaseConnection, String> {
+    let url = match db_url {
+        Some(url) => url,
+        None => return Err("Environment variable 'DATABASE_URL' not set".to_owned()),
+    };
+    let schema = schema.clone().unwrap_or_else(|| "public".to_string());
+
+    let connect_options = ConnectOptions::new(url)
+        .set_schema_search_path(schema)
+        .to_owned();
+
+    Database::connect(connect_options)
+        .await
+        .map_err(|e| format!("Fail to acquire database connection: {}", e))
 }
 
 #[derive(Parser)]
@@ -111,6 +119,16 @@ pub struct Cli {
         help = "Database URL"
     )]
     database_url: Option<String>,
+
+    #[arg(
+        global = true,
+        short = 'd',
+        long,
+        default_value = MIGRATION_DIR,
+        env = "MIGRATION_DIR",
+        help = "Migration directory"
+    )]
+    migration_dir: String,
 
     #[command(subcommand)]
     command: Option<MigrateSubcommands>,

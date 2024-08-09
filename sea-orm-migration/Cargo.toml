@@ -32,6 +32,7 @@ futures = { version = "0.3", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 async-std = { version = "1", features = ["attributes", "tokio1"] }
+tempfile = "3.10.1"
 
 [features]
 default = ["cli"]
