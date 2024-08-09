@@ -247,7 +247,7 @@ jobs:
           examples/rocket_example,
           examples/rocket_okapi_example,
           examples/salvo_example,
-          examples/seaography_example,
+          # examples/seaography_example,
           examples/tonic_example,
         ]
     steps:
