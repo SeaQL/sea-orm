@@ -39,33 +39,18 @@ pub async fn insert_metadata(db: &DatabaseConnection) -> Result<(), DbErr> {
         .one(db)
         .await?;
 
-    if cfg!(feature = "sqlx-mysql") {
-        assert_eq!(
-            json,
-            Some(json!({
-                "uuid": metadata.uuid,
-                "type": metadata.ty,
-                "key": metadata.key,
-                "value": 1.18,
-                "bytes": "\u{1}\u{2}\u{3}",
-                "date": metadata.date,
-                "time": metadata.time,
-            }))
-        );
-    } else {
-        assert_eq!(
-            json,
-            Some(json!({
-                "uuid": metadata.uuid,
-                "type": metadata.ty,
-                "key": metadata.key,
-                "value": metadata.value,
-                "bytes": metadata.bytes,
-                "date": metadata.date,
-                "time": metadata.time,
-            }))
-        );
-    }
+    assert_eq!(
+        json,
+        Some(json!({
+            "uuid": metadata.uuid,
+            "type": metadata.ty,
+            "key": metadata.key,
+            "value": metadata.value,
+            "bytes": metadata.bytes,
+            "date": metadata.date,
+            "time": metadata.time,
+        }))
+    );
 
     Ok(())
 }
