@@ -55,8 +55,3 @@ with-rust_decimal = ["sea-orm/with-rust_decimal"]
 with-bigdecimal = ["sea-orm/with-bigdecimal"]
 with-uuid = ["sea-orm/with-uuid"]
 with-time = ["sea-orm/with-time"]
-
-[patch.crates-io]
-sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "sqlx-0.8" }
-sea-query-binder = { git = "https://github.com/SeaQL/sea-query", branch = "sqlx-0.8" }
-sea-schema = { git = "https://github.com/SeaQL/sea-schema", branch = "sqlx-0.8" }

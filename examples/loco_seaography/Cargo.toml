@@ -56,5 +56,3 @@ insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 [patch.crates-io]
 sea-orm = { path = "../../" }
 sea-orm-migration = { path = "../../sea-orm-migration" }
-sea-query = { git = "https://github.com/SeaQL/sea-query", branch = "sqlx-0.8" }
-sea-query-binder = { git = "https://github.com/SeaQL/sea-query", branch = "sqlx-0.8" }
