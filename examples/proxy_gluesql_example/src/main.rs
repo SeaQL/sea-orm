@@ -27,8 +27,9 @@ impl std::fmt::Debug for ProxyDb {
     }
 }
 
+#[async_trait::async_trait]
 impl ProxyDatabaseTrait for ProxyDb {
-    fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr> {
+    async fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr> {
         println!("SQL query: {:?}", statement);
         let sql = statement.sql.clone();
 
@@ -64,7 +65,7 @@ impl ProxyDatabaseTrait for ProxyDb {
         Ok(ret)
     }
 
-    fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
+    async fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
         let sql = if let Some(values) = statement.values {
             // Replace all the '?' with the statement values
             use sqlparser::ast::{Expr, Value};
@@ -149,9 +150,9 @@ async fn main() {
 
     let db = Database::connect_proxy(
         DbBackend::Sqlite,
-        Arc::new(Mutex::new(Box::new(ProxyDb {
+        Arc::new(Box::new(ProxyDb {
             mem: Mutex::new(glue),
-        }))),
+        })),
     )
     .await
     .unwrap();

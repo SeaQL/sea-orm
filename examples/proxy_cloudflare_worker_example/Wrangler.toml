@@ -1,0 +1,12 @@
+name = "axum"
+main = "build/worker/shim.mjs"
+compatibility_date = "2024-07-08"
+
+[[d1_databases]]
+binding = "test-d1"
+database_name = "axumtest"
+# Change it if you want to use your own database
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[build]
+command = "cargo install -q worker-build && worker-build --release"
