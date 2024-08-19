@@ -225,6 +225,52 @@ where
     {
         TryInsert::from_insert(self)
     }
+
+    /// Set ON CONFLICT on primary key do nothing, but with MySQL specific polyfill.
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, sea_query::OnConflict, tests_cfg::cake, DbBackend};
+    ///
+    /// let orange = cake::ActiveModel {
+    ///     id: ActiveValue::set(2),
+    ///     name: ActiveValue::set("Orange".to_owned()),
+    /// };
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange.clone())
+    ///         .on_conflict_do_nothing()
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     r#"INSERT INTO `cake` (`id`, `name`) VALUES (2, 'Orange') ON DUPLICATE KEY UPDATE `id` = `id`"#,
+    /// );
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange.clone())
+    ///         .on_conflict_do_nothing()
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("id") DO NOTHING"#,
+    /// );
+    /// assert_eq!(
+    ///     cake::Entity::insert(orange)
+    ///         .on_conflict_do_nothing()
+    ///         .build(DbBackend::Sqlite)
+    ///         .to_string(),
+    ///     r#"INSERT INTO "cake" ("id", "name") VALUES (2, 'Orange') ON CONFLICT ("id") DO NOTHING"#,
+    /// );
+    /// ```
+    pub fn on_conflict_do_nothing(mut self) -> TryInsert<A>
+    where
+        A: ActiveModelTrait,
+    {
+        let primary_keys = <A::Entity as EntityTrait>::PrimaryKey::iter();
+        self.query.on_conflict(
+            OnConflict::columns(primary_keys.clone())
+                .do_nothing_on(primary_keys)
+                .to_owned(),
+        );
+
+        TryInsert::from_insert(self)
+    }
 }
 
 impl<A> QueryTrait for Insert<A>

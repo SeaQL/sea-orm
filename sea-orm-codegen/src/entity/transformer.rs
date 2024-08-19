@@ -148,13 +148,24 @@ impl EntityTransformer {
                         break;
                     }
                 }
+                if rel.columns.len() == entity.primary_keys.len() {
+                    let mut count_pk = 0;
+                    for primary_key in entity.primary_keys.iter() {
+                        if rel.columns.contains(&primary_key.name) {
+                            count_pk += 1;
+                        }
+                    }
+                    if count_pk == entity.primary_keys.len() {
+                        unique = true;
+                    }
+                }
                 let rel_type = if unique {
                     RelationType::HasOne
                 } else {
                     RelationType::HasMany
                 };
                 rel.rel_type = rel_type;
-                rel.ref_table = table_name.clone();
+                rel.ref_table = table_name.to_string();
                 rel.columns = Vec::new();
                 rel.ref_columns = Vec::new();
                 if let Some(vec) = inverse_relations.get_mut(&ref_table) {

@@ -1,3 +1,5 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
 pub use common::{features::*, setup::*, TestContext};
@@ -7,7 +9,6 @@ use sea_orm::TryInsertResult;
 use sea_orm::{sea_query::OnConflict, Set};
 
 #[sea_orm_macros::test]
-#[cfg(feature = "sqlx-postgres")]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("upsert_tests").await;
     create_tables(&ctx.db).await?;
@@ -20,7 +21,9 @@ async fn main() -> Result<(), DbErr> {
 pub async fn create_insert_default(db: &DatabaseConnection) -> Result<(), DbErr> {
     use insert_default::*;
 
-    let on_conflict = OnConflict::column(Column::Id).do_nothing().to_owned();
+    let on_conflict = OnConflict::column(Column::Id)
+        .do_nothing_on([Column::Id])
+        .to_owned();
 
     let res = Entity::insert_many([
         ActiveModel { id: Set(1) },

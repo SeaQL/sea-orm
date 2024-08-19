@@ -5,23 +5,25 @@ version = "0.3.0"
 publish = false
 
 [dependencies]
-poem = { version = "1.3.56" }
-async-graphql-poem = { version = "5.0.10" }
-async-graphql = { version = "5.0.10", features = ["decimal", "chrono", "dataloader", "dynamic-schema"] }
+poem = { version = "3.0" }
+async-graphql-poem = { version = "7.0" }
+async-graphql = { version = "7.0", features = ["decimal", "chrono", "dataloader", "dynamic-schema"] }
 async-trait = { version = "0.1.72" }
 dotenv = "0.15.0"
-sea-orm = { version = "0.12.0", features = ["sqlx-mysql", "runtime-async-std-native-tls", "seaography"] }
+sea-orm = { path = "../../../", features = ["sqlx-mysql", "runtime-async-std-native-tls", "seaography"] }
 tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread"] }
 tracing = { version = "0.1.37" }
 tracing-subscriber = { version = "0.3.17" }
 lazy_static = { version = "1.4.0" }
-
-[dependencies.seaography]
-version = "1.0.0-rc.2" # seaography version
-features = ["with-decimal", "with-chrono"]
+seaography = { version = "1.1.0-rc.1", features = ["with-decimal", "with-chrono"] }
 
 [dev-dependencies]
 serde_json = { version = "1.0.103" }
 
 [workspace]
 members = []
+
+# This allows us to develop using a local version of sea-orm
+# remove this section in your own project
+[patch.crates-io]
+sea-orm = { path = "../../../" }

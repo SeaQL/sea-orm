@@ -137,7 +137,10 @@ pub async fn run_generate_command(
                         sqlx_connect::<Sqlite>(max_connections, url.as_str(), None).await?;
                     println!("Discovering schema ...");
                     let schema_discovery = SchemaDiscovery::new(connection);
-                    let schema = schema_discovery.discover().await?;
+                    let schema = schema_discovery
+                        .discover()
+                        .await?
+                        .merge_indexes_into_table();
                     let table_stmts = schema
                         .tables
                         .into_iter()

@@ -1,6 +1,7 @@
 use crate::{
-    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert, IntoActiveModel,
-    Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, SelectorRaw, TryFromU64, TryInsert,
+    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, Insert,
+    IntoActiveModel, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, SelectorRaw,
+    TryFromU64, TryInsert,
 };
 use sea_query::{FromValueTuple, Iden, InsertStatement, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};
@@ -116,7 +117,7 @@ where
     {
         // so that self is dropped before entering await
         let mut query = self.query;
-        if db.support_returning() && <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
+        if db.support_returning() {
             let db_backend = db.get_database_backend();
             let returning =
                 Query::returning().exprs(<A::Entity as EntityTrait>::PrimaryKey::iter().map(|c| {
@@ -245,6 +246,14 @@ where
                 return Err(DbErr::RecordNotInserted);
             }
             let last_insert_id = res.last_insert_id();
+            // For MySQL, the affected-rows number:
+            //   - The affected-rows value per row is `1` if the row is inserted as a new row,
+            //   - `2` if an existing row is updated,
+            //   - and `0` if an existing row is set to its current values.
+            // Reference: https://dev.mysql.com/doc/refman/8.4/en/insert-on-duplicate.html
+            if db_backend == DbBackend::MySql && last_insert_id == 0 {
+                return Err(DbErr::RecordNotInserted);
+            }
             ValueTypeOf::<A>::try_from_u64(last_insert_id).map_err(|_| DbErr::UnpackInsertId)?
         }
     };

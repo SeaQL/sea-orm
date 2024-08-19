@@ -3,6 +3,7 @@ mod active_enum_display;
 mod active_model;
 mod active_model_behavior;
 mod attributes;
+mod case_style;
 mod column;
 mod derive_iden;
 mod entity;
