@@ -61,6 +61,7 @@ on:
       - '.github/ISSUE_TEMPLATE/**'
     branches:
       - master
+      - 1.*.x
       - 0.*.x
       - pr/**/ci
       - ci-*
