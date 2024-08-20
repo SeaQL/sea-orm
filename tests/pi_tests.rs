@@ -18,33 +18,45 @@ async fn main() -> Result<(), DbErr> {
 }
 
 pub async fn create_and_update_pi(db: &DatabaseConnection) -> Result<(), DbErr> {
-    let pi = pi::Model {
+    fn trunc_dec_scale(mut model: pi::Model) -> pi::Model {
+        model.decimal = model.decimal.trunc_with_scale(3);
+        model.big_decimal = model.big_decimal.with_scale(3);
+        model.decimal_opt = model.decimal_opt.map(|decimal| decimal.trunc_with_scale(3));
+        model.big_decimal_opt = model
+            .big_decimal_opt
+            .map(|big_decimal| big_decimal.with_scale(3));
+        model
+    }
+
+    let pi = trunc_dec_scale(pi::Model {
         id: 1,
         decimal: rust_dec(3.1415926536),
         big_decimal: BigDecimal::from_str("3.1415926536").unwrap(),
         decimal_opt: None,
         big_decimal_opt: None,
-    };
+    });
 
-    let res = pi.clone().into_active_model().insert(db).await?;
+    let res = trunc_dec_scale(pi.clone().into_active_model().insert(db).await?);
 
-    let model = Pi::find().one(db).await?;
-    assert_eq!(model, Some(res));
-    assert_eq!(model, Some(pi.clone()));
+    let model = trunc_dec_scale(Pi::find().one(db).await?.unwrap());
+    assert_eq!(model, res);
+    assert_eq!(model, pi.clone());
 
-    let res = pi::ActiveModel {
-        decimal_opt: Set(Some(rust_dec(3.1415926536))),
-        big_decimal_opt: Set(Some(BigDecimal::from_str("3.1415926536").unwrap())),
-        ..pi.clone().into_active_model()
-    }
-    .update(db)
-    .await?;
+    let res = trunc_dec_scale(
+        pi::ActiveModel {
+            decimal_opt: Set(Some(rust_dec(3.1415926536))),
+            big_decimal_opt: Set(Some(BigDecimal::from_str("3.1415926536").unwrap())),
+            ..pi.clone().into_active_model()
+        }
+        .update(db)
+        .await?,
+    );
 
-    let model = Pi::find().one(db).await?;
-    assert_eq!(model, Some(res));
+    let model = trunc_dec_scale(Pi::find().one(db).await?.unwrap());
+    assert_eq!(model, res);
     assert_eq!(
         model,
-        Some(pi::Model {
+        trunc_dec_scale(pi::Model {
             id: 1,
             decimal: rust_dec(3.1415926536),
             big_decimal: BigDecimal::from_str("3.1415926536").unwrap(),

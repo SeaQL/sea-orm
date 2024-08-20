@@ -1,6 +1,6 @@
 use super::m20220118_000001_create_cake_table::Cake;
-use sea_orm_migration::prelude::*;
 use sea_orm_migration::sea_orm::DbBackend;
+use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -12,15 +12,9 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(Fruit::Table)
-                    .col(
-                        ColumnDef::new(Fruit::Id)
-                            .integer()
-                            .not_null()
-                            .auto_increment()
-                            .primary_key(),
-                    )
-                    .col(ColumnDef::new(Fruit::Name).string().not_null())
-                    .col(ColumnDef::new(Fruit::CakeId).integer().not_null())
+                    .col(pk_auto(Fruit::Id))
+                    .col(string(Fruit::Name))
+                    .col(integer(Fruit::CakeId))
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-fruit-cake_id")

@@ -3,6 +3,7 @@ pub mod derive_attr {
 
     /// Attributes for Models and ActiveModels
     #[derive(Default, FromAttributes)]
+    #[allow(dead_code)]
     pub struct SeaOrm {
         pub column: Option<syn::Ident>,
         pub entity: Option<syn::Ident>,

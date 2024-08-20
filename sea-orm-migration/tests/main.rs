@@ -51,7 +51,7 @@ where
 {
     let db_connect = |url: String| async {
         let connect_options = ConnectOptions::new(url)
-            .set_schema_search_path(schema.to_owned())
+            .set_schema_search_path(format!("{schema},public"))
             .to_owned();
 
         Database::connect(connect_options).await

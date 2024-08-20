@@ -1,13 +1,13 @@
-#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-dep"))]
+#[cfg(feature = "sqlx-dep")]
 pub use sqlx::error::Error as SqlxError;
 
-#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-mysql"))]
+#[cfg(feature = "sqlx-mysql")]
 pub use sqlx::mysql::MySqlDatabaseError as SqlxMySqlError;
 
-#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-postgres"))]
+#[cfg(feature = "sqlx-postgres")]
 pub use sqlx::postgres::PgDatabaseError as SqlxPostgresError;
 
-#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-sqlite"))]
+#[cfg(feature = "sqlx-sqlite")]
 pub use sqlx::sqlite::SqliteError as SqlxSqliteError;
 
 use thiserror::Error;
