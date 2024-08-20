@@ -22,7 +22,8 @@ export const dataProvider: DataProvider = {
                 nodes {
                   id
                   title
-                  content
+                  createdAt
+                  updatedAt
                 }
                 paginationInfo {
                   pages
@@ -56,6 +57,8 @@ export const dataProvider: DataProvider = {
                   id
                   title
                   content
+                  createdAt
+                  updatedAt
                 }
               }
             }
