@@ -66,26 +66,33 @@ impl SqlxSqliteConnector {
                 );
             }
         }
+
         if options.get_max_connections().is_none() {
             options.max_connections(1);
         }
-        match options.sqlx_pool_options().connect_with(opt).await {
-            Ok(pool) => {
-                let pool = SqlxSqlitePoolConnection {
-                    pool,
-                    metric_callback: None,
-                };
 
-                #[cfg(feature = "sqlite-use-returning-for-3_35")]
-                {
-                    let version = get_version(&pool).await?;
-                    ensure_returning_version(&version)?;
-                }
+        let pool = if options.connect_lazy {
+            options.sqlx_pool_options().connect_lazy_with(opt)
+        } else {
+            options
+                .sqlx_pool_options()
+                .connect_with(opt)
+                .await
+                .map_err(sqlx_error_to_conn_err)?
+        };
 
-                Ok(DatabaseConnection::SqlxSqlitePoolConnection(pool))
-            }
-            Err(e) => Err(sqlx_error_to_conn_err(e)),
+        let pool = SqlxSqlitePoolConnection {
+            pool,
+            metric_callback: None,
+        };
+
+        #[cfg(feature = "sqlite-use-returning-for-3_35")]
+        {
+            let version = get_version(&pool).await?;
+            ensure_returning_version(&version)?;
         }
+
+        Ok(DatabaseConnection::SqlxSqlitePoolConnection(pool))
     }
 }
 
