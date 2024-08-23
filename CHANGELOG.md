@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.0.1 - 2024-08-23
+
+### New Features
+
+* Added `ConnectOptions::connect_lazy` for creating DB connection pools without establishing connections up front
+
+### Breaking Changes
+
+* Changed `ProxyDatabaseTrait` methods to async. It's a breaking change, but it should have been part of the 1.0 release.
+
 ## 1.0.0 - 2024-08-02
 
 ### Versions
