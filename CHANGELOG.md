@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 1.0.1 - 2024-08-23
+## 1.0.1 - 2024-08-26
 
 ### New Features
 
@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * Changed `ProxyDatabaseTrait` methods to async. It's a breaking change, but it should have been part of the 1.0 release.
     The feature is behind the feature guard `proxy`, and we believe it shouldn't impact majority of users.
+
+### Bug Fixes
+
+* [sea-orm-codegen] Fix `ColumnType` to Rust type resolution https://github.com/SeaQL/sea-orm/pull/2313
 
 ## 1.0.0 - 2024-08-02
 
