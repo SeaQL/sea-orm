@@ -23,12 +23,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New Features
 
-* Added `ConnectOptions::connect_lazy` for creating DB connection pools without establishing connections up front
+* Added `ConnectOptions::connect_lazy` for creating DB connection pools without establishing connections up front https://github.com/SeaQL/sea-orm/pull/2268
 
 ### Breaking Changes
 
 * Changed `ProxyDatabaseTrait` methods to async. It's a breaking change, but it should have been part of the 1.0 release.
     The feature is behind the feature guard `proxy`, and we believe it shouldn't impact majority of users.
+    https://github.com/SeaQL/sea-orm/pull/2278
 
 ### Bug Fixes
 
