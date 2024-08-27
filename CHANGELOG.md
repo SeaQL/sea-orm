@@ -19,6 +19,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Upgrade `sea-query-binder` to `0.7.0-rc` https://github.com/SeaQL/sea-orm/pull/2305
 * Upgrade `sea-schema` to `0.16.0-rc` https://github.com/SeaQL/sea-orm/pull/2305
 
+## 1.0.1 - 2024-08-26
+
+### New Features
+
+* Added `ConnectOptions::connect_lazy` for creating DB connection pools without establishing connections up front
+
+### Breaking Changes
+
+* Changed `ProxyDatabaseTrait` methods to async. It's a breaking change, but it should have been part of the 1.0 release.
+    The feature is behind the feature guard `proxy`, and we believe it shouldn't impact majority of users.
+
+### Bug Fixes
+
+* [sea-orm-codegen] Fix `ColumnType` to Rust type resolution https://github.com/SeaQL/sea-orm/pull/2313
+
 ## 1.0.0 - 2024-08-02
 
 ### Versions
