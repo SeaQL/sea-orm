@@ -36,6 +36,12 @@ impl std::fmt::Debug for SqlxPostgresPoolConnection {
     }
 }
 
+impl From<PgPool> for SqlxPostgresPoolConnection {
+    fn from(pool: PgPool) -> Self {
+        SqlxPostgresPoolConnection { pool, metric_callback: None }
+    }
+}
+
 impl SqlxPostgresConnector {
     /// Check if the URI provided corresponds to `postgres://` for a PostgreSQL database
     pub fn accepts(string: &str) -> bool {
