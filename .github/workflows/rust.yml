@@ -93,7 +93,7 @@ jobs:
           contains(steps.git-log.outputs.message, '[issues]')
         }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - id: git-log
@@ -103,7 +103,7 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
@@ -118,7 +118,7 @@ jobs:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly
@@ -142,9 +142,9 @@ jobs:
         runtime: [async-std]
         tls: [native-tls, rustls]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -169,9 +169,9 @@ jobs:
         runtime: [actix]
         tls: [native-tls, rustls]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -196,9 +196,9 @@ jobs:
         runtime: [tokio]
         tls: [native-tls, rustls]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -212,7 +212,7 @@ jobs:
     name: Unit Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --workspace
       - run: cargo test --manifest-path sea-orm-cli/Cargo.toml
@@ -223,7 +223,7 @@ jobs:
     if: ${{ (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-cli == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo install --path sea-orm-cli --debug
 
@@ -252,7 +252,7 @@ jobs:
           examples/tonic_example,
         ]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - if: ${{ contains(matrix.path, 'tonic_example') }}
         uses: arduino/setup-protoc@v1
       - uses: dtolnay/rust-toolchain@master
@@ -272,7 +272,7 @@ jobs:
     if: ${{ (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-issues == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - id: set-matrix
         run: echo "path_matrix=$(find issues -type f -name 'Cargo.toml' -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "issues/\(.)" ]')" >> $GITHUB_OUTPUT
     outputs:
@@ -290,7 +290,7 @@ jobs:
       matrix:
         path: ${{ fromJson(needs.issues-matrix.outputs.path_matrix) }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --manifest-path ${{ matrix.path }}
       - run: cargo test --manifest-path ${{ matrix.path }}
@@ -314,9 +314,9 @@ jobs:
         runtime: [async-std]
         tls: [native-tls, rustls]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -365,9 +365,9 @@ jobs:
           --health-timeout=5s
           --health-retries=3
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -416,9 +416,9 @@ jobs:
           --health-timeout=5s
           --health-retries=3
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -462,9 +462,9 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
