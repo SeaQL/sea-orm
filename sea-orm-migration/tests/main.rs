@@ -127,7 +127,7 @@ where
 
     println!("\nMigrator::get_pending_migrations");
     let migrations = Migrator::get_pending_migrations(db).await?;
-    assert_eq!(migrations.len(), 5);
+    assert_eq!(migrations.len(), 6);
 
     let migration = migrations.get(0).unwrap();
     assert_eq!(migration.name(), "m20220118_000002_create_fruit_table");
@@ -158,7 +158,7 @@ where
         // Should throw an error
         println!("\nMigrator::up");
         assert_eq!(
-            Migrator::up(db, None).await,
+            Migrator::up(db, Some(6)).await,
             Err(DbErr::Migration(
                 "Abort migration and rollback changes".into()
             ))
@@ -176,11 +176,13 @@ where
     }
 
     println!("\nMigrator::up");
+    std::env::set_var("SEA_ORM_NON_ATOMIC_PG_MIGRATIONS", "true");
     Migrator::up(db, None).await?;
+    std::env::remove_var("SEA_ORM_NON_ATOMIC_PG_MIGRATIONS");
 
     println!("\nMigrator::get_applied_migrations");
     let migrations = Migrator::get_applied_migrations(db).await?;
-    assert_eq!(migrations.len(), 6);
+    assert_eq!(migrations.len(), 7);
 
     assert!(!manager.has_index("cake", "non_existent_index").await?);
     assert!(manager.has_index("cake", "cake_name_index").await?);
@@ -237,6 +239,7 @@ where
     assert!(!manager.has_table("fruit").await?);
 
     println!("\nMigrator::fresh");
+    std::env::set_var("SEA_ORM_NON_ATOMIC_PG_MIGRATIONS", "true");
     Migrator::fresh(db).await?;
 
     assert!(manager.has_table("cake").await?);
@@ -244,6 +247,7 @@ where
 
     println!("\nMigrator::refresh");
     Migrator::refresh(db).await?;
+    std::env::remove_var("SEA_ORM_NON_ATOMIC_PG_MIGRATIONS");
 
     assert!(manager.has_table("cake").await?);
     assert!(manager.has_table("fruit").await?);
