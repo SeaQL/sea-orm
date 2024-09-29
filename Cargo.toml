@@ -39,7 +39,7 @@ sea-query-binder = { version = "0.7.0-rc.1", default-features = false, optional 
 strum = { version = "0.26", default-features = false }
 serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false, optional = true }
-sqlx = { version = "0.8", default-features = false, optional = true }
+sqlx = { version = "0.8.2", default-features = false, optional = true }
 uuid = { version = "1", default-features = false, optional = true }
 ouroboros = { version = "0.17", default-features = false }
 url = { version = "2.2", default-features = false }
