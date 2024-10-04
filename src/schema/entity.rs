@@ -144,11 +144,7 @@ where
             continue;
         }
         let stmt = Index::create()
-            .name(format!(
-                "idx-{}-{}",
-                entity.to_string(),
-                column.to_string()
-            ))
+            .name(format!("idx-{}-{}", entity.to_string(), column.to_string()))
             .table(entity)
             .col(column)
             .to_owned();
