@@ -133,7 +133,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.execute(stmt),
             #[cfg(feature = "proxy")]
-            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.execute(stmt),
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.execute(stmt).await,
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -162,7 +162,7 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::ProxyDatabaseConnection(conn) => {
                 let db_backend = conn.get_database_backend();
                 let stmt = Statement::from_string(db_backend, sql);
-                conn.execute(stmt)
+                conn.execute(stmt).await
             }
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
@@ -181,7 +181,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.query_one(stmt),
             #[cfg(feature = "proxy")]
-            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.query_one(stmt),
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.query_one(stmt).await,
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -199,7 +199,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.query_all(stmt),
             #[cfg(feature = "proxy")]
-            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.query_all(stmt),
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.query_all(stmt).await,
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -470,7 +470,7 @@ impl DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.ping(),
             #[cfg(feature = "proxy")]
-            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.ping(),
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.ping().await,
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }

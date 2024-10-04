@@ -7,7 +7,9 @@ const PostList = () => (
         <Datagrid bulkActionButtons={false}>
             <TextField source="id" />
             <TextField source="title" />
-            <TextField source="content" />
+            <TextField source="createdAt" />
+            <TextField source="updatedAt" />
+
         </Datagrid>
     </List>
 );
@@ -18,6 +20,8 @@ const PostShow = () => (
             <TextField source="id" />
             <TextField source="title" />
             <TextField source="content" />
+            <TextField source="createdAt" />
+            <TextField source="updatedAt" />
         </SimpleShowLayout>
     </Show>
 );

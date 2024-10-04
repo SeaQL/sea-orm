@@ -131,7 +131,7 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
                     ::core::option::Option::None
                 } else {
                     self.idx = idx;
-                    self.get(idx - 1)
+                    #iter_name::get(self, idx - 1)
                 }
             }
         }
@@ -154,7 +154,7 @@ pub fn enum_iter_inner(ast: &DeriveInput) -> syn::Result<TokenStream> {
                     ::core::option::Option::None
                 } else {
                     self.back_idx = back_idx;
-                    self.get(#variant_count - self.back_idx)
+                    #iter_name::get(self, #variant_count - self.back_idx)
                 }
             }
         }

@@ -36,6 +36,21 @@ impl std::fmt::Debug for SqlxMySqlPoolConnection {
     }
 }
 
+impl From<MySqlPool> for SqlxMySqlPoolConnection {
+    fn from(pool: MySqlPool) -> Self {
+        SqlxMySqlPoolConnection {
+            pool,
+            metric_callback: None,
+        }
+    }
+}
+
+impl From<MySqlPool> for DatabaseConnection {
+    fn from(pool: MySqlPool) -> Self {
+        DatabaseConnection::SqlxMySqlPoolConnection(pool.into())
+    }
+}
+
 impl SqlxMySqlConnector {
     /// Check if the URI provided corresponds to `mysql://` for a MySQL database
     pub fn accepts(string: &str) -> bool {
@@ -61,15 +76,21 @@ impl SqlxMySqlConnector {
                 );
             }
         }
-        match options.sqlx_pool_options().connect_with(opt).await {
-            Ok(pool) => Ok(DatabaseConnection::SqlxMySqlPoolConnection(
-                SqlxMySqlPoolConnection {
-                    pool,
-                    metric_callback: None,
-                },
-            )),
-            Err(e) => Err(sqlx_error_to_conn_err(e)),
-        }
+        let pool = if options.connect_lazy {
+            options.sqlx_pool_options().connect_lazy_with(opt)
+        } else {
+            options
+                .sqlx_pool_options()
+                .connect_with(opt)
+                .await
+                .map_err(sqlx_error_to_conn_err)?
+        };
+        Ok(DatabaseConnection::SqlxMySqlPoolConnection(
+            SqlxMySqlPoolConnection {
+                pool,
+                metric_callback: None,
+            },
+        ))
     }
 }
 

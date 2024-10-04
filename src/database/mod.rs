@@ -63,10 +63,15 @@ pub struct ConnectOptions {
     /// Schema search path (PostgreSQL only)
     pub(crate) schema_search_path: Option<String>,
     pub(crate) test_before_acquire: bool,
+    /// Only establish connections to the DB as needed. If set to `true`, the db connection will
+    /// be created using SQLx's [connect_lazy](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.connect_lazy)
+    /// method.
+    pub(crate) connect_lazy: bool,
 }
 
 impl Database {
-    /// Method to create a [DatabaseConnection] on a database
+    /// Method to create a [DatabaseConnection] on a database. This method will return an error
+    /// if the database is not available.
     #[instrument(level = "trace", skip(opt))]
     pub async fn connect<C>(opt: C) -> Result<DatabaseConnection, DbErr>
     where
@@ -102,7 +107,7 @@ impl Database {
     #[instrument(level = "trace", skip(proxy_func_arc))]
     pub async fn connect_proxy(
         db_type: DbBackend,
-        proxy_func_arc: std::sync::Arc<std::sync::Mutex<Box<dyn ProxyDatabaseTrait>>>,
+        proxy_func_arc: std::sync::Arc<Box<dyn ProxyDatabaseTrait>>,
     ) -> Result<DatabaseConnection, DbErr> {
         match db_type {
             DbBackend::MySql => {
@@ -157,6 +162,7 @@ impl ConnectOptions {
             sqlcipher_key: None,
             schema_search_path: None,
             test_before_acquire: true,
+            connect_lazy: false,
         }
     }
 
@@ -296,5 +302,17 @@ impl ConnectOptions {
     pub fn test_before_acquire(&mut self, value: bool) -> &mut Self {
         self.test_before_acquire = value;
         self
+    }
+
+    /// If set to `true`, the db connection pool will be created using SQLx's
+    /// [connect_lazy](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.connect_lazy) method.
+    pub fn connect_lazy(&mut self, value: bool) -> &mut Self {
+        self.connect_lazy = value;
+        self
+    }
+
+    /// Get whether DB connections will be established when the pool is created or only as needed.
+    pub fn get_connect_lazy(&self) -> bool {
+        self.connect_lazy
     }
 }
