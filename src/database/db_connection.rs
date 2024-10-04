@@ -10,9 +10,6 @@ use url::Url;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::pool::PoolConnection;
 
-#[cfg(feature = "sqlx-postgres")]
-use sqlx::PgPool;
-
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use std::sync::Arc;
 
@@ -43,13 +40,6 @@ pub enum DatabaseConnection {
 
     /// The connection to the database has been severed
     Disconnected,
-}
-
-#[cfg(feature = "sqlx-postgres")]
-impl From<PgPool> for DatabaseConnection {
-    fn from(pool: PgPool) -> Self {
-        DatabaseConnection::SqlxPostgresPoolConnection(pool.into())
-    }
 }
 
 /// The same as a [DatabaseConnection]

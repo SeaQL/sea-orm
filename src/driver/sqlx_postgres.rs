@@ -42,6 +42,12 @@ impl From<PgPool> for SqlxPostgresPoolConnection {
     }
 }
 
+impl From<PgPool> for DatabaseConnection {
+    fn from(pool: PgPool) -> Self {
+        DatabaseConnection::SqlxPostgresPoolConnection(pool.into())
+    }
+}
+
 impl SqlxPostgresConnector {
     /// Check if the URI provided corresponds to `postgres://` for a PostgreSQL database
     pub fn accepts(string: &str) -> bool {
