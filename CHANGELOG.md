@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Upgrade `sea-query` to `0.32.0-rc` https://github.com/SeaQL/sea-orm/pull/2305
 * Upgrade `sea-query-binder` to `0.7.0-rc` https://github.com/SeaQL/sea-orm/pull/2305
 * Upgrade `sea-schema` to `0.16.0-rc` https://github.com/SeaQL/sea-orm/pull/2305
+* Upgrade `ouroboros` to `0.18` https://github.com/SeaQL/sea-orm/pull/2353
+
+### House keeping
+
+* Fix typos https://github.com/SeaQL/sea-orm/pull/2360
 
 ## 1.0.1 - 2024-08-26
 

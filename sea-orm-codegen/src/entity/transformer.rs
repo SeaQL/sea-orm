@@ -57,7 +57,7 @@ impl EntityTransformer {
                         > 0;
                     col
                 })
-                .map(|col| {
+                .inspect(|col| {
                     if let sea_query::ColumnType::Enum { name, variants } = col.get_inner_col_type()
                     {
                         enums.insert(
@@ -68,7 +68,6 @@ impl EntityTransformer {
                             },
                         );
                     }
-                    col
                 })
                 .collect();
             let mut ref_table_counts: BTreeMap<String, usize> = BTreeMap::new();

@@ -8,7 +8,7 @@
 |:--:| 
 | The Bakery schema |
 
-## Specifiy a database url
+## Specify a database url
 
 ```
 export DATABASE_URL=mysql://sea:sea@localhost/bakery
