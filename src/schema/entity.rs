@@ -144,7 +144,7 @@ where
             continue;
         }
         let stmt = Index::create()
-            .name(&format!(
+            .name(format!(
                 "idx-{}-{}",
                 entity.to_string(),
                 column.to_string()
@@ -177,7 +177,7 @@ where
         for primary_key in E::PrimaryKey::iter() {
             idx_pk.col(primary_key);
         }
-        stmt.primary_key(idx_pk.name(&format!("pk-{}", entity.to_string())).primary());
+        stmt.primary_key(idx_pk.name(format!("pk-{}", entity.to_string())).primary());
     }
 
     for relation in E::Relation::iter() {
