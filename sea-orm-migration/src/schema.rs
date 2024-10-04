@@ -542,7 +542,7 @@ pub fn custom<T: IntoIden, N: IntoIden>(col: T, name: N) -> ColumnDef {
     ColumnDef::new(col).custom(name).not_null().take()
 }
 
-pub fn custom_null<T: IntoIden>(col: T, name: T) -> ColumnDef {
+pub fn custom_null<T: IntoIden, N: IntoIden>(col: T, name: N) -> ColumnDef {
     ColumnDef::new(col).custom(name).null().take()
 }
 
