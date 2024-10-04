@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 * [sea-orm-macros] Call `EnumIter::get` using fully qualified syntax https://github.com/SeaQL/sea-orm/pull/2321
 * Construct `DatabaseConnection` directly from `sqlx::PgPool`, `sqlx::SqlitePool` and `sqlx::MySqlPool` https://github.com/SeaQL/sea-orm/pull/2348
+* [sea-orm-migration] Add `pk_uuid` schema helper https://github.com/SeaQL/sea-orm/pull/2329
 
 ### Upgrades
 
