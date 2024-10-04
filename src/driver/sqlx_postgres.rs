@@ -65,6 +65,7 @@ impl SqlxPostgresConnector {
             .schema_search_path
             .as_ref()
             .map(|schema| format!("SET search_path = {schema}"));
+        let lazy = options.connect_lazy;
         let mut pool_options = options.sqlx_pool_options();
         if let Some(sql) = set_search_path_sql {
             pool_options = pool_options.after_connect(move |conn, _| {
@@ -76,15 +77,20 @@ impl SqlxPostgresConnector {
                 })
             });
         }
-        match pool_options.connect_with(opt).await {
-            Ok(pool) => Ok(DatabaseConnection::SqlxPostgresPoolConnection(
-                SqlxPostgresPoolConnection {
-                    pool,
-                    metric_callback: None,
-                },
-            )),
-            Err(e) => Err(sqlx_error_to_conn_err(e)),
-        }
+        let pool = if lazy {
+            pool_options.connect_lazy_with(opt)
+        } else {
+            pool_options
+                .connect_with(opt)
+                .await
+                .map_err(sqlx_error_to_conn_err)?
+        };
+        Ok(DatabaseConnection::SqlxPostgresPoolConnection(
+            SqlxPostgresPoolConnection {
+                pool,
+                metric_callback: None,
+            },
+        ))
     }
 }
 

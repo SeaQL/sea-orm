@@ -13,7 +13,6 @@
 //! ```sh
 //! cargo run task seed_data refresh:true
 //! ```
-use std::collections::BTreeMap;
 
 use loco_rs::{db, prelude::*};
 use migration::Migrator;
@@ -31,8 +30,10 @@ impl Task for SeedData {
         }
     }
 
-    async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
-        let refresh = vars.get("refresh").is_some_and(|refresh| refresh == "true");
+    async fn run(&self, app_context: &AppContext, vars: &task::Vars) -> Result<()> {
+        let refresh = vars
+            .cli_arg("refresh")
+            .is_ok_and(|refresh| refresh == "true");
 
         if refresh {
             db::reset::<Migrator>(&app_context.db).await?;

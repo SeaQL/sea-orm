@@ -4,5 +4,6 @@ use migration::Migrator;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    cli::main::<App, Migrator>().await
+    cli::main::<App, Migrator>().await?;
+    Ok(())
 }

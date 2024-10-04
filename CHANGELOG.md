@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.1.0 - Pending
+
+### Versions
+
++ `1.1.0-rc.1`: 2024-08-09
+
+### Upgrades
+
+* Upgrade `sqlx` to `0.8.2` https://github.com/SeaQL/sea-orm/pull/2305, https://github.com/SeaQL/sea-orm/pull/2371
+* Upgrade `bigdecimal` to `0.4` https://github.com/SeaQL/sea-orm/pull/2305
+* Upgrade `sea-query` to `0.32.0-rc` https://github.com/SeaQL/sea-orm/pull/2305
+* Upgrade `sea-query-binder` to `0.7.0-rc` https://github.com/SeaQL/sea-orm/pull/2305
+* Upgrade `sea-schema` to `0.16.0-rc` https://github.com/SeaQL/sea-orm/pull/2305
+* Upgrade `ouroboros` to `0.18` https://github.com/SeaQL/sea-orm/pull/2353
+
+### House keeping
+
+* Fix typos https://github.com/SeaQL/sea-orm/pull/2360
+* Update documentations https://github.com/SeaQL/sea-orm/pull/2345
+
+## 1.0.1 - 2024-08-26
+
+### New Features
+
+* Added `ConnectOptions::connect_lazy` for creating DB connection pools without establishing connections up front https://github.com/SeaQL/sea-orm/pull/2268
+
+### Breaking Changes
+
+* Changed `ProxyDatabaseTrait` methods to async. It's a breaking change, but it should have been part of the 1.0 release.
+    The feature is behind the feature guard `proxy`, and we believe it shouldn't impact majority of users.
+    https://github.com/SeaQL/sea-orm/pull/2278
+
+### Bug Fixes
+
+* [sea-orm-codegen] Fix `ColumnType` to Rust type resolution https://github.com/SeaQL/sea-orm/pull/2313
+
 ## 1.0.0 - 2024-08-02
 
 ### Versions
