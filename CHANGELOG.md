@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### House keeping
 
 * Fix typos https://github.com/SeaQL/sea-orm/pull/2360
+* Update documentations https://github.com/SeaQL/sea-orm/pull/2345
 
 ## 1.0.1 - 2024-08-26
 
