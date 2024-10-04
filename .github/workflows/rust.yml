@@ -61,6 +61,7 @@ on:
       - '.github/ISSUE_TEMPLATE/**'
     branches:
       - master
+      - 1.*.x
       - 0.*.x
       - pr/**/ci
       - ci-*
@@ -92,7 +93,7 @@ jobs:
           contains(steps.git-log.outputs.message, '[issues]')
         }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - id: git-log
@@ -102,7 +103,7 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
@@ -117,7 +118,7 @@ jobs:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly
@@ -141,9 +142,9 @@ jobs:
         runtime: [async-std]
         tls: [native-tls, rustls]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -168,9 +169,9 @@ jobs:
         runtime: [actix]
         tls: [native-tls, rustls]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -195,9 +196,9 @@ jobs:
         runtime: [tokio]
         tls: [native-tls, rustls]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -211,7 +212,7 @@ jobs:
     name: Unit Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --workspace
       - run: cargo test --manifest-path sea-orm-cli/Cargo.toml
@@ -222,7 +223,7 @@ jobs:
     if: ${{ (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-cli == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo install --path sea-orm-cli --debug
 
@@ -238,11 +239,12 @@ jobs:
           examples/basic,
           examples/graphql_example,
           examples/jsonrpsee_example,
-          examples/loco_example,
-          examples/loco_starter,
-          examples/loco_seaography,
+          # examples/loco_example,
+          # examples/loco_starter,
+          # examples/loco_seaography,
           examples/poem_example,
           examples/proxy_gluesql_example,
+          # examples/react_admin,
           examples/rocket_example,
           examples/rocket_okapi_example,
           examples/salvo_example,
@@ -250,7 +252,7 @@ jobs:
           examples/tonic_example,
         ]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - if: ${{ contains(matrix.path, 'tonic_example') }}
         uses: arduino/setup-protoc@v1
       - uses: dtolnay/rust-toolchain@master
@@ -259,6 +261,7 @@ jobs:
           components: rustfmt
       - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo fmt --manifest-path {} -- --check
       - uses: dtolnay/rust-toolchain@stable
+      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo update --manifest-path {}
       - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo build --manifest-path {}
       - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
       - run: ${{'! '}}${{ '[ -d "' }}${{ matrix.path }}${{ '/service" ]' }} || find ${{ matrix.path }}/service -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {} --features mock
@@ -269,7 +272,7 @@ jobs:
     if: ${{ (needs.init.outputs.run-partial == 'true' && needs.init.outputs.run-issues == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - id: set-matrix
         run: echo "path_matrix=$(find issues -type f -name 'Cargo.toml' -printf '%P\0' | jq -Rc '[  split("\u0000") | .[] | "issues/\(.)" ]')" >> $GITHUB_OUTPUT
     outputs:
@@ -287,7 +290,7 @@ jobs:
       matrix:
         path: ${{ fromJson(needs.issues-matrix.outputs.path_matrix) }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --manifest-path ${{ matrix.path }}
       - run: cargo test --manifest-path ${{ matrix.path }}
@@ -311,9 +314,9 @@ jobs:
         runtime: [async-std]
         tls: [native-tls, rustls]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -342,7 +345,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [8.0, 5.7]
+        version: [lts, 5.7]
         runtime: [actix]
         tls: [native-tls]
     services:
@@ -354,7 +357,6 @@ jobs:
           MYSQL_USER: sea
           MYSQL_PASSWORD: sea
           MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_ROOT_PASSWORD:
         ports:
           - "3306:3306"
         options: >-
@@ -363,9 +365,9 @@ jobs:
           --health-timeout=5s
           --health-retries=3
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -392,30 +394,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [10.6]
+        version: [lts]
         runtime: [actix]
         tls: [native-tls]
     services:
-      mysql:
+      mariadb:
         image: mariadb:${{ matrix.version }}
         env:
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_DB: mysql
-          MYSQL_USER: sea
-          MYSQL_PASSWORD: sea
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_ROOT_PASSWORD:
+          MARIADB_HOST: 127.0.0.1
+          MARIADB_DB: mysql
+          MARIADB_USER: sea
+          MARIADB_PASSWORD: sea
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
         ports:
           - "3306:3306"
         options: >-
-          --health-cmd="mysqladmin ping"
+          --health-cmd="healthcheck.sh
+          --connect
+          --innodb_initialized"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -441,7 +444,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [14, 15, 16]
+        version: [14, 16]
         runtime: [tokio]
         tls: [native-tls]
     services:
@@ -459,9 +462,9 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry

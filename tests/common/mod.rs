@@ -17,7 +17,7 @@ impl TestContext {
         dotenv::from_filename(".env").ok();
 
         let base_url =
-            std::env::var("DATABASE_URL").expect("Enviroment variable 'DATABASE_URL' not set");
+            std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
         let db: DatabaseConnection = setup::setup(&base_url, test_name).await;
 
         Self {

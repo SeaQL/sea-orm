@@ -329,7 +329,7 @@ mod tests {
             },
             fruit::Model {
                 id: 2,
-                name: "Rasberry".into(),
+                name: "Raspberry".into(),
                 cake_id: Some(1),
             },
         ];
