@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Upgrades
 
-* Upgrade `sqlx` to `0.8` https://github.com/SeaQL/sea-orm/pull/2305
+* Upgrade `sqlx` to `0.8.2` https://github.com/SeaQL/sea-orm/pull/2305, https://github.com/SeaQL/sea-orm/pull/2371
 * Upgrade `bigdecimal` to `0.4` https://github.com/SeaQL/sea-orm/pull/2305
 * Upgrade `sea-query` to `0.32.0-rc` https://github.com/SeaQL/sea-orm/pull/2305
 * Upgrade `sea-query-binder` to `0.7.0-rc` https://github.com/SeaQL/sea-orm/pull/2305
