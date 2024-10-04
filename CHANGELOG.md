@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Versions
 
 + `1.1.0-rc.1`: 2024-08-09
++ `1.1.0-rc.2`: 2024-10-04
 
 ### Enhancements
 
