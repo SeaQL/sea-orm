@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 + `1.1.0-rc.1`: 2024-08-09
 
+### Enhancements
+
+* [sea-orm-macros] Call `EnumIter::get` using fully qualified syntax https://github.com/SeaQL/sea-orm/pull/2321
+
 ### Upgrades
 
 * Upgrade `sqlx` to `0.8.2` https://github.com/SeaQL/sea-orm/pull/2305, https://github.com/SeaQL/sea-orm/pull/2371
