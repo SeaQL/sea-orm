@@ -21,12 +21,12 @@ pub struct Error {
 
 impl OpenApiResponderInner for Error {
     fn responses(_generator: &mut OpenApiGenerator) -> Result<Responses, OpenApiError> {
-        use rocket_okapi::okapi::openapi3::{RefOr, Response as OpenApiReponse};
+        use rocket_okapi::okapi::openapi3::{RefOr, Response as OpenApiResponse};
 
         let mut responses = Map::new();
         responses.insert(
             "400".to_string(),
-            RefOr::Object(OpenApiReponse {
+            RefOr::Object(OpenApiResponse {
                 description: "\
                 # [400 Bad Request](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400)\n\
                 The request given is wrongly formatted or data asked could not be fulfilled. \
@@ -37,7 +37,7 @@ impl OpenApiResponderInner for Error {
         );
         responses.insert(
             "404".to_string(),
-            RefOr::Object(OpenApiReponse {
+            RefOr::Object(OpenApiResponse {
                 description: "\
                 # [404 Not Found](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404)\n\
                 This response is given when you request a page that does not exists.\
@@ -48,7 +48,7 @@ impl OpenApiResponderInner for Error {
         );
         responses.insert(
             "422".to_string(),
-            RefOr::Object(OpenApiReponse {
+            RefOr::Object(OpenApiResponse {
                 description: "\
                 # [422 Unprocessable Entity](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/422)\n\
                 This response is given when you request body is not correctly formatted. \
@@ -58,7 +58,7 @@ impl OpenApiResponderInner for Error {
         );
         responses.insert(
             "500".to_string(),
-            RefOr::Object(OpenApiReponse {
+            RefOr::Object(OpenApiResponse {
                 description: "\
                 # [500 Internal Server Error](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500)\n\
                 This response is given when something wend wrong on the server. \
