@@ -6,7 +6,7 @@ use sea_orm::sea_query::{
     TableTruncateStatement,
 };
 use sea_orm::{ConnectionTrait, DbBackend, DbErr, StatementBuilder};
-use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
+use sea_schema::probe::SchemaProbe;
 
 /// Helper struct for writing migration scripts in migration file
 pub struct SchemaManager<'c> {
@@ -109,9 +109,37 @@ impl<'c> SchemaManager<'c> {
         C: AsRef<str>,
     {
         let stmt = match self.conn.get_database_backend() {
-            DbBackend::MySql => MySql.has_column(table, column),
-            DbBackend::Postgres => Postgres.has_column(table, column),
-            DbBackend::Sqlite => Sqlite.has_column(table, column),
+            DbBackend::MySql => {
+                #[cfg(feature = "sqlx-mysql")]
+                {
+                    sea_schema::mysql::MySql.has_column(table, column)
+                }
+                #[cfg(not(feature = "sqlx-mysql"))]
+                {
+                    panic!("mysql feature is off")
+                }
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            DbBackend::Postgres => {
+                #[cfg(feature = "sqlx-postgres")]
+                {
+                    sea_schema::postgres::Postgres.has_column(table, column)
+                }
+                #[cfg(not(feature = "sqlx-postgres"))]
+                {
+                    panic!("postgres feature is off")
+                }
+            }
+            DbBackend::Sqlite => {
+                #[cfg(feature = "sqlx-sqlite")]
+                {
+                    sea_schema::sqlite::Sqlite.has_column(table, column)
+                }
+                #[cfg(not(feature = "sqlx-sqlite"))]
+                {
+                    panic!("sqlite feature is off")
+                }
+            }
         };
 
         let builder = self.conn.get_database_backend();
@@ -130,9 +158,37 @@ impl<'c> SchemaManager<'c> {
         I: AsRef<str>,
     {
         let stmt = match self.conn.get_database_backend() {
-            DbBackend::MySql => MySql.has_index(table, index),
-            DbBackend::Postgres => Postgres.has_index(table, index),
-            DbBackend::Sqlite => Sqlite.has_index(table, index),
+            DbBackend::MySql => {
+                #[cfg(feature = "sqlx-mysql")]
+                {
+                    sea_schema::mysql::MySql.has_index(table, index)
+                }
+                #[cfg(not(feature = "sqlx-mysql"))]
+                {
+                    panic!("mysql feature is off")
+                }
+            }
+            #[cfg(feature = "sqlx-postgres")]
+            DbBackend::Postgres => {
+                #[cfg(feature = "sqlx-postgres")]
+                {
+                    sea_schema::postgres::Postgres.has_index(table, index)
+                }
+                #[cfg(not(feature = "sqlx-postgres"))]
+                {
+                    panic!("postgres feature is off")
+                }
+            }
+            DbBackend::Sqlite => {
+                #[cfg(feature = "sqlx-sqlite")]
+                {
+                    sea_schema::sqlite::Sqlite.has_index(table, index)
+                }
+                #[cfg(not(feature = "sqlx-sqlite"))]
+                {
+                    panic!("sqlite feature is off")
+                }
+            }
         };
 
         let builder = self.conn.get_database_backend();
@@ -152,9 +208,37 @@ where
     T: AsRef<str>,
 {
     let stmt = match conn.get_database_backend() {
-        DbBackend::MySql => MySql.has_table(table),
-        DbBackend::Postgres => Postgres.has_table(table),
-        DbBackend::Sqlite => Sqlite.has_table(table),
+        DbBackend::MySql => {
+            #[cfg(feature = "sqlx-mysql")]
+            {
+                sea_schema::mysql::MySql.has_table(table)
+            }
+            #[cfg(not(feature = "sqlx-mysql"))]
+            {
+                panic!("mysql feature is off")
+            }
+        }
+        #[cfg(feature = "sqlx-postgres")]
+        DbBackend::Postgres => {
+            #[cfg(feature = "sqlx-postgres")]
+            {
+                sea_schema::postgres::Postgres.has_table(table)
+            }
+            #[cfg(not(feature = "sqlx-postgres"))]
+            {
+                panic!("postgres feature is off")
+            }
+        }
+        DbBackend::Sqlite => {
+            #[cfg(feature = "sqlx-sqlite")]
+            {
+                sea_schema::sqlite::Sqlite.has_table(table)
+            }
+            #[cfg(not(feature = "sqlx-sqlite"))]
+            {
+                panic!("sqlite feature is off")
+            }
+        }
     };
 
     let builder = conn.get_database_backend();

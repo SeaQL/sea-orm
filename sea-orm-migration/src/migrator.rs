@@ -14,7 +14,7 @@ use sea_orm::{
     DynIden, EntityTrait, FromQueryResult, Iterable, QueryFilter, Schema, Statement,
     TransactionTrait,
 };
-use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
+use sea_schema::probe::SchemaProbe;
 
 use super::{seaql_migrations, IntoSchemaManagerConnection, MigrationTrait, SchemaManager};
 
@@ -442,9 +442,37 @@ where
     C: ConnectionTrait,
 {
     match db.get_database_backend() {
-        DbBackend::MySql => MySql.query_tables(),
-        DbBackend::Postgres => Postgres.query_tables(),
-        DbBackend::Sqlite => Sqlite.query_tables(),
+        DbBackend::MySql => {
+            #[cfg(feature = "sqlx-mysql")]
+            {
+                sea_schema::mysql::MySql.query_tables()
+            }
+            #[cfg(not(feature = "sqlx-mysql"))]
+            {
+                panic!("mysql feature is off")
+            }
+        }
+        #[cfg(feature = "sqlx-postgres")]
+        DbBackend::Postgres => {
+            #[cfg(feature = "sqlx-postgres")]
+            {
+                sea_schema::postgres::Postgres.query_tables()
+            }
+            #[cfg(not(feature = "sqlx-postgres"))]
+            {
+                panic!("postgres feature is off")
+            }
+        }
+        DbBackend::Sqlite => {
+            #[cfg(feature = "sqlx-sqlite")]
+            {
+                sea_schema::sqlite::Sqlite.query_tables()
+            }
+            #[cfg(not(feature = "sqlx-sqlite"))]
+            {
+                panic!("sqlite feature is off")
+            }
+        }
     }
 }
 
@@ -453,9 +481,37 @@ where
     C: ConnectionTrait,
 {
     match db.get_database_backend() {
-        DbBackend::MySql => MySql::get_current_schema(),
-        DbBackend::Postgres => Postgres::get_current_schema(),
-        DbBackend::Sqlite => unimplemented!(),
+        DbBackend::MySql => {
+            #[cfg(feature = "sqlx-mysql")]
+            {
+                sea_schema::mysql::MySql::get_current_schema()
+            }
+            #[cfg(not(feature = "sqlx-mysql"))]
+            {
+                panic!("mysql feature is off")
+            }
+        }
+        #[cfg(feature = "sqlx-postgres")]
+        DbBackend::Postgres => {
+            #[cfg(feature = "sqlx-postgres")]
+            {
+                sea_schema::postgres::Postgres::get_current_schema()
+            }
+            #[cfg(not(feature = "sqlx-postgres"))]
+            {
+                panic!("postgres feature is off")
+            }
+        }
+        DbBackend::Sqlite => {
+            #[cfg(feature = "sqlx-sqlite")]
+            {
+                unimplemented!()
+            }
+            #[cfg(not(feature = "sqlx-sqlite"))]
+            {
+                panic!("sqlite feature is off")
+            }
+        }
     }
 }
 
