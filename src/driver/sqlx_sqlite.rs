@@ -37,6 +37,21 @@ impl std::fmt::Debug for SqlxSqlitePoolConnection {
     }
 }
 
+impl From<SqlitePool> for SqlxSqlitePoolConnection {
+    fn from(pool: SqlitePool) -> Self {
+        SqlxSqlitePoolConnection {
+            pool,
+            metric_callback: None,
+        }
+    }
+}
+
+impl From<SqlitePool> for DatabaseConnection {
+    fn from(pool: SqlitePool) -> Self {
+        DatabaseConnection::SqlxSqlitePoolConnection(pool.into())
+    }
+}
+
 impl SqlxSqliteConnector {
     /// Check if the URI provided corresponds to `sqlite:` for a SQLite database
     pub fn accepts(string: &str) -> bool {
