@@ -480,7 +480,7 @@ mod tests {
             },
             Model {
                 id: 2,
-                name: "Rasberry".into(),
+                name: "Raspberry".into(),
                 cake_id: Some(1),
             },
         ];
@@ -531,7 +531,7 @@ mod tests {
             },
             Model {
                 id: 2,
-                name: "Rasberry".into(),
+                name: "Raspberry".into(),
                 cake_id: Some(1),
             },
         ];
@@ -590,11 +590,11 @@ mod tests {
             (
                 cake::Model {
                     id: 2,
-                    name: "Rasberry Cheese Cake".into(),
+                    name: "Raspberry Cheese Cake".into(),
                 },
                 Some(fruit::Model {
                     id: 10,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                     cake_id: Some(1),
                 }),
             ),
@@ -642,11 +642,11 @@ mod tests {
             (
                 cake::Model {
                     id: 2,
-                    name: "Rasberry Cheese Cake".into(),
+                    name: "Raspberry Cheese Cake".into(),
                 },
                 Some(fruit::Model {
                     id: 10,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                     cake_id: Some(1),
                 }),
             ),
@@ -819,11 +819,11 @@ mod tests {
             (
                 cake::Model {
                     id: 2,
-                    name: "Rasberry Cheese Cake".into(),
+                    name: "Raspberry Cheese Cake".into(),
                 },
                 Some(vendor::Model {
                     id: 10,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                 }),
             ),
         ];
@@ -871,11 +871,11 @@ mod tests {
             (
                 cake::Model {
                     id: 2,
-                    name: "Rasberry Cheese Cake".into(),
+                    name: "Raspberry Cheese Cake".into(),
                 },
                 Some(vendor::Model {
                     id: 10,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                 }),
             ),
             (
@@ -1041,7 +1041,7 @@ mod tests {
             .append_query_results([[
                 Model {
                     id: 22,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                     cake_id: Some(1),
                 },
                 Model {
@@ -1067,7 +1067,7 @@ mod tests {
                 },
                 Model {
                     id: 22,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                     cake_id: Some(1),
                 },
             ]
@@ -1100,7 +1100,7 @@ mod tests {
         let models = [
             Model {
                 id: 22,
-                name: "Rasberry".into(),
+                name: "Raspberry".into(),
                 cake_id: Some(1),
             },
             Model {
@@ -1153,7 +1153,7 @@ mod tests {
             .append_query_results([[
                 Model {
                     id: 27,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                     cake_id: Some(1),
                 },
                 Model {
@@ -1180,7 +1180,7 @@ mod tests {
                 },
                 Model {
                     id: 27,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                     cake_id: Some(1),
                 },
             ]
@@ -1214,7 +1214,7 @@ mod tests {
         let models = [
             Model {
                 id: 27,
-                name: "Rasberry".into(),
+                name: "Raspberry".into(),
                 cake_id: Some(1),
             },
             Model {
