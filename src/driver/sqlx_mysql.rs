@@ -38,7 +38,10 @@ impl std::fmt::Debug for SqlxMySqlPoolConnection {
 
 impl From<MySqlPool> for SqlxMySqlPoolConnection {
     fn from(pool: MySqlPool) -> Self {
-        SqlxMySqlPoolConnection { pool, metric_callback: None }
+        SqlxMySqlPoolConnection {
+            pool,
+            metric_callback: None,
+        }
     }
 }
 

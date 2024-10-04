@@ -38,7 +38,10 @@ impl std::fmt::Debug for SqlxPostgresPoolConnection {
 
 impl From<PgPool> for SqlxPostgresPoolConnection {
     fn from(pool: PgPool) -> Self {
-        SqlxPostgresPoolConnection { pool, metric_callback: None }
+        SqlxPostgresPoolConnection {
+            pool,
+            metric_callback: None,
+        }
     }
 }
 

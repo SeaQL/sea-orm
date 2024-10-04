@@ -39,7 +39,10 @@ impl std::fmt::Debug for SqlxSqlitePoolConnection {
 
 impl From<SqlitePool> for SqlxSqlitePoolConnection {
     fn from(pool: SqlitePool) -> Self {
-        SqlxSqlitePoolConnection { pool, metric_callback: None }
+        SqlxSqlitePoolConnection {
+            pool,
+            metric_callback: None,
+        }
     }
 }
 
