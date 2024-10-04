@@ -125,7 +125,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
 
                     let mut enum_name = None;
                     let mut is_primary_key = false;
-                    // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(Some(255))", default_value = "new user", default_expr = "gen_random_uuid()", column_name = "name", enum_name = "Name", nullable, indexed, unique)]
+                    // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(StringLen::N(255))", default_value = "new user", default_expr = "gen_random_uuid()", column_name = "name", enum_name = "Name", nullable, indexed, unique)]
                     for attr in field.attrs.iter() {
                         if !attr.path().is_ident("sea_orm") {
                             continue;
