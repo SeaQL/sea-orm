@@ -2,13 +2,13 @@
 # A separate workspace
 
 [package]
-name = "sea-orm-issues-9999"
+name = "sea-orm-issue-2383"
 version = "0.1.0"
 edition = "2021"
 publish = false
 
 [[bin]]
-name = "issue-9999"
+name = "issue-2383"
 path = "src/main.rs"
 
 [dependencies]
