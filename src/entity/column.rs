@@ -389,6 +389,11 @@ impl ColumnDef {
         &self.col_type
     }
 
+    /// Get [Option<SimpleExpr>] as reference
+    pub fn get_column_default(&self) -> Option<&SimpleExpr> {
+        self.default.as_ref()
+    }
+
     /// Returns true if the column is nullable
     pub fn is_null(&self) -> bool {
         self.null
