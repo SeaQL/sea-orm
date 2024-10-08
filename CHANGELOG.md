@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * Construct `DatabaseConnection` directly from `sqlx::PgPool`, `sqlx::SqlitePool` and `sqlx::MySqlPool` https://github.com/SeaQL/sea-orm/pull/2348
 * [sea-orm-migration] Add `pk_uuid` schema helper https://github.com/SeaQL/sea-orm/pull/2329
 * [sea-orm-migration] Allow `custom` and `custom_null` schema helper to take column name and alias of different `IntoIden` types https://github.com/SeaQL/sea-orm/pull/2326
+* Add `ColumnDef::get_column_default` getter https://github.com/SeaQL/sea-orm/pull/2387
 
 ### Upgrades
 
