@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 + `1.1.0-rc.1`: 2024-08-09
 + `1.1.0-rc.2`: 2024-10-04
++ `1.1.0-rc.3`: 2024-10-08
 
 ### Enhancements
 
