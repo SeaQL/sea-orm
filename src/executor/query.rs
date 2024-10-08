@@ -87,6 +87,15 @@ impl QueryResult {
         Ok(T::try_get_by(self, index)?)
     }
 
+    /// Get a value from the query result with an ColIdx
+    pub fn try_get_by_nullable<T, I>(&self, index: I) -> Result<T, TryGetError>
+    where
+        T: TryGetable,
+        I: ColIdx,
+    {
+        T::try_get_by(self, index)
+    }
+
     /// Get a value from the query result with prefixed column name
     pub fn try_get<T>(&self, pre: &str, col: &str) -> Result<T, DbErr>
     where
@@ -95,12 +104,28 @@ impl QueryResult {
         Ok(T::try_get(self, pre, col)?)
     }
 
+    /// Get a value from the query result with prefixed column name
+    pub fn try_get_nullable<T>(&self, pre: &str, col: &str) -> Result<T, TryGetError>
+    where
+        T: TryGetable,
+    {
+        T::try_get(self, pre, col)
+    }
+
     /// Get a value from the query result based on the order in the select expressions
     pub fn try_get_by_index<T>(&self, idx: usize) -> Result<T, DbErr>
     where
         T: TryGetable,
     {
         Ok(T::try_get_by_index(self, idx)?)
+    }
+
+    /// Get a value from the query result based on the order in the select expressions
+    pub fn try_get_by_index_nullable<T>(&self, idx: usize) -> Result<T, TryGetError>
+    where
+        T: TryGetable,
+    {
+        T::try_get_by_index(self, idx)
     }
 
     /// Get a tuple value from the query result with prefixed column name
