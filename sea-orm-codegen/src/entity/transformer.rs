@@ -397,6 +397,7 @@ mod tests {
                     &Default::default(),
                     &Default::default(),
                     false,
+                    true,
                 )
                 .into_iter()
                 .skip(1)
