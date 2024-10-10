@@ -76,6 +76,18 @@ impl SqlxPostgresConnector {
                 );
             }
         }
+        if let Some(ssl_mode) = options.ssl_mode {
+            opt = opt.ssl_mode(ssl_mode.into());
+        }
+        if let Some(cert_keyclient_cert) = &options.ssl_client_cert {
+            opt = opt.ssl_client_cert_from_pem(cert_keyclient_cert);
+        }
+        if let Some(cert_keyclient_key) = &options.ssl_client_key {
+            opt = opt.ssl_client_key_from_pem(cert_keyclient_key);
+        }
+        if let Some(cert_keyclient_root_cert) = &options.ssl_root_cert {
+            opt = opt.ssl_root_cert_from_pem(cert_keyclient_root_cert.clone());
+        }
         let set_search_path_sql = options
             .schema_search_path
             .as_ref()
@@ -330,6 +342,18 @@ impl
             crate::InnerConnection::Postgres(conn),
             metric_callback,
         )
+    }
+}
+
+impl From<crate::SSLMode> for sqlx::postgres::PgSslMode {
+    fn from(mode: crate::SSLMode) -> Self {
+        match mode {
+            crate::SSLMode::Disable => Self::Disable,
+            crate::SSLMode::Prefer => Self::Prefer,
+            crate::SSLMode::Require => Self::Require,
+            crate::SSLMode::VerifyCa => Self::VerifyCa,
+            crate::SSLMode::VerifyIdentity => Self::VerifyFull,
+        }
     }
 }
 
