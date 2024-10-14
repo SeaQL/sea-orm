@@ -13,7 +13,7 @@ impl Mutation {
         let res = Note::insert(active_model).exec(db).await?;
 
         Ok(note::Model {
-            id: res.last_insert_id,
+            id: res.last_insert_id.ok_or(DbErr::UnpackInsertId)?,
             ..form_data
         })
     }

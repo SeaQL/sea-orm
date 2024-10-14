@@ -125,7 +125,7 @@ impl ProxyDatabaseTrait for ProxyDb {
         });
 
         Ok(ProxyExecResult {
-            last_insert_id: 1,
+            last_insert_id: Some(1),
             rows_affected: 1,
         })
     }

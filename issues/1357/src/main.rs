@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
         .await?;
 
     assert_eq!(Entity::find().one(&db).await?, Some(model.clone()));
-    assert_eq!(res.last_insert_id, model.id);
+    assert_eq!(res.last_insert_id, Some(model.id));
 
     let model = Model {
         id: -10,
@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
         .await?;
 
     assert_eq!(Entity::find().one(&db).await?, Some(model.clone()));
-    assert_eq!(res.last_insert_id, model.id);
+    assert_eq!(res.last_insert_id, Some(model.id));
 
     Ok(())
 }

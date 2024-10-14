@@ -22,9 +22,15 @@ pub async fn insert_and_update(db: &DbConn) -> Result<(), DbErr> {
     };
     let res = Fruit::insert(pear).exec(db).await?;
 
-    println!("Inserted: last_insert_id = {}", res.last_insert_id);
+    println!(
+        "Inserted: last_insert_id = {}",
+        res.last_insert_id.ok_or(DbErr::UnpackInsertId)?
+    );
 
-    let pear: Option<fruit::Model> = Fruit::find_by_id(res.last_insert_id).one(db).await?;
+    let pear: Option<fruit::Model> =
+        Fruit::find_by_id(res.last_insert_id.ok_or(DbErr::UnpackInsertId)?)
+            .one(db)
+            .await?;
 
     println!("Pear: {pear:?}");
 
