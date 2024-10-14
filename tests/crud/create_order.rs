@@ -22,7 +22,11 @@ pub async fn test_create_order(db: &DbConn) {
             "home": "0395555555",
             "address": "12 Test St, Testville, Vic, Australia"
         })),
-        bakery_id: Set(Some(bakery_insert_res.last_insert_id)),
+        bakery_id: Set(Some(
+            bakery_insert_res
+                .last_insert_id
+                .expect("could not get last insert id for bakery"),
+        )),
         ..Default::default()
     };
     let baker_insert_res = Baker::insert(baker_bob)
@@ -36,7 +40,11 @@ pub async fn test_create_order(db: &DbConn) {
         price: Set(rust_dec(10.25)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
-        bakery_id: Set(Some(bakery_insert_res.last_insert_id)),
+        bakery_id: Set(Some(
+            bakery_insert_res
+                .last_insert_id
+                .expect("could not get last insert id for bakery"),
+        )),
         ..Default::default()
     };
 
@@ -47,8 +55,12 @@ pub async fn test_create_order(db: &DbConn) {
 
     // Cake_Baker
     let cake_baker = cakes_bakers::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id),
-        baker_id: Set(baker_insert_res.last_insert_id),
+        cake_id: Set(cake_insert_res
+            .last_insert_id
+            .expect("could not get last insert id for cake")),
+        baker_id: Set(baker_insert_res
+            .last_insert_id
+            .expect("could not get last insert id for baker")),
     };
     let cake_baker_res = CakesBakers::insert(cake_baker.clone())
         .exec(db)
@@ -56,7 +68,7 @@ pub async fn test_create_order(db: &DbConn) {
         .expect("could not insert cake_baker");
     assert_eq!(
         cake_baker_res.last_insert_id,
-        (cake_baker.cake_id.unwrap(), cake_baker.baker_id.unwrap())
+        Some((cake_baker.cake_id.unwrap(), cake_baker.baker_id.unwrap()))
     );
 
     // Customer
@@ -72,8 +84,12 @@ pub async fn test_create_order(db: &DbConn) {
 
     // Order
     let order_1 = order::ActiveModel {
-        bakery_id: Set(bakery_insert_res.last_insert_id),
-        customer_id: Set(customer_insert_res.last_insert_id),
+        bakery_id: Set(bakery_insert_res
+            .last_insert_id
+            .expect("could not get last insert id for bakery")),
+        customer_id: Set(customer_insert_res
+            .last_insert_id
+            .expect("could not get last insert id for customer")),
         total: Set(rust_dec(15.10)),
         placed_at: Set(Utc::now().naive_utc()),
         ..Default::default()
@@ -85,8 +101,12 @@ pub async fn test_create_order(db: &DbConn) {
 
     // Lineitem
     let lineitem_1 = lineitem::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id),
-        order_id: Set(order_insert_res.last_insert_id),
+        cake_id: Set(cake_insert_res
+            .last_insert_id
+            .expect("could not get last insert id for cake")),
+        order_id: Set(order_insert_res
+            .last_insert_id
+            .expect("could not get last insert id for order")),
         price: Set(rust_dec(7.55)),
         quantity: Set(2),
         ..Default::default()
@@ -96,10 +116,14 @@ pub async fn test_create_order(db: &DbConn) {
         .await
         .expect("could not insert lineitem");
 
-    let order: Option<order::Model> = Order::find_by_id(order_insert_res.last_insert_id)
-        .one(db)
-        .await
-        .expect("could not find order");
+    let order: Option<order::Model> = Order::find_by_id(
+        order_insert_res
+            .last_insert_id
+            .expect("could not get last insert id for order"),
+    )
+    .one(db)
+    .await
+    .expect("could not find order");
 
     assert!(order.is_some());
     let order_model = order.unwrap();

@@ -30,7 +30,7 @@ pub async fn create_and_update(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     assert_eq!(Entity::find().one(db).await?, Some(model.clone()));
 
-    assert_eq!(res.last_insert_id, model.id);
+    assert_eq!(res.last_insert_id, Some(model.id.clone()));
 
     let updated_active_model = ActiveModel {
         value: Set("First Row (Updated)".to_owned()),

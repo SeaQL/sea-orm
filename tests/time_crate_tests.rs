@@ -31,7 +31,7 @@ pub async fn create_transaction_log(db: &DatabaseConnection) -> Result<(), DbErr
         .exec(db)
         .await?;
 
-    assert_eq!(transaction_log.id, res.last_insert_id);
+    assert_eq!(Some(transaction_log.id), res.last_insert_id);
     assert_eq!(
         TransactionLog::find().one(db).await?,
         Some(transaction_log.clone())

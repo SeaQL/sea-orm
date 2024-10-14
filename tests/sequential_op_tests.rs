@@ -74,7 +74,7 @@ async fn seed_data(db: &DatabaseConnection) {
         .expect("could not insert cake");
 
     let cake_baker = cakes_bakers::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id),
+        cake_id: Set(cake_insert_res.last_insert_id.unwrap()),
         baker_id: Set(baker_1.id.clone().unwrap()),
     };
 
@@ -84,7 +84,7 @@ async fn seed_data(db: &DatabaseConnection) {
         .expect("could not insert cake_baker");
     assert_eq!(
         cake_baker_res.last_insert_id,
-        (cake_baker.cake_id.unwrap(), cake_baker.baker_id.unwrap())
+        Some((cake_baker.cake_id.unwrap(), cake_baker.baker_id.unwrap()))
     );
 
     let customer_kate = customer::ActiveModel {
@@ -108,7 +108,7 @@ async fn seed_data(db: &DatabaseConnection) {
     .expect("could not insert order");
 
     let _lineitem = lineitem::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id),
+        cake_id: Set(cake_insert_res.last_insert_id.unwrap()),
         price: Set(rust_dec(10.00)),
         quantity: Set(12),
         order_id: Set(kate_order_1.id.clone().unwrap()),
@@ -119,7 +119,7 @@ async fn seed_data(db: &DatabaseConnection) {
     .expect("could not insert order");
 
     let _lineitem2 = lineitem::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id),
+        cake_id: Set(cake_insert_res.last_insert_id.unwrap()),
         price: Set(rust_dec(50.00)),
         quantity: Set(2),
         order_id: Set(kate_order_1.id.clone().unwrap()),
@@ -208,7 +208,7 @@ async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cak
         .expect("could not insert cake");
 
     let cake_baker = cakes_bakers::ActiveModel {
-        cake_id: Set(cake_insert_res.last_insert_id),
+        cake_id: Set(cake_insert_res.last_insert_id.unwrap()),
         baker_id: Set(baker.id),
     };
 
@@ -218,10 +218,10 @@ async fn create_cake(db: &DatabaseConnection, baker: baker::Model) -> Option<cak
         .expect("could not insert cake_baker");
     assert_eq!(
         cake_baker_res.last_insert_id,
-        (cake_baker.cake_id.unwrap(), cake_baker.baker_id.unwrap())
+        Some((cake_baker.cake_id.unwrap(), cake_baker.baker_id.unwrap()))
     );
 
-    Cake::find_by_id(cake_insert_res.last_insert_id)
+    Cake::find_by_id(cake_insert_res.last_insert_id.unwrap())
         .one(db)
         .await
         .unwrap()

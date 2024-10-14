@@ -29,7 +29,7 @@ pub async fn create_applog(db: &DatabaseConnection) -> Result<(), DbErr> {
         .exec(db)
         .await?;
 
-    assert_eq!(log.id, res.last_insert_id);
+    assert_eq!(Some(log.id), res.last_insert_id);
     assert_eq!(Applog::find().one(db).await?, Some(log.clone()));
 
     #[cfg(feature = "sqlx-sqlite")]
@@ -78,7 +78,7 @@ pub async fn create_satellites_log(db: &DatabaseConnection) -> Result<(), DbErr>
         .exec(db)
         .await?;
 
-    assert_eq!(archive.id, res.last_insert_id);
+    assert_eq!(Some(archive.id), res.last_insert_id);
     assert_eq!(Satellite::find().one(db).await?, Some(archive.clone()));
 
     #[cfg(feature = "sqlx-sqlite")]

@@ -29,10 +29,13 @@ pub async fn test_create_bakery(db: &DbConn) {
         .await
         .expect("could not insert bakery");
 
-    let bakery: Option<bakery::Model> = Bakery::find_by_id(res.last_insert_id)
-        .one(db)
-        .await
-        .expect("could not find bakery");
+    let bakery: Option<bakery::Model> = Bakery::find_by_id(
+        res.last_insert_id
+            .expect("could not get last insert id for bakery"),
+    )
+    .one(db)
+    .await
+    .expect("could not find bakery");
 
     assert!(bakery.is_some());
     let bakery_model = bakery.unwrap();
@@ -51,10 +54,13 @@ pub async fn test_create_customer(db: &DbConn) {
         .await
         .expect("could not insert customer");
 
-    let customer: Option<customer::Model> = Customer::find_by_id(res.last_insert_id)
-        .one(db)
-        .await
-        .expect("could not find customer");
+    let customer: Option<customer::Model> = Customer::find_by_id(
+        res.last_insert_id
+            .expect("could not get last insert id for customer"),
+    )
+    .one(db)
+    .await
+    .expect("could not find customer");
 
     assert!(customer.is_some());
     let customer_model = customer.unwrap();

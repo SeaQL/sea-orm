@@ -34,7 +34,7 @@ pub async fn create_insert_default(db: &DatabaseConnection) -> Result<(), DbErr>
     .exec(db)
     .await;
 
-    assert_eq!(res?.last_insert_id, 3);
+    assert_eq!(res?.last_insert_id, Some(3));
 
     let res = Entity::insert_many([
         ActiveModel { id: Set(1) },
@@ -46,7 +46,7 @@ pub async fn create_insert_default(db: &DatabaseConnection) -> Result<(), DbErr>
     .exec(db)
     .await;
 
-    assert_eq!(res?.last_insert_id, 4);
+    assert_eq!(res?.last_insert_id, Some(4));
 
     let res = Entity::insert_many([
         ActiveModel { id: Set(1) },

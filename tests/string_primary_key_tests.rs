@@ -117,7 +117,7 @@ pub async fn create_and_update_repository(db: &DatabaseConnection) -> Result<(),
 
     assert_eq!(Repository::find().one(db).await?, Some(repository.clone()));
 
-    assert_eq!(res.last_insert_id, repository.id);
+    assert_eq!(res.last_insert_id, Some(repository.id.clone()));
 
     let updated_active_model = repository::ActiveModel {
         description: Set(Some("description...".to_owned())),

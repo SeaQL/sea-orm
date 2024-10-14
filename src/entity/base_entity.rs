@@ -314,7 +314,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// let insert_result = cake::Entity::insert(apple).exec(&db).await?;
     ///
-    /// assert_eq!(dbg!(insert_result.last_insert_id), 15);
+    /// assert_eq!(dbg!(insert_result.last_insert_id), Some(15));
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -356,7 +356,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// let insert_result = cake::Entity::insert(apple).exec(&db).await?;
     ///
-    /// assert_eq!(insert_result.last_insert_id, 15);
+    /// assert_eq!(insert_result.last_insert_id, Some(15));
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -407,7 +407,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// let insert_result = cake::Entity::insert_many([apple, orange]).exec(&db).await?;
     ///
-    /// assert_eq!(insert_result.last_insert_id, 28);
+    /// assert_eq!(insert_result.last_insert_id, Some(28));
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
@@ -453,7 +453,7 @@ pub trait EntityTrait: EntityName {
     ///
     /// let insert_result = cake::Entity::insert_many([apple, orange]).exec(&db).await?;
     ///
-    /// assert_eq!(insert_result.last_insert_id, 28);
+    /// assert_eq!(insert_result.last_insert_id, Some(28));
     ///
     /// assert_eq!(
     ///     db.into_transaction_log(),
