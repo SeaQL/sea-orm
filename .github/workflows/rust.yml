@@ -254,7 +254,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - if: ${{ contains(matrix.path, 'tonic_example') }}
-        uses: arduino/setup-protoc@v1
+        uses: arduino/setup-protoc@v3
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly
