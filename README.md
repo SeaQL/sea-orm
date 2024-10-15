@@ -204,7 +204,7 @@ Making use of Seaography, it will be a breeze to create admin dashboard with you
 1. [Adding GraphQL Support to Loco with Seaography](https://www.sea-ql.org/blog/2024-07-01-graphql-support-with-loco-seaography/)
 1. [GraphQL based Admin Dashboard with Loco and Seaography](https://www.sea-ql.org/blog/2024-08-08-graphql-admin-dashboard-with-loco-seaography/)
 
-<img src="https://www.sea-ql.org/blog/img/Loco%20x%20Seaography%20Dashboard%20Demo%20List.png"/>
+<img src="https://www.sea-ql.org/blog/img/Loco%20x%20Seaography%20Dashboard%20Demo.png"/>
 
 ## Learn More
 
