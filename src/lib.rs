@@ -330,15 +330,11 @@
 //!
 //! <table><tr>
 //! <td><a href="https://www.digitalocean.com/">
-//!   <picture>
-//!     <img src="https://www.sea-ql.org/static/sponsors/DigitalOcean.svg" width="125">
-//!   </picture>
+//!   <img src="https://www.sea-ql.org/static/sponsors/DigitalOcean.svg" width="125">
 //! </a></td>
 //!
 //! <td><a href="https://www.jetbrains.com/">
-//!   <picture>
-//!     <img src="https://www.sea-ql.org/static/sponsors/JetBrains.svg" width="125">
-//!   </picture>
+//!   <img src="https://www.sea-ql.org/static/sponsors/JetBrains.svg" width="125">
 //! </a></td>
 //! </tr></table>
 //!
