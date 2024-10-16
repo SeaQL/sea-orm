@@ -407,6 +407,7 @@ macro_rules! try_getable_mysql {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! try_getable_postgres {
     ( $type: ty ) => {
         impl TryGetable for $type {
