@@ -157,6 +157,10 @@ impl FromQueryResult for JsonValue {
                     try_get_type!(uuid::Uuid, col);
                     #[cfg(all(feature = "with-uuid", feature = "postgres-array"))]
                     try_get_type!(Vec<uuid::Uuid>, col);
+                    #[cfg(feature = "with-ipnetwork")]
+                    try_get_type!(ipnetwork::IpNetwork, col);
+                    #[cfg(all(feature = "with-ipnetwork", feature = "postgres-array"))]
+                    try_get_type!(Vec<ipnetwork::IpNetwork>, col);
                     try_get_type!(Vec<u8>, col);
                 }
                 Ok(JsonValue::Object(map))

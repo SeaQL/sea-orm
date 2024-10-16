@@ -742,6 +742,10 @@ impl_into_active_value!(crate::prelude::TimeDateTime);
 #[cfg_attr(docsrs, doc(cfg(feature = "with-time")))]
 impl_into_active_value!(crate::prelude::TimeDateTimeWithTimeZone);
 
+#[cfg(feature = "with-ipnetwork")]
+#[cfg_attr(docsrs, doc(cfg(feature = "with-ipnetwork")))]
+impl_into_active_value!(crate::prelude::IpNetwork);
+
 impl<V> Default for ActiveValue<V>
 where
     V: Into<Value>,
