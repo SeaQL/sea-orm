@@ -4,7 +4,6 @@
 
 mod entity;
 
-use anyhow::{anyhow, Result};
 use std::{
     collections::BTreeMap,
     sync::{Arc, Mutex},
@@ -12,8 +11,8 @@ use std::{
 
 use gluesql::{memory_storage::MemoryStorage, prelude::Glue};
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, Database, DbBackend, DbErr, EntityTrait,
-    ProxyDatabaseTrait, ProxyExecResult, ProxyRow, Statement,
+    ActiveValue::Set, Database, DbBackend, DbErr, EntityTrait, ProxyDatabaseTrait, ProxyExecResult,
+    ProxyRow, Statement,
 };
 
 use entity::post::{ActiveModel, Entity};
@@ -100,12 +99,6 @@ impl ProxyDatabaseTrait for ProxyDb {
                                                     val.unwrap_or(0).to_string(),
                                                     false,
                                                 ),
-                                                sea_orm::Value::Uuid(val) => {
-                                                    Value::SingleQuotedString(match val {
-                                                        Some(val) => val.to_string(),
-                                                        None => "".to_string(),
-                                                    })
-                                                }
                                                 _ => todo!(),
                                             };
                                         }
@@ -139,14 +132,14 @@ impl ProxyDatabaseTrait for ProxyDb {
 }
 
 #[async_std::main]
-async fn main() -> Result<()> {
+async fn main() {
     let mem = MemoryStorage::default();
     let mut glue = Glue::new(mem);
 
     glue.execute(
         r#"
             CREATE TABLE IF NOT EXISTS posts (
-                id UUID PRIMARY KEY,
+                id INTEGER PRIMARY KEY,
                 title TEXT NOT NULL,
                 text TEXT NOT NULL
             )
@@ -167,41 +160,32 @@ async fn main() -> Result<()> {
     println!("Initialized");
 
     let data = ActiveModel {
+        id: Set(11),
         title: Set("Homo".to_owned()),
         text: Set("いいよ、来いよ".to_owned()),
-        ..Default::default()
     };
-
-    println!("data: {:?}", data);
-    let ret = data.insert(&db).await.map_err(|err| anyhow!("{:?}", err))?;
-    println!("ret: {:?}", ret);
-
+    Entity::insert(data).exec(&db).await.unwrap();
     let data = ActiveModel {
+        id: Set(45),
         title: Set("Homo".to_owned()),
         text: Set("そうだよ".to_owned()),
-        ..Default::default()
     };
-    let ret = data.insert(&db).await.map_err(|err| anyhow!("{:?}", err))?;
-    println!("ret: {:?}", ret);
-
+    Entity::insert(data).exec(&db).await.unwrap();
     let data = ActiveModel {
+        id: Set(14),
         title: Set("Homo".to_owned()),
         text: Set("悔い改めて".to_owned()),
-        ..Default::default()
     };
-    let ret = data.insert(&db).await.map_err(|err| anyhow!("{:?}", err))?;
-    println!("ret: {:?}", ret);
+    Entity::insert(data).exec(&db).await.unwrap();
 
     let list = Entity::find().all(&db).await.unwrap().to_vec();
     println!("Result: {:?}", list);
-
-    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     #[smol_potat::test]
     async fn try_run() {
-        crate::main().unwrap();
+        crate::main()
     }
 }

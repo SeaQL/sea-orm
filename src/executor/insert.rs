@@ -256,9 +256,10 @@ where
                 if db_backend == DbBackend::MySql && last_insert_id == 0 {
                     return Err(DbErr::RecordNotInserted);
                 }
-                ValueTypeOf::<A>::try_from_u64(last_insert_id)
-                    .map(|val| Some(val))
-                    .unwrap_or(None)
+                Some(
+                    ValueTypeOf::<A>::try_from_u64(last_insert_id)
+                        .map_err(|_| DbErr::UnpackInsertId)?,
+                )
             } else {
                 None
             }
