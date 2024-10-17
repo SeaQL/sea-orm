@@ -15,7 +15,7 @@ tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread"] }
 tracing = { version = "0.1.37" }
 tracing-subscriber = { version = "0.3.17" }
 lazy_static = { version = "1.4.0" }
-seaography = { version = "1.1.0-rc.1", features = ["with-decimal", "with-chrono"] }
+seaography = { version = "1.1.0", features = ["with-decimal", "with-chrono"] }
 
 [dev-dependencies]
 serde_json = { version = "1.0.103" }

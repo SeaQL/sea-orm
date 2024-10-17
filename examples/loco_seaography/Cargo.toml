@@ -26,7 +26,7 @@ include_dir = "0.7"
 uuid = { version = "1.6.0", features = ["v4"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 
-seaography = { version = "1.1.0-rc.1", features = ["with-decimal", "with-chrono"] }
+seaography = { version = "1.1.0", features = ["with-decimal", "with-chrono"] }
 async-graphql = { version = "7.0", features = ["decimal", "chrono", "dataloader", "dynamic-schema"] }
 async-graphql-axum = { version = "7.0" }
 lazy_static = { version = "1.4" }
