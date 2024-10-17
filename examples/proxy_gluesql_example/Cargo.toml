@@ -8,6 +8,7 @@ publish = false
 [workspace]
 
 [dependencies]
+anyhow = "^1"
 async-std = { version = "1.12", features = ["attributes", "tokio1"] }
 serde_json = { version = "1" }
 serde = { version = "1" }
