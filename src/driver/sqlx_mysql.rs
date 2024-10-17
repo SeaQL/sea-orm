@@ -76,6 +76,18 @@ impl SqlxMySqlConnector {
                 );
             }
         }
+        if let Some(ssl_mode) = options.ssl_mode {
+            opt = opt.ssl_mode(ssl_mode.into());
+        }
+        if let Some(cert_keyclient_cert) = &options.ssl_client_cert {
+            opt = opt.ssl_client_cert_from_pem(cert_keyclient_cert);
+        }
+        if let Some(cert_keyclient_key) = &options.ssl_client_key {
+            opt = opt.ssl_client_key_from_pem(cert_keyclient_key);
+        }
+        if let Some(cert_keyclient_ca) = &options.ssl_root_cert {
+            opt = opt.ssl_ca_from_pem(cert_keyclient_ca.clone());
+        }
         let pool = if options.connect_lazy {
             options.sqlx_pool_options().connect_lazy_with(opt)
         } else {
@@ -311,6 +323,18 @@ impl
         ),
     ) -> Self {
         crate::QueryStream::build(stmt, crate::InnerConnection::MySql(conn), metric_callback)
+    }
+}
+
+impl From<crate::SSLMode> for sqlx::mysql::MySqlSslMode {
+    fn from(mode: crate::SSLMode) -> Self {
+        match mode {
+            crate::SSLMode::Disable => Self::Disabled,
+            crate::SSLMode::Prefer => Self::Preferred,
+            crate::SSLMode::Require => Self::Required,
+            crate::SSLMode::VerifyCa => Self::VerifyCa,
+            crate::SSLMode::VerifyIdentity => Self::VerifyIdentity,
+        }
     }
 }
 
