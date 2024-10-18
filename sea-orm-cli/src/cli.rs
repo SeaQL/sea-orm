@@ -300,6 +300,13 @@ pub enum GenerateSubcommands {
 
         #[arg(
             long,
+            value_delimiter = ',',
+            help = "Add extra derive macros to generated column enum (comma separated), e.g. `--column-extra-derives 'async_graphql::Enum','CustomDerive'`"
+        )]
+        column_extra_derives: Vec<String>,
+
+        #[arg(
+            long,
             default_value = "false",
             long_help = "Generate helper Enumerations that are used by Seaography."
         )]
