@@ -24,7 +24,7 @@ where
     A: ActiveModelTrait,
 {
     /// The id performed when AUTOINCREMENT was performed on the PrimaryKey
-    pub last_insert_id: <<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType,
+    pub last_insert_id: Option<<<<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::ValueType>,
 }
 
 /// The types of results for an INSERT operation
@@ -226,7 +226,7 @@ where
             if res.rows_affected() == 0 {
                 return Err(DbErr::RecordNotInserted);
             }
-            FromValueTuple::from_value_tuple(value_tuple)
+            Some(FromValueTuple::from_value_tuple(value_tuple))
         }
         (None, true) => {
             let mut rows = db.query_all(statement).await?;
@@ -237,24 +237,32 @@ where
             let cols = PrimaryKey::<A>::iter()
                 .map(|col| col.to_string())
                 .collect::<Vec<_>>();
-            row.try_get_many("", cols.as_ref())
-                .map_err(|_| DbErr::UnpackInsertId)?
+            Some(
+                row.try_get_many("", cols.as_ref())
+                    .map_err(|_| DbErr::UnpackInsertId)?,
+            )
         }
         (None, false) => {
             let res = db.execute(statement).await?;
             if res.rows_affected() == 0 {
                 return Err(DbErr::RecordNotInserted);
             }
-            let last_insert_id = res.last_insert_id();
-            // For MySQL, the affected-rows number:
-            //   - The affected-rows value per row is `1` if the row is inserted as a new row,
-            //   - `2` if an existing row is updated,
-            //   - and `0` if an existing row is set to its current values.
-            // Reference: https://dev.mysql.com/doc/refman/8.4/en/insert-on-duplicate.html
-            if db_backend == DbBackend::MySql && last_insert_id == 0 {
-                return Err(DbErr::RecordNotInserted);
+            if let Some(last_insert_id) = res.last_insert_id() {
+                // For MySQL, the affected-rows number:
+                //   - The affected-rows value per row is `1` if the row is inserted as a new row,
+                //   - `2` if an existing row is updated,
+                //   - and `0` if an existing row is set to its current values.
+                // Reference: https://dev.mysql.com/doc/refman/8.4/en/insert-on-duplicate.html
+                if db_backend == DbBackend::MySql && last_insert_id == 0 {
+                    return Err(DbErr::RecordNotInserted);
+                }
+                Some(
+                    ValueTypeOf::<A>::try_from_u64(last_insert_id)
+                        .map_err(|_| DbErr::UnpackInsertId)?,
+                )
+            } else {
+                None
             }
-            ValueTypeOf::<A>::try_from_u64(last_insert_id).map_err(|_| DbErr::UnpackInsertId)?
         }
     };
 
@@ -301,9 +309,11 @@ where
         }
         false => {
             let insert_res = exec_insert::<A, _>(primary_key, insert_statement, db).await?;
-            <A::Entity as EntityTrait>::find_by_id(insert_res.last_insert_id)
-                .one(db)
-                .await?
+            <A::Entity as EntityTrait>::find_by_id(insert_res.last_insert_id.ok_or(
+                DbErr::RecordNotFound("No last insert id returned from the database".to_owned()),
+            )?)
+            .one(db)
+            .await?
         }
     };
     match found {

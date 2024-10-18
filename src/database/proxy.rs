@@ -31,14 +31,14 @@ pub trait ProxyDatabaseTrait: Send + Sync + std::fmt::Debug {
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct ProxyExecResult {
     /// The last inserted id on auto-increment
-    pub last_insert_id: u64,
+    pub last_insert_id: Option<u64>,
     /// The number of rows affected by the database operation
     pub rows_affected: u64,
 }
 
 impl ProxyExecResult {
     /// Create a new [ProxyExecResult] from the last inserted id and the number of rows affected
-    pub fn new(last_insert_id: u64, rows_affected: u64) -> Self {
+    pub fn new(last_insert_id: Option<u64>, rows_affected: u64) -> Self {
         Self {
             last_insert_id,
             rows_affected,

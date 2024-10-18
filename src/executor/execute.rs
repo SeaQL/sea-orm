@@ -32,28 +32,24 @@ pub(crate) enum ExecResultHolder {
 impl ExecResult {
     /// Get the last id after `AUTOINCREMENT` is done on the primary key
     ///
-    /// # Panics
-    ///
-    /// Postgres does not support retrieving last insert id this way except through `RETURNING` clause
-    pub fn last_insert_id(&self) -> u64 {
+    /// Postgres always returns `None`
+    pub fn last_insert_id(&self) -> Option<u64> {
         match &self.result {
             #[cfg(feature = "sqlx-mysql")]
-            ExecResultHolder::SqlxMySql(result) => result.last_insert_id(),
+            ExecResultHolder::SqlxMySql(result) => Some(result.last_insert_id()),
             #[cfg(feature = "sqlx-postgres")]
-            ExecResultHolder::SqlxPostgres(_) => {
-                panic!("Should not retrieve last_insert_id this way")
-            }
+            ExecResultHolder::SqlxPostgres(_) => None,
             #[cfg(feature = "sqlx-sqlite")]
             ExecResultHolder::SqlxSqlite(result) => {
                 let last_insert_rowid = result.last_insert_rowid();
                 if last_insert_rowid < 0 {
                     unreachable!("negative last_insert_rowid")
                 } else {
-                    last_insert_rowid as u64
+                    Some(last_insert_rowid as u64)
                 }
             }
             #[cfg(feature = "mock")]
-            ExecResultHolder::Mock(result) => result.last_insert_id,
+            ExecResultHolder::Mock(result) => Some(result.last_insert_id),
             #[cfg(feature = "proxy")]
             ExecResultHolder::Proxy(result) => result.last_insert_id,
             #[allow(unreachable_patterns)]
