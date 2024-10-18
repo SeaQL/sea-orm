@@ -22,8 +22,8 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
     }
     .into_iter();
 
-    let derive_active_model = derive_active_model(all_fields.clone())?;
-    let derive_into_model = derive_into_model(all_fields)?;
+    let derive_active_model = derive_active_model(&ident, all_fields.clone())?;
+    let derive_into_model = derive_into_model(&ident, all_fields)?;
 
     Ok(quote!(
         #derive_active_model
@@ -31,7 +31,7 @@ pub fn expand_derive_active_model(ident: Ident, data: Data) -> syn::Result<Token
     ))
 }
 
-fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> {
+fn derive_active_model(ident: &Ident, all_fields: IntoIter<Field>) -> syn::Result<TokenStream> {
     let fields = all_fields.filter(field_not_ignored);
 
     let field: Vec<Ident> = fields.clone().map(format_field_ident).collect();
@@ -87,8 +87,8 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
         }
 
         #[automatically_derived]
-        impl std::convert::From<<Entity as sea_orm::EntityTrait>::Model> for ActiveModel {
-            fn from(m: <Entity as sea_orm::EntityTrait>::Model) -> Self {
+        impl std::convert::From<#ident> for ActiveModel {
+            fn from(m: #ident) -> Self {
                 Self {
                     #(#field: sea_orm::ActiveValue::unchanged(m.#field)),*
                 }
@@ -96,7 +96,7 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
         }
 
         #[automatically_derived]
-        impl sea_orm::IntoActiveModel<ActiveModel> for <Entity as sea_orm::EntityTrait>::Model {
+        impl sea_orm::IntoActiveModel<ActiveModel> for #ident {
             fn into_active_model(self) -> ActiveModel {
                 self.into()
             }
@@ -161,7 +161,7 @@ fn derive_active_model(all_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
     ))
 }
 
-fn derive_into_model(model_fields: IntoIter<Field>) -> syn::Result<TokenStream> {
+fn derive_into_model(ident: &Ident, model_fields: IntoIter<Field>) -> syn::Result<TokenStream> {
     let active_model_fields = model_fields.clone().filter(field_not_ignored);
 
     let active_model_field: Vec<Ident> = active_model_fields
@@ -192,7 +192,7 @@ fn derive_into_model(model_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
 
     Ok(quote!(
         #[automatically_derived]
-        impl std::convert::TryFrom<ActiveModel> for <Entity as sea_orm::EntityTrait>::Model {
+        impl std::convert::TryFrom<ActiveModel> for #ident {
             type Error = sea_orm::DbErr;
             fn try_from(a: ActiveModel) -> Result<Self, sea_orm::DbErr> {
                 #(if matches!(a.#active_model_field, sea_orm::ActiveValue::NotSet) {
@@ -207,8 +207,8 @@ fn derive_into_model(model_fields: IntoIter<Field>) -> syn::Result<TokenStream> 
         }
 
         #[automatically_derived]
-        impl sea_orm::TryIntoModel<<Entity as sea_orm::EntityTrait>::Model> for ActiveModel {
-            fn try_into_model(self) -> Result<<Entity as sea_orm::EntityTrait>::Model, sea_orm::DbErr> {
+        impl sea_orm::TryIntoModel<#ident> for ActiveModel {
+            fn try_into_model(self) -> Result<#ident, sea_orm::DbErr> {
                 self.try_into()
             }
         }
