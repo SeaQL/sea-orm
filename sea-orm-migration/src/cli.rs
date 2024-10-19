@@ -1,9 +1,11 @@
+use std::future::Future;
+
 use clap::Parser;
 use dotenvy::dotenv;
 use std::{error::Error, fmt::Display, process::exit};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
-use sea_orm::{ConnectOptions, Database, DbConn};
+use sea_orm::{ConnectOptions, Database, DbConn, DbErr};
 use sea_orm_cli::{run_migrate_generate, run_migrate_init, MigrateSubcommands};
 
 use super::MigratorTrait;
@@ -30,6 +32,38 @@ where
         .expect("Fail to acquire database connection");
 
     run_migrate(migrator, db, cli.command, cli.verbose)
+        .await
+        .unwrap_or_else(handle_error);
+}
+
+/// Same as [`run_cli`] but you crate the [`DbConn`] yourself.
+///
+/// This allows configuring the database connection as you see fit.
+/// E.g. you can change settings in [`ConnectOptions`] or you can load sqlite
+/// extensions.
+pub async fn run_cli_with_connection<M, F, Fut>(migrator: M, make_connection: F)
+where
+    M: MigratorTrait,
+    F: FnOnce(ConnectOptions) -> Fut,
+    Fut: Future<Output = Result<DbConn, DbErr>>,
+{
+    dotenv().ok();
+    let cli = Cli::parse();
+
+    let url = cli
+        .database_url
+        .expect("Environment variable 'DATABASE_URL' not set");
+    let schema = cli.database_schema.unwrap_or_else(|| "public".to_owned());
+
+    let connect_options = ConnectOptions::new(url)
+        .set_schema_search_path(schema)
+        .to_owned();
+
+    let db = make_connection(connect_options)
+        .await
+        .expect("Fail to acquire database connection");
+
+    run_migrate(migrator, &db, cli.command, cli.verbose)
         .await
         .unwrap_or_else(handle_error);
 }
