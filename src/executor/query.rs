@@ -1362,11 +1362,8 @@ impl TryFromRawValue for uuid::Uuid {
     }
 
     fn try_from_string(s: String) -> Result<Self, DbErr> {
-        Ok(uuid::Uuid::parse_str(&s).map_err(|e| DbErr::TryIntoErr {
-            from: "String",
-            into: "uuid::Uuid",
-            source: Box::new(e),
-        })?)
+        uuid::Uuid::parse_str(&s)
+            .map_err(|e| DbErr::Type(format!("Failed to parse string to uuid::Uuid: {}", e)))
     }
 }
 
