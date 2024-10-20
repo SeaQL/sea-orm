@@ -1213,29 +1213,43 @@ where
     }
 }
 
-// TryFromU64 //
-/// Try to convert a type to a u64
-pub trait TryFromU64: Sized {
+// TryFromRawValue //
+/// Try to convert a type from a raw value
+///
+/// The raw value only comes from the execute result,
+/// and it can only be either a u64 or a string.
+pub trait TryFromRawValue: Sized {
     /// The method to convert the type to a u64
     fn try_from_u64(n: u64) -> Result<Self, DbErr>;
+
+    /// The method to convert the type to a string
+    fn try_from_string(s: String) -> Result<Self, DbErr>;
 }
 
-macro_rules! try_from_u64_err {
+macro_rules! try_from_raw_err {
     ( $type: ty ) => {
-        impl TryFromU64 for $type {
+        impl TryFromRawValue for $type {
             fn try_from_u64(_: u64) -> Result<Self, DbErr> {
                 Err(DbErr::ConvertFromU64(stringify!($type)))
+            }
+
+            fn try_from_string(_: String) -> Result<Self, DbErr> {
+                Err(DbErr::ConvertFromString(stringify!($type)))
             }
         }
     };
 
     ( $($gen_type: ident),* ) => {
-        impl<$( $gen_type, )*> TryFromU64 for ($( $gen_type, )*)
+        impl<$( $gen_type, )*> TryFromRawValue for ($( $gen_type, )*)
         where
-            $( $gen_type: TryFromU64, )*
+            $( $gen_type: TryFromRawValue, )*
         {
             fn try_from_u64(_: u64) -> Result<Self, DbErr> {
                 Err(DbErr::ConvertFromU64(stringify!($($gen_type,)*)))
+            }
+
+            fn try_from_string(_: String) -> Result<Self, DbErr> {
+                Err(DbErr::ConvertFromString(stringify!($($gen_type,)*)))
             }
         }
     };
@@ -1245,22 +1259,22 @@ macro_rules! try_from_u64_err {
 mod try_from_u64_err {
     use super::*;
 
-    try_from_u64_err!(T0, T1);
-    try_from_u64_err!(T0, T1, T2);
-    try_from_u64_err!(T0, T1, T2, T3);
-    try_from_u64_err!(T0, T1, T2, T3, T4);
-    try_from_u64_err!(T0, T1, T2, T3, T4, T5);
-    try_from_u64_err!(T0, T1, T2, T3, T4, T5, T6);
-    try_from_u64_err!(T0, T1, T2, T3, T4, T5, T6, T7);
-    try_from_u64_err!(T0, T1, T2, T3, T4, T5, T6, T7, T8);
-    try_from_u64_err!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9);
-    try_from_u64_err!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
-    try_from_u64_err!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
+    try_from_raw_err!(T0, T1);
+    try_from_raw_err!(T0, T1, T2);
+    try_from_raw_err!(T0, T1, T2, T3);
+    try_from_raw_err!(T0, T1, T2, T3, T4);
+    try_from_raw_err!(T0, T1, T2, T3, T4, T5);
+    try_from_raw_err!(T0, T1, T2, T3, T4, T5, T6);
+    try_from_raw_err!(T0, T1, T2, T3, T4, T5, T6, T7);
+    try_from_raw_err!(T0, T1, T2, T3, T4, T5, T6, T7, T8);
+    try_from_raw_err!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9);
+    try_from_raw_err!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
+    try_from_raw_err!(T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
 }
 
-macro_rules! try_from_u64_numeric {
+macro_rules! try_from_raw_numeric {
     ( $type: ty ) => {
-        impl TryFromU64 for $type {
+        impl TryFromRawValue for $type {
             fn try_from_u64(n: u64) -> Result<Self, DbErr> {
                 use std::convert::TryInto;
                 n.try_into().map_err(|e| DbErr::TryIntoErr {
@@ -1269,74 +1283,92 @@ macro_rules! try_from_u64_numeric {
                     source: Box::new(e),
                 })
             }
-        }
-    };
-}
 
-try_from_u64_numeric!(i8);
-try_from_u64_numeric!(i16);
-try_from_u64_numeric!(i32);
-try_from_u64_numeric!(i64);
-try_from_u64_numeric!(u8);
-try_from_u64_numeric!(u16);
-try_from_u64_numeric!(u32);
-try_from_u64_numeric!(u64);
-
-macro_rules! try_from_u64_string {
-    ( $type: ty ) => {
-        impl TryFromU64 for $type {
-            fn try_from_u64(n: u64) -> Result<Self, DbErr> {
-                Ok(n.to_string())
+            fn try_from_string(s: String) -> Result<Self, DbErr> {
+                s.parse().map_err(|e| DbErr::TryIntoErr {
+                    from: "String",
+                    into: stringify!($type),
+                    source: Box::new(e),
+                })
             }
         }
     };
 }
 
-try_from_u64_string!(String);
+try_from_raw_numeric!(i8);
+try_from_raw_numeric!(i16);
+try_from_raw_numeric!(i32);
+try_from_raw_numeric!(i64);
+try_from_raw_numeric!(u8);
+try_from_raw_numeric!(u16);
+try_from_raw_numeric!(u32);
+try_from_raw_numeric!(u64);
 
-try_from_u64_err!(bool);
-try_from_u64_err!(f32);
-try_from_u64_err!(f64);
-try_from_u64_err!(Vec<u8>);
+impl TryFromRawValue for String {
+    fn try_from_u64(n: u64) -> Result<Self, DbErr> {
+        Ok(n.to_string())
+    }
+
+    fn try_from_string(s: String) -> Result<Self, DbErr> {
+        Ok(s)
+    }
+}
+
+try_from_raw_err!(bool);
+try_from_raw_err!(f32);
+try_from_raw_err!(f64);
+try_from_raw_err!(Vec<u8>);
 
 #[cfg(feature = "with-json")]
-try_from_u64_err!(serde_json::Value);
+try_from_raw_err!(serde_json::Value);
 
 #[cfg(feature = "with-chrono")]
-try_from_u64_err!(chrono::NaiveDate);
+try_from_raw_err!(chrono::NaiveDate);
 
 #[cfg(feature = "with-chrono")]
-try_from_u64_err!(chrono::NaiveTime);
+try_from_raw_err!(chrono::NaiveTime);
 
 #[cfg(feature = "with-chrono")]
-try_from_u64_err!(chrono::NaiveDateTime);
+try_from_raw_err!(chrono::NaiveDateTime);
 
 #[cfg(feature = "with-chrono")]
-try_from_u64_err!(chrono::DateTime<chrono::FixedOffset>);
+try_from_raw_err!(chrono::DateTime<chrono::FixedOffset>);
 
 #[cfg(feature = "with-chrono")]
-try_from_u64_err!(chrono::DateTime<chrono::Utc>);
+try_from_raw_err!(chrono::DateTime<chrono::Utc>);
 
 #[cfg(feature = "with-chrono")]
-try_from_u64_err!(chrono::DateTime<chrono::Local>);
+try_from_raw_err!(chrono::DateTime<chrono::Local>);
 
 #[cfg(feature = "with-time")]
-try_from_u64_err!(time::Date);
+try_from_raw_err!(time::Date);
 
 #[cfg(feature = "with-time")]
-try_from_u64_err!(time::Time);
+try_from_raw_err!(time::Time);
 
 #[cfg(feature = "with-time")]
-try_from_u64_err!(time::PrimitiveDateTime);
+try_from_raw_err!(time::PrimitiveDateTime);
 
 #[cfg(feature = "with-time")]
-try_from_u64_err!(time::OffsetDateTime);
+try_from_raw_err!(time::OffsetDateTime);
 
 #[cfg(feature = "with-rust_decimal")]
-try_from_u64_err!(rust_decimal::Decimal);
+try_from_raw_err!(rust_decimal::Decimal);
 
 #[cfg(feature = "with-uuid")]
-try_from_u64_err!(uuid::Uuid);
+impl TryFromRawValue for uuid::Uuid {
+    fn try_from_u64(_: u64) -> Result<Self, DbErr> {
+        Err(DbErr::ConvertFromU64("uuid::Uuid"))
+    }
+
+    fn try_from_string(s: String) -> Result<Self, DbErr> {
+        Ok(uuid::Uuid::parse_str(&s).map_err(|e| DbErr::TryIntoErr {
+            from: "String",
+            into: "uuid::Uuid",
+            source: Box::new(e),
+        })?)
+    }
+}
 
 #[cfg(test)]
 mod tests {

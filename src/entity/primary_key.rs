@@ -1,5 +1,5 @@
 use super::{ColumnTrait, IdenStatic, Iterable};
-use crate::{TryFromU64, TryGetableMany};
+use crate::{TryFromRawValue, TryGetableMany};
 use sea_query::{FromValueTuple, IntoValueTuple};
 use std::fmt::Debug;
 
@@ -46,7 +46,7 @@ pub trait PrimaryKeyTrait: IdenStatic + Iterable {
         + IntoValueTuple
         + FromValueTuple
         + TryGetableMany
-        + TryFromU64
+        + TryFromRawValue
         + PrimaryKeyArity;
 
     /// Method to call to perform `AUTOINCREMENT` operation on a Primary Key

@@ -1,7 +1,7 @@
 use crate::{
     error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, Insert,
     IntoActiveModel, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, SelectorRaw,
-    TryFromU64, TryInsert,
+    TryFromRawValue, TryInsert,
 };
 use sea_query::{FromValueTuple, Iden, InsertStatement, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};
@@ -247,7 +247,8 @@ where
             if res.rows_affected() == 0 {
                 return Err(DbErr::RecordNotInserted);
             }
-            if let Some(last_insert_id) = res.last_insert_id() {
+            if let Some(sea_query::Value::BigUnsigned(Some(last_insert_id))) = res.last_insert_id()
+            {
                 // For MySQL, the affected-rows number:
                 //   - The affected-rows value per row is `1` if the row is inserted as a new row,
                 //   - `2` if an existing row is updated,

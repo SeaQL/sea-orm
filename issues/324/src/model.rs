@@ -22,11 +22,15 @@ impl From<AccountId> for Uuid {
     }
 }
 
-macro_rules! impl_try_from_u64_err {
+macro_rules! impl_try_from_raw_err {
     ($newtype: ident) => {
-        impl sea_orm::TryFromU64 for $newtype {
+        impl sea_orm::TryFromRawValue for $newtype {
             fn try_from_u64(_n: u64) -> Result<Self, sea_orm::DbErr> {
                 Err(sea_orm::DbErr::ConvertFromU64(stringify!($newtype)))
+            }
+
+            fn try_from_string(_s: String) -> Result<Self, sea_orm::DbErr> {
+                Err(sea_orm::DbErr::ConvertFromString(stringify!($newtype)))
             }
         }
     };
@@ -81,4 +85,4 @@ macro_rules! into_sea_query_value {
 }
 
 into_sea_query_value!(AccountId: Box(Uuid));
-impl_try_from_u64_err!(AccountId);
+impl_try_from_raw_err!(AccountId);

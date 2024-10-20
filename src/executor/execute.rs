@@ -1,3 +1,5 @@
+use sea_query::Value;
+
 /// Defines the result of executing an operation
 #[derive(Debug)]
 pub struct ExecResult {
@@ -33,10 +35,12 @@ impl ExecResult {
     /// Get the last id after `AUTOINCREMENT` is done on the primary key
     ///
     /// Postgres always returns `None`
-    pub fn last_insert_id(&self) -> Option<u64> {
+    pub fn last_insert_id(&self) -> Option<Value> {
         match &self.result {
             #[cfg(feature = "sqlx-mysql")]
-            ExecResultHolder::SqlxMySql(result) => Some(result.last_insert_id()),
+            ExecResultHolder::SqlxMySql(result) => {
+                Some(Value::BigUnsigned(Some(result.last_insert_id())))
+            }
             #[cfg(feature = "sqlx-postgres")]
             ExecResultHolder::SqlxPostgres(_) => None,
             #[cfg(feature = "sqlx-sqlite")]
@@ -45,13 +49,13 @@ impl ExecResult {
                 if last_insert_rowid < 0 {
                     unreachable!("negative last_insert_rowid")
                 } else {
-                    Some(last_insert_rowid as u64)
+                    Some(Value::BigUnsigned(Some(last_insert_rowid as u64)))
                 }
             }
             #[cfg(feature = "mock")]
-            ExecResultHolder::Mock(result) => Some(result.last_insert_id),
+            ExecResultHolder::Mock(result) => Some(Value::BigUnsigned(Some(result.last_insert_id))),
             #[cfg(feature = "proxy")]
-            ExecResultHolder::Proxy(result) => result.last_insert_id,
+            ExecResultHolder::Proxy(result) => result.last_insert_id.clone(),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }

@@ -28,17 +28,17 @@ pub trait ProxyDatabaseTrait: Send + Sync + std::fmt::Debug {
 }
 
 /// Defines the results obtained from a [ProxyDatabase]
-#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, Default)]
 pub struct ProxyExecResult {
     /// The last inserted id on auto-increment
-    pub last_insert_id: Option<u64>,
+    pub last_insert_id: Option<Value>,
     /// The number of rows affected by the database operation
     pub rows_affected: u64,
 }
 
 impl ProxyExecResult {
     /// Create a new [ProxyExecResult] from the last inserted id and the number of rows affected
-    pub fn new(last_insert_id: Option<u64>, rows_affected: u64) -> Self {
+    pub fn new(last_insert_id: Option<Value>, rows_affected: u64) -> Self {
         Self {
             last_insert_id,
             rows_affected,
@@ -65,22 +65,22 @@ impl From<ExecResult> for ProxyExecResult {
         match result.result {
             #[cfg(feature = "sqlx-mysql")]
             ExecResultHolder::SqlxMySql(result) => Self {
-                last_insert_id: result.last_insert_id() as u64,
+                last_insert_id: Some(Value::BigUnsigned(Some(result.last_insert_id() as u64))),
                 rows_affected: result.rows_affected(),
             },
             #[cfg(feature = "sqlx-postgres")]
             ExecResultHolder::SqlxPostgres(result) => Self {
-                last_insert_id: 0,
+                last_insert_id: None,
                 rows_affected: result.rows_affected(),
             },
             #[cfg(feature = "sqlx-sqlite")]
             ExecResultHolder::SqlxSqlite(result) => Self {
-                last_insert_id: result.last_insert_rowid() as u64,
+                last_insert_id: Some(Value::BigUnsigned(Some(result.last_insert_rowid() as u64))),
                 rows_affected: result.rows_affected(),
             },
             #[cfg(feature = "mock")]
             ExecResultHolder::Mock(result) => Self {
-                last_insert_id: result.last_insert_id,
+                last_insert_id: Some(Value::BigUnsigned(Some(result.last_insert_id))),
                 rows_affected: result.rows_affected,
             },
             ExecResultHolder::Proxy(result) => result,
@@ -202,11 +202,12 @@ mod tests {
         entity::*, tests_cfg::*, Database, DbBackend, DbErr, ProxyDatabaseTrait, ProxyExecResult,
         ProxyRow, Statement,
     };
-    use std::sync::{Arc, Mutex};
+    use std::sync::Arc;
 
     #[derive(Debug)]
     struct ProxyDb {}
 
+    #[async_trait::async_trait]
     impl ProxyDatabaseTrait for ProxyDb {
         async fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr> {
             println!("SQL query: {}", statement.sql);
@@ -216,7 +217,7 @@ mod tests {
         async fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
             println!("SQL execute: {}", statement.sql);
             Ok(ProxyExecResult {
-                last_insert_id: 1,
+                last_insert_id: Some(Value::BigUnsigned(Some(1))),
                 rows_affected: 1,
             })
         }
