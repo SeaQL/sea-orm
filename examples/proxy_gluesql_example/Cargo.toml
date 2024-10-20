@@ -21,6 +21,7 @@ sea-orm = { path = "../../", features = ["proxy", "debug-print"] }
 gluesql = { version = "0.15", default-features = false, features = [
   "memory-storage",
 ] }
+uuid = "^1"
 
 [dev-dependencies]
 smol = { version = "1.2" }

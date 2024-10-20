@@ -50,6 +50,9 @@ impl ProxyDatabaseTrait for ProxyDb {
                                         gluesql::prelude::Value::Str(val) => {
                                             sea_orm::Value::String(Some(Box::new(val.to_owned())))
                                         }
+                                        gluesql::prelude::Value::Uuid(val) => sea_orm::Value::Uuid(
+                                            Some(Box::new(uuid::Uuid::from_u128(*val))),
+                                        ),
                                         _ => unreachable!("Unsupported value: {:?}", column),
                                     },
                                 );
@@ -99,6 +102,13 @@ impl ProxyDatabaseTrait for ProxyDb {
                                                     val.unwrap_or(0).to_string(),
                                                     false,
                                                 ),
+                                                sea_orm::Value::Uuid(val) => {
+                                                    Value::SingleQuotedString(
+                                                        val.clone()
+                                                            .unwrap_or(Box::new(uuid::Uuid::nil()))
+                                                            .to_string(),
+                                                    )
+                                                }
                                                 _ => todo!(),
                                             };
                                         }
@@ -125,7 +135,7 @@ impl ProxyDatabaseTrait for ProxyDb {
         });
 
         Ok(ProxyExecResult {
-            last_insert_id: Some(1),
+            last_insert_id: None,
             rows_affected: 1,
         })
     }
@@ -139,7 +149,7 @@ async fn main() {
     glue.execute(
         r#"
             CREATE TABLE IF NOT EXISTS posts (
-                id INTEGER PRIMARY KEY,
+                id UUID PRIMARY KEY,
                 title TEXT NOT NULL,
                 text TEXT NOT NULL
             )
@@ -160,19 +170,19 @@ async fn main() {
     println!("Initialized");
 
     let data = ActiveModel {
-        id: Set(11),
+        id: Set(uuid::Uuid::new_v4()),
         title: Set("Homo".to_owned()),
         text: Set("いいよ、来いよ".to_owned()),
     };
     Entity::insert(data).exec(&db).await.unwrap();
     let data = ActiveModel {
-        id: Set(45),
+        id: Set(uuid::Uuid::new_v4()),
         title: Set("Homo".to_owned()),
         text: Set("そうだよ".to_owned()),
     };
     Entity::insert(data).exec(&db).await.unwrap();
     let data = ActiveModel {
-        id: Set(14),
+        id: Set(uuid::Uuid::new_v4()),
         title: Set("Homo".to_owned()),
         text: Set("悔い改めて".to_owned()),
     };
