@@ -14,7 +14,7 @@ loco-rs = { version = "0.7.0" }
 
 [dependencies.sea-orm-migration]
 path = "../../../sea-orm-migration" # remove this line in your own project
-version = "~1.1.0-rc.2" # sea-orm-migration version
+version = "~1.1.0" # sea-orm-migration version
 features = [
   # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
   # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.

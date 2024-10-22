@@ -239,12 +239,12 @@ jobs:
           examples/basic,
           examples/graphql_example,
           examples/jsonrpsee_example,
-          # examples/loco_example,
-          # examples/loco_starter,
-          # examples/loco_seaography,
+          examples/loco_example,
+          examples/loco_starter,
+          examples/loco_seaography,
           examples/poem_example,
           examples/proxy_gluesql_example,
-          # examples/react_admin,
+          examples/react_admin,
           examples/rocket_example,
           examples/rocket_okapi_example,
           examples/salvo_example,
@@ -254,7 +254,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - if: ${{ contains(matrix.path, 'tonic_example') }}
-        uses: arduino/setup-protoc@v1
+        uses: arduino/setup-protoc@v3
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly

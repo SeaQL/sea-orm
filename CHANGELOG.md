@@ -5,12 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 1.1.0 - Pending
+## 1.1.0 - 2024-10-15
 
 ### Versions
 
 + `1.1.0-rc.1`: 2024-08-09
 + `1.1.0-rc.2`: 2024-10-04
++ `1.1.0-rc.3`: 2024-10-08
 
 ### Enhancements
 
