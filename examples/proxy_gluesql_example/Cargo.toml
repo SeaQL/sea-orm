@@ -18,9 +18,7 @@ async-trait = { version = "0.1" }
 
 sqlparser = "0.40"
 sea-orm = { path = "../../", features = ["proxy", "debug-print"] }
-gluesql = { version = "0.15", default-features = false, features = [
-  "memory-storage",
-] }
+gluesql = "^0.16"
 uuid = "^1"
 
 [dev-dependencies]

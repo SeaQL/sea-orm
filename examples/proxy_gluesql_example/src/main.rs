@@ -9,7 +9,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use gluesql::{memory_storage::MemoryStorage, prelude::Glue};
+use gluesql::prelude::{Glue, MemoryStorage};
 use sea_orm::{
     ActiveValue::Set, Database, DbBackend, DbErr, EntityTrait, ProxyDatabaseTrait, ProxyExecResult,
     ProxyRow, Statement,
@@ -30,12 +30,31 @@ impl std::fmt::Debug for ProxyDb {
 #[async_trait::async_trait]
 impl ProxyDatabaseTrait for ProxyDb {
     async fn query(&self, statement: Statement) -> Result<Vec<ProxyRow>, DbErr> {
-        println!("SQL query: {:?}", statement);
-        let sql = statement.sql.clone();
+        let sql = if let Some(values) = statement.values {
+            // Replace all the '?' with the statement values
+
+            statement
+                .sql
+                .split("?")
+                .collect::<Vec<&str>>()
+                .iter()
+                .enumerate()
+                .fold(String::new(), |mut acc, (i, item)| {
+                    acc.push_str(item);
+                    if i < values.0.len() {
+                        acc.push_str(&format!("{}", values.0[i]));
+                    }
+                    acc
+                })
+        } else {
+            statement.sql
+        };
+        println!("SQL query: {}", sql);
 
         let mut ret: Vec<ProxyRow> = vec![];
         async_std::task::block_on(async {
-            for payload in self.mem.lock().unwrap().execute(sql).await.unwrap().iter() {
+            let raw = self.mem.lock().unwrap().execute(sql).await.unwrap();
+            for payload in raw.iter() {
                 match payload {
                     gluesql::prelude::Payload::Select { labels, rows } => {
                         for row in rows.iter() {
@@ -71,60 +90,20 @@ impl ProxyDatabaseTrait for ProxyDb {
     async fn execute(&self, statement: Statement) -> Result<ProxyExecResult, DbErr> {
         let sql = if let Some(values) = statement.values {
             // Replace all the '?' with the statement values
-            use sqlparser::ast::{Expr, Value};
-            use sqlparser::dialect::GenericDialect;
-            use sqlparser::parser::Parser;
 
-            let dialect = GenericDialect {};
-            let mut ast = Parser::parse_sql(&dialect, statement.sql.as_str()).unwrap();
-            match &mut ast[0] {
-                sqlparser::ast::Statement::Insert {
-                    columns, source, ..
-                } => {
-                    for item in columns.iter_mut() {
-                        item.quote_style = Some('"');
+            statement
+                .sql
+                .split("?")
+                .collect::<Vec<&str>>()
+                .iter()
+                .enumerate()
+                .fold(String::new(), |mut acc, (i, item)| {
+                    acc.push_str(item);
+                    if i < values.0.len() {
+                        acc.push_str(&format!("{}", values.0[i]));
                     }
-
-                    if let Some(obj) = source {
-                        match &mut *obj.body {
-                            sqlparser::ast::SetExpr::Values(obj) => {
-                                for (mut item, val) in obj.rows[0].iter_mut().zip(values.0.iter()) {
-                                    match &mut item {
-                                        Expr::Value(item) => {
-                                            *item = match val {
-                                                sea_orm::Value::String(val) => {
-                                                    Value::SingleQuotedString(match val {
-                                                        Some(val) => val.to_string(),
-                                                        None => "".to_string(),
-                                                    })
-                                                }
-                                                sea_orm::Value::BigInt(val) => Value::Number(
-                                                    val.unwrap_or(0).to_string(),
-                                                    false,
-                                                ),
-                                                sea_orm::Value::Uuid(val) => {
-                                                    Value::SingleQuotedString(
-                                                        val.clone()
-                                                            .unwrap_or(Box::new(uuid::Uuid::nil()))
-                                                            .to_string(),
-                                                    )
-                                                }
-                                                _ => todo!(),
-                                            };
-                                        }
-                                        _ => todo!(),
-                                    }
-                                }
-                            }
-                            _ => todo!(),
-                        }
-                    }
-                }
-                _ => todo!(),
-            }
-
-            let statement = &ast[0];
-            statement.to_string()
+                    acc
+                })
         } else {
             statement.sql
         };
