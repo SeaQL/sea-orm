@@ -247,8 +247,9 @@ where
             if res.rows_affected() == 0 {
                 return Err(DbErr::RecordNotInserted);
             }
-            if let Some(sea_query::Value::BigUnsigned(Some(last_insert_id))) = res.last_insert_id()
-            {
+
+            let last_insert_id = res.last_insert_id();
+            if let Some(sea_query::Value::BigUnsigned(Some(last_insert_id))) = last_insert_id {
                 // For MySQL, the affected-rows number:
                 //   - The affected-rows value per row is `1` if the row is inserted as a new row,
                 //   - `2` if an existing row is updated,
@@ -261,6 +262,109 @@ where
                     ValueTypeOf::<A>::try_from_u64(last_insert_id)
                         .map_err(|_| DbErr::UnpackInsertId)?,
                 )
+            } else if let Some(val) = last_insert_id {
+                use sea_query::Value;
+
+                match val {
+                    Value::TinyInt(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val as u64)
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::SmallInt(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val as u64)
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::Int(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val as u64)
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::BigInt(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val as u64)
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::TinyUnsigned(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val as u64)
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::SmallUnsigned(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val as u64)
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::Unsigned(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val as u64)
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::BigUnsigned(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_u64(val).map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+
+                    Value::String(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    Value::Char(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+
+                    #[cfg(feature = "with-chrono")]
+                    Value::ChronoDate(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-chrono")]
+                    Value::ChronoTime(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-chrono")]
+                    Value::ChronoDateTime(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-chrono")]
+                    Value::ChronoDateTimeUtc(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-chrono")]
+                    Value::ChronoDateTimeLocal(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-chrono")]
+                    Value::ChronoDateTimeWithTimeZone(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-time")]
+                    Value::TimeDate(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-time")]
+                    Value::TimeTime(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-time")]
+                    Value::TimeDateTime(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-time")]
+                    Value::TimeDateTimeWithTimeZone(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+                    #[cfg(feature = "with-uuid")]
+                    Value::Uuid(Some(val)) => Some(
+                        ValueTypeOf::<A>::try_from_string(val.to_string())
+                            .map_err(|_| DbErr::UnpackInsertId)?,
+                    ),
+
+                    _ => None,
+                }
             } else {
                 None
             }
