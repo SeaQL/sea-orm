@@ -1,9 +1,10 @@
 use crate::{util::escape_rust_keyword, ActiveEnum, Entity};
 use heck::ToUpperCamelCase;
-use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use proc_macro2::{Literal, Span, TokenStream, TokenTree};
+use quote::{format_ident, quote, ToTokens, TokenStreamExt};
 use std::{collections::BTreeMap, str::FromStr};
-use syn::{punctuated::Punctuated, token::Comma};
+use syn::{ext::IdentExt, punctuated::Punctuated, token::Comma, Ident};
+use syn::{parse, Token};
 use tracing::info;
 
 #[derive(Clone, Debug)]
@@ -91,7 +92,14 @@ where
         TokenStream::default(),
         |acc, derive| {
             let tokens: TokenStream = derive.parse().unwrap();
-            quote! { #acc, #tokens }
+            if tokens.clone().into_iter().count() == 1 {
+                // Just append single tokens with comma separators.
+                quote! { #acc, #tokens }
+            } else {
+                // The incoming Derive parses into multiple tokens, e.g. "async_graphql::SimpleObject" would be 3 tokens.
+                let token_list = tokens.into_iter();
+                quote! { #acc, #(#token_list)*}
+            }
         },
     )
 }
