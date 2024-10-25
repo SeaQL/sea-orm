@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 1.1.1 - pending
 
-### 
+### Enhancements
 
 * [sea-orm-macros] `impl From<Model> for ActiveModel` instead of `impl From<<Entity as sea_orm::EntityTrait>::Model> for ActiveModel`.
 Now the following can compile:
