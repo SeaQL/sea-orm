@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Enhancements
 
-* [sea-orm-macros] `impl From<Model> for ActiveModel` instead of `impl From<<Entity as sea_orm::EntityTrait>::Model> for ActiveModel`.
+* [sea-orm-macros] `impl From<Model> for ActiveModel` instead of `impl From<<Entity as sea_orm::EntityTrait>::Model> for ActiveModel` https://github.com/SeaQL/sea-orm/pull/2349.
 Now the following can compile:
 ```rust
 use sea_orm::{tests_cfg::cake, Set};
