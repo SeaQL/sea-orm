@@ -268,7 +268,7 @@ impl EntityWriter {
 
         if seaography {
             lines.push("".to_owned());
-            let ts = Self::gen_seaography_entity_mod(&self.entities);
+            let ts = Self::gen_seaography_entity_mod(&self.entities, &self.enums);
             Self::write(&mut lines, vec![ts]);
         }
 
@@ -710,7 +710,10 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_seaography_entity_mod(entities: &[Entity]) -> TokenStream {
+    pub fn gen_seaography_entity_mod(
+        entities: &[Entity],
+        enums: &BTreeMap<String, ActiveEnum>,
+    ) -> TokenStream {
         let mut ts = TokenStream::new();
         for entity in entities {
             let table_name_snake_case_ident = format_ident!(
@@ -722,11 +725,31 @@ impl EntityWriter {
                 #table_name_snake_case_ident,
             }
         }
-        quote! {
+        ts = quote! {
             seaography::register_entity_modules!([
                 #ts
             ]);
+        };
+
+        let mut enum_ts = TokenStream::new();
+        for active_enum in enums.values() {
+            let enum_name = &active_enum.enum_name.to_string();
+            let enum_iden = format_ident!("{}", enum_name.to_upper_camel_case());
+            enum_ts = quote! {
+                #enum_ts
+                sea_orm_active_enums::#enum_iden
+            }
         }
+        if !enum_ts.is_empty() {
+            ts = quote! {
+                #ts
+
+                seaography::register_active_enums!([
+                    #enum_ts
+                ]);
+            };
+        }
+        ts
     }
 
     pub fn gen_prelude_use(entity: &Entity) -> TokenStream {
