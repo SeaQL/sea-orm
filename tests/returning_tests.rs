@@ -258,3 +258,97 @@ async fn update_many() {
 
     run().await.unwrap();
 }
+
+#[sea_orm_macros::test]
+#[cfg_attr(
+    any(
+        feature = "sqlx-mysql",
+        all(
+            feature = "sqlx-sqlite",
+            not(feature = "sqlite-use-returning-for-3_35")
+        )
+    ),
+    should_panic(expected = "Database backend doesn't support RETURNING")
+)]
+async fn delete_many() {
+    pub use common::{features::*, TestContext};
+    use edit_log::*;
+
+    let run = || async {
+        let ctx = TestContext::new("returning_tests_delete_many").await;
+        let db = &ctx.db;
+
+        create_tables(db).await?;
+
+        let inserted_models = [
+            Model {
+                id: 1,
+                action: "before_save".to_string(),
+                values: json!({ "id": "unique-id-001" }),
+            },
+            Model {
+                id: 2,
+                action: "before_save".to_string(),
+                values: json!({ "id": "unique-id-002" }),
+            },
+        ];
+        // Delete many with returning
+        assert_eq!(
+            Entity::insert_many(vec![
+                ActiveModel {
+                    id: NotSet,
+                    action: Set("before_save".to_string()),
+                    values: Set(json!({ "id": "unique-id-001" })),
+                },
+                ActiveModel {
+                    id: NotSet,
+                    action: Set("before_save".to_string()),
+                    values: Set(json!({ "id": "unique-id-002" })),
+                },
+            ])
+            .exec_with_returning_many(db)
+            .await?,
+            inserted_models
+        );
+
+        assert_eq!(
+            Entity::delete_many()
+                .filter(Column::Action.eq("before_save"))
+                .exec_with_returning(db)
+                .await?,
+            inserted_models
+        );
+
+        let inserted_model_3 = Model {
+            id: 3,
+            action: "before_save".to_string(),
+            values: json!({ "id": "unique-id-003" }),
+        };
+
+        Entity::insert(ActiveModel {
+            id: NotSet,
+            action: Set("before_save".to_string()),
+            values: Set(json!({ "id": "unique-id-003" })),
+        })
+        .exec(db)
+        .await?;
+
+        // One
+        assert_eq!(
+            Entity::delete(ActiveModel {
+                id: Set(3),
+                ..Default::default()
+            })
+            .exec_with_returning(db)
+            .await?,
+            Some(inserted_model_3)
+        );
+
+        // No-op
+        assert_eq!(Entity::delete_many().exec_with_returning(db).await?, []);
+
+        Result::<(), DbErr>::Ok(())
+    };
+
+    run().await.unwrap();
+}
