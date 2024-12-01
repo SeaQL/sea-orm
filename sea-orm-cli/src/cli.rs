@@ -69,6 +69,7 @@ pub enum Commands {
             global = true,
             short = 'd',
             long,
+            env = "MIGRATION_DIR",
             help = "Migration script directory.
 If your migrations are in their own crate,
 you can provide the root of that crate.
