@@ -177,7 +177,7 @@ where
                     ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
                         columns[idx] = Some(col); // mark the column as used
                         null_value[idx] = Some(value.as_null()); // store the null value with the correct type
-                        values.push(col.save_as(Expr::val(value))); // just like above
+                        values.push(col.save_as(Expr::val(value))); // same as add() above
                     }
                     ActiveValue::NotSet => {
                         values.push(SimpleExpr::Keyword(Keyword::Null)); // indicate a missing value
@@ -192,6 +192,7 @@ where
             .columns(columns.iter().cloned().filter_map(|c| c));
 
         for values in all_values {
+            // since we've aligned the column set, this never panics
             self.query
                 .values_panic(values.into_iter().enumerate().filter_map(|(i, v)| {
                     if columns[i].is_some() {
