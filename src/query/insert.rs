@@ -3,7 +3,7 @@ use crate::{
     PrimaryKeyTrait, QueryTrait,
 };
 use core::marker::PhantomData;
-use sea_query::{Expr, InsertStatement, OnConflict, ValueTuple};
+use sea_query::{Expr, InsertStatement, Keyword, OnConflict, SimpleExpr, Value, ValueTuple};
 
 /// Performs INSERT operations on a ActiveModel
 #[derive(Debug)]
@@ -155,9 +155,56 @@ where
         M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
     {
+        let mut columns: Vec<_> = <A::Entity as EntityTrait>::Column::iter()
+            .map(|_| None)
+            .collect();
+        let mut null_value: Vec<Option<Value>> =
+            std::iter::repeat(None).take(columns.len()).collect();
+        let mut all_values: Vec<Vec<SimpleExpr>> = Vec::new();
+
         for model in models.into_iter() {
-            self = self.add(model);
+            let mut am: A = model.into_active_model();
+            self.primary_key =
+                if !<<A::Entity as EntityTrait>::PrimaryKey as PrimaryKeyTrait>::auto_increment() {
+                    am.get_primary_key_value()
+                } else {
+                    None
+                };
+            let mut values = Vec::with_capacity(columns.len());
+            for (idx, col) in <A::Entity as EntityTrait>::Column::iter().enumerate() {
+                let av = am.take(col);
+                match av {
+                    ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
+                        columns[idx] = Some(col);
+                        null_value[idx] = Some(value.as_null());
+                        values.push(col.save_as(Expr::val(value)));
+                    }
+                    ActiveValue::NotSet => {
+                        values.push(SimpleExpr::Keyword(Keyword::Null));
+                    }
+                }
+            }
+            all_values.push(values);
         }
+
+        self.query
+            .columns(columns.iter().cloned().filter_map(|c| c));
+
+        for values in all_values {
+            self.query
+                .values_panic(values.into_iter().enumerate().filter_map(|(i, v)| {
+                    if columns[i].is_some() {
+                        if !matches!(v, SimpleExpr::Keyword(Keyword::Null)) {
+                            Some(v)
+                        } else {
+                            null_value[i].clone().map(SimpleExpr::Value)
+                        }
+                    } else {
+                        None
+                    }
+                }));
+        }
+
         self
     }
 
@@ -393,8 +440,11 @@ where
 mod tests {
     use sea_query::OnConflict;
 
-    use crate::tests_cfg::cake::{self};
-    use crate::{ActiveValue, DbBackend, DbErr, EntityTrait, Insert, IntoActiveModel, QueryTrait};
+    use crate::tests_cfg::{cake, cake_filling};
+    use crate::{
+        ActiveValue, DbBackend, DbErr, EntityTrait, Insert, IntoActiveModel, NotSet, QueryTrait,
+        Set,
+    };
 
     #[test]
     fn insert_1() {
@@ -439,7 +489,7 @@ mod tests {
     }
 
     #[test]
-    fn insert_4() {
+    fn insert_many_1() {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
                 .add_many([
@@ -459,22 +509,41 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "columns mismatch")]
-    fn insert_5() {
-        let apple = cake::ActiveModel {
-            name: ActiveValue::set("Apple".to_owned()),
-            ..Default::default()
-        };
-        let orange = cake::ActiveModel {
-            id: ActiveValue::set(2),
-            name: ActiveValue::set("Orange".to_owned()),
-        };
+    fn insert_many_2() {
         assert_eq!(
             Insert::<cake::ActiveModel>::new()
+                .add_many([
+                    cake::ActiveModel {
+                        id: NotSet,
+                        name: Set("Apple Pie".to_owned()),
+                    },
+                    cake::ActiveModel {
+                        id: NotSet,
+                        name: Set("Orange Scone".to_owned()),
+                    }
+                ])
+                .build(DbBackend::Postgres)
+                .to_string(),
+            r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie'), ('Orange Scone')"#,
+        );
+    }
+
+    #[test]
+    fn insert_many_3() {
+        let apple = cake_filling::ActiveModel {
+            cake_id: ActiveValue::set(2),
+            filling_id: ActiveValue::NotSet,
+        };
+        let orange = cake_filling::ActiveModel {
+            cake_id: ActiveValue::NotSet,
+            filling_id: ActiveValue::set(3),
+        };
+        assert_eq!(
+            Insert::<cake_filling::ActiveModel>::new()
                 .add_many([apple, orange])
                 .build(DbBackend::Postgres)
                 .to_string(),
-            r#"INSERT INTO "cake" ("id", "name") VALUES (NULL, 'Apple'), (2, 'Orange')"#,
+            r#"INSERT INTO "cake_filling" ("cake_id", "filling_id") VALUES (2, NULL), (NULL, 3)"#,
         );
     }
 
