@@ -1,5 +1,8 @@
-use crate::{error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait};
-use sea_query::DeleteStatement;
+use crate::{
+    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait,
+    Iterable,
+};
+use sea_query::{DeleteStatement, Query};
 use std::future::Future;
 
 use super::{SelectModel, SelectorRaw};
@@ -147,7 +150,10 @@ where
     let models = match db.support_returning() {
         true => {
             let db_backend = db.get_database_backend();
-            let query = query.returning_all();
+            let returning = Query::returning().exprs(
+                E::Column::iter().map(|c| c.select_enum_as(c.into_returning_expr(db_backend))),
+            );
+            let query = query.returning(returning);
             let delete_statement = db_backend.build(&query.to_owned());
             SelectorRaw::<SelectModel<<E>::Model>>::from_statement(delete_statement)
                 .all(db)
