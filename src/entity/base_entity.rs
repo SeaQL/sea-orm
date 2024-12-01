@@ -473,7 +473,12 @@ pub trait EntityTrait: EntityName {
     /// (which may or may not be correct, depending on whether the column is nullable):
     ///
     /// ```
-    /// use sea_orm::{entity::*, query::*, tests_cfg::{cake, cake_filling}, DbBackend};
+    /// use sea_orm::{
+    ///     entity::*,
+    ///     query::*,
+    ///     tests_cfg::{cake, cake_filling},
+    ///     DbBackend,
+    /// };
     ///
     /// assert_eq!(
     ///     cake::Entity::insert_many([

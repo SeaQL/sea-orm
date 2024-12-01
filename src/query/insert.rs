@@ -175,18 +175,19 @@ where
                 let av = am.take(col);
                 match av {
                     ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
-                        columns[idx] = Some(col);
-                        null_value[idx] = Some(value.as_null());
-                        values.push(col.save_as(Expr::val(value)));
+                        columns[idx] = Some(col); // mark the column as used
+                        null_value[idx] = Some(value.as_null()); // store the null value with the correct type
+                        values.push(col.save_as(Expr::val(value))); // just like above
                     }
                     ActiveValue::NotSet => {
-                        values.push(SimpleExpr::Keyword(Keyword::Null));
+                        values.push(SimpleExpr::Keyword(Keyword::Null)); // indicate a missing value
                     }
                 }
             }
             all_values.push(values);
         }
 
+        // filter only used column
         self.query
             .columns(columns.iter().cloned().filter_map(|c| c));
 
@@ -194,9 +195,12 @@ where
             self.query
                 .values_panic(values.into_iter().enumerate().filter_map(|(i, v)| {
                     if columns[i].is_some() {
+                        // only if the column is used
                         if !matches!(v, SimpleExpr::Keyword(Keyword::Null)) {
+                            // use the value expression
                             Some(v)
                         } else {
+                            // use null as standin, which must be Some
                             null_value[i].clone().map(SimpleExpr::Value)
                         }
                     } else {
