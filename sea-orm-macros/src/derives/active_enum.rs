@@ -414,6 +414,10 @@ impl ActiveEnum {
                         .to_owned()
                         .into()
                 }
+
+                fn enum_type_name() -> Option<&'static str> {
+                    Some(stringify!(#ident))
+                }
             }
 
             #[automatically_derived]
