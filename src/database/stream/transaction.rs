@@ -27,20 +27,20 @@ pub struct TransactionStream<'a> {
     stream: MetricStream<'this>,
 }
 
-impl<'a> std::fmt::Debug for TransactionStream<'a> {
+impl std::fmt::Debug for TransactionStream<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "TransactionStream")
     }
 }
 
-impl<'a> TransactionStream<'a> {
+impl TransactionStream<'_> {
     #[instrument(level = "trace", skip(metric_callback))]
     #[allow(unused_variables)]
     pub(crate) fn build(
-        conn: MutexGuard<'a, InnerConnection>,
+        conn: MutexGuard<'_, InnerConnection>,
         stmt: Statement,
         metric_callback: Option<crate::metric::Callback>,
-    ) -> TransactionStream<'a> {
+    ) -> TransactionStream<'_> {
         TransactionStreamBuilder {
             stmt,
             conn,
@@ -98,7 +98,7 @@ impl<'a> TransactionStream<'a> {
     }
 }
 
-impl<'a> Stream for TransactionStream<'a> {
+impl Stream for TransactionStream<'_> {
     type Item = Result<QueryResult, DbErr>;
 
     fn poll_next(

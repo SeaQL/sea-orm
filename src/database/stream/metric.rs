@@ -31,7 +31,7 @@ impl<'a> MetricStream<'a> {
     }
 }
 
-impl<'a> Stream for MetricStream<'a> {
+impl Stream for MetricStream<'_> {
     type Item = Result<QueryResult, DbErr>;
 
     fn poll_next(
@@ -51,7 +51,7 @@ impl<'a> Stream for MetricStream<'a> {
     }
 }
 
-impl<'a> Drop for MetricStream<'a> {
+impl Drop for MetricStream<'_> {
     fn drop(&mut self) {
         if let (Some(callback), Some(elapsed)) = (self.metric_callback.as_deref(), self.elapsed) {
             let info = crate::metric::Info {
