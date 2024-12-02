@@ -188,8 +188,7 @@ where
         }
 
         // filter only used column
-        self.query
-            .columns(columns.iter().cloned().filter_map(|c| c));
+        self.query.columns(columns.iter().cloned().flatten());
 
         for values in all_values {
             // since we've aligned the column set, this never panics
