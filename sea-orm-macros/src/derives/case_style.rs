@@ -111,7 +111,7 @@ impl CaseStyleHelpers for Ident {
     }
 }
 
-impl<'meta> TryFrom<&ParseNestedMeta<'meta>> for CaseStyle {
+impl TryFrom<&ParseNestedMeta<'_>> for CaseStyle {
     type Error = syn::Error;
 
     fn try_from(value: &ParseNestedMeta) -> Result<Self, Self::Error> {
