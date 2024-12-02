@@ -187,8 +187,15 @@ where
             all_values.push(values);
         }
 
-        // filter only used column
-        self.query.columns(columns.iter().cloned().flatten());
+        if !all_values.is_empty() {
+            // filter only used column
+            self.query.columns(columns.iter().cloned().flatten());
+
+            // flag used column
+            for col in columns.iter() {
+                self.columns.push(col.is_some());
+            }
+        }
 
         for values in all_values {
             // since we've aligned the column set, this never panics
