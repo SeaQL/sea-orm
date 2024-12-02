@@ -110,7 +110,7 @@ where
 {
     /// Execute an insert operation
     #[allow(unused_mut)]
-    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + '_
+    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
     where
         C: ConnectionTrait,
         A: 'a,
@@ -134,7 +134,7 @@ where
     pub fn exec_without_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<u64, DbErr>> + '_
+    ) -> impl Future<Output = Result<u64, DbErr>> + 'a
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
@@ -147,7 +147,7 @@ where
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + '_
+    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + 'a
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
@@ -171,7 +171,7 @@ where
     }
 
     /// Execute an insert operation, returning the last inserted id
-    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + '_
+    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
     where
         C: ConnectionTrait,
         A: 'a,
@@ -183,7 +183,7 @@ where
     pub fn exec_without_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<u64, DbErr>> + '_
+    ) -> impl Future<Output = Result<u64, DbErr>> + 'a
     where
         C: ConnectionTrait,
         A: 'a,
@@ -195,7 +195,7 @@ where
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + '_
+    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + 'a
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
