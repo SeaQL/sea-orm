@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.1.3 - Pending
+
+## New Features
+
+- [sea-orm-codegen] register seaography entity module
+- [sea-orm-codegen] register seaography active enum
+
+```rust
+pub mod prelude;
+
+pub mod sea_orm_active_enums;
+
+pub mod baker;
+pub mod bakery;
+pub mod cake;
+pub mod cakes_bakers;
+pub mod customer;
+pub mod lineitem;
+pub mod order;
+
+seaography::register_entity_modules!([
+    baker,
+    bakery,
+    cake,
+    cakes_bakers,
+    customer,
+    lineitem,
+    order,
+]);
+
+seaography::register_active_enums!([
+    sea_orm_active_enums::Tea,
+    sea_orm_active_enums::Color,
+]);
+```
 
 ## 1.1.2 - 2024-12-02
 
