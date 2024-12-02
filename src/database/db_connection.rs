@@ -583,6 +583,13 @@ impl DbBackend {
             _ => false,
         }
     }
+
+    /// A getter for database dependent boolean value
+    pub fn boolean_value(&self, boolean: bool) -> sea_query::Value {
+        match self {
+            Self::MySql | Self::Postgres | Self::Sqlite => boolean.into(),
+        }
+    }
 }
 
 #[cfg(test)]

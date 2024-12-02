@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
+## 1.1.2 - 2024-12-02
+
+### Enhancements
+
+- Added `ColumnTrait::enum_type_name()` to signify enum types https://github.com/SeaQL/sea-orm/pull/2415
+- Added `DbBackend::boolean_value()` for database dependent boolean value https://github.com/SeaQL/sea-orm/pull/2415
+
 ## 1.1.1 - 2024-11-04
 
 ### Enhancements
