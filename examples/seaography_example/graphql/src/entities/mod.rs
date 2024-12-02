@@ -6,3 +6,5 @@ pub mod baker;
 pub mod bakery;
 pub mod cake;
 pub mod cake_baker;
+
+seaography::register_entity_modules!([baker, bakery, cake, cake_baker]);

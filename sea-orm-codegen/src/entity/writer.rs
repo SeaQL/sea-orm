@@ -171,7 +171,7 @@ impl EntityWriter {
     pub fn generate(self, context: &EntityWriterContext) -> WriterOutput {
         let mut files = Vec::new();
         files.extend(self.write_entities(context));
-        files.push(self.write_index_file(context.lib));
+        files.push(self.write_index_file(context.lib, context.seaography));
         files.push(self.write_prelude());
         if !self.enums.is_empty() {
             files.push(self.write_sea_orm_active_enums(
@@ -245,7 +245,7 @@ impl EntityWriter {
             .collect()
     }
 
-    pub fn write_index_file(&self, lib: bool) -> OutputFile {
+    pub fn write_index_file(&self, lib: bool, seaography: bool) -> OutputFile {
         let mut lines = Vec::new();
         Self::write_doc_comment(&mut lines);
         let code_blocks: Vec<TokenStream> = self.entities.iter().map(Self::gen_mod).collect();
@@ -264,6 +264,12 @@ impl EntityWriter {
                     pub mod sea_orm_active_enums;
                 }],
             );
+        }
+
+        if seaography {
+            lines.push("".to_owned());
+            let ts = Self::gen_seaography_entity_mod(&self.entities, &self.enums);
+            Self::write(&mut lines, vec![ts]);
         }
 
         let file_name = match lib {
@@ -702,6 +708,48 @@ impl EntityWriter {
         quote! {
             pub mod #table_name_snake_case_ident;
         }
+    }
+
+    pub fn gen_seaography_entity_mod(
+        entities: &[Entity],
+        enums: &BTreeMap<String, ActiveEnum>,
+    ) -> TokenStream {
+        let mut ts = TokenStream::new();
+        for entity in entities {
+            let table_name_snake_case_ident = format_ident!(
+                "{}",
+                escape_rust_keyword(entity.get_table_name_snake_case_ident())
+            );
+            ts = quote! {
+                #ts
+                #table_name_snake_case_ident,
+            }
+        }
+        ts = quote! {
+            seaography::register_entity_modules!([
+                #ts
+            ]);
+        };
+
+        let mut enum_ts = TokenStream::new();
+        for active_enum in enums.values() {
+            let enum_name = &active_enum.enum_name.to_string();
+            let enum_iden = format_ident!("{}", enum_name.to_upper_camel_case());
+            enum_ts = quote! {
+                #enum_ts
+                sea_orm_active_enums::#enum_iden
+            }
+        }
+        if !enum_ts.is_empty() {
+            ts = quote! {
+                #ts
+
+                seaography::register_active_enums!([
+                    #enum_ts
+                ]);
+            };
+        }
+        ts
     }
 
     pub fn gen_prelude_use(entity: &Entity) -> TokenStream {
