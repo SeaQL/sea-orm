@@ -192,9 +192,7 @@ where
             self.query.columns(columns.iter().cloned().flatten());
 
             // flag used column
-            for col in columns.iter() {
-                self.columns.push(col.is_some());
-            }
+            self.columns = columns.iter().map(Option::is_some).collect();
         }
 
         for values in all_values {
