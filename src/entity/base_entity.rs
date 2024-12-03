@@ -468,7 +468,7 @@ pub trait EntityTrait: EntityName {
     /// # }
     /// ```
     ///
-    /// Before 1.1.2, if the active models have different column set, this method would panic.
+    /// Before 1.1.3, if the active models have different column set, this method would panic.
     /// Now, it'd attempt to fill in the missing columns with null
     /// (which may or may not be correct, depending on whether the column is nullable):
     ///

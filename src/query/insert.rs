@@ -112,7 +112,7 @@ where
     ///
     /// # Panics
     ///
-    /// Panics if the column value has discrepancy across rows
+    /// Panics if the rows have different column sets from what've previously been cached in the query statement
     #[allow(clippy::should_implement_trait)]
     pub fn add<M>(mut self, m: M) -> Self
     where
@@ -146,6 +146,26 @@ where
         }
         self.query.columns(columns);
         self.query.values_panic(values);
+        self
+    }
+
+    /// Add many Models to Self. This is the legacy implementation priori to `1.1.3`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the rows have different column sets
+    #[deprecated(
+        since = "1.1.3",
+        note = "Please use [`Insert::add_many`] which does not panic"
+    )]
+    pub fn add_multi<M, I>(mut self, models: I) -> Self
+    where
+        M: IntoActiveModel<A>,
+        I: IntoIterator<Item = M>,
+    {
+        for model in models.into_iter() {
+            self = self.add(model);
+        }
         self
     }
 
@@ -265,8 +285,7 @@ where
         self
     }
 
-    /// Allow insert statement return safely if inserting nothing.
-    /// The database will not be affected.
+    /// Allow insert statement to return without error if nothing's been inserted
     pub fn do_nothing(self) -> TryInsert<A>
     where
         A: ActiveModelTrait,
@@ -274,7 +293,7 @@ where
         TryInsert::from_insert(self)
     }
 
-    /// alias to do_nothing
+    /// Alias to `do_nothing`
     pub fn on_empty_do_nothing(self) -> TryInsert<A>
     where
         A: ActiveModelTrait,
