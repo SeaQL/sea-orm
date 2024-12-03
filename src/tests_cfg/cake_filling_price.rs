@@ -18,7 +18,7 @@ impl EntityName for Entity {
 pub struct Model {
     pub cake_id: i32,
     pub filling_id: i32,
-    #[cfg(feature = "with-decimal")]
+    #[cfg(feature = "with-rust_decimal")]
     pub price: Decimal,
     #[sea_orm(ignore)]
     pub ignored_attr: i32,
