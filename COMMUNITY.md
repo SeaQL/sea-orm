@@ -60,6 +60,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Crosup](https://github.com/tsirysndr/crosup) | Quickly setup your development environment on your Chromebook/ChromeOS or any Linux distribution 🐧 ❄️ 💻 🚀 ✨ | DB: SQLite
 - [CyberAPI](https://github.com/vicanso/cyberapi) API tool client for developer. | DB: SQLite
 - [nitro_repo](https://github.com/wyatt-herkamp/nitro_repo) | An OpenSource, lightweight, and fast artifact manager. | DB: MySQL, SQLite
+- [Notifico](https://notifico.tech) ([repository](https://github.com/notificohq/notifico)) ![GitHub stars](https://img.shields.io/github/stars/notificohq/notifico.svg?style=social) | An advanced omni-channel notification server. | DB: MySQL, Postgres, SQLite
 - [Orca](https://github.com/workfoxes/orca) | An No-code Test Automation platform using Actix, SeaORM, React. runs on the desktop and cloud | DB: Postgres
 
 #### System
