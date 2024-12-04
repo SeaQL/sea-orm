@@ -1,0 +1,20 @@
+[workspace]
+
+[package]
+name = "sea-orm-issues-1790"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = "1"
+serde = "1"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+
+[lib]
+path = "src/test.rs"
+
+[dependencies.sea-orm]
+path = "../../"
+default-features = false
+features = ["default", "macros", "runtime-tokio-native-tls", "sqlx-postgres", "tests-cfg"]
