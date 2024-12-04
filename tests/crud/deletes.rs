@@ -19,7 +19,11 @@ pub async fn test_delete_cake(db: &DbConn) {
         price: Set(rust_dec(10.25)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
-        bakery_id: Set(Some(bakery_insert_res.last_insert_id)),
+        bakery_id: Set(Some(
+            bakery_insert_res
+                .last_insert_id
+                .expect("could not get last insert id for bakery"),
+        )),
         ..Default::default()
     };
 

@@ -72,7 +72,7 @@ pub async fn create_and_update_metadata(db: &DatabaseConnection) -> Result<(), D
 
     assert_eq!(Metadata::find().one(db).await?, Some(metadata.clone()));
 
-    assert_eq!(res.last_insert_id, metadata.uuid);
+    assert_eq!(res.last_insert_id, Some(metadata.uuid));
 
     let update_res = Metadata::update(metadata::ActiveModel {
         value: Set("0.22".to_owned()),
