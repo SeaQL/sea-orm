@@ -63,6 +63,14 @@ pub struct ConnectOptions {
     /// Schema search path (PostgreSQL only)
     pub(crate) schema_search_path: Option<String>,
     pub(crate) test_before_acquire: bool,
+    /// Sets whether or with what priority a secure SSL TCP/IP connection will be negotiated
+    pub(crate) ssl_mode: Option<SSLMode>,
+    /// Sets the SSL client certificate as a PEM-encoded byte slice.
+    pub(crate) ssl_client_cert: Option<Vec<u8>>,
+    /// Sets the SSL client key as a PEM-encoded byte slice
+    pub(crate) ssl_client_key: Option<Vec<u8>>,
+    /// Sets PEM encoded trusted SSL Certificate Authorities (CA).
+    pub(crate) ssl_root_cert: Option<Vec<u8>>,
     /// Only establish connections to the DB as needed. If set to `true`, the db connection will
     /// be created using SQLx's [connect_lazy](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.connect_lazy)
     /// method.
@@ -141,6 +149,29 @@ where
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+/// Options for controlling the level of protection provided for MySQL or PostgreSQL SSL connections.
+pub enum SSLMode {
+    /// I don't care about security, and I don't want to pay the overhead of encryption.
+    /// This corresponds to postgres `sslmode=disable` and mysql `ssl-mode=DISABLED`.
+    Disable,
+    /// I don't care about encryption, but I wish to pay the overhead of encryption if the server supports it.
+    /// This corresponds to postgres `sslmode=prefer` and mysql `ssl-mode=PREFERRED`.
+    /// This is the default.
+    Prefer,
+    /// I want my data to be encrypted, and I accept the overhead. I trust that the network will make sure I always connect to the server I want.
+    /// This corresponds to postgres `sslmode=require` and mysql `ssl-mode=REQUIRED`.
+    Require,
+    /// I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server that I trust.
+    /// like `Self::Require`, but additionally verify the server Certificate Authority (CA) certificate against the configured CA certificates.
+    /// This corresponds to postgres `sslmode=verify-ca` and mysql `ssl-mode=VERIFY_CA`.
+    VerifyCa,
+    /// I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server I trust, and that it's the one I specify.
+    /// like `Self::VerifyCa`, but additionally perform host name identity verification by checking the host name the client uses for connecting to the server against the identity in the certificate that the server sends to the client.
+    /// This corresponds to postgres `sslmode=verify-full` and mysql `ssl-mode=VERIFY_IDENTITY`.
+    VerifyIdentity,
+}
+
 impl ConnectOptions {
     /// Create new [ConnectOptions] for a [Database] by passing in a URI string
     pub fn new<T>(url: T) -> Self
@@ -163,6 +194,10 @@ impl ConnectOptions {
             schema_search_path: None,
             test_before_acquire: true,
             connect_lazy: false,
+            ssl_mode: None,
+            ssl_client_cert: None,
+            ssl_client_key: None,
+            ssl_root_cert: None,
         }
     }
 
@@ -301,6 +336,99 @@ impl ConnectOptions {
     /// If true, the connection will be pinged upon acquiring from the pool (default true).
     pub fn test_before_acquire(&mut self, value: bool) -> &mut Self {
         self.test_before_acquire = value;
+        self
+    }
+
+    /// Sets whether or with what priority a secure SSL TCP/IP connection will be negotiated
+    /// with the server.
+    ///
+    /// By default, the SSL mode is [`Prefer`](SSLMode::Prefer), and the client will
+    /// first attempt an SSL connection but fallback to a non-SSL connection on failure.
+    ///
+    /// Ignored for Unix domain socket communication.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use sea_orm::database::{ConnectOptions, SSLMode};
+    /// let options = ConnectOptions::new().ssl_mode(SSLMode::Require);
+    /// ```
+    pub fn ssl_mode(&mut self, mode: SSLMode) -> &mut Self {
+        self.ssl_mode = Some(mode);
+        self
+    }
+
+    /// Sets the SSL client certificate as a PEM-encoded byte slice.
+    ///
+    /// This should be an ASCII-encoded blob that starts with `-----BEGIN CERTIFICATE-----`.
+    ///
+    /// # Example
+    /// Note: embedding SSL certificates and keys in the binary is not advised.
+    /// This is for illustration purposes only.
+    ///
+    /// ```rust
+    /// # use sea_orm::database::{ConnectOptions, SSLMode};
+    ///
+    /// const CERT: &[u8] = b"\
+    /// -----BEGIN CERTIFICATE-----
+    /// <Certificate data here.>
+    /// -----END CERTIFICATE-----";
+    ///
+    /// let options = ConnectOptions::new()
+    ///     // Providing a CA certificate with less than VerifyCa is pointless
+    ///     .ssl_mode(SSLMode::VerifyCa)
+    ///     .ssl_client_cert_pem(CERT);
+    /// ```
+    pub fn ssl_client_cert_pem(&mut self, cert: Vec<u8>) -> &mut Self {
+        self.ssl_client_cert = Some(cert);
+        self
+    }
+
+    /// Sets the SSL client key as a PEM-encoded byte slice.
+    ///
+    /// This should be an ASCII-encoded blob that starts with `-----BEGIN PRIVATE KEY-----`.
+    ///
+    /// # Example
+    /// Note: embedding SSL certificates and keys in the binary is not advised.
+    /// This is for illustration purposes only.
+    ///
+    /// ```rust
+    /// # use sea_orm::database::{ConnectOptions, SSLMode};
+    ///
+    /// const KEY: &[u8] = b"\
+    /// -----BEGIN PRIVATE KEY-----
+    /// <Private key data here.>
+    /// -----END PRIVATE KEY-----";
+    ///
+    /// let options = ConnectOptions::new()
+    ///     // Providing a CA certificate with less than VerifyCa is pointless
+    ///     .ssl_mode(SSLMode::VerifyCa)
+    ///     .ssl_client_key_pem(KEY);
+    /// ```
+    pub fn ssl_client_key_pem(&mut self, key: Vec<u8>) -> &mut Self {
+        self.ssl_client_key = Some(key);
+        self
+    }
+
+    /// Sets PEM encoded trusted SSL Certificate Authorities (CA).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use sea_orm::database::{ConnectOptions, SSLMode};
+    ///
+    /// const CERT: &[u8] = b"\
+    /// -----BEGIN CERTIFICATE-----
+    /// <Certificate data here.>
+    /// -----END CERTIFICATE-----";
+    ///
+    /// let options = ConnectOptions::new()
+    ///     // Providing a CA certificate with less than VerifyCa is pointless
+    ///     .ssl_mode(SSLMode::VerifyCa)
+    ///     .ssl_root_cert_from_pem(vec![]);
+    /// ```
+    pub fn ssl_root_cert_from_pem(mut self, pem_certificate: Vec<u8>) -> Self {
+        self.ssl_root_cert = Some(pem_certificate);
         self
     }
 
