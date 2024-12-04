@@ -11,14 +11,18 @@ async-trait = { version = "0.1" }
 rocket-okapi-example-service = { path = "../service" }
 futures = { version = "0.3" }
 futures-util = { version = "0.3" }
-rocket = { version = "0.5.0", features = ["json"] }
-rocket_cors = "0.6.0"
-rocket_dyn_templates = { version = "0.1.0-rc.1", features = ["tera"] }
-rocket_okapi = { version = "0.8.0", features = ["swagger", "rapidoc", "rocket_db_pools"] }
+rocket = { version = "0.5", features = ["json"] }
+rocket_cors = "0.6"
+rocket_dyn_templates = { version = "0.2", features = ["tera"] }
+rocket_okapi = { version = "0.9", features = [
+  "swagger",
+  "rapidoc",
+  "rocket_db_pools",
+] }
 serde_json = { version = "1" }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
-tokio = "1.20.0"
+tokio = "1.41"
 serde = "1.0"
 dto = { path = "../dto" }
 

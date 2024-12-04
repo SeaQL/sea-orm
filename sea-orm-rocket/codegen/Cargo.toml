@@ -13,10 +13,10 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-devise = "0.3"
+devise = "0.4"
 quote = "1"
 
 [dev-dependencies]
-rocket = { version = "0.5.0", default-features = false }
-trybuild = "1.0"
+rocket = { version = "0.5", default-features = false }
+trybuild = "1"
 version_check = "0.9"
