@@ -762,7 +762,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// If all fields in the partial model is `from_expr`, the `entity` can be ignore.
+/// If all fields in the partial model is `from_expr`, the specifying the `entity` can be skipped.
 /// ```
 /// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
 ///
@@ -773,7 +773,28 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// A field cannot have attributes `from_col` and `from_expr` at the same time.
+/// It is possible to nest structs deriving `FromQueryResult` and `DerivePartialModel`, including
+/// optionally, which is useful for specifying columns from tables added via left joins, as well as
+/// when building up complicated queries programmatically.
+/// ```
+/// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
+///
+/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// struct Inner {
+///     #[sea_orm(from_expr = "Expr::val(1).add(1)")]
+///     sum: i32,
+/// }
+///
+/// #[derive(Debug, FromQueryResult, DerivePartialModel)]
+/// struct Outer {
+///     #[sea_orm(nested)]
+///     inner: Inner,
+///     #[sea_orm(nested)]
+///     inner_opt: Option<Inner>,
+/// }
+/// ```
+///
+/// A field cannot have attributes `from_col`, `from_expr` or `nested` at the same time.
 /// Or, it will result in a compile error.
 ///
 /// ```compile_fail
