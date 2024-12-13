@@ -6,3 +6,4 @@ Cargo.lock
 .idea/*
 */.idea/*
 .env.local
+.DS_Store

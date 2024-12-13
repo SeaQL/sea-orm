@@ -74,7 +74,6 @@ pub async fn tear_down(base_url: &str, db_name: &str) {
                 format!("DROP DATABASE IF EXISTS \"{db_name}\";"),
             ))
             .await;
-    } else {
     };
 }
 
@@ -158,4 +157,9 @@ pub async fn create_table_without_asserts(
         db.execute(stmt).await?;
     }
     db.execute(builder.build(create)).await
+}
+
+pub fn rust_dec<T: ToString>(v: T) -> rust_decimal::Decimal {
+    use std::str::FromStr;
+    rust_decimal::Decimal::from_str(&v.to_string()).unwrap()
 }

@@ -49,7 +49,7 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::Id => ColumnType::Integer.def(),
-            Self::Name => ColumnType::String(None).def(),
+            Self::Name => ColumnType::String(StringLen::None).def(),
             Self::Tea => Tea::db_type().def(),
         }
     }

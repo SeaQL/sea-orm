@@ -9,10 +9,10 @@ name = "dto"
 path = "src/lib.rs"
 
 [dependencies]
-rocket = { version = "0.5.0-rc.4", features = ["json"] }
+rocket = { version = "0.5.0", features = ["json"] }
 
 [dependencies.entity]
 path = "../entity"
 
 [dependencies.rocket_okapi]
-version = "0.8.0-rc.2"
+version = "0.8.0"

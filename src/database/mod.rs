@@ -54,14 +54,24 @@ pub struct ConnectOptions {
     pub(crate) sqlx_logging: bool,
     /// SQLx statement logging level (ignored if `sqlx_logging` is false)
     pub(crate) sqlx_logging_level: log::LevelFilter,
+    /// SQLx slow statements logging level (ignored if `sqlx_logging` is false)
+    pub(crate) sqlx_slow_statements_logging_level: log::LevelFilter,
+    /// SQLx slow statements duration threshold (ignored if `sqlx_logging` is false)
+    pub(crate) sqlx_slow_statements_logging_threshold: Duration,
     /// set sqlcipher key
     pub(crate) sqlcipher_key: Option<Cow<'static, str>>,
     /// Schema search path (PostgreSQL only)
     pub(crate) schema_search_path: Option<String>,
+    pub(crate) test_before_acquire: bool,
+    /// Only establish connections to the DB as needed. If set to `true`, the db connection will
+    /// be created using SQLx's [connect_lazy](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.connect_lazy)
+    /// method.
+    pub(crate) connect_lazy: bool,
 }
 
 impl Database {
-    /// Method to create a [DatabaseConnection] on a database
+    /// Method to create a [DatabaseConnection] on a database. This method will return an error
+    /// if the database is not available.
     #[instrument(level = "trace", skip(opt))]
     pub async fn connect<C>(opt: C) -> Result<DatabaseConnection, DbErr>
     where
@@ -97,7 +107,7 @@ impl Database {
     #[instrument(level = "trace", skip(proxy_func_arc))]
     pub async fn connect_proxy(
         db_type: DbBackend,
-        proxy_func_arc: std::sync::Arc<std::sync::Mutex<Box<dyn ProxyDatabaseTrait>>>,
+        proxy_func_arc: std::sync::Arc<Box<dyn ProxyDatabaseTrait>>,
     ) -> Result<DatabaseConnection, DbErr> {
         match db_type {
             DbBackend::MySql => {
@@ -147,37 +157,13 @@ impl ConnectOptions {
             max_lifetime: None,
             sqlx_logging: true,
             sqlx_logging_level: log::LevelFilter::Info,
+            sqlx_slow_statements_logging_level: log::LevelFilter::Off,
+            sqlx_slow_statements_logging_threshold: Duration::from_secs(1),
             sqlcipher_key: None,
             schema_search_path: None,
+            test_before_acquire: true,
+            connect_lazy: false,
         }
-    }
-
-    #[cfg(feature = "sqlx-dep")]
-    /// Convert [ConnectOptions] into [sqlx::pool::PoolOptions]
-    pub fn pool_options<DB>(self) -> sqlx::pool::PoolOptions<DB>
-    where
-        DB: sqlx::Database,
-    {
-        let mut opt = sqlx::pool::PoolOptions::new();
-        if let Some(max_connections) = self.max_connections {
-            opt = opt.max_connections(max_connections);
-        }
-        if let Some(min_connections) = self.min_connections {
-            opt = opt.min_connections(min_connections);
-        }
-        if let Some(connect_timeout) = self.connect_timeout {
-            opt = opt.acquire_timeout(connect_timeout);
-        }
-        if let Some(idle_timeout) = self.idle_timeout {
-            opt = opt.idle_timeout(Some(idle_timeout));
-        }
-        if let Some(acquire_timeout) = self.acquire_timeout {
-            opt = opt.acquire_timeout(acquire_timeout);
-        }
-        if let Some(max_lifetime) = self.max_lifetime {
-            opt = opt.max_lifetime(Some(max_lifetime));
-        }
-        opt
     }
 
     /// Get the database URL of the pool
@@ -262,16 +248,36 @@ impl ConnectOptions {
         self.sqlx_logging
     }
 
-    /// Set SQLx statement logging level (default INFO)
+    /// Set SQLx statement logging level (default INFO).
     /// (ignored if `sqlx_logging` is `false`)
     pub fn sqlx_logging_level(&mut self, level: log::LevelFilter) -> &mut Self {
         self.sqlx_logging_level = level;
         self
     }
 
+    /// Set SQLx slow statements logging level and duration threshold (default `LevelFilter::Off`).
+    /// (ignored if `sqlx_logging` is `false`)
+    pub fn sqlx_slow_statements_logging_settings(
+        &mut self,
+        level: log::LevelFilter,
+        duration: Duration,
+    ) -> &mut Self {
+        self.sqlx_slow_statements_logging_level = level;
+        self.sqlx_slow_statements_logging_threshold = duration;
+        self
+    }
+
     /// Get the level of SQLx statement logging
     pub fn get_sqlx_logging_level(&self) -> log::LevelFilter {
         self.sqlx_logging_level
+    }
+
+    /// Get the SQLx slow statements logging settings
+    pub fn get_sqlx_slow_statements_logging_settings(&self) -> (log::LevelFilter, Duration) {
+        (
+            self.sqlx_slow_statements_logging_level,
+            self.sqlx_slow_statements_logging_threshold,
+        )
     }
 
     /// set key for sqlcipher
@@ -290,5 +296,23 @@ impl ConnectOptions {
     {
         self.schema_search_path = Some(schema_search_path.into());
         self
+    }
+
+    /// If true, the connection will be pinged upon acquiring from the pool (default true).
+    pub fn test_before_acquire(&mut self, value: bool) -> &mut Self {
+        self.test_before_acquire = value;
+        self
+    }
+
+    /// If set to `true`, the db connection pool will be created using SQLx's
+    /// [connect_lazy](https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.connect_lazy) method.
+    pub fn connect_lazy(&mut self, value: bool) -> &mut Self {
+        self.connect_lazy = value;
+        self
+    }
+
+    /// Get whether DB connections will be established when the pool is created or only as needed.
+    pub fn get_connect_lazy(&self) -> bool {
+        self.connect_lazy
     }
 }

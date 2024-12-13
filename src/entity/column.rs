@@ -1,4 +1,4 @@
-use crate::{EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable};
+use crate::{DbBackend, EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable};
 use sea_query::{
     Alias, BinOper, DynIden, Expr, IntoIden, SeaRc, SelectStatement, SimpleExpr, Value,
 };
@@ -20,18 +20,6 @@ pub struct ColumnDef {
 }
 
 macro_rules! bind_oper {
-    ( $op: ident ) => {
-        #[allow(missing_docs)]
-        fn $op<V>(&self, v: V) -> SimpleExpr
-        where
-            V: Into<Value>,
-        {
-            Expr::col((self.entity_name(), *self)).$op(v)
-        }
-    };
-}
-
-macro_rules! bind_oper_with_enum_casting {
     ( $op: ident, $bin_op: ident ) => {
         #[allow(missing_docs)]
         fn $op<V>(&self, v: V) -> SimpleExpr
@@ -87,6 +75,11 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// Define a column for an Entity
     fn def(&self) -> ColumnDef;
 
+    /// Get the enum name of the column type
+    fn enum_type_name(&self) -> Option<&'static str> {
+        None
+    }
+
     /// Get the name of the entity the column belongs to
     fn entity_name(&self) -> DynIden {
         SeaRc::new(Self::EntityName::default()) as DynIden
@@ -97,12 +90,12 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         (self.entity_name(), SeaRc::new(*self) as DynIden)
     }
 
-    bind_oper_with_enum_casting!(eq, Equal);
-    bind_oper_with_enum_casting!(ne, NotEqual);
-    bind_oper!(gt);
-    bind_oper!(gte);
-    bind_oper!(lt);
-    bind_oper!(lte);
+    bind_oper!(eq, Equal);
+    bind_oper!(ne, NotEqual);
+    bind_oper!(gt, GreaterThan);
+    bind_oper!(gte, GreaterThanOrEqual);
+    bind_oper!(lt, SmallerThan);
+    bind_oper!(lte, SmallerThanOrEqual);
 
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
@@ -259,6 +252,14 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         Expr::expr(self.into_simple_expr())
     }
 
+    /// Construct a returning [`Expr`].
+    #[allow(clippy::match_single_binding)]
+    fn into_returning_expr(self, db_backend: DbBackend) -> Expr {
+        match db_backend {
+            _ => Expr::col(self),
+        }
+    }
+
     /// Cast column expression used in select statement.
     /// It only cast database enum as text if it's an enum column.
     fn select_as(&self, expr: Expr) -> SimpleExpr {
@@ -391,6 +392,11 @@ impl ColumnDef {
     /// Get [ColumnType] as reference
     pub fn get_column_type(&self) -> &ColumnType {
         &self.col_type
+    }
+
+    /// Get [Option<SimpleExpr>] as reference
+    pub fn get_column_default(&self) -> Option<&SimpleExpr> {
+        self.default.as_ref()
     }
 
     /// Returns true if the column is nullable
@@ -632,11 +638,15 @@ mod tests {
         );
         assert_eq!(
             hello::Column::Twelve.def(),
-            ColumnType::String(None).def().default("twelve_value")
+            ColumnType::String(StringLen::None)
+                .def()
+                .default("twelve_value")
         );
         assert_eq!(
             hello::Column::TwelveTwo.def(),
-            ColumnType::String(None).def().default("twelve_value")
+            ColumnType::String(StringLen::None)
+                .def()
+                .default("twelve_value")
         );
     }
 

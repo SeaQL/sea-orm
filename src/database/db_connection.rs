@@ -13,8 +13,9 @@ use sqlx::pool::PoolConnection;
 #[cfg(any(feature = "mock", feature = "proxy"))]
 use std::sync::Arc;
 
-/// Handle a database connection depending on the backend
-/// enabled by the feature flags. This creates a database pool.
+/// Handle a database connection depending on the backend enabled by the feature
+/// flags. This creates a database pool. This will be `Clone` unless the feature
+/// flag `mock` is enabled.
 #[cfg_attr(not(feature = "mock"), derive(Clone))]
 pub enum DatabaseConnection {
     /// Create a MYSQL database connection and pool
@@ -132,7 +133,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.execute(stmt),
             #[cfg(feature = "proxy")]
-            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.execute(stmt),
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.execute(stmt).await,
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -161,7 +162,7 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::ProxyDatabaseConnection(conn) => {
                 let db_backend = conn.get_database_backend();
                 let stmt = Statement::from_string(db_backend, sql);
-                conn.execute(stmt)
+                conn.execute(stmt).await
             }
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
@@ -180,7 +181,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.query_one(stmt),
             #[cfg(feature = "proxy")]
-            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.query_one(stmt),
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.query_one(stmt).await,
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -198,7 +199,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.query_all(stmt),
             #[cfg(feature = "proxy")]
-            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.query_all(stmt),
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.query_all(stmt).await,
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -469,7 +470,7 @@ impl DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.ping(),
             #[cfg(feature = "proxy")]
-            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.ping(),
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.ping().await,
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -498,8 +499,6 @@ impl DatabaseConnection {
     }
 }
 
-#[cfg(feature = "sea-orm-internal")]
-#[cfg_attr(docsrs, doc(cfg(feature = "sea-orm-internal")))]
 impl DatabaseConnection {
     /// Get [sqlx::MySqlPool]
     ///
@@ -578,7 +577,18 @@ impl DbBackend {
 
     /// Check if the database supports `RETURNING` syntax on insert and update
     pub fn support_returning(&self) -> bool {
-        matches!(self, Self::Postgres)
+        match self {
+            Self::Postgres => true,
+            Self::Sqlite if cfg!(feature = "sqlite-use-returning-for-3_35") => true,
+            _ => false,
+        }
+    }
+
+    /// A getter for database dependent boolean value
+    pub fn boolean_value(&self, boolean: bool) -> sea_query::Value {
+        match self {
+            Self::MySql | Self::Postgres | Self::Sqlite => boolean.into(),
+        }
     }
 }
 

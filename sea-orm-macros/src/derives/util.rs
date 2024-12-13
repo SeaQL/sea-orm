@@ -74,7 +74,8 @@ where
 ///      - `"A  B"`
 ///      - `"A_B"`
 ///      - `"A_ B"`
-///   shares the same identifier of `"AB"`;
+///
+/// All shares the same identifier of `"AB"`;
 ///
 /// This function does the PascelCase conversion with a few special escapes:
 /// - Non-Unicode Standard Annex #31 compliant characters will converted to their hex notation;
@@ -182,7 +183,7 @@ mod tests {
         // Test spaced words distinct from non-spaced
         assert_eq!(camel_case_with_escaped_non_uax31("foo bar"), "Foo0x20bar");
 
-        // Test undescored words distinct from non-spaced and spaced
+        // Test underscored words distinct from non-spaced and spaced
         assert_eq!(camel_case_with_escaped_non_uax31("foo_bar"), "Foo0x5Fbar");
 
         // Test leading numeric characters

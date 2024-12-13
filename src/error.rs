@@ -1,13 +1,13 @@
-#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-dep"))]
+#[cfg(feature = "sqlx-dep")]
 pub use sqlx::error::Error as SqlxError;
 
-#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-mysql"))]
+#[cfg(feature = "sqlx-mysql")]
 pub use sqlx::mysql::MySqlDatabaseError as SqlxMySqlError;
 
-#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-postgres"))]
+#[cfg(feature = "sqlx-postgres")]
 pub use sqlx::postgres::PgDatabaseError as SqlxPostgresError;
 
-#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-sqlite"))]
+#[cfg(feature = "sqlx-sqlite")]
 pub use sqlx::sqlite::SqliteError as SqlxSqliteError;
 
 use thiserror::Error;
@@ -149,16 +149,6 @@ where
     T: ToString,
 {
     DbErr::Json(s.to_string())
-}
-
-#[allow(dead_code)]
-#[cfg(feature = "sqlx-dep")]
-pub(crate) fn conn_acquire_err(sqlx_err: sqlx::Error) -> DbErr {
-    match sqlx_err {
-        sqlx::Error::PoolTimedOut => DbErr::ConnectionAcquire(ConnAcquireErr::Timeout),
-        sqlx::Error::PoolClosed => DbErr::ConnectionAcquire(ConnAcquireErr::ConnectionClosed),
-        _ => DbErr::Conn(RuntimeErr::SqlxError(sqlx_err)),
-    }
 }
 
 /// An error from unsuccessful SQL query

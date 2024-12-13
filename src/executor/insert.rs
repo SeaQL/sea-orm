@@ -1,9 +1,9 @@
 use crate::{
-    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Insert, IntoActiveModel,
-    Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, SelectorRaw, Statement, TryFromU64,
-    TryInsert,
+    error::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, Insert,
+    IntoActiveModel, Iterable, PrimaryKeyToColumn, PrimaryKeyTrait, SelectModel, SelectorRaw,
+    TryFromU64, TryInsert,
 };
-use sea_query::{Expr, FromValueTuple, Iden, InsertStatement, IntoColumnRef, Query, ValueTuple};
+use sea_query::{FromValueTuple, Iden, InsertStatement, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};
 
 /// Defines a structure to perform INSERT operations in an ActiveModel
@@ -110,18 +110,20 @@ where
 {
     /// Execute an insert operation
     #[allow(unused_mut)]
-    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + '_
+    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
     where
         C: ConnectionTrait,
         A: 'a,
     {
         // so that self is dropped before entering await
         let mut query = self.query;
-        if db.support_returning() && <A::Entity as EntityTrait>::PrimaryKey::iter().count() > 0 {
-            let returning = Query::returning().exprs(
-                <A::Entity as EntityTrait>::PrimaryKey::iter()
-                    .map(|c| c.into_column().select_as(Expr::col(c.into_column_ref()))),
-            );
+        if db.support_returning() {
+            let db_backend = db.get_database_backend();
+            let returning =
+                Query::returning().exprs(<A::Entity as EntityTrait>::PrimaryKey::iter().map(|c| {
+                    c.into_column()
+                        .select_as(c.into_column().into_returning_expr(db_backend))
+                }));
             query.returning(returning);
         }
         Inserter::<A>::new(self.primary_key, query).exec(db)
@@ -132,7 +134,7 @@ where
     pub fn exec_without_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<u64, DbErr>> + '_
+    ) -> impl Future<Output = Result<u64, DbErr>> + 'a
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
@@ -145,7 +147,7 @@ where
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + '_
+    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + 'a
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
@@ -169,20 +171,19 @@ where
     }
 
     /// Execute an insert operation, returning the last inserted id
-    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + '_
+    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
     where
         C: ConnectionTrait,
         A: 'a,
     {
-        let builder = db.get_database_backend();
-        exec_insert(self.primary_key, builder.build(&self.query), db)
+        exec_insert(self.primary_key, self.query, db)
     }
 
     /// Execute an insert operation
     pub fn exec_without_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<u64, DbErr>> + '_
+    ) -> impl Future<Output = Result<u64, DbErr>> + 'a
     where
         C: ConnectionTrait,
         A: 'a,
@@ -194,7 +195,7 @@ where
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + '_
+    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + 'a
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
@@ -206,13 +207,16 @@ where
 
 async fn exec_insert<A, C>(
     primary_key: Option<ValueTuple>,
-    statement: Statement,
+    statement: InsertStatement,
     db: &C,
 ) -> Result<InsertResult<A>, DbErr>
 where
     C: ConnectionTrait,
     A: ActiveModelTrait,
 {
+    let db_backend = db.get_database_backend();
+    let statement = db_backend.build(&statement);
+
     type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
     type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
 
@@ -242,6 +246,14 @@ where
                 return Err(DbErr::RecordNotInserted);
             }
             let last_insert_id = res.last_insert_id();
+            // For MySQL, the affected-rows number:
+            //   - The affected-rows value per row is `1` if the row is inserted as a new row,
+            //   - `2` if an existing row is updated,
+            //   - and `0` if an existing row is set to its current values.
+            // Reference: https://dev.mysql.com/doc/refman/8.4/en/insert-on-duplicate.html
+            if db_backend == DbBackend::MySql && last_insert_id == 0 {
+                return Err(DbErr::RecordNotInserted);
+            }
             ValueTypeOf::<A>::try_from_u64(last_insert_id).map_err(|_| DbErr::UnpackInsertId)?
         }
     };
@@ -257,7 +269,8 @@ where
     C: ConnectionTrait,
 {
     let db_backend = db.get_database_backend();
-    let exec_result = db.execute(db_backend.build(&insert_statement)).await?;
+    let insert_statement = db_backend.build(&insert_statement);
+    let exec_result = db.execute(insert_statement).await?;
     Ok(exec_result.rows_affected())
 }
 
@@ -275,18 +288,19 @@ where
     let found = match db.support_returning() {
         true => {
             let returning = Query::returning().exprs(
-                <A::Entity as EntityTrait>::Column::iter().map(|c| c.select_as(Expr::col(c))),
+                <A::Entity as EntityTrait>::Column::iter()
+                    .map(|c| c.select_as(c.into_returning_expr(db_backend))),
             );
             insert_statement.returning(returning);
+            let insert_statement = db_backend.build(&insert_statement);
             SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
-                db_backend.build(&insert_statement),
+                insert_statement,
             )
             .one(db)
             .await?
         }
         false => {
-            let insert_res =
-                exec_insert::<A, _>(primary_key, db_backend.build(&insert_statement), db).await?;
+            let insert_res = exec_insert::<A, _>(primary_key, insert_statement, db).await?;
             <A::Entity as EntityTrait>::find_by_id(insert_res.last_insert_id)
                 .one(db)
                 .await?

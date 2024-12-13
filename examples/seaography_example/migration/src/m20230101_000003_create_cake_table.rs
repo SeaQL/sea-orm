@@ -1,4 +1,4 @@
-use sea_orm_migration::prelude::*;
+use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -10,16 +10,10 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(Cake::Table)
-                    .col(
-                        ColumnDef::new(Cake::Id)
-                            .integer()
-                            .not_null()
-                            .auto_increment()
-                            .primary_key(),
-                    )
-                    .col(ColumnDef::new(Cake::Name).string().not_null())
-                    .col(ColumnDef::new(Cake::Price).decimal_len(19, 4).not_null())
-                    .col(ColumnDef::new(Cake::BakeryId).integer())
+                    .col(pk_auto(Cake::Id))
+                    .col(string(Cake::Name))
+                    .col(decimal_len(Cake::Price, 16, 4))
+                    .col(integer(Cake::BakeryId))
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-cake-bakery_id")
@@ -28,7 +22,7 @@ impl MigrationTrait for Migration {
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )
-                    .col(ColumnDef::new(Cake::GlutenFree).boolean().not_null())
+                    .col(boolean(Cake::GlutenFree))
                     .to_owned(),
             )
             .await

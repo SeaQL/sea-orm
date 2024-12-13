@@ -1,14 +1,11 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
 use sea_orm::{entity::*, query::*, DbConn, DbErr, RuntimeErr};
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn loader_load_one() -> Result<(), DbErr> {
     let ctx = TestContext::new("loader_test_load_one").await;
     create_tables(&ctx.db).await?;
@@ -47,11 +44,6 @@ async fn loader_load_one() -> Result<(), DbErr> {
 }
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn loader_load_many() -> Result<(), DbErr> {
     let ctx = TestContext::new("loader_test_load_many").await;
     create_tables(&ctx.db).await?;
@@ -121,11 +113,6 @@ async fn loader_load_many() -> Result<(), DbErr> {
 }
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn loader_load_many_multi() -> Result<(), DbErr> {
     let ctx = TestContext::new("loader_test_load_many_multi").await;
     create_tables(&ctx.db).await?;
@@ -154,11 +141,6 @@ async fn loader_load_many_multi() -> Result<(), DbErr> {
 }
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn loader_load_many_to_many() -> Result<(), DbErr> {
     let ctx = TestContext::new("loader_test_load_many_to_many").await;
     create_tables(&ctx.db).await?;

@@ -11,7 +11,6 @@ use crate::pool;
 use pool::Db;
 
 pub use entity::post;
-pub use entity::post::Entity as Post;
 
 use rocket_okapi::settings::OpenApiSettings;
 

@@ -5,8 +5,8 @@ use sea_orm::{
     ExecResult, Schema,
 };
 use sea_query::{
-    extension::postgres::Type, Alias, BlobSize, ColumnDef, ColumnType, ForeignKeyCreateStatement,
-    IntoIden,
+    extension::postgres::Type, Alias, ColumnDef, ColumnType, ForeignKeyCreateStatement, IntoIden,
+    StringLen,
 };
 
 pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
@@ -45,7 +45,9 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
     create_edit_log_table(db).await?;
     create_teas_table(db).await?;
     create_binary_table(db).await?;
-    create_bits_table(db).await?;
+    if matches!(db_backend, DbBackend::Postgres) {
+        create_bits_table(db).await?;
+    }
     create_dyn_table_name_lazy_static_table(db).await?;
     create_value_type_table(db).await?;
 
@@ -111,7 +113,13 @@ pub async fn create_metadata_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(metadata::Column::Type).string().not_null())
         .col(ColumnDef::new(metadata::Column::Key).string().not_null())
         .col(ColumnDef::new(metadata::Column::Value).string().not_null())
-        .col(ColumnDef::new(metadata::Column::Bytes).binary().not_null())
+        .col(
+            ColumnDef::new_with_type(
+                metadata::Column::Bytes,
+                ColumnType::VarBinary(StringLen::N(32)),
+            )
+            .not_null(),
+        )
         .col(ColumnDef::new(metadata::Column::Date).date())
         .col(ColumnDef::new(metadata::Column::Time).time())
         .to_owned();
@@ -502,7 +510,7 @@ pub async fn create_event_trigger_table(db: &DbConn) -> Result<ExecResult, DbErr
         )
         .col(
             ColumnDef::new(event_trigger::Column::Events)
-                .array(sea_query::ColumnType::String(None))
+                .array(sea_query::ColumnType::String(StringLen::None))
                 .not_null(),
         )
         .to_owned();
@@ -584,7 +592,10 @@ pub async fn create_categories_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .not_null()
                 .primary_key(),
         )
-        .col(ColumnDef::new(categories::Column::Categories).array(ColumnType::String(Some(1))))
+        .col(
+            ColumnDef::new(categories::Column::Categories)
+                .array(ColumnType::String(StringLen::N(1))),
+        )
         .to_owned();
 
     create_table(db, &create_table_stmt, Categories).await
@@ -603,27 +614,12 @@ pub async fn create_binary_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .col(ColumnDef::new(binary::Column::Binary).binary().not_null())
         .col(
             ColumnDef::new(binary::Column::Binary10)
-                .blob(BlobSize::Blob(Some(10)))
+                .binary_len(10)
                 .not_null(),
         )
         .col(
-            ColumnDef::new(binary::Column::BinaryTiny)
-                .blob(BlobSize::Tiny)
-                .not_null(),
-        )
-        .col(
-            ColumnDef::new(binary::Column::BinaryMedium)
-                .blob(BlobSize::Medium)
-                .not_null(),
-        )
-        .col(
-            ColumnDef::new(binary::Column::BinaryLong)
-                .blob(BlobSize::Long)
-                .not_null(),
-        )
-        .col(
-            ColumnDef::new(binary::Column::VarBinary)
-                .var_binary(10)
+            ColumnDef::new(binary::Column::VarBinary16)
+                .var_binary(16)
                 .not_null(),
         )
         .to_owned();
@@ -742,7 +738,7 @@ pub async fn create_value_type_postgres_table(db: &DbConn) -> Result<ExecResult,
         )
         .col(
             ColumnDef::new(json_vec::Column::StrVec)
-                .array(sea_query::ColumnType::String(None))
+                .array(sea_query::ColumnType::String(StringLen::None))
                 .not_null(),
         )
         .to_owned();

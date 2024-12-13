@@ -1,3 +1,5 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
 use std::sync::Arc;
@@ -16,11 +18,6 @@ use sea_orm::{entity::prelude::*, entity::*, DatabaseConnection};
 use sea_query::{ArrayType, ColumnType, Value, ValueType, ValueTypeErr};
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("value_type_tests").await;
     create_tables(&ctx.db).await?;
@@ -75,7 +72,7 @@ pub fn type_test() {
     // self implied
     assert_eq!(
         StringVec::column_type(),
-        ColumnType::Array(Arc::new(ColumnType::String(None)))
+        ColumnType::Array(Arc::new(ColumnType::String(StringLen::None)))
     );
     assert_eq!(StringVec::array_type(), ArrayType::String);
 }

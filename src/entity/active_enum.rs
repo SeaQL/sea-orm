@@ -20,7 +20,7 @@ use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 /// #[derive(Debug, PartialEq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
 /// #[sea_orm(
 ///     rs_type = "String",
-///     db_type = "String(Some(1))",
+///     db_type = "String(StringLen::N(1))",
 ///     enum_name = "category"
 /// )]
 /// pub enum DeriveCategory {
@@ -74,7 +74,7 @@ use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 ///
 ///     fn db_type() -> ColumnDef {
 ///         // The macro attribute `db_type` is being pasted here
-///         ColumnType::String(Some(1)).def()
+///         ColumnType::String(StringLen::N(1)).def()
 ///     }
 /// }
 /// ```
@@ -86,7 +86,7 @@ use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 ///
 /// // Define the `Category` active enum
 /// #[derive(Debug, Clone, PartialEq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
-/// #[sea_orm(rs_type = "String", db_type = "String(Some(1))")]
+/// #[sea_orm(rs_type = "String", db_type = "String(StringLen::N(1))")]
 /// pub enum Category {
 ///     #[sea_orm(string_value = "B")]
 ///     Big,
@@ -205,7 +205,11 @@ where
 #[cfg(test)]
 mod tests {
     use crate as sea_orm;
-    use crate::{error::*, sea_query::SeaRc, *};
+    use crate::{
+        error::*,
+        sea_query::{SeaRc, StringLen},
+        *,
+    };
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -246,14 +250,14 @@ mod tests {
             }
 
             fn db_type() -> ColumnDef {
-                ColumnType::String(Some(1)).def()
+                ColumnType::String(StringLen::N(1)).def()
             }
         }
 
         #[derive(Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
         #[sea_orm(
             rs_type = "String",
-            db_type = "String(Some(1))",
+            db_type = "String(StringLen::N(1))",
             enum_name = "category"
         )]
         pub enum DeriveCategory {
@@ -293,8 +297,14 @@ mod tests {
             Some(DeriveCategory::Small)
         );
 
-        assert_eq!(Category::db_type(), ColumnType::String(Some(1)).def());
-        assert_eq!(DeriveCategory::db_type(), ColumnType::String(Some(1)).def());
+        assert_eq!(
+            Category::db_type(),
+            ColumnType::String(StringLen::N(1)).def()
+        );
+        assert_eq!(
+            DeriveCategory::db_type(),
+            ColumnType::String(StringLen::N(1)).def()
+        );
 
         assert_eq!(
             Category::name().to_string(),
@@ -496,7 +506,7 @@ mod tests {
         #[derive(Clone, Debug, PartialEq, EnumIter, DeriveActiveEnum, DeriveDisplay)]
         #[sea_orm(
             rs_type = "String",
-            db_type = "String(None)",
+            db_type = "String(StringLen::None)",
             enum_name = "conflicting_string_values"
         )]
         pub enum ConflictingStringValues {

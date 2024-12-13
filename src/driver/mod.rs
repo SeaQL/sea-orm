@@ -16,7 +16,7 @@ pub use mock::*;
 #[cfg(feature = "proxy")]
 pub use proxy::*;
 #[cfg(feature = "sqlx-dep")]
-pub use sqlx_common::*;
+pub(crate) use sqlx_common::*;
 #[cfg(feature = "sqlx-mysql")]
 pub use sqlx_mysql::*;
 #[cfg(feature = "sqlx-postgres")]

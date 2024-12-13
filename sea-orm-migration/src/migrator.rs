@@ -164,10 +164,11 @@ pub trait MigratorTrait: Send {
         C: ConnectionTrait,
     {
         let builder = db.get_database_backend();
+        let table_name = Self::migration_table_name();
         let schema = Schema::new(builder);
         let mut stmt = schema
             .create_table_from_entity(seaql_migrations::Entity)
-            .table_name(Self::migration_table_name());
+            .table_name(table_name);
         stmt.if_not_exists();
         db.execute(builder.build(&stmt)).await.map(|_| ())
     }
@@ -312,7 +313,7 @@ where
     }
 
     // Drop all tables
-    let stmt = query_tables(db);
+    let stmt = query_tables(db).await;
     let rows = db.query_all(db_backend.build(&stmt)).await?;
     for row in rows.into_iter() {
         let table_name: String = row.try_get("", "table_name")?;
@@ -436,14 +437,14 @@ where
     Ok(())
 }
 
-fn query_tables<C>(db: &C) -> SelectStatement
+async fn query_tables<C>(db: &C) -> SelectStatement
 where
     C: ConnectionTrait,
 {
     match db.get_database_backend() {
-        DbBackend::MySql => MySql::query_tables(),
-        DbBackend::Postgres => Postgres::query_tables(),
-        DbBackend::Sqlite => Sqlite::query_tables(),
+        DbBackend::MySql => MySql.query_tables(),
+        DbBackend::Postgres => Postgres.query_tables(),
+        DbBackend::Sqlite => Sqlite.query_tables(),
     }
 }
 

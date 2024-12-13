@@ -1,6 +1,4 @@
-use crate::{
-    error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait, Statement,
-};
+use crate::{error::*, ActiveModelTrait, ConnectionTrait, DeleteMany, DeleteOne, EntityTrait};
 use sea_query::DeleteStatement;
 use std::future::Future;
 
@@ -22,7 +20,7 @@ where
     A: ActiveModelTrait,
 {
     /// Execute a DELETE operation on one ActiveModel
-    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<DeleteResult, DbErr>> + '_
+    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<DeleteResult, DbErr>> + 'a
     where
         C: ConnectionTrait,
     {
@@ -36,7 +34,7 @@ where
     E: EntityTrait,
 {
     /// Execute a DELETE operation on many ActiveModels
-    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<DeleteResult, DbErr>> + '_
+    pub fn exec<C>(self, db: &'a C) -> impl Future<Output = Result<DeleteResult, DbErr>> + 'a
     where
         C: ConnectionTrait,
     {
@@ -56,8 +54,7 @@ impl Deleter {
     where
         C: ConnectionTrait,
     {
-        let builder = db.get_database_backend();
-        exec_delete(builder.build(&self.query), db)
+        exec_delete(self.query, db)
     }
 }
 
@@ -68,10 +65,13 @@ where
     Deleter::new(query).exec(db).await
 }
 
-async fn exec_delete<C>(statement: Statement, db: &C) -> Result<DeleteResult, DbErr>
+async fn exec_delete<C>(query: DeleteStatement, db: &C) -> Result<DeleteResult, DbErr>
 where
     C: ConnectionTrait,
 {
+    let builder = db.get_database_backend();
+    let statement = builder.build(&query);
+
     let result = db.execute(statement).await?;
     Ok(DeleteResult {
         rows_affected: result.rows_affected(),

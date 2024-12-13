@@ -1,7 +1,7 @@
 use crate::{unpack_table_ref, EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select};
 use core::marker::PhantomData;
 use sea_query::{
-    Alias, Condition, ConditionType, DynIden, ForeignKeyCreateStatement, JoinType, SeaRc,
+    Alias, Condition, ConditionType, DynIden, ForeignKeyCreateStatement, IntoIden, JoinType, SeaRc,
     TableForeignKey, TableRef,
 };
 use std::fmt::Debug;
@@ -165,6 +165,56 @@ impl RelationDef {
             fk_name: None,
             condition_type: self.condition_type,
         }
+    }
+
+    /// Express the relation from a table alias.
+    ///
+    /// This is a shorter and more discoverable equivalent to modifying `from_tbl` field by hand.
+    ///
+    /// # Examples
+    ///
+    /// Here's a short synthetic example.
+    /// In real life you'd use aliases when the table name comes up twice and you need to disambiguate,
+    /// e.g. https://github.com/SeaQL/sea-orm/discussions/2133
+    ///
+    /// ```
+    /// use sea_orm::{
+    ///     entity::*,
+    ///     query::*,
+    ///     tests_cfg::{cake, cake_filling},
+    ///     DbBackend,
+    /// };
+    /// use sea_query::Alias;
+    ///
+    /// let cf = Alias::new("cf");
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .join_as(
+    ///             JoinType::LeftJoin,
+    ///             cake_filling::Relation::Cake.def().rev(),
+    ///             cf.clone()
+    ///         )
+    ///         .join(
+    ///             JoinType::LeftJoin,
+    ///             cake_filling::Relation::Filling.def().from_alias(cf)
+    ///         )
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     [
+    ///         "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+    ///         "LEFT JOIN `cake_filling` AS `cf` ON `cake`.`id` = `cf`.`cake_id`",
+    ///         "LEFT JOIN `filling` ON `cf`.`filling_id` = `filling`.`id`",
+    ///     ]
+    ///     .join(" ")
+    /// );
+    /// ```
+    pub fn from_alias<A>(mut self, alias: A) -> Self
+    where
+        A: IntoIden,
+    {
+        self.from_tbl = self.from_tbl.alias(alias);
+        self
     }
 
     /// Set custom join ON condition.

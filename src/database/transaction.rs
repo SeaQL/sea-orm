@@ -7,7 +7,7 @@ use crate::{
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
 use futures::lock::Mutex;
 #[cfg(feature = "sqlx-dep")]
-use sqlx::{pool::PoolConnection, TransactionManager};
+use sqlx::TransactionManager;
 use std::{future::Future, pin::Pin, sync::Arc};
 use tracing::instrument;
 
@@ -28,91 +28,8 @@ impl std::fmt::Debug for DatabaseTransaction {
 }
 
 impl DatabaseTransaction {
-    #[cfg(feature = "sqlx-mysql")]
-    pub(crate) async fn new_mysql(
-        inner: PoolConnection<sqlx::MySql>,
-        metric_callback: Option<crate::metric::Callback>,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
-    ) -> Result<DatabaseTransaction, DbErr> {
-        Self::begin(
-            Arc::new(Mutex::new(InnerConnection::MySql(inner))),
-            DbBackend::MySql,
-            metric_callback,
-            isolation_level,
-            access_mode,
-        )
-        .await
-    }
-
-    #[cfg(feature = "sqlx-postgres")]
-    pub(crate) async fn new_postgres(
-        inner: PoolConnection<sqlx::Postgres>,
-        metric_callback: Option<crate::metric::Callback>,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
-    ) -> Result<DatabaseTransaction, DbErr> {
-        Self::begin(
-            Arc::new(Mutex::new(InnerConnection::Postgres(inner))),
-            DbBackend::Postgres,
-            metric_callback,
-            isolation_level,
-            access_mode,
-        )
-        .await
-    }
-
-    #[cfg(feature = "sqlx-sqlite")]
-    pub(crate) async fn new_sqlite(
-        inner: PoolConnection<sqlx::Sqlite>,
-        metric_callback: Option<crate::metric::Callback>,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
-    ) -> Result<DatabaseTransaction, DbErr> {
-        Self::begin(
-            Arc::new(Mutex::new(InnerConnection::Sqlite(inner))),
-            DbBackend::Sqlite,
-            metric_callback,
-            isolation_level,
-            access_mode,
-        )
-        .await
-    }
-
-    #[cfg(feature = "mock")]
-    pub(crate) async fn new_mock(
-        inner: Arc<crate::MockDatabaseConnection>,
-        metric_callback: Option<crate::metric::Callback>,
-    ) -> Result<DatabaseTransaction, DbErr> {
-        let backend = inner.get_database_backend();
-        Self::begin(
-            Arc::new(Mutex::new(InnerConnection::Mock(inner))),
-            backend,
-            metric_callback,
-            None,
-            None,
-        )
-        .await
-    }
-
-    #[cfg(feature = "proxy")]
-    pub(crate) async fn new_proxy(
-        inner: Arc<crate::ProxyDatabaseConnection>,
-        metric_callback: Option<crate::metric::Callback>,
-    ) -> Result<DatabaseTransaction, DbErr> {
-        let backend = inner.get_database_backend();
-        Self::begin(
-            Arc::new(Mutex::new(InnerConnection::Proxy(inner))),
-            backend,
-            metric_callback,
-            None,
-            None,
-        )
-        .await
-    }
-
     #[instrument(level = "trace", skip(metric_callback))]
-    async fn begin(
+    pub(crate) async fn begin(
         conn: Arc<Mutex<InnerConnection>>,
         backend: DbBackend,
         metric_callback: Option<crate::metric::Callback>,
@@ -293,17 +210,6 @@ impl DatabaseTransaction {
         }
         Ok(())
     }
-
-    #[cfg(feature = "sqlx-dep")]
-    fn map_err_ignore_not_found<T: std::fmt::Debug>(
-        err: Result<Option<T>, sqlx::Error>,
-    ) -> Result<Option<T>, DbErr> {
-        if let Err(sqlx::Error::RowNotFound) = err {
-            Ok(None)
-        } else {
-            err.map_err(sqlx_error_to_query_err)
-        }
-    }
 }
 
 impl Drop for DatabaseTransaction {
@@ -411,7 +317,7 @@ impl ConnectionTrait for DatabaseTransaction {
                 let query = crate::driver::sqlx_mysql::sqlx_query(&stmt);
                 let conn: &mut sqlx::MySqlConnection = &mut *conn;
                 crate::metric::metric!(self.metric_callback, &stmt, {
-                    Self::map_err_ignore_not_found(
+                    crate::sqlx_map_err_ignore_not_found(
                         query.fetch_one(conn).await.map(|row| Some(row.into())),
                     )
                 })
@@ -421,7 +327,7 @@ impl ConnectionTrait for DatabaseTransaction {
                 let query = crate::driver::sqlx_postgres::sqlx_query(&stmt);
                 let conn: &mut sqlx::PgConnection = &mut *conn;
                 crate::metric::metric!(self.metric_callback, &stmt, {
-                    Self::map_err_ignore_not_found(
+                    crate::sqlx_map_err_ignore_not_found(
                         query.fetch_one(conn).await.map(|row| Some(row.into())),
                     )
                 })
@@ -431,7 +337,7 @@ impl ConnectionTrait for DatabaseTransaction {
                 let query = crate::driver::sqlx_sqlite::sqlx_query(&stmt);
                 let conn: &mut sqlx::SqliteConnection = &mut *conn;
                 crate::metric::metric!(self.metric_callback, &stmt, {
-                    Self::map_err_ignore_not_found(
+                    crate::sqlx_map_err_ignore_not_found(
                         query.fetch_one(conn).await.map(|row| Some(row.into())),
                     )
                 })

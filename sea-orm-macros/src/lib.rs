@@ -60,7 +60,7 @@ mod strum;
 /// #     fn def(&self) -> ColumnDef {
 /// #         match self {
 /// #             Self::Id => ColumnType::Integer.def(),
-/// #             Self::Name => ColumnType::String(None).def(),
+/// #             Self::Name => ColumnType::String(StringLen::None).def(),
 /// #         }
 /// #     }
 /// # }
@@ -344,7 +344,7 @@ pub fn derive_custom_column(input: TokenStream) -> TokenStream {
 /// #     fn def(&self) -> ColumnDef {
 /// #         match self {
 /// #             Self::Id => ColumnType::Integer.def(),
-/// #             Self::Name => ColumnType::String(None).def(),
+/// #             Self::Name => ColumnType::String(StringLen::None).def(),
 /// #         }
 /// #     }
 /// # }
@@ -417,7 +417,7 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 /// #     fn def(&self) -> ColumnDef {
 /// #         match self {
 /// #             Self::Id => ColumnType::Integer.def(),
-/// #             Self::Name => ColumnType::String(None).def(),
+/// #             Self::Name => ColumnType::String(StringLen::None).def(),
 /// #         }
 /// #     }
 /// # }
@@ -503,7 +503,7 @@ pub fn derive_into_active_model(input: TokenStream) -> TokenStream {
 /// #     fn def(&self) -> ColumnDef {
 /// #         match self {
 /// #             Self::Id => ColumnType::Integer.def(),
-/// #             Self::Name => ColumnType::String(None).def(),
+/// #             Self::Name => ColumnType::String(StringLen::None).def(),
 /// #         }
 /// #     }
 /// # }
@@ -540,11 +540,11 @@ pub fn derive_active_model_behavior(input: TokenStream) -> TokenStream {
 ///         - Possible values: `String`, `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`
 ///         - Note that value has to be passed as string, i.e. `rs_type = "i8"`
 ///     - `db_type`: Define `ColumnType` returned by `ActiveEnum::db_type()`
-///         - Possible values: all available enum variants of `ColumnType`, e.g. `String(None)`, `String(Some(1))`, `Integer`
+///         - Possible values: all available enum variants of `ColumnType`, e.g. `String(StringLen::None)`, `String(StringLen::N(1))`, `Integer`
 ///         - Note that value has to be passed as string, i.e. `db_type = "Integer"`
 ///     - `enum_name`: Define `String` returned by `ActiveEnum::name()`
 ///         - This attribute is optional with default value being the name of enum in camel-case
-///         - Note that value has to be passed as string, i.e. `db_type = "Integer"`
+///         - Note that value has to be passed as string, i.e. `enum_name = "MyEnum"`
 ///
 /// - For enum variant
 ///     - `string_value` or `num_value`:
@@ -810,6 +810,11 @@ pub fn test(_: TokenStream, input: TokenStream) -> TokenStream {
 
     quote::quote! (
         #[test]
+        #[cfg(any(
+            feature = "sqlx-mysql",
+            feature = "sqlx-sqlite",
+            feature = "sqlx-postgres",
+        ))]
         #(#attrs)*
         fn #name() #ret {
             let _ = ::tracing_subscriber::fmt()
@@ -838,6 +843,19 @@ pub fn enum_iter(input: TokenStream) -> TokenStream {
         .into()
 }
 
+/// Implements traits for types that wrap a database value type.
+///
+/// This procedure macro implements `From<T> for Value`, `sea_orm::TryGetTable`, and
+/// `sea_query::ValueType` for the wrapper type `T`.
+///
+/// ## Usage
+///
+/// ```rust
+/// use sea_orm::DeriveValueType;
+///
+/// #[derive(DeriveValueType)]
+/// struct MyString(String);
+/// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveValueType, attributes(sea_orm))]
 pub fn derive_value_type(input: TokenStream) -> TokenStream {
@@ -863,31 +881,25 @@ pub fn derive_active_enum_display(input: TokenStream) -> TokenStream {
 /// ## Usage
 ///
 /// ```rust
-/// use sea_orm::DeriveIden;
+/// use sea_orm::{DeriveIden, Iden};
 ///
 /// #[derive(DeriveIden)]
-/// pub enum Class {
-///     Id,
-///     Title,
-///     Text,
-/// }
-///
-/// #[derive(DeriveIden)]
-/// struct Glyph;
-/// ```
-///
-/// You can use iden = "" to customize the name
-/// ```
-/// use sea_orm::DeriveIden;
-///
-/// #[derive(DeriveIden)]
-/// pub enum Class {
+/// pub enum MyClass {
+///     Table, // this is a special case, which maps to the enum's name
 ///     Id,
 ///     #[sea_orm(iden = "turtle")]
 ///     Title,
-///     #[sea_orm(iden = "TeXt")]
 ///     Text,
 /// }
+///
+/// #[derive(DeriveIden)]
+/// struct MyOther;
+///
+/// assert_eq!(MyClass::Table.to_string(), "my_class");
+/// assert_eq!(MyClass::Id.to_string(), "id");
+/// assert_eq!(MyClass::Title.to_string(), "turtle"); // renamed!
+/// assert_eq!(MyClass::Text.to_string(), "text");
+/// assert_eq!(MyOther.to_string(), "my_other");
 /// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(DeriveIden, attributes(sea_orm))]

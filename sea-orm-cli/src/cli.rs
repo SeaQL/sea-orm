@@ -1,4 +1,9 @@
 use clap::{ArgGroup, Parser, Subcommand, ValueEnum};
+#[cfg(feature = "codegen")]
+use dotenvy::dotenv;
+
+#[cfg(feature = "codegen")]
+use crate::{handle_error, run_generate_command, run_migrate_command};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -33,7 +38,7 @@ AUTHORS:
   Join our Discord server to chat with others in the SeaQL community!
     - Invitation: https://discord.com/invite/uCPdDXzbdv
 
-  SeaQL Community Survey 2023
+  SeaQL Community Survey 2024
     - Link: https://sea-ql.org/community-survey
 
   If you like what we do, consider starring, sharing and contributing!
@@ -209,12 +214,11 @@ pub enum GenerateSubcommands {
             short = 's',
             long,
             env = "DATABASE_SCHEMA",
-            default_value = "public",
             long_help = "Database schema\n \
                         - For MySQL, this argument is ignored.\n \
                         - For PostgreSQL, this argument is optional with default value 'public'."
         )]
-        database_schema: String,
+        database_schema: Option<String>,
 
         #[arg(short = 'u', long, env = "DATABASE_URL", help = "Database URL")]
         database_url: String,
@@ -308,4 +312,35 @@ pub enum DateTimeCrate {
     #[default]
     Chrono,
     Time,
+}
+
+/// Use this to build a local, version-controlled `sea-orm-cli` in dependent projects
+/// (see [example use case](https://github.com/SeaQL/sea-orm/discussions/1889)).
+#[cfg(feature = "codegen")]
+pub async fn main() {
+    dotenv().ok();
+
+    let cli = Cli::parse();
+    let verbose = cli.verbose;
+
+    match cli.command {
+        Commands::Generate { command } => {
+            run_generate_command(command, verbose)
+                .await
+                .unwrap_or_else(handle_error);
+        }
+        Commands::Migrate {
+            migration_dir,
+            database_schema,
+            database_url,
+            command,
+        } => run_migrate_command(
+            command,
+            &migration_dir,
+            database_schema,
+            database_url,
+            verbose,
+        )
+        .unwrap_or_else(handle_error),
+    }
 }

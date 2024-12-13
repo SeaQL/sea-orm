@@ -27,12 +27,12 @@ enum ColumnAs {
     Col(syn::Ident),
     /// alias from a column in model
     ColAlias { col: syn::Ident, field: String },
-    /// from a expr
+    /// from an expr
     Expr { expr: syn::Expr, field_name: String },
 }
 
 struct DerivePartialModel {
-    entity_ident: Option<syn::Ident>,
+    entity: Option<syn::Type>,
     ident: syn::Ident,
     fields: Vec<ColumnAs>,
 }
@@ -54,7 +54,7 @@ impl DerivePartialModel {
             return Err(Error::InputNotStruct);
         };
 
-        let mut entity_ident = None;
+        let mut entity = None;
 
         for attr in input.attrs.iter() {
             if !attr.path().is_ident("sea_orm") {
@@ -63,9 +63,9 @@ impl DerivePartialModel {
 
             if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
                 for meta in list {
-                    entity_ident = meta
+                    entity = meta
                         .get_as_kv("entity")
-                        .map(|s| syn::parse_str::<syn::Ident>(&s).map_err(Error::Syn))
+                        .map(|s| syn::parse_str::<syn::Type>(&s).map_err(Error::Syn))
                         .transpose()?;
                 }
             }
@@ -102,7 +102,7 @@ impl DerivePartialModel {
 
             let col_as = match (from_col, from_expr) {
                 (None, None) => {
-                    if entity_ident.is_none() {
+                    if entity.is_none() {
                         return Err(Error::EntityNotSpecific);
                     }
                     ColumnAs::Col(format_ident!(
@@ -115,7 +115,7 @@ impl DerivePartialModel {
                     field_name: field_name.to_string(),
                 },
                 (Some(col), None) => {
-                    if entity_ident.is_none() {
+                    if entity.is_none() {
                         return Err(Error::EntityNotSpecific);
                     }
 
@@ -128,7 +128,7 @@ impl DerivePartialModel {
         }
 
         Ok(Self {
-            entity_ident,
+            entity,
             ident: input.ident,
             fields: column_as_list,
         })
@@ -141,18 +141,18 @@ impl DerivePartialModel {
     fn impl_partial_model_trait(&self) -> TokenStream {
         let select_ident = format_ident!("select");
         let DerivePartialModel {
-            entity_ident,
+            entity,
             ident,
             fields,
         } = self;
         let select_col_code_gen = fields.iter().map(|col_as| match col_as {
             ColumnAs::Col(ident) => {
-                let entity = entity_ident.as_ref().unwrap();
+                let entity = entity.as_ref().unwrap();
                 let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #ident);
                 quote!(let #select_ident =  sea_orm::SelectColumns::select_column(#select_ident, #col_value);)
             },
             ColumnAs::ColAlias { col, field } => {
-                let entity = entity_ident.as_ref().unwrap();
+                let entity = entity.as_ref().unwrap();
                 let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #col);
                 quote!(let #select_ident =  sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, #field);)
             },
@@ -228,7 +228,7 @@ mod util {
 #[cfg(test)]
 mod test {
     use quote::format_ident;
-    use syn::DeriveInput;
+    use syn::{parse_str, DeriveInput, Type};
 
     use crate::derives::partial_model::ColumnAs;
 
@@ -250,11 +250,10 @@ struct PartialModel{
 "#;
     #[test]
     fn test_load_macro_input() -> StdResult<()> {
-        let input = syn::parse_str::<DeriveInput>(CODE_SNIPPET)?;
+        let input = parse_str::<DeriveInput>(CODE_SNIPPET)?;
 
         let middle = DerivePartialModel::new(input).unwrap();
-
-        assert_eq!(middle.entity_ident, Some(format_ident!("Entity")));
+        assert_eq!(middle.entity, Some(parse_str::<Type>("Entity").unwrap()));
         assert_eq!(middle.ident, format_ident!("PartialModel"));
         assert_eq!(middle.fields.len(), 3);
         assert_eq!(

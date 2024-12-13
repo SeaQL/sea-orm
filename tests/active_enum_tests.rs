@@ -1,22 +1,20 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
-use active_enum::Entity as ActiveEnum;
-use active_enum_child::Entity as ActiveEnumChild;
+use active_enum::Entity as ActiveEnumEntity;
 pub use common::{features::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
+#[cfg(feature = "sqlx-postgres")]
+use sea_orm::QueryTrait;
 use sea_orm::{
     entity::prelude::*,
     entity::*,
     sea_query::{BinOper, Expr},
-    ActiveEnum as ActiveEnumTrait, DatabaseConnection, QueryTrait,
+    ActiveEnum as ActiveEnumTrait, DatabaseConnection,
 };
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     let ctx = TestContext::new("active_enum_tests").await;
     create_tables(&ctx.db).await?;
@@ -146,6 +144,7 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
     let select_with_tea_not_in = Entity::find()
         .filter(Column::Tea.is_not_null())
         .filter(Column::Tea.is_not_in([Tea::BreakfastTea]));
+
     #[cfg(feature = "sqlx-postgres")]
     assert_eq!(
         select_with_tea_not_in
@@ -162,7 +161,59 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
         ]
         .join(" ")
     );
+
     assert_eq!(model, select_with_tea_not_in.one(db).await?.unwrap());
+
+    // String enums should be compared alphabetically in all supported DBs.
+    // 'B' < 'S', so Big is considered "smaller" than Small.
+    assert_eq!(
+        model,
+        Entity::find()
+            .filter(Column::Category.lt(Category::Small))
+            .one(db)
+            .await?
+            .unwrap()
+    );
+
+    // Integer enums should be compared by value in all supported DBs.
+    // 0 <= 1, so Black is considered "smaller or equal to" White.
+    assert_eq!(
+        model,
+        Entity::find()
+            .filter(Column::Color.lte(Color::White))
+            .one(db)
+            .await?
+            .unwrap()
+    );
+
+    // Native enum comparisons are not portable.
+    //
+    // Postgres enums are compared by their definition order
+    // (see https://www.postgresql.org/docs/current/datatype-enum.html#DATATYPE-ENUM-ORDERING).
+    // Tea was defined as ('EverydayTea', 'BreakfastTea'), so EverydayTea is considered "smaller" than BreakfastTea.
+    //
+    // SQLite doesn't support enum types and SeaORM works around this limitation by storing them as strings.
+    // When treated as strings, EverydayTea is not "smaller" than BreakfastTea!
+    //
+    // MySQL should be the same as Postgres (see https://dev.mysql.com/doc/refman/8.0/en/enum.html#enum-sorting),
+    // but in practice this test case behaves like SQLite. I'm not sure why.
+    #[cfg(feature = "sqlx-postgres")]
+    assert_eq!(
+        model,
+        Entity::find()
+            .filter(Column::Tea.lt(Tea::BreakfastTea))
+            .one(db)
+            .await?
+            .unwrap()
+    );
+    #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
+    assert_eq!(
+        None,
+        Entity::find()
+            .filter(Column::Tea.lt(Tea::BreakfastTea))
+            .one(db)
+            .await?
+    );
 
     let res = model.delete(db).await?;
 
@@ -338,7 +389,7 @@ pub async fn find_related_active_enum(db: &DatabaseConnection) -> Result<(), DbE
         }]
     );
     assert_eq!(
-        ActiveEnum::find()
+        ActiveEnumEntity::find()
             .find_with_related(ActiveEnumChild)
             .all(db)
             .await?,
@@ -359,7 +410,7 @@ pub async fn find_related_active_enum(db: &DatabaseConnection) -> Result<(), DbE
         )]
     );
     assert_eq!(
-        ActiveEnum::find()
+        ActiveEnumEntity::find()
             .find_also_related(ActiveEnumChild)
             .all(db)
             .await?,
@@ -464,7 +515,7 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
         }]
     );
     assert_eq!(
-        ActiveEnum::find()
+        ActiveEnumEntity::find()
             .find_also_linked(active_enum::ActiveEnumChildLink)
             .all(db)
             .await?,
@@ -485,7 +536,7 @@ pub async fn find_linked_active_enum(db: &DatabaseConnection) -> Result<(), DbEr
         )]
     );
     assert_eq!(
-        ActiveEnum::find()
+        ActiveEnumEntity::find()
             .find_with_linked(active_enum::ActiveEnumChildLink)
             .all(db)
             .await?,
@@ -620,7 +671,7 @@ mod tests {
             .join(" ")
         );
 
-        let _select = ActiveEnum::find().find_also_related(ActiveEnumChild);
+        let _select = ActiveEnumEntity::find().find_also_related(ActiveEnumChild);
         #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
         {
             assert_eq!(
@@ -707,7 +758,7 @@ mod tests {
             .join(" ")
         );
 
-        let _select = ActiveEnum::find().find_also_linked(active_enum::ActiveEnumChildLink);
+        let _select = ActiveEnumEntity::find().find_also_linked(active_enum::ActiveEnumChildLink);
         #[cfg(any(feature = "sqlx-mysql", feature = "sqlx-sqlite"))]
         {
             assert_eq!(

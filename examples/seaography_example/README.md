@@ -8,7 +8,7 @@
 |:--:| 
 | The Bakery schema |
 
-## Specifiy a database url
+## Specify a database url
 
 ```
 export DATABASE_URL=mysql://sea:sea@localhost/bakery
@@ -25,7 +25,7 @@ cargo run
 ## Install Seaography
 
 ```sh
-cargo install seaography-cli@^1.0.0-rc.2
+cargo install seaography-cli@^1.0.0
 ```
 
 ## Generate GraphQL project

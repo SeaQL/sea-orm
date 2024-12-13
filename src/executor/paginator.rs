@@ -67,14 +67,19 @@ where
     /// Get the total number of items
     pub async fn num_items(&self) -> Result<u64, DbErr> {
         let builder = self.db.get_database_backend();
-        let stmt = builder.build(
-            SelectStatement::new()
-                .expr(Expr::cust("COUNT(*) AS num_items"))
-                .from_subquery(
-                    self.query.clone().reset_limit().reset_offset().to_owned(),
-                    Alias::new("sub_query"),
-                ),
-        );
+        let stmt = SelectStatement::new()
+            .expr(Expr::cust("COUNT(*) AS num_items"))
+            .from_subquery(
+                self.query
+                    .clone()
+                    .reset_limit()
+                    .reset_offset()
+                    .clear_order_by()
+                    .to_owned(),
+                Alias::new("sub_query"),
+            )
+            .to_owned();
+        let stmt = builder.build(&stmt);
         let result = match self.db.query_one(stmt).await? {
             Some(res) => res,
             None => return Ok(0),
@@ -324,7 +329,7 @@ mod tests {
             },
             fruit::Model {
                 id: 2,
-                name: "Rasberry".into(),
+                name: "Raspberry".into(),
                 cake_id: Some(1),
             },
         ];

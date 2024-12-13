@@ -1,3 +1,5 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
@@ -5,11 +7,6 @@ use pretty_assertions::assert_eq;
 use sea_orm::prelude::*;
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 pub async fn connection_ping() {
     let ctx = TestContext::new("connection_ping").await;
 

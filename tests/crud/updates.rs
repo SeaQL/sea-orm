@@ -1,5 +1,4 @@
 pub use super::*;
-use rust_decimal_macros::dec;
 use sea_orm::{query::*, DbErr};
 use uuid::Uuid;
 
@@ -16,7 +15,7 @@ pub async fn test_update_cake(db: &DbConn) {
 
     let mud_cake = cake::ActiveModel {
         name: Set("Mud Cake".to_owned()),
-        price: Set(dec!(10.25)),
+        price: Set(rust_dec(10.25)),
         gluten_free: Set(false),
         serial: Set(Uuid::new_v4()),
         bakery_id: Set(Some(bakery_insert_res.last_insert_id)),
@@ -36,12 +35,14 @@ pub async fn test_update_cake(db: &DbConn) {
     assert!(cake.is_some());
     let cake_model = cake.unwrap();
     assert_eq!(cake_model.name, "Mud Cake");
-    assert_eq!(cake_model.price, dec!(10.25));
+    assert_eq!(cake_model.price, rust_dec(10.25));
     assert!(!cake_model.gluten_free);
+
+    let large_number = "1234_5678_9012.3456".parse().unwrap();
 
     let mut cake_am: cake::ActiveModel = cake_model.into();
     cake_am.name = Set("Extra chocolate mud cake".to_owned());
-    cake_am.price = Set(dec!(20.00));
+    cake_am.price = Set(large_number);
 
     let _cake_update_res: cake::Model = cake_am.update(db).await.expect("could not update cake");
 
@@ -51,7 +52,7 @@ pub async fn test_update_cake(db: &DbConn) {
         .expect("could not find cake");
     let cake_model = cake.unwrap();
     assert_eq!(cake_model.name, "Extra chocolate mud cake");
-    assert_eq!(cake_model.price, dec!(20.00));
+    assert_eq!(cake_model.price, large_number);
     assert!(!cake_model.gluten_free);
 }
 

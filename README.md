@@ -19,7 +19,10 @@
 [![GitHub stars](https://img.shields.io/github/stars/SeaQL/sea-orm.svg?style=social&label=Star&maxAge=1)](https://github.com/SeaQL/sea-orm/stargazers/)
 If you like what we do, consider starring, sharing and contributing!
 
-Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2023](https://sea-ql.org/community-survey)!
+Please help us with maintaining SeaORM by completing the [SeaQL Community Survey 2024](https://sea-ql.org/community-survey)!
+
+[![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
+Join our Discord server to chat with other members of the SeaQL community!
 
 ## Getting Started
 
@@ -30,22 +33,15 @@ Please help us with maintaining SeaORM by completing the [SeaQL Community Survey
 Integration examples:
 
 + [Actix v4 Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix_example)
-+ [Actix v3 Example](https://github.com/SeaQL/sea-orm/tree/master/examples/actix3_example)
 + [Axum Example](https://github.com/SeaQL/sea-orm/tree/master/examples/axum_example)
 + [GraphQL Example](https://github.com/SeaQL/sea-orm/tree/master/examples/graphql_example)
 + [jsonrpsee Example](https://github.com/SeaQL/sea-orm/tree/master/examples/jsonrpsee_example)
++ [Loco TODO Example](https://github.com/SeaQL/sea-orm/tree/master/examples/loco_example) / [Loco REST Starter](https://github.com/SeaQL/sea-orm/tree/master/examples/loco_starter)
 + [Poem Example](https://github.com/SeaQL/sea-orm/tree/master/examples/poem_example)
-+ [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example)
++ [Rocket Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_example) / [Rocket OpenAPI Example](https://github.com/SeaQL/sea-orm/tree/master/examples/rocket_okapi_example)
 + [Salvo Example](https://github.com/SeaQL/sea-orm/tree/master/examples/salvo_example)
 + [Tonic Example](https://github.com/SeaQL/sea-orm/tree/master/examples/tonic_example)
 + [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example)
-
-## Support
-
-[![Discord](https://img.shields.io/discord/873880840487206962?label=Discord)](https://discord.com/invite/uCPdDXzbdv)
-Join our Discord server to chat with other members of the SeaQL community!
-
-Professional support on Rust programming and best practices is available. You can email us for a quote!
 
 ## Features
 
@@ -192,15 +188,23 @@ fruit::Entity::delete_many()
 
 ```
 
-## 🧭 Seaography: GraphQL integration (preview)
+## 🧭 Seaography: instant GraphQL API
 
 [Seaography](https://github.com/SeaQL/seaography) is a GraphQL framework built on top of SeaORM. Seaography allows you to build GraphQL resolvers quickly. With just a few commands, you can launch a GraphQL server from SeaORM entities!
 
-Starting `0.12`, `seaography` integration is built into `sea-orm`. While Seaography development is still in an early stage, it is especially useful in prototyping and building internal-use admin panels.
+Look at the [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example) to learn more.
 
 <img src="https://raw.githubusercontent.com/SeaQL/sea-orm/master/examples/seaography_example/Seaography%20example.png"/>
 
-Look at the [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/examples/seaography_example) to learn more.
+## 🖥️ Admin Dashboard
+
+Making use of Seaography, it will be a breeze to create admin dashboard with your favourite frontend framework. Check out our examples and tutorials:
+
+1. [React Admin Example](https://github.com/SeaQL/sea-orm/tree/master/examples/react_admin)
+1. [Adding GraphQL Support to Loco with Seaography](https://www.sea-ql.org/blog/2024-07-01-graphql-support-with-loco-seaography/)
+1. [GraphQL based Admin Dashboard with Loco and Seaography](https://www.sea-ql.org/blog/2024-08-08-graphql-admin-dashboard-with-loco-seaography/)
+
+<img src="https://www.sea-ql.org/blog/img/Loco%20x%20Seaography%20Dashboard%20Demo.png"/>
 
 ## Learn More
 
@@ -209,21 +213,9 @@ Look at the [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/ex
 1. [Engineering](https://www.sea-ql.org/blog/2022-07-30-engineering/)
 1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 
-## Who's using SeaORM?
+### Who's using SeaORM?
 
-The following products are powered by SeaORM:
-
-<table>
-  <tbody>
-    <tr>
-      <td><br><a href="https://caido.io/"><img src="https://www.sea-ql.org/SeaORM/img/other/caido-logo.png" width="250"/></a><br>A lightweight web security auditing toolkit</td>
-      <td><a href="https://www.svix.com/"><img src="https://www.sea-ql.org/SeaORM/img/other/svix-logo.svg" width="250"/></a><br>The enterprise ready webhooks service</td>
-      <td><a href="https://docs.spyglass.fyi/"><img src="https://www.sea-ql.org/SeaORM/img/other/spyglass-logo.svg" width="250"/></a><br/>A personal search engine</td>
-    </tr>
-  </tbody>
-</table>
-
-For more projects, see [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to [submit yours](https://github.com/SeaQL/sea-orm/issues/403)!
+See [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to [submit yours](https://github.com/SeaQL/sea-orm/issues/403)!
 
 ## License
 
@@ -242,7 +234,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
 
-SeaORM is a community driven project. We welcome you to participate, contribute and together help build Rust's future.
+We invite you to participate, contribute and together help build Rust's future.
 
 A big shout out to our contributors!
 
@@ -252,7 +244,28 @@ A big shout out to our contributors!
 
 [SeaQL.org](https://www.sea-ql.org/) is an independent open-source organization run by passionate developers. If you enjoy using our libraries, please star and share our repositories. If you feel generous, a small donation via [GitHub Sponsor](https://github.com/sponsors/SeaQL) will be greatly appreciated, and goes a long way towards sustaining the organization.
 
-We invite you to participate, contribute and together help build Rust's future.
+### Gold Sponsors
+
+<a href="https://osmos.io/">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://www.sea-ql.org/static/sponsors/Osmos-dark.svg">
+    <img src="https://www.sea-ql.org/static/sponsors/Osmos.svg" width="240">
+  </picture>
+</a>
+
+### Silver Sponsors
+
+<table><tr>
+<td><a href="https://www.digitalocean.com/">
+  <img src="https://www.sea-ql.org/static/sponsors/DigitalOcean.svg" width="125">
+</a></td>
+
+<td><a href="https://www.jetbrains.com/">
+  <img src="https://www.sea-ql.org/static/sponsors/JetBrains.svg" width="125">
+</a></td>
+</tr></table>
+
+We’re immensely grateful to our sponsors: Osmos, for their gold-tier sponsorship and trust in the tools we develop. Digital Ocean, for sponsoring our servers. And JetBrains, for sponsoring our IDE.
 
 ## Mascot
 

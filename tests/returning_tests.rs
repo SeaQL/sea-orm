@@ -1,16 +1,13 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod common;
 
 pub use common::{bakery_chain::*, setup::*, TestContext};
-use sea_orm::{entity::prelude::*, IntoActiveModel};
+use sea_orm::{entity::prelude::*, IntoActiveModel, Set};
 pub use sea_query::{Expr, Query};
 use serde_json::json;
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 async fn main() -> Result<(), DbErr> {
     use bakery::*;
 
@@ -33,7 +30,9 @@ async fn main() -> Result<(), DbErr> {
         ])
         .and_where(Column::Id.eq(1));
 
-    let returning = Query::returning().columns([Column::Id, Column::Name, Column::ProfitMargin]);
+    let columns = [Column::Id, Column::Name, Column::ProfitMargin];
+    let returning =
+        Query::returning().exprs(columns.into_iter().map(|c| c.into_returning_expr(builder)));
 
     create_tables(db).await?;
 
@@ -69,17 +68,18 @@ async fn main() -> Result<(), DbErr> {
 }
 
 #[sea_orm_macros::test]
-#[cfg(any(
-    feature = "sqlx-mysql",
-    feature = "sqlx-sqlite",
-    feature = "sqlx-postgres"
-))]
 #[cfg_attr(
-    any(feature = "sqlx-mysql", feature = "sqlx-sqlite"),
+    any(
+        feature = "sqlx-mysql",
+        all(
+            feature = "sqlx-sqlite",
+            not(feature = "sqlite-use-returning-for-3_35")
+        )
+    ),
     should_panic(expected = "Database backend doesn't support RETURNING")
 )]
 async fn update_many() {
-    pub use common::{features::*, setup::*, TestContext};
+    pub use common::{features::*, TestContext};
     use edit_log::*;
 
     let run = || async {

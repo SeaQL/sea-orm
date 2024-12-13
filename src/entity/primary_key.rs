@@ -46,9 +46,10 @@ pub trait PrimaryKeyTrait: IdenStatic + Iterable {
         + IntoValueTuple
         + FromValueTuple
         + TryGetableMany
-        + TryFromU64;
+        + TryFromU64
+        + PrimaryKeyArity;
 
-    /// Method to call to perform `AUTOINCREMENT` operation on a Primary Kay
+    /// Method to call to perform `AUTOINCREMENT` operation on a Primary Key
     fn auto_increment() -> bool;
 }
 
@@ -65,6 +66,40 @@ pub trait PrimaryKeyToColumn {
     where
         Self: Sized;
 }
+
+/// How many columns this Primary Key comprises
+pub trait PrimaryKeyArity {
+    /// Arity of the Primary Key
+    const ARITY: usize;
+}
+
+impl<V> PrimaryKeyArity for V
+where
+    V: crate::TryGetable,
+{
+    const ARITY: usize = 1;
+}
+
+macro_rules! impl_pk_arity {
+    ($len:expr, $($tuple_arg:ident),*) => {
+        impl<$($tuple_arg: crate::TryGetableMany,)*> PrimaryKeyArity for ($($tuple_arg,)*) {
+            const ARITY: usize = $len;
+        }
+    }
+}
+
+impl_pk_arity!(1, T1);
+impl_pk_arity!(2, T1, T2);
+impl_pk_arity!(3, T1, T2, T3);
+impl_pk_arity!(4, T1, T2, T3, T4);
+impl_pk_arity!(5, T1, T2, T3, T4, T5);
+impl_pk_arity!(6, T1, T2, T3, T4, T5, T6);
+impl_pk_arity!(7, T1, T2, T3, T4, T5, T6, T7);
+impl_pk_arity!(8, T1, T2, T3, T4, T5, T6, T7, T8);
+impl_pk_arity!(9, T1, T2, T3, T4, T5, T6, T7, T8, T9);
+impl_pk_arity!(10, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
+impl_pk_arity!(11, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
+impl_pk_arity!(12, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
 
 #[cfg(test)]
 mod tests {
@@ -170,7 +205,7 @@ mod tests {
             #[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
             #[sea_orm(
                 rs_type = "String",
-                db_type = "String(Some(1))",
+                db_type = "String(StringLen::N(1))",
                 enum_name = "category"
             )]
             pub enum DeriveCategory {
