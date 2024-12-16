@@ -104,6 +104,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [poem_admin](https://github.com/lingdu1234/poem_admin) | An admin panel built with poems, SeaORM and Vue 3. | DB: MySQL, Postgres, SQLite
 - [Loco.rs](https://github.com/loco-rs/loco) | A full stack Web and API productivity framework similar to Rails, based on SeaORM with db tooling and migrations code generation | DB: Postgres, SQLite
 - [tardis](https://github.com/ideal-world/tardis) | Elegant, Clean Rust development framework🛸 | DB: MySQL, Postgres, SQLite
+- [spring-rs](https://github.com/spring-rs/spring-rs) | A application framework written in rust inspired by java's spring-boot🍃 | DB: MySQL, Postgres, SQLite
 
 ### Scaffolding
 
