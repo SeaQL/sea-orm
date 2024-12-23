@@ -398,6 +398,7 @@ impl ColumnDef {
     pub fn is_null(&self) -> bool {
         self.null
     }
+
     /// Returns true if the column is unique
     pub fn is_unique(&self) -> bool {
         self.unique
