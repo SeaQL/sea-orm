@@ -467,6 +467,51 @@ pub trait EntityTrait: EntityName {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// Before 1.1.3, if the active models have different column set, this method would panic.
+    /// Now, it'd attempt to fill in the missing columns with null
+    /// (which may or may not be correct, depending on whether the column is nullable):
+    ///
+    /// ```
+    /// use sea_orm::{
+    ///     entity::*,
+    ///     query::*,
+    ///     tests_cfg::{cake, cake_filling},
+    ///     DbBackend,
+    /// };
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::insert_many([
+    ///         cake::ActiveModel {
+    ///             id: NotSet,
+    ///             name: Set("Apple Pie".to_owned()),
+    ///         },
+    ///         cake::ActiveModel {
+    ///             id: NotSet,
+    ///             name: Set("Orange Scone".to_owned()),
+    ///         }
+    ///     ])
+    ///     .build(DbBackend::Postgres)
+    ///     .to_string(),
+    ///     r#"INSERT INTO "cake" ("name") VALUES ('Apple Pie'), ('Orange Scone')"#,
+    /// );
+    ///
+    /// assert_eq!(
+    ///     cake_filling::Entity::insert_many([
+    ///         cake_filling::ActiveModel {
+    ///             cake_id: ActiveValue::set(2),
+    ///             filling_id: ActiveValue::NotSet,
+    ///         },
+    ///         cake_filling::ActiveModel {
+    ///             cake_id: ActiveValue::NotSet,
+    ///             filling_id: ActiveValue::set(3),
+    ///         }
+    ///     ])
+    ///     .build(DbBackend::Postgres)
+    ///     .to_string(),
+    ///     r#"INSERT INTO "cake_filling" ("cake_id", "filling_id") VALUES (2, NULL), (NULL, 3)"#,
+    /// );
+    /// ```
     fn insert_many<A, I>(models: I) -> Insert<A>
     where
         A: ActiveModelTrait<Entity = Self>,
