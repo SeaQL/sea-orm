@@ -19,7 +19,7 @@ features = [
 ]
 
 [dev-dependencies]
-tokio = "1.20.0"
+tokio = "1.41"
 
 [features]
 mock = ["sea-orm/mock"]
