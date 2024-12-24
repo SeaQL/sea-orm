@@ -427,9 +427,7 @@ where
         M: IntoActiveModel<A>,
         I: IntoIterator<Item = M>,
     {
-        for model in models.into_iter() {
-            self.insert_struct = self.insert_struct.add(model);
-        }
+        self.insert_struct = self.insert_struct.add_many(models);
         self
     }
 
