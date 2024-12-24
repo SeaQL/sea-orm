@@ -1,7 +1,7 @@
 use futures::lock::Mutex;
 use log::LevelFilter;
 use sea_query::Values;
-use std::{future::Future, pin::Pin, sync::Arc};
+use std::{fmt::Write, future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
     pool::PoolConnection,
@@ -76,10 +76,13 @@ impl SqlxPostgresConnector {
                 );
             }
         }
-        let set_search_path_sql = options
-            .schema_search_path
-            .as_ref()
-            .map(|schema| format!("SET search_path = \"{schema}\""));
+        let set_search_path_sql = options.schema_search_path.as_ref().map(|schema| {
+            let mut string = "SET search_path = ".to_owned();
+            for schema in schema.split(',') {
+                write!(&mut string, "\"{schema}\"").unwrap();
+            }
+            string
+        });
         let lazy = options.connect_lazy;
         let mut pool_options = options.sqlx_pool_options();
         if let Some(sql) = set_search_path_sql {
