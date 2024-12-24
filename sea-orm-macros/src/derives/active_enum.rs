@@ -59,7 +59,7 @@ impl ActiveEnum {
                             "Enum" => {
                                 db_type = Ok(quote! {
                                     Enum {
-                                        name: Self::name(),
+                                        name: <Self as sea_orm::ActiveEnum>::name(),
                                         variants: Self::iden_values(),
                                     }
                                 })
