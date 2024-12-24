@@ -16,24 +16,7 @@ pub async fn run_cli<M>(migrator: M)
 where
     M: MigratorTrait,
 {
-    dotenv().ok();
-    let cli = Cli::parse();
-
-    let url = cli
-        .database_url
-        .expect("Environment variable 'DATABASE_URL' not set");
-    let schema = cli.database_schema.unwrap_or_else(|| "public".to_owned());
-
-    let connect_options = ConnectOptions::new(url)
-        .set_schema_search_path(schema)
-        .to_owned();
-    let db = &Database::connect(connect_options)
-        .await
-        .expect("Fail to acquire database connection");
-
-    run_migrate(migrator, db, cli.command, cli.verbose)
-        .await
-        .unwrap_or_else(handle_error);
+    run_cli_with_connection(migrator, Database::connect).await;
 }
 
 /// Same as [`run_cli`] but you crate the [`DbConn`] yourself.
