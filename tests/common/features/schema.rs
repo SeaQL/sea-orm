@@ -61,6 +61,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
         create_collection_table(db).await?;
         create_event_trigger_table(db).await?;
         create_categories_table(db).await?;
+        create_host_network_table(db).await?;
     }
 
     Ok(())
@@ -469,6 +470,36 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &stmt, Collection).await
+}
+
+pub async fn create_host_network_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(host_network::Entity)
+        .col(
+            ColumnDef::new(host_network::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(host_network::Column::Hostname)
+                .string()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(host_network::Column::Ipaddress)
+                .inet()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(host_network::Column::Network)
+                .cidr()
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, HostNetwork).await
 }
 
 pub async fn create_pi_table(db: &DbConn) -> Result<ExecResult, DbErr> {
