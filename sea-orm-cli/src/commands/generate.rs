@@ -161,6 +161,7 @@ pub async fn run_generate_command(
                     let schema = database_schema.as_deref().unwrap_or("public");
                     let opts = PgPoolOptions::new();
                     let opts = opts.acquire_timeout(time::Duration::from_secs(240));
+                    let opts = opts.max_connections(max_connections);
                     let connection = opts.connect(&url.as_str()).await?;
                     println!("Discovering schema ...");
                     let schema_discovery = SchemaDiscovery::new(connection, schema);
