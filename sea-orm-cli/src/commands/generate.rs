@@ -1,7 +1,10 @@
+use chrono::Duration;
+use core::time;
 use sea_orm_codegen::{
     DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
     WithSerde,
 };
+use sqlx::postgres::PgPoolOptions;
 use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
 use url::Url;
@@ -153,13 +156,12 @@ pub async fn run_generate_command(
                 }
                 "postgres" | "postgresql" => {
                     use sea_schema::postgres::discovery::SchemaDiscovery;
-                    use sqlx::Postgres;
 
                     println!("Connecting to Postgres ...");
                     let schema = database_schema.as_deref().unwrap_or("public");
-                    let connection =
-                        sqlx_connect::<Postgres>(max_connections, url.as_str(), Some(schema))
-                            .await?;
+                    let opts = PgPoolOptions::new();
+                    let opts = opts.acquire_timeout(time::Duration::from_secs(240));
+                    let connection = opts.connect(&url.as_str()).await?;
                     println!("Discovering schema ...");
                     let schema_discovery = SchemaDiscovery::new(connection, schema);
                     let schema = schema_discovery.discover().await?;
