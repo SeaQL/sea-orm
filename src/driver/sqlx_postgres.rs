@@ -78,8 +78,15 @@ impl SqlxPostgresConnector {
         }
         let set_search_path_sql = options.schema_search_path.as_ref().map(|schema| {
             let mut string = "SET search_path = ".to_owned();
-            for schema in schema.split(',') {
-                write!(&mut string, "\"{schema}\"").unwrap();
+            for (i, schema) in schema.split(',').enumerate() {
+                if i > 0 {
+                    write!(&mut string, ",").unwrap();
+                }
+                if schema.starts_with('"') {
+                    write!(&mut string, "{schema}").unwrap();
+                } else {
+                    write!(&mut string, "\"{schema}\"").unwrap();
+                }
             }
             string
         });
