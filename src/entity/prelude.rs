@@ -83,3 +83,6 @@ pub use bigdecimal::BigDecimal;
 
 #[cfg(feature = "with-uuid")]
 pub use uuid::Uuid;
+
+#[cfg(feature = "with-ipnetwork")]
+pub use ipnetwork::IpNetwork;
