@@ -204,6 +204,13 @@ pub enum GenerateSubcommands {
         max_connections: u32,
 
         #[arg(
+            long,
+            default_value = "30",
+            long_help = "Acquire timeout in seconds of the connection used for schema discovery"
+        )]
+        acquire_timeout: u64,
+
+        #[arg(
             short = 'o',
             long,
             default_value = "./",
