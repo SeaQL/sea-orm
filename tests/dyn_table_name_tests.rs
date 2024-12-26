@@ -37,7 +37,7 @@ pub async fn dyn_table_name_lazy_static(db: &DatabaseConnection) -> Result<(), D
         // Reset the table name of insert statement
         insert.query().into_table(entity.table_ref());
         // Execute the insert statement
-        assert_eq!(insert.exec(db).await?.last_insert_id, 1);
+        assert_eq!(insert.exec(db).await?.last_insert_id, Some(1));
 
         // Prepare select statement
         let mut select = Entity::find();
