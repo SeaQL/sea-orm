@@ -134,7 +134,7 @@ where
             if columns_empty {
                 self.columns.push(av_has_val);
             } else if self.columns[idx] != av_has_val {
-                panic!("columns mismatch");
+                continue;
             }
             match av {
                 ActiveValue::Set(value) | ActiveValue::Unchanged(value) => {
