@@ -19,7 +19,7 @@ where
     run_cli_with_connection(migrator, Database::connect).await;
 }
 
-/// Same as [`run_cli`] but you crate the [`DbConn`] yourself.
+/// Same as [`run_cli`] where you provide the function to create the [`DbConn`].
 ///
 /// This allows configuring the database connection as you see fit.
 /// E.g. you can change settings in [`ConnectOptions`] or you can load sqlite
