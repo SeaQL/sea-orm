@@ -14,11 +14,7 @@ pub fn schema(
     // Builder of Seaography query root
     let mut builder = Builder::new(&CONTEXT, database.clone());
     // Register SeaORM entities
-    seaography::register_entities!(
-        builder,
-        // List all models we want to include in the GraphQL endpoint here
-        [files, notes, users]
-    );
+    let builder = crate::models::_entities::register_entity_modules(builder);
     // Configure async GraphQL limits
     let schema = builder
         .schema_builder()
