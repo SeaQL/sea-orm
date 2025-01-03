@@ -58,6 +58,14 @@ server:
       #   - POST
       # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
       # max_age: 3600
+    static:
+      enable: true
+      must_exist: true
+      precompressed: true
+      folder:
+        uri: /
+        path: assets
+      fallback: ./assets/admin/index.html
 
 # Worker Configuration
 workers:

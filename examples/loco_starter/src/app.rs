@@ -49,6 +49,8 @@ impl Hooks for App {
             .add_route(controllers::auth::routes())
             .add_route(controllers::user::routes())
             .add_route(controllers::files::routes())
+            .add_route(controllers::graphql::routes())
+            .add_route(controllers::library::routes())
     }
 
     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {

@@ -27,3 +27,9 @@ impl Related<super::notes::Entity> for Entity {
         Relation::Notes.def()
     }
 }
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelatedEntity)]
+pub enum RelatedEntity {
+    #[sea_orm(entity = "super::notes::Entity")]
+    Notes,
+}
