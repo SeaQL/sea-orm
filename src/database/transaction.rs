@@ -5,7 +5,7 @@ use crate::{
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
-use futures::lock::Mutex;
+use futures_util::lock::Mutex;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::TransactionManager;
 use std::{future::Future, pin::Pin, sync::Arc};
