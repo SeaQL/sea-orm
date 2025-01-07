@@ -7,7 +7,6 @@ pub async fn config(State(_ctx): State<AppContext>) -> Result<Response> {
                 "title": "SeaORM Pro FREE",
                 "logo": "/admin/favicon.ico",
                 "login_banner": "/admin/logo.png",
-                "copyright": "Powered by SeaORM Pro",
             }
         },
         "raw_tables": {},
@@ -16,7 +15,5 @@ pub async fn config(State(_ctx): State<AppContext>) -> Result<Response> {
 }
 
 pub fn routes() -> Routes {
-    Routes::new()
-        .prefix("library")
-        .add("/config", get(config))
+    Routes::new().prefix("admin").add("/config", get(config))
 }
