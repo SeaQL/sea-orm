@@ -5,13 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 1.1.3 - Pending
+## 1.1.3 - 2024-12-24
 
-## New Features
+### New Features
 
-- [sea-orm-codegen] register seaography entity module
-- [sea-orm-codegen] register seaography active enum
-
+* [sea-orm-codegen] register seaography entity modules & active enums https://github.com/SeaQL/sea-orm/pull/2403
 ```rust
 pub mod prelude;
 
@@ -41,12 +39,41 @@ seaography::register_active_enums!([
 ]);
 ```
 
+### Enhancements
+
+* Insert many allow active models to have different column set https://github.com/SeaQL/sea-orm/pull/2433
+```rust
+// this previously panics
+let apple = cake_filling::ActiveModel {
+    cake_id: ActiveValue::set(2),
+    filling_id: ActiveValue::NotSet,
+};
+let orange = cake_filling::ActiveModel {
+    cake_id: ActiveValue::NotSet,
+    filling_id: ActiveValue::set(3),
+};
+assert_eq!(
+    Insert::<cake_filling::ActiveModel>::new()
+        .add_many([apple, orange])
+        .build(DbBackend::Postgres)
+        .to_string(),
+    r#"INSERT INTO "cake_filling" ("cake_id", "filling_id") VALUES (2, NULL), (NULL, 3)"#,
+);
+```
+* [sea-orm-cli] Added `MIGRATION_DIR` environment variable https://github.com/SeaQL/sea-orm/pull/2419
+* Added `ColumnDef::is_unique` https://github.com/SeaQL/sea-orm/pull/2401
+* Postgres: quote schema in `search_path` https://github.com/SeaQL/sea-orm/pull/2436
+
+### Bug Fixes
+
+* MySQL: fix transaction isolation level not respected when used with access mode https://github.com/SeaQL/sea-orm/pull/2450
+
 ## 1.1.2 - 2024-12-02
 
 ### Enhancements
 
-- Added `ColumnTrait::enum_type_name()` to signify enum types https://github.com/SeaQL/sea-orm/pull/2415
-- Added `DbBackend::boolean_value()` for database dependent boolean value https://github.com/SeaQL/sea-orm/pull/2415
+* Added `ColumnTrait::enum_type_name()` to signify enum types https://github.com/SeaQL/sea-orm/pull/2415
+* Added `DbBackend::boolean_value()` for database dependent boolean value https://github.com/SeaQL/sea-orm/pull/2415
 
 ## 1.1.1 - 2024-11-04
 
