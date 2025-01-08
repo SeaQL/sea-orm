@@ -4,7 +4,7 @@ pub async fn config(State(_ctx): State<AppContext>) -> Result<Response> {
     format::json(serde_json::json!({
         "site": {
             "theme": {
-                "title": "SeaORM Pro FREE",
+                "title": "SeaORM Pro",
                 "logo": "/admin/favicon.ico",
                 "login_banner": "/admin/logo.png",
             }
