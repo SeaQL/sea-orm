@@ -10,3 +10,7 @@ members = [".", "api", "service", "entity", "migration"]
 
 [dependencies]
 axum-example-api = { path = "api" }
+
+[patch.crates-io]
+sea-orm = { path = "../../" }
+sea-orm-migration = { path = "../../sea-orm-migration" }

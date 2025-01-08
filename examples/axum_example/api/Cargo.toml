@@ -20,3 +20,7 @@ tera = "1.19.1"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 entity = { path = "../entity" }
 migration = { path = "../migration" }
+async-graphql = { version = "7.0", features = ["decimal", "chrono", "dataloader", "dynamic-schema"] }
+async-graphql-axum = { version = "7.0" }
+seaography = { version = "1.1.0", features = ["with-decimal", "with-chrono", "with-uuid", "field-snake-case"] }
+lazy_static = { version = "1.4" }
