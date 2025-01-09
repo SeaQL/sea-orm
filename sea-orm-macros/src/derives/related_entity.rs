@@ -1,5 +1,6 @@
 use heck::ToLowerCamelCase;
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro_crate::{crate_name, FoundCrate};
 use quote::{quote, quote_spanned};
 
 use crate::derives::attributes::related_attr;
@@ -82,9 +83,21 @@ impl DeriveRelatedEntity {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
+        // Get the path of the `async-graphql` on the application's Cargo.toml
+        let async_graphql_crate = match crate_name("async-graphql") {
+            // if found, use application's `async-graphql`
+            Ok(FoundCrate::Name(name)) => {
+                let ident = Ident::new(&name, Span::call_site());
+                quote! { #ident }
+            }
+            Ok(FoundCrate::Itself) => quote! { async_graphql },
+            // if not, then use the `async-graphql` re-exported by `seaography`
+            Err(_) => quote! { seaography::async_graphql },
+        };
+
         Ok(quote! {
             impl seaography::RelationBuilder for #ident {
-                fn get_relation(&self, context: & 'static seaography::BuilderContext) -> async_graphql::dynamic::Field {
+                fn get_relation(&self, context: & 'static seaography::BuilderContext) -> #async_graphql_crate::dynamic::Field {
                     let builder = seaography::EntityObjectRelationBuilder { context };
                     let via_builder = seaography::EntityObjectViaRelationBuilder { context };
                     match self {
