@@ -1,7 +1,6 @@
 use crate::{
-    error::*, Condition, ConnectionTrait, DbErr, EntityTrait, Identity, ModelTrait, QueryFilter,
-    Related, RelationType, Select,
-    query::unpack_table_ref,
+    error::*, query::unpack_table_ref, Condition, ConnectionTrait, DbErr, EntityTrait, Identity,
+    ModelTrait, QueryFilter, Related, RelationType, Select,
 };
 use async_trait::async_trait;
 use sea_query::{ColumnRef, DynIden, Expr, IntoColumnRef, SeaRc, SimpleExpr, TableRef, ValueTuple};
