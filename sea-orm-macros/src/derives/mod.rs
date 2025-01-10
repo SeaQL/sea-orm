@@ -14,12 +14,14 @@ mod migration;
 mod model;
 mod partial_model;
 mod primary_key;
-mod related_entity;
 mod relation;
 mod sql_type_match;
 mod try_getable_from_json;
 mod util;
 mod value_type;
+
+#[cfg(feature = "seaography")]
+mod related_entity;
 
 pub use active_enum::*;
 pub use active_enum_display::*;
@@ -35,7 +37,9 @@ pub use migration::*;
 pub use model::*;
 pub use partial_model::*;
 pub use primary_key::*;
-pub use related_entity::*;
 pub use relation::*;
 pub use try_getable_from_json::*;
 pub use value_type::*;
+
+#[cfg(feature = "seaography")]
+pub use related_entity::*;

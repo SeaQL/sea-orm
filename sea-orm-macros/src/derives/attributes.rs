@@ -38,6 +38,7 @@ pub mod field_attr {
     }
 }
 
+#[cfg(feature = "seaography")]
 pub mod related_attr {
     use bae::FromAttributes;
 
