@@ -335,11 +335,11 @@ mod tests {
                 .build(DbBackend::MySql)
                 .to_string(),
             [
-                r#"SELECT `filling`.`id`, `filling`.`name`, `filling`.`vendor_id`"#,
-                r#"FROM `filling`"#,
-                r#"INNER JOIN `cake_filling` AS `r0` ON `r0`.`filling_id` = `filling`.`id`"#,
-                r#"INNER JOIN `cake` AS `r1` ON `r1`.`id` = `r0`.`cake_id`"#,
-                r#"WHERE `r1`.`id` = 12"#,
+                r"SELECT `filling`.`id`, `filling`.`name`, `filling`.`vendor_id`",
+                r"FROM `filling`",
+                r"INNER JOIN `cake_filling` AS `r0` ON `r0`.`filling_id` = `filling`.`id`",
+                r"INNER JOIN `cake` AS `r1` ON `r1`.`id` = `r0`.`cake_id`",
+                r"WHERE `r1`.`id` = 12",
             ]
             .join(" ")
         );
@@ -358,12 +358,12 @@ mod tests {
                 .build(DbBackend::MySql)
                 .to_string(),
             [
-                r#"SELECT `vendor`.`id`, `vendor`.`name`"#,
-                r#"FROM `vendor`"#,
-                r#"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`"#,
-                r#"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`"#,
-                r#"INNER JOIN `cake` AS `r2` ON `r2`.`id` = `r1`.`cake_id`"#,
-                r#"WHERE `r2`.`id` = 18"#,
+                r"SELECT `vendor`.`id`, `vendor`.`name`",
+                r"FROM `vendor`",
+                r"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`",
+                r"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`",
+                r"INNER JOIN `cake` AS `r2` ON `r2`.`id` = `r1`.`cake_id`",
+                r"WHERE `r2`.`id` = 18",
             ]
             .join(" ")
         );
@@ -377,11 +377,11 @@ mod tests {
                 .build(DbBackend::MySql)
                 .to_string(),
             [
-                r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
-                r#"`r1`.`id` AS `B_id`, `r1`.`name` AS `B_name`, `r1`.`vendor_id` AS `B_vendor_id`"#,
-                r#"FROM `cake`"#,
-                r#"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id`"#,
-                r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
+                r"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
+                r"`r1`.`id` AS `B_id`, `r1`.`name` AS `B_name`, `r1`.`vendor_id` AS `B_vendor_id`",
+                r"FROM `cake`",
+                r"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id`",
+                r"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`",
             ]
             .join(" ")
         );
@@ -395,12 +395,12 @@ mod tests {
                 .build(DbBackend::MySql)
                 .to_string(),
             [
-                r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
-                r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
-                r#"FROM `cake`"#,
-                r#"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id`"#,
-                r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
-                r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
+                r"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
+                r"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`",
+                r"FROM `cake`",
+                r"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id`",
+                r"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`",
+                r"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`",
             ]
             .join(" ")
         );
@@ -434,12 +434,12 @@ mod tests {
                 .build(DbBackend::MySql)
                 .to_string(),
             [
-                r#"SELECT `vendor`.`id`, `vendor`.`name`"#,
-                r#"FROM `vendor`"#,
-                r#"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`"#,
-                r#"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`"#,
-                r#"INNER JOIN `cake` AS `r2` ON `r2`.`id` = `r1`.`cake_id` AND `r2`.`name` LIKE '%cheese%'"#,
-                r#"WHERE `r2`.`id` = 18"#,
+                r"SELECT `vendor`.`id`, `vendor`.`name`",
+                r"FROM `vendor`",
+                r"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`",
+                r"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`",
+                r"INNER JOIN `cake` AS `r2` ON `r2`.`id` = `r1`.`cake_id` AND `r2`.`name` LIKE '%cheese%'",
+                r"WHERE `r2`.`id` = 18",
             ]
             .join(" ")
         );
@@ -457,12 +457,12 @@ mod tests {
                 .build(DbBackend::MySql)
                 .to_string(),
             [
-                r#"SELECT `vendor`.`id`, `vendor`.`name`"#,
-                r#"FROM `vendor`"#,
-                r#"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`"#,
-                r#"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`"#,
-                r#"INNER JOIN `cake_filling` AS `r2` ON `r2`.`cake_id` = `r1`.`id` AND `r2`.`name` LIKE '%cheese%'"#,
-                r#"WHERE `r2`.`id` = 18"#,
+                r"SELECT `vendor`.`id`, `vendor`.`name`",
+                r"FROM `vendor`",
+                r"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`",
+                r"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`",
+                r"INNER JOIN `cake_filling` AS `r2` ON `r2`.`cake_id` = `r1`.`id` AND `r2`.`name` LIKE '%cheese%'",
+                r"WHERE `r2`.`id` = 18",
             ]
             .join(" ")
         );
@@ -476,12 +476,12 @@ mod tests {
                 .build(DbBackend::MySql)
                 .to_string(),
             [
-                r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
-                r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
-                r#"FROM `cake`"#,
-                r#"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id` AND `cake`.`name` LIKE '%cheese%'"#,
-                r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
-                r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
+                r"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
+                r"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`",
+                r"FROM `cake`",
+                r"LEFT JOIN `cake_filling` AS `r0` ON `cake`.`id` = `r0`.`cake_id` AND `cake`.`name` LIKE '%cheese%'",
+                r"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`",
+                r"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`",
             ]
             .join(" ")
         );
@@ -495,12 +495,12 @@ mod tests {
                 .build(DbBackend::MySql)
                 .to_string(),
                 [
-                    r#"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,"#,
-                    r#"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`"#,
-                    r#"FROM `cake`"#,
-                    r#"LEFT JOIN `cake` AS `r0` ON `cake_filling`.`cake_id` = `r0`.`id` AND `cake_filling`.`name` LIKE '%cheese%'"#,
-                    r#"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`"#,
-                    r#"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`"#,
+                    r"SELECT `cake`.`id` AS `A_id`, `cake`.`name` AS `A_name`,",
+                    r"`r2`.`id` AS `B_id`, `r2`.`name` AS `B_name`",
+                    r"FROM `cake`",
+                    r"LEFT JOIN `cake` AS `r0` ON `cake_filling`.`cake_id` = `r0`.`id` AND `cake_filling`.`name` LIKE '%cheese%'",
+                    r"LEFT JOIN `filling` AS `r1` ON `r0`.`filling_id` = `r1`.`id`",
+                    r"LEFT JOIN `vendor` AS `r2` ON `r1`.`vendor_id` = `r2`.`id`",
                 ]
                 .join(" ")
         );
