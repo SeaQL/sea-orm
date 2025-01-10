@@ -5,11 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## Pending
+## 1.1.4 - 2025-01-10
 
 ### Enhancements
 
 * Allow modifying the connection in migrations https://github.com/SeaQL/sea-orm/pull/2397
+* `DeriveRelatedEntity` proc_macro use `async-graphql` re-exported by `seaography` https://github.com/SeaQL/sea-orm/pull/2469
 
 ## 1.1.3 - 2024-12-24
 
