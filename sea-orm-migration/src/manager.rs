@@ -41,7 +41,7 @@ impl<'c> SchemaManager<'c> {
 }
 
 /// Schema Creation
-impl<'c> SchemaManager<'c> {
+impl SchemaManager<'_> {
     pub async fn create_table(&self, stmt: TableCreateStatement) -> Result<(), DbErr> {
         self.exec_stmt(stmt).await
     }
@@ -60,7 +60,7 @@ impl<'c> SchemaManager<'c> {
 }
 
 /// Schema Mutation
-impl<'c> SchemaManager<'c> {
+impl SchemaManager<'_> {
     pub async fn alter_table(&self, stmt: TableAlterStatement) -> Result<(), DbErr> {
         self.exec_stmt(stmt).await
     }
@@ -95,7 +95,7 @@ impl<'c> SchemaManager<'c> {
 }
 
 /// Schema Inspection.
-impl<'c> SchemaManager<'c> {
+impl SchemaManager<'_> {
     pub async fn has_table<T>(&self, table: T) -> Result<bool, DbErr>
     where
         T: AsRef<str>,
