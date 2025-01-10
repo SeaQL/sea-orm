@@ -25,7 +25,7 @@ cargo run
 ## Install Seaography
 
 ```sh
-cargo install seaography-cli@^1.0.0
+cargo install seaography-cli@^1.1.3
 ```
 
 ## Generate GraphQL project
