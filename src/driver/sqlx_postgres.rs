@@ -1,4 +1,4 @@
-use futures::lock::Mutex;
+use futures_util::lock::Mutex;
 use log::LevelFilter;
 use sea_query::Values;
 use std::{fmt::Write, future::Future, pin::Pin, sync::Arc};

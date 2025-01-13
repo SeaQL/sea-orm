@@ -1,11 +1,11 @@
 #![allow(missing_docs, unreachable_code, unused_variables)]
 
-use futures::Stream;
+use futures_util::Stream;
 use std::{pin::Pin, task::Poll};
 use tracing::instrument;
 
 #[cfg(feature = "sqlx-dep")]
-use futures::TryStreamExt;
+use futures_util::TryStreamExt;
 
 #[cfg(feature = "sqlx-dep")]
 use sqlx::Executor;

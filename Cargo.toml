@@ -28,7 +28,7 @@ async-stream = { version = "0.3", default-features = false }
 async-trait = { version = "0.1", default-features = false }
 chrono = { version = "0.4.30", default-features = false, optional = true }
 time = { version = "0.3.36", default-features = false, optional = true }
-futures = { version = "0.3", default-features = false, features = ["std"] }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
 log = { version = "0.4", default-features = false }
 tracing = { version = "0.1", default-features = false, features = ["attributes", "log"] }
 rust_decimal = { version = "1", default-features = false, optional = true }
