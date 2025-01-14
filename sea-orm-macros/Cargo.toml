@@ -1,6 +1,6 @@
 [package]
 name = "sea-orm-macros"
-version = "1.1.3"
+version = "1.1.4"
 authors = [ "Billy Chan <ccw.billy.123@gmail.com>" ]
 edition = "2021"
 description = "Derive macros for SeaORM"
@@ -23,6 +23,7 @@ syn = { version = "2", default-features = false, features = ["parsing", "proc-ma
 quote = { version = "1", default-features = false }
 heck = { version = "0.4", default-features = false }
 proc-macro2 = { version = "1", default-features = false }
+proc-macro-crate = { version = "3.2.0", optional = true }
 unicode-ident = { version = "1" }
 
 [dev-dependencies]
@@ -34,4 +35,4 @@ default = ["derive"]
 postgres-array = []
 derive = ["bae"]
 strum = []
-seaography = []
+seaography = ["proc-macro-crate"]

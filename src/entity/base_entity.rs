@@ -70,7 +70,7 @@ pub trait EntityTrait: EntityName {
     #[allow(missing_docs)]
     type PrimaryKey: PrimaryKeyTrait + PrimaryKeyToColumn<Column = Self::Column>;
 
-    /// Check if the relation belongs to an Entity
+    /// Construct a belongs to relation
     fn belongs_to<R>(related: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait,
@@ -78,7 +78,7 @@ pub trait EntityTrait: EntityName {
         RelationBuilder::new(RelationType::HasOne, Self::default(), related, false)
     }
 
-    /// Check if the entity has at least one relation
+    /// Construct a has one relation
     fn has_one<R>(_: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait + Related<Self>,
@@ -86,7 +86,7 @@ pub trait EntityTrait: EntityName {
         RelationBuilder::from_rel(RelationType::HasOne, R::to().rev(), true)
     }
 
-    /// Check if the Entity has many relations
+    /// Construct a has many relation
     fn has_many<R>(_: R) -> RelationBuilder<Self, R>
     where
         R: EntityTrait + Related<Self>,
