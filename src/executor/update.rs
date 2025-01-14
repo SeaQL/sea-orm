@@ -18,12 +18,12 @@ pub struct UpdateResult {
     pub rows_affected: u64,
 }
 
-impl<'a, A: 'a> UpdateOne<A>
+impl<A> UpdateOne<A>
 where
     A: ActiveModelTrait,
 {
     /// Execute an update operation on an ActiveModel
-    pub async fn exec<'b, C>(self, db: &'b C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
+    pub async fn exec<C>(self, db: &C) -> Result<<A::Entity as EntityTrait>::Model, DbErr>
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,

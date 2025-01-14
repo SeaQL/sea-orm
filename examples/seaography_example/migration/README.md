@@ -1,5 +1,10 @@
 # Bakery Schema
 
+```sql
+CREATE DATABASE bakery;
+GRANT ALL PRIVILEGES ON bakery.* TO sea;
+```
+
 Assume the database is named `bakery`:
 
 ```sh

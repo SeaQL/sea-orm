@@ -675,13 +675,9 @@ pub fn derive_relation(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(DeriveRelatedEntity, attributes(sea_orm))]
 pub fn derive_related_entity(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    if cfg!(feature = "seaography") {
-        derives::expand_derive_related_entity(input)
-            .unwrap_or_else(Error::into_compile_error)
-            .into()
-    } else {
-        TokenStream::new()
-    }
+    derives::expand_derive_related_entity(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
 }
 
 /// The DeriveMigrationName derive macro will implement `sea_orm_migration::MigrationName` for a migration.
