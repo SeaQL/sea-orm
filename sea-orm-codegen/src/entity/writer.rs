@@ -737,7 +737,7 @@ impl EntityWriter {
             let enum_iden = format_ident!("{}", enum_name.to_upper_camel_case());
             enum_ts = quote! {
                 #enum_ts
-                sea_orm_active_enums::#enum_iden
+                sea_orm_active_enums::#enum_iden,
             }
         }
         if !enum_ts.is_empty() {
