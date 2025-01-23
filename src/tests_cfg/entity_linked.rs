@@ -46,8 +46,8 @@ impl Linked for CheeseCakeToFillingVendor {
         vec![
             super::cake_filling::Relation::Cake
                 .def()
-                .on_condition(|left, _right| {
-                    Expr::col((left, super::cake::Column::Name))
+                .on_condition(|_cake_filling, cake| {
+                    Expr::col((cake, super::cake::Column::Name))
                         .like("%cheese%")
                         .into_condition()
                 })
@@ -70,8 +70,8 @@ impl Linked for JoinWithoutReverse {
         vec![
             super::cake_filling::Relation::Cake
                 .def()
-                .on_condition(|left, _right| {
-                    Expr::col((left, super::cake::Column::Name))
+                .on_condition(|_cake_filling, cake| {
+                    Expr::col((cake, super::cake::Column::Name))
                         .like("%cheese%")
                         .into_condition()
                 }),

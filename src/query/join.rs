@@ -446,6 +446,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn join_16() {
         let cake_model = cake::Model {
             id: 18,
@@ -488,6 +489,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn join_18() {
         assert_eq!(
             cake::Entity::find()

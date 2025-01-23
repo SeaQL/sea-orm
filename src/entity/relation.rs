@@ -161,7 +161,9 @@ impl RelationDef {
             is_owner: !self.is_owner,
             on_delete: self.on_delete,
             on_update: self.on_update,
-            on_condition: self.on_condition,
+            on_condition: self
+                .on_condition
+                .map(|f| Box::new(move |left, right| f(right, left)) as _),
             fk_name: None,
             condition_type: self.condition_type,
         }
