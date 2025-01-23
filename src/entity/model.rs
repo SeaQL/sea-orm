@@ -4,7 +4,7 @@ use crate::{
     Statement, TryGetError,
 };
 use async_trait::async_trait;
-pub use sea_query::Value;
+pub use sea_query::{Alias, CommonTableExpression, IntoTableRef, JoinType, UnionType, Value};
 use std::fmt::Debug;
 
 /// The interface for Model, implemented by data structs
