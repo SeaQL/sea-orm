@@ -19,30 +19,44 @@ pub trait Linked {
 
     /// Find all the Entities that are linked to the Entity
     fn find_linked(&self) -> Select<Self::ToEntity> {
-        let mut select = Select::new();
-        for (i, mut rel) in self.link().into_iter().rev().enumerate() {
-            let from_tbl = Alias::new(format!("r{i}")).into_iden();
-            let to_tbl = if i > 0 {
-                Alias::new(format!("r{}", i - 1)).into_iden()
-            } else {
-                unpack_table_ref(&rel.to_tbl)
-            };
-            let table_ref = rel.from_tbl;
-
-            let mut condition = Condition::all().add(join_tbl_on_condition(
-                SeaRc::clone(&from_tbl),
-                SeaRc::clone(&to_tbl),
-                rel.from_col,
-                rel.to_col,
-            ));
-            if let Some(f) = rel.on_condition.take() {
-                condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
-            }
-
-            select
-                .query()
-                .join_as(JoinType::InnerJoin, table_ref, from_tbl, condition);
-        }
-        select
+        find_linked(self.link().into_iter().rev(), JoinType::InnerJoin)
     }
+
+    /// Find all the Entities that are linked to the Entity, in reverse
+    fn find_linked_rev(&self) -> Select<Self::FromEntity> {
+        find_linked(
+            self.link().into_iter().map(LinkDef::rev),
+            JoinType::LeftJoin,
+        )
+    }
+}
+
+fn find_linked<I, E>(links: I, join: JoinType) -> Select<E>
+where
+    I: Iterator<Item = LinkDef>,
+    E: EntityTrait,
+{
+    let mut select = Select::new();
+    for (i, mut rel) in links.enumerate() {
+        let from_tbl = Alias::new(format!("r{i}")).into_iden();
+        let to_tbl = if i > 0 {
+            Alias::new(format!("r{}", i - 1)).into_iden()
+        } else {
+            unpack_table_ref(&rel.to_tbl)
+        };
+        let table_ref = rel.from_tbl;
+
+        let mut condition = Condition::all().add(join_tbl_on_condition(
+            SeaRc::clone(&from_tbl),
+            SeaRc::clone(&to_tbl),
+            rel.from_col,
+            rel.to_col,
+        ));
+        if let Some(f) = rel.on_condition.take() {
+            condition = condition.add(f(SeaRc::clone(&from_tbl), SeaRc::clone(&to_tbl)));
+        }
+
+        select.query().join_as(join, table_ref, from_tbl, condition);
+    }
+    select
 }
