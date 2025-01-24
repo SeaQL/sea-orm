@@ -31,7 +31,7 @@ pub trait Linked {
     }
 }
 
-fn find_linked<I, E>(links: I, join: JoinType) -> Select<E>
+pub(crate) fn find_linked<I, E>(links: I, join: JoinType) -> Select<E>
 where
     I: Iterator<Item = LinkDef>,
     E: EntityTrait,
