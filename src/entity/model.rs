@@ -1,7 +1,7 @@
 use crate::{
-    ActiveModelBehavior, ActiveModelTrait, ConnectionTrait, DbErr, DeleteResult, EntityTrait,
-    IntoActiveModel, Linked, QueryFilter, QueryResult, Related, Select, SelectModel, SelectorRaw,
-    Statement, TryGetError,
+    find_linked, ActiveModelBehavior, ActiveModelTrait, ConnectionTrait, DbErr, DeleteResult,
+    EntityTrait, IntoActiveModel, Linked, QueryFilter, QueryResult, QueryTrait, Related, Select,
+    SelectModel, SelectorRaw, Statement, TryGetError,
 };
 use async_trait::async_trait;
 pub use sea_query::{Alias, CommonTableExpression, IntoTableRef, JoinType, UnionType, Value};
@@ -35,6 +35,40 @@ pub trait ModelTrait: Clone + Send + Debug {
     {
         let tbl_alias = &format!("r{}", l.link().len() - 1);
         l.find_linked().belongs_to_tbl_alias(self, tbl_alias)
+    }
+
+    /// Find linked Models, recursively
+    fn find_linked_recursive<L>(&self, l: L) -> Select<L::ToEntity>
+    where
+        L: Linked<FromEntity = Self::Entity, ToEntity = Self::Entity>,
+    {
+        let cte_name = Alias::new("cte");
+
+        let mut select = Self::Entity::find();
+
+        let mut link = l.link();
+        let Some(first) = link.first_mut() else {
+            return select;
+        };
+        first.from_tbl = cte_name.clone().into_table_ref();
+
+        let recursive_query: Select<L::ToEntity> =
+            find_linked(link.into_iter().rev(), JoinType::InnerJoin);
+
+        let mut cte_query = self.find_linked(l).query;
+        cte_query.union(UnionType::All, recursive_query.into_query());
+
+        let cte = CommonTableExpression::new()
+            .table_name(cte_name.clone())
+            .query(cte_query)
+            .to_owned();
+
+        select
+            .query
+            .from_clear()
+            .from_as(cte_name, Self::Entity::default())
+            .with_cte(cte);
+        select
     }
 
     /// Delete a model

@@ -617,4 +617,58 @@ mod tests {
             .join(" ")
         );
     }
+
+    #[test]
+    fn join_23() {
+        let cake_model = cake::Model {
+            id: 18,
+            name: "".to_owned(),
+        };
+
+        assert_eq!(
+            cake_model
+                .find_linked(entity_linked::CakeToCakeViaFilling)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
+                "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
+                "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
+                "INNER JOIN `cake` AS `r3` ON `r3`.`id` = `r2`.`cake_id`",
+                "WHERE `r3`.`id` = 18",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_24() {
+        let cake_model = cake::Model {
+            id: 12,
+            name: "".to_owned(),
+        };
+
+        assert_eq!(
+            cake_model
+                .find_linked_recursive(entity_linked::CakeToCakeViaFilling)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "WITH `cte` AS (SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
+                "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
+                "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
+                "INNER JOIN `cake` AS `r3` ON `r3`.`id` = `r2`.`cake_id`",
+                "WHERE `r3`.`id` = 12",
+                "UNION ALL (SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
+                "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
+                "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
+                "INNER JOIN `cte` AS `r3` ON `r3`.`id` = `r2`.`cake_id`))",
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cte` AS `cake`",
+            ]
+            .join(" ")
+        );
+    }
 }
