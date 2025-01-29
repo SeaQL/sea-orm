@@ -27,7 +27,7 @@ struct FromQueryResultItem {
 /// programming errors that should be noticed (and fixed).
 struct TryFromQueryResultCheck<'a>(&'a FromQueryResultItem);
 
-impl<'a> ToTokens for TryFromQueryResultCheck<'a> {
+impl ToTokens for TryFromQueryResultCheck<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let FromQueryResultItem { ident, typ } = self.0;
 
@@ -65,7 +65,7 @@ impl<'a> ToTokens for TryFromQueryResultCheck<'a> {
 
 struct TryFromQueryResultAssignment<'a>(&'a FromQueryResultItem);
 
-impl<'a> ToTokens for TryFromQueryResultAssignment<'a> {
+impl ToTokens for TryFromQueryResultAssignment<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let FromQueryResultItem { ident, typ, .. } = self.0;
 
