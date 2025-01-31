@@ -619,9 +619,9 @@ macro_rules! try_getable_uuid {
                         .map(|bytes| {
                             uuid::Uuid::try_from(bytes).map_err(|e| {
                                 Into::<TryGetError>::into(DbErr::TryIntoErr {
-                                     from: "Vec<u8>",
-                                     into: "uuid::Uuid",
-                                     source: Box::new(e),
+                                    from: "Vec<u8>",
+                                    into: "uuid::Uuid",
+                                    source: Box::new(e),
                                 })
                             })
                         })?,
