@@ -612,19 +612,40 @@ macro_rules! try_getable_uuid {
             fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
                 let res: Result<uuid::Uuid, TryGetError> = match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
-                    QueryResultRow::SqlxMySql(row) => row
-                        .try_get::<Option<Vec<u8>>, _>(idx.as_sqlx_mysql_index())
-                        .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
-                        .map(|bytes| {
-                            uuid::Uuid::try_from(bytes).map_err(|e| {
-                                Into::<TryGetError>::into(DbErr::TryIntoErr {
-                                    from: "Vec<u8>",
-                                    into: "uuid::Uuid",
-                                    source: Box::new(e),
-                                })
-                            })
-                        })?,
+                    QueryResultRow::SqlxMySql(row) => {
+                        let uuid_parse_result = row
+                            .try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_mysql_index())
+                            .map_err(|e| sqlx_error_to_query_err(e).into())
+                            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)));
+
+                        match uuid_parse_result {
+                            Ok(uuid) => Ok(uuid),
+                            Err(e) => row
+                                .try_get::<Option<Vec<u8>>, _>(idx.as_sqlx_mysql_index())
+                                .map_err(|e| sqlx_error_to_query_err(e).into())
+                                .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
+                                .map(|bytes| {
+                                    String::from_utf8(bytes).map_err(|e| {
+                                        DbErr::TryIntoErr {
+                                            from: "Vec<u8>",
+                                            into: "String",
+                                            source: Box::new(e),
+                                        }
+                                        .into()
+                                    })
+                                })?
+                                .and_then(|s| {
+                                    uuid::Uuid::parse_str(&s).map_err(|e| {
+                                        DbErr::TryIntoErr {
+                                            from: "String",
+                                            into: "uuid::Uuid",
+                                            source: Box::new(e),
+                                        }
+                                        .into()
+                                    })
+                                }),
+                        }
+                    }
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => row
                         .try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_postgres_index())
