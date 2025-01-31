@@ -632,7 +632,7 @@ macro_rules! try_getable_uuid {
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                     #[cfg(feature = "sqlx-sqlite")]
                     QueryResultRow::SqlxSqlite(row) => row
-                        .try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_postgres_index())
+                        .try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_sqlite_index())
                         .map_err(|e| sqlx_error_to_query_err(e).into())
                         .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
                     #[cfg(feature = "mock")]
