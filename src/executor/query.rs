@@ -613,10 +613,18 @@ macro_rules! try_getable_uuid {
                 let res: Result<uuid::Uuid, TryGetError> = match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
                     QueryResultRow::SqlxMySql(row) => row
-                        .try_get::<Option<String>, _>(idx.as_sqlx_mysql_index())
-                        .map(|opt| opt.and_then(|s| uuid::Uuid::parse_str(&s).ok()))
+                        .try_get::<Option<Vec<u8>>, _>(idx.as_sqlx_mysql_index())
                         .map_err(|e| sqlx_error_to_query_err(e).into())
-                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
+                        .map(|bytes| {
+                            uuid::Uuid::try_from(bytes).map_err(|e| {
+                                Into::<TryGetError>::into(DbErr::TryIntoErr {
+                                     from: "Vec<u8>",
+                                     into: "uuid::Uuid",
+                                     source: Box::new(e),
+                                })
+                            })
+                        })?,
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => row
                         .try_get::<Option<String>, _>(idx.as_sqlx_postgres_index())
