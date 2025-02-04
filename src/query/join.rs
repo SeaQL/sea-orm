@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QuerySelect, Related, Select, SelectA,
-    SelectB, SelectTwo, SelectTwoMany,
+    find_linked_recursive, ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QuerySelect,
+    Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
 };
 pub use sea_query::JoinType;
 use sea_query::{Alias, Expr, IntoIden, SeaRc, SelectExpr};
@@ -106,6 +106,14 @@ where
             });
         }
         select_two_many
+    }
+
+    /// Recursive self-join
+    pub fn find_with_linked_recursive<L>(self, l: L) -> Select<E>
+    where
+        L: Linked<FromEntity = E, ToEntity = E>,
+    {
+        find_linked_recursive(self, l.link())
     }
 }
 
