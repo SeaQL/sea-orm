@@ -225,8 +225,7 @@ mod tests {
                 .to_string(),
             [
                 "SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`",
-                "INNER JOIN `cake` ON `cake`.`id` = `fruit`.`cake_id`",
-                "WHERE `cake`.`id` = 12",
+                "WHERE `fruit`.`cake_id` = 12",
             ]
             .join(" ")
         );
@@ -318,8 +317,7 @@ mod tests {
                 r#"SELECT `filling`.`id`, `filling`.`name`, `filling`.`vendor_id`"#,
                 r#"FROM `filling`"#,
                 r#"INNER JOIN `cake_filling` AS `r0` ON `r0`.`filling_id` = `filling`.`id`"#,
-                r#"INNER JOIN `cake` AS `r1` ON `r1`.`id` = `r0`.`cake_id`"#,
-                r#"WHERE `r1`.`id` = 12"#,
+                r#"WHERE `r0`.`cake_id` = 12"#,
             ]
             .join(" ")
         );
@@ -342,8 +340,7 @@ mod tests {
                 r#"FROM `vendor`"#,
                 r#"INNER JOIN `filling` AS `r0` ON `r0`.`vendor_id` = `vendor`.`id`"#,
                 r#"INNER JOIN `cake_filling` AS `r1` ON `r1`.`filling_id` = `r0`.`id`"#,
-                r#"INNER JOIN `cake` AS `r2` ON `r2`.`id` = `r1`.`cake_id`"#,
-                r#"WHERE `r2`.`id` = 18"#,
+                r#"WHERE `r1`.`cake_id` = 18"#,
             ]
             .join(" ")
         );
@@ -635,8 +632,7 @@ mod tests {
                 "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
                 "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
                 "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
-                "INNER JOIN `cake` AS `r3` ON `r3`.`id` = `r2`.`cake_id`",
-                "WHERE `r3`.`id` = 18",
+                "WHERE `r2`.`cake_id` = 18",
             ]
             .join(" ")
         );
@@ -659,8 +655,7 @@ mod tests {
                 "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
                 "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
                 "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
-                "INNER JOIN `cake` AS `r3` ON `r3`.`id` = `r2`.`cake_id`",
-                "WHERE `r3`.`id` = 12",
+                "WHERE `r2`.`cake_id` = 12",
                 "UNION ALL (SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
                 "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
                 "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
