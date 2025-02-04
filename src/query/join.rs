@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QuerySelect, Related, Select, SelectA,
-    SelectB, SelectThree, SelectTwo, SelectTwoMany,
+    find_linked_recursive, ColumnTrait, EntityTrait, IdenStatic, Iterable, Linked, QuerySelect,
+    Related, Select, SelectA, SelectB, SelectThree, SelectTwo, SelectTwoMany,
 };
 pub use sea_query::JoinType;
 use sea_query::{Alias, Expr, IntoIden, SeaRc, SelectExpr};
@@ -106,6 +106,14 @@ where
             });
         }
         select_two_many
+    }
+
+    /// Recursive self-join
+    pub fn find_with_linked_recursive<L>(self, l: L) -> Select<E>
+    where
+        L: Linked<FromEntity = E, ToEntity = E>,
+    {
+        find_linked_recursive(self, l.link())
     }
 }
 
@@ -656,6 +664,26 @@ mod tests {
                 "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
                 "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
                 "WHERE `r2`.`cake_id` = 12",
+                "UNION ALL (SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
+                "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
+                "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",
+                "INNER JOIN `cake_filling` AS `r2` ON `r2`.`filling_id` = `r1`.`id`",
+                "INNER JOIN `cte` AS `r3` ON `r3`.`id` = `r2`.`cake_id`))",
+                "SELECT `cake`.`id`, `cake`.`name` FROM `cte` AS `cake`",
+            ]
+            .join(" ")
+        );
+    }
+
+    #[test]
+    fn join_25() {
+        assert_eq!(
+            cake::Entity::find()
+                .find_with_linked_recursive(entity_linked::CakeToCakeViaFilling)
+                .build(DbBackend::MySql)
+                .to_string(),
+            [
+                "WITH `cte` AS (SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
                 "UNION ALL (SELECT `cake`.`id`, `cake`.`name` FROM `cake`",
                 "INNER JOIN `cake_filling` AS `r0` ON `r0`.`cake_id` = `cake`.`id`",
                 "INNER JOIN `filling` AS `r1` ON `r1`.`id` = `r0`.`filling_id`",

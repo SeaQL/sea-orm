@@ -1,7 +1,9 @@
 use crate::{
     join_tbl_on_condition, unpack_table_ref, EntityTrait, QuerySelect, RelationDef, Select,
 };
-use sea_query::{Alias, Condition, IntoIden, JoinType, SeaRc};
+use sea_query::{
+    Alias, CommonTableExpression, Condition, IntoIden, IntoTableRef, JoinType, SeaRc, UnionType,
+};
 
 /// Same as [RelationDef]
 pub type LinkDef = RelationDef;
@@ -58,5 +60,37 @@ where
 
         select.query().join_as(join, table_ref, from_tbl, condition);
     }
+    select
+}
+
+pub(crate) fn find_linked_recursive<E>(
+    initial_query: Select<E>,
+    mut link: Vec<LinkDef>,
+) -> Select<E>
+where
+    E: EntityTrait,
+{
+    let cte_name = Alias::new("cte");
+    let mut select = E::find();
+
+    let Some(first) = link.first_mut() else {
+        return select;
+    };
+    first.from_tbl = cte_name.clone().into_table_ref();
+    let recursive_query: Select<E> = find_linked(link.into_iter().rev(), JoinType::InnerJoin);
+
+    let mut cte_query = initial_query.query;
+    cte_query.union(UnionType::All, recursive_query.query);
+
+    let cte = CommonTableExpression::new()
+        .table_name(cte_name.clone())
+        .query(cte_query)
+        .to_owned();
+
+    select
+        .query
+        .from_clear()
+        .from_as(cte_name, E::default())
+        .with_cte(cte);
     select
 }

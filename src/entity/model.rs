@@ -1,10 +1,10 @@
 use crate::{
-    find_linked, ActiveModelBehavior, ActiveModelTrait, ConnectionTrait, DbErr, DeleteResult,
-    EntityTrait, IntoActiveModel, Linked, QueryFilter, QueryResult, QuerySelect, QueryTrait,
-    Related, Select, SelectModel, SelectorRaw, Statement, TryGetError,
+    find_linked, find_linked_recursive, ActiveModelBehavior, ActiveModelTrait, ConnectionTrait,
+    DbErr, DeleteResult, EntityTrait, IntoActiveModel, Linked, QueryFilter, QueryResult,
+    QuerySelect, Related, Select, SelectModel, SelectorRaw, Statement, TryGetError,
 };
 use async_trait::async_trait;
-pub use sea_query::{Alias, CommonTableExpression, IntoTableRef, JoinType, UnionType, Value};
+pub use sea_query::{JoinType, Value};
 use std::fmt::Debug;
 
 /// The interface for Model, implemented by data structs
@@ -59,33 +59,20 @@ pub trait ModelTrait: Clone + Send + Debug {
     where
         L: Linked<FromEntity = Self::Entity, ToEntity = Self::Entity>,
     {
-        let cte_name = Alias::new("cte");
+        // Have to do this because L is not Clone
+        let link = l.link();
+        let initial_query = self.find_linked(l);
+        find_linked_recursive(initial_query, link)
+    }
 
-        let mut select = Self::Entity::find();
-
-        let mut link = l.link();
-        let Some(first) = link.first_mut() else {
-            return select;
-        };
-        first.from_tbl = cte_name.clone().into_table_ref();
-
-        let recursive_query: Select<L::ToEntity> =
-            find_linked(link.into_iter().rev(), JoinType::InnerJoin);
-
-        let mut cte_query = self.find_linked(l).query;
-        cte_query.union(UnionType::All, recursive_query.into_query());
-
-        let cte = CommonTableExpression::new()
-            .table_name(cte_name.clone())
-            .query(cte_query)
-            .to_owned();
-
-        select
-            .query
-            .from_clear()
-            .from_as(cte_name, Self::Entity::default())
-            .with_cte(cte);
-        select
+    /// Find self and linked Models, recursively
+    fn find_with_linked_recursive<L>(&self, l: L) -> Select<L::ToEntity>
+    where
+        L: Linked<FromEntity = Self::Entity, ToEntity = Self::Entity>,
+    {
+        Self::Entity::find()
+            .belongs_to(self)
+            .find_with_linked_recursive(l)
     }
 
     /// Delete a model
