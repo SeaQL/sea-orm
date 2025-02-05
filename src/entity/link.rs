@@ -64,22 +64,25 @@ where
 }
 
 pub(crate) fn find_linked_recursive<E>(
-    initial_query: Select<E>,
+    mut initial_query: Select<E>,
     mut link: Vec<LinkDef>,
 ) -> Select<E>
 where
     E: EntityTrait,
 {
     let cte_name = Alias::new("cte");
-    let mut select = E::find();
 
     let Some(first) = link.first_mut() else {
-        return select;
+        return initial_query;
     };
     first.from_tbl = cte_name.clone().into_table_ref();
-    let recursive_query: Select<E> = find_linked(link.into_iter().rev(), JoinType::InnerJoin);
+    let mut recursive_query: Select<E> =
+        find_linked(link.into_iter().rev(), JoinType::InnerJoin).select_only();
+    initial_query.query.exprs_mut_for_each(|expr| {
+        recursive_query.query.expr(expr.clone());
+    });
 
-    let mut cte_query = initial_query.query;
+    let mut cte_query = initial_query.query.clone();
     cte_query.union(UnionType::All, recursive_query.query);
 
     let cte = CommonTableExpression::new()
@@ -87,6 +90,10 @@ where
         .query(cte_query)
         .to_owned();
 
+    let mut select = E::find().select_only();
+    initial_query.query.exprs_mut_for_each(|expr| {
+        select.query.expr(expr.clone());
+    });
     select
         .query
         .from_clear()
