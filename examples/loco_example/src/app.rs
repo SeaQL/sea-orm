@@ -3,16 +3,16 @@ use std::path::Path;
 use async_trait::async_trait;
 use loco_rs::{
     app::{AppContext, Hooks},
+    bgworker::Queue,
     boot::{create_app, BootResult, StartMode},
+    config::Config,
     controller::AppRoutes,
     db::{self, truncate_table},
     environment::Environment,
     task::Tasks,
-    worker::Processor,
     Result,
 };
 use migration::Migrator;
-use sea_orm::DatabaseConnection;
 
 use crate::{controllers, models::_entities::notes};
 
@@ -23,8 +23,12 @@ impl Hooks for App {
         env!("CARGO_CRATE_NAME")
     }
 
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
-        create_app::<Self, Migrator>(mode, environment).await
+    async fn boot(
+        mode: StartMode,
+        environment: &Environment,
+        config: Config,
+    ) -> Result<BootResult> {
+        create_app::<Self, Migrator>(mode, environment, config).await
     }
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
@@ -33,16 +37,20 @@ impl Hooks for App {
             .add_route(controllers::notes::routes())
     }
 
-    fn connect_workers<'a>(_p: &'a mut Processor, _ctx: &'a AppContext) {}
+    async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
+        Ok(())
+    }
 
     fn register_tasks(_tasks: &mut Tasks) {}
 
-    async fn truncate(db: &DatabaseConnection) -> Result<()> {
+    async fn truncate(ctx: &AppContext) -> Result<()> {
+        let db = &ctx.db;
         truncate_table(db, notes::Entity).await?;
         Ok(())
     }
 
-    async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
+    async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
+        let db = &ctx.db;
         db::seed::<notes::ActiveModel>(db, &base.join("notes.yaml").display().to_string()).await?;
         Ok(())
     }

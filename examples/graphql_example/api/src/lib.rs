@@ -11,13 +11,11 @@ use axum::{
     routing::get,
     Router,
 };
-use axum_macros::debug_handler;
 use graphql::schema::{build_schema, AppSchema};
 
 #[cfg(debug_assertions)]
 use dotenvy::dotenv;
 
-#[debug_handler]
 async fn graphql_handler(schema: State<AppSchema>, req: GraphQLRequest) -> GraphQLResponse {
     schema.execute(req.into_inner()).await.into()
 }
@@ -44,8 +42,6 @@ pub async fn main() {
 
     println!("Playground: http://localhost:3000/api/graphql");
 
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }

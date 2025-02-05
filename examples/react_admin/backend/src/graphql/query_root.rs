@@ -2,8 +2,6 @@ use async_graphql::dynamic::*;
 use sea_orm::DatabaseConnection;
 use seaography::{Builder, BuilderContext};
 
-use crate::models::_entities::*;
-
 lazy_static::lazy_static! { static ref CONTEXT: BuilderContext = BuilderContext::default(); }
 
 pub fn schema(
