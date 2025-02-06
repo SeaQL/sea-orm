@@ -2,7 +2,7 @@ use crate as sea_orm;
 use crate::entity::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "tea")]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "TeaType")]
 pub enum Tea {
     #[sea_orm(string_value = "EverydayTea")]
     EverydayTea,
