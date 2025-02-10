@@ -169,7 +169,7 @@ mod private {
                             Self::#enum_name => {
                                 if let Some(obj) = input_object.get(#name){
                                     let active_models =
-                                        builder.insert_related::<#entity_ident, #active_model_ident, #target_entity, #target_active_model>(&obj, #def, owner)?;
+                                        builder.insert_related::<#entity_ident, #active_model_ident, #target_entity, #target_active_model>(#def, &obj, owner)?;
                                     if let Some(active_models) = active_models {
                                         #target_entity::insert_many(active_models).exec(transaction).await?;
                                     }
