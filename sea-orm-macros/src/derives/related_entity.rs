@@ -15,6 +15,7 @@ mod private {
 
     struct DeriveRelatedEntity {
         entity_ident: TokenStream,
+        active_model_ident: TokenStream,
         ident: syn::Ident,
         variants: syn::punctuated::Punctuated<syn::Variant, syn::token::Comma>,
     }
@@ -30,6 +31,13 @@ mod private {
                 Some(entity_ident) => entity_ident.map_err(|_| Error::InvalidEntityPath)?,
                 None => quote! { Entity },
             };
+            let active_model_ident =
+                match sea_attr.active_model.as_ref().map(Self::parse_lit_string) {
+                    Some(active_model_ident) => {
+                        active_model_ident.map_err(|_| Error::InvalidEntityPath)?
+                    }
+                    None => quote! { ActiveModel },
+                };
 
             let variants = match input.data {
                 syn::Data::Enum(syn::DataEnum { variants, .. }) => variants,
@@ -38,6 +46,7 @@ mod private {
 
             Ok(DeriveRelatedEntity {
                 entity_ident,
+                active_model_ident,
                 ident,
                 variants,
             })
@@ -46,8 +55,9 @@ mod private {
         fn expand(&self) -> syn::Result<TokenStream> {
             let ident = &self.ident;
             let entity_ident = &self.entity_ident;
+            let active_model_ident = &self.active_model_ident;
 
-            let variant_implementations: Vec<TokenStream> = self
+            let get_relation_variant_implementations: Vec<TokenStream> = self
                 .variants
                 .iter()
                 .map(|variant| {
@@ -85,6 +95,106 @@ mod private {
                 })
                 .collect::<Result<Vec<_>, _>>()?;
 
+            let get_relation_input_variant_implementations: Vec<TokenStream> = self
+                .variants
+                .iter()
+                .map(|variant| {
+                    let attr = related_attr::SeaOrm::from_attributes(&variant.attrs)?;
+
+                    let enum_name = &variant.ident;
+
+                    let target_entity = attr
+                        .entity
+                        .as_ref()
+                        .map(Self::parse_lit_string)
+                        .ok_or_else(|| {
+                            syn::Error::new_spanned(variant, "Missing value for 'entity'")
+                        })??;
+
+                    let def = match attr.def {
+                        Some(def) => Some(Self::parse_lit_string(&def).map_err(|_| {
+                            syn::Error::new_spanned(variant, "Missing value for 'def'")
+                        })?),
+                        None => None,
+                    };
+
+                    let name = enum_name.to_string().to_lower_camel_case();
+
+                    if let Some(def) = def {
+                        Result::<_, syn::Error>::Ok(quote! {
+                            Self::#enum_name => builder.get_relation_input::<#entity_ident, #target_entity>(#name, #def)
+                        })
+                    } else {
+                        Result::<_, syn::Error>::Ok(quote! {
+                            Self::#enum_name => via_builder.get_relation_input::<#entity_ident, #target_entity>(#name)
+                        })
+                    }
+
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
+            let insert_related_variant_implementations: Vec<TokenStream> = self
+                .variants
+                .iter()
+                .map(|variant| {
+                    let attr = related_attr::SeaOrm::from_attributes(&variant.attrs)?;
+
+                    let enum_name = &variant.ident;
+
+                    let target_entity = attr
+                        .entity
+                        .as_ref()
+                        .map(Self::parse_lit_string)
+                        .ok_or_else(|| {
+                            syn::Error::new_spanned(variant, "Missing value for 'entity'")
+                        })??;
+
+
+                    let target_active_model = attr.active_model.as_ref().map(Self::parse_lit_string)
+                        .ok_or_else(||{
+                            syn::Error::new_spanned(variant, "Missing value for 'active_model'")
+                        })??;
+
+                    let def = match attr.def {
+                        Some(def) => Some(Self::parse_lit_string(&def).map_err(|_| {
+                            syn::Error::new_spanned(variant, "Missing value for 'def'")
+                        })?),
+                        None => None,
+                    };
+
+                    let name = enum_name.to_string().to_lower_camel_case();
+
+                    if let Some(def) = def {
+                        Result::<_, syn::Error>::Ok(quote! {
+                            Self::#enum_name => {
+                                if let Some(obj) = input_object.get(#name){
+                                    let active_models =
+                                        builder.insert_related::<#entity_ident, #active_model_ident, #target_entity, #target_active_model>(&obj, #def, owner)?;
+                                    if let Some(active_models) = active_models {
+                                        #target_entity::insert_many(active_models).exec(transaction).await?;
+                                    }
+                                }
+                                Ok(())
+                            }
+                        })
+                    } else {
+                        Result::<_, syn::Error>::Ok(quote! {
+                            Self::#enum_name => {
+                                if let Some(obj) = input_object.get(#name) {
+                                    let active_models =
+                                        via_builder.insert_related::<#entity_ident, #active_model_ident, #target_entity, #target_active_model>(&obj, owner)?;
+                                    if let Some(active_models) = active_models {
+                                        #target_entity::insert_many(active_models).exec(transaction).await?;
+                                    }
+                                }
+                                Ok(())
+                            }
+                        })
+                    }
+
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
             // Get the path of the `async-graphql` on the application's Cargo.toml
             let async_graphql_crate = match crate_name("async-graphql") {
                 // if found, use application's `async-graphql`
@@ -103,9 +213,37 @@ mod private {
                         let builder = seaography::EntityObjectRelationBuilder { context };
                         let via_builder = seaography::EntityObjectViaRelationBuilder { context };
                         match self {
-                            #(#variant_implementations,)*
+                            #(#get_relation_variant_implementations,)*
                             _ => panic!("No relations for this entity"),
                         }
+                    }
+
+                    fn get_relation_input(
+                        &self,
+                        context: &'static seaography::BuilderContext,
+                    ) -> #async_graphql_crate::dynamic::InputValue {
+                        let builder = seaography::EntityObjectRelationBuilder { context };
+                        let via_builder = seaography::EntityObjectViaRelationBuilder { context };
+                        match self {
+                            #(#get_relation_input_variant_implementations,)*
+                            _ => panic!("No relations for this entity"),
+                        }
+                    }
+
+                    async fn insert_related(
+                        &self,
+                        context: &'static seaography::BuilderContext,
+                        input_object: &#async_graphql_crate::dynamic::ObjectAccessor<'_>,
+                        transaction: &sea_orm::DatabaseTransaction,
+                        owner: bool,
+                    ) ->  #async_graphql_crate::Result<()> {
+                        let builder = seaography::EntityObjectRelationBuilder { context };
+                        let via_builder = seaography::EntityObjectViaRelationBuilder { context };
+                        match self {
+                            #(#insert_related_variant_implementations,)*
+                            _ => panic!("No relations for this entity"),
+                        }
+
                     }
 
                 }

@@ -55,6 +55,9 @@ pub mod related_attr {
         /// Entity ident
         pub entity: Option<syn::Lit>,
         ///
+        /// ActiveModel ident
+        pub active_model: Option<syn::Lit>,
+        ///
         /// Allows to specify RelationDef
         ///
         /// Optional
