@@ -155,6 +155,7 @@ impl Entity {
                 quote! {
                     #[sea_orm(
                         entity = #entity,
+                        active_model = #active_model,
                         def = #def
                     )]
                 }
