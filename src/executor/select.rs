@@ -4,7 +4,7 @@ use crate::{
     QueryResult, QuerySelect, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement,
     StreamTrait, TryGetableMany,
 };
-use futures::{Stream, TryStreamExt};
+use futures_util::{Stream, TryStreamExt};
 use sea_query::{SelectStatement, Value};
 use std::collections::HashMap;
 use std::{hash::Hash, marker::PhantomData, pin::Pin};
@@ -986,7 +986,7 @@ where
     {
         let stream = db.stream(self.stmt).await?;
         Ok(Box::pin(stream.and_then(|row| {
-            futures::future::ready(S::from_raw_query_result(row))
+            futures_util::future::ready(S::from_raw_query_result(row))
         })))
     }
 }

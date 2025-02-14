@@ -4,8 +4,8 @@ use std::{ops::DerefMut, pin::Pin, task::Poll};
 use tracing::instrument;
 
 #[cfg(feature = "sqlx-dep")]
-use futures::TryStreamExt;
-use futures::{lock::MutexGuard, Stream};
+use futures_util::TryStreamExt;
+use futures_util::{lock::MutexGuard, Stream};
 
 #[cfg(feature = "sqlx-dep")]
 use sqlx::Executor;

@@ -1,6 +1,6 @@
 use std::{pin::Pin, task::Poll, time::Duration};
 
-use futures::Stream;
+use futures_util::Stream;
 
 use crate::{DbErr, QueryResult, Statement};
 
