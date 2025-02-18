@@ -56,3 +56,12 @@ struct FieldFromExpr {
     #[sea_orm(from_expr = "Expr::col(Column::Id).equals(Column::Foo)")]
     _bar: bool,
 }
+
+#[derive(FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "Entity")]
+struct SkipField {
+    #[sea_orm(from_col = "foo2")]
+    _foo: i32,
+    #[sea_orm(skip)]
+    _bar: Option<()>,
+}
