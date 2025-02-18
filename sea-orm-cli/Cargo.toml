@@ -54,6 +54,7 @@ smol = "1.2.5"
 default = ["codegen", "cli", "runtime-async-std-native-tls", "async-std"]
 codegen = ["sea-schema/sqlx-all", "sea-orm-codegen"]
 cli = ["clap", "dotenvy"]
+postgres-vector = ["sea-schema/postgres-vector"]
 runtime-actix = ["sqlx/runtime-tokio", "sea-schema/runtime-actix"]
 runtime-async-std = ["sqlx/runtime-async-std", "sea-schema/runtime-async-std"]
 runtime-tokio = ["sqlx/runtime-tokio", "sea-schema/runtime-tokio"]
