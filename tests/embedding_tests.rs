@@ -121,5 +121,29 @@ pub async fn select_embedding(db: &DatabaseConnection) -> Result<(), DbErr> {
         })
     );
 
+    let result = Entity::find_by_id(2)
+        .into_partial_model::<PartialSelectResult>()
+        .one(db)
+        .await?;
+
+    assert_eq!(
+        result,
+        Some(PartialSelectResult {
+            embedding: PgVector::from(vec![1., 2.]),
+        })
+    );
+
+    let result = Entity::find_by_id(3)
+        .into_partial_model::<PartialSelectResult>()
+        .one(db)
+        .await?;
+
+    assert_eq!(
+        result,
+        Some(PartialSelectResult {
+            embedding: PgVector::from(vec![10., 20., 30.]),
+        })
+    );
+
     Ok(())
 }
