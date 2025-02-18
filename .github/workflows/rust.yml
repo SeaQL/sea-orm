@@ -449,7 +449,7 @@ jobs:
         tls: [native-tls]
     services:
       postgres:
-        image: pgvector/pgvector:pg${{ matrix.version }}
+        image: postgres:${{ matrix.version }}
         env:
           POSTGRES_HOST: 127.0.0.1
           POSTGRES_USER: root

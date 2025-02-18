@@ -61,6 +61,7 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
         create_collection_table(db).await?;
         create_event_trigger_table(db).await?;
         create_categories_table(db).await?;
+        #[cfg(feature = "postgres-vector")]
         create_embedding_table(db).await?;
     }
 
@@ -602,6 +603,7 @@ pub async fn create_categories_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     create_table(db, &create_table_stmt, Categories).await
 }
 
+#[cfg(feature = "postgres-vector")]
 pub async fn create_embedding_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     db.execute(sea_orm::Statement::from_string(
         db.get_database_backend(),
