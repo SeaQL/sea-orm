@@ -953,6 +953,42 @@ mod postgres_array {
             }
         }
     }
+
+    #[cfg(feature = "postgres-vector")]
+    impl TryGetable for pgvector::Vector {
+        #[allow(unused_variables)]
+        fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
+            match &res.row {
+                #[cfg(feature = "sqlx-mysql")]
+                QueryResultRow::SqlxMySql(_) => {
+                    Err(type_err("Vector unsupported by sqlx-mysql").into())
+                }
+                #[cfg(feature = "sqlx-postgres")]
+                QueryResultRow::SqlxPostgres(row) => row
+                    .try_get::<Option<pgvector::Vector>, _>(idx.as_sqlx_postgres_index())
+                    .map_err(|e| sqlx_error_to_query_err(e).into())
+                    .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx))),
+                #[cfg(feature = "sqlx-sqlite")]
+                QueryResultRow::SqlxSqlite(_) => {
+                    Err(type_err("Vector unsupported by sqlx-sqlite").into())
+                }
+                #[cfg(feature = "mock")]
+                QueryResultRow::Mock(row) => row.try_get::<pgvector::Vector, _>(idx).map_err(|e| {
+                    debug_print!("{:#?}", e.to_string());
+                    err_null_idx_col(idx)
+                }),
+                #[cfg(feature = "proxy")]
+                QueryResultRow::Proxy(row) => {
+                    row.try_get::<pgvector::Vector, _>(idx).map_err(|e| {
+                        debug_print!("{:#?}", e.to_string());
+                        err_null_idx_col(idx)
+                    })
+                }
+                #[allow(unreachable_patterns)]
+                _ => unreachable!(),
+            }
+        }
+    }
 }
 
 // TryGetableMany //
