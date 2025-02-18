@@ -184,7 +184,7 @@ impl Column {
                 ColumnType::Vector(size) => match size {
                     Some(size) => quote! { ColumnType::Vector(Some(#size)) },
                     None => quote! { ColumnType::Vector(None) },
-                }
+                },
                 #[allow(unreachable_patterns)]
                 _ => unimplemented!(),
             }

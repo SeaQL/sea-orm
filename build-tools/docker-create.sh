@@ -66,6 +66,13 @@ docker stop "mysql-5.7"
 # Setup PostgreSQL
 
 docker run \
+    --name "postgres-vector-14" \
+    --env POSTGRES_USER="root" \
+    --env POSTGRES_PASSWORD="root" \
+    -d -p 5432:5432 pgvector/pgvector:pg14
+docker stop "postgres-vector-14"
+
+docker run \
     --name "postgres-13" \
     --env POSTGRES_USER="root" \
     --env POSTGRES_PASSWORD="root" \

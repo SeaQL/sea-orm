@@ -41,10 +41,10 @@ serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false, optional = true }
 sqlx = { version = "0.8.2", default-features = false, optional = true }
 uuid = { version = "1", default-features = false, optional = true }
+pgvector = { version = "~0.4", default-features = false, optional = true }
 ouroboros = { version = "0.18", default-features = false }
 url = { version = "2.2", default-features = false }
 thiserror = { version = "1", default-features = false }
-pgvector = { version = "~0.4", default-features = false, optional = true }
 
 [dev-dependencies]
 smol = { version = "1.2" }
@@ -55,7 +55,7 @@ tokio = { version = "1.6", features = ["full"] }
 actix-rt = { version = "2.2.0" }
 maplit = { version = "1" }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
-sea-orm = { path = ".", features = ["mock", "debug-print", "tests-cfg", "postgres-array", "sea-orm-internal"] }
+sea-orm = { path = ".", features = ["mock", "debug-print", "tests-cfg", "postgres-array", "postgres-vector", "sea-orm-internal"] }
 pretty_assertions = { version = "0.7" }
 time = { version = "0.3.36", features = ["macros"] }
 uuid = { version = "1", features = ["v4"] }
@@ -77,14 +77,14 @@ default = [
 macros = ["sea-orm-macros/derive"]
 mock = []
 proxy = ["serde_json", "serde/derive"]
-with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "rust_decimal?/serde", "bigdecimal?/serde", "uuid?/serde", "time?/serde", "sea-query-binder?/with-json", "sqlx?/json"]
+with-json = ["serde_json", "sea-query/with-json", "chrono?/serde", "rust_decimal?/serde", "bigdecimal?/serde", "uuid?/serde", "time?/serde", "pgvector?/serde", "sea-query-binder?/with-json", "sqlx?/json"]
 with-chrono = ["chrono", "sea-query/with-chrono", "sea-query-binder?/with-chrono", "sqlx?/chrono"]
 with-rust_decimal = ["rust_decimal", "sea-query/with-rust_decimal", "sea-query-binder?/with-rust_decimal", "sqlx?/rust_decimal"]
 with-bigdecimal = ["bigdecimal", "sea-query/with-bigdecimal", "sea-query-binder?/with-bigdecimal", "sqlx?/bigdecimal"]
 with-uuid = ["uuid", "sea-query/with-uuid", "sea-query-binder?/with-uuid", "sqlx?/uuid"]
 with-time = ["time", "sea-query/with-time", "sea-query-binder?/with-time", "sqlx?/time"]
 postgres-array = ["sea-query/postgres-array", "sea-query-binder?/postgres-array", "sea-orm-macros/postgres-array"]
-postgres-vector = ["pgvector","sea-query/postgres-vector", "sea-query-binder?/postgres-vector", "sea-orm-macros/postgres-vector"]
+postgres-vector = ["pgvector", "sea-query/postgres-vector", "sea-query-binder?/postgres-vector", "sea-orm-macros/postgres-vector"]
 json-array = ["postgres-array"] # this does not actually enable sqlx-postgres, but only a few traits to support array in sea-query
 sea-orm-internal = []
 sqlx-dep = []
