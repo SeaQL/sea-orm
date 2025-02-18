@@ -43,9 +43,9 @@ async fn start() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/", get(list_posts).post(create_post))
-        .route("/:id", get(edit_post).post(update_post))
+        .route("/{id}", get(edit_post).post(update_post))
         .route("/new", get(new_post))
-        .route("/delete/:id", post(delete_post))
+        .route("/delete/{id}", post(delete_post))
         .nest_service(
             "/static",
             get_service(ServeDir::new(concat!(
