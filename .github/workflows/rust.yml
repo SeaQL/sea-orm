@@ -472,20 +472,19 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
-      - run: >-
-          sudo apt-get update && \
-          sudo apt-mark hold locales && \
-          sudo apt-get install -y --no-install-recommends build-essential postgresql-server-dev-${{ matrix.version }} && \
-          cd /tmp/pgvector && \
-          make clean && \
-          make OPTFLAGS="" && \
-          make install && \
-          mkdir /usr/share/doc/pgvector && \
-          cp LICENSE README.md /usr/share/doc/pgvector && \
-          rm -r /tmp/pgvector && \
-          sudo apt-get remove -y build-essential postgresql-server-dev-${{ matrix.version }} && \
-          sudo apt-get autoremove -y && \
-          sudo apt-mark unhold locales && \
-          rm -rf /var/lib/apt/lists/*
+      - run: apt-get update
+      - run: apt-mark hold locales
+      - run: apt-get install -y --no-install-recommends build-essential postgresql-server-dev-${{ matrix.version }}
+      - run: cd /tmp/pgvector
+      - run: make clean
+      - run: make OPTFLAGS=""
+      - run: make install
+      - run: mkdir /usr/share/doc/pgvector
+      - run: cp LICENSE README.md /usr/share/doc/pgvector
+      - run: rm -r /tmp/pgvector
+      - run: apt-get remove -y build-essential postgresql-server-dev-${{ matrix.version }}
+      - run: apt-get autoremove -y
+      - run: apt-mark unhold locales
+      - run: rm -rf /var/lib/apt/lists/*
       - run: cargo test --test '*' --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
