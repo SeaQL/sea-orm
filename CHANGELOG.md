@@ -5,12 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Pending
+
+### New Features
+
+* Support PgVector https://github.com/SeaQL/sea-orm/pull/2500
+
+### Enhancements
+
+* Expose underlying row types (e.g. `sqlx::postgres::PgRow`) https://github.com/SeaQL/sea-orm/pull/2265
+* [sea-orm-cli] Added `acquire-timeout` option https://github.com/SeaQL/sea-orm/pull/2461
+
+### House keeping
+
+* Remove `futures` crate, replace with `futures-util` https://github.com/SeaQL/sea-orm/pull/2466
+
 ## 1.1.5 - 2025-02-14
 
 ### New Features
 
 * Added `Schema::json_schema_from_entity` to construct a schema description in json for the given Entity
-* Support PgVector https://github.com/SeaQL/sea-orm/pull/2500
 
 ## 1.1.4 - 2025-01-10
 
