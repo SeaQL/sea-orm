@@ -472,5 +472,20 @@ jobs:
             Cargo.lock
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
+      - run: >-
+          apt-get update && \
+          apt-mark hold locales && \
+          apt-get install -y --no-install-recommends build-essential postgresql-server-dev-${{ matrix.version }} && \
+          cd /tmp/pgvector && \
+          make clean && \
+          make OPTFLAGS="" && \
+          make install && \
+          mkdir /usr/share/doc/pgvector && \
+          cp LICENSE README.md /usr/share/doc/pgvector && \
+          rm -r /tmp/pgvector && \
+          apt-get remove -y build-essential postgresql-server-dev-${{ matrix.version }} && \
+          apt-get autoremove -y && \
+          apt-mark unhold locales && \
+          rm -rf /var/lib/apt/lists/*
       - run: cargo test --test '*' --features default,sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
       - run: cargo test --manifest-path sea-orm-migration/Cargo.toml --test '*' --features sqlx-postgres,runtime-${{ matrix.runtime }}-${{ matrix.tls }}
