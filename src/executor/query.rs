@@ -153,6 +153,56 @@ impl QueryResult {
             _ => unreachable!(),
         }
     }
+
+    /// Access the underlying `MySqlRow` if we use the MySQL backend.
+    #[cfg(feature = "sqlx-mysql")]
+    pub fn try_as_mysql_row(&self) -> Option<&sqlx::mysql::MySqlRow> {
+        match &self.row {
+            QueryResultRow::SqlxMySql(mysql_row) => Some(mysql_row),
+            #[allow(unreachable_patterns)]
+            _ => None,
+        }
+    }
+
+    /// Access the underlying `PgRow` if we use the Postgres backend.
+    #[cfg(feature = "sqlx-postgres")]
+    pub fn try_as_pg_row(&self) -> Option<&sqlx::postgres::PgRow> {
+        match &self.row {
+            QueryResultRow::SqlxPostgres(pg_row) => Some(pg_row),
+            #[allow(unreachable_patterns)]
+            _ => None,
+        }
+    }
+
+    /// Access the underlying `SqliteRow` if we use the SQLite backend.
+    #[cfg(feature = "sqlx-sqlite")]
+    pub fn try_as_sqlite_row(&self) -> Option<&sqlx::sqlite::SqliteRow> {
+        match &self.row {
+            QueryResultRow::SqlxSqlite(sqlite_row) => Some(sqlite_row),
+            #[allow(unreachable_patterns)]
+            _ => None,
+        }
+    }
+
+    /// Access the underlying `MockRow` if we use a mock.
+    #[cfg(feature = "mock")]
+    pub fn try_as_mock_row(&self) -> Option<&crate::MockRow> {
+        match &self.row {
+            QueryResultRow::Mock(mock_row) => Some(mock_row),
+            #[allow(unreachable_patterns)]
+            _ => None,
+        }
+    }
+
+    /// Access the underlying `ProxyRow` if we use a proxy.
+    #[cfg(feature = "proxy")]
+    pub fn try_as_proxy_row(&self) -> Option<&crate::ProxyRow> {
+        match &self.row {
+            QueryResultRow::Proxy(proxy_row) => Some(proxy_row),
+            #[allow(unreachable_patterns)]
+            _ => None,
+        }
+    }
 }
 
 #[allow(unused_variables)]
