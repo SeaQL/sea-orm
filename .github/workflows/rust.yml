@@ -473,7 +473,7 @@ jobs:
             target
           key: ${{ github.sha }}-${{ github.run_id }}-${{ runner.os }}-postgres-${{ matrix.runtime }}-${{ matrix.tls }}
       - run: sudo apt-get update
-      - run: apt-mark hold locales
+      - run: sudo apt-mark hold locales
       - run: sudo apt-get install -y --no-install-recommends build-essential postgresql-server-dev-${{ matrix.version }}
       - run: cd /tmp/pgvector
       - run: make clean
