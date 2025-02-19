@@ -134,7 +134,7 @@ impl crate::DatabaseTransaction {
         inner: Arc<crate::ProxyDatabaseConnection>,
         metric_callback: Option<crate::metric::Callback>,
     ) -> Result<crate::DatabaseTransaction, DbErr> {
-        use futures::lock::Mutex;
+        use futures_util::lock::Mutex;
         let backend = inner.get_database_backend();
         Self::begin(
             Arc::new(Mutex::new(crate::InnerConnection::Proxy(inner))),
