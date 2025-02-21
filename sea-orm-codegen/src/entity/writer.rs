@@ -737,7 +737,7 @@ impl EntityWriter {
             let enum_iden = format_ident!("{}", enum_name.to_upper_camel_case());
             enum_ts = quote! {
                 #enum_ts
-                sea_orm_active_enums::#enum_iden
+                sea_orm_active_enums::#enum_iden,
             }
         }
         if !enum_ts.is_empty() {
@@ -1945,6 +1945,60 @@ mod tests {
                 &TokenStream::new(),
                 true,
             ))
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_gen_with_seaography_mod() -> io::Result<()> {
+        use crate::ActiveEnum;
+        use sea_query::IntoIden;
+
+        let entities = setup();
+        let enums = vec![
+            (
+                "coinflip_result_type",
+                ActiveEnum {
+                    enum_name: Alias::new("coinflip_result_type").into_iden(),
+                    values: vec!["HEADS", "TAILS"]
+                        .into_iter()
+                        .map(|variant| Alias::new(variant).into_iden())
+                        .collect(),
+                },
+            ),
+            (
+                "media_type",
+                ActiveEnum {
+                    enum_name: Alias::new("media_type").into_iden(),
+                    values: vec![
+                        "UNKNOWN",
+                        "BITMAP",
+                        "DRAWING",
+                        "AUDIO",
+                        "VIDEO",
+                        "MULTIMEDIA",
+                        "OFFICE",
+                        "TEXT",
+                        "EXECUTABLE",
+                        "ARCHIVE",
+                        "3D",
+                    ]
+                    .into_iter()
+                    .map(|variant| Alias::new(variant).into_iden())
+                    .collect(),
+                },
+            ),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v))
+        .collect();
+
+        assert_eq!(
+            comparable_file_string(include_str!("../../tests/with_seaography/mod.rs"))?,
+            generated_to_string(vec![EntityWriter::gen_seaography_entity_mod(
+                &entities, &enums,
+            )])
         );
 
         Ok(())
