@@ -1,7 +1,7 @@
 use crate::{
     DatabaseTransaction, DbBackend, DbErr, ExecResult, QueryResult, Statement, TransactionError,
 };
-use futures::Stream;
+use futures_util::Stream;
 use std::{future::Future, pin::Pin};
 
 /// The generic API for a database connection that can perform query or execute statements.

@@ -3,7 +3,7 @@ use crate::{
     SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait,
 };
 use async_stream::stream;
-use futures::Stream;
+use futures_util::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
 use std::{marker::PhantomData, pin::Pin};
 
@@ -307,7 +307,7 @@ mod tests {
     use crate::entity::prelude::*;
     use crate::{tests_cfg::*, ConnectionTrait, Statement};
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
-    use futures::TryStreamExt;
+    use futures_util::TryStreamExt;
     use once_cell::sync::Lazy;
     use pretty_assertions::assert_eq;
     use sea_query::{Alias, Expr, SelectStatement, Value};

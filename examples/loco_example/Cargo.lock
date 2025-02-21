@@ -3838,7 +3838,7 @@ dependencies = [
 
 [[package]]
 name = "sea-orm"
-version = "1.1.4"
+version = "1.1.5"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -3864,7 +3864,7 @@ dependencies = [
 
 [[package]]
 name = "sea-orm-cli"
-version = "1.1.4"
+version = "1.1.5"
 dependencies = [
  "chrono",
  "clap",
@@ -3879,7 +3879,7 @@ dependencies = [
 
 [[package]]
 name = "sea-orm-macros"
-version = "1.1.4"
+version = "1.1.5"
 dependencies = [
  "heck 0.4.1",
  "proc-macro2",
@@ -3891,7 +3891,7 @@ dependencies = [
 
 [[package]]
 name = "sea-orm-migration"
-version = "1.1.4"
+version = "1.1.5"
 dependencies = [
  "async-trait",
  "clap",

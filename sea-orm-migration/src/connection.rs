@@ -1,8 +1,8 @@
-use futures::Future;
 use sea_orm::{
     AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
     ExecResult, IsolationLevel, QueryResult, Statement, TransactionError, TransactionTrait,
 };
+use std::future::Future;
 use std::pin::Pin;
 
 pub enum SchemaManagerConnection<'c> {

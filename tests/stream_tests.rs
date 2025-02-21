@@ -8,7 +8,7 @@ pub use sea_orm::{ConnectionTrait, DbErr, QueryFilter};
 
 #[sea_orm_macros::test]
 pub async fn stream() -> Result<(), DbErr> {
-    use futures::StreamExt;
+    use futures_util::StreamExt;
 
     let ctx = TestContext::new("stream").await;
     create_tables(&ctx.db).await?;
