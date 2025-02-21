@@ -49,6 +49,7 @@ pub struct EntityWriterContext {
     pub(crate) model_extra_attributes: TokenStream,
     pub(crate) enum_extra_derives: TokenStream,
     pub(crate) enum_extra_attributes: TokenStream,
+    pub(crate) column_extra_derives: TokenStream,
     pub(crate) seaography: bool,
 }
 
@@ -147,6 +148,7 @@ impl EntityWriterContext {
         model_extra_attributes: Vec<String>,
         enum_extra_derives: Vec<String>,
         enum_extra_attributes: Vec<String>,
+        column_extra_derives: Vec<String>,
         seaography: bool,
     ) -> Self {
         Self {
@@ -162,6 +164,7 @@ impl EntityWriterContext {
             model_extra_attributes: bonus_attributes(model_extra_attributes),
             enum_extra_derives: bonus_derive(enum_extra_derives),
             enum_extra_attributes: bonus_attributes(enum_extra_attributes),
+            column_extra_derives: bonus_derive(column_extra_derives),
             seaography,
         }
     }
@@ -221,6 +224,7 @@ impl EntityWriter {
                         serde_skip_hidden_column,
                         &context.model_extra_derives,
                         &context.model_extra_attributes,
+                        &context.column_extra_derives,
                         context.seaography,
                     )
                 } else {
@@ -233,6 +237,7 @@ impl EntityWriter {
                         serde_skip_hidden_column,
                         &context.model_extra_derives,
                         &context.model_extra_attributes,
+                        &context.column_extra_derives,
                         context.seaography,
                     )
                 };
@@ -352,6 +357,7 @@ impl EntityWriter {
         serde_skip_hidden_column: bool,
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
+        column_extra_derives: &TokenStream,
         seaography: bool,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
@@ -369,7 +375,7 @@ impl EntityWriter {
                 model_extra_derives,
                 model_extra_attributes,
             ),
-            Self::gen_column_enum(entity),
+            Self::gen_column_enum(entity, column_extra_derives),
             Self::gen_primary_key_enum(entity),
             Self::gen_impl_primary_key(entity, date_time_crate),
             Self::gen_relation_enum(entity),
@@ -395,6 +401,7 @@ impl EntityWriter {
         serde_skip_hidden_column: bool,
         model_extra_derives: &TokenStream,
         model_extra_attributes: &TokenStream,
+        _column_extra_derives: &TokenStream,
         seaography: bool,
     ) -> Vec<TokenStream> {
         let mut imports = Self::gen_import(with_serde);
@@ -533,7 +540,7 @@ impl EntityWriter {
         }
     }
 
-    pub fn gen_column_enum(entity: &Entity) -> TokenStream {
+    pub fn gen_column_enum(entity: &Entity, column_extra_derives: &TokenStream) -> TokenStream {
         let column_variants = entity.columns.iter().map(|col| {
             let variant = col.get_name_camel_case();
             let mut variant = quote! { #variant };
@@ -547,7 +554,7 @@ impl EntityWriter {
             variant
         });
         quote! {
-            #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
+            #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn #column_extra_derives)]
             pub enum Column {
                 #(#column_variants,)*
             }
@@ -1600,6 +1607,7 @@ mod tests {
                     false,
                     &TokenStream::new(),
                     &TokenStream::new(),
+                    &TokenStream::new(),
                     false
                 )
                 .into_iter()
@@ -1619,6 +1627,7 @@ mod tests {
                     &Some("schema_name".to_owned()),
                     false,
                     false,
+                    &TokenStream::new(),
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
@@ -1684,6 +1693,7 @@ mod tests {
                     false,
                     &TokenStream::new(),
                     &TokenStream::new(),
+                    &TokenStream::new(),
                     false,
                 )
                 .into_iter()
@@ -1703,6 +1713,7 @@ mod tests {
                     &Some("schema_name".to_owned()),
                     false,
                     false,
+                    &TokenStream::new(),
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
@@ -1738,6 +1749,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                &TokenStream::new(),
                 false,
             ))
         );
@@ -1752,6 +1764,7 @@ mod tests {
                 &None,
                 false,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -1770,6 +1783,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                &TokenStream::new(),
                 false,
             ))
         );
@@ -1782,6 +1796,7 @@ mod tests {
                 &None,
                 true,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -1800,6 +1815,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                &TokenStream::new(),
                 false,
             ))
         );
@@ -1814,6 +1830,7 @@ mod tests {
                 &None,
                 false,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -1832,6 +1849,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                &TokenStream::new(),
                 false,
             ))
         );
@@ -1844,6 +1862,7 @@ mod tests {
                 &None,
                 true,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 false,
@@ -1927,6 +1946,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                &TokenStream::new(),
                 true,
             ))
         );
@@ -1941,6 +1961,7 @@ mod tests {
                 &None,
                 false,
                 false,
+                &TokenStream::new(),
                 &TokenStream::new(),
                 &TokenStream::new(),
                 true,
@@ -2024,6 +2045,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                &TokenStream::new(),
                 false,
             ))
         );
@@ -2037,6 +2059,7 @@ mod tests {
                 false,
                 false,
                 &bonus_derive(["ts_rs::TS"]),
+                &TokenStream::new(),
                 &TokenStream::new(),
                 false,
             ))
@@ -2053,6 +2076,7 @@ mod tests {
                 false,
                 false,
                 &bonus_derive(["ts_rs::TS", "utoipa::ToSchema"]),
+                &TokenStream::new(),
                 &TokenStream::new(),
                 false,
             ))
@@ -2072,6 +2096,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                &TokenStream::new(),
                 false,
             ))
         );
@@ -2088,6 +2113,7 @@ mod tests {
                 false,
                 &bonus_derive(["ts_rs::TS"]),
                 &TokenStream::new(),
+                &TokenStream::new(),
                 false,
             ))
         );
@@ -2103,6 +2129,7 @@ mod tests {
                 false,
                 false,
                 &bonus_derive(["ts_rs::TS", "utoipa::ToSchema"]),
+                &TokenStream::new(),
                 &TokenStream::new(),
                 false,
             ))
@@ -2135,6 +2162,50 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn test_gen_with_column_derives() -> io::Result<()> {
+        let cake_entity = setup().get_mut(0).unwrap().clone();
+
+        assert_eq!(cake_entity.get_table_name_snake_case(), "cake");
+
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/expanded_with_column_derives/cake_one.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_expanded_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &bonus_derive(["async_graphql::Enum"]),
+                false,
+            ))
+        );
+        assert_eq!(
+            comparable_file_string(include_str!(
+                "../../tests/expanded_with_column_derives/cake_multiple.rs"
+            ))?,
+            generated_to_string(EntityWriter::gen_expanded_code_blocks(
+                &cake_entity,
+                &WithSerde::None,
+                &DateTimeCrate::Chrono,
+                &None,
+                false,
+                false,
+                &TokenStream::new(),
+                &TokenStream::new(),
+                &bonus_derive(["async_graphql::Enum", "Eq", "PartialEq"]),
+                false,
+            ))
+        );
+
+        Ok(())
+    }
+
     #[allow(clippy::type_complexity)]
     fn assert_serde_variant_results(
         cake_entity: &Entity,
@@ -2147,6 +2218,7 @@ mod tests {
                 &Option<String>,
                 bool,
                 bool,
+                &TokenStream,
                 &TokenStream,
                 &TokenStream,
                 bool,
@@ -2178,6 +2250,7 @@ mod tests {
             &entity_serde_variant.2,
             serde_skip_deserializing_primary_key,
             serde_skip_hidden_column,
+            &TokenStream::new(),
             &TokenStream::new(),
             &TokenStream::new(),
             false,
@@ -2212,6 +2285,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                &TokenStream::new(),
                 false,
             ))
         );
@@ -2228,6 +2302,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
+                &TokenStream::new(),
                 false,
             ))
         );
@@ -2244,6 +2319,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
+                &TokenStream::new(),
                 false,
             ))
         );
@@ -2262,6 +2338,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &TokenStream::new(),
+                &TokenStream::new(),
                 false,
             ))
         );
@@ -2278,6 +2355,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#]),
+                &TokenStream::new(),
                 false,
             ))
         );
@@ -2294,6 +2372,7 @@ mod tests {
                 false,
                 &TokenStream::new(),
                 &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"]),
+                &TokenStream::new(),
                 false,
             ))
         );
@@ -2387,6 +2466,7 @@ mod tests {
                     false,
                     &TokenStream::new(),
                     &TokenStream::new(),
+                    &TokenStream::new(),
                     false,
                 )
                 .into_iter()
@@ -2406,6 +2486,7 @@ mod tests {
                     &Some("schema_name".to_owned()),
                     false,
                     false,
+                    &TokenStream::new(),
                     &TokenStream::new(),
                     &TokenStream::new(),
                     false,
