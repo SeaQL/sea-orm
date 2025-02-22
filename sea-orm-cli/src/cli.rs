@@ -325,7 +325,7 @@ pub enum GenerateSubcommands {
             default_value = "true",
             long_help = "Generate empty ActiveModelBehavior impls."
         )]
-        gen_impl_active_model_behavior: bool,
+        impl_active_model_behavior: bool,
     },
 }
 
