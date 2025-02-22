@@ -1,4 +1,6 @@
-use crate::{ColIdx, ColumnDef, DbErr, Iterable, QueryResult, TryFromU64, TryGetError, TryGetable};
+use crate::{
+    ColIdx, ColumnDef, DbErr, Iterable, QueryResult, TryFromRawValue, TryGetError, TryGetable,
+};
 use sea_query::{DynIden, Expr, Nullable, SimpleExpr, Value, ValueType};
 
 /// A Rust representation of enum defined in database.
@@ -191,13 +193,19 @@ impl_active_enum_value_with_pg_array!(i16);
 impl_active_enum_value_with_pg_array!(i32);
 impl_active_enum_value_with_pg_array!(i64);
 
-impl<T> TryFromU64 for T
+impl<T> TryFromRawValue for T
 where
     T: ActiveEnum,
 {
     fn try_from_u64(_: u64) -> Result<Self, DbErr> {
         Err(DbErr::ConvertFromU64(
             "Fail to construct ActiveEnum from a u64, if your primary key consist of a ActiveEnum field, its auto increment should be set to false."
+        ))
+    }
+
+    fn try_from_string(_: String) -> Result<Self, DbErr> {
+        Err(DbErr::ConvertFromString(
+            "Fail to construct ActiveEnum from a string",
         ))
     }
 }
