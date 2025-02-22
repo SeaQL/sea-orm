@@ -33,7 +33,11 @@ where
         exec_delete_only(self.query, db)
     }
 
-    /// Execute an delete operation and return the deleted model (use `RETURNING` syntax if supported)
+    /// Execute an delete operation and return the deleted model
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `DELETE RETURNING`
     pub fn exec_with_returning<C>(
         self,
         db: &'a C,
@@ -58,7 +62,11 @@ where
         exec_delete_only(self.query, db)
     }
 
-    /// Execute an delete operation and return the deleted model (use `RETURNING` syntax if supported)
+    /// Execute an delete operation and return the deleted model
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `DELETE RETURNING`
     pub fn exec_with_returning<C>(
         self,
         db: &C,
@@ -85,7 +93,11 @@ impl Deleter {
         exec_delete(self.query, db)
     }
 
-    /// Execute an delete operation and return the deleted model (use `RETURNING` syntax if supported)
+    /// Execute an delete operation and return the deleted model
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `DELETE RETURNING`
     pub fn exec_with_returning<E, C>(
         self,
         db: &C,
