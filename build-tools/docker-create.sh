@@ -73,6 +73,13 @@ docker run \
 docker stop "postgres-vector-14"
 
 docker run \
+    --name "postgres-14" \
+    --env POSTGRES_USER="root" \
+    --env POSTGRES_PASSWORD="root" \
+    -d -p 5432:5432 postgres:14
+docker stop "postgres-14"
+
+docker run \
     --name "postgres-13" \
     --env POSTGRES_USER="root" \
     --env POSTGRES_PASSWORD="root" \
