@@ -591,13 +591,16 @@ pub trait EntityTrait: EntityName {
     ///     ])
     ///     .exec_with_returning_many(&db)
     ///     .await?,
-    ///     [cake::Model {
-    ///         id: 1,
-    ///         name: "Apple Pie".to_owned(),
-    ///     }, cake::Model {
-    ///         id: 2,
-    ///         name: "Choco Pie".to_owned(),
-    ///     }]
+    ///     [
+    ///         cake::Model {
+    ///             id: 1,
+    ///             name: "Apple Pie".to_owned(),
+    ///         },
+    ///         cake::Model {
+    ///             id: 2,
+    ///             name: "Choco Pie".to_owned(),
+    ///         }
+    ///     ]
     /// );
     ///
     /// assert_eq!(
