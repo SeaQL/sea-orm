@@ -319,6 +319,13 @@ pub enum GenerateSubcommands {
             long_help = "Generate helper Enumerations that are used by Seaography."
         )]
         seaography: bool,
+
+        #[arg(
+            long,
+            default_value = "true",
+            long_help = "Generate empty ActiveModelBehavior impls."
+        )]
+        gen_impl_active_model_behavior: bool,
     },
 }
 
