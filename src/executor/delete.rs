@@ -37,7 +37,7 @@ where
     pub fn exec_with_returning<C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<Option<<A::Entity as EntityTrait>::Model>, DbErr>> + '_
+    ) -> impl Future<Output = Result<Option<<A::Entity as EntityTrait>::Model>, DbErr>> + 'a
     where
         C: ConnectionTrait,
     {
