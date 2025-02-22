@@ -104,6 +104,58 @@ where
             Err(err) => Err(err),
         }
     }
+
+    /// Execute an insert operation and return primary keys of inserted models
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `INSERT RETURNING`.
+    pub async fn exec_with_returning_keys<'a, C>(
+        self,
+        db: &'a C,
+    ) -> Result<TryInsertResult<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>>, DbErr>
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: 'a,
+    {
+        if self.insert_struct.columns.is_empty() {
+            return Ok(TryInsertResult::Empty);
+        }
+
+        let res = self.insert_struct.exec_with_returning_keys(db).await;
+        match res {
+            Ok(res) => Ok(TryInsertResult::Inserted(res)),
+            Err(DbErr::RecordNotInserted) => Ok(TryInsertResult::Conflicted),
+            Err(err) => Err(err),
+        }
+    }
+
+    /// Execute an insert operation and return all inserted models
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `INSERT RETURNING`.
+    pub async fn exec_with_returning_many<'a, C>(
+        self,
+        db: &'a C,
+    ) -> Result<TryInsertResult<Vec<<A::Entity as EntityTrait>::Model>>, DbErr>
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: 'a,
+    {
+        if self.insert_struct.columns.is_empty() {
+            return Ok(TryInsertResult::Empty);
+        }
+
+        let res = self.insert_struct.exec_with_returning_many(db).await;
+        match res {
+            Ok(res) => Ok(TryInsertResult::Inserted(res)),
+            Err(DbErr::RecordNotInserted) => Ok(TryInsertResult::Conflicted),
+            Err(err) => Err(err),
+        }
+    }
 }
 
 impl<A> Insert<A>
