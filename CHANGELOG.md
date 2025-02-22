@@ -10,11 +10,63 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### New Features
 
 * Support PgVector https://github.com/SeaQL/sea-orm/pull/2500
+* Added `Insert::exec_with_returning_keys` & `Insert::exec_with_returning_many` (Postgres only)
+```rust
+assert_eq!(
+    Entity::insert_many([
+        ActiveModel {
+            id: NotSet,
+            name: Set("two".into()),
+        },
+        ActiveModel {
+            id: NotSet,
+            name: Set("three".into()),
+        },
+    ])
+    .exec_with_returning_many(db)
+    .await
+    .unwrap(),
+    [
+        Model {
+            id: 2,
+            name: "two".into(),
+        },
+        Model {
+            id: 3,
+            name: "three".into(),
+        },
+    ]
+);
+
+assert_eq!(
+    cakes_bakers::Entity::insert_many([
+        cakes_bakers::ActiveModel {
+            cake_id: Set(1),
+            baker_id: Set(2),
+        },
+        cakes_bakers::ActiveModel {
+            cake_id: Set(2),
+            baker_id: Set(1),
+        },
+    ])
+    .exec_with_returning_keys(db)
+    .await
+    .unwrap(),
+    [(1, 2), (2, 1)]
+);
+```
+* Added `DeleteOne::exec_with_returning` & `DeleteMany::exec_with_returning` https://github.com/SeaQL/sea-orm/pull/2432
 
 ### Enhancements
 
 * Expose underlying row types (e.g. `sqlx::postgres::PgRow`) https://github.com/SeaQL/sea-orm/pull/2265
 * [sea-orm-cli] Added `acquire-timeout` option https://github.com/SeaQL/sea-orm/pull/2461
+* [sea-orm-cli] Added `with-prelude` option https://github.com/SeaQL/sea-orm/pull/2322
+* [sea-orm-cli] Added `impl-active-model-behavior` option https://github.com/SeaQL/sea-orm/pull/2487
+
+### Bug Fixes
+
+* Fixed `seaography::register_active_enums` macro https://github.com/SeaQL/sea-orm/pull/2475
 
 ### House keeping
 
