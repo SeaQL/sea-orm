@@ -233,13 +233,6 @@ pub enum GenerateSubcommands {
 
         #[arg(
             long,
-            default_value = "all",
-            help = "Generate prelude.rs file (all, none, all-allow-unused-imports)"
-        )]
-        with_prelude: String,
-
-        #[arg(
-            long,
             default_value = "none",
             help = "Automatically derive serde Serialize / Deserialize traits for the entity (none, \
                 serialize, deserialize, both)"

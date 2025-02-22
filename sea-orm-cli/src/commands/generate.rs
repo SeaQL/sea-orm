@@ -1,7 +1,7 @@
 use core::time;
 use sea_orm_codegen::{
     DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
-    WithPrelude, WithSerde,
+    WithSerde,
 };
 use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
@@ -25,7 +25,6 @@ pub async fn run_generate_command(
             output_dir,
             database_schema,
             database_url,
-            with_prelude,
             with_serde,
             serde_skip_deserializing_primary_key,
             serde_skip_hidden_column,
@@ -194,7 +193,6 @@ pub async fn run_generate_command(
 
             let writer_context = EntityWriterContext::new(
                 expanded_format,
-                WithPrelude::from_str(&with_prelude).expect("Invalid prelude option"),
                 WithSerde::from_str(&with_serde).expect("Invalid serde derive option"),
                 with_copy_enums,
                 date_time_crate.into(),
