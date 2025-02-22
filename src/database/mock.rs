@@ -359,6 +359,11 @@ impl Transaction {
     {
         stmts.into_iter().map(Self::one).collect()
     }
+
+    /// Get the list of statements
+    pub fn statements(&self) -> &[Statement] {
+        &self.stmts
+    }
 }
 
 impl OpenTransaction {

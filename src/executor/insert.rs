@@ -146,6 +146,9 @@ where
     }
 
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
+    ///
+    /// + To get back all inserted models, use [`exec_with_returning_many`].
+    /// + To get back all inserted primary keys, use [`exec_with_returning_keys`].
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
