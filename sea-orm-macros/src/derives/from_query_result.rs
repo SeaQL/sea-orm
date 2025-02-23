@@ -1,4 +1,4 @@
-use self::util::GetMeta;
+use super::util::GetMeta;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::{
@@ -143,21 +143,4 @@ pub fn expand_derive_from_query_result(
             }
         }
     ))
-}
-
-pub(super) mod util {
-    use syn::Meta;
-
-    pub trait GetMeta {
-        fn exists(&self, k: &str) -> bool;
-    }
-
-    impl GetMeta for Meta {
-        fn exists(&self, k: &str) -> bool {
-            let Meta::Path(path) = self else {
-                return false;
-            };
-            path.is_ident(k)
-        }
-    }
 }

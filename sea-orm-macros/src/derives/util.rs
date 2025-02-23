@@ -159,6 +159,19 @@ pub(crate) const RUST_KEYWORDS: [&str; 49] = [
 
 pub(crate) const RUST_SPECIAL_KEYWORDS: [&str; 3] = ["crate", "Self", "self"];
 
+pub(crate) trait GetMeta {
+    fn exists(&self, k: &str) -> bool;
+}
+
+impl GetMeta for Meta {
+    fn exists(&self, k: &str) -> bool {
+        let Meta::Path(path) = self else {
+            return false;
+        };
+        path.is_ident(k)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

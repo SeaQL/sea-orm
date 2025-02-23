@@ -13,9 +13,8 @@ use syn::Expr;
 use syn::Meta;
 use syn::Type;
 
-use super::from_query_result::util::GetMeta;
-
 use self::util::GetAsKVMeta;
+use super::util::GetMeta;
 
 #[derive(Debug)]
 enum Error {
