@@ -322,10 +322,10 @@ pub enum GenerateSubcommands {
 
         #[arg(
             long,
-            default_missing_value("true"),
-            default_value("true"),
-            num_args(0..=1),
-            require_equals(true),
+            default_value = "true",
+            default_missing_value = "true",
+            num_args = 0..=1,
+            require_equals = true,
             action = ArgAction::Set,
             long_help = "Generate empty ActiveModelBehavior impls."
         )]
