@@ -322,7 +322,7 @@ pub enum GenerateSubcommands {
 
         #[arg(
             long,
-            default_value = "true",
+            default_value = "false",
             long_help = "Generate empty ActiveModelBehavior impls."
         )]
         impl_active_model_behavior: bool,
