@@ -8,7 +8,6 @@ use common::bakery_chain::*;
 mod common;
 
 #[derive(FromQueryResult)]
-#[sea_orm(entity = "cake::Entity")]
 struct Cake {
     id: i32,
     name: String,

@@ -82,15 +82,6 @@ struct Bakery {
 }
 
 #[derive(DerivePartialModel)]
-#[sea_orm(entity = "bakery::Entity", from_query_result)]
-struct BakeryDetails {
-    #[sea_orm(nested)]
-    basics: Bakery,
-    #[sea_orm(from_expr = "bakery::Column::ProfitMargin")]
-    profit: f64,
-}
-
-#[derive(DerivePartialModel)]
 #[sea_orm(entity = "cake::Entity", from_query_result)]
 struct Cake {
     id: i32,
@@ -99,6 +90,15 @@ struct Cake {
     bakery: Option<Bakery>,
     #[sea_orm(skip)]
     ignore: Ignore,
+}
+
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "bakery::Entity", from_query_result)]
+struct BakeryDetails {
+    #[sea_orm(nested)]
+    basics: Bakery,
+    #[sea_orm(from_expr = "bakery::Column::ProfitMargin")]
+    profit: f64,
 }
 
 #[derive(Default)]

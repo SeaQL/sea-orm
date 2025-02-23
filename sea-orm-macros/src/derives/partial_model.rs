@@ -85,8 +85,6 @@ impl DerivePartialModel {
                 for meta in list {
                     if let Some(s) = meta.get_as_kv("entity") {
                         entity = Some(syn::parse_str::<syn::Type>(&s).map_err(Error::Syn)?);
-                    } else if let Some(val) = meta.get_as_kv("from_query_result") {
-                        from_query_result = val == "true";
                     } else if meta.exists("from_query_result") {
                         from_query_result = true;
                     }
@@ -319,23 +317,22 @@ mod test {
 
     use super::DerivePartialModel;
 
-    #[cfg(test)]
     type StdResult<T> = Result<T, Box<dyn std::error::Error>>;
 
-    #[cfg(test)]
-    const CODE_SNIPPET: &str = r#"
-#[sea_orm(entity = "Entity")]
-struct PartialModel{
-    default_field: i32,
-    #[sea_orm(from_col = "bar")]
-    alias_field: i32,
-    #[sea_orm(from_expr = "Expr::val(1).add(1)")]
-    expr_field : i32
-}
-"#;
+    const CODE_SNIPPET_1: &str = r#"
+        #[sea_orm(entity = "Entity")]
+        struct PartialModel {
+            default_field: i32,
+            #[sea_orm(from_col = "bar")]
+            alias_field: i32,
+            #[sea_orm(from_expr = "Expr::val(1).add(1)")]
+            expr_field : i32
+        }
+        "#;
+
     #[test]
-    fn test_load_macro_input() -> StdResult<()> {
-        let input = parse_str::<DeriveInput>(CODE_SNIPPET)?;
+    fn test_load_macro_input_1() -> StdResult<()> {
+        let input = parse_str::<DeriveInput>(CODE_SNIPPET_1)?;
 
         let middle = DerivePartialModel::new(input).unwrap();
         assert_eq!(middle.entity, Some(parse_str::<Type>("Entity").unwrap()));
@@ -359,6 +356,31 @@ struct PartialModel{
                 field: format_ident!("expr_field"),
             }
         );
+        assert_eq!(middle.from_query_result, false);
+
+        Ok(())
+    }
+
+    const CODE_SNIPPET_2: &str = r#"
+        #[sea_orm(entity = "MyEntity", from_query_result)]
+        struct PartialModel {
+            default_field: i32,
+        }
+        "#;
+
+    #[test]
+    fn test_load_macro_input_2() -> StdResult<()> {
+        let input = parse_str::<DeriveInput>(CODE_SNIPPET_2)?;
+
+        let middle = DerivePartialModel::new(input).unwrap();
+        assert_eq!(middle.entity, Some(parse_str::<Type>("MyEntity").unwrap()));
+        assert_eq!(middle.ident, format_ident!("PartialModel"));
+        assert_eq!(middle.fields.len(), 1);
+        assert_eq!(
+            middle.fields[0],
+            ColumnAs::Col(format_ident!("default_field"))
+        );
+        assert_eq!(middle.from_query_result, true);
 
         Ok(())
     }
