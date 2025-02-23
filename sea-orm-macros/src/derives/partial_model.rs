@@ -13,7 +13,6 @@ use syn::Expr;
 use syn::Meta;
 use syn::Type;
 
-use self::util::GetAsKVMeta;
 use super::util::GetMeta;
 
 #[derive(Debug)]
@@ -241,37 +240,6 @@ pub fn expand_derive_partial_model(input: syn::DeriveInput) -> syn::Result<Token
             ident_span => compile_error!("you can only derive `DerivePartialModel` on named struct");
         }),
         Err(Error::Syn(err)) => Err(err),
-    }
-}
-
-mod util {
-    use syn::{Meta, MetaNameValue};
-
-    pub(super) trait GetAsKVMeta {
-        fn get_as_kv(&self, k: &str) -> Option<String>;
-    }
-
-    impl GetAsKVMeta for Meta {
-        fn get_as_kv(&self, k: &str) -> Option<String> {
-            let Meta::NameValue(MetaNameValue {
-                path,
-                value: syn::Expr::Lit(exprlit),
-                ..
-            }) = self
-            else {
-                return None;
-            };
-
-            let syn::Lit::Str(litstr) = &exprlit.lit else {
-                return None;
-            };
-
-            if path.is_ident(k) {
-                Some(litstr.value())
-            } else {
-                None
-            }
-        }
     }
 }
 

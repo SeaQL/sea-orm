@@ -1,6 +1,6 @@
 use heck::ToUpperCamelCase;
 use quote::format_ident;
-use syn::{punctuated::Punctuated, token::Comma, Field, Ident, Meta};
+use syn::{punctuated::Punctuated, token::Comma, Field, Ident, Meta, MetaNameValue};
 
 pub(crate) fn field_not_ignored(field: &Field) -> bool {
     for attr in field.attrs.iter() {
@@ -161,6 +161,7 @@ pub(crate) const RUST_SPECIAL_KEYWORDS: [&str; 3] = ["crate", "Self", "self"];
 
 pub(crate) trait GetMeta {
     fn exists(&self, k: &str) -> bool;
+    fn get_as_kv(&self, k: &str) -> Option<String>;
 }
 
 impl GetMeta for Meta {
@@ -169,6 +170,27 @@ impl GetMeta for Meta {
             return false;
         };
         path.is_ident(k)
+    }
+
+    fn get_as_kv(&self, k: &str) -> Option<String> {
+        let Meta::NameValue(MetaNameValue {
+            path,
+            value: syn::Expr::Lit(exprlit),
+            ..
+        }) = self
+        else {
+            return None;
+        };
+
+        let syn::Lit::Str(litstr) = &exprlit.lit else {
+            return None;
+        };
+
+        if path.is_ident(k) {
+            Some(litstr.value())
+        } else {
+            None
+        }
     }
 }
 

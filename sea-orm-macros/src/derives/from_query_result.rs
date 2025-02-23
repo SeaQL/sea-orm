@@ -9,7 +9,6 @@ use syn::{
 #[derive(Debug)]
 enum Error {
     InputNotStruct,
-    Syn(syn::Error),
 }
 
 enum ItemType {
@@ -27,6 +26,7 @@ struct DeriveFromQueryResult {
 struct FromQueryResultItem {
     pub typ: ItemType,
     pub ident: Ident,
+    pub alias: Option<String>,
 }
 
 /// Initially, we try to obtain the value for each field and check if it is an ordinary DB error
@@ -42,18 +42,20 @@ struct TryFromQueryResultCheck<'a>(&'a FromQueryResultItem);
 
 impl ToTokens for TryFromQueryResultCheck<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let FromQueryResultItem { ident, typ } = self.0;
+        let FromQueryResultItem { ident, typ, alias } = self.0;
 
         match typ {
             ItemType::Flat => {
-                let name = ident.unraw().to_string();
+                let name = alias
+                    .to_owned()
+                    .unwrap_or_else(|| ident.unraw().to_string());
                 tokens.extend(quote! {
                     let #ident = match row.try_get_nullable(pre, #name) {
-                         Err(v @ sea_orm::TryGetError::DbErr(_)) => {
-                             return Err(v);
-                         }
-                         v => v,
-                     };
+                        Err(v @ sea_orm::TryGetError::DbErr(_)) => {
+                            return Err(v);
+                        }
+                        v => v,
+                    };
                 });
             }
             ItemType::Skip => {
@@ -116,6 +118,7 @@ impl DeriveFromQueryResult {
         let mut fields = Vec::with_capacity(parsed_fields.len());
         for parsed_field in parsed_fields {
             let mut typ = ItemType::Flat;
+            let mut alias = None;
             for attr in parsed_field.attrs.iter() {
                 if !attr.path().is_ident("sea_orm") {
                     continue;
@@ -128,11 +131,12 @@ impl DeriveFromQueryResult {
                         } else if meta.exists("nested") {
                             typ = ItemType::Nested;
                         }
+                        alias = meta.get_as_kv("from_alias")
                     }
                 }
             }
             let ident = format_ident!("{}", parsed_field.ident.unwrap().to_string());
-            fields.push(FromQueryResultItem { typ, ident });
+            fields.push(FromQueryResultItem { typ, ident, alias });
         }
 
         Ok(Self {
@@ -185,6 +189,5 @@ pub fn expand_derive_from_query_result(input: DeriveInput) -> syn::Result<TokenS
         Err(Error::InputNotStruct) => Ok(quote_spanned! {
             ident_span => compile_error!("you can only derive `FromQueryResult` on named struct");
         }),
-        Err(Error::Syn(err)) => Err(err),
     }
 }
