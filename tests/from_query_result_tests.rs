@@ -186,7 +186,7 @@ struct WrongCake {
 
 #[sea_orm_macros::test]
 async fn from_query_result_optional_field_but_type_error() {
-    let ctx = TestContext::new("from_query_result_nested").await;
+    let ctx = TestContext::new("from_query_result_nested_error").await;
     create_tables(&ctx.db).await.unwrap();
 
     fill_data(&ctx, false).await;

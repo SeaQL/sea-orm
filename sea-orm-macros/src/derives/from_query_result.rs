@@ -11,19 +11,19 @@ enum Error {
     InputNotStruct,
 }
 
-enum ItemType {
+pub(super) enum ItemType {
     Flat,
     Skip,
     Nested,
 }
 
-struct DeriveFromQueryResult {
-    ident: syn::Ident,
-    generics: Generics,
-    fields: Vec<FromQueryResultItem>,
+pub(super) struct DeriveFromQueryResult {
+    pub ident: syn::Ident,
+    pub generics: Generics,
+    pub fields: Vec<FromQueryResultItem>,
 }
 
-struct FromQueryResultItem {
+pub(super) struct FromQueryResultItem {
     pub typ: ItemType,
     pub ident: Ident,
     pub alias: Option<String>,
@@ -38,11 +38,11 @@ struct FromQueryResultItem {
 /// since structs embedding the current one might have wrapped the current one in an `Option`.
 /// In this case, we do not want to swallow other errors, which are very likely to actually be
 /// programming errors that should be noticed (and fixed).
-struct TryFromQueryResultCheck<'a>(&'a FromQueryResultItem);
+struct TryFromQueryResultCheck<'a>(bool, &'a FromQueryResultItem);
 
 impl ToTokens for TryFromQueryResultCheck<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let FromQueryResultItem { ident, typ, alias } = self.0;
+        let FromQueryResultItem { ident, typ, alias } = self.1;
 
         match typ {
             ItemType::Flat => {
@@ -64,8 +64,14 @@ impl ToTokens for TryFromQueryResultCheck<'_> {
                 });
             }
             ItemType::Nested => {
+                let prefix = if self.0 {
+                    let name = ident.unraw().to_string();
+                    quote! { &format!("{pre}{}_", #name) }
+                } else {
+                    quote! { pre }
+                };
                 tokens.extend(quote! {
-                    let #ident = match sea_orm::FromQueryResult::from_query_result_nullable(row, pre) {
+                    let #ident = match sea_orm::FromQueryResult::from_query_result_nullable(row, #prefix) {
                         Err(v @ sea_orm::TryGetError::DbErr(_)) => {
                             return Err(v);
                         }
@@ -130,8 +136,9 @@ impl DeriveFromQueryResult {
                             typ = ItemType::Skip;
                         } else if meta.exists("nested") {
                             typ = ItemType::Nested;
+                        } else {
+                            alias = meta.get_as_kv("from_alias");
                         }
-                        alias = meta.get_as_kv("from_alias")
                     }
                 }
             }
@@ -147,10 +154,10 @@ impl DeriveFromQueryResult {
     }
 
     fn expand(&self) -> syn::Result<TokenStream> {
-        Ok(self.impl_from_query_result())
+        Ok(self.impl_from_query_result(false))
     }
 
-    fn impl_from_query_result(&self) -> TokenStream {
+    pub(super) fn impl_from_query_result(&self, prefix: bool) -> TokenStream {
         let Self {
             ident,
             generics,
@@ -159,7 +166,10 @@ impl DeriveFromQueryResult {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let ident_try_init: Vec<_> = fields.iter().map(TryFromQueryResultCheck).collect();
+        let ident_try_init: Vec<_> = fields
+            .iter()
+            .map(|s| TryFromQueryResultCheck(prefix, s))
+            .collect();
         let ident_try_assign: Vec<_> = fields.iter().map(TryFromQueryResultAssignment).collect();
 
         quote!(

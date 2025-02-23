@@ -81,8 +81,8 @@ struct Bakery {
     title: String,
 }
 
-#[derive(FromQueryResult, DerivePartialModel)]
-#[sea_orm(entity = "bakery::Entity")]
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "bakery::Entity", from_query_result)]
 struct BakeryDetails {
     #[sea_orm(nested)]
     basics: Bakery,
@@ -90,14 +90,19 @@ struct BakeryDetails {
     profit: f64,
 }
 
-#[derive(FromQueryResult, DerivePartialModel)]
-#[sea_orm(entity = "cake::Entity")]
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "cake::Entity", from_query_result)]
 struct Cake {
     id: i32,
     name: String,
     #[sea_orm(nested)]
     bakery: Option<Bakery>,
+    #[sea_orm(skip)]
+    ignore: Ignore,
 }
+
+#[derive(Default)]
+struct Ignore {}
 
 async fn fill_data(ctx: &TestContext, link: bool) {
     bakery::Entity::insert(bakery::ActiveModel {
@@ -168,8 +173,28 @@ async fn partial_model_left_join_exists() {
 }
 
 #[sea_orm_macros::test]
-async fn partial_model_nested_same_table() {
-    let ctx = TestContext::new("partial_model_nested_same_table").await;
+async fn partial_model_flat() {
+    let ctx = TestContext::new("partial_model_flat").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    fill_data(&ctx, true).await;
+
+    let bakery: Bakery = bakery::Entity::find()
+        .into_partial_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(bakery.id, 42);
+    assert_eq!(bakery.title, "cool little bakery");
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+async fn partial_model_nested() {
+    let ctx = TestContext::new("partial_model_nested").await;
     create_tables(&ctx.db).await.unwrap();
 
     fill_data(&ctx, true).await;
@@ -208,7 +233,7 @@ struct WrongCake {
 #[sea_orm_macros::test]
 #[ignore = "This currently does not work, as sqlx does not perform type checking when a column is absent.."]
 async fn partial_model_optional_field_but_type_error() {
-    let ctx = TestContext::new("partial_model_nested_same_table").await;
+    let ctx = TestContext::new("partial_model_nested").await;
     create_tables(&ctx.db).await.unwrap();
 
     fill_data(&ctx, false).await;
