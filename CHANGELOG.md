@@ -14,27 +14,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ```rust
 assert_eq!(
     Entity::insert_many([
-        ActiveModel {
-            id: NotSet,
-            name: Set("two".into()),
-        },
-        ActiveModel {
-            id: NotSet,
-            name: Set("three".into()),
-        },
+        ActiveModel { id: NotSet, name: Set("two".into()) },
+        ActiveModel { id: NotSet, name: Set("three".into()) },
     ])
     .exec_with_returning_many(db)
     .await
     .unwrap(),
     [
-        Model {
-            id: 2,
-            name: "two".into(),
-        },
-        Model {
-            id: 3,
-            name: "three".into(),
-        },
+        Model { id: 2, name: "two".into() },
+        Model { id: 3, name: "three".into() },
     ]
 );
 
