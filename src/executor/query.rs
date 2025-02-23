@@ -612,16 +612,14 @@ macro_rules! try_getable_uuid {
             fn try_get_by<I: ColIdx>(res: &QueryResult, idx: I) -> Result<Self, TryGetError> {
                 let res: Result<uuid::Uuid, TryGetError> = match &res.row {
                     #[cfg(feature = "sqlx-mysql")]
-                    QueryResultRow::SqlxMySql(row) => {
-                        let uuid_parse_result = row
-                            .try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_mysql_index())
-                            .map_err(|e| sqlx_error_to_query_err(e).into())
-                            .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)));
-
-                        match uuid_parse_result {
-                            Ok(uuid) => Ok(uuid),
-                            Err(e) => row
-                                .try_get::<Option<Vec<u8>>, _>(idx.as_sqlx_mysql_index())
+                    QueryResultRow::SqlxMySql(row) => row
+                        .try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_mysql_index())
+                        .map_err(|e| sqlx_error_to_query_err(e).into())
+                        .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
+                        .or_else(|_| {
+                            // MariaDB's UUID type stores UUIDs as hyphenated strings.
+                            // reference: https://github.com/SeaQL/sea-orm/pull/2485
+                            row.try_get::<Option<Vec<u8>>, _>(idx.as_sqlx_mysql_index())
                                 .map_err(|e| sqlx_error_to_query_err(e).into())
                                 .and_then(|opt| opt.ok_or_else(|| err_null_idx_col(idx)))
                                 .map(|bytes| {
@@ -643,9 +641,8 @@ macro_rules! try_getable_uuid {
                                         }
                                         .into()
                                     })
-                                }),
-                        }
-                    }
+                                })
+                        }),
                     #[cfg(feature = "sqlx-postgres")]
                     QueryResultRow::SqlxPostgres(row) => row
                         .try_get::<Option<uuid::Uuid>, _>(idx.as_sqlx_postgres_index())
