@@ -2,13 +2,26 @@ use super::util::GetMeta;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::{
-    ext::IdentExt, punctuated::Punctuated, token::Comma, Data, DataStruct, Fields, Generics, Meta,
+    ext::IdentExt, punctuated::Punctuated, token::Comma, Data, DataStruct, DeriveInput, Fields,
+    Generics, Meta,
 };
 
+#[derive(Debug)]
+enum Error {
+    InputNotStruct,
+    Syn(syn::Error),
+}
+
 enum ItemType {
-    Normal,
-    Skipped,
+    Flat,
+    Skip,
     Nested,
+}
+
+struct DeriveFromQueryResult {
+    ident: syn::Ident,
+    generics: Generics,
+    fields: Vec<FromQueryResultItem>,
 }
 
 struct FromQueryResultItem {
@@ -32,7 +45,7 @@ impl ToTokens for TryFromQueryResultCheck<'_> {
         let FromQueryResultItem { ident, typ } = self.0;
 
         match typ {
-            ItemType::Normal => {
+            ItemType::Flat => {
                 let name = ident.unraw().to_string();
                 tokens.extend(quote! {
                     let #ident = match row.try_get_nullable(pre, #name) {
@@ -43,15 +56,14 @@ impl ToTokens for TryFromQueryResultCheck<'_> {
                      };
                 });
             }
-            ItemType::Skipped => {
+            ItemType::Skip => {
                 tokens.extend(quote! {
                     let #ident = std::default::Default::default();
                 });
             }
             ItemType::Nested => {
-                let name = ident.unraw().to_string();
                 tokens.extend(quote! {
-                    let #ident = match sea_orm::FromQueryResult::from_query_result_nullable(row, &format!("{pre}{}-", #name)) {
+                    let #ident = match sea_orm::FromQueryResult::from_query_result_nullable(row, pre) {
                         Err(v @ sea_orm::TryGetError::DbErr(_)) => {
                             return Err(v);
                         }
@@ -70,12 +82,12 @@ impl ToTokens for TryFromQueryResultAssignment<'_> {
         let FromQueryResultItem { ident, typ, .. } = self.0;
 
         match typ {
-            ItemType::Normal | ItemType::Nested => {
+            ItemType::Flat | ItemType::Nested => {
                 tokens.extend(quote! {
                     #ident: #ident?,
                 });
             }
-            ItemType::Skipped => {
+            ItemType::Skip => {
                 tokens.extend(quote! {
                     #ident,
                 });
@@ -84,63 +96,95 @@ impl ToTokens for TryFromQueryResultAssignment<'_> {
     }
 }
 
-/// Method to derive a [QueryResult](sea_orm::QueryResult)
-pub fn expand_derive_from_query_result(
-    ident: Ident,
-    data: Data,
-    generics: Generics,
-) -> syn::Result<TokenStream> {
-    let parsed_fields = match data {
-        Data::Struct(DataStruct {
-            fields: Fields::Named(named),
+impl DeriveFromQueryResult {
+    fn new(
+        DeriveInput {
+            ident,
+            data,
+            generics,
             ..
-        }) => named.named,
-        _ => {
-            return Ok(quote_spanned! {
-                ident.span() => compile_error!("you can only derive FromQueryResult on structs");
-            })
-        }
-    };
+        }: DeriveInput,
+    ) -> Result<Self, Error> {
+        let parsed_fields = match data {
+            Data::Struct(DataStruct {
+                fields: Fields::Named(named),
+                ..
+            }) => named.named,
+            _ => return Err(Error::InputNotStruct),
+        };
 
-    let mut fields = Vec::with_capacity(parsed_fields.len());
-    for parsed_field in parsed_fields.into_iter() {
-        let mut typ = ItemType::Normal;
-        for attr in parsed_field.attrs.iter() {
-            if !attr.path().is_ident("sea_orm") {
-                continue;
-            }
-            if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated) {
-                for meta in list.iter() {
-                    if meta.exists("skip") {
-                        typ = ItemType::Skipped;
-                    } else if meta.exists("nested") {
-                        typ = ItemType::Nested;
+        let mut fields = Vec::with_capacity(parsed_fields.len());
+        for parsed_field in parsed_fields {
+            let mut typ = ItemType::Flat;
+            for attr in parsed_field.attrs.iter() {
+                if !attr.path().is_ident("sea_orm") {
+                    continue;
+                }
+                if let Ok(list) = attr.parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
+                {
+                    for meta in list.iter() {
+                        if meta.exists("skip") {
+                            typ = ItemType::Skip;
+                        } else if meta.exists("nested") {
+                            typ = ItemType::Nested;
+                        }
                     }
                 }
             }
+            let ident = format_ident!("{}", parsed_field.ident.unwrap().to_string());
+            fields.push(FromQueryResultItem { typ, ident });
         }
-        let ident = format_ident!("{}", parsed_field.ident.unwrap().to_string());
-        fields.push(FromQueryResultItem { typ, ident });
+
+        Ok(Self {
+            ident,
+            generics,
+            fields,
+        })
     }
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let ident_try_init: Vec<_> = fields.iter().map(TryFromQueryResultCheck).collect();
-    let ident_try_assign: Vec<_> = fields.iter().map(TryFromQueryResultAssignment).collect();
+    fn expand(&self) -> syn::Result<TokenStream> {
+        Ok(self.impl_from_query_result())
+    }
 
-    Ok(quote!(
-        #[automatically_derived]
-        impl #impl_generics sea_orm::FromQueryResult for #ident #ty_generics #where_clause {
-            fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
-                Ok(Self::from_query_result_nullable(row, pre)?)
+    fn impl_from_query_result(&self) -> TokenStream {
+        let Self {
+            ident,
+            generics,
+            fields,
+        } = self;
+
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+        let ident_try_init: Vec<_> = fields.iter().map(TryFromQueryResultCheck).collect();
+        let ident_try_assign: Vec<_> = fields.iter().map(TryFromQueryResultAssignment).collect();
+
+        quote!(
+            #[automatically_derived]
+            impl #impl_generics sea_orm::FromQueryResult for #ident #ty_generics #where_clause {
+                fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
+                    Ok(Self::from_query_result_nullable(row, pre)?)
+                }
+
+                fn from_query_result_nullable(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::TryGetError> {
+                    #(#ident_try_init)*
+
+                    Ok(Self {
+                        #(#ident_try_assign)*
+                    })
+                }
             }
+        )
+    }
+}
 
-            fn from_query_result_nullable(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::TryGetError> {
-                #(#ident_try_init)*
+pub fn expand_derive_from_query_result(input: DeriveInput) -> syn::Result<TokenStream> {
+    let ident_span = input.ident.span();
 
-                Ok(Self {
-                    #(#ident_try_assign)*
-                })
-            }
-        }
-    ))
+    match DeriveFromQueryResult::new(input) {
+        Ok(partial_model) => partial_model.expand(),
+        Err(Error::InputNotStruct) => Ok(quote_spanned! {
+            ident_span => compile_error!("you can only derive `FromQueryResult` on named struct");
+        }),
+        Err(Error::Syn(err)) => Err(err),
+    }
 }

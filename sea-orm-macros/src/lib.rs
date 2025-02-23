@@ -598,15 +598,10 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 #[cfg(feature = "derive")]
 #[proc_macro_derive(FromQueryResult, attributes(sea_orm))]
 pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
-    let DeriveInput {
-        ident,
-        data,
-        generics,
-        ..
-    } = parse_macro_input!(input);
+    let derive_input = parse_macro_input!(input);
 
-    match derives::expand_derive_from_query_result(ident, data, generics) {
-        Ok(ts) => ts.into(),
+    match derives::expand_derive_from_query_result(derive_input) {
+        Ok(token_stream) => token_stream.into(),
         Err(e) => e.to_compile_error().into(),
     }
 }

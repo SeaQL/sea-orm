@@ -24,6 +24,7 @@ enum Error {
     OverlappingAttributes(Span),
     Syn(syn::Error),
 }
+
 #[derive(Debug, PartialEq, Eq)]
 enum ColumnAs {
     /// column in the model
@@ -208,7 +209,7 @@ impl DerivePartialModel {
 
         quote! {
             #[automatically_derived]
-            impl sea_orm::PartialModelTrait for #ident{
+            impl sea_orm::PartialModelTrait for #ident {
                 fn select_cols<S: sea_orm::SelectColumns>(#select_ident: S) -> S {
                     Self::select_cols_nested(#select_ident, None)
                 }
@@ -228,7 +229,7 @@ pub fn expand_derive_partial_model(input: syn::DeriveInput) -> syn::Result<Token
     match DerivePartialModel::new(input) {
         Ok(partial_model) => partial_model.expand(),
         Err(Error::NotSupportGeneric(span)) => Ok(quote_spanned! {
-            span => compile_error!("you can only derive `DerivePartialModel` on named struct");
+            span => compile_error!("you can only derive `DerivePartialModel` on concrete struct");
         }),
         Err(Error::OverlappingAttributes(span)) => Ok(quote_spanned! {
             span => compile_error!("you can only use one of `from_col`, `from_expr`, `nested`");
