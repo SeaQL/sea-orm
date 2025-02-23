@@ -130,11 +130,11 @@ pub fn expand_derive_from_query_result(
     Ok(quote!(
         #[automatically_derived]
         impl #impl_generics sea_orm::FromQueryResult for #ident #ty_generics #where_clause {
-            fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::DbErr> {
+            fn from_query_result(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::DbErr> {
                 Ok(Self::from_query_result_nullable(row, pre)?)
             }
 
-            fn from_query_result_nullable(row: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::TryGetError> {
+            fn from_query_result_nullable(row: &sea_orm::QueryResult, pre: &str) -> std::result::Result<Self, sea_orm::TryGetError> {
                 #(#ident_try_init)*
 
                 Ok(Self {
