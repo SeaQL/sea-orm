@@ -1,7 +1,9 @@
 #![allow(unused_imports, dead_code)]
 
 use entity::{Column, Entity};
-use sea_orm::{prelude::*, DerivePartialModel, FromQueryResult, Set};
+use sea_orm::{
+    prelude::*, sea_query::Alias, DerivePartialModel, FromQueryResult, JoinType, QuerySelect, Set,
+};
 
 use crate::common::TestContext;
 use common::bakery_chain::*;
@@ -172,6 +174,51 @@ async fn partial_model_left_join_exists() {
     ctx.delete().await;
 }
 
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "bakery::Entity", alias = "factory", from_query_result)]
+struct Factory {
+    id: i32,
+    #[sea_orm(from_col = "Name")]
+    plant: String,
+}
+
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "cake::Entity", from_query_result)]
+struct CakeFactory {
+    id: i32,
+    name: String,
+    #[sea_orm(nested)]
+    bakery: Option<Factory>,
+}
+
+#[sea_orm_macros::test]
+async fn partial_model_left_join_alias() {
+    // SELECT "cake"."id" AS "id", "cake"."name" AS "name", "factory"."id" AS "bakery_id", "factory"."name" AS "bakery_plant" FROM "cake" LEFT JOIN "bakery" AS "factory" ON "cake"."bakery_id" = "factory"."id" LIMIT 1
+    let ctx = TestContext::new("partial_model_left_join_alias").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    fill_data(&ctx, true).await;
+
+    let cake: CakeFactory = cake::Entity::find()
+        .join_as(
+            JoinType::LeftJoin,
+            cake::Relation::Bakery.def(),
+            Alias::new("factory"),
+        )
+        .into_partial_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(cake.id, 13);
+    assert_eq!(cake.name, "Test Cake");
+    assert!(matches!(cake.bakery, Some(Factory { id: 42, .. })));
+    assert_eq!(cake.bakery.unwrap().plant, "cool little bakery");
+
+    ctx.delete().await;
+}
+
 #[sea_orm_macros::test]
 async fn partial_model_flat() {
     let ctx = TestContext::new("partial_model_flat").await;
@@ -194,6 +241,7 @@ async fn partial_model_flat() {
 
 #[sea_orm_macros::test]
 async fn partial_model_nested() {
+    // SELECT "bakery"."id" AS "basics_id", "bakery"."name" AS "basics_title", "bakery"."profit_margin" AS "profit" FROM "bakery" LIMIT 1
     let ctx = TestContext::new("partial_model_nested").await;
     create_tables(&ctx.db).await.unwrap();
 

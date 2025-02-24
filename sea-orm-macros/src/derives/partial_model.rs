@@ -29,11 +29,9 @@ enum Error {
 
 #[derive(Debug, PartialEq, Eq)]
 enum ColumnAs {
-    /// column in the model
-    Col(syn::Ident),
     /// alias from a column in model
     ColAlias {
-        col: syn::Ident,
+        col: Option<syn::Ident>,
         field: syn::Ident,
     },
     /// from an expr
@@ -51,6 +49,7 @@ enum ColumnAs {
 
 struct DerivePartialModel {
     entity: Option<syn::Type>,
+    alias: Option<String>,
     ident: syn::Ident,
     fields: Vec<ColumnAs>,
     from_query_result: bool,
@@ -74,6 +73,7 @@ impl DerivePartialModel {
         };
 
         let mut entity = None;
+        let mut alias = None;
         let mut from_query_result = false;
 
         for attr in input.attrs.iter() {
@@ -85,6 +85,8 @@ impl DerivePartialModel {
                 for meta in list {
                     if let Some(s) = meta.get_as_kv("entity") {
                         entity = Some(syn::parse_str::<syn::Type>(&s).map_err(Error::Syn)?);
+                    } else if let Some(s) = meta.get_as_kv("alias") {
+                        alias = Some(s);
                     } else if meta.exists("from_query_result") {
                         from_query_result = true;
                     }
@@ -132,7 +134,7 @@ impl DerivePartialModel {
                     }
 
                     ColumnAs::ColAlias {
-                        col,
+                        col: Some(col),
                         field: field_name,
                     }
                 }
@@ -142,7 +144,7 @@ impl DerivePartialModel {
                 },
                 (None, None, true) => ColumnAs::Nested {
                     typ: field.ty,
-                    field: field_name.unraw(),
+                    field: field_name,
                 },
                 (None, None, false) => {
                     if entity.is_none() {
@@ -151,7 +153,10 @@ impl DerivePartialModel {
                     if skip {
                         ColumnAs::Skip(field_name)
                     } else {
-                        ColumnAs::Col(field_name)
+                        ColumnAs::ColAlias {
+                            col: None,
+                            field: field_name,
+                        }
                     }
                 }
                 (_, _, _) => return Err(Error::OverlappingAttributes(field_span)),
@@ -161,6 +166,7 @@ impl DerivePartialModel {
 
         Ok(Self {
             entity,
+            alias,
             ident: input.ident,
             fields: column_as_list,
             from_query_result,
@@ -184,7 +190,6 @@ impl DerivePartialModel {
                             _ => FqrItemType::Flat,
                         },
                         ident: match col_as {
-                            ColumnAs::Col(field) => field,
                             ColumnAs::ColAlias { field, .. } => field,
                             ColumnAs::Expr { field, .. } => field,
                             ColumnAs::Nested { field, .. } => field,
@@ -210,43 +215,36 @@ impl DerivePartialModel {
         let select_ident = format_ident!("select");
         let DerivePartialModel {
             entity,
+            alias,
             ident,
             fields,
             ..
         } = self;
         let select_col_code_gen = fields.iter().map(|col_as| match col_as {
-            ColumnAs::Col(ident) => {
-                let entity = entity.as_ref().unwrap();
-                let uppercase_ident = format_ident!(
-                    "{}",
-                    ident.to_string().to_upper_camel_case()
-                );
-                let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #uppercase_ident);
-                let ident_stringified = ident.unraw().to_string();
-                quote!(let #select_ident =
-                       if let Some(prefix) = pre {
-                           let ident = format!("{prefix}{}", #ident_stringified);
-                           sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, ident)
-                       } else {
-                           sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, #ident_stringified)
-                       };
-                )
-            },
             ColumnAs::ColAlias { col, field } => {
-                let field = field.to_string();
+                let field = field.unraw().to_string();
                 let entity = entity.as_ref().unwrap();
-                let col_value = quote!( <#entity as sea_orm::EntityTrait>::Column:: #col);
+                let col_name = if let Some(col) = col {
+                    col
+                } else {
+                    &format_ident!("{}", field.to_upper_camel_case())
+                };
+                let col_value = if let Some(alias) = alias {
+                    quote!( Expr::col((Alias::new(#alias), <#entity as sea_orm::EntityTrait>::Column:: #col_name)) )
+                } else {
+                    quote!( <#entity as sea_orm::EntityTrait>::Column:: #col_name)
+                };
                 quote!(let #select_ident =
-                       if let Some(prefix) = pre {
-                           let ident = format!("{prefix}{}", #field);
-                           sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, ident)
-                       } else {
-                           sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, #field)
-                       };
+                    if let Some(prefix) = pre {
+                        let ident = format!("{prefix}{}", #field);
+                        sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, ident)
+                    } else {
+                        sea_orm::SelectColumns::select_column_as(#select_ident, #col_value, #field)
+                    };
                 )
-            },
+            }
             ColumnAs::Expr { expr, field } => {
-                let field = field.to_string();
+                let field = field.unraw().to_string();
                 quote!(let #select_ident =
                        if let Some(prefix) = pre {
                            let ident = format!("{prefix}{}", #field);
@@ -255,19 +253,19 @@ impl DerivePartialModel {
                            sea_orm::SelectColumns::select_column_as(#select_ident, #expr, #field)
                        };
                 )
-            },
+            }
             ColumnAs::Nested { typ, field } => {
-                let field = field.to_string();
+                let field = field.unraw().to_string();
                 quote!(let #select_ident =
                        <#typ as sea_orm::PartialModelTrait>::select_cols_nested(#select_ident,
                                 Some(&if let Some(prefix) = pre {
-                                          format!("{prefix}{}_", #field) } 
+                                          format!("{prefix}{}_", #field) }
                                       else {
                                           format!("{}_", #field)
                                       }
                                 ));
                 )
-            },
+            }
             ColumnAs::Skip(_) => quote!(),
         });
 
@@ -340,12 +338,15 @@ mod test {
         assert_eq!(middle.fields.len(), 3);
         assert_eq!(
             middle.fields[0],
-            ColumnAs::Col(format_ident!("default_field"))
+            ColumnAs::ColAlias {
+                col: None,
+                field: format_ident!("default_field")
+            }
         );
         assert_eq!(
             middle.fields[1],
             ColumnAs::ColAlias {
-                col: format_ident!("Bar"),
+                col: Some(format_ident!("Bar")),
                 field: format_ident!("alias_field"),
             },
         );
@@ -378,7 +379,10 @@ mod test {
         assert_eq!(middle.fields.len(), 1);
         assert_eq!(
             middle.fields[0],
-            ColumnAs::Col(format_ident!("default_field"))
+            ColumnAs::ColAlias {
+                col: None,
+                field: format_ident!("default_field")
+            }
         );
         assert_eq!(middle.from_query_result, true);
 
