@@ -269,7 +269,7 @@ impl SqlxPostgresPoolConnection {
     }
 
     /// Explicitly close the Postgres connection
-    pub async fn close(self) -> Result<(), DbErr> {
+    pub async fn close(&self) -> Result<(), DbErr> {
         self.pool.close().await;
         Ok(())
     }

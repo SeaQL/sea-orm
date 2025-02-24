@@ -257,7 +257,7 @@ impl SqlxSqlitePoolConnection {
     }
 
     /// Explicitly close the SQLite connection
-    pub async fn close(self) -> Result<(), DbErr> {
+    pub async fn close(&self) -> Result<(), DbErr> {
         self.pool.close().await;
         Ok(())
     }

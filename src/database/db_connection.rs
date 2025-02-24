@@ -476,7 +476,7 @@ impl DatabaseConnection {
     }
 
     /// Explicitly close the database connection
-    pub async fn close(self) -> Result<(), DbErr> {
+    pub async fn close(&self) -> Result<(), DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
             DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.close().await,
