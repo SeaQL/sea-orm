@@ -230,7 +230,7 @@ impl DerivePartialModel {
                     &format_ident!("{}", field.to_upper_camel_case())
                 };
                 let col_value = if let Some(alias) = alias {
-                    quote!( Expr::col((Alias::new(#alias), <#entity as sea_orm::EntityTrait>::Column:: #col_name)) )
+                    quote!(Expr::col((Alias::new(#alias), <#entity as sea_orm::EntityTrait>::Column:: #col_name)))
                 } else {
                     quote!( <#entity as sea_orm::EntityTrait>::Column:: #col_name)
                 };
@@ -246,24 +246,24 @@ impl DerivePartialModel {
             ColumnAs::Expr { expr, field } => {
                 let field = field.unraw().to_string();
                 quote!(let #select_ident =
-                       if let Some(prefix) = pre {
-                           let ident = format!("{prefix}{}", #field);
-                           sea_orm::SelectColumns::select_column_as(#select_ident, #expr, ident)
-                       } else {
-                           sea_orm::SelectColumns::select_column_as(#select_ident, #expr, #field)
-                       };
+                    if let Some(prefix) = pre {
+                        let ident = format!("{prefix}{}", #field);
+                        sea_orm::SelectColumns::select_column_as(#select_ident, #expr, ident)
+                    } else {
+                        sea_orm::SelectColumns::select_column_as(#select_ident, #expr, #field)
+                    };
                 )
             }
             ColumnAs::Nested { typ, field } => {
                 let field = field.unraw().to_string();
                 quote!(let #select_ident =
-                       <#typ as sea_orm::PartialModelTrait>::select_cols_nested(#select_ident,
-                                Some(&if let Some(prefix) = pre {
-                                          format!("{prefix}{}_", #field) }
-                                      else {
-                                          format!("{}_", #field)
-                                      }
-                                ));
+                    <#typ as sea_orm::PartialModelTrait>::select_cols_nested(#select_ident,
+                        Some(&if let Some(prefix) = pre {
+                                format!("{prefix}{}_", #field)
+                            } else {
+                                format!("{}_", #field)
+                            }
+                        ));
                 )
             }
             ColumnAs::Skip(_) => quote!(),

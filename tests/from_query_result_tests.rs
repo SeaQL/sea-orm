@@ -1,9 +1,10 @@
 #![allow(unused_imports, dead_code)]
 
-use sea_orm::{prelude::*, query::QuerySelect, FromQueryResult, Set};
+use sea_orm::{prelude::*, query::QuerySelect, FromQueryResult, JoinType, Set};
 
 use crate::common::TestContext;
 use common::bakery_chain::*;
+use serde_json::json;
 
 mod common;
 
@@ -57,7 +58,7 @@ async fn fill_data(ctx: &TestContext, link: bool) {
     cake::Entity::insert(cake::ActiveModel {
         id: Set(13),
         name: Set("Test Cake".to_owned()),
-        price: Set(Decimal::ZERO),
+        price: Set(2.into()),
         bakery_id: Set(if link { Some(42) } else { None }),
         gluten_free: Set(true),
         serial: Set(Uuid::new_v4()),
@@ -65,6 +66,26 @@ async fn fill_data(ctx: &TestContext, link: bool) {
     .exec(&ctx.db)
     .await
     .expect("insert succeeds");
+
+    baker::Entity::insert(baker::ActiveModel {
+        id: Set(22),
+        name: Set("Master Baker".to_owned()),
+        contact_details: Set(json!(null)),
+        bakery_id: Set(if link { Some(42) } else { None }),
+    })
+    .exec(&ctx.db)
+    .await
+    .expect("insert succeeds");
+
+    if link {
+        cakes_bakers::Entity::insert(cakes_bakers::ActiveModel {
+            cake_id: Set(13),
+            baker_id: Set(22),
+        })
+        .exec(&ctx.db)
+        .await
+        .expect("insert succeeds");
+    }
 }
 
 #[sea_orm_macros::test]
@@ -165,6 +186,42 @@ async fn from_query_result_nested() {
     assert_eq!(bakery.basics.id, 42);
     assert_eq!(bakery.basics.title, "cool little bakery");
     assert_eq!(bakery.profit, 4.1);
+
+    ctx.delete().await;
+}
+
+#[derive(FromQueryResult)]
+struct CakePlain {
+    id: i32,
+    name: String,
+    price: Decimal,
+    #[sea_orm(nested)]
+    baker: Option<cakes_bakers::Model>,
+}
+
+#[sea_orm_macros::test]
+async fn from_query_result_plain_model() {
+    let ctx = TestContext::new("from_query_result_plain_model").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    fill_data(&ctx, true).await;
+
+    let cake: CakePlain = cake::Entity::find()
+        .column(cakes_bakers::Column::CakeId)
+        .column(cakes_bakers::Column::BakerId)
+        .join(JoinType::LeftJoin, cakes_bakers::Relation::Cake.def().rev())
+        .into_model()
+        .one(&ctx.db)
+        .await
+        .expect("succeeds to get the result")
+        .expect("exactly one model in DB");
+
+    assert_eq!(cake.id, 13);
+    assert_eq!(cake.name, "Test Cake");
+    assert_eq!(cake.price, Decimal::from(2));
+    let baker = cake.baker.unwrap();
+    assert_eq!(baker.cake_id, 13);
+    assert_eq!(baker.baker_id, 22);
 
     ctx.delete().await;
 }
