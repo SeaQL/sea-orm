@@ -196,22 +196,32 @@ Look at the [Seaography Example](https://github.com/SeaQL/sea-orm/tree/master/ex
 
 <img src="https://raw.githubusercontent.com/SeaQL/sea-orm/master/examples/seaography_example/Seaography%20example.png"/>
 
-## 🖥️ Admin Dashboard
+## 🖥️ SeaORM Pro: Effortless Admin Panel
 
-Making use of Seaography, it will be a breeze to create admin dashboard with your favourite frontend framework. Check out our examples and tutorials:
+[SeaORM Pro](https://www.sea-ql.org/sea-orm-pro/) is an admin panel solution allowing you to quickly and easily launch an admin panel for your application - frontend development skills not required, but certainly nice to have!
 
-1. [React Admin Example](https://github.com/SeaQL/sea-orm/tree/master/examples/react_admin)
-1. [Adding GraphQL Support to Loco with Seaography](https://www.sea-ql.org/blog/2024-07-01-graphql-support-with-loco-seaography/)
-1. [GraphQL based Admin Dashboard with Loco and Seaography](https://www.sea-ql.org/blog/2024-08-08-graphql-admin-dashboard-with-loco-seaography/)
+Features:
 
-<img src="https://www.sea-ql.org/blog/img/Loco%20x%20Seaography%20Dashboard%20Demo.png"/>
++ Full CRUD
++ Built on React + GraphQL
++ Built-in GraphQL resolver
++ Customize the UI with simple TOML
 
-## Learn More
+Learn More
 
-1. [Design](https://github.com/SeaQL/sea-orm/tree/master/DESIGN.md)
-1. [Architecture](https://www.sea-ql.org/SeaORM/docs/internal-design/architecture/)
-1. [Engineering](https://www.sea-ql.org/blog/2022-07-30-engineering/)
-1. [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
++ [Example Repo](https://github.com/SeaQL/sea-orm-pro)
++ [Getting Started with Loco](https://www.sea-ql.org/sea-orm-pro/docs/install-and-config/getting-started-loco/)
++ [Getting Started with Axum](https://www.sea-ql.org/sea-orm-pro/docs/install-and-config/getting-started-axum/)
+
+<a href="https://www.sea-ql.org/sea-orm-pro/"><img style={{borderRadius: "25px"}} alt="SeaORM Pro" src="https://www.sea-ql.org/sea-orm-pro/img/01_banner.png" /></a>
+
+## Releases
+
+[SeaORM 1.0](https://www.sea-ql.org/blog/2024-08-04-sea-orm-1.0/) is a stable release. The 1.x version will be updated until at least October 2025, and we'll decide whether to release a 2.0 version or extend the 1.x life cycle.
+
+It doesn't mean that SeaORM is 'done', we've designed an architecture to allow us to deliver new features without major breaking changes. In fact, more features are coming!
+
++ [Change Log](https://github.com/SeaQL/sea-orm/tree/master/CHANGELOG.md)
 
 ### Who's using SeaORM?
 
