@@ -213,7 +213,7 @@ Learn More
 + [Getting Started with Loco](https://www.sea-ql.org/sea-orm-pro/docs/install-and-config/getting-started-loco/)
 + [Getting Started with Axum](https://www.sea-ql.org/sea-orm-pro/docs/install-and-config/getting-started-axum/)
 
-<a href="https://www.sea-ql.org/sea-orm-pro/"><img style={{borderRadius: "25px"}} alt="SeaORM Pro" src="https://www.sea-ql.org/sea-orm-pro/img/01_banner.png" /></a>
+<a href="https://www.sea-ql.org/sea-orm-pro/"><img alt="SeaORM Pro" src="https://www.sea-ql.org/sea-orm-pro/img/01_banner.png" /></a>
 
 ## Releases
 
