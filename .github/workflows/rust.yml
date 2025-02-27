@@ -126,6 +126,7 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo fmt --manifest-path sea-orm-cli/Cargo.toml --all -- --check
       - run: cargo fmt --manifest-path sea-orm-migration/Cargo.toml --all -- --check
+      - run: find examples -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo fmt --manifest-path {} -- --check
 
   compile-sqlite:
     name: Compile SQLite
@@ -230,41 +231,26 @@ jobs:
   examples:
     name: Examples
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        path: [
-          examples/actix_example,
-          examples/axum_example,
-          examples/basic,
-          examples/graphql_example,
-          examples/jsonrpsee_example,
-          examples/loco_example,
-          examples/loco_starter,
-          examples/loco_seaography,
-          examples/poem_example,
-          examples/proxy_gluesql_example,
-          examples/react_admin,
-          examples/rocket_example,
-          examples/rocket_okapi_example,
-          examples/salvo_example,
-          examples/seaography_example,
-          examples/tonic_example,
-        ]
     steps:
       - uses: actions/checkout@v4
-      - if: ${{ contains(matrix.path, 'tonic_example') }}
-        uses: arduino/setup-protoc@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-          components: rustfmt
-      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo fmt --manifest-path {} -- --check
+      - uses: arduino/setup-protoc@v3
       - uses: dtolnay/rust-toolchain@stable
-      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo update --manifest-path {}
-      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo build --manifest-path {}
-      - run: find ${{ matrix.path }} -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {}
-      - run: ${{'! '}}${{ '[ -d "' }}${{ matrix.path }}${{ '/service" ]' }} || find ${{ matrix.path }}/service -type f -name 'Cargo.toml' -print0 | xargs -t -0 -I {} cargo test --manifest-path {} --features mock
+      - run: sh build-tools/cargo-test.sh examples/actix_example
+      - run: sh build-tools/cargo-test.sh examples/axum_example
+      - run: sh build-tools/cargo-test.sh examples/basic
+      - run: sh build-tools/cargo-test.sh examples/graphql_example
+      - run: sh build-tools/cargo-test.sh examples/jsonrpsee_example
+      - run: sh build-tools/cargo-test.sh examples/loco_example
+      - run: sh build-tools/cargo-test.sh examples/loco_starter
+      - run: sh build-tools/cargo-test.sh examples/loco_seaography
+      - run: sh build-tools/cargo-test.sh examples/poem_example
+      - run: sh build-tools/cargo-test.sh examples/proxy_gluesql_example
+      - run: sh build-tools/cargo-test.sh examples/react_admin
+      - run: sh build-tools/cargo-test.sh examples/rocket_example
+      - run: sh build-tools/cargo-test.sh examples/rocket_okapi_example
+      - run: sh build-tools/cargo-test.sh examples/salvo_example
+      - run: sh build-tools/cargo-test.sh examples/seaography_example
+      - run: sh build-tools/cargo-test.sh examples/tonic_example
 
   issues-matrix:
     name: Issues Matrix
