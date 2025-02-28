@@ -2,7 +2,8 @@
 
 use entity::{Column, Entity};
 use sea_orm::{
-    prelude::*, sea_query::Alias, DerivePartialModel, FromQueryResult, JoinType, QuerySelect, Set,
+    prelude::*, sea_query::Alias, DerivePartialModel, FromQueryResult, JoinType, QueryOrder,
+    QuerySelect, Set,
 };
 
 use crate::common::TestContext;
@@ -106,38 +107,16 @@ struct BakeryDetails {
 #[derive(Default)]
 struct Ignore {}
 
-async fn fill_data(ctx: &TestContext, link: bool) {
-    bakery::Entity::insert(bakery::ActiveModel {
-        id: Set(42),
-        name: Set("cool little bakery".to_string()),
-        profit_margin: Set(4.1),
-    })
-    .exec(&ctx.db)
-    .await
-    .expect("insert succeeds");
-
-    cake::Entity::insert(cake::ActiveModel {
-        id: Set(13),
-        name: Set("Test Cake".to_owned()),
-        price: Set(Decimal::ZERO),
-        bakery_id: Set(if link { Some(42) } else { None }),
-        gluten_free: Set(true),
-        serial: Set(Uuid::new_v4()),
-    })
-    .exec(&ctx.db)
-    .await
-    .expect("insert succeeds");
-}
-
 #[sea_orm_macros::test]
 async fn partial_model_left_join_does_not_exist() {
     let ctx = TestContext::new("partial_model_left_join_does_not_exist").await;
     create_tables(&ctx.db).await.unwrap();
 
-    fill_data(&ctx, false).await;
+    seed_data::init_1(&ctx, false).await;
 
     let cake: Cake = cake::Entity::find()
         .left_join(bakery::Entity)
+        .order_by_asc(cake::Column::Id)
         .into_partial_model()
         .one(&ctx.db)
         .await
@@ -145,7 +124,7 @@ async fn partial_model_left_join_does_not_exist() {
         .expect("exactly one model in DB");
 
     assert_eq!(cake.id, 13);
-    assert_eq!(cake.name, "Test Cake");
+    assert_eq!(cake.name, "Cheesecake");
     assert!(cake.bakery.is_none());
 
     ctx.delete().await;
@@ -156,10 +135,11 @@ async fn partial_model_left_join_exists() {
     let ctx = TestContext::new("partial_model_left_join_exists").await;
     create_tables(&ctx.db).await.unwrap();
 
-    fill_data(&ctx, true).await;
+    seed_data::init_1(&ctx, true).await;
 
     let cake: Cake = cake::Entity::find()
         .left_join(bakery::Entity)
+        .order_by_asc(cake::Column::Id)
         .into_partial_model()
         .one(&ctx.db)
         .await
@@ -167,7 +147,7 @@ async fn partial_model_left_join_exists() {
         .expect("exactly one model in DB");
 
     assert_eq!(cake.id, 13);
-    assert_eq!(cake.name, "Test Cake");
+    assert_eq!(cake.name, "Cheesecake");
     assert!(matches!(cake.bakery, Some(Bakery { id: 42, .. })));
     assert_eq!(cake.bakery.unwrap().title, "cool little bakery");
 
@@ -197,7 +177,7 @@ async fn partial_model_left_join_alias() {
     let ctx = TestContext::new("partial_model_left_join_alias").await;
     create_tables(&ctx.db).await.unwrap();
 
-    fill_data(&ctx, true).await;
+    seed_data::init_1(&ctx, true).await;
 
     let cake: CakeFactory = cake::Entity::find()
         .join_as(
@@ -205,6 +185,7 @@ async fn partial_model_left_join_alias() {
             cake::Relation::Bakery.def(),
             Alias::new("factory"),
         )
+        .order_by_asc(cake::Column::Id)
         .into_partial_model()
         .one(&ctx.db)
         .await
@@ -212,7 +193,7 @@ async fn partial_model_left_join_alias() {
         .expect("exactly one model in DB");
 
     assert_eq!(cake.id, 13);
-    assert_eq!(cake.name, "Test Cake");
+    assert_eq!(cake.name, "Cheesecake");
     assert!(matches!(cake.bakery, Some(Factory { id: 42, .. })));
     assert_eq!(cake.bakery.unwrap().plant, "cool little bakery");
 
@@ -224,7 +205,7 @@ async fn partial_model_flat() {
     let ctx = TestContext::new("partial_model_flat").await;
     create_tables(&ctx.db).await.unwrap();
 
-    fill_data(&ctx, true).await;
+    seed_data::init_1(&ctx, true).await;
 
     let bakery: Bakery = bakery::Entity::find()
         .into_partial_model()
@@ -245,7 +226,7 @@ async fn partial_model_nested() {
     let ctx = TestContext::new("partial_model_nested").await;
     create_tables(&ctx.db).await.unwrap();
 
-    fill_data(&ctx, true).await;
+    seed_data::init_1(&ctx, true).await;
 
     let bakery: BakeryDetails = bakery::Entity::find()
         .into_partial_model()
@@ -257,6 +238,93 @@ async fn partial_model_nested() {
     assert_eq!(bakery.basics.id, 42);
     assert_eq!(bakery.basics.title, "cool little bakery");
     assert_eq!(bakery.profit, 4.1);
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+async fn partial_model_join_three() {
+    let ctx = TestContext::new("partial_model_join_three").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    seed_data::init_1(&ctx, true).await;
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "order::Entity", from_query_result)]
+    struct OrderItem {
+        id: i32,
+        total: Decimal,
+        #[sea_orm(nested)]
+        customer: Customer,
+        #[sea_orm(nested)]
+        line: LineItem,
+    }
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "customer::Entity", from_query_result)]
+    struct Customer {
+        name: String,
+    }
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "lineitem::Entity", from_query_result)]
+    struct LineItem {
+        price: Decimal,
+        quantity: i32,
+        #[sea_orm(nested)]
+        cake: Cake,
+    }
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "cake::Entity", from_query_result)]
+    struct Cake {
+        name: String,
+    }
+
+    let items: Vec<OrderItem> = order::Entity::find()
+        .left_join(customer::Entity)
+        .left_join(lineitem::Entity)
+        .join(JoinType::LeftJoin, lineitem::Relation::Cake.def())
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .into_partial_model()
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        items,
+        [
+            OrderItem {
+                id: 101,
+                total: Decimal::from(10),
+                customer: Customer {
+                    name: "Bob".to_owned()
+                },
+                line: LineItem {
+                    cake: Cake {
+                        name: "Cheesecake".to_owned()
+                    },
+                    price: Decimal::from(2),
+                    quantity: 2,
+                }
+            },
+            OrderItem {
+                id: 101,
+                total: Decimal::from(10),
+                customer: Customer {
+                    name: "Bob".to_owned()
+                },
+                line: LineItem {
+                    cake: Cake {
+                        name: "Chocolate".to_owned()
+                    },
+                    price: Decimal::from(3),
+                    quantity: 2,
+                }
+            }
+        ]
+    );
 
     ctx.delete().await;
 }
@@ -284,7 +352,7 @@ async fn partial_model_optional_field_but_type_error() {
     let ctx = TestContext::new("partial_model_nested").await;
     create_tables(&ctx.db).await.unwrap();
 
-    fill_data(&ctx, false).await;
+    seed_data::init_1(&ctx, false).await;
 
     let _: DbErr = cake::Entity::find()
         .left_join(bakery::Entity)

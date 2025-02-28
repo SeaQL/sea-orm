@@ -1,6 +1,10 @@
 #![allow(unused_imports, dead_code)]
 
-use sea_orm::{prelude::*, query::QuerySelect, FromQueryResult, JoinType, Set};
+use sea_orm::{
+    prelude::*,
+    query::{QueryOrder, QuerySelect},
+    FromQueryResult, JoinType, Set,
+};
 
 use crate::common::TestContext;
 use common::bakery_chain::*;
@@ -45,55 +49,12 @@ struct BakeryFlat {
     profit: f64,
 }
 
-async fn fill_data(ctx: &TestContext, link: bool) {
-    bakery::Entity::insert(bakery::ActiveModel {
-        id: Set(42),
-        name: Set("cool little bakery".to_string()),
-        profit_margin: Set(4.1),
-    })
-    .exec(&ctx.db)
-    .await
-    .expect("insert succeeds");
-
-    cake::Entity::insert(cake::ActiveModel {
-        id: Set(13),
-        name: Set("Test Cake".to_owned()),
-        price: Set(2.into()),
-        bakery_id: Set(if link { Some(42) } else { None }),
-        gluten_free: Set(true),
-        serial: Set(Uuid::new_v4()),
-    })
-    .exec(&ctx.db)
-    .await
-    .expect("insert succeeds");
-
-    baker::Entity::insert(baker::ActiveModel {
-        id: Set(22),
-        name: Set("Master Baker".to_owned()),
-        contact_details: Set(json!(null)),
-        bakery_id: Set(if link { Some(42) } else { None }),
-    })
-    .exec(&ctx.db)
-    .await
-    .expect("insert succeeds");
-
-    if link {
-        cakes_bakers::Entity::insert(cakes_bakers::ActiveModel {
-            cake_id: Set(13),
-            baker_id: Set(22),
-        })
-        .exec(&ctx.db)
-        .await
-        .expect("insert succeeds");
-    }
-}
-
 #[sea_orm_macros::test]
 async fn from_query_result_left_join_does_not_exist() {
     let ctx = TestContext::new("from_query_result_left_join_does_not_exist").await;
     create_tables(&ctx.db).await.unwrap();
 
-    fill_data(&ctx, false).await;
+    seed_data::init_1(&ctx, false).await;
 
     let cake: Cake = cake::Entity::find()
         .select_only()
@@ -102,6 +63,7 @@ async fn from_query_result_left_join_does_not_exist() {
         .column_as(bakery::Column::Id, "bakery_id")
         .column_as(bakery::Column::Name, "bakery_name")
         .left_join(bakery::Entity)
+        .order_by_asc(cake::Column::Id)
         .into_model()
         .one(&ctx.db)
         .await
@@ -109,7 +71,7 @@ async fn from_query_result_left_join_does_not_exist() {
         .expect("exactly one model in DB");
 
     assert_eq!(cake.id, 13);
-    assert_eq!(cake.name, "Test Cake");
+    assert_eq!(cake.name, "Cheesecake");
     assert!(cake.bakery.is_none());
 
     ctx.delete().await;
@@ -120,7 +82,7 @@ async fn from_query_result_left_join_exists() {
     let ctx = TestContext::new("from_query_result_left_join_exists").await;
     create_tables(&ctx.db).await.unwrap();
 
-    fill_data(&ctx, true).await;
+    seed_data::init_1(&ctx, true).await;
 
     let cake: Cake = cake::Entity::find()
         .select_only()
@@ -129,6 +91,7 @@ async fn from_query_result_left_join_exists() {
         .column_as(bakery::Column::Id, "bakery_id")
         .column_as(bakery::Column::Name, "bakery_name")
         .left_join(bakery::Entity)
+        .order_by_asc(cake::Column::Id)
         .into_model()
         .one(&ctx.db)
         .await
@@ -136,7 +99,7 @@ async fn from_query_result_left_join_exists() {
         .expect("exactly one model in DB");
 
     assert_eq!(cake.id, 13);
-    assert_eq!(cake.name, "Test Cake");
+    assert_eq!(cake.name, "Cheesecake");
     let bakery = cake.bakery.unwrap();
     assert_eq!(bakery.id, 42);
     assert_eq!(bakery.title, "cool little bakery");
@@ -149,7 +112,7 @@ async fn from_query_result_flat() {
     let ctx = TestContext::new("from_query_result_flat").await;
     create_tables(&ctx.db).await.unwrap();
 
-    fill_data(&ctx, true).await;
+    seed_data::init_1(&ctx, true).await;
 
     let bakery: BakeryFlat = bakery::Entity::find()
         .into_model()
@@ -170,7 +133,7 @@ async fn from_query_result_nested() {
     let ctx = TestContext::new("from_query_result_nested").await;
     create_tables(&ctx.db).await.unwrap();
 
-    fill_data(&ctx, true).await;
+    seed_data::init_1(&ctx, true).await;
 
     let bakery: BakeryDetails = bakery::Entity::find()
         .select_only()
@@ -204,12 +167,13 @@ async fn from_query_result_plain_model() {
     let ctx = TestContext::new("from_query_result_plain_model").await;
     create_tables(&ctx.db).await.unwrap();
 
-    fill_data(&ctx, true).await;
+    seed_data::init_1(&ctx, true).await;
 
     let cake: CakePlain = cake::Entity::find()
         .column(cakes_bakers::Column::CakeId)
         .column(cakes_bakers::Column::BakerId)
         .join(JoinType::LeftJoin, cakes_bakers::Relation::Cake.def().rev())
+        .order_by_asc(cake::Column::Id)
         .into_model()
         .one(&ctx.db)
         .await
@@ -217,7 +181,7 @@ async fn from_query_result_plain_model() {
         .expect("exactly one model in DB");
 
     assert_eq!(cake.id, 13);
-    assert_eq!(cake.name, "Test Cake");
+    assert_eq!(cake.name, "Cheesecake");
     assert_eq!(cake.price, Decimal::from(2));
     let baker = cake.baker.unwrap();
     assert_eq!(baker.cake_id, 13);
@@ -245,7 +209,7 @@ async fn from_query_result_optional_field_but_type_error() {
     let ctx = TestContext::new("from_query_result_nested_error").await;
     create_tables(&ctx.db).await.unwrap();
 
-    fill_data(&ctx, false).await;
+    seed_data::init_1(&ctx, false).await;
 
     let _: DbErr = cake::Entity::find()
         .select_only()
