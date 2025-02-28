@@ -475,15 +475,21 @@ impl DatabaseConnection {
         }
     }
 
-    /// Explicitly close the database connection
+    /// Explicitly close the database connection.
+    /// See [`Self::close_by_ref`] for usage with references.
     pub async fn close(self) -> Result<(), DbErr> {
+        self.close_by_ref().await
+    }
+
+    /// Explicitly close the database connection
+    pub async fn close_by_ref(&self) -> Result<(), DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.close().await,
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.close_by_ref().await,
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.close().await,
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.close_by_ref().await,
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.close().await,
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.close_by_ref().await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(_) => {
                 // Nothing to cleanup, we just consume the `DatabaseConnection`
