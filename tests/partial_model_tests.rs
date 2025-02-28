@@ -178,7 +178,7 @@ async fn partial_model_left_join_exists() {
 #[sea_orm(entity = "bakery::Entity", alias = "factory", from_query_result)]
 struct Factory {
     id: i32,
-    #[sea_orm(from_col = "Name")]
+    #[sea_orm(from_col = "name")]
     plant: String,
 }
 
