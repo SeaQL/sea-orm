@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
 use std::fmt::Debug;
 
-pub use ActiveValue::NotSet;
+pub use ActiveValue::{NotSet, Set, Unchanged};
 
 /// Defines a stateful value used in ActiveModel.
 ///
@@ -49,15 +49,6 @@ where
     NotSet,
 }
 
-/// Defines a set operation on an [ActiveValue]
-#[allow(non_snake_case)]
-pub fn Set<V>(v: V) -> ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    ActiveValue::set(v)
-}
-
 /// Defines an not set operation on an [ActiveValue]
 #[deprecated(
     since = "0.5.0",
@@ -69,15 +60,6 @@ where
     V: Into<Value>,
 {
     ActiveValue::not_set()
-}
-
-/// Defines an unchanged operation on an [ActiveValue]
-#[allow(non_snake_case)]
-pub fn Unchanged<V>(value: V) -> ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    ActiveValue::unchanged(value)
 }
 
 /// A Trait for ActiveModel to perform Create, Update or Delete operation.
