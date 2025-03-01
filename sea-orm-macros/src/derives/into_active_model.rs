@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{punctuated::Punctuated, token::Comma, Meta};
+use syn::{punctuated::Punctuated, token::Comma, Meta, PathArguments, PathSegment};
 
 use super::util::GetMeta;
 
@@ -73,13 +73,24 @@ impl DeriveIntoActiveModel {
         let type_alias_definition = if is_qualified_type(&active_model_ident) {
             let type_alias = format_ident!("ActiveModelFor{ident}");
             let type_def = quote!( type #type_alias = #active_model_ident; );
-            active_model_ident = syn::parse_str::<syn::Type>(&type_alias.to_string()).unwrap();
+            active_model_ident = syn::Type::Path(syn::TypePath {
+                qself: None,
+                path: syn::Path {
+                    leading_colon: None,
+                    segments: [PathSegment {
+                        ident: type_alias,
+                        arguments: PathArguments::None,
+                    }]
+                    .into_iter()
+                    .collect(),
+                },
+            });
             type_def
         } else {
             quote!()
         };
 
-        let expanded_fields_into_active_model = fields.iter().map(|field_ident| {
+        let expanded_fields = fields.iter().map(|field_ident| {
             quote!(
                 sea_orm::IntoActiveValue::<_>::into_active_value(self.#field_ident).into()
             )
@@ -92,7 +103,7 @@ impl DeriveIntoActiveModel {
             impl sea_orm::IntoActiveModel<#active_model_ident> for #ident {
                 fn into_active_model(self) -> #active_model_ident {
                     #active_model_ident {
-                        #( #fields: #expanded_fields_into_active_model, )*
+                        #( #fields: #expanded_fields, )*
                         ..::std::default::Default::default()
                     }
                 }
