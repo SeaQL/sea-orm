@@ -1,21 +1,14 @@
 use heck::ToUpperCamelCase;
-use proc_macro2::Span;
-use proc_macro2::TokenStream;
-use quote::format_ident;
-use quote::quote;
-use quote::quote_spanned;
-use syn::ext::IdentExt;
-use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
-use syn::token::Comma;
-use syn::Expr;
-
-use syn::Meta;
-use syn::Type;
+use proc_macro2::{Span, TokenStream};
+use quote::{format_ident, quote, quote_spanned};
+use syn::{
+    ext::IdentExt, punctuated::Punctuated, spanned::Spanned, token::Comma, Expr, Meta, Type,
+};
 
 use super::from_query_result::{
     DeriveFromQueryResult, FromQueryResultItem, ItemType as FqrItemType,
 };
+use super::into_active_model::DeriveIntoActiveModel;
 use super::util::GetMeta;
 
 #[derive(Debug)]
@@ -30,7 +23,7 @@ enum Error {
 #[derive(Debug, PartialEq, Eq)]
 enum ColumnAs {
     /// alias from a column in model
-    ColAlias {
+    Col {
         col: Option<syn::Ident>,
         field: syn::Ident,
     },
@@ -49,10 +42,12 @@ enum ColumnAs {
 
 struct DerivePartialModel {
     entity: Option<syn::Type>,
+    active_model: Option<syn::Type>,
     alias: Option<String>,
     ident: syn::Ident,
     fields: Vec<ColumnAs>,
     from_query_result: bool,
+    into_active_model: bool,
 }
 
 impl DerivePartialModel {
@@ -61,20 +56,20 @@ impl DerivePartialModel {
             return Err(Error::NotSupportGeneric(input.generics.params.span()));
         }
 
-        let syn::Data::Struct(
-            syn::DataStruct {
-                fields: syn::Fields::Named(syn::FieldsNamed { named: fields, .. }),
+        let fields = match input.data {
+            syn::Data::Struct(syn::DataStruct {
+                fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
                 ..
-            },
-            ..,
-        ) = input.data
-        else {
-            return Err(Error::InputNotStruct);
+            }) => named,
+            _ => return Err(Error::InputNotStruct),
         };
 
         let mut entity = None;
+        let mut entity_string = String::new();
+        let mut active_model = None;
         let mut alias = None;
         let mut from_query_result = false;
+        let mut into_active_model = false;
 
         for attr in input.attrs.iter() {
             if !attr.path().is_ident("sea_orm") {
@@ -85,13 +80,25 @@ impl DerivePartialModel {
                 for meta in list {
                     if let Some(s) = meta.get_as_kv("entity") {
                         entity = Some(syn::parse_str::<syn::Type>(&s).map_err(Error::Syn)?);
+                        entity_string = s;
                     } else if let Some(s) = meta.get_as_kv("alias") {
                         alias = Some(s);
                     } else if meta.exists("from_query_result") {
                         from_query_result = true;
+                    } else if meta.exists("into_active_model") {
+                        into_active_model = true;
                     }
                 }
             }
+        }
+
+        if into_active_model {
+            active_model = Some(
+                syn::parse_str::<syn::Type>(&format!(
+                    "<{entity_string} as EntityTrait>::ActiveModel"
+                ))
+                .map_err(Error::Syn)?,
+            );
         }
 
         let mut column_as_list = Vec::with_capacity(fields.len());
@@ -133,7 +140,7 @@ impl DerivePartialModel {
                         return Err(Error::EntityNotSpecified);
                     }
 
-                    ColumnAs::ColAlias {
+                    ColumnAs::Col {
                         col: Some(col),
                         field: field_name,
                     }
@@ -153,7 +160,7 @@ impl DerivePartialModel {
                     if skip {
                         ColumnAs::Skip(field_name)
                     } else {
-                        ColumnAs::ColAlias {
+                        ColumnAs::Col {
                             col: None,
                             field: field_name,
                         }
@@ -166,10 +173,12 @@ impl DerivePartialModel {
 
         Ok(Self {
             entity,
+            active_model,
             alias,
             ident: input.ident,
             fields: column_as_list,
             from_query_result,
+            into_active_model,
         })
     }
 
@@ -190,7 +199,7 @@ impl DerivePartialModel {
                             _ => FqrItemType::Flat,
                         },
                         ident: match col_as {
-                            ColumnAs::ColAlias { field, .. } => field,
+                            ColumnAs::Col { field, .. } => field,
                             ColumnAs::Expr { field, .. } => field,
                             ColumnAs::Nested { field, .. } => field,
                             ColumnAs::Skip(field) => field,
@@ -205,9 +214,33 @@ impl DerivePartialModel {
             quote!()
         };
 
+        let impl_into_active_model = if self.into_active_model {
+            DeriveIntoActiveModel {
+                ident: self.ident.clone(),
+                active_model: self.active_model.clone(),
+                fields: self
+                    .fields
+                    .iter()
+                    .filter_map(|col_as| {
+                        match col_as {
+                            ColumnAs::Col { field, .. } => Some(field),
+                            ColumnAs::Expr { field, .. } => Some(field),
+                            ColumnAs::Nested { .. } => None,
+                            ColumnAs::Skip(_) => None,
+                        }
+                        .cloned()
+                    })
+                    .collect(),
+            }
+            .impl_into_active_model()
+        } else {
+            quote!()
+        };
+
         Ok(quote! {
             #impl_partial_model
             #impl_from_query_result
+            #impl_into_active_model
         })
     }
 
@@ -221,7 +254,7 @@ impl DerivePartialModel {
             ..
         } = self;
         let select_col_code_gen = fields.iter().map(|col_as| match col_as {
-            ColumnAs::ColAlias { col, field } => {
+            ColumnAs::Col { col, field } => {
                 let field = field.unraw().to_string();
                 let entity = entity.as_ref().unwrap();
                 let col_name = if let Some(col) = col {
@@ -338,14 +371,14 @@ mod test {
         assert_eq!(middle.fields.len(), 3);
         assert_eq!(
             middle.fields[0],
-            ColumnAs::ColAlias {
+            ColumnAs::Col {
                 col: None,
                 field: format_ident!("default_field")
             }
         );
         assert_eq!(
             middle.fields[1],
-            ColumnAs::ColAlias {
+            ColumnAs::Col {
                 col: Some(format_ident!("Bar")),
                 field: format_ident!("alias_field"),
             },
@@ -379,7 +412,7 @@ mod test {
         assert_eq!(middle.fields.len(), 1);
         assert_eq!(
             middle.fields[0],
-            ColumnAs::ColAlias {
+            ColumnAs::Col {
                 col: None,
                 field: format_ident!("default_field")
             }
