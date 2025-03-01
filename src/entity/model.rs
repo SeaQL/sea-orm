@@ -7,7 +7,7 @@ use async_trait::async_trait;
 pub use sea_query::Value;
 use std::fmt::Debug;
 
-/// A Trait for a Model
+/// The interface for Model, implemented by data structs
 #[async_trait]
 pub trait ModelTrait: Clone + Send + Debug {
     #[allow(missing_docs)]

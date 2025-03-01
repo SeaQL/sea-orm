@@ -2,8 +2,8 @@
 
 use entity::{Column, Entity};
 use sea_orm::{
-    prelude::*, sea_query::Alias, DerivePartialModel, FromQueryResult, JoinType, QueryOrder,
-    QuerySelect, Set,
+    prelude::*, sea_query::Alias, DerivePartialModel, FromQueryResult, IntoActiveModel, JoinType,
+    NotSet, QueryOrder, QuerySelect, Set,
 };
 
 use crate::common::TestContext;
@@ -85,7 +85,7 @@ struct Bakery {
 }
 
 #[derive(DerivePartialModel)]
-#[sea_orm(entity = "cake::Entity", from_query_result)]
+#[sea_orm(entity = "cake::Entity", from_query_result, into_active_model)]
 struct Cake {
     id: i32,
     name: String,
@@ -327,6 +327,28 @@ async fn partial_model_join_three() {
     );
 
     ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
+async fn partial_model_into_active_model() {
+    let mut cake = Cake {
+        id: 12,
+        name: "Lemon Drizzle".to_owned(),
+        bakery: None,
+        ignore: Ignore {},
+    }
+    .into_active_model();
+    cake.serial = NotSet;
+
+    assert_eq!(
+        cake,
+        cake::ActiveModel {
+            id: Set(12),
+            name: Set("Lemon Drizzle".to_owned()),
+            serial: NotSet,
+            ..Default::default()
+        }
+    );
 }
 
 #[derive(Debug, FromQueryResult, DerivePartialModel)]
