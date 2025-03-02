@@ -5,10 +5,13 @@ pub mod common;
 pub use chrono::offset::Utc;
 pub use common::{bakery_chain::*, setup::*, TestContext};
 use pretty_assertions::assert_eq;
-pub use rust_decimal::prelude::*;
-use sea_orm::{entity::*, query::*, DbErr, DerivePartialModel, FromQueryResult};
-use sea_query::{Expr, Func, SimpleExpr};
-pub use uuid::Uuid;
+use sea_orm::sea_query::{Expr, Func, SimpleExpr};
+use sea_orm::{
+    entity::*,
+    prelude::{DateTime, Decimal, Uuid},
+    query::*,
+    DbErr, DerivePartialModel, FromQueryResult,
+};
 
 // Run the test locally:
 // DATABASE_URL="mysql://root:@localhost" cargo test --features sqlx-mysql,runtime-async-std-native-tls --test relational_tests
@@ -1080,6 +1083,85 @@ pub async fn linked() -> Result<(), DbErr> {
                 vec![]
             ),
         ]
+    );
+
+    ctx.delete().await;
+
+    Ok(())
+}
+
+#[sea_orm_macros::test]
+pub async fn select_three() -> Result<(), DbErr> {
+    use common::bakery_chain::*;
+
+    let ctx = TestContext::new("test_select_three").await;
+    create_tables(&ctx.db).await?;
+
+    seed_data::init_1(&ctx, true).await;
+
+    let items: Vec<(order::Model, Option<customer::Model>)> = order::Entity::find()
+        .find_also_related(customer::Entity)
+        .order_by_asc(order::Column::Id)
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    let order = order::Model {
+        id: 101,
+        total: Decimal::from(10),
+        bakery_id: 42,
+        customer_id: 11,
+        placed_at: DateTime::UNIX_EPOCH,
+    };
+
+    let customer = customer::Model {
+        id: 11,
+        name: "Bob".to_owned(),
+        notes: Some("Sweet tooth".to_owned()),
+    };
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].0, order);
+    assert_eq!(items[0].1.as_ref().unwrap(), &customer);
+
+    let items: Vec<(
+        order::Model,
+        Option<customer::Model>,
+        Option<lineitem::Model>,
+    )> = order::Entity::find()
+        .find_also_related(customer::Entity)
+        .find_also_related(lineitem::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    assert_eq!(items.len(), 2);
+    assert_eq!(items[0].0, order);
+    assert_eq!(items[0].1.as_ref().unwrap(), &customer);
+    assert_eq!(items[1].0, order);
+    assert_eq!(items[1].1.as_ref().unwrap(), &customer);
+
+    assert_eq!(
+        items[0].2,
+        Some(lineitem::Model {
+            id: 1,
+            price: 2.into(),
+            quantity: 2,
+            order_id: 101,
+            cake_id: 13,
+        })
+    );
+
+    assert_eq!(
+        items[1].2,
+        Some(lineitem::Model {
+            id: 2,
+            price: 3.into(),
+            quantity: 2,
+            order_id: 101,
+            cake_id: 15,
+        })
     );
 
     ctx.delete().await;
