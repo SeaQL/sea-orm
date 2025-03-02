@@ -1,6 +1,6 @@
 use crate::{
     join_tbl_on_condition, unpack_table_ref, ColumnTrait, EntityTrait, IdenStatic, Iterable,
-    Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
+    Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectThree, SelectTwo, SelectTwoMany,
 };
 pub use sea_query::JoinType;
 use sea_query::{Alias, Condition, Expr, IntoIden, SeaRc, SelectExpr};
@@ -152,6 +152,32 @@ where
             });
         }
         select_two_many
+    }
+}
+
+impl<E, F> SelectTwo<E, F>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+{
+    /// Left Join with an Entity Related to the first Entity
+    pub fn find_also_related<R>(self, r: R) -> SelectThree<E, F, R>
+    where
+        R: EntityTrait,
+        E: Related<R>,
+    {
+        self.join_join(JoinType::LeftJoin, E::to(), E::via())
+            .select_also(r)
+    }
+
+    /// Left Join with an Entity Related to the second Entity
+    pub fn and_also_related<R>(self, r: R) -> SelectThree<E, F, R>
+    where
+        R: EntityTrait,
+        F: Related<R>,
+    {
+        self.join_join(JoinType::LeftJoin, F::to(), F::via())
+            .select_also(r)
     }
 }
 

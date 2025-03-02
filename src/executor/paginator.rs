@@ -1,6 +1,6 @@
 use crate::{
     error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel,
-    SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait,
+    SelectThree, SelectThreeModel, SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait,
 };
 use async_stream::stream;
 use futures_util::Stream;
@@ -294,6 +294,23 @@ where
     N: FromQueryResult + Sized + Send + Sync + 'db,
 {
     type Selector = SelectTwoModel<M, N>;
+
+    fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, Self::Selector> {
+        self.into_model().paginate(db, page_size)
+    }
+}
+
+impl<'db, C, M, N, O, E, F, G> PaginatorTrait<'db, C> for SelectThree<E, F, G>
+where
+    C: ConnectionTrait,
+    E: EntityTrait<Model = M>,
+    F: EntityTrait<Model = N>,
+    G: EntityTrait<Model = O>,
+    M: FromQueryResult + Sized + Send + Sync + 'db,
+    N: FromQueryResult + Sized + Send + Sync + 'db,
+    O: FromQueryResult + Sized + Send + Sync + 'db,
+{
+    type Selector = SelectThreeModel<M, N, O>;
 
     fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, Self::Selector> {
         self.into_model().paginate(db, page_size)
