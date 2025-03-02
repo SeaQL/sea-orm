@@ -5,6 +5,132 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.1.7 - 2025-03-02
+
+### New Features
+
+* Support nested entities in `FromQueryResult` https://github.com/SeaQL/sea-orm/pull/2508
+```rust
+#[derive(FromQueryResult)]
+struct Cake {
+    id: i32,
+    name: String,
+    #[sea_orm(nested)]
+    bakery: Option<CakeBakery>,
+}
+
+#[derive(FromQueryResult)]
+struct CakeBakery {
+    #[sea_orm(from_alias = "bakery_id")]
+    id: i32,
+    #[sea_orm(from_alias = "bakery_name")]
+    title: String,
+}
+
+let cake: Cake = cake::Entity::find()
+    .select_only()
+    .column(cake::Column::Id)
+    .column(cake::Column::Name)
+    .column_as(bakery::Column::Id, "bakery_id")
+    .column_as(bakery::Column::Name, "bakery_name")
+    .left_join(bakery::Entity)
+    .order_by_asc(cake::Column::Id)
+    .into_model()
+    .one(&ctx.db)
+    .await?
+    .unwrap();
+
+assert_eq!(
+    cake,
+    Cake {
+        id: 1,
+        name: "Cake".to_string(),
+        bakery: Some(CakeBakery {
+            id: 20,
+            title: "Bakery".to_string(),
+        })
+    }
+);
+```
+* Support nested entities in `DerivePartialModel` https://github.com/SeaQL/sea-orm/pull/2508
+```rust
+#[derive(DerivePartialModel)] // FromQueryResult is no longer needed
+#[sea_orm(entity = "cake::Entity", from_query_result)]
+struct Cake {
+    id: i32,
+    name: String,
+    #[sea_orm(nested)]
+    bakery: Option<Bakery>,
+}
+
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "bakery::Entity", from_query_result)]
+struct Bakery {
+    id: i32,
+    #[sea_orm(from_col = "Name")]
+    title: String,
+}
+
+// same as previous example, but without the custom selects
+let cake: Cake = cake::Entity::find()
+    .left_join(bakery::Entity)
+    .order_by_asc(cake::Column::Id)
+    .into_partial_model()
+    .one(&ctx.db)
+    .await?
+    .unwrap();
+
+assert_eq!(
+    cake,
+    Cake {
+        id: 1,
+        name: "Cake".to_string(),
+        bakery: Some(CakeBakery {
+            id: 20,
+            title: "Bakery".to_string(),
+        })
+    }
+);
+```
+* Derive also `IntoActiveModel` with `DerivePartialModel` https://github.com/SeaQL/sea-orm/pull/2517
+```rust
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "cake::Entity", into_active_model)]
+struct Cake {
+    id: i32,
+    name: String,
+}
+
+assert_eq!(
+    Cake {
+        id: 12,
+        name: "Lemon Drizzle".to_owned(),
+    }
+    .into_active_model(),
+    cake::ActiveModel {
+        id: Set(12),
+        name: Set("Lemon Drizzle".to_owned()),
+        ..Default::default()
+    }
+);
+```
+
+### Enhancements
+
+* Support complex type path in `DeriveIntoActiveModel` https://github.com/SeaQL/sea-orm/pull/2517
+```rust 
+#[derive(DeriveIntoActiveModel)]
+#[sea_orm(active_model = "<fruit::Entity as EntityTrait>::ActiveModel")]
+struct Fruit {
+    cake_id: Option<Option<i32>>,
+}
+```
+* Added `DatabaseConnection::close_by_ref` https://github.com/SeaQL/sea-orm/pull/2511
+```rust
+pub async fn close(self) -> Result<(), DbErr> { .. } // existing
+pub async fn close_by_ref(&self) -> Result<(), DbErr> { .. } // new
+```
+
 ## 1.1.6 - 2025-02-24
 
 ### New Features
