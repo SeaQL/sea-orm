@@ -29,7 +29,7 @@ pub async fn init_1(ctx: &TestContext, link: bool) {
         name: Set("Chocolate".to_owned()),
         price: Set(3.into()),
         bakery_id: Set(if link { Some(42) } else { None }),
-        gluten_free: Set(false),
+        gluten_free: Set(true),
         ..Default::default()
     })
     .exec(&ctx.db)
