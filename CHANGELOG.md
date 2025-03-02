@@ -143,6 +143,10 @@ pub async fn close(self) -> Result<(), DbErr> { .. } // existing
 pub async fn close_by_ref(&self) -> Result<(), DbErr> { .. } // new
 ```
 
+### House Keeping
+
+* Cleanup legacy `ActiveValue::Set` https://github.com/SeaQL/sea-orm/pull/2515
+
 ## 1.1.6 - 2025-02-24
 
 ### New Features
