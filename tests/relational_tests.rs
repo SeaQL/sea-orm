@@ -1136,33 +1136,49 @@ pub async fn select_three() -> Result<(), DbErr> {
         .await
         .unwrap();
 
+    let line_1 = lineitem::Model {
+        id: 1,
+        price: 2.into(),
+        quantity: 2,
+        order_id: 101,
+        cake_id: 13,
+    };
+
+    let line_2 = lineitem::Model {
+        id: 2,
+        price: 3.into(),
+        quantity: 2,
+        order_id: 101,
+        cake_id: 15,
+    };
+
     assert_eq!(items.len(), 2);
     assert_eq!(items[0].0, order);
     assert_eq!(items[0].1.as_ref().unwrap(), &customer);
-    assert_eq!(items[1].0, order);
     assert_eq!(items[1].1.as_ref().unwrap(), &customer);
 
-    assert_eq!(
-        items[0].2,
-        Some(lineitem::Model {
-            id: 1,
-            price: 2.into(),
-            quantity: 2,
-            order_id: 101,
-            cake_id: 13,
-        })
-    );
+    assert_eq!(items[1].0, order);
+    assert_eq!(items[0].2.as_ref().unwrap(), &line_1);
+    assert_eq!(items[1].2.as_ref().unwrap(), &line_2);
 
-    assert_eq!(
-        items[1].2,
-        Some(lineitem::Model {
-            id: 2,
-            price: 3.into(),
-            quantity: 2,
-            order_id: 101,
-            cake_id: 15,
-        })
-    );
+    let items: Vec<(order::Model, Option<lineitem::Model>, Option<cake::Model>)> =
+        order::Entity::find()
+            .find_also_related(lineitem::Entity)
+            .and_also_related(cake::Entity)
+            .order_by_asc(order::Column::Id)
+            .order_by_asc(lineitem::Column::Id)
+            .all(&ctx.db)
+            .await
+            .unwrap();
+
+    assert_eq!(items.len(), 2);
+    assert_eq!(items[0].0, order);
+    assert_eq!(items[0].1.as_ref().unwrap(), &line_1);
+    assert_eq!(items[0].2.as_ref().unwrap().name, "Cheesecake");
+
+    assert_eq!(items[1].0, order);
+    assert_eq!(items[1].1.as_ref().unwrap(), &line_2);
+    assert_eq!(items[1].2.as_ref().unwrap().name, "Chocolate");
 
     ctx.delete().await;
 

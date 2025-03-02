@@ -117,7 +117,7 @@ where
     }
 
     fn prepare_select(mut self) -> Self {
-        prepare_select_col::<F, Self, _>(&mut self, SelectB);
+        prepare_select_col::<F, _, _>(&mut self, SelectB);
         self
     }
 }
@@ -141,7 +141,7 @@ where
     }
 
     fn prepare_select(mut self) -> Self {
-        prepare_select_col::<F, Self, _>(&mut self, SelectB);
+        prepare_select_col::<F, _, _>(&mut self, SelectB);
         self
     }
 
@@ -171,7 +171,7 @@ where
     }
 
     fn prepare_select(mut self) -> Self {
-        prepare_select_col::<G, Self, _>(&mut self, SelectC);
+        prepare_select_col::<G, _, _>(&mut self, SelectC);
         self
     }
 }

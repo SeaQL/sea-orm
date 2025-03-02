@@ -62,7 +62,7 @@ where
     model: PhantomData<T>,
 }
 
-/// Helper class to process query result for 1 Model
+/// Helper class to handle query result for 1 Model
 #[derive(Debug)]
 pub struct SelectModel<M>
 where
@@ -71,7 +71,7 @@ where
     model: PhantomData<M>,
 }
 
-/// Helper class to process query result for 2 Models
+/// Helper class to handle query result for 2 Models
 #[derive(Clone, Debug)]
 pub struct SelectTwoModel<M, N>
 where
@@ -81,7 +81,7 @@ where
     model: PhantomData<(M, N)>,
 }
 
-/// Helper class to process query result for 3 Models
+/// Helper class to handle query result for 3 Models
 #[derive(Clone, Debug)]
 pub struct SelectThreeModel<M, N, O>
 where
