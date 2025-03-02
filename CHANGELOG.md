@@ -114,6 +114,18 @@ assert_eq!(
     }
 );
 ```
+* Added `SelectThree` https://github.com/SeaQL/sea-orm/pull/2518
+```rust
+// Order -> (many) Lineitem -> Cake
+let items: Vec<(order::Model, Option<lineitem::Model>, Option<cake::Model>)> =
+    order::Entity::find()
+        .find_also_related(lineitem::Entity)
+        .and_also_related(cake::Entity)
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .all(&ctx.db)
+        .await?;
+```
 
 ### Enhancements
 
