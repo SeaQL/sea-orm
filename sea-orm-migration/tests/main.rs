@@ -12,13 +12,15 @@ async fn main() -> Result<(), DbErr> {
         .init();
 
     let url = &std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
+    let group = "default";
 
-    run_migration(url, default::Migrator, "sea_orm_migration", "public").await?;
+    run_migration(url, default::Migrator, "sea_orm_migration", "public", group).await?;
     run_migration(
         url,
         default::Migrator,
         "sea_orm_migration_schema",
         "my_schema",
+        group,
     )
     .await?;
 
@@ -27,6 +29,7 @@ async fn main() -> Result<(), DbErr> {
         override_migration_table_name::Migrator,
         "sea_orm_migration_table_name",
         "public",
+        group,
     )
     .await?;
     run_migration(
@@ -34,6 +37,7 @@ async fn main() -> Result<(), DbErr> {
         override_migration_table_name::Migrator,
         "sea_orm_migration_table_name_schema",
         "my_schema",
+        group,
     )
     .await?;
 
@@ -45,6 +49,7 @@ async fn run_migration<Migrator>(
     _: Migrator,
     db_name: &str,
     schema: &str,
+    group: &str,
 ) -> Result<(), DbErr>
 where
     Migrator: MigratorTrait,
@@ -98,7 +103,7 @@ where
     let manager = SchemaManager::new(db);
 
     println!("\nMigrator::status");
-    Migrator::status(db).await?;
+    Migrator::status(db, group).await?;
 
     println!("\nMigrator::install");
     Migrator::install(db).await?;
@@ -111,22 +116,22 @@ where
     }
 
     println!("\nMigrator::reset");
-    Migrator::reset(db).await?;
+    Migrator::reset(db, group).await?;
 
     assert!(!manager.has_table("cake").await?);
     assert!(!manager.has_table("fruit").await?);
 
     println!("\nMigrator::up");
-    Migrator::up(db, Some(0)).await?;
+    Migrator::up(db, group, Some(0)).await?;
 
     assert!(!manager.has_table("cake").await?);
     assert!(!manager.has_table("fruit").await?);
 
     println!("\nMigrator::up");
-    Migrator::up(db, Some(1)).await?;
+    Migrator::up(db, group, Some(1)).await?;
 
     println!("\nMigrator::get_pending_migrations");
-    let migrations = Migrator::get_pending_migrations(db).await?;
+    let migrations = Migrator::get_pending_migrations(db, group).await?;
     assert_eq!(migrations.len(), 5);
 
     let migration = migrations.get(0).unwrap();
@@ -137,13 +142,13 @@ where
     assert!(!manager.has_table("fruit").await?);
 
     println!("\nMigrator::down");
-    Migrator::down(db, Some(0)).await?;
+    Migrator::down(db, group, Some(0)).await?;
 
     assert!(manager.has_table("cake").await?);
     assert!(!manager.has_table("fruit").await?);
 
     println!("\nMigrator::down");
-    Migrator::down(db, Some(1)).await?;
+    Migrator::down(db, group, Some(1)).await?;
 
     assert!(!manager.has_table("cake").await?);
     assert!(!manager.has_table("fruit").await?);
@@ -158,14 +163,14 @@ where
         // Should throw an error
         println!("\nMigrator::up");
         assert_eq!(
-            Migrator::up(db, None).await,
+            Migrator::up(db, group, None).await,
             Err(DbErr::Migration(
                 "Abort migration and rollback changes".into()
             ))
         );
 
         println!("\nMigrator::status");
-        Migrator::status(db).await?;
+        Migrator::status(db, group).await?;
 
         // Check migrations have been rolled back
         assert!(!manager.has_table("cake").await?);
@@ -176,10 +181,10 @@ where
     }
 
     println!("\nMigrator::up");
-    Migrator::up(db, None).await?;
+    Migrator::up(db, group, None).await?;
 
     println!("\nMigrator::get_applied_migrations");
-    let migrations = Migrator::get_applied_migrations(db).await?;
+    let migrations = Migrator::get_applied_migrations(db, group).await?;
     assert_eq!(migrations.len(), 6);
 
     assert!(!manager.has_index("cake", "non_existent_index").await?);
@@ -190,7 +195,7 @@ where
     assert_eq!(migration.status(), MigrationStatus::Applied);
 
     println!("\nMigrator::status");
-    Migrator::status(db).await?;
+    Migrator::status(db, group).await?;
 
     assert!(manager.has_table("cake").await?);
     assert!(manager.has_table("fruit").await?);
@@ -208,14 +213,14 @@ where
         // Should throw an error
         println!("\nMigrator::down");
         assert_eq!(
-            Migrator::down(db, None).await,
+            Migrator::down(db, group, None).await,
             Err(DbErr::Migration(
                 "Abort migration and rollback changes".into()
             ))
         );
 
         println!("\nMigrator::status");
-        Migrator::status(db).await?;
+        Migrator::status(db, group).await?;
 
         // Check migrations have been rolled back
         assert!(manager.has_table("cake").await?);
@@ -226,7 +231,7 @@ where
     }
 
     println!("\nMigrator::down");
-    Migrator::down(db, None).await?;
+    Migrator::down(db, group, None).await?;
 
     assert!(manager.has_table(migration_table_name).await?);
     if migration_table_name != "seaql_migrations" {
@@ -237,25 +242,25 @@ where
     assert!(!manager.has_table("fruit").await?);
 
     println!("\nMigrator::fresh");
-    Migrator::fresh(db).await?;
+    Migrator::fresh(db, group).await?;
 
     assert!(manager.has_table("cake").await?);
     assert!(manager.has_table("fruit").await?);
 
     println!("\nMigrator::refresh");
-    Migrator::refresh(db).await?;
+    Migrator::refresh(db, group).await?;
 
     assert!(manager.has_table("cake").await?);
     assert!(manager.has_table("fruit").await?);
 
     println!("\nMigrator::reset");
-    Migrator::reset(db).await?;
+    Migrator::reset(db, group).await?;
 
     assert!(!manager.has_table("cake").await?);
     assert!(!manager.has_table("fruit").await?);
 
     println!("\nMigrator::status");
-    Migrator::status(db).await?;
+    Migrator::status(db, group).await?;
 
     Ok(())
 }

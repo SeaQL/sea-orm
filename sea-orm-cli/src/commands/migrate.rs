@@ -18,6 +18,7 @@ pub fn run_migrate_command(
     migration_dir: &str,
     database_schema: Option<String>,
     database_url: Option<String>,
+    group: Option<String>,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>> {
     match command {
@@ -61,6 +62,9 @@ pub fn run_migrate_command(
             }
             if let Some(database_schema) = &database_schema {
                 args.extend(["-s", database_schema]);
+            }
+            if let Some(group) = &group {
+                args.extend(["-g", group]);
             }
             if verbose {
                 args.push("-v");
