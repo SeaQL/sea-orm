@@ -369,16 +369,8 @@ where
             if res.rows_affected() == 0 {
                 return Err(DbErr::RecordNotInserted);
             }
-            let last_insert_id = res.last_insert_id();
-            // For MySQL, the affected-rows number:
-            //   - The affected-rows value per row is `1` if the row is inserted as a new row,
-            //   - `2` if an existing row is updated,
-            //   - and `0` if an existing row is set to its current values.
-            // Reference: https://dev.mysql.com/doc/refman/8.4/en/insert-on-duplicate.html
-            if db_backend == DbBackend::MySql && last_insert_id == 0 {
-                return Err(DbErr::RecordNotInserted);
-            }
-            ValueTypeOf::<A>::try_from_u64(last_insert_id).map_err(|_| DbErr::UnpackInsertId)?
+            ValueTypeOf::<A>::try_from_u64(res.last_insert_id())
+                .map_err(|_| DbErr::UnpackInsertId)?
         }
     };
 
