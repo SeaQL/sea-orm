@@ -151,7 +151,32 @@ pub async fn close_by_ref(&self) -> Result<(), DbErr> { .. } // new
 
 ### New Features
 
-* Support PgVector https://github.com/SeaQL/sea-orm/pull/2500
+* Support PgVector (under feature flag `postgres-vector`) https://github.com/SeaQL/sea-orm/pull/2500
+```rust
+// Model
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[sea_orm(table_name = "image_model")]
+pub struct Model {
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id: i32,
+    pub embedding: PgVector,
+}
+
+// Schema
+sea_query::Table::create()
+    .table(image_model::Entity.table_ref())
+    .col(ColumnDef::new(embedding::Column::Id).integer().not_null().primary_key())
+    .col(ColumnDef::new(embedding::Column::Embedding).vector(None).not_null())
+    ..
+
+// Insert
+ActiveModel {
+    id: NotSet,
+    embedding: Set(PgVector::from(vec![1., 2., 3.])),
+}
+.insert(db)
+.await?
+```
 * Added `Insert::exec_with_returning_keys` & `Insert::exec_with_returning_many` (Postgres only)
 ```rust
 assert_eq!(
