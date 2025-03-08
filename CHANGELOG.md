@@ -161,12 +161,12 @@ pub struct Model {
     pub id: i32,
     pub embedding: PgVector,
 }
-
+ 
 // Schema
 sea_query::Table::create()
     .table(image_model::Entity.table_ref())
-    .col(ColumnDef::new(embedding::Column::Id).integer().not_null().primary_key())
-    .col(ColumnDef::new(embedding::Column::Embedding).vector(None).not_null())
+    .col(ColumnDef::new(Column::Id).integer().not_null().primary_key())
+    .col(ColumnDef::new(Column::Embedding).vector(None).not_null())
     ..
 
 // Insert

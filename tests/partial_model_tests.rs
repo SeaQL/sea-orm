@@ -349,6 +349,18 @@ async fn partial_model_into_active_model() {
             ..Default::default()
         }
     );
+
+    assert_eq!(
+        cake::ActiveModel {
+            ..cake.into_active_model()
+        },
+        cake::ActiveModel {
+            id: Set(12),
+            name: Set("Lemon Drizzle".to_owned()),
+            serial: NotSet,
+            ..Default::default()
+        }
+    );
 }
 
 #[derive(Debug, FromQueryResult, DerivePartialModel)]
