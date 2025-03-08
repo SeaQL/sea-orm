@@ -749,9 +749,8 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///
 /// ```rust
 /// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
-/// use serde::{Deserialize, Serialize};
 ///
-/// #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
+/// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 /// #[sea_orm(table_name = "posts")]
 /// pub struct Model {
 ///     #[sea_orm(primary_key)]
@@ -797,7 +796,35 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// This is necessary to support nested partial models.
 ///
 /// ```
-/// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
+/// use sea_orm::{sea_query::Expr, DerivePartialModel, FromQueryResult};
+/// #
+/// # mod cake {
+/// # use sea_orm::entity::prelude::*;
+/// # #[derive(Clone, Debug, DeriveEntityModel)]
+/// # #[sea_orm(table_name = "cake")]
+/// # pub struct Model {
+/// #     #[sea_orm(primary_key)]
+/// #     pub id: i32,
+/// #     pub name: String,
+/// # }
+/// # #[derive(Copy, Clone, Debug, DeriveRelation, EnumIter)]
+/// # pub enum Relation {}
+/// # impl ActiveModelBehavior for ActiveModel {}
+/// # }
+/// #
+/// # mod bakery {
+/// # use sea_orm::entity::prelude::*;
+/// # #[derive(Clone, Debug, DeriveEntityModel)]
+/// # #[sea_orm(table_name = "bakery")]
+/// # pub struct Model {
+/// #     #[sea_orm(primary_key)]
+/// #     pub id: i32,
+/// #     pub name: String,
+/// # }
+/// # #[derive(Copy, Clone, Debug, DeriveRelation, EnumIter)]
+/// # pub enum Relation {}
+/// # impl ActiveModelBehavior for ActiveModel {}
+/// # }
 ///
 /// #[derive(DerivePartialModel)]
 /// #[sea_orm(entity = "cake::Entity", from_query_result)]
@@ -807,7 +834,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///     #[sea_orm(nested)]
 ///     bakery: Option<Bakery>,
 ///     #[sea_orm(skip)]
-///     ignore: Ignore,
+///     ignore: String,
 /// }
 ///
 /// #[derive(FromQueryResult, DerivePartialModel)]
@@ -817,11 +844,9 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///     #[sea_orm(from_col = "Name")]
 ///     title: String,
 /// }
-/// ```
 ///
-/// In addition, there's an `alias` attribute to select the columns from an alias:
+/// // In addition, there's an `alias` attribute to select the columns from an alias:
 ///
-/// ```
 /// #[derive(DerivePartialModel)]
 /// #[sea_orm(entity = "bakery::Entity", alias = "factory", from_query_result)]
 /// struct Factory {
