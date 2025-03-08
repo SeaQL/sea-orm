@@ -580,6 +580,7 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 /// Convert a query result into the corresponding Model.
 ///
 /// ### Attributes
+///
 /// - `skip`: will not try to pull this field from the query result. And set it to the default value of the type.
 /// - `nested`: allows nesting models. can be any type that implements `FromQueryResult`
 /// - `from_alias`: get the value from this column alias
@@ -741,14 +742,14 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
     }
 }
 
-/// The DerivePartialModel derive macro will implement `sea_orm::PartialModelTrait` for simplify partial model queries.
+/// The DerivePartialModel derive macro will implement [`sea_orm::PartialModelTrait`] for simplify partial model queries.
 ///
 /// ## Usage
 ///
 /// For more complete examples, please refer to https://github.com/SeaQL/sea-orm/blob/master/tests/partial_model_tests.rs
 ///
 /// ```rust
-/// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
+/// use sea_orm::{entity::prelude::*, DerivePartialModel, FromQueryResult};
 ///
 /// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 /// #[sea_orm(table_name = "posts")]
@@ -759,15 +760,8 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///     #[sea_orm(column_type = "Text")]
 ///     pub text: String,
 /// }
-/// # #[derive(Copy, Clone, Debug, EnumIter)]
+/// # #[derive(Copy, Clone, Debug, DeriveRelation, EnumIter)]
 /// # pub enum Relation {}
-/// #
-/// # impl RelationTrait for Relation {
-/// #     fn def(&self) -> RelationDef {
-/// #         panic!("No Relation");
-/// #     }
-/// # }
-/// #
 /// # impl ActiveModelBehavior for ActiveModel {}
 ///
 /// #[derive(Debug, FromQueryResult, DerivePartialModel)]
@@ -796,7 +790,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// This is necessary to support nested partial models.
 ///
 /// ```
-/// use sea_orm::{sea_query::Expr, DerivePartialModel, FromQueryResult};
+/// use sea_orm::{DerivePartialModel, FromQueryResult};
 /// #
 /// # mod cake {
 /// # use sea_orm::entity::prelude::*;
@@ -874,7 +868,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///     )
 ///     .order_by_asc(cake::Column::Id)
 ///     .into_partial_model()
-///     .one(&ctx.db)
+///     .one(&db)
 ///     .await
 ///     .unwrap()
 ///     .unwrap()
@@ -897,7 +891,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// #[sea_orm(entity = "Entity")]
 /// struct SelectResult {
 ///     #[sea_orm(from_expr = "Expr::val(1).add(1)", from_col = "foo")]
-///     sum: i32
+///     sum: i32,
 /// }
 /// ```
 #[cfg(feature = "derive")]
