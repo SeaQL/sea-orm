@@ -330,6 +330,105 @@ async fn partial_model_join_three() {
 }
 
 #[sea_orm_macros::test]
+async fn partial_model_join_three_flat() {
+    let ctx = TestContext::new("partial_model_join_three_flat").await;
+    create_tables(&ctx.db).await.unwrap();
+
+    seed_data::init_1(&ctx, true).await;
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "order::Entity", from_query_result)]
+    struct OrderItem {
+        #[sea_orm(nested)]
+        order: Order,
+        #[sea_orm(nested)]
+        customer: Customer,
+        #[sea_orm(nested)]
+        line: LineItem,
+        #[sea_orm(nested)]
+        cake: Cake,
+    }
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "order::Entity", from_query_result)]
+    struct Order {
+        #[sea_orm(from_col = "id")]
+        order_id: i32,
+        total: Decimal,
+    }
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "customer::Entity", from_query_result)]
+    struct Customer {
+        name: String,
+    }
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "lineitem::Entity", from_query_result)]
+    struct LineItem {
+        price: Decimal,
+        quantity: i32,
+    }
+
+    #[derive(Debug, DerivePartialModel, PartialEq)]
+    #[sea_orm(entity = "cake::Entity", from_query_result)]
+    struct Cake {
+        name: String,
+    }
+
+    let items: Vec<OrderItem> = order::Entity::find()
+        .left_join(customer::Entity)
+        .left_join(lineitem::Entity)
+        .join(JoinType::LeftJoin, lineitem::Relation::Cake.def())
+        .order_by_asc(order::Column::Id)
+        .order_by_asc(lineitem::Column::Id)
+        .into_partial_model()
+        .all(&ctx.db)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        items,
+        [
+            OrderItem {
+                order: Order {
+                    order_id: 101,
+                    total: Decimal::from(10),
+                },
+                customer: Customer {
+                    name: "Bob".to_owned()
+                },
+                line: LineItem {
+                    price: Decimal::from(2),
+                    quantity: 2,
+                },
+                cake: Cake {
+                    name: "Cheesecake".to_owned()
+                },
+            },
+            OrderItem {
+                order: Order {
+                    order_id: 101,
+                    total: Decimal::from(10),
+                },
+                customer: Customer {
+                    name: "Bob".to_owned()
+                },
+                line: LineItem {
+                    price: Decimal::from(3),
+                    quantity: 2,
+                },
+                cake: Cake {
+                    name: "Chocolate".to_owned()
+                },
+            }
+        ]
+    );
+
+    ctx.delete().await;
+}
+
+#[sea_orm_macros::test]
 async fn partial_model_into_active_model() {
     let mut cake = Cake {
         id: 12,
