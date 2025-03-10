@@ -99,6 +99,15 @@ you should provide the directory of that submodule.",
         )]
         database_url: Option<String>,
 
+        #[arg(
+            global = true,
+            short = 'g',
+            long,
+            env = "MIGRATION_GROUP",
+            help = "Migration group name, defaults to the 'default' group."
+        )]
+        group: Option<String>,
+
         #[command(subcommand)]
         command: Option<MigrateSubcommands>,
     },
@@ -359,12 +368,14 @@ pub async fn main() {
             migration_dir,
             database_schema,
             database_url,
+            group,
             command,
         } => run_migrate_command(
             command,
             &migration_dir,
             database_schema,
             database_url,
+            group,
             verbose,
         )
         .unwrap_or_else(handle_error),
