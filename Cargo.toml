@@ -44,7 +44,7 @@ uuid = { version = "1", default-features = false, optional = true }
 pgvector = { version = "~0.4", default-features = false, optional = true }
 ouroboros = { version = "0.18", default-features = false }
 url = { version = "2.2", default-features = false }
-thiserror = { version = "1", default-features = false }
+thiserror = { version = "2", default-features = false }
 
 [dev-dependencies]
 smol = { version = "1.2" }
