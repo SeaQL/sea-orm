@@ -253,7 +253,7 @@ impl<T: TryGetable> TryGetable for Option<T> {
             Ok(v) => Ok(Some(v)),
             Err(TryGetError::Null(_)) => Ok(None),
             #[cfg(feature = "sqlx-dep")]
-            Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::SqlxError(
+            Err(TryGetError::DbErr(DbErr::Query(crate::RuntimeErr::SqlxError(
                 sqlx::Error::ColumnNotFound(_),
             )))) => Ok(None),
             Err(e) => Err(e),
@@ -1471,11 +1471,10 @@ try_from_u64_err!(uuid::Uuid);
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
-    use sea_query::Value;
-
     use super::*;
+    use crate::RuntimeErr;
+    use sea_query::Value;
+    use std::collections::BTreeMap;
 
     #[test]
     fn from_try_get_error() {

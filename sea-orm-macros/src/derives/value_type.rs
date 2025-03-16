@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, quote_spanned};
 use syn::{spanned::Spanned, Lit, Type};
 
 struct DeriveValueType {
@@ -9,22 +9,25 @@ struct DeriveValueType {
     array_type: TokenStream,
 }
 
+enum Error {
+    InputNotStruct,
+    NotTupleStruct,
+    Syn(syn::Error),
+}
+
 impl DeriveValueType {
-    pub fn new(input: syn::DeriveInput) -> Option<Self> {
-        let dat = input.data;
-        let fields: Option<syn::punctuated::Punctuated<syn::Field, syn::token::Comma>> = match dat {
+    pub fn new(input: syn::DeriveInput) -> Result<Self, Error> {
+        let fields = match input.data {
             syn::Data::Struct(syn::DataStruct {
                 fields: syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed, .. }),
                 ..
-            }) => Some(unnamed),
-            _ => None,
+            }) => unnamed,
+            _ => return Err(Error::InputNotStruct),
         };
 
-        let field = fields
-            .expect("This derive accept only struct")
-            .first()
-            .expect("The struct should contain one value field")
-            .to_owned();
+        let Some(field) = fields.into_iter().next() else {
+            return Err(Error::NotTupleStruct);
+        };
 
         let name = input.ident;
         let mut col_type = None;
@@ -59,7 +62,7 @@ impl DeriveValueType {
 
                 Ok(())
             })
-            .unwrap_or(());
+            .map_err(Error::Syn)?;
         }
 
         let ty = field.clone().ty;
@@ -79,7 +82,7 @@ impl DeriveValueType {
         let array_type =
             crate::derives::sql_type_match::arr_type_match(arr_type, field_type, field_span);
 
-        Some(DeriveValueType {
+        Ok(DeriveValueType {
             name,
             ty,
             column_type,
@@ -138,8 +141,15 @@ impl DeriveValueType {
 
 pub fn expand_derive_value_type(input: syn::DeriveInput) -> syn::Result<TokenStream> {
     let input_span = input.span();
+
     match DeriveValueType::new(input) {
-        Some(model) => model.expand(),
-        None => Err(syn::Error::new(input_span, "error")),
+        Ok(model) => model.expand(),
+        Err(Error::InputNotStruct) => Ok(quote_spanned! {
+            input_span => compile_error!("you can only derive `DeriveValueType` on tuple struct");
+        }),
+        Err(Error::NotTupleStruct) => Ok(quote_spanned! {
+            input_span => compile_error!("you can only derive `DeriveValueType` on tuple struct with one member. e.g. `MyType(pub i32)`");
+        }),
+        Err(Error::Syn(e)) => Err(e),
     }
 }

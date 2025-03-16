@@ -5,12 +5,6 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{parse, Expr, Lit, LitInt, LitStr, UnOp};
 
-enum Error {
-    InputNotEnum,
-    Syn(syn::Error),
-    TT(TokenStream),
-}
-
 struct ActiveEnum {
     ident: syn::Ident,
     enum_name: String,
@@ -26,6 +20,12 @@ struct ActiveEnumVariant {
     string_value: Option<LitStr>,
     num_value: Option<LitInt>,
     rename: Option<CaseStyle>,
+}
+
+enum Error {
+    InputNotEnum,
+    Syn(syn::Error),
+    TT(TokenStream),
 }
 
 impl ActiveEnum {
