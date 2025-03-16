@@ -75,6 +75,15 @@ pub enum DbErr {
     RecordNotUpdated,
 }
 
+/// An error from trying to get a row from a Model
+#[derive(Debug)]
+pub enum TryGetError {
+    /// A database error was encountered as defined in [crate::DbErr]
+    DbErr(DbErr),
+    /// A null value was encountered
+    Null(String),
+}
+
 /// Connection Acquire error
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum ConnAcquireErr {
