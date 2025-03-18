@@ -160,6 +160,8 @@ struct CakePlain {
     price: Decimal,
     #[sea_orm(nested)]
     baker: Option<cakes_bakers::Model>,
+    #[sea_orm(skip)]
+    hidden: i32,
 }
 
 #[sea_orm_macros::test]

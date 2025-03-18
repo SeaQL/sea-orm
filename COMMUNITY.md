@@ -7,11 +7,15 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 ### Startups
 
 - [Caido](https://caido.io/) | A lightweight web security auditing toolkit
+- [Lapdev](https://lap.dev/) [![GitHub stars](https://img.shields.io/github/stars/lapce/lapdev.svg?style=social)](https://github.com/lapce/lapdev) | Self-hosted remote development enviroment | DB: Postgres
+- [OpenObserve](https://openobserve.ai/) [![GitHub stars](https://img.shields.io/github/stars/openobserve/openobserve.svg?style=social)](https://github.com/openobserve/openobserve) | Open-source observability platform | DB: MySQL, Postgres, SQLite
 - [My Data My Consent](https://mydatamyconsent.com/) | Online data sharing for people and businesses simplified
-- [Prefix.dev](https://prefix.dev/) | Conda Package Search, Environment Management and Deployment built for [mamba](https://github.com/mamba-org/mamba)  | DB: Postgres, SQLite
-- [Svix](https://www.svix.com/) ([repository](https://github.com/svix/svix-webhooks)) ![GitHub stars](https://img.shields.io/github/stars/svix/svix-webhooks.svg?style=social) | The enterprise ready webhooks service | DB: Postgres
-- [Templateless](https://templateless.com/) | Email design using just code | DB: Postgres
-- [UpVPN](https://upvpn.app) ([repository](https://github.com/upvpn/upvpn-app)) | Serverless VPN on WireGuard® | DB: SQLite, Postgres
+- [Prefix.dev](https://prefix.dev/) | Conda Package Search, Environment Management and Deployment built for mamba  | DB: Postgres, SQLite
+- [RisingWave](https://risingwave.com/) [![GitHub stars](https://img.shields.io/github/stars/risingwavelabs/risingwave.svg?style=social)](https://github.com/risingwavelabs/risingwave) | Stream processing and management platform | DB: MySQL, Postgres, SQLite
+- [Svix](https://www.svix.com/) [![GitHub stars](https://img.shields.io/github/stars/svix/svix-webhooks.svg?style=social)](https://github.com/svix/svix-webhooks) | The enterprise ready webhooks service | DB: Postgres
+- [System Initiative](https://www.systeminit.com/) [![GitHub stars](https://img.shields.io/github/stars/systeminit/si.svg?style=social)](https://github.com/systeminit/si) | DevOps Automation Platform | DB: Postgres
+- [UpVPN](https://upvpn.app) [![GitHub stars](https://img.shields.io/github/stars/upvpn/upvpn-app.svg?style=social)](https://github.com/upvpn/upvpn-app) | Serverless VPN on WireGuard® | DB: SQLite, Postgres
+- [Zed](https://zed.dev/) [![GitHub stars](https://img.shields.io/github/stars/zed-industries/zed.svg?style=social)](https://github.com/zed-industries/zed) | A high-performance, multiplayer code editor | DB: Postgres
 
 ### Open Source Projects
 
@@ -20,11 +24,11 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 - [Backpack](https://github.com/JSH32/Backpack) | Open source self hosted file sharing platform on crack | DB: MySQL, Postgres, SQLite
 - [Dev Board](https://github.com/goto-eof/dev_board_api_rust) | A dashboard for organizing software development tasks implemented in Rust
 - [Iron Guard](https://github.com/AfaanBilal/iron-guard-server) | An inventory management system HTTP REST API server built with Rocket and SeaORM | DB: MySQL
-- [mediarepo](https://mediarepo.trivernis.dev) ([repository](https://github.com/Trivernis/mediarepo)) ![GitHub stars](https://img.shields.io/github/stars/Trivernis/mediarepo.svg?style=social) | A tag-based media management application | DB: SQLite
+- [mediarepo](https://mediarepo.trivernis.dev) ([repository](https://github.com/Trivernis/mediarepo)) | A tag-based media management application | DB: SQLite
 - [mugen](https://github.com/koopa1338/mugen-dms) | DMS written in 🦀 | DB: Postgres
-- [OctoBase](https://github.com/toeverything/OctoBase) ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend written in 🦀 | DB: MySQL, Postgres, SQLite
+- [OctoBase](https://github.com/toeverything/OctoBase) ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend | DB: MySQL, Postgres, SQLite
 - [Ryot](https://ryot.io/) ([repository](https://github.com/IgnisDa/ryot)) ![GitHub stars](https://img.shields.io/github/stars/ignisda/ryot.svg?style=social) | The only self hosted tracker you will ever need | DB: MySQL, Postgres, SQLite
-- [Wikijump](https://github.com/scpwiki/wikijump) ([repository](https://github.com/scpwiki/wikijump/tree/develop/deepwell)) ![GitHub stars](https://img.shields.io/github/stars/scpwiki/wikijump.svg?style=social) | API service for Wikijump, a fork of Wikidot | DB: Postgres
+- [Wikijump](https://github.com/scpwiki/wikijump) ([repository](https://github.com/scpwiki/wikijump/tree/develop/deepwell)) | API service for Wikijump, a fork of Wikidot | DB: Postgres
 - [sero](https://github.com/clowzed/sero): Host static sites with custom subdomains as surge.sh does. But with full control and cool new features. DB: Postgres
 
 #### Game
@@ -36,7 +40,7 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 #### Social
 - [aeroFans](https://github.com/naryand/aerofans) | Full stack forum-like social media platform in Rust and WebAssembly | DB: Postgres
-- [Crab Fit](https://crab.fit) [![GitHub stars](https://img.shields.io/github/stars/GRA0007/crab.fit.svg?style=social)](https://github.com/GRA0007/crab.fit) | Align your schedules to find the perfect time that works for everyone. | DB: MySQL, Postgres, SQLite
+- [Crab Fit](https://crab.fit) | Align your schedules to find the perfect time that works for everyone. | DB: MySQL, Postgres, SQLite
 - [Hatsu](https://github.com/importantimport/hatsu) | 🩵 Self-hosted & Fully-automated ActivityPub Bridge for Static Sites. | DB: SQLite, Postgres
 - [JinShu](https://github.com/gengteng/jinshu) | A cross-platform **I**nstant **M**essaging system written in 🦀 | DB: MySQL, Postgres
 - [Portfolio](https://github.com/admisio/Portfolio) | Encrypted high school 🏫 admissions service | DB: Postgres, SQLite
@@ -57,10 +61,10 @@ If you have built an app using SeaORM and want to showcase it, feel free to open
 
 #### Dev Tools
 - [CodeCTRL](https://codectrl.authentura.com) ([repository](https://github.com/Authentura/codectrl)) | A self-hostable code logging platform | DB: SQLite
-- [Crosup](https://github.com/tsirysndr/crosup) | Quickly setup your development environment on your Chromebook/ChromeOS or any Linux distribution 🐧 ❄️ 💻 🚀 ✨ | DB: SQLite
+- [Crosup](https://github.com/tsirysndr/crosup) | Quickly setup your development environment on your Chromebook/ChromeOS or any Linux distribution | DB: SQLite
 - [CyberAPI](https://github.com/vicanso/cyberapi) API tool client for developer. | DB: SQLite
 - [nitro_repo](https://github.com/wyatt-herkamp/nitro_repo) | An OpenSource, lightweight, and fast artifact manager. | DB: MySQL, SQLite
-- [Notifico](https://notifico.tech) ([repository](https://github.com/notificohq/notifico)) ![GitHub stars](https://img.shields.io/github/stars/notificohq/notifico.svg?style=social) | An advanced omni-channel notification server. | DB: MySQL, Postgres, SQLite
+- [Notifico](https://notifico.tech) ([repository](https://github.com/notificohq/notifico)) | An advanced omni-channel notification server. | DB: MySQL, Postgres, SQLite
 - [Orca](https://github.com/workfoxes/orca) | An No-code Test Automation platform using Actix, SeaORM, React. runs on the desktop and cloud | DB: Postgres
 
 #### System

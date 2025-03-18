@@ -53,13 +53,13 @@ Integration examples:
 
     Built upon [SeaQuery](https://github.com/SeaQL/sea-query), SeaORM allows you to build complex dynamic queries.
 
-3. Testable
-
-    Use mock connections and/or SQLite to write tests for your application logic.
-
-4. Service Oriented
+3. Service Oriented
 
     Quickly build services that join, filter, sort and paginate data in REST, GraphQL and gRPC APIs.
+
+4. Production Ready
+
+    SeaORM is feature-rich, well-tested and used in production by companies and startups.
 
 ## A quick taste of SeaORM
 
@@ -226,7 +226,18 @@ It doesn't mean that SeaORM is 'done', we've designed an architecture to allow u
 
 ### Who's using SeaORM?
 
-See [Built with SeaORM](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to [submit yours](https://github.com/SeaQL/sea-orm/issues/403)!
+Here is a short list of awesome open source software built with SeaORM. [Full list here](https://github.com/SeaQL/sea-orm/blob/master/COMMUNITY.md#built-with-seaorm). Feel free to submit yours!
+
+- [Zed](https://github.com/zed-industries/zed) ![GitHub stars](https://img.shields.io/github/stars/zed-industries/zed.svg?style=social) | A high-performance, multiplayer code editor
+- [OpenObserve](https://github.com/openobserve/openobserve) ![GitHub stars](https://img.shields.io/github/stars/openobserve/openobserve.svg?style=social) | Open-source observability platform
+- [RisingWave](https://github.com/risingwavelabs/risingwave) ![GitHub stars](https://img.shields.io/github/stars/risingwavelabs/risingwave.svg?style=social) | Stream processing and management platform
+- [LLDAP](https://github.com/nitnelave/lldap) ![GitHub stars](https://img.shields.io/github/stars/nitnelave/lldap.svg?style=social) | A light LDAP server for user management
+- [Warpgate](https://github.com/warp-tech/warpgate) ![GitHub stars](https://img.shields.io/github/stars/warp-tech/warpgate.svg?style=social) | Smart SSH bastion that works with any SSH client
+- [Svix](https://github.com/svix/svix-webhooks) ![GitHub stars](https://img.shields.io/github/stars/svix/svix-webhooks.svg?style=social) | The enterprise ready webhooks service
+- [Ryot](https://github.com/IgnisDa/ryot) ![GitHub stars](https://img.shields.io/github/stars/ignisda/ryot.svg?style=social) | The only self hosted tracker you will ever need
+- [Lapdev](https://github.com/lapce/lapdev) ![GitHub stars](https://img.shields.io/github/stars/lapce/lapdev.svg?style=social) | Self-hosted remote development enviroment
+- [System Initiative](https://github.com/systeminit/si) ![GitHub stars](https://img.shields.io/github/stars/systeminit/si.svg?style=social) | DevOps Automation Platform
+- [OctoBase](https://github.com/toeverything/OctoBase) ![GitHub stars](https://img.shields.io/github/stars/toeverything/OctoBase.svg?style=social) | A light-weight, scalable, offline collaborative data backend
 
 ## License
 

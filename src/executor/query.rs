@@ -1,4 +1,8 @@
-use crate::{error::*, SelectGetableValue, SelectorRaw, Statement};
+pub use crate::error::TryGetError;
+use crate::{
+    error::{json_err, type_err, DbErr},
+    SelectGetableValue, SelectorRaw, Statement,
+};
 use std::fmt;
 
 #[cfg(any(feature = "mock", feature = "proxy"))]
@@ -47,15 +51,6 @@ pub trait TryGetable: Sized {
     fn try_get_by_index(res: &QueryResult, index: usize) -> Result<Self, TryGetError> {
         Self::try_get_by(res, index)
     }
-}
-
-/// An error from trying to get a row from a Model
-#[derive(Debug)]
-pub enum TryGetError {
-    /// A database error was encountered as defined in [crate::DbErr]
-    DbErr(DbErr),
-    /// A null value was encountered
-    Null(String),
 }
 
 impl From<TryGetError> for DbErr {
@@ -258,7 +253,7 @@ impl<T: TryGetable> TryGetable for Option<T> {
             Ok(v) => Ok(Some(v)),
             Err(TryGetError::Null(_)) => Ok(None),
             #[cfg(feature = "sqlx-dep")]
-            Err(TryGetError::DbErr(DbErr::Query(RuntimeErr::SqlxError(
+            Err(TryGetError::DbErr(DbErr::Query(crate::RuntimeErr::SqlxError(
                 sqlx::Error::ColumnNotFound(_),
             )))) => Ok(None),
             Err(e) => Err(e),
@@ -1476,11 +1471,10 @@ try_from_u64_err!(uuid::Uuid);
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
-    use sea_query::Value;
-
     use super::*;
+    use crate::RuntimeErr;
+    use sea_query::Value;
+    use std::collections::BTreeMap;
 
     #[test]
     fn from_try_get_error() {
