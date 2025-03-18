@@ -27,7 +27,7 @@ pub async fn test_create_baker(db: &DbConn) {
     let baker_bob = baker::ActiveModel {
         name: Set("Baker Bob".to_owned()),
         contact_details: Set(serde_json::json!(baker_bob_contact)),
-        bakery_id: Set(Some(bakery_insert_res.last_insert_id)),
+        bakery_id: Set(bakery_insert_res.last_insert_id),
         ..Default::default()
     };
     let res = Baker::insert(baker_bob)
@@ -35,10 +35,13 @@ pub async fn test_create_baker(db: &DbConn) {
         .await
         .expect("could not insert baker");
 
-    let baker: Option<baker::Model> = Baker::find_by_id(res.last_insert_id)
-        .one(db)
-        .await
-        .expect("could not find baker");
+    let baker: Option<baker::Model> = Baker::find_by_id(
+        res.last_insert_id
+            .expect("could not get last insert id for baker"),
+    )
+    .one(db)
+    .await
+    .expect("could not find baker");
 
     assert!(baker.is_some());
     let baker_model = baker.unwrap();
@@ -63,10 +66,14 @@ pub async fn test_create_baker(db: &DbConn) {
         "SeaSide Bakery"
     );
 
-    let bakery: Option<bakery::Model> = Bakery::find_by_id(bakery_insert_res.last_insert_id)
-        .one(db)
-        .await
-        .unwrap();
+    let bakery: Option<bakery::Model> = Bakery::find_by_id(
+        bakery_insert_res
+            .last_insert_id
+            .expect("could not get last insert id for bakery"),
+    )
+    .one(db)
+    .await
+    .unwrap();
 
     let related_bakers: Vec<baker::Model> = bakery
         .unwrap()
