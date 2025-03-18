@@ -151,6 +151,8 @@ impl FromQueryResult for JsonValue {
                     try_get_type!(String, col);
                     #[cfg(feature = "postgres-array")]
                     try_get_type!(Vec<String>, col);
+                    #[cfg(feature = "postgres-vector")]
+                    try_get_type!(pgvector::Vector, col);
                     #[cfg(feature = "with-uuid")]
                     try_get_type!(uuid::Uuid, col);
                     #[cfg(all(feature = "with-uuid", feature = "postgres-array"))]

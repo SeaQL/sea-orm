@@ -1,4 +1,4 @@
-use futures::lock::Mutex;
+use futures_util::lock::Mutex;
 use log::LevelFilter;
 use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
@@ -239,8 +239,14 @@ impl SqlxMySqlPoolConnection {
         }
     }
 
-    /// Explicitly close the MySQL connection
+    /// Explicitly close the MySQL connection.
+    /// See [`Self::close_by_ref`] for usage with references.
     pub async fn close(self) -> Result<(), DbErr> {
+        self.close_by_ref().await
+    }
+
+    /// Explicitly close the MySQL connection
+    pub async fn close_by_ref(&self) -> Result<(), DbErr> {
         self.pool.close().await;
         Ok(())
     }
@@ -275,18 +281,19 @@ pub(crate) async fn set_transaction_config(
     isolation_level: Option<IsolationLevel>,
     access_mode: Option<AccessMode>,
 ) -> Result<(), DbErr> {
+    let mut settings = Vec::new();
+
     if let Some(isolation_level) = isolation_level {
-        let stmt = Statement {
-            sql: format!("SET TRANSACTION ISOLATION LEVEL {isolation_level}"),
-            values: None,
-            db_backend: DbBackend::MySql,
-        };
-        let query = sqlx_query(&stmt);
-        conn.execute(query).await.map_err(sqlx_error_to_exec_err)?;
+        settings.push(format!("ISOLATION LEVEL {isolation_level}"));
     }
+
     if let Some(access_mode) = access_mode {
+        settings.push(access_mode.to_string());
+    }
+
+    if !settings.is_empty() {
         let stmt = Statement {
-            sql: format!("SET TRANSACTION {access_mode}"),
+            sql: format!("SET TRANSACTION {}", settings.join(", ")),
             values: None,
             db_backend: DbBackend::MySql,
         };

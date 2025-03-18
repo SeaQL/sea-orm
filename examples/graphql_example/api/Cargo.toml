@@ -8,9 +8,8 @@ publish = false
 [dependencies]
 graphql-example-service = { path = "../service" }
 tokio = { version = "1.29", features = ["full"] }
-axum = "0.6.18"
-axum-macros = "0.3"
+axum = "0.8"
 dotenvy = "0.15.7"
-async-graphql-axum = "5.0.10"
+async-graphql-axum = "7.0"
 entity = { path = "../entity" }
 migration = { path = "../migration" }

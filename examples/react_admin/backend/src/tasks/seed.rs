@@ -39,7 +39,7 @@ impl Task for SeedData {
             db::reset::<Migrator>(&app_context.db).await?;
         }
         let path = std::path::Path::new("src/fixtures");
-        db::run_app_seed::<App>(&app_context.db, path).await?;
+        db::run_app_seed::<App>(app_context, path).await?;
         Ok(())
     }
 }

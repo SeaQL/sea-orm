@@ -75,5 +75,7 @@ pub async fn create_transaction_log(db: &DatabaseConnection) -> Result<(), DbErr
         })
     );
 
+    assert_ne!(json, "");
+
     Ok(())
 }

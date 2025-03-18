@@ -1,6 +1,8 @@
 use crate::DbBackend;
 
 mod entity;
+#[cfg(feature = "serde_json")]
+mod json;
 
 /// This is a helper struct to convert [`EntityTrait`](crate::EntityTrait)
 /// into different [`sea_query`](crate::sea_query) statements.

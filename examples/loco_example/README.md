@@ -46,9 +46,9 @@ $ cargo loco start
 2024-02-01T08:49:41.100617Z  INFO loco_rs::controller::app_routes: [GET] /api/_health
 2024-02-01T08:49:41.100667Z  INFO loco_rs::controller::app_routes: [GET] /api/notes
 2024-02-01T08:49:41.100702Z  INFO loco_rs::controller::app_routes: [POST] /api/notes
-2024-02-01T08:49:41.100738Z  INFO loco_rs::controller::app_routes: [GET] /api/notes/:id
-2024-02-01T08:49:41.100791Z  INFO loco_rs::controller::app_routes: [DELETE] /api/notes/:id
-2024-02-01T08:49:41.100817Z  INFO loco_rs::controller::app_routes: [POST] /api/notes/:id
+2024-02-01T08:49:41.100738Z  INFO loco_rs::controller::app_routes: [GET] /api/notes/{id}
+2024-02-01T08:49:41.100791Z  INFO loco_rs::controller::app_routes: [DELETE] /api/notes/{id}
+2024-02-01T08:49:41.100817Z  INFO loco_rs::controller::app_routes: [POST] /api/notes/{id}
 2024-02-01T08:49:41.100934Z  INFO loco_rs::controller::app_routes: [Middleware] Adding limit payload data="5mb"
 2024-02-01T08:49:41.101017Z  INFO loco_rs::controller::app_routes: [Middleware] Adding log trace id
 2024-02-01T08:49:41.101057Z  INFO loco_rs::controller::app_routes: [Middleware] Adding timeout layer

@@ -359,6 +359,11 @@ impl Transaction {
     {
         stmts.into_iter().map(Self::one).collect()
     }
+
+    /// Get the list of statements
+    pub fn statements(&self) -> &[Statement] {
+        &self.stmts
+    }
 }
 
 impl OpenTransaction {
@@ -623,7 +628,7 @@ mod tests {
 
     #[smol_potat::test]
     async fn test_stream_1() -> Result<(), DbErr> {
-        use futures::TryStreamExt;
+        use futures_util::TryStreamExt;
 
         let apple = fruit::Model {
             id: 1,
@@ -655,7 +660,7 @@ mod tests {
     #[smol_potat::test]
     async fn test_stream_2() -> Result<(), DbErr> {
         use fruit::Entity as Fruit;
-        use futures::TryStreamExt;
+        use futures_util::TryStreamExt;
 
         let db = MockDatabase::new(DbBackend::Postgres)
             .append_query_results([Vec::<fruit::Model>::new()])
@@ -672,7 +677,7 @@ mod tests {
 
     #[smol_potat::test]
     async fn test_stream_in_transaction() -> Result<(), DbErr> {
-        use futures::TryStreamExt;
+        use futures_util::TryStreamExt;
 
         let apple = fruit::Model {
             id: 1,

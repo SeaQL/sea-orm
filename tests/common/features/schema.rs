@@ -61,6 +61,8 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
         create_collection_table(db).await?;
         create_event_trigger_table(db).await?;
         create_categories_table(db).await?;
+        #[cfg(feature = "postgres-vector")]
+        create_embedding_table(db).await?;
     }
 
     Ok(())
@@ -599,6 +601,32 @@ pub async fn create_categories_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         .to_owned();
 
     create_table(db, &create_table_stmt, Categories).await
+}
+
+#[cfg(feature = "postgres-vector")]
+pub async fn create_embedding_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    db.execute(sea_orm::Statement::from_string(
+        db.get_database_backend(),
+        "CREATE EXTENSION IF NOT EXISTS vector",
+    ))
+    .await?;
+
+    let create_table_stmt = sea_query::Table::create()
+        .table(embedding::Entity.table_ref())
+        .col(
+            ColumnDef::new(embedding::Column::Id)
+                .integer()
+                .not_null()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(embedding::Column::Embedding)
+                .vector(None)
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &create_table_stmt, Embedding).await
 }
 
 pub async fn create_binary_table(db: &DbConn) -> Result<ExecResult, DbErr> {

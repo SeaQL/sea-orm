@@ -1,5 +1,6 @@
 use crate::{
-    ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectTwo, SelectTwoMany,
+    ColumnTrait, EntityTrait, IdenStatic, Iterable, QueryTrait, Select, SelectThree, SelectTwo,
+    SelectTwoMany,
 };
 use core::marker::PhantomData;
 use sea_query::{Alias, ColumnRef, Iden, Order, SeaRc, SelectExpr, SelectStatement, SimpleExpr};
@@ -26,6 +27,7 @@ macro_rules! select_def {
 
 select_def!(SelectA, "A_");
 select_def!(SelectB, "B_");
+select_def!(SelectC, "C_");
 
 impl<E> Select<E>
 where
@@ -71,7 +73,7 @@ where
         self
     }
 
-    /// Selects and Entity and returns it together with the Entity from `Self`
+    /// Selects extra Entity and returns it together with the Entity from `Self`
     pub fn select_also<F>(mut self, _: F) -> SelectTwo<E, F>
     where
         F: EntityTrait,
@@ -95,6 +97,14 @@ where
     E: EntityTrait,
     F: EntityTrait,
 {
+    /// Selects extra Entity and returns it together with the Entities from `Self`
+    pub fn select_also<G>(self, _: G) -> SelectThree<E, F, G>
+    where
+        G: EntityTrait,
+    {
+        SelectThree::new(self.into_query())
+    }
+
     pub(crate) fn new(query: SelectStatement) -> Self {
         Self::new_without_prepare(query).prepare_select()
     }
@@ -107,7 +117,7 @@ where
     }
 
     fn prepare_select(mut self) -> Self {
-        prepare_select_two::<F, Self>(&mut self);
+        prepare_select_col::<F, _, _>(&mut self, SelectB);
         self
     }
 }
@@ -131,7 +141,7 @@ where
     }
 
     fn prepare_select(mut self) -> Self {
-        prepare_select_two::<F, Self>(&mut self);
+        prepare_select_col::<F, _, _>(&mut self, SelectB);
         self
     }
 
@@ -143,13 +153,37 @@ where
     }
 }
 
-fn prepare_select_two<F, S>(selector: &mut S)
+impl<E, F, G> SelectThree<E, F, G>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+{
+    pub(crate) fn new(query: SelectStatement) -> Self {
+        Self::new_without_prepare(query).prepare_select()
+    }
+
+    pub(crate) fn new_without_prepare(query: SelectStatement) -> Self {
+        Self {
+            query,
+            entity: PhantomData,
+        }
+    }
+
+    fn prepare_select(mut self) -> Self {
+        prepare_select_col::<G, _, _>(&mut self, SelectC);
+        self
+    }
+}
+
+fn prepare_select_col<F, S, A>(selector: &mut S, alias: A)
 where
     F: EntityTrait,
     S: QueryTrait<QueryStatement = SelectStatement>,
+    A: IdenStatic,
 {
     for col in <F::Column as Iterable>::iter() {
-        let alias = format!("{}{}", SelectB.as_str(), col.as_str());
+        let alias = format!("{}{}", alias.as_str(), col.as_str());
         selector.query().expr(SelectExpr {
             expr: col.select_as(col.into_expr()),
             alias: Some(SeaRc::new(Alias::new(alias))),

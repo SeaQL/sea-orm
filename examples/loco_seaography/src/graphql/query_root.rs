@@ -2,8 +2,6 @@ use async_graphql::dynamic::*;
 use sea_orm::DatabaseConnection;
 use seaography::{Builder, BuilderContext};
 
-use crate::models::_entities::*;
-
 lazy_static::lazy_static! { static ref CONTEXT: BuilderContext = BuilderContext::default(); }
 
 pub fn schema(
@@ -12,13 +10,9 @@ pub fn schema(
     complexity: usize,
 ) -> Result<Schema, SchemaError> {
     // Builder of Seaography query root
-    let mut builder = Builder::new(&CONTEXT, database.clone());
+    let builder = Builder::new(&CONTEXT, database.clone());
     // Register SeaORM entities
-    seaography::register_entities!(
-        builder,
-        // List all models we want to include in the GraphQL endpoint here
-        [files, notes, users]
-    );
+    let builder = crate::models::_entities::register_entity_modules(builder);
     // Configure async GraphQL limits
     let schema = builder
         .schema_builder()

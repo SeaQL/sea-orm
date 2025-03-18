@@ -73,6 +73,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
     // generate Column enum and it's ColumnTrait impl
     let mut columns_enum: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_trait: Punctuated<_, Comma> = Punctuated::new();
+    let mut columns_enum_type_name: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_select_as: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_save_as: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_keys: Punctuated<_, Comma> = Punctuated::new();
@@ -302,6 +303,16 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     }
                     // match_row = quote! { #match_row.comment() };
                     columns_trait.push(match_row);
+
+                    let ty: syn::Type = syn::LitStr::new(field_type, field_span)
+                        .parse()
+                        .expect("field type error");
+                    let enum_type_name = quote::quote_spanned! { field_span =>
+                        <#ty as sea_orm::sea_query::ValueType>::enum_type_name()
+                    };
+                    columns_enum_type_name.push(quote! {
+                        Self::#field_name => #enum_type_name
+                    });
                 }
             }
         }
@@ -355,6 +366,12 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
             fn def(&self) -> sea_orm::prelude::ColumnDef {
                 match self {
                     #columns_trait
+                }
+            }
+
+            fn enum_type_name(&self) -> Option<&'static str> {
+                match self {
+                    #columns_enum_type_name
                 }
             }
 

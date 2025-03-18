@@ -75,6 +75,11 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// Define a column for an Entity
     fn def(&self) -> ColumnDef;
 
+    /// Get the enum name of the column type
+    fn enum_type_name(&self) -> Option<&'static str> {
+        None
+    }
+
     /// Get the name of the entity the column belongs to
     fn entity_name(&self) -> DynIden {
         SeaRc::new(Self::EntityName::default()) as DynIden
@@ -397,6 +402,11 @@ impl ColumnDef {
     /// Returns true if the column is nullable
     pub fn is_null(&self) -> bool {
         self.null
+    }
+
+    /// Returns true if the column is unique
+    pub fn is_unique(&self) -> bool {
+        self.unique
     }
 }
 

@@ -6,6 +6,8 @@ use crate::{
 use sea_query::{FromValueTuple, Iden, InsertStatement, Query, ValueTuple};
 use std::{future::Future, marker::PhantomData};
 
+type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
+
 /// Defines a structure to perform INSERT operations in an ActiveModel
 #[derive(Debug)]
 pub struct Inserter<A>
@@ -102,6 +104,58 @@ where
             Err(err) => Err(err),
         }
     }
+
+    /// Execute an insert operation and return primary keys of inserted models
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `INSERT RETURNING`.
+    pub async fn exec_with_returning_keys<'a, C>(
+        self,
+        db: &'a C,
+    ) -> Result<TryInsertResult<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>>, DbErr>
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: 'a,
+    {
+        if self.insert_struct.columns.is_empty() {
+            return Ok(TryInsertResult::Empty);
+        }
+
+        let res = self.insert_struct.exec_with_returning_keys(db).await;
+        match res {
+            Ok(res) => Ok(TryInsertResult::Inserted(res)),
+            Err(DbErr::RecordNotInserted) => Ok(TryInsertResult::Conflicted),
+            Err(err) => Err(err),
+        }
+    }
+
+    /// Execute an insert operation and return all inserted models
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `INSERT RETURNING`.
+    pub async fn exec_with_returning_many<'a, C>(
+        self,
+        db: &'a C,
+    ) -> Result<TryInsertResult<Vec<<A::Entity as EntityTrait>::Model>>, DbErr>
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: 'a,
+    {
+        if self.insert_struct.columns.is_empty() {
+            return Ok(TryInsertResult::Empty);
+        }
+
+        let res = self.insert_struct.exec_with_returning_many(db).await;
+        match res {
+            Ok(res) => Ok(TryInsertResult::Inserted(res)),
+            Err(DbErr::RecordNotInserted) => Ok(TryInsertResult::Conflicted),
+            Err(err) => Err(err),
+        }
+    }
 }
 
 impl<A> Insert<A>
@@ -110,7 +164,7 @@ where
 {
     /// Execute an insert operation
     #[allow(unused_mut)]
-    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + '_
+    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
     where
         C: ConnectionTrait,
         A: 'a,
@@ -134,7 +188,7 @@ where
     pub fn exec_without_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<u64, DbErr>> + '_
+    ) -> impl Future<Output = Result<u64, DbErr>> + 'a
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
@@ -144,16 +198,53 @@ where
     }
 
     /// Execute an insert operation and return the inserted model (use `RETURNING` syntax if supported)
+    ///
+    /// + To get back all inserted models, use [`exec_with_returning_many`].
+    /// + To get back all inserted primary keys, use [`exec_with_returning_keys`].
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + '_
+    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + 'a
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
         Inserter::<A>::new(self.primary_key, self.query).exec_with_returning(db)
+    }
+
+    /// Execute an insert operation and return primary keys of inserted models
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `INSERT RETURNING`.
+    pub fn exec_with_returning_keys<'a, C>(
+        self,
+        db: &'a C,
+    ) -> impl Future<Output = Result<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr>> + 'a
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: 'a,
+    {
+        Inserter::<A>::new(self.primary_key, self.query).exec_with_returning_keys(db)
+    }
+
+    /// Execute an insert operation and return all inserted models
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `INSERT RETURNING`.
+    pub fn exec_with_returning_many<'a, C>(
+        self,
+        db: &'a C,
+    ) -> impl Future<Output = Result<Vec<<A::Entity as EntityTrait>::Model>, DbErr>> + 'a
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: 'a,
+    {
+        Inserter::<A>::new(self.primary_key, self.query).exec_with_returning_many(db)
     }
 }
 
@@ -171,7 +262,7 @@ where
     }
 
     /// Execute an insert operation, returning the last inserted id
-    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + '_
+    pub fn exec<'a, C>(self, db: &'a C) -> impl Future<Output = Result<InsertResult<A>, DbErr>> + 'a
     where
         C: ConnectionTrait,
         A: 'a,
@@ -183,7 +274,7 @@ where
     pub fn exec_without_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<u64, DbErr>> + '_
+    ) -> impl Future<Output = Result<u64, DbErr>> + 'a
     where
         C: ConnectionTrait,
         A: 'a,
@@ -195,13 +286,47 @@ where
     pub fn exec_with_returning<'a, C>(
         self,
         db: &'a C,
-    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + '_
+    ) -> impl Future<Output = Result<<A::Entity as EntityTrait>::Model, DbErr>> + 'a
     where
         <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
         C: ConnectionTrait,
         A: 'a,
     {
         exec_insert_with_returning::<A, _>(self.primary_key, self.query, db)
+    }
+
+    /// Execute an insert operation and return primary keys of inserted models
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `INSERT RETURNING`.
+    pub fn exec_with_returning_keys<'a, C>(
+        self,
+        db: &'a C,
+    ) -> impl Future<Output = Result<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr>> + 'a
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: 'a,
+    {
+        exec_insert_with_returning_keys::<A, _>(self.query, db)
+    }
+
+    /// Execute an insert operation and return all inserted models
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database backend does not support `INSERT RETURNING`.
+    pub fn exec_with_returning_many<'a, C>(
+        self,
+        db: &'a C,
+    ) -> impl Future<Output = Result<Vec<<A::Entity as EntityTrait>::Model>, DbErr>> + 'a
+    where
+        <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+        C: ConnectionTrait,
+        A: 'a,
+    {
+        exec_insert_with_returning_many::<A, _>(self.query, db)
     }
 }
 
@@ -214,11 +339,10 @@ where
     C: ConnectionTrait,
     A: ActiveModelTrait,
 {
+    type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
+
     let db_backend = db.get_database_backend();
     let statement = db_backend.build(&statement);
-
-    type PrimaryKey<A> = <<A as ActiveModelTrait>::Entity as EntityTrait>::PrimaryKey;
-    type ValueTypeOf<A> = <PrimaryKey<A> as PrimaryKeyTrait>::ValueType;
 
     let last_insert_id = match (primary_key, db.support_returning()) {
         (Some(value_tuple), _) => {
@@ -426,5 +550,69 @@ where
         None => Err(DbErr::RecordNotFound(
             "Failed to find inserted item".to_owned(),
         )),
+    }
+}
+
+async fn exec_insert_with_returning_keys<A, C>(
+    mut insert_statement: InsertStatement,
+    db: &C,
+) -> Result<Vec<<PrimaryKey<A> as PrimaryKeyTrait>::ValueType>, DbErr>
+where
+    <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+    C: ConnectionTrait,
+    A: ActiveModelTrait,
+{
+    let db_backend = db.get_database_backend();
+    match db.support_returning() {
+        true => {
+            let returning =
+                Query::returning().exprs(<A::Entity as EntityTrait>::PrimaryKey::iter().map(|c| {
+                    c.into_column()
+                        .select_as(c.into_column().into_returning_expr(db_backend))
+                }));
+            insert_statement.returning(returning);
+            let statement = db_backend.build(&insert_statement);
+            let rows = db.query_all(statement).await?;
+            let cols = PrimaryKey::<A>::iter()
+                .map(|col| col.to_string())
+                .collect::<Vec<_>>();
+            let mut keys = Vec::new();
+            for row in rows {
+                keys.push(
+                    row.try_get_many("", cols.as_ref())
+                        .map_err(|_| DbErr::UnpackInsertId)?,
+                );
+            }
+            Ok(keys)
+        }
+        false => unimplemented!("Database backend doesn't support RETURNING"),
+    }
+}
+
+async fn exec_insert_with_returning_many<A, C>(
+    mut insert_statement: InsertStatement,
+    db: &C,
+) -> Result<Vec<<A::Entity as EntityTrait>::Model>, DbErr>
+where
+    <A::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+    C: ConnectionTrait,
+    A: ActiveModelTrait,
+{
+    let db_backend = db.get_database_backend();
+    match db.support_returning() {
+        true => {
+            let returning = Query::returning().exprs(
+                <A::Entity as EntityTrait>::Column::iter()
+                    .map(|c| c.select_as(c.into_returning_expr(db_backend))),
+            );
+            insert_statement.returning(returning);
+            let insert_statement = db_backend.build(&insert_statement);
+            SelectorRaw::<SelectModel<<A::Entity as EntityTrait>::Model>>::from_statement(
+                insert_statement,
+            )
+            .all(db)
+            .await
+        }
+        false => unimplemented!("Database backend doesn't support RETURNING"),
     }
 }

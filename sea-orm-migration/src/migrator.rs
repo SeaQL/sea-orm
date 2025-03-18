@@ -1,6 +1,6 @@
-use futures::Future;
 use std::collections::HashSet;
 use std::fmt::Display;
+use std::future::Future;
 use std::pin::Pin;
 use std::time::SystemTime;
 use tracing::info;

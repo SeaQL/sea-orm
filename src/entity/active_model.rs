@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use sea_query::{Nullable, ValueTuple};
 use std::fmt::Debug;
 
-pub use ActiveValue::NotSet;
+pub use ActiveValue::{NotSet, Set, Unchanged};
 
 /// Defines a stateful value used in ActiveModel.
 ///
@@ -49,15 +49,6 @@ where
     NotSet,
 }
 
-/// Defines a set operation on an [ActiveValue]
-#[allow(non_snake_case)]
-pub fn Set<V>(v: V) -> ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    ActiveValue::set(v)
-}
-
 /// Defines an not set operation on an [ActiveValue]
 #[deprecated(
     since = "0.5.0",
@@ -69,15 +60,6 @@ where
     V: Into<Value>,
 {
     ActiveValue::not_set()
-}
-
-/// Defines an unchanged operation on an [ActiveValue]
-#[allow(non_snake_case)]
-pub fn Unchanged<V>(value: V) -> ActiveValue<V>
-where
-    V: Into<Value>,
-{
-    ActiveValue::unchanged(value)
 }
 
 /// A Trait for ActiveModel to perform Create, Update or Delete operation.
@@ -995,19 +977,35 @@ mod tests {
     #[test]
     #[cfg(feature = "macros")]
     fn test_derive_into_active_model_2() {
-        mod my_fruit {
-            pub use super::fruit::*;
-            use crate as sea_orm;
-            use crate::entity::prelude::*;
+        use crate as sea_orm;
+        use crate::entity::prelude::*;
 
-            #[derive(DeriveIntoActiveModel)]
-            pub struct UpdateFruit {
-                pub cake_id: Option<Option<i32>>,
-            }
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "fruit::ActiveModel")]
+        struct FruitName {
+            name: String,
         }
 
         assert_eq!(
-            my_fruit::UpdateFruit {
+            FruitName {
+                name: "Apple Pie".to_owned(),
+            }
+            .into_active_model(),
+            fruit::ActiveModel {
+                id: NotSet,
+                name: Set("Apple Pie".to_owned()),
+                cake_id: NotSet,
+            }
+        );
+
+        #[derive(DeriveIntoActiveModel)]
+        #[sea_orm(active_model = "<fruit::Entity as EntityTrait>::ActiveModel")]
+        struct FruitCake {
+            cake_id: Option<Option<i32>>,
+        }
+
+        assert_eq!(
+            FruitCake {
                 cake_id: Some(Some(1)),
             }
             .into_active_model(),
@@ -1019,7 +1017,7 @@ mod tests {
         );
 
         assert_eq!(
-            my_fruit::UpdateFruit {
+            FruitCake {
                 cake_id: Some(None),
             }
             .into_active_model(),
@@ -1031,7 +1029,7 @@ mod tests {
         );
 
         assert_eq!(
-            my_fruit::UpdateFruit { cake_id: None }.into_active_model(),
+            FruitCake { cake_id: None }.into_active_model(),
             fruit::ActiveModel {
                 id: NotSet,
                 name: NotSet,

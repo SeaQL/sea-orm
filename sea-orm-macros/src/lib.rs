@@ -580,33 +580,56 @@ pub fn derive_active_enum(input: TokenStream) -> TokenStream {
 /// Convert a query result into the corresponding Model.
 ///
 /// ### Attributes
-/// - `skip`: Will not try to pull this field from the query result. And set it to the default value of the type.
+///
+/// - `skip`: will not try to pull this field from the query result. And set it to the default value of the type.
+/// - `nested`: allows nesting models. can be any type that implements `FromQueryResult`
+/// - `from_alias`: get the value from this column alias
 ///
 /// ### Usage
+///
+/// For more complete examples, please refer to https://github.com/SeaQL/sea-orm/blob/master/tests/from_query_result_tests.rs
 ///
 /// ```
 /// use sea_orm::{entity::prelude::*, FromQueryResult};
 ///
-/// #[derive(Debug, FromQueryResult)]
-/// struct SelectResult {
+/// #[derive(FromQueryResult)]
+/// struct Cake {
+///     id: i32,
 ///     name: String,
-///     num_of_fruits: i32,
+///     #[sea_orm(nested)]
+///     bakery: Option<CakeBakery>,
 ///     #[sea_orm(skip)]
 ///     skip_me: i32,
+/// }
+///
+/// #[derive(FromQueryResult)]
+/// struct CakeBakery {
+///     #[sea_orm(from_alias = "bakery_id")]
+///     id: i32,
+///     #[sea_orm(from_alias = "bakery_name")]
+///     title: String,
+/// }
+/// ```
+///
+/// You can compose this with regular Models, if there's no column collision:
+///
+/// ```ignore
+/// #[derive(FromQueryResult)]
+/// struct CakePlain {
+///     id: i32,
+///     name: String,
+///     price: Decimal,
+///     #[sea_orm(nested)]
+///     baker: Option<cakes_bakers::Model>,
 /// }
 /// ```
 #[cfg(feature = "derive")]
 #[proc_macro_derive(FromQueryResult, attributes(sea_orm))]
 pub fn derive_from_query_result(input: TokenStream) -> TokenStream {
-    let DeriveInput {
-        ident,
-        data,
-        generics,
-        ..
-    } = parse_macro_input!(input);
+    let derive_input = parse_macro_input!(input);
 
-    match derives::expand_derive_from_query_result(ident, data, generics) {
-        Ok(ts) => ts.into(),
+    match derives::expand_derive_from_query_result(derive_input) {
+        Ok(token_stream) => token_stream.into(),
         Err(e) => e.to_compile_error().into(),
     }
 }
@@ -675,13 +698,9 @@ pub fn derive_relation(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(DeriveRelatedEntity, attributes(sea_orm))]
 pub fn derive_related_entity(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    if cfg!(feature = "seaography") {
-        derives::expand_derive_related_entity(input)
-            .unwrap_or_else(Error::into_compile_error)
-            .into()
-    } else {
-        TokenStream::new()
-    }
+    derives::expand_derive_related_entity(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
 }
 
 /// The DeriveMigrationName derive macro will implement `sea_orm_migration::MigrationName` for a migration.
@@ -723,15 +742,16 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
     }
 }
 
-/// The DerivePartialModel derive macro will implement `sea_orm::PartialModelTrait` for simplify partial model queries.
+/// The DerivePartialModel derive macro will implement [`sea_orm::PartialModelTrait`] for simplify partial model queries.
 ///
 /// ## Usage
 ///
-/// ```rust
-/// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
-/// use serde::{Deserialize, Serialize};
+/// For more complete examples, please refer to https://github.com/SeaQL/sea-orm/blob/master/tests/partial_model_tests.rs
 ///
-/// #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
+/// ```rust
+/// use sea_orm::{entity::prelude::*, DerivePartialModel, FromQueryResult};
+///
+/// #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 /// #[sea_orm(table_name = "posts")]
 /// pub struct Model {
 ///     #[sea_orm(primary_key)]
@@ -740,15 +760,8 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///     #[sea_orm(column_type = "Text")]
 ///     pub text: String,
 /// }
-/// # #[derive(Copy, Clone, Debug, EnumIter)]
+/// # #[derive(Copy, Clone, Debug, DeriveRelation, EnumIter)]
 /// # pub enum Relation {}
-/// #
-/// # impl RelationTrait for Relation {
-/// #     fn def(&self) -> RelationDef {
-/// #         panic!("No Relation");
-/// #     }
-/// # }
-/// #
 /// # impl ActiveModelBehavior for ActiveModel {}
 ///
 /// #[derive(Debug, FromQueryResult, DerivePartialModel)]
@@ -762,7 +775,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// If all fields in the partial model is `from_expr`, the `entity` can be ignore.
+/// If all fields in the partial model is `from_expr`, the specifying the `entity` can be skipped.
 /// ```
 /// use sea_orm::{entity::prelude::*, sea_query::Expr, DerivePartialModel, FromQueryResult};
 ///
@@ -773,7 +786,102 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// A field cannot have attributes `from_col` and `from_expr` at the same time.
+/// Since SeaORM 1.1.7, `DerivePartialModel` can also assumes the function of `FromQueryResult`.
+/// This is necessary to support nested partial models.
+///
+/// ```
+/// use sea_orm::{DerivePartialModel, FromQueryResult};
+/// #
+/// # mod cake {
+/// # use sea_orm::entity::prelude::*;
+/// # #[derive(Clone, Debug, DeriveEntityModel)]
+/// # #[sea_orm(table_name = "cake")]
+/// # pub struct Model {
+/// #     #[sea_orm(primary_key)]
+/// #     pub id: i32,
+/// #     pub name: String,
+/// # }
+/// # #[derive(Copy, Clone, Debug, DeriveRelation, EnumIter)]
+/// # pub enum Relation {}
+/// # impl ActiveModelBehavior for ActiveModel {}
+/// # }
+/// #
+/// # mod bakery {
+/// # use sea_orm::entity::prelude::*;
+/// # #[derive(Clone, Debug, DeriveEntityModel)]
+/// # #[sea_orm(table_name = "bakery")]
+/// # pub struct Model {
+/// #     #[sea_orm(primary_key)]
+/// #     pub id: i32,
+/// #     pub name: String,
+/// # }
+/// # #[derive(Copy, Clone, Debug, DeriveRelation, EnumIter)]
+/// # pub enum Relation {}
+/// # impl ActiveModelBehavior for ActiveModel {}
+/// # }
+///
+/// #[derive(DerivePartialModel)]
+/// #[sea_orm(entity = "cake::Entity", from_query_result)]
+/// struct Cake {
+///     id: i32,
+///     name: String,
+///     #[sea_orm(nested)]
+///     bakery: Option<Bakery>,
+///     #[sea_orm(skip)]
+///     ignore: String,
+/// }
+///
+/// #[derive(FromQueryResult, DerivePartialModel)]
+/// #[sea_orm(entity = "bakery::Entity")]
+/// struct Bakery {
+///     id: i32,
+///     #[sea_orm(from_col = "Name")]
+///     title: String,
+/// }
+///
+/// // In addition, there's an `alias` attribute to select the columns from an alias:
+///
+/// #[derive(DerivePartialModel)]
+/// #[sea_orm(entity = "bakery::Entity", alias = "factory", from_query_result)]
+/// struct Factory {
+///     id: i32,
+///     #[sea_orm(from_col = "name")]
+///     plant: String,
+/// }
+///
+/// #[derive(DerivePartialModel)]
+/// #[sea_orm(entity = "cake::Entity", from_query_result)]
+/// struct CakeFactory {
+///     id: i32,
+///     name: String,
+///     #[sea_orm(nested)]
+///     bakery: Option<Factory>,
+/// }
+/// ```
+///
+/// ```ignore
+/// let cake: CakeFactory = cake::Entity::find()
+///     .join_as(
+///         JoinType::LeftJoin,
+///         cake::Relation::Bakery.def(),
+///         Alias::new("factory"),
+///     )
+///     .order_by_asc(cake::Column::Id)
+///     .into_partial_model()
+///     .one(&db)
+///     .await
+///     .unwrap()
+///     .unwrap()
+///
+/// SELECT
+///     "cake"."id" AS "id", "cake"."name" AS "name",
+///     "factory"."id" AS "bakery_id", "factory"."name" AS "bakery_plant"
+/// FROM "cake"
+/// LEFT JOIN "bakery" AS "factory" ON "cake"."bakery_id" = "factory"."id"
+/// LIMIT 1
+/// ```
+///
+/// A field cannot have attributes `from_col`, `from_expr` or `nested` at the same time.
 /// Or, it will result in a compile error.
 ///
 /// ```compile_fail
@@ -783,7 +891,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 /// #[sea_orm(entity = "Entity")]
 /// struct SelectResult {
 ///     #[sea_orm(from_expr = "Expr::val(1).add(1)", from_col = "foo")]
-///     sum: i32
+///     sum: i32,
 /// }
 /// ```
 #[cfg(feature = "derive")]
