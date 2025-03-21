@@ -37,6 +37,7 @@ where
         .database_url
         .expect("Environment variable 'DATABASE_URL' not set");
     let schema = cli.database_schema.unwrap_or_else(|| "public".to_owned());
+    let group = cli.group.unwrap_or_else(|| "default".to_owned());
 
     let connect_options = ConnectOptions::new(url)
         .set_schema_search_path(schema)
@@ -46,7 +47,7 @@ where
         .await
         .expect("Fail to acquire database connection");
 
-    run_migrate(migrator, &db, cli.command, cli.verbose)
+    run_migrate(migrator, &db, &group, cli.command, cli.verbose)
         .await
         .unwrap_or_else(handle_error);
 }
@@ -54,6 +55,7 @@ where
 pub async fn run_migrate<M>(
     _: M,
     db: &DbConn,
+    group: &str,
     command: Option<MigrateSubcommands>,
     verbose: bool,
 ) -> Result<(), Box<dyn Error>>
@@ -85,19 +87,19 @@ where
     };
 
     match command {
-        Some(MigrateSubcommands::Fresh) => M::fresh(db).await?,
-        Some(MigrateSubcommands::Refresh) => M::refresh(db).await?,
-        Some(MigrateSubcommands::Reset) => M::reset(db).await?,
-        Some(MigrateSubcommands::Status) => M::status(db).await?,
-        Some(MigrateSubcommands::Up { num }) => M::up(db, num).await?,
-        Some(MigrateSubcommands::Down { num }) => M::down(db, Some(num)).await?,
+        Some(MigrateSubcommands::Fresh) => M::fresh(db, group).await?,
+        Some(MigrateSubcommands::Refresh) => M::refresh(db, group).await?,
+        Some(MigrateSubcommands::Reset) => M::reset(db, group).await?,
+        Some(MigrateSubcommands::Status) => M::status(db, group).await?,
+        Some(MigrateSubcommands::Up { num }) => M::up(db, group, num).await?,
+        Some(MigrateSubcommands::Down { num }) => M::down(db, group, Some(num)).await?,
         Some(MigrateSubcommands::Init) => run_migrate_init(MIGRATION_DIR)?,
         Some(MigrateSubcommands::Generate {
             migration_name,
             universal_time: _,
             local_time,
         }) => run_migrate_generate(MIGRATION_DIR, &migration_name, !local_time)?,
-        _ => M::up(db, None).await?,
+        _ => M::up(db, group, None).await?,
     };
 
     Ok(())
@@ -128,6 +130,15 @@ pub struct Cli {
         help = "Database URL"
     )]
     database_url: Option<String>,
+
+    #[arg(
+        global = true,
+        short = 'g',
+        long,
+        env = "MIGRATION_GROUP",
+        help = "Migration group name, defaults to the 'default' group."
+    )]
+    group: Option<String>,
 
     #[command(subcommand)]
     command: Option<MigrateSubcommands>,
