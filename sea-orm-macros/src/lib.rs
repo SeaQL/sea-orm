@@ -976,7 +976,7 @@ pub fn enum_iter(input: TokenStream) -> TokenStream {
 /// ## Example
 ///
 /// ```rust
-/// use sea_orm::{DeriveValueType, sea_query::ValueTypeErr};
+/// use sea_orm::{sea_query::ValueTypeErr, DeriveValueType};
 ///
 /// #[derive(DeriveValueType)]
 /// #[sea_orm(value_type = "String")]
@@ -1015,10 +1015,14 @@ pub fn enum_iter(input: TokenStream) -> TokenStream {
 /// They can be overridden with custom functions.
 ///
 /// ```rust
-/// use sea_orm::{DeriveValueType, sea_query::ValueTypeErr};
+/// use sea_orm::{sea_query::ValueTypeErr, DeriveValueType};
 ///
 /// #[derive(DeriveValueType)]
-/// #[sea_orm(value_type = "String", from_str = "Tag::from_str", to_str = "Tag::to_str")]
+/// #[sea_orm(
+///     value_type = "String",
+///     from_str = "Tag::from_str",
+///     to_str = "Tag::to_str"
+/// )]
 /// pub enum Tag {
 ///     Color,
 ///     Grey,
