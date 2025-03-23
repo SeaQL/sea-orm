@@ -565,7 +565,7 @@ mod tests {
                     r#"FROM "fruit""#,
                     r#"WHERE "fruit"."id" < $1"#,
                     r#"ORDER BY "fruit"."id" ASC"#,
-                    r#"LIMIT $2"#,
+                    r"LIMIT $2",
                 ]
                 .join(" ")
                 .as_str(),
@@ -619,7 +619,7 @@ mod tests {
                     r#"FROM "fruit""#,
                     r#"WHERE "fruit"."id" < $1"#,
                     r#"ORDER BY "fruit"."id" ASC"#,
-                    r#"LIMIT $2"#,
+                    r"LIMIT $2",
                 ]
                 .join(" ")
                 .as_str(),
@@ -1139,7 +1139,7 @@ mod tests {
                     r#"FROM "fruit""#,
                     r#"WHERE "fruit"."id" > $1"#,
                     r#"ORDER BY "fruit"."id" DESC"#,
-                    r#"LIMIT $2"#,
+                    r"LIMIT $2",
                 ]
                 .join(" ")
                 .as_str(),
@@ -1191,7 +1191,7 @@ mod tests {
                     r#"FROM "fruit""#,
                     r#"WHERE "fruit"."id" > $1"#,
                     r#"ORDER BY "fruit"."id" DESC"#,
-                    r#"LIMIT $2"#,
+                    r"LIMIT $2",
                 ]
                 .join(" ")
                 .as_str(),
@@ -1253,7 +1253,7 @@ mod tests {
                     r#"WHERE "fruit"."id" > $1"#,
                     r#"AND "fruit"."id" < $2"#,
                     r#"ORDER BY "fruit"."id" DESC"#,
-                    r#"LIMIT $3"#,
+                    r"LIMIT $3",
                 ]
                 .join(" ")
                 .as_str(),
@@ -1307,7 +1307,7 @@ mod tests {
                     r#"WHERE "fruit"."id" < $1"#,
                     r#"AND "fruit"."id" > $2"#,
                     r#"ORDER BY "fruit"."id" DESC"#,
-                    r#"LIMIT $3"#,
+                    r"LIMIT $3",
                 ]
                 .join(" ")
                 .as_str(),
@@ -1384,7 +1384,7 @@ mod tests {
                     r#"SELECT "example"."id", "example"."category""#,
                     r#"FROM "example""#,
                     r#"ORDER BY "example"."category" ASC, "example"."id" ASC"#,
-                    r#"LIMIT $1"#,
+                    r"LIMIT $1",
                 ]
                 .join(" ")
                 .as_str(),
@@ -1422,7 +1422,7 @@ mod tests {
                     r#"SELECT "example"."id", "example"."category""#,
                     r#"FROM "example""#,
                     r#"ORDER BY "example"."category" ASC, "example"."id" ASC"#,
-                    r#"LIMIT $1"#,
+                    r"LIMIT $1",
                 ]
                 .join(" ")
                 .as_str(),
@@ -1462,7 +1462,7 @@ mod tests {
                     r#"WHERE ("example"."category" = $1 AND "example"."id" > $2)"#,
                     r#"OR "example"."category" > $3"#,
                     r#"ORDER BY "example"."category" ASC, "example"."id" ASC"#,
-                    r#"LIMIT $4"#,
+                    r"LIMIT $4",
                 ]
                 .join(" ")
                 .as_str(),
@@ -1508,7 +1508,7 @@ mod tests {
                     r#"WHERE ("example"."category" = $1 AND "example"."id" > $2)"#,
                     r#"OR "example"."category" > $3"#,
                     r#"ORDER BY "example"."category" ASC, "example"."id" ASC"#,
-                    r#"LIMIT $4"#,
+                    r"LIMIT $4",
                 ]
                 .join(" ")
                 .as_str(),
@@ -1553,7 +1553,7 @@ mod tests {
                     r#"WHERE ("example"."category" = $1 AND "example"."id" < $2)"#,
                     r#"OR "example"."category" < $3"#,
                     r#"ORDER BY "example"."category" DESC, "example"."id" DESC"#,
-                    r#"LIMIT $4"#,
+                    r"LIMIT $4",
                 ]
                 .join(" ")
                 .as_str(),
@@ -1599,7 +1599,7 @@ mod tests {
                     r#"WHERE ("example"."category" = $1 AND "example"."id" < $2)"#,
                     r#"OR "example"."category" < $3"#,
                     r#"ORDER BY "example"."category" DESC, "example"."id" DESC"#,
-                    r#"LIMIT $4"#,
+                    r"LIMIT $4",
                 ]
                 .join(" ")
                 .as_str(),
@@ -1642,7 +1642,7 @@ mod tests {
                     r#"SELECT "m"."x", "m"."y", "m"."z""#,
                     r#"FROM "m""#,
                     r#"ORDER BY "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
-                    r#"LIMIT $1"#,
+                    r"LIMIT $1",
                 ]
                 .join(" ")
                 .as_str(),
@@ -1681,7 +1681,7 @@ mod tests {
                     r#"SELECT "m"."x", "m"."y", "m"."z""#,
                     r#"FROM "m""#,
                     r#"ORDER BY "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
-                    r#"LIMIT $1"#,
+                    r"LIMIT $1",
                 ]
                 .join(" ")
                 .as_str(),
@@ -1723,7 +1723,7 @@ mod tests {
                     r#"OR ("m"."x" = $4 AND "m"."y" > $5)"#,
                     r#"OR "m"."x" > $6"#,
                     r#"ORDER BY "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
-                    r#"LIMIT $7"#,
+                    r"LIMIT $7",
                 ]
                 .join(" ")
                 .as_str(),
@@ -1774,7 +1774,7 @@ mod tests {
                     r#"OR ("m"."x" = $4 AND "m"."y" > $5)"#,
                     r#"OR "m"."x" > $6"#,
                     r#"ORDER BY "m"."x" ASC, "m"."y" ASC, "m"."z" ASC"#,
-                    r#"LIMIT $7"#,
+                    r"LIMIT $7",
                 ]
                 .join(" ")
                 .as_str(),
