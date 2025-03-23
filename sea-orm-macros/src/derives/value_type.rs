@@ -41,7 +41,7 @@ impl DeriveValueType {
                     DeriveValueTypeEnum::new(input).map(Self::Enum)
                 }
             }
-            _ => return Err(Error::InputNotSupported),
+            _ => Err(Error::InputNotSupported),
         }
     }
 
