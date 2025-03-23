@@ -745,10 +745,21 @@ pub async fn create_value_type_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .integer()
                 .not_null(),
         )
+        .col(
+            ColumnDef::new(value_type::value_type_general::Column::Tag1)
+                .string()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(value_type::value_type_general::Column::Tag2)
+                .string()
+                .not_null(),
+        )
         .to_owned();
 
     create_table(db, &general_stmt, value_type::value_type_general::Entity).await
 }
+
 pub async fn create_value_type_postgres_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let postgres_stmt = sea_query::Table::create()
         .table(value_type::value_type_pg::Entity)
@@ -765,7 +776,7 @@ pub async fn create_value_type_postgres_table(db: &DbConn) -> Result<ExecResult,
                 .not_null(),
         )
         .col(
-            ColumnDef::new(json_vec::Column::StrVec)
+            ColumnDef::new(value_type::value_type_pg::Column::StrVec)
                 .array(sea_query::ColumnType::String(StringLen::None))
                 .not_null(),
         )
