@@ -9,11 +9,7 @@ use sea_orm::sea_query::{
     self, extension::postgres::Type, Alias, Expr, ForeignKey, IntoIden, JoinType, Order, Query,
     SelectStatement, SimpleExpr, Table,
 };
-use sea_orm::{
-    ActiveModelTrait, ActiveValue, Condition, ConnectionTrait, DbBackend, DbErr, DeriveIden,
-    DynIden, EntityTrait, FromQueryResult, Iterable, QueryFilter, Schema, Statement,
-    TransactionTrait,
-};
+use sea_orm::{ActiveModelTrait, ActiveValue, ColumnTrait, Condition, ConnectionTrait, DbBackend, DbErr, DeriveIden, DynIden, EntityTrait, FromQueryResult, Iterable, QueryFilter, Schema, Statement, TransactionTrait};
 use sea_schema::{mysql::MySql, postgres::Postgres, probe::SchemaProbe, sqlite::Sqlite};
 
 use super::{seaql_migrations, IntoSchemaManagerConnection, MigrationTrait, SchemaManager};
@@ -77,13 +73,17 @@ pub trait MigratorTrait: Send {
     }
 
     /// Get list of applied migrations from database
-    async fn get_migration_models<C>(db: &C) -> Result<Vec<seaql_migrations::Model>, DbErr>
+    async fn get_migration_models<C>(
+        db: &C,
+        group: &str,
+    ) -> Result<Vec<seaql_migrations::Model>, DbErr>
     where
         C: ConnectionTrait,
     {
         Self::install(db).await?;
         let stmt = Query::select()
             .table_name(Self::migration_table_name())
+            .cond_where(seaql_migrations::Column::Group.eq(group))
             .columns(seaql_migrations::Column::iter().map(IntoIden::into_iden))
             .order_by(seaql_migrations::Column::Version, Order::Asc)
             .to_owned();
@@ -94,13 +94,13 @@ pub trait MigratorTrait: Send {
     }
 
     /// Get list of migrations with status
-    async fn get_migration_with_status<C>(db: &C) -> Result<Vec<Migration>, DbErr>
+    async fn get_migration_with_status<C>(db: &C, group: &str) -> Result<Vec<Migration>, DbErr>
     where
         C: ConnectionTrait,
     {
         Self::install(db).await?;
         let mut migration_files = Self::get_migration_files();
-        let migration_models = Self::get_migration_models(db).await?;
+        let migration_models = Self::get_migration_models(db, group).await?;
 
         let migration_in_db: HashSet<String> = migration_models
             .into_iter()
@@ -133,12 +133,12 @@ pub trait MigratorTrait: Send {
     }
 
     /// Get list of pending migrations
-    async fn get_pending_migrations<C>(db: &C) -> Result<Vec<Migration>, DbErr>
+    async fn get_pending_migrations<C>(db: &C, group: &str) -> Result<Vec<Migration>, DbErr>
     where
         C: ConnectionTrait,
     {
         Self::install(db).await?;
-        Ok(Self::get_migration_with_status(db)
+        Ok(Self::get_migration_with_status(db, group)
             .await?
             .into_iter()
             .filter(|file| file.status == MigrationStatus::Pending)
@@ -146,12 +146,12 @@ pub trait MigratorTrait: Send {
     }
 
     /// Get list of applied migrations
-    async fn get_applied_migrations<C>(db: &C) -> Result<Vec<Migration>, DbErr>
+    async fn get_applied_migrations<C>(db: &C, group: &str) -> Result<Vec<Migration>, DbErr>
     where
         C: ConnectionTrait,
     {
         Self::install(db).await?;
-        Ok(Self::get_migration_with_status(db)
+        Ok(Self::get_migration_with_status(db, group)
             .await?
             .into_iter()
             .filter(|file| file.status == MigrationStatus::Applied)
@@ -174,7 +174,7 @@ pub trait MigratorTrait: Send {
     }
 
     /// Check the status of all migrations
-    async fn status<C>(db: &C) -> Result<(), DbErr>
+    async fn status<C>(db: &C, group: &str) -> Result<(), DbErr>
     where
         C: ConnectionTrait,
     {
@@ -182,67 +182,90 @@ pub trait MigratorTrait: Send {
 
         info!("Checking migration status");
 
-        for Migration { migration, status } in Self::get_migration_with_status(db).await? {
-            info!("Migration '{}'... {}", migration.name(), status);
+        for Migration { migration, status } in Self::get_migration_with_status(db, group).await? {
+            info!(
+                "Migration '{}' => '{}'... {}",
+                group,
+                migration.name(),
+                status
+            );
         }
 
         Ok(())
     }
 
     /// Drop all tables from the database, then reapply all migrations
-    async fn fresh<'c, C>(db: C) -> Result<(), DbErr>
+    async fn fresh<'c, C, G: Into<String> + Send>(db: C, group: G) -> Result<(), DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
     {
+        let group = group.into();
         exec_with_connection::<'_, _, _>(db, move |manager| {
-            Box::pin(async move { exec_fresh::<Self>(manager).await })
+            let group = group.clone();
+            Box::pin(async move { exec_fresh::<Self>(manager, &group).await })
         })
         .await
     }
 
     /// Rollback all applied migrations, then reapply all migrations
-    async fn refresh<'c, C>(db: C) -> Result<(), DbErr>
+    async fn refresh<'c, C, G: Into<String> + Send>(db: C, group: G) -> Result<(), DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
     {
+        let group = group.into();
         exec_with_connection::<'_, _, _>(db, move |manager| {
+            let group = group.clone();
             Box::pin(async move {
-                exec_down::<Self>(manager, None).await?;
-                exec_up::<Self>(manager, None).await
+                exec_down::<Self>(manager, &group, None).await?;
+                exec_up::<Self>(manager, &group, None).await
             })
         })
         .await
     }
 
     /// Rollback all applied migrations
-    async fn reset<'c, C>(db: C) -> Result<(), DbErr>
+    async fn reset<'c, C, G: Into<String> + Send>(db: C, group: G) -> Result<(), DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
     {
+        let group = group.into();
         exec_with_connection::<'_, _, _>(db, move |manager| {
-            Box::pin(async move { exec_down::<Self>(manager, None).await })
+            let group = group.clone();
+            Box::pin(async move { exec_down::<Self>(manager, &group, None).await })
         })
         .await
     }
 
     /// Apply pending migrations
-    async fn up<'c, C>(db: C, steps: Option<u32>) -> Result<(), DbErr>
+    async fn up<'c, C, G: Into<String> + Send>(
+        db: C,
+        group: G,
+        steps: Option<u32>,
+    ) -> Result<(), DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
     {
+        let group = group.into();
         exec_with_connection::<'_, _, _>(db, move |manager| {
-            Box::pin(async move { exec_up::<Self>(manager, steps).await })
+            let group = group.clone();
+            Box::pin(async move { exec_up::<Self>(manager, &group, steps).await })
         })
         .await
     }
 
     /// Rollback applied migrations
-    async fn down<'c, C>(db: C, steps: Option<u32>) -> Result<(), DbErr>
+    async fn down<'c, C, G: Into<String> + Send>(
+        db: C,
+        group: G,
+        steps: Option<u32>,
+    ) -> Result<(), DbErr>
     where
         C: IntoSchemaManagerConnection<'c>,
     {
+        let group = group.into();
         exec_with_connection::<'_, _, _>(db, move |manager| {
-            Box::pin(async move { exec_down::<Self>(manager, steps).await })
+            let group = group.clone();
+            Box::pin(async move { exec_down::<Self>(manager, &group, steps).await })
         })
         .await
     }
@@ -271,7 +294,7 @@ where
     }
 }
 
-async fn exec_fresh<M>(manager: &SchemaManager<'_>) -> Result<(), DbErr>
+async fn exec_fresh<M>(manager: &SchemaManager<'_>, group: &str) -> Result<(), DbErr>
 where
     M: MigratorTrait + ?Sized,
 {
@@ -353,10 +376,14 @@ where
     }
 
     // Reapply all migrations
-    exec_up::<M>(manager, None).await
+    exec_up::<M>(manager, group, None).await
 }
 
-async fn exec_up<M>(manager: &SchemaManager<'_>, mut steps: Option<u32>) -> Result<(), DbErr>
+async fn exec_up<M>(
+    manager: &SchemaManager<'_>,
+    group: &str,
+    mut steps: Option<u32>,
+) -> Result<(), DbErr>
 where
     M: MigratorTrait + ?Sized,
 {
@@ -370,7 +397,7 @@ where
         info!("Applying all pending migrations");
     }
 
-    let migrations = M::get_pending_migrations(db).await?.into_iter();
+    let migrations = M::get_pending_migrations(db, group).await?.into_iter();
     if migrations.len() == 0 {
         info!("No pending migrations");
     }
@@ -388,6 +415,7 @@ where
             .duration_since(SystemTime::UNIX_EPOCH)
             .expect("SystemTime before UNIX EPOCH!");
         seaql_migrations::Entity::insert(seaql_migrations::ActiveModel {
+            group: ActiveValue::Set(group.to_owned()),
             version: ActiveValue::Set(migration.name().to_owned()),
             applied_at: ActiveValue::Set(now.as_secs() as i64),
         })
@@ -399,7 +427,11 @@ where
     Ok(())
 }
 
-async fn exec_down<M>(manager: &SchemaManager<'_>, mut steps: Option<u32>) -> Result<(), DbErr>
+async fn exec_down<M>(
+    manager: &SchemaManager<'_>,
+    group: &str,
+    mut steps: Option<u32>,
+) -> Result<(), DbErr>
 where
     M: MigratorTrait + ?Sized,
 {
@@ -413,7 +445,10 @@ where
         info!("Rolling back all applied migrations");
     }
 
-    let migrations = M::get_applied_migrations(db).await?.into_iter().rev();
+    let migrations = M::get_applied_migrations(db, group)
+        .await?
+        .into_iter()
+        .rev();
     if migrations.len() == 0 {
         info!("No applied migrations");
     }
