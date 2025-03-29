@@ -175,9 +175,10 @@ impl Column {
                 }
                 ColumnType::Enum { name, .. } => {
                     let enum_ident = format_ident!("{}", name.to_string().to_upper_camel_case());
-                    quote! { #enum_ident::db_type()
-                        .get_column_type()
-                        .to_owned()
+                    quote! {
+                        #enum_ident::db_type()
+                            .get_column_type()
+                            .to_owned()
                     }
                 }
                 ColumnType::Array(column_type) => {
