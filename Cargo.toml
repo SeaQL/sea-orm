@@ -73,7 +73,6 @@ default = [
     "with-bigdecimal",
     "with-uuid",
     "with-time",
-    "with-ipnetwork",
 ]
 macros = ["sea-orm-macros/derive"]
 mock = []
