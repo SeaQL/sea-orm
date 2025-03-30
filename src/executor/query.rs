@@ -952,6 +952,7 @@ mod postgres_array {
     try_getable_postgres_array!(f32);
     try_getable_postgres_array!(f64);
     try_getable_postgres_array!(String);
+    try_getable_postgres_array!(Vec<u8>);
 
     #[cfg(feature = "with-json")]
     try_getable_postgres_array!(serde_json::Value);
