@@ -1,6 +1,6 @@
 use crate::{
-    ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable, ModelTrait,
-    PrimaryKeyToColumn, RelationDef,
+    ColumnAsExpr, ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable,
+    ModelTrait, PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
     Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockBehavior, LockType,
@@ -86,11 +86,11 @@ pub trait QuerySelect: Sized {
     /// ```
     fn column_as<C, I>(mut self, col: C, alias: I) -> Self
     where
-        C: IntoSimpleExpr,
+        C: ColumnAsExpr,
         I: IntoIdentity,
     {
         self.query().expr(SelectExpr {
-            expr: col.into_simple_expr(),
+            expr: col.into_column_as_expr(),
             alias: Some(SeaRc::new(alias.into_identity())),
             window: None,
         });

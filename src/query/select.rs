@@ -53,6 +53,13 @@ pub trait IntoSimpleExpr {
     fn into_simple_expr(self) -> SimpleExpr;
 }
 
+/// Extending [IntoSimpleExpr] to support casting ActiveEnum as TEXT in select expression
+pub trait ColumnAsExpr: IntoSimpleExpr {
+    /// Casting ActiveEnum as TEXT in select expression,
+    /// otherwise same as [IntoSimpleExpr::into_simple_expr]
+    fn into_column_as_expr(self) -> SimpleExpr;
+}
+
 macro_rules! impl_query_trait {
     ( $trait: ident ) => {
         impl<E> $trait for Select<E>
@@ -108,6 +115,27 @@ macro_rules! impl_query_trait {
 impl_query_trait!(QuerySelect);
 impl_query_trait!(QueryFilter);
 impl_query_trait!(QueryOrder);
+
+impl<C> ColumnAsExpr for C
+where
+    C: ColumnTrait,
+{
+    fn into_column_as_expr(self) -> SimpleExpr {
+        self.select_as(Expr::expr(self.as_column_ref().into_column_ref()))
+    }
+}
+
+impl ColumnAsExpr for Expr {
+    fn into_column_as_expr(self) -> SimpleExpr {
+        self.into_simple_expr()
+    }
+}
+
+impl ColumnAsExpr for SimpleExpr {
+    fn into_column_as_expr(self) -> SimpleExpr {
+        self.into_simple_expr()
+    }
+}
 
 impl<C> IntoSimpleExpr for C
 where
