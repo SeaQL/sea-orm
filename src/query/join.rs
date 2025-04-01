@@ -180,6 +180,17 @@ macro_rules! impl_find_related {
                 self.join_join(JoinType::LeftJoin, $last::to(), $last::via())
                     .select_also(r)
             }
+
+            #[doc = "Left Join with an Entity Related to one of the Entity"]
+            pub fn one_also_related<Z, R>(self, r: R) -> crate::$next_struct<$($generics),*, R>
+            where
+                R: EntityTrait,
+                Z: EntityTrait,
+                Z: Related<R>,
+            {
+                self.join_join(JoinType::LeftJoin, Z::to(), Z::via())
+                    .select_also(r)
+            }
         }
     }
 }
