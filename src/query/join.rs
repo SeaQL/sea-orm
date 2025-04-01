@@ -1,6 +1,6 @@
 use crate::{
     join_tbl_on_condition, unpack_table_ref, ColumnTrait, EntityTrait, IdenStatic, Iterable,
-    Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectThree, SelectTwo, SelectTwoMany,
+    Linked, QuerySelect, Related, Select, SelectA, SelectB, SelectTwo, SelectTwoMany,
 };
 pub use sea_query::JoinType;
 use sea_query::{Alias, Condition, Expr, IntoIden, SeaRc, SelectExpr};
@@ -155,31 +155,43 @@ where
     }
 }
 
-impl<E, F> SelectTwo<E, F>
-where
-    E: EntityTrait,
-    F: EntityTrait,
-{
-    /// Left Join with an Entity Related to the first Entity
-    pub fn find_also_related<R>(self, r: R) -> SelectThree<E, F, R>
-    where
-        R: EntityTrait,
-        E: Related<R>,
-    {
-        self.join_join(JoinType::LeftJoin, E::to(), E::via())
-            .select_also(r)
-    }
+macro_rules! impl_find_related {
+    ( $struct:ident <$($generics:ident),+>, $second_last:ident, $last:ident, $next_struct:ident ) => {
+        impl<$($generics),*> crate::$struct<$($generics),*>
+        where
+            $($generics: EntityTrait),*
+        {
+            #[doc = "Left Join with an Entity Related to the second last Entity"]
+            pub fn find_also_related<R>(self, r: R) -> crate::$next_struct<$($generics),*, R>
+            where
+                R: EntityTrait,
+                $second_last: Related<R>,
+            {
+                self.join_join(JoinType::LeftJoin, $second_last::to(), $second_last::via())
+                    .select_also(r)
+            }
 
-    /// Left Join with an Entity Related to the second Entity
-    pub fn and_also_related<R>(self, r: R) -> SelectThree<E, F, R>
-    where
-        R: EntityTrait,
-        F: Related<R>,
-    {
-        self.join_join(JoinType::LeftJoin, F::to(), F::via())
-            .select_also(r)
+            #[doc = "Left Join with an Entity Related to the last Entity"]
+            pub fn and_also_related<R>(self, r: R) -> crate::$next_struct<$($generics),*, R>
+            where
+                R: EntityTrait,
+                $last: Related<R>,
+            {
+                self.join_join(JoinType::LeftJoin, $last::to(), $last::via())
+                    .select_also(r)
+            }
+        }
     }
 }
+
+impl_find_related!(SelectTwo<E, F>, E, F, SelectThree);
+impl_find_related!(SelectThree<E, F, G>, F, G, SelectFour);
+impl_find_related!(SelectFour<E, F, G, H>, G, H, SelectFive);
+impl_find_related!(SelectFive<E, F, G, H, I>, H, I, SelectSix);
+impl_find_related!(SelectSix<E, F, G, H, I, J>, I, J, SelectSeven);
+impl_find_related!(SelectSeven<E, F, G, H, I, J, K>, J, K, SelectEight);
+impl_find_related!(SelectEight<E, F, G, H, I, J, K, L>, K, L, SelectNine);
+impl_find_related!(SelectNine<E, F, G, H, I, J, K, L, M>, L, M, SelectTen);
 
 #[cfg(test)]
 mod tests {

@@ -11,7 +11,9 @@ mod traits;
 mod update;
 mod util;
 
-pub use combine::{SelectA, SelectB, SelectC};
+pub use combine::{
+    SelectA, SelectB, SelectC, SelectD, SelectE, SelectF, SelectG, SelectH, SelectI, SelectJ,
+};
 pub use delete::*;
 pub use helper::*;
 pub use insert::*;

@@ -1,6 +1,6 @@
 use crate::{
     error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel,
-    SelectThree, SelectThreeModel, SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait,
+    Selector, SelectorRaw, SelectorTrait,
 };
 use async_stream::stream;
 use futures_util::Stream;
@@ -285,37 +285,32 @@ where
     }
 }
 
-impl<'db, C, M, N, E, F> PaginatorTrait<'db, C> for SelectTwo<E, F>
-where
-    C: ConnectionTrait,
-    E: EntityTrait<Model = M>,
-    F: EntityTrait<Model = N>,
-    M: FromQueryResult + Sized + Send + Sync + 'db,
-    N: FromQueryResult + Sized + Send + Sync + 'db,
-{
-    type Selector = SelectTwoModel<M, N>;
+macro_rules! impl_paginator_trait {
+    ( $select_struct:ident <$($select_generics:ident),+>, $model_struct:ident <$($model_generics:ident),+> ) => {
+        impl<'db, C, $($select_generics),*, $($model_generics),*> PaginatorTrait<'db, C> for crate::$select_struct<$($select_generics),*>
+        where
+            C: ConnectionTrait,
+            $($select_generics: EntityTrait<Model = $model_generics>,)*
+            $($model_generics: FromQueryResult + Sized + Send + Sync + 'db,)*
+        {
+            type Selector = crate::$model_struct<$($model_generics),*>;
 
-    fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, Self::Selector> {
-        self.into_model().paginate(db, page_size)
+            fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, Self::Selector> {
+                self.into_model().paginate(db, page_size)
+            }
+        }
     }
 }
 
-impl<'db, C, M, N, O, E, F, G> PaginatorTrait<'db, C> for SelectThree<E, F, G>
-where
-    C: ConnectionTrait,
-    E: EntityTrait<Model = M>,
-    F: EntityTrait<Model = N>,
-    G: EntityTrait<Model = O>,
-    M: FromQueryResult + Sized + Send + Sync + 'db,
-    N: FromQueryResult + Sized + Send + Sync + 'db,
-    O: FromQueryResult + Sized + Send + Sync + 'db,
-{
-    type Selector = SelectThreeModel<M, N, O>;
-
-    fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, Self::Selector> {
-        self.into_model().paginate(db, page_size)
-    }
-}
+impl_paginator_trait!(SelectTwo<E, F>, SelectTwoModel<O, P>);
+impl_paginator_trait!(SelectThree<E, F, G>, SelectThreeModel<O, P, Q>);
+impl_paginator_trait!(SelectFour<E, F, G, H>, SelectFourModel<O, P, Q, R>);
+impl_paginator_trait!(SelectFive<E, F, G, H, I>, SelectFiveModel<O, P, Q, R, S>);
+impl_paginator_trait!(SelectSix<E, F, G, H, I, J>, SelectSixModel<O, P, Q, R, S, T>);
+impl_paginator_trait!(SelectSeven<E, F, G, H, I, J, K>, SelectSevenModel<O, P, Q, R, S, T, U>);
+impl_paginator_trait!(SelectEight<E, F, G, H, I, J, K, L>, SelectEightModel<O, P, Q, R, S, T, U, V>);
+impl_paginator_trait!(SelectNine<E, F, G, H, I, J, K, L, M>, SelectNineModel<O, P, Q, R, S, T, U, V, W>);
+impl_paginator_trait!(SelectTen<E, F, G, H, I, J, K, L, M, N>, SelectTenModel<O, P, Q, R, S, T, U, V, W, X>);
 
 #[cfg(test)]
 #[cfg(feature = "mock")]

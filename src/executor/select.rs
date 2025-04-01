@@ -1,8 +1,7 @@
 use crate::{
     error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, Iterable,
     ModelTrait, PartialModelTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait,
-    QueryResult, QuerySelect, Select, SelectA, SelectB, SelectC, SelectThree, SelectTwo,
-    SelectTwoMany, Statement, StreamTrait, TryGetableMany,
+    QueryResult, QuerySelect, Select, SelectTwoMany, Statement, StreamTrait, TryGetableMany,
 };
 use futures_util::{Stream, TryStreamExt};
 use sea_query::{SelectStatement, Value};
@@ -71,26 +70,28 @@ where
     model: PhantomData<M>,
 }
 
-/// Helper class to handle query result for 2 Models
-#[derive(Clone, Debug)]
-pub struct SelectTwoModel<M, N>
-where
-    M: FromQueryResult,
-    N: FromQueryResult,
-{
-    model: PhantomData<(M, N)>,
+macro_rules! def_model_struct {
+    ( $struct:ident <$($generics:ident),+>, $num:ident ) => {
+        #[doc = concat!("Helper class to handle query result for ", stringify!($num), " Models")]
+        #[derive(Clone, Debug)]
+        pub struct $struct<$($generics),*>
+        where
+            $($generics: FromQueryResult),*
+        {
+            model: PhantomData<($($generics),*)>,
+        }
+    }
 }
 
-/// Helper class to handle query result for 3 Models
-#[derive(Clone, Debug)]
-pub struct SelectThreeModel<M, N, O>
-where
-    M: FromQueryResult,
-    N: FromQueryResult,
-    O: FromQueryResult,
-{
-    model: PhantomData<(M, N, O)>,
-}
+def_model_struct!(SelectTwoModel<O, P>, two);
+def_model_struct!(SelectThreeModel<O, P, Q>, three);
+def_model_struct!(SelectFourModel<O, P, Q, R>, four);
+def_model_struct!(SelectFiveModel<O, P, Q, R, S>, five);
+def_model_struct!(SelectSixModel<O, P, Q, R, S, T>, six);
+def_model_struct!(SelectSevenModel<O, P, Q, R, S, T, U>, seven);
+def_model_struct!(SelectEightModel<O, P, Q, R, S, T, U, V>, eight);
+def_model_struct!(SelectNineModel<O, P, Q, R, S, T, U, V, W>, nine);
+def_model_struct!(SelectTenModel<O, P, Q, R, S, T, U, V, W, X>, ten);
 
 impl<T, C> SelectorTrait for SelectGetableValue<T, C>
 where
@@ -127,37 +128,34 @@ where
     }
 }
 
-impl<M, N> SelectorTrait for SelectTwoModel<M, N>
-where
-    M: FromQueryResult + Sized,
-    N: FromQueryResult + Sized,
-{
-    type Item = (M, Option<N>);
+macro_rules! impl_selector_trait {
+    ( $model_struct:ident <$first_model_generics:ident => $first_prefix:ident, $($model_generics:ident => $prefix:ident),+> ) => {
+        impl<$first_model_generics, $($model_generics),*> SelectorTrait for $model_struct<$first_model_generics, $($model_generics),*>
+        where
+            $first_model_generics: FromQueryResult + Sized,
+            $($model_generics: FromQueryResult + Sized),*
+        {
+            type Item = ($first_model_generics, $(Option<$model_generics>),*);
 
-    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr> {
-        Ok((
-            M::from_query_result(&res, SelectA.as_str())?,
-            N::from_query_result_optional(&res, SelectB.as_str())?,
-        ))
+            fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr> {
+                Ok((
+                    $first_model_generics::from_query_result(&res, crate::$first_prefix.as_str())?,
+                    $($model_generics::from_query_result_optional(&res, crate::$prefix.as_str())?,)*
+                ))
+            }
+        }
     }
 }
 
-impl<M, N, O> SelectorTrait for SelectThreeModel<M, N, O>
-where
-    M: FromQueryResult + Sized,
-    N: FromQueryResult + Sized,
-    O: FromQueryResult + Sized,
-{
-    type Item = (M, Option<N>, Option<O>);
-
-    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr> {
-        Ok((
-            M::from_query_result(&res, SelectA.as_str())?,
-            N::from_query_result_optional(&res, SelectB.as_str())?,
-            O::from_query_result_optional(&res, SelectC.as_str())?,
-        ))
-    }
-}
+impl_selector_trait!(SelectTwoModel<O=>SelectA, P=>SelectB>);
+impl_selector_trait!(SelectThreeModel<O=>SelectA, P=>SelectB, Q=>SelectC>);
+impl_selector_trait!(SelectFourModel<O=>SelectA, P=>SelectB, Q=>SelectC, R=>SelectD>);
+impl_selector_trait!(SelectFiveModel<O=>SelectA, P=>SelectB, Q=>SelectC, R=>SelectD, S=>SelectE>);
+impl_selector_trait!(SelectSixModel<O=>SelectA, P=>SelectB, Q=>SelectC, R=>SelectD, S=>SelectE, T=>SelectF>);
+impl_selector_trait!(SelectSevenModel<O=>SelectA, P=>SelectB, Q=>SelectC, R=>SelectD, S=>SelectE, T=>SelectF, U=>SelectG>);
+impl_selector_trait!(SelectEightModel<O=>SelectA, P=>SelectB, Q=>SelectC, R=>SelectD, S=>SelectE, T=>SelectF, U=>SelectG, V=>SelectH>);
+impl_selector_trait!(SelectNineModel<O=>SelectA, P=>SelectB, Q=>SelectC, R=>SelectD, S=>SelectE, T=>SelectF, U=>SelectG, V=>SelectH, W=>SelectI>);
+impl_selector_trait!(SelectTenModel<O=>SelectA, P=>SelectB, Q=>SelectC, R=>SelectD, S=>SelectE, T=>SelectF, U=>SelectG, V=>SelectH, W=>SelectI, X=>SelectJ>);
 
 impl<E> Select<E>
 where
@@ -479,84 +477,103 @@ where
     }
 }
 
-impl<E, F> SelectTwo<E, F>
-where
-    E: EntityTrait,
-    F: EntityTrait,
-{
-    /// Perform a conversion into a [SelectTwoModel]
-    pub fn into_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
-    where
-        M: FromQueryResult,
-        N: FromQueryResult,
-    {
-        Selector {
-            query: self.query,
-            selector: SelectTwoModel { model: PhantomData },
+macro_rules! json_value_type {
+    ( $i:ident ) => {
+        JsonValue
+    };
+}
+
+macro_rules! impl_model_struct {
+    ( $select_struct:ident <$first_select_generics:ident, $($select_generics:ident),+>, $model_struct:ident <$first_model_generics:ident, $($model_generics:ident),+> ) => {
+        impl<$first_select_generics, $($select_generics),*> crate::$select_struct<$first_select_generics, $($select_generics),*>
+        where
+            $first_select_generics: EntityTrait,
+            $($select_generics: EntityTrait),*
+        {
+            #[doc = concat!("Perform a conversion into a [", stringify!($model_struct), "]")]
+            pub fn into_model<$first_model_generics, $($model_generics),*>(self) -> Selector<$model_struct<$first_model_generics, $($model_generics),*>>
+            where
+                $first_model_generics: FromQueryResult,
+                $($model_generics: FromQueryResult),*
+            {
+                Selector {
+                    query: self.query,
+                    selector: crate::$model_struct { model: PhantomData },
+                }
+            }
+
+            #[doc = concat!("Perform a conversion into a [", stringify!($model_struct), "] with [PartialModel](PartialModelTrait)")]
+            pub fn into_partial_model<$first_model_generics, $($model_generics),*>(self) -> Selector<crate::$model_struct<$first_model_generics, $($model_generics),*>>
+            where
+                $first_model_generics: PartialModelTrait,
+                $($model_generics: PartialModelTrait),*
+            {
+                let select = QuerySelect::select_only(self);
+                $(let select = $model_generics::select_cols(select);)*
+                select.into_model::<$first_model_generics, $($model_generics),*>()
+            }
+
+            #[doc = "Convert the Models into JsonValue"]
+            #[cfg(feature = "with-json")]
+            pub fn into_json(self) -> Selector<crate::$model_struct<json_value_type!($first_select_generics), $(json_value_type!($select_generics)),*>> {
+                Selector {
+                    query: self.query,
+                    selector: crate::$model_struct { model: PhantomData },
+                }
+            }
+
+            #[doc = "Get one Model from the Select query"]
+            pub async fn one<C>(self, db: &C) -> Result<Option<($first_select_generics::Model, $(Option<$select_generics::Model>),*)>, DbErr>
+            where
+                C: ConnectionTrait,
+            {
+                self.into_model().one(db).await
+            }
+
+            #[doc = "Get all Models from the Select query"]
+            pub async fn all<C>(self, db: &C) -> Result<Vec<($first_select_generics::Model, $(Option<$select_generics::Model>),*)>, DbErr>
+            where
+                C: ConnectionTrait,
+            {
+                self.into_model().all(db).await
+            }
+
+            #[doc = "Stream the results of a Select operation on a Model"]
+            pub async fn stream<'a: 'b, 'b, C>(
+                self,
+                db: &'a C,
+            ) -> Result<impl Stream<Item = Result<($first_select_generics::Model, $(Option<$select_generics::Model>),*), DbErr>> + 'b, DbErr>
+            where
+                C: ConnectionTrait + StreamTrait + Send,
+            {
+                self.into_model().stream(db).await
+            }
+
+            #[doc = "Stream the result of the operation with PartialModel"]
+            pub async fn stream_partial_model<'a: 'b, 'b, C, $first_model_generics, $($model_generics),*>(
+                self,
+                db: &'a C,
+            ) -> Result<impl Stream<Item = Result<($first_model_generics, $(Option<$model_generics>),*), DbErr>> + 'b + Send, DbErr>
+            where
+                C: ConnectionTrait + StreamTrait + Send,
+                $first_model_generics: PartialModelTrait + Send + 'b,
+                $($model_generics: PartialModelTrait + Send + 'b),*
+            {
+                self.into_partial_model().stream(db).await
+            }
         }
-    }
-
-    /// Perform a conversion into a [SelectTwoModel] with [PartialModel](PartialModelTrait)
-    pub fn into_partial_model<M, N>(self) -> Selector<SelectTwoModel<M, N>>
-    where
-        M: PartialModelTrait,
-        N: PartialModelTrait,
-    {
-        let select = QuerySelect::select_only(self);
-        let select = M::select_cols(select);
-        let select = N::select_cols(select);
-        select.into_model::<M, N>()
-    }
-
-    /// Convert the Models into JsonValue
-    #[cfg(feature = "with-json")]
-    pub fn into_json(self) -> Selector<SelectTwoModel<JsonValue, JsonValue>> {
-        Selector {
-            query: self.query,
-            selector: SelectTwoModel { model: PhantomData },
-        }
-    }
-
-    /// Get one Model from the Select query
-    pub async fn one<C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
-    where
-        C: ConnectionTrait,
-    {
-        self.into_model().one(db).await
-    }
-
-    /// Get all Models from the Select query
-    pub async fn all<C>(self, db: &C) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr>
-    where
-        C: ConnectionTrait,
-    {
-        self.into_model().all(db).await
-    }
-
-    /// Stream the results of a Select operation on a Model
-    pub async fn stream<'a: 'b, 'b, C>(
-        self,
-        db: &'a C,
-    ) -> Result<impl Stream<Item = Result<(E::Model, Option<F::Model>), DbErr>> + 'b, DbErr>
-    where
-        C: ConnectionTrait + StreamTrait + Send,
-    {
-        self.into_model().stream(db).await
-    }
-
-    /// Stream the result of the operation with PartialModel
-    pub async fn stream_partial_model<'a: 'b, 'b, C, M, N>(
-        self,
-        db: &'a C,
-    ) -> Result<impl Stream<Item = Result<(M, Option<N>), DbErr>> + 'b + Send, DbErr>
-    where
-        C: ConnectionTrait + StreamTrait + Send,
-        M: PartialModelTrait + Send + 'b,
-        N: PartialModelTrait + Send + 'b,
-    {
-        self.into_partial_model().stream(db).await
     }
 }
+
+impl_model_struct!(SelectTwo<E, F>, SelectTwoModel<O, P>);
+impl_model_struct!(SelectThree<E, F, G>, SelectThreeModel<O, P, Q>);
+impl_model_struct!(SelectFour<E, F, G, H>, SelectFourModel<O, P, Q, R>);
+impl_model_struct!(SelectFive<E, F, G, H, I>, SelectFiveModel<O, P, Q, R, S>);
+impl_model_struct!(SelectSix<E, F, G, H, I, J>, SelectSixModel<O, P, Q, R, S, T>);
+impl_model_struct!(SelectSeven<E, F, G, H, I, J, K>, SelectSevenModel<O, P, Q, R, S, T, U>);
+impl_model_struct!(SelectEight<E, F, G, H, I, J, K, L>, SelectEightModel<O, P, Q, R, S, T, U, V>);
+impl_model_struct!(SelectNine<E, F, G, H, I, J, K, L, M>, SelectNineModel<O, P, Q, R, S, T, U, V, W>);
+impl_model_struct!(SelectTen<E, F, G, H, I, J, K, L, M, N>, SelectTenModel<O, P, Q, R, S, T, U, V, W, X>);
 
 impl<E, F> SelectTwoMany<E, F>
 where
@@ -644,98 +661,6 @@ where
 
     // pub fn count()
     // we should only count the number of items of the parent model
-}
-
-impl<E, F, G> SelectThree<E, F, G>
-where
-    E: EntityTrait,
-    F: EntityTrait,
-    G: EntityTrait,
-{
-    /// Perform a conversion into a [SelectThreeModel]
-    pub fn into_model<M, N, O>(self) -> Selector<SelectThreeModel<M, N, O>>
-    where
-        M: FromQueryResult,
-        N: FromQueryResult,
-        O: FromQueryResult,
-    {
-        Selector {
-            query: self.query,
-            selector: SelectThreeModel { model: PhantomData },
-        }
-    }
-
-    /// Perform a conversion into a [SelectThreeModel] with [PartialModel](PartialModelTrait)
-    pub fn into_partial_model<M, N, O>(self) -> Selector<SelectThreeModel<M, N, O>>
-    where
-        M: PartialModelTrait,
-        N: PartialModelTrait,
-        O: PartialModelTrait,
-    {
-        let select = QuerySelect::select_only(self);
-        let select = M::select_cols(select);
-        let select = N::select_cols(select);
-        select.into_model::<M, N, O>()
-    }
-
-    /// Convert the Models into JsonValue
-    #[cfg(feature = "with-json")]
-    pub fn into_json(self) -> Selector<SelectThreeModel<JsonValue, JsonValue, JsonValue>> {
-        Selector {
-            query: self.query,
-            selector: SelectThreeModel { model: PhantomData },
-        }
-    }
-
-    /// Get one Model from the Select query
-    pub async fn one<C>(
-        self,
-        db: &C,
-    ) -> Result<Option<(E::Model, Option<F::Model>, Option<G::Model>)>, DbErr>
-    where
-        C: ConnectionTrait,
-    {
-        self.into_model().one(db).await
-    }
-
-    /// Get all Models from the Select query
-    pub async fn all<C>(
-        self,
-        db: &C,
-    ) -> Result<Vec<(E::Model, Option<F::Model>, Option<G::Model>)>, DbErr>
-    where
-        C: ConnectionTrait,
-    {
-        self.into_model().all(db).await
-    }
-
-    /// Stream the results of a Select operation on a Model
-    pub async fn stream<'a: 'b, 'b, C>(
-        self,
-        db: &'a C,
-    ) -> Result<
-        impl Stream<Item = Result<(E::Model, Option<F::Model>, Option<G::Model>), DbErr>> + 'b,
-        DbErr,
-    >
-    where
-        C: ConnectionTrait + StreamTrait + Send,
-    {
-        self.into_model().stream(db).await
-    }
-
-    /// Stream the result of the operation with PartialModel
-    pub async fn stream_partial_model<'a: 'b, 'b, C, M, N, O>(
-        self,
-        db: &'a C,
-    ) -> Result<impl Stream<Item = Result<(M, Option<N>, Option<O>), DbErr>> + 'b + Send, DbErr>
-    where
-        C: ConnectionTrait + StreamTrait + Send,
-        M: PartialModelTrait + Send + 'b,
-        N: PartialModelTrait + Send + 'b,
-        O: PartialModelTrait + Send + 'b,
-    {
-        self.into_partial_model().stream(db).await
-    }
 }
 
 impl<S> Selector<S>
