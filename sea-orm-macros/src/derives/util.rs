@@ -165,14 +165,14 @@ pub(crate) trait GetMeta {
 }
 
 impl GetMeta for Meta {
-    fn exists(&self, k: &str) -> bool {
+    fn exists(&self, key: &str) -> bool {
         let Meta::Path(path) = self else {
             return false;
         };
-        path.is_ident(k)
+        path.is_ident(key)
     }
 
-    fn get_as_kv(&self, k: &str) -> Option<String> {
+    fn get_as_kv(&self, key: &str) -> Option<String> {
         let Meta::NameValue(MetaNameValue {
             path,
             value: syn::Expr::Lit(exprlit),
@@ -186,7 +186,7 @@ impl GetMeta for Meta {
             return None;
         };
 
-        if path.is_ident(k) {
+        if path.is_ident(key) {
             Some(litstr.value())
         } else {
             None

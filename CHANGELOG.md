@@ -5,6 +5,86 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.1.8 - 2025-03-30
+
+### New Features
+
+* Implement `DeriveValueType` for enum strings
+```rust
+#[derive(DeriveValueType)]
+#[sea_orm(value_type = "String")]
+pub enum Tag {
+    Hard,
+    Soft,
+}
+
+// `from_str` defaults to `std::str::FromStr::from_str`
+impl std::str::FromStr for Tag {
+    type Err = sea_orm::sea_query::ValueTypeErr;
+    fn from_str(s: &str) -> Result<Self, Self::Err> { .. }
+}
+
+// `to_str` defaults to `std::string::ToString::to_string`.
+impl std::fmt::Display for Tag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { .. }
+}
+
+// you can override from_str and to_str with custom functions
+#[derive(DeriveValueType)]
+#[sea_orm(value_type = "String", from_str = "Tag::from_str", to_str = "Tag::to_str")]
+pub enum Tag {
+    Color,
+    Grey,
+}
+
+impl Tag {
+    fn from_str(s: &str) -> Result<Self, ValueTypeErr> { .. }
+
+    fn to_str(&self) -> &'static str { .. }
+}
+```
+* Support Postgres Ipnetwork (under feature flag `with-ipnetwork`) https://github.com/SeaQL/sea-orm/pull/2395
+```rust
+// Model
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "host_network")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    pub ipaddress: IpNetwork,
+    #[sea_orm(column_type = "Cidr")]
+    pub network: IpNetwork,
+}
+
+// Schema
+sea_query::Table::create()
+    .table(host_network::Entity)
+    .col(ColumnDef::new(host_network::Column::Id).integer().not_null().auto_increment().primary_key())
+    .col(ColumnDef::new(host_network::Column::Ipaddress).inet().not_null())
+    .col(ColumnDef::new(host_network::Column::Network).cidr().not_null())
+    .to_owned();
+
+// CRUD
+host_network::ActiveModel {
+    ipaddress: Set(IpNetwork::new(Ipv6Addr::new(..))),
+    network: Set(IpNetwork::new(Ipv4Addr::new(..))),
+    ..Default::default()
+}
+```
+
+### Enhancements
+
+* Added `try_getable_postgres_array!(Vec<u8>)` (to support `bytea[]`) https://github.com/SeaQL/sea-orm/pull/2503
+
+### Bug fixes
+
+* [sea-orm-codegen] Support postgres array in expanded format https://github.com/SeaQL/sea-orm/pull/2545
+
+### House keeping
+
+* Replace `once_cell` crate with `std` equivalent https://github.com/SeaQL/sea-orm/pull/2524
+(available since rust 1.80)
+
 ## 1.1.7 - 2025-03-02
 
 ### New Features

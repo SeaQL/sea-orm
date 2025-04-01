@@ -7,7 +7,7 @@ use std::vec;
 
 pub use common::{
     features::{
-        value_type::{value_type_general, value_type_pg, Boolbean, Integer, StringVec},
+        value_type::{value_type_general, value_type_pg, Integer, StringVec, Tag1, Tag2},
         *,
     },
     setup::*,
@@ -41,6 +41,8 @@ pub async fn insert_value(db: &DatabaseConnection) -> Result<(), DbErr> {
     let model = value_type_general::Model {
         id: 1,
         number: 48.into(),
+        tag_1: Tag1::Hard,
+        tag_2: Tag2::Grey,
     };
     let result = model.clone().into_active_model().insert(db).await?;
     assert_eq!(result, model);
@@ -61,15 +63,15 @@ pub async fn postgres_insert_value(db: &DatabaseConnection) -> Result<(), DbErr>
 }
 
 pub fn type_test() {
+    assert_eq!(Integer::type_name(), "Integer");
     assert_eq!(StringVec::type_name(), "StringVec");
 
-    // custom types
+    assert_eq!(Integer::column_type(), ColumnType::Integer);
     assert_eq!(Integer::array_type(), ArrayType::Int);
-    assert_eq!(Integer::array_type(), ArrayType::Int);
-    assert_eq!(Boolbean::column_type(), ColumnType::Boolean);
-    assert_eq!(Boolbean::array_type(), ArrayType::Bool);
 
-    // self implied
+    assert!(matches!(Tag1::column_type(), ColumnType::String(_)));
+    assert_eq!(Tag1::array_type(), ArrayType::String);
+
     assert_eq!(
         StringVec::column_type(),
         ColumnType::Array(Arc::new(ColumnType::String(StringLen::None)))
