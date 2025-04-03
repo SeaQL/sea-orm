@@ -352,14 +352,14 @@ impl ActiveEnum {
                     sea_orm::sea_query::SeaRc::new(#enum_name_iden) as sea_orm::sea_query::DynIden
                 }
 
-                fn to_value(&self) -> Self::Value {
+                fn to_value(&self) -> <Self as sea_orm::ActiveEnum>::Value {
                     match self {
                         #( Self::#variant_idents => #variant_values, )*
                     }
                     .to_owned()
                 }
 
-                fn try_from_value(v: &Self::Value) -> std::result::Result<Self, sea_orm::DbErr> {
+                fn try_from_value(v: &<Self as sea_orm::ActiveEnum>::Value) -> std::result::Result<Self, sea_orm::DbErr> {
                     match #val {
                         #( #variant_values => Ok(Self::#variant_idents), )*
                         _ => Err(sea_orm::DbErr::Type(format!(
