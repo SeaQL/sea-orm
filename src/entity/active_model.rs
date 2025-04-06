@@ -507,13 +507,23 @@ pub trait ActiveModelTrait: Clone + Debug {
         for<'de> <<Self as ActiveModelTrait>::Entity as EntityTrait>::Model:
             serde::de::Deserialize<'de>,
     {
-        use crate::{Iden, Iterable};
+        use crate::{IdenStatic, Iterable};
+
+        let serde_json::Value::Object(obj) = &json else {
+            return Err(DbErr::Json(format!(
+                "invalid type: expected JSON object for {}",
+                <<Self as ActiveModelTrait>::Entity as IdenStatic>::as_str(&Default::default())
+            )));
+        };
 
         // Mark down which attribute exists in the JSON object
-        let json_keys: Vec<(<Self::Entity as EntityTrait>::Column, bool)> =
-            <<Self::Entity as EntityTrait>::Column>::iter()
-                .map(|col| (col, json.get(col.to_string()).is_some()))
-                .collect();
+        let mut json_keys: Vec<(<Self::Entity as EntityTrait>::Column, bool)> = Vec::new();
+
+        for col in <<Self::Entity as EntityTrait>::Column>::iter() {
+            let key = col.as_str();
+            let has_key = obj.contains_key(key);
+            json_keys.push((col, has_key));
+        }
 
         // Convert JSON object into ActiveModel via Model
         let model: <Self::Entity as EntityTrait>::Model =
