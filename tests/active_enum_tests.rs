@@ -11,7 +11,7 @@ use sea_orm::{
     entity::prelude::*,
     entity::*,
     sea_query::{BinOper, Expr},
-    ActiveEnum as ActiveEnumTrait, DatabaseConnection,
+    ActiveEnum as ActiveEnumTrait, DatabaseConnection, FromQueryResult, QuerySelect,
 };
 
 #[sea_orm_macros::test]
@@ -92,6 +92,47 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             .filter(Column::Category.eq(Category::Big))
             .filter(Column::Color.eq(Color::Black))
             .filter(Column::Tea.eq(Tea::EverydayTea))
+            .one(db)
+            .await?
+            .unwrap()
+    );
+
+    #[derive(Debug, FromQueryResult, PartialEq)]
+    struct SelectResult {
+        tea_alias: Option<Tea>,
+    }
+
+    assert_eq!(
+        SelectResult {
+            tea_alias: Some(Tea::EverydayTea),
+        },
+        Entity::find()
+            .select_only()
+            .column_as(Column::Tea, "tea_alias")
+            .into_model()
+            .one(db)
+            .await?
+            .unwrap()
+    );
+
+    assert_eq!(
+        serde_json::json!({
+            "id": 1,
+            "category": "B",
+            "color": 0,
+            "tea": "EverydayTea",
+        }),
+        Entity::find().into_json().one(db).await?.unwrap()
+    );
+
+    assert_eq!(
+        serde_json::json!({
+            "tea_alias": "EverydayTea",
+        }),
+        Entity::find()
+            .select_only()
+            .column_as(Column::Tea, "tea_alias")
+            .into_json()
             .one(db)
             .await?
             .unwrap()
