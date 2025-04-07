@@ -40,6 +40,9 @@ pub enum DbErr {
     /// Type error: the specified type cannot be converted from u64. This is not a runtime error.
     #[error("Type '{0}' cannot be converted from u64")]
     ConvertFromU64(&'static str),
+    /// Type error: the specified type cannot be converted from string. This is not a runtime error.
+    #[error("Type '{0}' cannot be converted from string")]
+    ConvertFromString(&'static str),
     /// After an insert statement it was impossible to retrieve the last_insert_id
     #[error("Failed to unpack last_insert_id")]
     UnpackInsertId,
