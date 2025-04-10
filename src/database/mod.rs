@@ -79,6 +79,13 @@ impl Database {
     {
         let opt: ConnectOptions = opt.into();
 
+        if url::Url::parse(&opt.url).is_err() {
+            return Err(conn_err(format!(
+                "The connection string '{}' cannot be parsed.",
+                opt.url
+            )));
+        }
+
         #[cfg(feature = "sqlx-mysql")]
         if DbBackend::MySql.is_prefix_of(&opt.url) {
             return crate::SqlxMySqlConnector::connect(opt).await;
