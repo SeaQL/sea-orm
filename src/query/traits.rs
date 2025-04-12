@@ -1,4 +1,4 @@
-use crate::{ColumnTrait, DbBackend, IntoIdentity, IntoSimpleExpr, QuerySelect, Statement};
+use crate::{ColumnAsExpr, ColumnTrait, DbBackend, IntoIdentity, QuerySelect, Statement};
 use sea_query::QueryStatementBuilder;
 
 /// A Trait for any type performing queries on a Model or ActiveModel
@@ -68,7 +68,7 @@ pub trait SelectColumns {
     /// For more detail, please visit [QuerySelect::column_as]
     fn select_column_as<C, I>(self, col: C, alias: I) -> Self
     where
-        C: IntoSimpleExpr,
+        C: ColumnAsExpr,
         I: IntoIdentity;
 }
 
@@ -82,7 +82,7 @@ where
 
     fn select_column_as<C, I>(self, col: C, alias: I) -> Self
     where
-        C: IntoSimpleExpr,
+        C: ColumnAsExpr,
         I: IntoIdentity,
     {
         QuerySelect::column_as(self, col, alias)
