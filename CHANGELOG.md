@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.1.9 - 2025-04-14
+
+### Enhancements
+
+* [sea-orm-macros] Use fully-qualified syntax for ActiveEnum associated type https://github.com/SeaQL/sea-orm/pull/2552
+* Accept `LikeExpr` in `like` and `not_like` https://github.com/SeaQL/sea-orm/pull/2549
+
+### Bug fixes
+
+* Check if url is well-formed before parsing https://github.com/SeaQL/sea-orm/pull/2558
+* `QuerySelect::column_as` method cast ActiveEnum column https://github.com/SeaQL/sea-orm/pull/2551
+
+### House keeping
+
+* Remove redundant `Expr::expr` from internal code https://github.com/SeaQL/sea-orm/pull/2554
+
 ## 1.1.8 - 2025-03-30
 
 ### New Features
