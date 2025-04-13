@@ -184,7 +184,7 @@ mod tests {
                 &WithSerde::None,
                 true,
                 &TokenStream::new(),
-                &bonus_attributes([r#"serde(rename_all = "camelCase")"#])
+                &bonus_attributes([r#"serde(rename_all = "camelCase", rename = "test")"#])
             )
             .to_string(),
             quote!(
@@ -194,7 +194,7 @@ mod tests {
                     db_type = "Enum",
                     enum_name = "coinflip_result_type"
                 )]
-                #[serde(rename_all = "camelCase")]
+                #[serde(rename_all = "camelCase", rename = "test")]
                 pub enum CoinflipResultType {
                     #[sea_orm(string_value = "HEADS")]
                     Heads,
@@ -216,7 +216,7 @@ mod tests {
                 &WithSerde::None,
                 true,
                 &TokenStream::new(),
-                &bonus_attributes([r#"serde(rename_all = "camelCase")"#, "ts(export)"])
+                &bonus_attributes([r#"serde(rename_all = "camelCase")"#, r#"ts(export, export_to = "path")"#])
             )
             .to_string(),
             quote!(
@@ -227,7 +227,7 @@ mod tests {
                     enum_name = "coinflip_result_type"
                 )]
                 #[serde(rename_all = "camelCase")]
-                #[ts(export)]
+                #[ts(export, export_to = "path")]
                 pub enum CoinflipResultType {
                     #[sea_orm(string_value = "HEADS")]
                     Heads,
