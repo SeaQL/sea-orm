@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Upgrades
 
-* Upgrade sqlx to 0.8.4
+* Upgrade sqlx to 0.8.4 https://github.com/SeaQL/sea-orm/pull/2562
 
 ## 1.1.9 - 2025-04-14
 
