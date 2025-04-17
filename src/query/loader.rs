@@ -4,8 +4,10 @@ use crate::{
 };
 use async_trait::async_trait;
 use sea_query::{ColumnRef, DynIden, Expr, IntoColumnRef, SimpleExpr, TableRef, ValueTuple};
-use std::collections::HashSet;
-use std::{collections::HashMap, str::FromStr};
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+};
 
 /// Entity, or a Select<Entity>; to be used as parameters in [`LoaderTrait`]
 pub trait EntityOrSelect<E: EntityTrait>: Send {
