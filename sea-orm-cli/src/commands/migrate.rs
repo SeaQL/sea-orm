@@ -179,12 +179,42 @@ fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(),
     let migration_filepath =
         get_full_migration_dir(migration_dir).join(format!("{}.rs", &migration_name));
     println!("Creating migration file `{}`", migration_filepath.display());
-    // TODO: make OS agnostic
-    let migration_template =
-        include_str!("../../template/migration/src/m20220101_000001_create_table.rs");
+
+    let migration_template = fmt_migration_tempelate(migration_name);
     let mut migration_file = fs::File::create(migration_filepath)?;
     migration_file.write_all(migration_template.as_bytes())?;
     Ok(())
+}
+
+fn fmt_migration_tempelate(migration_name: &str) -> String {
+    // Escape double quotes in the migration name
+    let name = migration_name.replace("\"", "\\\"");
+
+    format! {
+        r#"use sea_orm_migration::{{prelude::*, schema::*}};
+
+pub struct Migration;
+
+impl MigrationName for Migration {{
+    fn name(&self) -> &str {{
+        "{name}"
+    }}
+}}
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {{
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {{
+        // Replace the sample below with your own migration scripts
+        todo!();
+    }}
+
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {{
+        // Replace the sample below with your own migration scripts
+        todo!();
+    }}
+}}
+"#
+    }
 }
 
 /// `get_migrator_filepath` looks for a file `migration_dir/src/lib.rs`
@@ -275,6 +305,30 @@ impl Error for MigrationCommandError {}
 mod tests {
     use super::*;
 
+    const EXPECT_TEMPLATE: &str = r#"use sea_orm_migration::{prelude::*, schema::*};
+
+pub struct Migration;
+
+impl MigrationName for Migration {
+    fn name(&self) -> &str {
+        "test_name"
+    }
+}
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        // Replace the sample below with your own migration scripts
+        todo!();
+    }
+
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        // Replace the sample below with your own migration scripts
+        todo!();
+    }
+}
+"#;
+
     #[test]
     fn test_create_new_migration() {
         let migration_name = "test_name";
@@ -286,10 +340,7 @@ mod tests {
             .join(format!("{migration_name}.rs"));
         assert!(migration_filepath.exists());
         let migration_content = fs::read_to_string(migration_filepath).unwrap();
-        assert_eq!(
-            &migration_content,
-            include_str!("../../template/migration/src/m20220101_000001_create_table.rs")
-        );
+        assert_eq!(&migration_content, EXPECT_TEMPLATE);
         fs::remove_dir_all("/tmp/sea_orm_cli_test_new_migration/").unwrap();
     }
 
