@@ -187,9 +187,6 @@ fn create_new_migration(migration_name: &str, migration_dir: &str) -> Result<(),
 }
 
 fn fmt_migration_tempelate(migration_name: &str) -> String {
-    // Escape double quotes in the migration name
-    let name = migration_name.replace("\"", "\\\"");
-
     format! {
         r#"use sea_orm_migration::{{prelude::*, schema::*}};
 
@@ -197,7 +194,7 @@ pub struct Migration;
 
 impl MigrationName for Migration {{
     fn name(&self) -> &str {{
-        "{name}"
+        "{migration_name}"
     }}
 }}
 
@@ -305,7 +302,7 @@ impl Error for MigrationCommandError {}
 mod tests {
     use super::*;
 
-    const EXPECT_TEMPLATE: &str = r#"use sea_orm_migration::{prelude::*, schema::*};
+    const EXPECTED_TEMPLATE: &str = r#"use sea_orm_migration::{prelude::*, schema::*};
 
 pub struct Migration;
 
@@ -340,7 +337,7 @@ impl MigrationTrait for Migration {
             .join(format!("{migration_name}.rs"));
         assert!(migration_filepath.exists());
         let migration_content = fs::read_to_string(migration_filepath).unwrap();
-        assert_eq!(&migration_content, EXPECT_TEMPLATE);
+        assert_eq!(&migration_content, EXPECTED_TEMPLATE);
         fs::remove_dir_all("/tmp/sea_orm_cli_test_new_migration/").unwrap();
     }
 
