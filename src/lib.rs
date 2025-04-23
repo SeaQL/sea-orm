@@ -373,12 +373,15 @@ pub mod entity;
 pub mod error;
 /// This module performs execution of queries on a Model or ActiveModel
 mod executor;
-/// Holds types and methods to perform metric collection
+/// Types and methods to perform metric collection
 pub mod metric;
-/// Holds types and methods to perform queries
+/// Types and methods to perform queries
 pub mod query;
-/// Holds types that defines the schemas of an Entity
+/// Types that defines the schemas of an Entity
 pub mod schema;
+/// Helpers for working with Value
+pub mod value;
+
 #[doc(hidden)]
 #[cfg(all(feature = "macros", feature = "tests-cfg"))]
 pub mod tests_cfg;

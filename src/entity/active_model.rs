@@ -85,8 +85,11 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Check the state of a [ActiveValue]
     fn is_not_set(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
 
-    /// The default implementation of the ActiveModel
+    /// Create an ActiveModel with all fields to NotSet
     fn default() -> Self;
+
+    /// Create an ActiveModel with all fields to Set(default_value) if Default is implemented, NotSet otherwise
+    fn default_values() -> Self;
 
     /// Reset the value from [ActiveValue::Unchanged] to [ActiveValue::Set],
     /// leaving [ActiveValue::NotSet] untouched.

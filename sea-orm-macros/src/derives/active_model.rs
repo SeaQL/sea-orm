@@ -89,7 +89,7 @@ fn derive_active_model(ident: &Ident, all_fields: IntoIter<Field>) -> syn::Resul
         impl std::convert::From<#ident> for ActiveModel {
             fn from(m: #ident) -> Self {
                 Self {
-                    #(#field: sea_orm::ActiveValue::unchanged(m.#field)),*
+                    #(#field: sea_orm::ActiveValue::Unchanged(m.#field)),*
                 }
             }
         }
@@ -108,18 +108,18 @@ fn derive_active_model(ident: &Ident, all_fields: IntoIter<Field>) -> syn::Resul
             fn take(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 match c {
                     #(<Self::Entity as sea_orm::EntityTrait>::Column::#name => {
-                        let mut value = sea_orm::ActiveValue::not_set();
+                        let mut value = sea_orm::ActiveValue::NotSet;
                         std::mem::swap(&mut value, &mut self.#field);
                         value.into_wrapped_value()
                     },)*
-                    _ => sea_orm::ActiveValue::not_set(),
+                    _ => sea_orm::ActiveValue::NotSet,
                 }
             }
 
             fn get(&self, c: <Self::Entity as sea_orm::EntityTrait>::Column) -> sea_orm::ActiveValue<sea_orm::Value> {
                 match c {
                     #(<Self::Entity as sea_orm::EntityTrait>::Column::#name => self.#field.clone().into_wrapped_value(),)*
-                    _ => sea_orm::ActiveValue::not_set(),
+                    _ => sea_orm::ActiveValue::NotSet,
                 }
             }
 
@@ -132,7 +132,7 @@ fn derive_active_model(ident: &Ident, all_fields: IntoIter<Field>) -> syn::Resul
 
             fn not_set(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column) {
                 match c {
-                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::not_set(),)*
+                    #(<Self::Entity as sea_orm::EntityTrait>::Column::#name => self.#field = sea_orm::ActiveValue::NotSet,)*
                     _ => {},
                 }
             }
@@ -146,8 +146,15 @@ fn derive_active_model(ident: &Ident, all_fields: IntoIter<Field>) -> syn::Resul
 
             fn default() -> Self {
                 Self {
-                    #(#field: sea_orm::ActiveValue::not_set()),*
+                    #(#field: sea_orm::ActiveValue::NotSet),*
                 }
+            }
+
+            fn default_values() -> Self {
+                use sea_orm::value::{DefaultActiveValue, DefaultActiveValueNone, DefaultActiveValueNotSet};
+                let mut default = <Self as sea_orm::ActiveModelTrait>::default();
+                #(default.#field = (&default.#field).default_value();)*
+                default
             }
 
             fn reset(&mut self, c: <Self::Entity as sea_orm::EntityTrait>::Column) {
