@@ -1,7 +1,7 @@
 use core::time;
 use sea_orm_codegen::{
-    DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext, OutputFile,
-    WithPrelude, WithSerde,
+    DatabaseBackend, DateTimeCrate as CodegenDateTimeCrate, EntityTransformer, EntityWriterContext,
+    OutputFile, WithPrelude, WithSerde,
 };
 use std::{error::Error, fs, io::Write, path::Path, process::Command, str::FromStr};
 use tracing_subscriber::{prelude::*, EnvFilter};
@@ -111,7 +111,7 @@ pub async fn run_generate_command(
                 Default::default()
             };
 
-            let (schema_name, table_stmts) = match url.scheme() {
+            let (schema_name, table_stmts, backend) = match url.scheme() {
                 "mysql" => {
                     use sea_schema::mysql::discovery::SchemaDiscovery;
                     use sqlx::MySql;
@@ -132,7 +132,7 @@ pub async fn run_generate_command(
                         .filter(|schema| filter_skip_tables(&schema.info.name))
                         .map(|schema| schema.write())
                         .collect();
-                    (None, table_stmts)
+                    (None, table_stmts, DatabaseBackend::MySql)
                 }
                 "sqlite" => {
                     use sea_schema::sqlite::discovery::SchemaDiscovery;
@@ -161,7 +161,7 @@ pub async fn run_generate_command(
                         .filter(|schema| filter_skip_tables(&schema.name))
                         .map(|schema| schema.write())
                         .collect();
-                    (None, table_stmts)
+                    (None, table_stmts, DatabaseBackend::Sqlite)
                 }
                 "postgres" | "postgresql" => {
                     use sea_schema::postgres::discovery::SchemaDiscovery;
@@ -187,7 +187,7 @@ pub async fn run_generate_command(
                         .filter(|schema| filter_skip_tables(&schema.info.name))
                         .map(|schema| schema.write())
                         .collect();
-                    (database_schema, table_stmts)
+                    (database_schema, table_stmts, DatabaseBackend::Postgres)
                 }
                 _ => unimplemented!("{} is not supported", url.scheme()),
             };
@@ -209,6 +209,7 @@ pub async fn run_generate_command(
                 enum_extra_attributes,
                 seaography,
                 impl_active_model_behavior,
+                backend,
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
