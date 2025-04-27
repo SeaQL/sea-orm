@@ -14,6 +14,7 @@ pub struct Column {
     pub(crate) auto_increment: bool,
     pub(crate) not_null: bool,
     pub(crate) unique: bool,
+    pub(crate) primary_key: bool,
 }
 
 impl Column {
@@ -100,8 +101,11 @@ impl Column {
                 _ => unimplemented!(),
             }
         }
+
+        let EntityWriterContext { db_backend, .. } = context;
         let ident: TokenStream = write_rs_type(&self.col_type, context).parse().unwrap();
-        match self.not_null {
+
+        match self.not_null || *db_backend == DatabaseBackend::Sqlite && self.primary_key {
             true => quote! { #ident },
             false => quote! { Option<#ident> },
         }
@@ -302,12 +306,17 @@ impl From<&ColumnDef> for Column {
             .get_column_spec()
             .iter()
             .any(|spec| matches!(spec, ColumnSpec::UniqueKey));
+        let primary_key = col_def
+            .get_column_spec()
+            .iter()
+            .any(|spec| matches!(spec, ColumnSpec::PrimaryKey));
         Self {
             name,
             col_type,
             auto_increment,
             not_null,
             unique,
+            primary_key,
         }
     }
 }
@@ -328,6 +337,7 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    primary_key: false,
                 }
             };
         }
@@ -760,5 +770,24 @@ mod tests {
         assert!(column.auto_increment);
         assert!(column.unique);
         assert!(column.not_null);
+    }
+
+    #[test]
+    fn test_get_sqlite_priamry_key() {
+        let context = EntityWriterContext {
+            db_backend: crate::DatabaseBackend::Sqlite,
+            ..Default::default()
+        };
+
+        let column = Column {
+            name: "id".to_owned(),
+            col_type: ColumnType::Integer,
+            auto_increment: true,
+            not_null: false,
+            unique: true,
+            primary_key: true,
+        };
+
+        assert_eq!(column.get_rs_type(&context).to_string(), "i64");
     }
 }

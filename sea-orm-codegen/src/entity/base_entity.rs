@@ -285,6 +285,7 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    primary_key: false,
                 },
                 Column {
                     name: "name".to_owned(),
@@ -292,6 +293,7 @@ mod tests {
                     auto_increment: false,
                     not_null: false,
                     unique: false,
+                    primary_key: false,
                 },
             ],
             relations: vec![
@@ -544,7 +546,8 @@ mod tests {
                 col_type: ColumnType::Integer,
                 auto_increment: true,
                 not_null: true,
-                unique: true
+                unique: true,
+                primary_key: false,
             }
             .get_rs_type(&context)
             .to_string()
