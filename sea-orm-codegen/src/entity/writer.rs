@@ -54,6 +54,13 @@ pub enum DatabaseBackend {
     Sqlite,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+pub enum SqliteIntRsType {
+    #[default]
+    I64,
+    I32,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct EntityWriterContext {
     pub(crate) expanded_format: bool,
@@ -72,6 +79,7 @@ pub struct EntityWriterContext {
     pub(crate) seaography: bool,
     pub(crate) impl_active_model_behavior: bool,
     pub(crate) db_backend: DatabaseBackend,
+    pub(crate) sqlite_int_rs_type: SqliteIntRsType,
 }
 
 impl WithSerde {
@@ -190,6 +198,7 @@ impl EntityWriterContext {
         seaography: bool,
         impl_active_model_behavior: bool,
         db_backend: DatabaseBackend,
+        sqlite_int_rs_type: SqliteIntRsType,
     ) -> Self {
         Self {
             expanded_format,
@@ -208,6 +217,7 @@ impl EntityWriterContext {
             seaography,
             impl_active_model_behavior,
             db_backend,
+            sqlite_int_rs_type,
         }
     }
 }
@@ -1668,19 +1678,8 @@ mod tests {
             with_serde: WithSerde::None,
             date_time_crate: DateTimeCrate::Chrono,
             schema_name: None,
-            serde_skip_deserializing_primary_key: false,
-            serde_skip_hidden_column: false,
-            model_extra_derives: TokenStream::new(),
-            model_extra_attributes: TokenStream::new(),
-            seaography: false,
             impl_active_model_behavior: true,
-            expanded_format: Default::default(),
-            with_prelude: Default::default(),
-            with_copy_enums: Default::default(),
-            lib: false,
-            enum_extra_derives: Default::default(),
-            enum_extra_attributes: Default::default(),
-            db_backend: Default::default(),
+            ..Default::default()
         };
 
         let mut context_with_schema_name = context.clone();
@@ -1754,19 +1753,8 @@ mod tests {
             with_serde: WithSerde::None,
             date_time_crate: DateTimeCrate::Chrono,
             schema_name: None,
-            serde_skip_deserializing_primary_key: false,
-            serde_skip_hidden_column: false,
-            model_extra_derives: TokenStream::new(),
-            model_extra_attributes: TokenStream::new(),
-            seaography: false,
             impl_active_model_behavior: true,
-            expanded_format: Default::default(),
-            with_prelude: Default::default(),
-            with_copy_enums: Default::default(),
-            lib: false,
-            enum_extra_derives: Default::default(),
-            enum_extra_attributes: Default::default(),
-            db_backend: Default::default(),
+            ..Default::default()
         };
 
         let mut context_with_schema_name = context.clone();
@@ -1808,22 +1796,9 @@ mod tests {
 
         let context_compact_without_serde = EntityWriterContext {
             with_serde: WithSerde::None,
-            expanded_format: false,
-            // Not related
             date_time_crate: DateTimeCrate::Chrono,
-            schema_name: None,
-            serde_skip_deserializing_primary_key: false,
-            serde_skip_hidden_column: false,
-            model_extra_derives: TokenStream::new(),
-            model_extra_attributes: TokenStream::new(),
-            seaography: false,
             impl_active_model_behavior: true,
-            with_prelude: Default::default(),
-            with_copy_enums: Default::default(),
-            lib: false,
-            enum_extra_derives: Default::default(),
-            enum_extra_attributes: Default::default(),
-            db_backend: Default::default(),
+            ..Default::default()
         };
 
         let mut context_compact_seri_only = context_compact_without_serde.clone();
@@ -1991,22 +1966,9 @@ mod tests {
         let context_compact_with_seaography = EntityWriterContext {
             with_serde: WithSerde::None,
             seaography: true,
-            // Not related
             date_time_crate: DateTimeCrate::Chrono,
-            schema_name: None,
-            serde_skip_deserializing_primary_key: false,
-            serde_skip_hidden_column: false,
-            model_extra_derives: TokenStream::new(),
-            model_extra_attributes: TokenStream::new(),
-
-            expanded_format: false,
             impl_active_model_behavior: true,
-            with_prelude: Default::default(),
-            with_copy_enums: Default::default(),
-            lib: false,
-            enum_extra_derives: Default::default(),
-            enum_extra_attributes: Default::default(),
-            db_backend: Default::default(),
+            ..Default::default()
         };
 
         // Compact code blocks
@@ -2249,16 +2211,9 @@ mod tests {
             with_copy_enums: true,
             date_time_crate: DateTimeCrate::Chrono,
             schema_name: entity_serde_variant.2.clone(),
-            lib: Default::default(),
             serde_skip_hidden_column,
             serde_skip_deserializing_primary_key,
-            model_extra_derives: Default::default(),
-            model_extra_attributes: Default::default(),
-            enum_extra_derives: Default::default(),
-            enum_extra_attributes: Default::default(),
-            seaography: Default::default(),
-
-            db_backend: Default::default(),
+            ..Default::default()
         };
 
         let generated = generator(cake_entity, &context).into_iter().fold(
@@ -2283,21 +2238,11 @@ mod tests {
 
         let context_compact_without_attributes = EntityWriterContext {
             expanded_format: false,
-            with_prelude: Default::default(),
             with_serde: WithSerde::None,
             with_copy_enums: true,
             date_time_crate: DateTimeCrate::Chrono,
-            schema_name: None,
-            lib: Default::default(),
-            serde_skip_hidden_column: false,
-            serde_skip_deserializing_primary_key: false,
-            model_extra_derives: Default::default(),
-            model_extra_attributes: Default::default(),
-            enum_extra_derives: Default::default(),
-            enum_extra_attributes: Default::default(),
-            seaography: Default::default(),
             impl_active_model_behavior: true,
-            db_backend: Default::default(),
+            ..Default::default()
         };
 
         assert_eq!(
@@ -2461,22 +2406,11 @@ mod tests {
 
         let context_compact = EntityWriterContext {
             expanded_format: true,
-            with_prelude: Default::default(),
             with_serde: WithSerde::None,
             with_copy_enums: true,
             date_time_crate: DateTimeCrate::Chrono,
-            schema_name: None,
             impl_active_model_behavior: true,
-            lib: Default::default(),
-            serde_skip_hidden_column: false,
-            serde_skip_deserializing_primary_key: false,
-            model_extra_derives: Default::default(),
-            model_extra_attributes: Default::default(),
-            enum_extra_derives: Default::default(),
-            enum_extra_attributes: Default::default(),
-            seaography: Default::default(),
-
-            db_backend: Default::default(),
+            ..Default::default()
         };
 
         let mut context_expanded_with_schema_name = context_compact.clone();

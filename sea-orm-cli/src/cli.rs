@@ -330,6 +330,14 @@ pub enum GenerateSubcommands {
             long_help = "Generate empty ActiveModelBehavior impls."
         )]
         impl_active_model_behavior: bool,
+
+        #[arg(
+            long,
+            default_value_t,
+            value_enum,
+            help = "The Rust type of SQLite integers."
+        )]
+        sqlite_int_rs_type: SqliteIntRsType,
     },
 }
 
@@ -338,6 +346,22 @@ pub enum DateTimeCrate {
     #[default]
     Chrono,
     Time,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum, Default)]
+pub enum SqliteIntRsType {
+    #[default]
+    I64,
+    I32,
+}
+
+impl From<SqliteIntRsType> for sea_orm_codegen::SqliteIntRsType {
+    fn from(value: SqliteIntRsType) -> Self {
+        match value {
+            SqliteIntRsType::I64 => sea_orm_codegen::SqliteIntRsType::I64,
+            SqliteIntRsType::I32 => sea_orm_codegen::SqliteIntRsType::I32,
+        }
+    }
 }
 
 /// Use this to build a local, version-controlled `sea-orm-cli` in dependent projects

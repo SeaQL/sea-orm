@@ -1,4 +1,4 @@
-use crate::{util::escape_rust_keyword, DatabaseBackend, DateTimeCrate};
+use crate::{util::escape_rust_keyword, DatabaseBackend, DateTimeCrate, SqliteIntRsType};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
@@ -45,13 +45,14 @@ impl Column {
                 | ColumnType::Custom(_) => "String".to_owned(),
                 ColumnType::TinyInteger => "i8".to_owned(),
                 ColumnType::SmallInteger => "i16".to_owned(),
-                ColumnType::Integer => {
-                    if *db_backend == DatabaseBackend::Sqlite {
-                        "i64".to_owned()
-                    } else {
-                        "i32".to_owned()
-                    }
+                ColumnType::Integer => if *db_backend == DatabaseBackend::Sqlite
+                    && context.sqlite_int_rs_type == SqliteIntRsType::I64
+                {
+                    "i64"
+                } else {
+                    "i32"
                 }
+                .into(),
                 ColumnType::BigInteger => "i64".to_owned(),
                 ColumnType::TinyUnsigned => "u8".to_owned(),
                 ColumnType::SmallUnsigned => "u16".to_owned(),

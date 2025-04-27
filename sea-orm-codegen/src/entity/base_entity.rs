@@ -271,8 +271,7 @@ mod tests {
     use sea_query::{ColumnType, ForeignKeyAction, StringLen};
 
     use crate::{
-        Column, DatabaseBackend, DateTimeCrate, Entity, EntityWriterContext, PrimaryKey, Relation,
-        RelationType,
+        Column, DatabaseBackend, Entity, EntityWriterContext, PrimaryKey, Relation, RelationType,
     };
 
     fn setup() -> Entity {
@@ -387,22 +386,8 @@ mod tests {
         let entity = setup();
 
         let context = EntityWriterContext {
-            expanded_format: Default::default(),
-            with_prelude: Default::default(),
-            with_serde: Default::default(),
-            with_copy_enums: Default::default(),
-            date_time_crate: DateTimeCrate::Chrono,
-            schema_name: Default::default(),
-            lib: Default::default(),
-            serde_skip_hidden_column: Default::default(),
-            serde_skip_deserializing_primary_key: Default::default(),
-            model_extra_derives: Default::default(),
-            model_extra_attributes: Default::default(),
-            enum_extra_derives: Default::default(),
-            enum_extra_attributes: Default::default(),
-            seaography: Default::default(),
-            impl_active_model_behavior: Default::default(),
             db_backend: DatabaseBackend::Postgres,
+            ..Default::default()
         };
 
         for (i, elem) in entity.get_column_rs_types(&context).into_iter().enumerate() {
@@ -507,24 +492,7 @@ mod tests {
     fn test_get_primary_key_rs_type() {
         let entity = setup();
 
-        let context = EntityWriterContext {
-            expanded_format: Default::default(),
-            with_prelude: Default::default(),
-            with_serde: Default::default(),
-            with_copy_enums: Default::default(),
-            date_time_crate: DateTimeCrate::Chrono,
-            schema_name: Default::default(),
-            lib: Default::default(),
-            serde_skip_hidden_column: Default::default(),
-            serde_skip_deserializing_primary_key: Default::default(),
-            model_extra_derives: Default::default(),
-            model_extra_attributes: Default::default(),
-            enum_extra_derives: Default::default(),
-            enum_extra_attributes: Default::default(),
-            seaography: Default::default(),
-            impl_active_model_behavior: Default::default(),
-            db_backend: DatabaseBackend::Postgres,
-        };
+        let context = EntityWriterContext::default();
 
         assert_eq!(
             entity.get_primary_key_rs_type(&context).to_string(),

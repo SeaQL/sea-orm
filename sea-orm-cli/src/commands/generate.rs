@@ -38,6 +38,7 @@ pub async fn run_generate_command(
             enum_extra_attributes,
             seaography,
             impl_active_model_behavior,
+            sqlite_int_rs_type,
         } => {
             if verbose {
                 let _ = tracing_subscriber::fmt()
@@ -210,6 +211,7 @@ pub async fn run_generate_command(
                 seaography,
                 impl_active_model_behavior,
                 backend,
+                sqlite_int_rs_type.into(),
             );
             let output = EntityTransformer::transform(table_stmts)?.generate(&writer_context);
 
