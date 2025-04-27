@@ -531,6 +531,27 @@ mod tests {
     }
 
     #[test]
+    fn test_get_sqlite_int_rs_type() {
+        let context = EntityWriterContext {
+            db_backend: DatabaseBackend::Sqlite,
+            ..Default::default()
+        };
+
+        assert_eq!(
+            "i64",
+            Column {
+                name: "id".to_owned(),
+                col_type: ColumnType::Integer,
+                auto_increment: true,
+                not_null: true,
+                unique: true
+            }
+            .get_rs_type(&context)
+            .to_string()
+        );
+    }
+
+    #[test]
     fn test_get_conjunct_relations_via_snake_case() {
         let entity = setup();
 
