@@ -180,11 +180,7 @@ async fn partial_model_left_join_alias() {
     seed_data::init_1(&ctx, true).await;
 
     let cake: CakeFactory = cake::Entity::find()
-        .join_as(
-            JoinType::LeftJoin,
-            cake::Relation::Bakery.def(),
-            Alias::new("factory"),
-        )
+        .join_as(JoinType::LeftJoin, cake::Relation::Bakery.def(), "factory")
         .order_by_asc(cake::Column::Id)
         .into_partial_model()
         .one(&ctx.db)

@@ -3,8 +3,8 @@ use crate::{
     ModelTrait, PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
-    Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockBehavior, LockType,
-    NullOrdering, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef,
+    Alias, Expr, Iden, IntoCondition, IntoIden, LockBehavior, LockType, NullOrdering, SeaRc,
+    SelectExpr, SelectStatement, SimpleExpr, TableRef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -52,7 +52,7 @@ pub trait QuerySelect: Sized {
     ///         .column(lunch_set::Column::Tea)
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     r#"SELECT CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    ///     r#"SELECT CAST("lunch_set"."tea" AS "text") FROM "lunch_set""#
     /// );
     /// assert_eq!(
     ///     lunch_set::Entity::find()
@@ -141,7 +141,7 @@ pub trait QuerySelect: Sized {
     ///         .columns([lunch_set::Column::Name, lunch_set::Column::Tea])
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     r#"SELECT "lunch_set"."name", CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    ///     r#"SELECT "lunch_set"."name", CAST("lunch_set"."tea" AS "text") FROM "lunch_set""#
     /// );
     /// assert_eq!(
     ///     lunch_set::Entity::find()
@@ -301,7 +301,7 @@ pub trait QuerySelect: Sized {
     ///         .column_as(cake::Column::Id.count(), "count")
     ///         .column_as(cake::Column::Id.sum(), "sum_of_id")
     ///         .group_by(cake::Column::Name)
-    ///         .having(Expr::col(Alias::new("count")).gt(6))
+    ///         .having(Expr::col("count").gt(6))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT COUNT(`cake`.`id`) AS `count`, SUM(`cake`.`id`) AS `sum_of_id` FROM `cake` GROUP BY `cake`.`name` HAVING `count` > 6"
@@ -389,8 +389,7 @@ pub trait QuerySelect: Sized {
 
     /// Join via [`RelationDef`].
     fn join(mut self, join: JoinType, rel: RelationDef) -> Self {
-        self.query()
-            .join(join, rel.to_tbl.clone(), join_condition(rel));
+        self.query().join(join, rel.to_tbl.clone(), rel);
         self
     }
 
@@ -398,8 +397,7 @@ pub trait QuerySelect: Sized {
     /// Assume when there exist a relation A to B.
     /// You can reverse join B from A.
     fn join_rev(mut self, join: JoinType, rel: RelationDef) -> Self {
-        self.query()
-            .join(join, rel.from_tbl.clone(), join_condition(rel));
+        self.query().join(join, rel.from_tbl.clone(), rel);
         self
     }
 
@@ -410,8 +408,7 @@ pub trait QuerySelect: Sized {
     {
         let alias = alias.into_iden();
         rel.to_tbl = rel.to_tbl.alias(SeaRc::clone(&alias));
-        self.query()
-            .join(join, rel.to_tbl.clone(), join_condition(rel));
+        self.query().join(join, rel.to_tbl.clone(), rel);
         self
     }
 
@@ -424,8 +421,7 @@ pub trait QuerySelect: Sized {
     {
         let alias = alias.into_iden();
         rel.from_tbl = rel.from_tbl.alias(SeaRc::clone(&alias));
-        self.query()
-            .join(join, rel.from_tbl.clone(), join_condition(rel));
+        self.query().join(join, rel.from_tbl.clone(), rel);
         self
     }
 
@@ -861,37 +857,6 @@ pub trait QueryFilter: Sized {
         }
         self
     }
-}
-
-pub(crate) fn join_condition(mut rel: RelationDef) -> Condition {
-    // Use table alias (if any) to construct the join condition
-    let from_tbl = match unpack_table_alias(&rel.from_tbl) {
-        Some(alias) => alias,
-        None => unpack_table_ref(&rel.from_tbl),
-    };
-    let to_tbl = match unpack_table_alias(&rel.to_tbl) {
-        Some(alias) => alias,
-        None => unpack_table_ref(&rel.to_tbl),
-    };
-    let owner_keys = rel.from_col;
-    let foreign_keys = rel.to_col;
-
-    let mut condition = match rel.condition_type {
-        ConditionType::All => Condition::all(),
-        ConditionType::Any => Condition::any(),
-    };
-
-    condition = condition.add(join_tbl_on_condition(
-        SeaRc::clone(&from_tbl),
-        SeaRc::clone(&to_tbl),
-        owner_keys,
-        foreign_keys,
-    ));
-    if let Some(f) = rel.on_condition.take() {
-        condition = condition.add(f(from_tbl, to_tbl));
-    }
-
-    condition
 }
 
 pub(crate) fn join_tbl_on_condition(

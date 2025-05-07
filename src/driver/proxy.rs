@@ -105,6 +105,12 @@ impl ProxyDatabaseConnection {
         self.proxy.rollback().await
     }
 
+    /// Start rollback a transaction
+    #[instrument(level = "trace")]
+    pub fn start_rollback(&self) {
+        self.proxy.start_rollback()
+    }
+
     /// Checks if a connection to the database is still valid.
     pub async fn ping(&self) -> Result<(), DbErr> {
         self.proxy.ping().await

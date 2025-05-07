@@ -1,6 +1,6 @@
 pub use crate::error::TryGetError;
 use crate::{
-    error::{json_err, type_err, DbErr},
+    error::{type_err, DbErr},
     SelectGetableValue, SelectorRaw, Statement,
 };
 use std::fmt;
@@ -1342,7 +1342,9 @@ where
                     debug_print!("{:#?}", e.to_string());
                     err_null_idx_col(idx)
                 })
-                .and_then(|json| serde_json::from_value(json).map_err(|e| json_err(e).into())),
+                .and_then(|json| {
+                    serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
+                }),
             #[cfg(feature = "proxy")]
             QueryResultRow::Proxy(row) => row
                 .try_get::<serde_json::Value, I>(idx)
@@ -1350,7 +1352,9 @@ where
                     debug_print!("{:#?}", e.to_string());
                     err_null_idx_col(idx)
                 })
-                .and_then(|json| serde_json::from_value(json).map_err(|e| json_err(e).into())),
+                .and_then(|json| {
+                    serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
+                }),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -1362,7 +1366,7 @@ where
             serde_json::Value::Array(values) => {
                 let mut res = Vec::new();
                 for item in values {
-                    res.push(serde_json::from_value(item).map_err(json_err)?);
+                    res.push(serde_json::from_value(item).map_err(crate::error::json_err)?);
                 }
                 Ok(res)
             }
@@ -1551,24 +1555,23 @@ mod tests {
         use sea_query::*;
 
         let base_query = SelectStatement::new()
-            .column(Alias::new("id"))
+            .column("id")
             .expr(1i32)
-            .column(Alias::new("next"))
-            .column(Alias::new("value"))
-            .from(Alias::new("table"))
+            .column("next")
+            .column("value")
+            .from("table")
             .to_owned();
 
         let cte_referencing = SelectStatement::new()
-            .column(Alias::new("id"))
-            .expr(Expr::col(Alias::new("depth")).add(1i32))
-            .column(Alias::new("next"))
-            .column(Alias::new("value"))
-            .from(Alias::new("table"))
+            .column("id")
+            .expr(Expr::col("depth").add(1i32))
+            .column("next")
+            .column("value")
+            .from("table")
             .join(
                 JoinType::InnerJoin,
-                Alias::new("cte_traversal"),
-                Expr::col((Alias::new("cte_traversal"), Alias::new("next")))
-                    .equals((Alias::new("table"), Alias::new("id"))),
+                "cte_traversal",
+                Expr::col(("cte_traversal", "next")).equals(("table", "id")),
             )
             .to_owned();
 
@@ -1579,27 +1582,22 @@ mod tests {
                     .union(UnionType::All, cte_referencing)
                     .to_owned(),
             )
-            .columns([
-                Alias::new("id"),
-                Alias::new("depth"),
-                Alias::new("next"),
-                Alias::new("value"),
-            ])
-            .table_name(Alias::new("cte_traversal"))
+            .columns(["id", "depth", "next", "value"])
+            .table_name("cte_traversal")
             .to_owned();
 
         let select = SelectStatement::new()
             .column(ColumnRef::Asterisk)
-            .from(Alias::new("cte_traversal"))
+            .from("cte_traversal")
             .to_owned();
 
         let with_clause = WithClause::new()
             .recursive(true)
             .cte(common_table_expression)
             .cycle(Cycle::new_from_expr_set_using(
-                SimpleExpr::Column(ColumnRef::Column(Alias::new("id").into_iden())),
-                Alias::new("looped"),
-                Alias::new("traversal_path"),
+                SimpleExpr::Column(ColumnRef::Column("id".into_iden())),
+                "looped",
+                "traversal_path",
             ))
             .to_owned();
 

@@ -76,7 +76,7 @@ impl Column {
                 ColumnType::Array(column_type) => {
                     format!("Vec<{}>", write_rs_type(column_type, date_time_crate))
                 }
-                ColumnType::Vector(_) => "::pgvector::Vector".to_owned(),
+                ColumnType::Vector(_) => "PgVector".to_owned(),
                 ColumnType::Bit(None | Some(1)) => "bool".to_owned(),
                 ColumnType::Bit(_) | ColumnType::VarBit(_) => "Vec<u8>".to_owned(),
                 ColumnType::Year => "i32".to_owned(),

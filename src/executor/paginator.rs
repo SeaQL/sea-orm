@@ -4,7 +4,7 @@ use crate::{
 };
 use async_stream::stream;
 use futures_util::Stream;
-use sea_query::{Alias, Expr, SelectStatement};
+use sea_query::{Expr, SelectStatement};
 use std::{marker::PhantomData, pin::Pin};
 
 /// Pin a Model so that stream operations can be performed on the model
@@ -76,7 +76,7 @@ where
                     .reset_offset()
                     .clear_order_by()
                     .to_owned(),
-                Alias::new("sub_query"),
+                "sub_query",
             )
             .to_owned();
         let stmt = builder.build(&stmt);
@@ -326,7 +326,7 @@ mod tests {
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
     use futures_util::TryStreamExt;
     use pretty_assertions::assert_eq;
-    use sea_query::{Alias, Expr, SelectStatement, Value};
+    use sea_query::{Expr, SelectStatement, Value};
     use std::sync::LazyLock;
 
     static RAW_STMT: LazyLock<Statement> = LazyLock::new(|| {
@@ -531,7 +531,7 @@ mod tests {
 
         let select = SelectStatement::new()
             .expr(Expr::cust("COUNT(*) AS num_items"))
-            .from_subquery(sub_query, Alias::new("sub_query"))
+            .from_subquery(sub_query, "sub_query")
             .to_owned();
 
         let query_builder = db.get_database_backend();
@@ -565,7 +565,7 @@ mod tests {
 
         let select = SelectStatement::new()
             .expr(Expr::cust("COUNT(*) AS num_items"))
-            .from_subquery(sub_query, Alias::new("sub_query"))
+            .from_subquery(sub_query, "sub_query")
             .to_owned();
 
         let query_builder = db.get_database_backend();

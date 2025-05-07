@@ -167,6 +167,13 @@ impl DeriveValueTypeStruct {
                     #column_type
                 }
             }
+
+            #[automatically_derived]
+            impl sea_orm::sea_query::Nullable for #name {
+                fn null() -> sea_orm::Value {
+                    <#field_type as sea_orm::sea_query::Nullable>::null()
+                }
+            }
         )
     }
 }
@@ -282,6 +289,13 @@ impl DeriveValueTypeEnum {
 
                 fn column_type() -> sea_orm::sea_query::ColumnType {
                     sea_orm::sea_query::ColumnType::String(sea_orm::sea_query::StringLen::None)
+                }
+            }
+
+            #[automatically_derived]
+            impl sea_orm::sea_query::Nullable for #name {
+                fn null() -> sea_orm::Value {
+                    sea_orm::Value::String(None)
                 }
             }
         )

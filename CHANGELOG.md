@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 1.1.11 - 2025-05-07
+
+### Enhancements
+
+* Added `ActiveModelTrait::default_values`
+```rust
+assert_eq!(
+    fruit::ActiveModel::default_values(),
+    fruit::ActiveModel {
+        id: Set(0),
+        name: Set("".into()),
+        cake_id: Set(None),
+        type_without_default: NotSet,
+    },
+);
+```
+* Impl `IntoCondition` for `RelationDef` https://github.com/SeaQL/sea-orm/pull/2587
+```rust
+// This allows using `RelationDef` directly where sea-query expects an `IntoCondition`
+let query = Query::select()
+    .from(fruit::Entity)
+    .inner_join(cake::Entity, fruit::Relation::Cake.def())
+    .to_owned();
+```
+* Loader: retain only unique key values in the query condition https://github.com/SeaQL/sea-orm/pull/2569
+* Add proxy transaction impl https://github.com/SeaQL/sea-orm/pull/2573
+* [sea-orm-cli] Fix `PgVector` codegen https://github.com/SeaQL/sea-orm/pull/2589
+
+### Bug fixes
+
+* Quote type properly in `AsEnum` casting https://github.com/SeaQL/sea-orm/pull/2570
+```rust
+assert_eq!(
+    lunch_set::Entity::find()
+        .select_only()
+        .column(lunch_set::Column::Tea)
+        .build(DbBackend::Postgres)
+        .to_string(),
+    r#"SELECT CAST("lunch_set"."tea" AS "text") FROM "lunch_set""#
+    // "text" is now quoted; will work for "text"[] as well
+);
+```
+* Fix unicode string enum https://github.com/SeaQL/sea-orm/pull/2218
+
+### Upgrades
+
+* Upgrade `heck` to `0.5` https://github.com/SeaQL/sea-orm/pull/2218
+* Upgrade `sea-query` to `0.32.5`
+* Upgrade `sea-schema` to `0.16.2`
+
 ## 1.1.10 - 2025-04-14
 
 ### Upgrades

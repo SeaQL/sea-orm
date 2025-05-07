@@ -864,7 +864,7 @@ pub fn derive_from_json_query_result(input: TokenStream) -> TokenStream {
 ///     .join_as(
 ///         JoinType::LeftJoin,
 ///         cake::Relation::Bakery.def(),
-///         Alias::new("factory"),
+///         "factory",
 ///     )
 ///     .order_by_asc(cake::Column::Id)
 ///     .into_partial_model()

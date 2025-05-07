@@ -85,8 +85,11 @@ pub trait ActiveModelTrait: Clone + Debug {
     /// Check the state of a [ActiveValue]
     fn is_not_set(&self, c: <Self::Entity as EntityTrait>::Column) -> bool;
 
-    /// The default implementation of the ActiveModel
+    /// Create an ActiveModel with all fields to NotSet
     fn default() -> Self;
+
+    /// Create an ActiveModel with all fields to Set(default_value) if Default is implemented, NotSet otherwise
+    fn default_values() -> Self;
 
     /// Reset the value from [ActiveValue::Unchanged] to [ActiveValue::Set],
     /// leaving [ActiveValue::NotSet] untouched.
@@ -1504,5 +1507,26 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn test_active_model_default_values() {
+        assert_eq!(
+            fruit::ActiveModel::default_values(),
+            fruit::ActiveModel {
+                id: Set(0),
+                name: Set("".into()),
+                cake_id: Set(None),
+            },
+        );
+
+        assert_eq!(
+            lunch_set::ActiveModel::default_values(),
+            lunch_set::ActiveModel {
+                id: Set(0),
+                name: Set("".into()),
+                tea: NotSet,
+            },
+        );
     }
 }

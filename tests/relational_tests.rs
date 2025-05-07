@@ -925,15 +925,15 @@ pub async fn linked() -> Result<(), DbErr> {
         .select_only()
         .column_as(baker::Column::Name, (SelectA, baker::Column::Name))
         .column_as(
-            Expr::col((Alias::new("r4"), customer::Column::Name)),
+            Expr::col(("r4", customer::Column::Name)),
             (SelectB, customer::Column::Name),
         )
         .group_by(baker::Column::Id)
-        .group_by(Expr::col((Alias::new("r4"), customer::Column::Id)))
+        .group_by(Expr::col(("r4", customer::Column::Id)))
         .group_by(baker::Column::Name)
-        .group_by(Expr::col((Alias::new("r4"), customer::Column::Name)))
+        .group_by(Expr::col(("r4", customer::Column::Name)))
         .order_by_asc(baker::Column::Id)
-        .order_by_asc(Expr::col((Alias::new("r4"), customer::Column::Id)))
+        .order_by_asc(Expr::col(("r4", customer::Column::Id)))
         .into_model()
         .all(&ctx.db)
         .await?;
@@ -999,7 +999,7 @@ pub async fn linked() -> Result<(), DbErr> {
     let select_baker_with_customer = Baker::find()
         .find_with_linked(baker::BakedForCustomer)
         .order_by_asc(baker::Column::Id)
-        .order_by_asc(Expr::col((Alias::new("r4"), customer::Column::Id)));
+        .order_by_asc(Expr::col(("r4", customer::Column::Id)));
 
     assert_eq!(
         select_baker_with_customer

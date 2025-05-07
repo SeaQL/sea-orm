@@ -25,8 +25,8 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
         DbBackend::Postgres => {
             let schema = Schema::new(db_backend);
             let enum_create_stmt = Type::create()
-                .as_enum(Alias::new("tea"))
-                .values([Alias::new("EverydayTea"), Alias::new("BreakfastTea")])
+                .as_enum("tea")
+                .values(["EverydayTea", "BreakfastTea"])
                 .to_owned();
             assert_eq!(
                 db_backend.build(&enum_create_stmt),
@@ -424,7 +424,7 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
         )
         .col(
             ColumnDef::new(collection::Column::Name)
-                .custom(Alias::new("citext"))
+                .custom("citext")
                 .not_null(),
         )
         .col(
@@ -696,34 +696,30 @@ pub async fn create_bits_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .auto_increment()
                 .primary_key(),
         )
-        .col(
-            ColumnDef::new(bits::Column::Bit0)
-                .custom(Alias::new("BIT"))
-                .not_null(),
-        )
+        .col(ColumnDef::new(bits::Column::Bit0).custom("BIT").not_null())
         .col(
             ColumnDef::new(bits::Column::Bit1)
-                .custom(Alias::new("BIT(1)"))
+                .custom("BIT(1)")
                 .not_null(),
         )
         .col(
             ColumnDef::new(bits::Column::Bit8)
-                .custom(Alias::new("BIT(8)"))
+                .custom("BIT(8)")
                 .not_null(),
         )
         .col(
             ColumnDef::new(bits::Column::Bit16)
-                .custom(Alias::new("BIT(16)"))
+                .custom("BIT(16)")
                 .not_null(),
         )
         .col(
             ColumnDef::new(bits::Column::Bit32)
-                .custom(Alias::new("BIT(32)"))
+                .custom("BIT(32)")
                 .not_null(),
         )
         .col(
             ColumnDef::new(bits::Column::Bit64)
-                .custom(Alias::new("BIT(64)"))
+                .custom("BIT(64)")
                 .not_null(),
         )
         .to_owned();
