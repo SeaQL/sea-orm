@@ -696,34 +696,30 @@ pub async fn create_bits_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .auto_increment()
                 .primary_key(),
         )
-        .col(
-            ColumnDef::new(bits::Column::Bit0)
-                .custom("BIT")
-                .not_null(),
-        )
+        .col(ColumnDef::new(bits::Column::Bit0).custom("BIT").not_null())
         .col(
             ColumnDef::new(bits::Column::Bit1)
-                .custom("BIT(1"))
+                .custom("BIT(1)")
                 .not_null(),
         )
         .col(
             ColumnDef::new(bits::Column::Bit8)
-                .custom("BIT(8"))
+                .custom("BIT(8)")
                 .not_null(),
         )
         .col(
             ColumnDef::new(bits::Column::Bit16)
-                .custom("BIT(16"))
+                .custom("BIT(16)")
                 .not_null(),
         )
         .col(
             ColumnDef::new(bits::Column::Bit32)
-                .custom("BIT(32"))
+                .custom("BIT(32)")
                 .not_null(),
         )
         .col(
             ColumnDef::new(bits::Column::Bit64)
-                .custom("BIT(64"))
+                .custom("BIT(64)")
                 .not_null(),
         )
         .to_owned();
