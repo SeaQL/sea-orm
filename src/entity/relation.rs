@@ -1,8 +1,11 @@
-use crate::{unpack_table_ref, EntityTrait, Identity, IdentityOf, Iterable, QuerySelect, Select};
+use crate::{
+    join_tbl_on_condition, unpack_table_alias, unpack_table_ref, EntityTrait, Identity, IdentityOf,
+    Iterable, QuerySelect, Select,
+};
 use core::marker::PhantomData;
 use sea_query::{
-    Alias, Condition, ConditionType, DynIden, ForeignKeyCreateStatement, IntoIden, JoinType, SeaRc,
-    TableForeignKey, TableRef,
+    Alias, Condition, ConditionType, DynIden, ForeignKeyCreateStatement, IntoCondition, IntoIden,
+    JoinType, SeaRc, TableForeignKey, TableRef,
 };
 use std::fmt::Debug;
 
@@ -105,6 +108,68 @@ fn debug_on_condition(
         None => {
             d.field("on_condition", &Option::<Condition>::None);
         }
+    }
+}
+
+/// Idiomatically generate the join condition.
+///
+/// This allows using [RelationDef] directly where [`sea_query`] expects an [`IntoCondition`].
+///
+/// ## Examples
+///
+/// ```
+/// use sea_orm::sea_query::*;
+/// use sea_orm::tests_cfg::{cake, fruit};
+/// use sea_orm::*;
+///
+/// let query = Query::select()
+///     .from(fruit::Entity)
+///     .inner_join(cake::Entity, fruit::Relation::Cake.def())
+///     .to_owned();
+///
+/// assert_eq!(
+///     query.to_string(MysqlQueryBuilder),
+///     r#"SELECT  FROM `fruit` INNER JOIN `cake` ON `fruit`.`cake_id` = `cake`.`id`"#
+/// );
+/// assert_eq!(
+///     query.to_string(PostgresQueryBuilder),
+///     r#"SELECT  FROM "fruit" INNER JOIN "cake" ON "fruit"."cake_id" = "cake"."id""#
+/// );
+/// assert_eq!(
+///     query.to_string(SqliteQueryBuilder),
+///     r#"SELECT  FROM "fruit" INNER JOIN "cake" ON "fruit"."cake_id" = "cake"."id""#
+/// );
+/// ```
+impl IntoCondition for RelationDef {
+    fn into_condition(mut self) -> Condition {
+        // Use table alias (if any) to construct the join condition
+        let from_tbl = match unpack_table_alias(&self.from_tbl) {
+            Some(alias) => alias,
+            None => unpack_table_ref(&self.from_tbl),
+        };
+        let to_tbl = match unpack_table_alias(&self.to_tbl) {
+            Some(alias) => alias,
+            None => unpack_table_ref(&self.to_tbl),
+        };
+        let owner_keys = self.from_col;
+        let foreign_keys = self.to_col;
+
+        let mut condition = match self.condition_type {
+            ConditionType::All => Condition::all(),
+            ConditionType::Any => Condition::any(),
+        };
+
+        condition = condition.add(join_tbl_on_condition(
+            SeaRc::clone(&from_tbl),
+            SeaRc::clone(&to_tbl),
+            owner_keys,
+            foreign_keys,
+        ));
+        if let Some(f) = self.on_condition.take() {
+            condition = condition.add(f(from_tbl, to_tbl));
+        }
+
+        condition
     }
 }
 
