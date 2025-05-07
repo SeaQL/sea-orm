@@ -301,7 +301,7 @@ pub trait QuerySelect: Sized {
     ///         .column_as(cake::Column::Id.count(), "count")
     ///         .column_as(cake::Column::Id.sum(), "sum_of_id")
     ///         .group_by(cake::Column::Name)
-    ///         .having(Expr::col(Alias::new("count")).gt(6))
+    ///         .having(Expr::col("count").gt(6))
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT COUNT(`cake`.`id`) AS `count`, SUM(`cake`.`id`) AS `sum_of_id` FROM `cake` GROUP BY `cake`.`name` HAVING `count` > 6"

@@ -1072,7 +1072,7 @@ mod tests {
 
                 fn select_as(&self, expr: Expr) -> SimpleExpr {
                     match self {
-                        Self::Two => expr.cast_as(Alias::new("integer")),
+                        Self::Two => expr.cast_as("integer"),
                         _ => self.select_enum_as(expr),
                     }
                 }
@@ -1203,7 +1203,7 @@ mod tests {
 
                 fn save_as(&self, val: Expr) -> SimpleExpr {
                     match self {
-                        Self::Two => val.cast_as(Alias::new("text")),
+                        Self::Two => val.cast_as("text"),
                         _ => self.save_enum_as(val),
                     }
                 }
@@ -1334,14 +1334,14 @@ mod tests {
 
                 fn select_as(&self, expr: Expr) -> SimpleExpr {
                     match self {
-                        Self::Two => expr.cast_as(Alias::new("integer")),
+                        Self::Two => expr.cast_as("integer"),
                         _ => self.select_enum_as(expr),
                     }
                 }
 
                 fn save_as(&self, val: Expr) -> SimpleExpr {
                     match self {
-                        Self::Two => val.cast_as(Alias::new("text")),
+                        Self::Two => val.cast_as("text"),
                         _ => self.save_enum_as(val),
                     }
                 }

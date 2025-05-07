@@ -4,7 +4,7 @@ use crate::{
 };
 use core::marker::PhantomData;
 use sea_query::{
-    Alias, Condition, ConditionType, DynIden, ForeignKeyCreateStatement, IntoCondition, IntoIden,
+    Condition, ConditionType, DynIden, ForeignKeyCreateStatement, IntoCondition, IntoIden,
     JoinType, SeaRc, TableForeignKey, TableRef,
 };
 use std::fmt::Debug;
@@ -99,10 +99,7 @@ fn debug_on_condition(
         Some(func) => {
             d.field(
                 "on_condition",
-                &func(
-                    SeaRc::new(Alias::new("left")),
-                    SeaRc::new(Alias::new("right")),
-                ),
+                &func(SeaRc::new("left"), SeaRc::new("right")),
             );
         }
         None => {
@@ -251,7 +248,7 @@ impl RelationDef {
     /// };
     /// use sea_query::Alias;
     ///
-    /// let cf = Alias::new("cf");
+    /// let cf = "cf";
     ///
     /// assert_eq!(
     ///     cake::Entity::find()
@@ -526,10 +523,10 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
 ///
 /// let relation = RelationDef {
 ///     rel_type: RelationType::HasOne,
-///     from_tbl: TableRef::Table(Alias::new("foo").into_iden()),
-///     to_tbl: TableRef::Table(Alias::new("bar").into_iden()),
-///     from_col: Identity::Unary(Alias::new("bar_id").into_iden()),
-///     to_col: Identity::Unary(Alias::new("bar_id").into_iden()),
+///     from_tbl: TableRef::Table("foo".into_iden()),
+///     to_tbl: TableRef::Table("bar".into_iden()),
+///     from_col: Identity::Unary("bar_id".into_iden()),
+///     to_col: Identity::Unary("bar_id".into_iden()),
 ///     is_owner: false,
 ///     on_delete: None,
 ///     on_update: None,
@@ -539,7 +536,7 @@ impl From<RelationDef> for ForeignKeyCreateStatement {
 /// };
 ///
 /// let mut alter_table = TableAlterStatement::new()
-///     .table(TableRef::Table(Alias::new("foo").into_iden()))
+///     .table(TableRef::Table("foo".into_iden()))
 ///     .add_foreign_key(&mut relation.into()).take();
 /// assert_eq!(
 ///     alter_table.to_string(MysqlQueryBuilder::default()),

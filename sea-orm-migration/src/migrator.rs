@@ -304,7 +304,7 @@ where
                 constraint_name, table_name
             );
             let mut stmt = ForeignKey::drop();
-            stmt.table(Alias::new(table_name.as_str()))
+            stmt.table(table_name.as_str())
                 .name(constraint_name.as_str());
             db.execute(db_backend.build(&stmt)).await?;
             info!("Foreign key '{}' has been dropped", constraint_name);
@@ -319,7 +319,7 @@ where
         let table_name: String = row.try_get("", "table_name")?;
         info!("Dropping table '{}'", table_name);
         let mut stmt = Table::drop();
-        stmt.table(Alias::new(table_name.as_str()))
+        stmt.table(table_name.as_str())
             .if_exists()
             .cascade();
         db.execute(db_backend.build(&stmt)).await?;
@@ -335,7 +335,7 @@ where
             let type_name: String = row.try_get("", "typname")?;
             info!("Dropping type '{}'", type_name);
             let mut stmt = Type::drop();
-            stmt.name(Alias::new(&type_name));
+            stmt.name(&type_name);
             db.execute(db_backend.build(&stmt)).await?;
             info!("Type '{}' has been dropped", type_name);
         }

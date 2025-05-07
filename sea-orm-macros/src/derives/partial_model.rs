@@ -263,7 +263,7 @@ impl DerivePartialModel {
                     &format_ident!("{}", field.to_upper_camel_case())
                 };
                 let col_value = if let Some(alias) = alias {
-                    quote!(sea_orm::sea_query::Expr::col((sea_orm::sea_query::Alias::new(#alias), <#entity as sea_orm::EntityTrait>::Column:: #col_name)))
+                    quote!(sea_orm::sea_query::Expr::col((#alias, <#entity as sea_orm::EntityTrait>::Column:: #col_name)))
                 } else {
                     quote!( <#entity as sea_orm::EntityTrait>::Column:: #col_name)
                 };
