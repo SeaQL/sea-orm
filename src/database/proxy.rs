@@ -21,6 +21,9 @@ pub trait ProxyDatabaseTrait: Send + Sync + std::fmt::Debug {
     /// Rollback a transaction in the [ProxyDatabase]
     async fn rollback(&self) {}
 
+    /// Start rollback a transaction in the [ProxyDatabase]
+    fn start_rollback(&self) {}
+
     /// Ping the [ProxyDatabase], it should return an error if the database is not available
     async fn ping(&self) -> Result<(), DbErr> {
         Ok(())
