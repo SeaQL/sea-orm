@@ -27,7 +27,10 @@ where
     V: Into<Value> + ValueType + Nullable,
 {
     fn default_value(&self) -> Self {
-        ActiveValue::Set(V::null().dummy_value().unwrap())
+        match V::try_from(V::null().dummy_value()) {
+            Ok(v) => ActiveValue::Set(v),
+            Err(_) => ActiveValue::NotSet,
+        }
     }
 }
 

@@ -1508,4 +1508,25 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_active_model_default_values() {
+        assert_eq!(
+            fruit::ActiveModel::default_values(),
+            fruit::ActiveModel {
+                id: Set(0),
+                name: Set("".into()),
+                cake_id: Set(None),
+            },
+        );
+
+        assert_eq!(
+            lunch_set::ActiveModel::default_values(),
+            lunch_set::ActiveModel {
+                id: Set(0),
+                name: Set("".into()),
+                tea: NotSet,
+            },
+        );
+    }
 }

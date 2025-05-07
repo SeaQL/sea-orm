@@ -326,7 +326,7 @@ mod tests {
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
     use futures_util::TryStreamExt;
     use pretty_assertions::assert_eq;
-    use sea_query::{Alias, Expr, SelectStatement, Value};
+    use sea_query::{Expr, SelectStatement, Value};
     use std::sync::LazyLock;
 
     static RAW_STMT: LazyLock<Statement> = LazyLock::new(|| {
