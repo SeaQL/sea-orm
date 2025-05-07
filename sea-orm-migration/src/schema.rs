@@ -609,5 +609,5 @@ pub fn timestamps(t: TableCreateStatement) -> TableCreateStatement {
 
 /// Create an Alias.
 pub fn name<T: Into<String>>(name: T) -> Alias {
-    name
+    Alias::new(name)
 }

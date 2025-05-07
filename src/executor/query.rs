@@ -1,6 +1,6 @@
 pub use crate::error::TryGetError;
 use crate::{
-    error::{json_err, type_err, DbErr},
+    error::{type_err, DbErr},
     SelectGetableValue, SelectorRaw, Statement,
 };
 use std::fmt;
@@ -1342,7 +1342,9 @@ where
                     debug_print!("{:#?}", e.to_string());
                     err_null_idx_col(idx)
                 })
-                .and_then(|json| serde_json::from_value(json).map_err(|e| json_err(e).into())),
+                .and_then(|json| {
+                    serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
+                }),
             #[cfg(feature = "proxy")]
             QueryResultRow::Proxy(row) => row
                 .try_get::<serde_json::Value, I>(idx)
@@ -1350,7 +1352,9 @@ where
                     debug_print!("{:#?}", e.to_string());
                     err_null_idx_col(idx)
                 })
-                .and_then(|json| serde_json::from_value(json).map_err(|e| json_err(e).into())),
+                .and_then(|json| {
+                    serde_json::from_value(json).map_err(|e| crate::error::json_err(e).into())
+                }),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -1362,7 +1366,7 @@ where
             serde_json::Value::Array(values) => {
                 let mut res = Vec::new();
                 for item in values {
-                    res.push(serde_json::from_value(item).map_err(json_err)?);
+                    res.push(serde_json::from_value(item).map_err(crate::error::json_err)?);
                 }
                 Ok(res)
             }
