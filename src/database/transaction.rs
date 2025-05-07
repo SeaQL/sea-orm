@@ -79,6 +79,11 @@ impl DatabaseTransaction {
                 c.begin();
                 Ok(())
             }
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(ref mut c) => {
+                c.begin().await;
+                Ok(())
+            }
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
         }?;
@@ -136,6 +141,11 @@ impl DatabaseTransaction {
                 c.commit();
                 Ok(())
             }
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(ref mut c) => {
+                c.commit().await;
+                Ok(())
+            }
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
         }?;
@@ -171,6 +181,11 @@ impl DatabaseTransaction {
                 c.rollback();
                 Ok(())
             }
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(ref mut c) => {
+                c.rollback().await;
+                Ok(())
+            }
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
         }?;
@@ -199,6 +214,10 @@ impl DatabaseTransaction {
                     #[cfg(feature = "mock")]
                     InnerConnection::Mock(c) => {
                         c.rollback();
+                    }
+                    #[cfg(feature = "proxy")]
+                    InnerConnection::Proxy(c) => {
+                        c.start_rollback();
                     }
                     #[allow(unreachable_patterns)]
                     _ => return Err(conn_err("Disconnected")),
@@ -260,6 +279,8 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.execute(stmt),
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(conn) => return conn.execute(stmt).await,
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
         }
@@ -300,6 +321,12 @@ impl ConnectionTrait for DatabaseTransaction {
                 let db_backend = conn.get_database_backend();
                 let stmt = Statement::from_string(db_backend, sql);
                 conn.execute(stmt)
+            }
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(conn) => {
+                let db_backend = conn.get_database_backend();
+                let stmt = Statement::from_string(db_backend, sql);
+                conn.execute(stmt).await
             }
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
@@ -344,6 +371,8 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_one(stmt),
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(conn) => return conn.query_one(stmt).await,
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
         }
@@ -393,6 +422,8 @@ impl ConnectionTrait for DatabaseTransaction {
             }
             #[cfg(feature = "mock")]
             InnerConnection::Mock(conn) => return conn.query_all(stmt),
+            #[cfg(feature = "proxy")]
+            InnerConnection::Proxy(conn) => return conn.query_all(stmt).await,
             #[allow(unreachable_patterns)]
             _ => Err(conn_err("Disconnected")),
         }
