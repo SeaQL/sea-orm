@@ -25,7 +25,7 @@ clap = { version = "4.3", features = ["env", "derive"], optional = true }
 dotenvy = { version = "0.15", default-features = false, optional = true }
 sea-orm = { version = "~1.1.11", path = "../", default-features = false, features = ["macros"] }
 sea-orm-cli = { version = "~1.1.11", path = "../sea-orm-cli", default-features = false, optional = true }
-sea-schema = { version = "0.16.0" }
+sea-schema = { version = "0.16.2", default-features = false, features = ["discovery", "writer", "probe"] }
 tracing = { version = "0.1", default-features = false, features = ["log"] }
 tracing-subscriber = { version = "0.3.17", default-features = false, features = ["env-filter", "fmt"] }
 
@@ -35,19 +35,19 @@ async-std = { version = "1", features = ["attributes", "tokio1"] }
 [features]
 default = ["cli"]
 cli = ["clap", "dotenvy", "sea-orm-cli/cli"]
-sqlx-mysql = ["sea-orm/sqlx-mysql"]
-sqlx-postgres = ["sea-orm/sqlx-postgres"]
-sqlx-sqlite = ["sea-orm/sqlx-sqlite"]
+sqlx-mysql = ["sea-orm/sqlx-mysql", "sea-schema/sqlx-mysql", "sea-schema/mysql", "sea-orm-cli?/sqlx-mysql"]
+sqlx-postgres = ["sea-orm/sqlx-postgres", "sea-schema/sqlx-postgres", "sea-schema/postgres", "sea-orm-cli?/sqlx-postgres"]
+sqlx-sqlite = ["sea-orm/sqlx-sqlite", "sea-schema/sqlx-sqlite", "sea-schema/sqlite", "sea-orm-cli?/sqlx-sqlite"]
 sqlite-use-returning-for-3_35 = ["sea-orm/sqlite-use-returning-for-3_35"]
-runtime-actix = ["sea-orm/runtime-actix"]
-runtime-async-std = ["sea-orm/runtime-async-std"]
-runtime-tokio = ["sea-orm/runtime-tokio"]
-runtime-actix-native-tls = ["sea-orm/runtime-actix-native-tls"]
-runtime-async-std-native-tls = ["sea-orm/runtime-async-std-native-tls"]
-runtime-tokio-native-tls = ["sea-orm/runtime-tokio-native-tls"]
-runtime-actix-rustls = ["sea-orm/runtime-actix-rustls"]
-runtime-async-std-rustls = ["sea-orm/runtime-async-std-rustls"]
-runtime-tokio-rustls = ["sea-orm/runtime-tokio-rustls"]
+runtime-actix = ["sea-orm/runtime-actix", "sea-schema/runtime-actix", "sea-orm-cli?/runtime-actix"]
+runtime-async-std = ["sea-orm/runtime-async-std", "sea-schema/runtime-async-std", "sea-orm-cli?/runtime-async-std"]
+runtime-tokio = ["sea-orm/runtime-tokio", "sea-schema/runtime-tokio", "sea-orm-cli?/runtime-tokio"]
+runtime-actix-native-tls = ["sea-orm/runtime-actix-native-tls", "sea-schema/runtime-actix-native-tls", "sea-orm-cli?/runtime-actix-native-tls"]
+runtime-async-std-native-tls = ["sea-orm/runtime-async-std-native-tls", "sea-schema/runtime-async-std-native-tls", "sea-orm-cli?/runtime-async-std-native-tls"]
+runtime-tokio-native-tls = ["sea-orm/runtime-tokio-native-tls", "sea-schema/runtime-tokio-native-tls", "sea-orm-cli?/runtime-tokio-native-tls"]
+runtime-actix-rustls = ["sea-orm/runtime-actix-rustls", "sea-schema/runtime-actix-rustls", "sea-orm-cli?/runtime-actix-rustls"]
+runtime-async-std-rustls = ["sea-orm/runtime-async-std-rustls", "sea-schema/runtime-async-std-rustls", "sea-orm-cli?/runtime-async-std-rustls"]
+runtime-tokio-rustls = ["sea-orm/runtime-tokio-rustls", "sea-schema/runtime-tokio-rustls", "sea-orm-cli?/runtime-tokio-rustls"]
 with-json = ["sea-orm/with-json"]
 with-chrono = ["sea-orm/with-chrono"]
 with-rust_decimal = ["sea-orm/with-rust_decimal"]
