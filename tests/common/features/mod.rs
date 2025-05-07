@@ -11,7 +11,10 @@ pub mod collection_expanded;
 pub mod custom_active_model;
 pub mod dyn_table_name_lazy_static;
 pub mod edit_log;
+#[cfg(feature = "postgres-vector")]
+pub mod embedding;
 pub mod event_trigger;
+pub mod host_network;
 pub mod insert_default;
 pub mod json_struct;
 pub mod json_vec;
@@ -40,7 +43,10 @@ pub use collection::Entity as Collection;
 pub use collection_expanded::Entity as CollectionExpanded;
 pub use dyn_table_name_lazy_static::Entity as DynTableNameLazyStatic;
 pub use edit_log::Entity as EditLog;
+#[cfg(feature = "postgres-vector")]
+pub use embedding::Entity as Embedding;
 pub use event_trigger::Entity as EventTrigger;
+pub use host_network::Entity as HostNetwork;
 pub use insert_default::Entity as InsertDefault;
 pub use json_struct::Entity as JsonStruct;
 pub use json_vec::Entity as JsonVec;

@@ -1,13 +1,13 @@
-#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-dep"))]
+#[cfg(feature = "sqlx-dep")]
 pub use sqlx::error::Error as SqlxError;
 
-#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-mysql"))]
+#[cfg(feature = "sqlx-mysql")]
 pub use sqlx::mysql::MySqlDatabaseError as SqlxMySqlError;
 
-#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-postgres"))]
+#[cfg(feature = "sqlx-postgres")]
 pub use sqlx::postgres::PgDatabaseError as SqlxPostgresError;
 
-#[cfg(all(feature = "sea-orm-internal", feature = "sqlx-sqlite"))]
+#[cfg(feature = "sqlx-sqlite")]
 pub use sqlx::sqlite::SqliteError as SqlxSqliteError;
 
 use thiserror::Error;
@@ -73,6 +73,15 @@ pub enum DbErr {
     /// May be the table is empty or the record does not exist
     #[error("None of the records are updated")]
     RecordNotUpdated,
+}
+
+/// An error from trying to get a row from a Model
+#[derive(Debug)]
+pub enum TryGetError {
+    /// A database error was encountered as defined in [crate::DbErr]
+    DbErr(DbErr),
+    /// A null value was encountered
+    Null(String),
 }
 
 /// Connection Acquire error

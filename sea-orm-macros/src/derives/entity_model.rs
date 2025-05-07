@@ -1,3 +1,4 @@
+use super::case_style::{CaseStyle, CaseStyleHelpers};
 use super::util::{escape_rust_keyword, trim_starting_raw_identifier};
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Ident, Span, TokenStream};
@@ -13,6 +14,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
     let mut comment = quote! {None};
     let mut schema_name = quote! { None };
     let mut table_iden = false;
+    let mut rename_all: Option<CaseStyle> = None;
+
     attrs
         .iter()
         .filter(|attr| attr.path().is_ident("sea_orm"))
@@ -28,6 +31,8 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     schema_name = quote! { Some(#name) };
                 } else if meta.path.is_ident("table_iden") {
                     table_iden = true;
+                } else if meta.path.is_ident("rename_all") {
+                    rename_all = Some((&meta).try_into()?);
                 } else {
                     // Reads the value expression to advance the parse stream.
                     // Some parameters, such as `primary_key`, do not have any value,
@@ -38,6 +43,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                 Ok(())
             })
         })?;
+
     let entity_def = table_name
         .as_ref()
         .map(|table_name| {
@@ -67,6 +73,7 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
     // generate Column enum and it's ColumnTrait impl
     let mut columns_enum: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_trait: Punctuated<_, Comma> = Punctuated::new();
+    let mut columns_enum_type_name: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_select_as: Punctuated<_, Comma> = Punctuated::new();
     let mut columns_save_as: Punctuated<_, Comma> = Punctuated::new();
     let mut primary_keys: Punctuated<_, Comma> = Punctuated::new();
@@ -106,7 +113,9 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     let mut ignore = false;
                     let mut unique = false;
                     let mut sql_type = None;
-                    let mut column_name = if original_field_name
+                    let mut column_name = if let Some(case_style) = rename_all {
+                        Some(field_name.convert_case(Some(case_style)))
+                    } else if original_field_name
                         != original_field_name.to_upper_camel_case().to_snake_case()
                     {
                         // `to_snake_case` was used to trim prefix and tailing underscore
@@ -114,9 +123,10 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     } else {
                         None
                     };
+
                     let mut enum_name = None;
                     let mut is_primary_key = false;
-                    // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(Some(255))", default_value = "new user", default_expr = "gen_random_uuid()", column_name = "name", enum_name = "Name", nullable, indexed, unique)]
+                    // search for #[sea_orm(primary_key, auto_increment = false, column_type = "String(StringLen::N(255))", default_value = "new user", default_expr = "gen_random_uuid()", column_name = "name", enum_name = "Name", nullable, indexed, unique)]
                     for attr in field.attrs.iter() {
                         if !attr.path().is_ident("sea_orm") {
                             continue;
@@ -293,6 +303,16 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
                     }
                     // match_row = quote! { #match_row.comment() };
                     columns_trait.push(match_row);
+
+                    let ty: syn::Type = syn::LitStr::new(field_type, field_span)
+                        .parse()
+                        .expect("field type error");
+                    let enum_type_name = quote::quote_spanned! { field_span =>
+                        <#ty as sea_orm::sea_query::ValueType>::enum_type_name()
+                    };
+                    columns_enum_type_name.push(quote! {
+                        Self::#field_name => #enum_type_name
+                    });
                 }
             }
         }
@@ -346,6 +366,12 @@ pub fn expand_derive_entity_model(data: Data, attrs: Vec<Attribute>) -> syn::Res
             fn def(&self) -> sea_orm::prelude::ColumnDef {
                 match self {
                     #columns_trait
+                }
+            }
+
+            fn enum_type_name(&self) -> Option<&'static str> {
+                match self {
+                    #columns_enum_type_name
                 }
             }
 

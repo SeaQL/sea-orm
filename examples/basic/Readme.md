@@ -18,7 +18,7 @@ find all fruits: SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fr
 
 Model { id: 1, name: "Blueberry", cake_id: Some(1) }
 
-Model { id: 2, name: "Rasberry", cake_id: Some(1) }
+Model { id: 2, name: "Raspberry", cake_id: Some(1) }
 
 Model { id: 3, name: "Strawberry", cake_id: Some(2) }
 
@@ -48,7 +48,7 @@ find models belong to: SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FR
 
 Model { id: 1, name: "Blueberry", cake_id: Some(1) }
 
-Model { id: 2, name: "Rasberry", cake_id: Some(1) }
+Model { id: 2, name: "Raspberry", cake_id: Some(1) }
 
 ===== =====
 
@@ -58,7 +58,7 @@ SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit`
 SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` IN (1, 1, 2, NULL, NULL, NULL, NULL, NULL, NULL)
 
 (Model { id: 1, name: "Blueberry", cake_id: Some(1) }, Some(Model { id: 1, name: "New York Cheese" }))
-(Model { id: 2, name: "Rasberry", cake_id: Some(1) }, Some(Model { id: 1, name: "New York Cheese" }))
+(Model { id: 2, name: "Raspberry", cake_id: Some(1) }, Some(Model { id: 1, name: "New York Cheese" }))
 (Model { id: 3, name: "Strawberry", cake_id: Some(2) }, Some(Model { id: 2, name: "Chocolate Forest" }))
 (Model { id: 4, name: "Apple", cake_id: None }, None)
 (Model { id: 5, name: "Banana", cake_id: None }, None)
@@ -73,7 +73,7 @@ with loader:
 SELECT `cake`.`id`, `cake`.`name` FROM `cake`
 SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` WHERE `fruit`.`cake_id` IN (1, 2)
 
-(Model { id: 1, name: "New York Cheese" }, [Model { id: 1, name: "Blueberry", cake_id: Some(1) }, Model { id: 2, name: "Rasberry", cake_id: Some(1) }])
+(Model { id: 1, name: "New York Cheese" }, [Model { id: 1, name: "Blueberry", cake_id: Some(1) }, Model { id: 2, name: "Raspberry", cake_id: Some(1) }])
 
 (Model { id: 2, name: "Chocolate Forest" }, [Model { id: 3, name: "Strawberry", cake_id: Some(2) }])
 
@@ -122,7 +122,7 @@ SELECT `cake`.`id`, `cake`.`name` FROM `cake` LIMIT 3 OFFSET 3
 find all fruits paginated: 
 SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` LIMIT 3 OFFSET 0
 Model { id: 1, name: "Blueberry", cake_id: Some(1) }
-Model { id: 2, name: "Rasberry", cake_id: Some(1) }
+Model { id: 2, name: "Raspberry", cake_id: Some(1) }
 Model { id: 3, name: "Strawberry", cake_id: Some(2) }
 SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` LIMIT 3 OFFSET 3
 Model { id: 4, name: "Apple", cake_id: None }
@@ -137,7 +137,7 @@ SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` LIMIT 3 OFFS
 find all fruits with stream: 
 SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` LIMIT 3 OFFSET 0
 Model { id: 1, name: "Blueberry", cake_id: Some(1) }
-Model { id: 2, name: "Rasberry", cake_id: Some(1) }
+Model { id: 2, name: "Raspberry", cake_id: Some(1) }
 Model { id: 3, name: "Strawberry", cake_id: Some(2) }
 SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` LIMIT 3 OFFSET 3
 Model { id: 4, name: "Apple", cake_id: None }
@@ -152,7 +152,7 @@ SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` LIMIT 3 OFFS
 find all fruits in json with stream: 
 SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` LIMIT 3 OFFSET 0
 Object {"cake_id": Number(1), "id": Number(1), "name": String("Blueberry")}
-Object {"cake_id": Number(1), "id": Number(2), "name": String("Rasberry")}
+Object {"cake_id": Number(1), "id": Number(2), "name": String("Raspberry")}
 Object {"cake_id": Number(2), "id": Number(3), "name": String("Strawberry")}
 SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` LIMIT 3 OFFSET 3
 Object {"cake_id": Null, "id": Number(4), "name": String("Apple")}
@@ -168,7 +168,7 @@ SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` LIMIT 3 OFFS
 fruits first page: 
 SELECT `fruit`.`id`, `fruit`.`name`, `fruit`.`cake_id` FROM `fruit` LIMIT 3 OFFSET 0
 Model { id: 1, name: "Blueberry", cake_id: Some(1) }
-Model { id: 2, name: "Rasberry", cake_id: Some(1) }
+Model { id: 2, name: "Raspberry", cake_id: Some(1) }
 Model { id: 3, name: "Strawberry", cake_id: Some(2) }
 ===== =====
 

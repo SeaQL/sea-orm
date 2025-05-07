@@ -1,10 +1,10 @@
 use crate::{
-    ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable, ModelTrait,
-    PrimaryKeyToColumn, RelationDef,
+    ColumnAsExpr, ColumnTrait, EntityTrait, Identity, IntoIdentity, IntoSimpleExpr, Iterable,
+    ModelTrait, PrimaryKeyToColumn, RelationDef,
 };
 use sea_query::{
-    Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockBehavior, LockType, SeaRc,
-    SelectExpr, SelectStatement, SimpleExpr, TableRef,
+    Alias, ConditionType, Expr, Iden, IntoCondition, IntoIden, LockBehavior, LockType,
+    NullOrdering, SeaRc, SelectExpr, SelectStatement, SimpleExpr, TableRef,
 };
 pub use sea_query::{Condition, ConditionalStatement, DynIden, JoinType, Order, OrderedStatement};
 
@@ -52,7 +52,7 @@ pub trait QuerySelect: Sized {
     ///         .column(lunch_set::Column::Tea)
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     r#"SELECT CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    ///     r#"SELECT CAST("lunch_set"."tea" AS "text") FROM "lunch_set""#
     /// );
     /// assert_eq!(
     ///     lunch_set::Entity::find()
@@ -86,11 +86,11 @@ pub trait QuerySelect: Sized {
     /// ```
     fn column_as<C, I>(mut self, col: C, alias: I) -> Self
     where
-        C: IntoSimpleExpr,
+        C: ColumnAsExpr,
         I: IntoIdentity,
     {
         self.query().expr(SelectExpr {
-            expr: col.into_simple_expr(),
+            expr: col.into_column_as_expr(),
             alias: Some(SeaRc::new(alias.into_identity())),
             window: None,
         });
@@ -141,7 +141,7 @@ pub trait QuerySelect: Sized {
     ///         .columns([lunch_set::Column::Name, lunch_set::Column::Tea])
     ///         .build(DbBackend::Postgres)
     ///         .to_string(),
-    ///     r#"SELECT "lunch_set"."name", CAST("lunch_set"."tea" AS text) FROM "lunch_set""#
+    ///     r#"SELECT "lunch_set"."name", CAST("lunch_set"."tea" AS "text") FROM "lunch_set""#
     /// );
     /// assert_eq!(
     ///     lunch_set::Entity::find()
@@ -519,9 +519,7 @@ pub trait QuerySelect: Sized {
     ///     "SELECT `cake`.`id`, `cake`.`name`, UPPER(`cake`.`name`) AS `name_upper` FROM `cake`"
     /// );
     /// ```
-    ///
-    /// FIXME: change signature to `mut self`
-    fn expr_as<T, A>(&mut self, expr: T, alias: A) -> &mut Self
+    fn expr_as<T, A>(mut self, expr: T, alias: A) -> Self
     where
         T: Into<SimpleExpr>,
         A: IntoIdentity,
@@ -530,7 +528,7 @@ pub trait QuerySelect: Sized {
         self
     }
 
-    /// Owned version of `expr_as`.
+    /// Same as `expr_as`. Here for legacy reasons.
     ///
     /// Select column.
     ///
@@ -555,6 +553,32 @@ pub trait QuerySelect: Sized {
         A: IntoIdentity,
     {
         self.query().expr_as(expr, alias.into_identity());
+        self
+    }
+
+    /// Shorthand of `expr_as(Expr::col((T, C)), A)`.
+    ///
+    /// ```
+    /// use sea_orm::sea_query::{Alias, Expr, Func};
+    /// use sea_orm::{entity::*, tests_cfg::cake, DbBackend, QuerySelect, QueryTrait};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .select_only()
+    ///         .tbl_col_as((cake::Entity, cake::Column::Name), "cake_name")
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`name` AS `cake_name` FROM `cake`"
+    /// );
+    /// ```
+    fn tbl_col_as<T, C, A>(mut self, (tbl, col): (T, C), alias: A) -> Self
+    where
+        T: IntoIden + 'static,
+        C: IntoIden + 'static,
+        A: IntoIdentity,
+    {
+        self.query()
+            .expr_as(Expr::col((tbl, col)), alias.into_identity());
         self
     }
 }
@@ -630,6 +654,28 @@ pub trait QueryOrder: Sized {
             .order_by_expr(col.into_simple_expr(), Order::Desc);
         self
     }
+
+    /// Add an order_by expression with nulls ordering option
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    /// use sea_query::NullOrdering;
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .order_by_with_nulls(cake::Column::Id, Order::Asc, NullOrdering::First)
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" ORDER BY "cake"."id" ASC NULLS FIRST"#
+    /// );
+    /// ```
+    fn order_by_with_nulls<C>(mut self, col: C, ord: Order, nulls: NullOrdering) -> Self
+    where
+        C: IntoSimpleExpr,
+    {
+        self.query()
+            .order_by_expr_with_nulls(col.into_simple_expr(), ord, nulls);
+        self
+    }
 }
 
 // LINT: when the column does not appear in tables selected from
@@ -669,6 +715,35 @@ pub trait QueryFilter: Sized {
     ///         .build(DbBackend::MySql)
     ///         .to_string(),
     ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` = 4 OR `cake`.`id` = 5"
+    /// );
+    /// ```
+    ///
+    /// Like above, but using the `IN` operator.
+    ///
+    /// ```
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(cake::Column::Id.is_in([4, 5]))
+    ///         .build(DbBackend::MySql)
+    ///         .to_string(),
+    ///     "SELECT `cake`.`id`, `cake`.`name` FROM `cake` WHERE `cake`.`id` IN (4, 5)"
+    /// );
+    /// ```
+    ///
+    /// Like above, but using the `ANY` operator. Postgres only.
+    ///
+    /// ```
+    /// use sea_orm::sea_query::{extension::postgres::PgFunc, Expr};
+    /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
+    ///
+    /// assert_eq!(
+    ///     cake::Entity::find()
+    ///         .filter(Expr::col((cake::Entity, cake::Column::Id)).eq(PgFunc::any(vec![4, 5])))
+    ///         .build(DbBackend::Postgres)
+    ///         .to_string(),
+    ///     r#"SELECT "cake"."id", "cake"."name" FROM "cake" WHERE "cake"."id" = ANY(ARRAY [4,5])"#
     /// );
     /// ```
     ///

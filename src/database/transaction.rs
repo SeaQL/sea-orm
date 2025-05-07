@@ -5,7 +5,7 @@ use crate::{
 };
 #[cfg(feature = "sqlx-dep")]
 use crate::{sqlx_error_to_exec_err, sqlx_error_to_query_err};
-use futures::lock::Mutex;
+use futures_util::lock::Mutex;
 #[cfg(feature = "sqlx-dep")]
 use sqlx::TransactionManager;
 use std::{future::Future, pin::Pin, sync::Arc};
@@ -48,13 +48,13 @@ impl DatabaseTransaction {
                 // in MySQL SET TRANSACTION operations must be executed before transaction start
                 crate::driver::sqlx_mysql::set_transaction_config(c, isolation_level, access_mode)
                     .await?;
-                <sqlx::MySql as sqlx::Database>::TransactionManager::begin(c)
+                <sqlx::MySql as sqlx::Database>::TransactionManager::begin(c, None)
                     .await
                     .map_err(sqlx_error_to_query_err)
             }
             #[cfg(feature = "sqlx-postgres")]
             InnerConnection::Postgres(ref mut c) => {
-                <sqlx::Postgres as sqlx::Database>::TransactionManager::begin(c)
+                <sqlx::Postgres as sqlx::Database>::TransactionManager::begin(c, None)
                     .await
                     .map_err(sqlx_error_to_query_err)?;
                 // in PostgreSQL SET TRANSACTION operations must be executed inside transaction
@@ -70,7 +70,7 @@ impl DatabaseTransaction {
                 // in SQLite isolation level and access mode are global settings
                 crate::driver::sqlx_sqlite::set_transaction_config(c, isolation_level, access_mode)
                     .await?;
-                <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c)
+                <sqlx::Sqlite as sqlx::Database>::TransactionManager::begin(c, None)
                     .await
                     .map_err(sqlx_error_to_query_err)
             }

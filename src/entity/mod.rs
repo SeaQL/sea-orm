@@ -9,7 +9,7 @@
 /// - The Column which is implemented by [ColumnTrait](crate::ColumnTrait)
 /// - A Relation which is implemented by [RelationTrait](crate::RelationTrait)
 /// - The Primary Key which is implemented by [PrimaryKeyTrait](crate::PrimaryKeyTrait)
-/// and [PrimaryKeyToColumn](crate::PrimaryKeyToColumn)
+///   and [PrimaryKeyToColumn](crate::PrimaryKeyToColumn)
 ///
 /// This trait also provides an API for CRUD actions
 ///

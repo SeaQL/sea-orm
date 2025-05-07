@@ -34,11 +34,18 @@ pub async fn test(db: &DbConn) {
 
     assert!(matches!(res, Ok(TryInsertResult::Inserted(_))));
 
-    let _double_seaside_bakery = bakery::ActiveModel {
+    let double_seaside_bakery = bakery::ActiveModel {
         name: Set("SeaSide Bakery".to_owned()),
         profit_margin: Set(10.4),
         id: Set(1),
     };
+
+    let conflict_insert = Bakery::insert_many([double_seaside_bakery])
+        .on_conflict_do_nothing()
+        .exec(db)
+        .await;
+
+    assert!(matches!(conflict_insert, Ok(TryInsertResult::Conflicted)));
 
     let empty_insert = Bakery::insert_many(std::iter::empty::<bakery::ActiveModel>())
         .on_empty_do_nothing()

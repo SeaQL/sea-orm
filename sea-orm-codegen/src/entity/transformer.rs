@@ -57,7 +57,7 @@ impl EntityTransformer {
                         > 0;
                     col
                 })
-                .map(|col| {
+                .inspect(|col| {
                     if let sea_query::ColumnType::Enum { name, variants } = col.get_inner_col_type()
                     {
                         enums.insert(
@@ -68,7 +68,6 @@ impl EntityTransformer {
                             },
                         );
                     }
-                    col
                 })
                 .collect();
             let mut ref_table_counts: BTreeMap<String, usize> = BTreeMap::new();
@@ -146,6 +145,17 @@ impl EntityTransformer {
                     {
                         unique = false;
                         break;
+                    }
+                }
+                if rel.columns.len() == entity.primary_keys.len() {
+                    let mut count_pk = 0;
+                    for primary_key in entity.primary_keys.iter() {
+                        if rel.columns.contains(&primary_key.name) {
+                            count_pk += 1;
+                        }
+                    }
+                    if count_pk == entity.primary_keys.len() {
+                        unique = true;
                     }
                 }
                 let rel_type = if unique {
@@ -387,6 +397,7 @@ mod tests {
                     &Default::default(),
                     &Default::default(),
                     false,
+                    true,
                 )
                 .into_iter()
                 .skip(1)

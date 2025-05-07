@@ -1,7 +1,7 @@
 use crate::{
     ConnectionTrait, DbErr, EntityTrait, FromQueryResult, Identity, IdentityOf, IntoIdentity,
-    PartialModelTrait, PrimaryKeyToColumn, QueryOrder, QuerySelect, Select, SelectModel, SelectTwo,
-    SelectTwoModel, SelectorTrait,
+    PartialModelTrait, PrimaryKeyToColumn, QueryOrder, QuerySelect, Select, SelectModel,
+    SelectThree, SelectThreeModel, SelectTwo, SelectTwoModel, SelectorTrait,
 };
 use sea_query::{
     Condition, DynIden, Expr, IntoValueTuple, Order, SeaRc, SelectStatement, SimpleExpr, Value,
@@ -268,7 +268,7 @@ where
         for (tbl, col) in self.secondary_order_by.iter().cloned() {
             if let Identity::Unary(c1) = col {
                 query.order_by((tbl, c1), ord.clone());
-            };
+            }
         }
 
         self
@@ -408,6 +408,18 @@ where
     type Selector = SelectTwoModel<M, N>;
 }
 
+impl<E, F, G, M, N, O> CursorTrait for SelectThree<E, F, G>
+where
+    E: EntityTrait<Model = M>,
+    F: EntityTrait<Model = N>,
+    G: EntityTrait<Model = O>,
+    M: FromQueryResult + Sized + Send + Sync,
+    N: FromQueryResult + Sized + Send + Sync,
+    O: FromQueryResult + Sized + Send + Sync,
+{
+    type Selector = SelectThreeModel<M, N, O>;
+}
+
 impl<E, F, M, N> SelectTwo<E, F>
 where
     E: EntityTrait<Model = M>,
@@ -460,6 +472,51 @@ where
     }
 }
 
+impl<E, F, G, M, N, O> SelectThree<E, F, G>
+where
+    E: EntityTrait<Model = M>,
+    F: EntityTrait<Model = N>,
+    G: EntityTrait<Model = O>,
+    M: FromQueryResult + Sized + Send + Sync,
+    N: FromQueryResult + Sized + Send + Sync,
+    O: FromQueryResult + Sized + Send + Sync,
+{
+    /// Convert into a cursor using column of first entity
+    pub fn cursor_by<C>(self, order_columns: C) -> Cursor<SelectThreeModel<M, N, O>>
+    where
+        C: IdentityOf<E>,
+    {
+        let mut cursor = Cursor::new(
+            self.query,
+            SeaRc::new(E::default()),
+            order_columns.identity_of(),
+        );
+        {
+            let primary_keys: Vec<(DynIden, Identity)> = <F::PrimaryKey as Iterable>::iter()
+                .map(|pk| {
+                    (
+                        SeaRc::new(F::default()),
+                        Identity::Unary(SeaRc::new(pk.into_column())),
+                    )
+                })
+                .collect();
+            cursor.set_secondary_order_by(primary_keys);
+        }
+        {
+            let primary_keys: Vec<(DynIden, Identity)> = <G::PrimaryKey as Iterable>::iter()
+                .map(|pk| {
+                    (
+                        SeaRc::new(G::default()),
+                        Identity::Unary(SeaRc::new(pk.into_column())),
+                    )
+                })
+                .collect();
+            cursor.set_secondary_order_by(primary_keys);
+        }
+        cursor
+    }
+}
+
 #[cfg(test)]
 #[cfg(feature = "mock")]
 mod tests {
@@ -480,7 +537,7 @@ mod tests {
             },
             Model {
                 id: 2,
-                name: "Rasberry".into(),
+                name: "Raspberry".into(),
                 cake_id: Some(1),
             },
         ];
@@ -531,7 +588,7 @@ mod tests {
             },
             Model {
                 id: 2,
-                name: "Rasberry".into(),
+                name: "Raspberry".into(),
                 cake_id: Some(1),
             },
         ];
@@ -590,11 +647,11 @@ mod tests {
             (
                 cake::Model {
                     id: 2,
-                    name: "Rasberry Cheese Cake".into(),
+                    name: "Raspberry Cheese Cake".into(),
                 },
                 Some(fruit::Model {
                     id: 10,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                     cake_id: Some(1),
                 }),
             ),
@@ -642,11 +699,11 @@ mod tests {
             (
                 cake::Model {
                     id: 2,
-                    name: "Rasberry Cheese Cake".into(),
+                    name: "Raspberry Cheese Cake".into(),
                 },
                 Some(fruit::Model {
                     id: 10,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                     cake_id: Some(1),
                 }),
             ),
@@ -819,11 +876,11 @@ mod tests {
             (
                 cake::Model {
                     id: 2,
-                    name: "Rasberry Cheese Cake".into(),
+                    name: "Raspberry Cheese Cake".into(),
                 },
                 Some(vendor::Model {
                     id: 10,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                 }),
             ),
         ];
@@ -871,11 +928,11 @@ mod tests {
             (
                 cake::Model {
                     id: 2,
-                    name: "Rasberry Cheese Cake".into(),
+                    name: "Raspberry Cheese Cake".into(),
                 },
                 Some(vendor::Model {
                     id: 10,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                 }),
             ),
             (
@@ -1041,7 +1098,7 @@ mod tests {
             .append_query_results([[
                 Model {
                     id: 22,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                     cake_id: Some(1),
                 },
                 Model {
@@ -1067,7 +1124,7 @@ mod tests {
                 },
                 Model {
                     id: 22,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                     cake_id: Some(1),
                 },
             ]
@@ -1100,7 +1157,7 @@ mod tests {
         let models = [
             Model {
                 id: 22,
-                name: "Rasberry".into(),
+                name: "Raspberry".into(),
                 cake_id: Some(1),
             },
             Model {
@@ -1153,7 +1210,7 @@ mod tests {
             .append_query_results([[
                 Model {
                     id: 27,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                     cake_id: Some(1),
                 },
                 Model {
@@ -1180,7 +1237,7 @@ mod tests {
                 },
                 Model {
                     id: 27,
-                    name: "Rasberry".into(),
+                    name: "Raspberry".into(),
                     cake_id: Some(1),
                 },
             ]
@@ -1214,7 +1271,7 @@ mod tests {
         let models = [
             Model {
                 id: 27,
-                name: "Rasberry".into(),
+                name: "Raspberry".into(),
                 cake_id: Some(1),
             },
             Model {

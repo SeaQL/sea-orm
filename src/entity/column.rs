@@ -1,6 +1,7 @@
 use crate::{DbBackend, EntityName, Iden, IdenStatic, IntoSimpleExpr, Iterable};
 use sea_query::{
-    Alias, BinOper, DynIden, Expr, IntoIden, SeaRc, SelectStatement, SimpleExpr, Value,
+    Alias, BinOper, DynIden, Expr, IntoIden, IntoLikeExpr, SeaRc, SelectStatement, SimpleExpr,
+    Value,
 };
 use std::str::FromStr;
 
@@ -75,6 +76,11 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// Define a column for an Entity
     fn def(&self) -> ColumnDef;
 
+    /// Get the enum name of the column type
+    fn enum_type_name(&self) -> Option<&'static str> {
+        None
+    }
+
     /// Get the name of the entity the column belongs to
     fn entity_name(&self) -> DynIden {
         SeaRc::new(Self::EntityName::default()) as DynIden
@@ -141,7 +147,7 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// ```
     fn like<T>(&self, s: T) -> SimpleExpr
     where
-        T: Into<String>,
+        T: IntoLikeExpr,
     {
         Expr::col((self.entity_name(), *self)).like(s)
     }
@@ -159,11 +165,16 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
     /// ```
     fn not_like<T>(&self, s: T) -> SimpleExpr
     where
-        T: Into<String>,
+        T: IntoLikeExpr,
     {
         Expr::col((self.entity_name(), *self)).not_like(s)
     }
 
+    /// This is a simplified shorthand for a more general `like` method.
+    /// Use `like` if you need something more complex, like specifying an escape character.
+    ///
+    /// ## Examples
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
@@ -183,6 +194,11 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
+    /// This is a simplified shorthand for a more general `like` method.
+    /// Use `like` if you need something more complex, like specifying an escape character.
+    ///
+    /// ## Examples
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
@@ -202,6 +218,11 @@ pub trait ColumnTrait: IdenStatic + Iterable + FromStr {
         Expr::col((self.entity_name(), *self)).like(pattern)
     }
 
+    /// This is a simplified shorthand for a more general `like` method.
+    /// Use `like` if you need something more complex, like specifying an escape character.
+    ///
+    /// ## Examples
+    ///
     /// ```
     /// use sea_orm::{entity::*, query::*, tests_cfg::cake, DbBackend};
     ///
@@ -389,9 +410,19 @@ impl ColumnDef {
         &self.col_type
     }
 
+    /// Get [Option<SimpleExpr>] as reference
+    pub fn get_column_default(&self) -> Option<&SimpleExpr> {
+        self.default.as_ref()
+    }
+
     /// Returns true if the column is nullable
     pub fn is_null(&self) -> bool {
         self.null
+    }
+
+    /// Returns true if the column is unique
+    pub fn is_unique(&self) -> bool {
+        self.unique
     }
 }
 

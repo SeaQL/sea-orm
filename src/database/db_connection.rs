@@ -133,7 +133,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.execute(stmt),
             #[cfg(feature = "proxy")]
-            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.execute(stmt),
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.execute(stmt).await,
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -162,7 +162,7 @@ impl ConnectionTrait for DatabaseConnection {
             DatabaseConnection::ProxyDatabaseConnection(conn) => {
                 let db_backend = conn.get_database_backend();
                 let stmt = Statement::from_string(db_backend, sql);
-                conn.execute(stmt)
+                conn.execute(stmt).await
             }
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
@@ -181,7 +181,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.query_one(stmt),
             #[cfg(feature = "proxy")]
-            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.query_one(stmt),
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.query_one(stmt).await,
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -199,7 +199,7 @@ impl ConnectionTrait for DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.query_all(stmt),
             #[cfg(feature = "proxy")]
-            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.query_all(stmt),
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.query_all(stmt).await,
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
@@ -470,20 +470,26 @@ impl DatabaseConnection {
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(conn) => conn.ping(),
             #[cfg(feature = "proxy")]
-            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.ping(),
+            DatabaseConnection::ProxyDatabaseConnection(conn) => conn.ping().await,
             DatabaseConnection::Disconnected => Err(conn_err("Disconnected")),
         }
     }
 
-    /// Explicitly close the database connection
+    /// Explicitly close the database connection.
+    /// See [`Self::close_by_ref`] for usage with references.
     pub async fn close(self) -> Result<(), DbErr> {
+        self.close_by_ref().await
+    }
+
+    /// Explicitly close the database connection
+    pub async fn close_by_ref(&self) -> Result<(), DbErr> {
         match self {
             #[cfg(feature = "sqlx-mysql")]
-            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.close().await,
+            DatabaseConnection::SqlxMySqlPoolConnection(conn) => conn.close_by_ref().await,
             #[cfg(feature = "sqlx-postgres")]
-            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.close().await,
+            DatabaseConnection::SqlxPostgresPoolConnection(conn) => conn.close_by_ref().await,
             #[cfg(feature = "sqlx-sqlite")]
-            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.close().await,
+            DatabaseConnection::SqlxSqlitePoolConnection(conn) => conn.close_by_ref().await,
             #[cfg(feature = "mock")]
             DatabaseConnection::MockDatabaseConnection(_) => {
                 // Nothing to cleanup, we just consume the `DatabaseConnection`
@@ -499,8 +505,6 @@ impl DatabaseConnection {
     }
 }
 
-#[cfg(feature = "sea-orm-internal")]
-#[cfg_attr(docsrs, doc(cfg(feature = "sea-orm-internal")))]
 impl DatabaseConnection {
     /// Get [sqlx::MySqlPool]
     ///
@@ -583,6 +587,13 @@ impl DbBackend {
             Self::Postgres => true,
             Self::Sqlite if cfg!(feature = "sqlite-use-returning-for-3_35") => true,
             _ => false,
+        }
+    }
+
+    /// A getter for database dependent boolean value
+    pub fn boolean_value(&self, boolean: bool) -> sea_query::Value {
+        match self {
+            Self::MySql | Self::Postgres | Self::Sqlite => boolean.into(),
         }
     }
 }

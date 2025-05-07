@@ -34,6 +34,13 @@ impl FromQueryResult for JsonValue {
                             }
                         };
                     }
+                    macro_rules! match_mysql_compatible_type {
+                        ( $type: ty ) => {
+                            if <$type as Type<MySql>>::compatible(col_type) {
+                                try_get_type!($type, col)
+                            }
+                        };
+                    }
                     match_mysql_type!(bool);
                     match_mysql_type!(i8);
                     match_mysql_type!(i16);
@@ -64,9 +71,9 @@ impl FromQueryResult for JsonValue {
                     match_mysql_type!(time::OffsetDateTime);
                     #[cfg(feature = "with-rust_decimal")]
                     match_mysql_type!(rust_decimal::Decimal);
+                    match_mysql_compatible_type!(String);
                     #[cfg(feature = "with-json")]
                     try_get_type!(serde_json::Value, col);
-                    try_get_type!(String, col);
                     #[cfg(feature = "with-uuid")]
                     try_get_type!(uuid::Uuid, col);
                     try_get_type!(Vec<u8>, col);
@@ -144,10 +151,16 @@ impl FromQueryResult for JsonValue {
                     try_get_type!(String, col);
                     #[cfg(feature = "postgres-array")]
                     try_get_type!(Vec<String>, col);
+                    #[cfg(feature = "postgres-vector")]
+                    try_get_type!(pgvector::Vector, col);
                     #[cfg(feature = "with-uuid")]
                     try_get_type!(uuid::Uuid, col);
                     #[cfg(all(feature = "with-uuid", feature = "postgres-array"))]
                     try_get_type!(Vec<uuid::Uuid>, col);
+                    #[cfg(feature = "with-ipnetwork")]
+                    try_get_type!(ipnetwork::IpNetwork, col);
+                    #[cfg(all(feature = "with-ipnetwork", feature = "postgres-array"))]
+                    try_get_type!(Vec<ipnetwork::IpNetwork>, col);
                     try_get_type!(Vec<u8>, col);
                 }
                 Ok(JsonValue::Object(map))

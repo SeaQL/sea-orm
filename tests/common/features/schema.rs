@@ -61,6 +61,9 @@ pub async fn create_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
         create_collection_table(db).await?;
         create_event_trigger_table(db).await?;
         create_categories_table(db).await?;
+        #[cfg(feature = "postgres-vector")]
+        create_embedding_table(db).await?;
+        create_host_network_table(db).await?;
     }
 
     Ok(())
@@ -471,6 +474,36 @@ pub async fn create_collection_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     create_table(db, &stmt, Collection).await
 }
 
+pub async fn create_host_network_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    let stmt = sea_query::Table::create()
+        .table(host_network::Entity)
+        .col(
+            ColumnDef::new(host_network::Column::Id)
+                .integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(host_network::Column::Hostname)
+                .string()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(host_network::Column::Ipaddress)
+                .inet()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(host_network::Column::Network)
+                .cidr()
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &stmt, HostNetwork).await
+}
+
 pub async fn create_pi_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let stmt = sea_query::Table::create()
         .table(pi::Entity)
@@ -601,6 +634,32 @@ pub async fn create_categories_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     create_table(db, &create_table_stmt, Categories).await
 }
 
+#[cfg(feature = "postgres-vector")]
+pub async fn create_embedding_table(db: &DbConn) -> Result<ExecResult, DbErr> {
+    db.execute(sea_orm::Statement::from_string(
+        db.get_database_backend(),
+        "CREATE EXTENSION IF NOT EXISTS vector",
+    ))
+    .await?;
+
+    let create_table_stmt = sea_query::Table::create()
+        .table(embedding::Entity.table_ref())
+        .col(
+            ColumnDef::new(embedding::Column::Id)
+                .integer()
+                .not_null()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(embedding::Column::Embedding)
+                .vector(None)
+                .not_null(),
+        )
+        .to_owned();
+
+    create_table(db, &create_table_stmt, Embedding).await
+}
+
 pub async fn create_binary_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let create_table_stmt = sea_query::Table::create()
         .table(binary::Entity.table_ref())
@@ -717,10 +776,21 @@ pub async fn create_value_type_table(db: &DbConn) -> Result<ExecResult, DbErr> {
                 .integer()
                 .not_null(),
         )
+        .col(
+            ColumnDef::new(value_type::value_type_general::Column::Tag1)
+                .string()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(value_type::value_type_general::Column::Tag2)
+                .string()
+                .not_null(),
+        )
         .to_owned();
 
     create_table(db, &general_stmt, value_type::value_type_general::Entity).await
 }
+
 pub async fn create_value_type_postgres_table(db: &DbConn) -> Result<ExecResult, DbErr> {
     let postgres_stmt = sea_query::Table::create()
         .table(value_type::value_type_pg::Entity)
@@ -737,7 +807,7 @@ pub async fn create_value_type_postgres_table(db: &DbConn) -> Result<ExecResult,
                 .not_null(),
         )
         .col(
-            ColumnDef::new(json_vec::Column::StrVec)
+            ColumnDef::new(value_type::value_type_pg::Column::StrVec)
                 .array(sea_query::ColumnType::String(StringLen::None))
                 .not_null(),
         )

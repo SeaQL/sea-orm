@@ -11,7 +11,7 @@ use sea_orm::{
     entity::prelude::*,
     entity::*,
     sea_query::{BinOper, Expr},
-    ActiveEnum as ActiveEnumTrait, DatabaseConnection,
+    ActiveEnum as ActiveEnumTrait, DatabaseConnection, FromQueryResult, QuerySelect,
 };
 
 #[sea_orm_macros::test]
@@ -97,6 +97,47 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             .unwrap()
     );
 
+    #[derive(Debug, FromQueryResult, PartialEq)]
+    struct SelectResult {
+        tea_alias: Option<Tea>,
+    }
+
+    assert_eq!(
+        SelectResult {
+            tea_alias: Some(Tea::EverydayTea),
+        },
+        Entity::find()
+            .select_only()
+            .column_as(Column::Tea, "tea_alias")
+            .into_model()
+            .one(db)
+            .await?
+            .unwrap()
+    );
+
+    assert_eq!(
+        serde_json::json!({
+            "id": 1,
+            "category": "B",
+            "color": 0,
+            "tea": "EverydayTea",
+        }),
+        Entity::find().into_json().one(db).await?.unwrap()
+    );
+
+    assert_eq!(
+        serde_json::json!({
+            "tea_alias": "EverydayTea",
+        }),
+        Entity::find()
+            .select_only()
+            .column_as(Column::Tea, "tea_alias")
+            .into_json()
+            .one(db)
+            .await?
+            .unwrap()
+    );
+
     assert_eq!(
         model,
         Entity::find()
@@ -120,9 +161,9 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             r#"SELECT "active_enum"."id","#,
             r#""active_enum"."category","#,
             r#""active_enum"."color","#,
-            r#"CAST("active_enum"."tea" AS text)"#,
+            r#"CAST("active_enum"."tea" AS "text")"#,
             r#"FROM "public"."active_enum""#,
-            r#"WHERE "active_enum"."tea" IN (CAST('EverydayTea' AS tea), CAST('BreakfastTea' AS tea))"#,
+            r#"WHERE "active_enum"."tea" IN (CAST('EverydayTea' AS "tea"), CAST('BreakfastTea' AS "tea"))"#,
         ]
         .join(" ")
     );
@@ -154,10 +195,10 @@ pub async fn insert_active_enum(db: &DatabaseConnection) -> Result<(), DbErr> {
             r#"SELECT "active_enum"."id","#,
             r#""active_enum"."category","#,
             r#""active_enum"."color","#,
-            r#"CAST("active_enum"."tea" AS text)"#,
+            r#"CAST("active_enum"."tea" AS "text")"#,
             r#"FROM "public"."active_enum""#,
             r#"WHERE "active_enum"."tea" IS NOT NULL"#,
-            r#"AND "active_enum"."tea" NOT IN (CAST('BreakfastTea' AS tea))"#,
+            r#"AND "active_enum"."tea" NOT IN (CAST('BreakfastTea' AS "tea"))"#,
         ]
         .join(" ")
     );
@@ -663,7 +704,7 @@ mod tests {
         assert_eq!(
             _select.build(DbBackend::Postgres).to_string(),
             [
-                r#"SELECT "active_enum_child"."id", "active_enum_child"."parent_id", "active_enum_child"."category", "active_enum_child"."color", CAST("active_enum_child"."tea" AS text)"#,
+                r#"SELECT "active_enum_child"."id", "active_enum_child"."parent_id", "active_enum_child"."category", "active_enum_child"."color", CAST("active_enum_child"."tea" AS "text")"#,
                 r#"FROM "public"."active_enum_child""#,
                 r#"INNER JOIN "public"."active_enum" ON "active_enum"."id" = "active_enum_child"."parent_id""#,
                 r#"WHERE "active_enum"."id" = 1"#,
@@ -705,8 +746,8 @@ mod tests {
                 .build(DbBackend::Postgres)
                 .to_string(),
             [
-                r#"SELECT "active_enum"."id" AS "A_id", "active_enum"."category" AS "A_category", "active_enum"."color" AS "A_color", CAST("active_enum"."tea" AS text) AS "A_tea","#,
-                r#""active_enum_child"."id" AS "B_id", "active_enum_child"."parent_id" AS "B_parent_id", "active_enum_child"."category" AS "B_category", "active_enum_child"."color" AS "B_color", CAST("active_enum_child"."tea" AS text) AS "B_tea""#,
+                r#"SELECT "active_enum"."id" AS "A_id", "active_enum"."category" AS "A_category", "active_enum"."color" AS "A_color", CAST("active_enum"."tea" AS "text") AS "A_tea","#,
+                r#""active_enum_child"."id" AS "B_id", "active_enum_child"."parent_id" AS "B_parent_id", "active_enum_child"."category" AS "B_category", "active_enum_child"."color" AS "B_color", CAST("active_enum_child"."tea" AS "text") AS "B_tea""#,
                 r#"FROM "public"."active_enum""#,
                 r#"LEFT JOIN "public"."active_enum_child" ON "active_enum"."id" = "active_enum_child"."parent_id""#,
             ]
@@ -750,7 +791,7 @@ mod tests {
         assert_eq!(
             _select.build(DbBackend::Postgres).to_string(),
             [
-                r#"SELECT "active_enum_child"."id", "active_enum_child"."parent_id", "active_enum_child"."category", "active_enum_child"."color", CAST("active_enum_child"."tea" AS text)"#,
+                r#"SELECT "active_enum_child"."id", "active_enum_child"."parent_id", "active_enum_child"."category", "active_enum_child"."color", CAST("active_enum_child"."tea" AS "text")"#,
                 r#"FROM "public"."active_enum_child""#,
                 r#"INNER JOIN "public"."active_enum" AS "r0" ON "r0"."id" = "active_enum_child"."parent_id""#,
                 r#"WHERE "r0"."id" = 1"#,
@@ -792,8 +833,8 @@ mod tests {
                 .build(DbBackend::Postgres)
                 .to_string(),
             [
-                r#"SELECT "active_enum"."id" AS "A_id", "active_enum"."category" AS "A_category", "active_enum"."color" AS "A_color", CAST("active_enum"."tea" AS text) AS "A_tea","#,
-                r#""r0"."id" AS "B_id", "r0"."parent_id" AS "B_parent_id", "r0"."category" AS "B_category", "r0"."color" AS "B_color", CAST("r0"."tea" AS text) AS "B_tea""#,
+                r#"SELECT "active_enum"."id" AS "A_id", "active_enum"."category" AS "A_category", "active_enum"."color" AS "A_color", CAST("active_enum"."tea" AS "text") AS "A_tea","#,
+                r#""r0"."id" AS "B_id", "r0"."parent_id" AS "B_parent_id", "r0"."category" AS "B_category", "r0"."color" AS "B_color", CAST("r0"."tea" AS "text") AS "B_tea""#,
                 r#"FROM "public"."active_enum""#,
                 r#"LEFT JOIN "public"."active_enum_child" AS "r0" ON "active_enum"."id" = "r0"."parent_id""#,
             ]
@@ -838,7 +879,7 @@ mod tests {
         assert_eq!(
             _select.build(DbBackend::Postgres).to_string(),
             [
-                r#"SELECT "active_enum"."id", "active_enum"."category", "active_enum"."color", CAST("active_enum"."tea" AS text)"#,
+                r#"SELECT "active_enum"."id", "active_enum"."category", "active_enum"."color", CAST("active_enum"."tea" AS "text")"#,
                 r#"FROM "public"."active_enum""#,
                 r#"INNER JOIN "public"."active_enum_child" ON "active_enum_child"."parent_id" = "active_enum"."id""#,
                 r#"WHERE "active_enum_child"."id" = 1"#,
@@ -880,8 +921,8 @@ mod tests {
                 .build(DbBackend::Postgres)
                 .to_string(),
             [
-                r#"SELECT "active_enum_child"."id" AS "A_id", "active_enum_child"."parent_id" AS "A_parent_id", "active_enum_child"."category" AS "A_category", "active_enum_child"."color" AS "A_color", CAST("active_enum_child"."tea" AS text) AS "A_tea","#,
-                r#""active_enum"."id" AS "B_id", "active_enum"."category" AS "B_category", "active_enum"."color" AS "B_color", CAST("active_enum"."tea" AS text) AS "B_tea""#,
+                r#"SELECT "active_enum_child"."id" AS "A_id", "active_enum_child"."parent_id" AS "A_parent_id", "active_enum_child"."category" AS "A_category", "active_enum_child"."color" AS "A_color", CAST("active_enum_child"."tea" AS "text") AS "A_tea","#,
+                r#""active_enum"."id" AS "B_id", "active_enum"."category" AS "B_category", "active_enum"."color" AS "B_color", CAST("active_enum"."tea" AS "text") AS "B_tea""#,
                 r#"FROM "public"."active_enum_child""#,
                 r#"LEFT JOIN "public"."active_enum" ON "active_enum_child"."parent_id" = "active_enum"."id""#,
             ]
@@ -926,7 +967,7 @@ mod tests {
         assert_eq!(
             _select.build(DbBackend::Postgres).to_string(),
             [
-                r#"SELECT "active_enum"."id", "active_enum"."category", "active_enum"."color", CAST("active_enum"."tea" AS text)"#,
+                r#"SELECT "active_enum"."id", "active_enum"."category", "active_enum"."color", CAST("active_enum"."tea" AS "text")"#,
                 r#"FROM "public"."active_enum""#,
                 r#"INNER JOIN "public"."active_enum_child" AS "r0" ON "r0"."parent_id" = "active_enum"."id""#,
                 r#"WHERE "r0"."id" = 1"#,
@@ -968,8 +1009,8 @@ mod tests {
                 .build(DbBackend::Postgres)
                 .to_string(),
             [
-                r#"SELECT "active_enum_child"."id" AS "A_id", "active_enum_child"."parent_id" AS "A_parent_id", "active_enum_child"."category" AS "A_category", "active_enum_child"."color" AS "A_color", CAST("active_enum_child"."tea" AS text) AS "A_tea","#,
-                r#""r0"."id" AS "B_id", "r0"."category" AS "B_category", "r0"."color" AS "B_color", CAST("r0"."tea" AS text) AS "B_tea""#,
+                r#"SELECT "active_enum_child"."id" AS "A_id", "active_enum_child"."parent_id" AS "A_parent_id", "active_enum_child"."category" AS "A_category", "active_enum_child"."color" AS "A_color", CAST("active_enum_child"."tea" AS "text") AS "A_tea","#,
+                r#""r0"."id" AS "B_id", "r0"."category" AS "B_category", "r0"."color" AS "B_color", CAST("r0"."tea" AS "text") AS "B_tea""#,
                 r#"FROM "public"."active_enum_child""#,
                 r#"LEFT JOIN "public"."active_enum" AS "r0" ON "active_enum_child"."parent_id" = "r0"."id""#,
             ]

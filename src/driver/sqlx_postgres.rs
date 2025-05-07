@@ -1,7 +1,7 @@
-use futures::lock::Mutex;
+use futures_util::lock::Mutex;
 use log::LevelFilter;
 use sea_query::Values;
-use std::{future::Future, pin::Pin, sync::Arc};
+use std::{fmt::Write, future::Future, pin::Pin, sync::Arc};
 
 use sqlx::{
     pool::PoolConnection,
@@ -36,6 +36,21 @@ impl std::fmt::Debug for SqlxPostgresPoolConnection {
     }
 }
 
+impl From<PgPool> for SqlxPostgresPoolConnection {
+    fn from(pool: PgPool) -> Self {
+        SqlxPostgresPoolConnection {
+            pool,
+            metric_callback: None,
+        }
+    }
+}
+
+impl From<PgPool> for DatabaseConnection {
+    fn from(pool: PgPool) -> Self {
+        DatabaseConnection::SqlxPostgresPoolConnection(pool.into())
+    }
+}
+
 impl SqlxPostgresConnector {
     /// Check if the URI provided corresponds to `postgres://` for a PostgreSQL database
     pub fn accepts(string: &str) -> bool {
@@ -61,10 +76,25 @@ impl SqlxPostgresConnector {
                 );
             }
         }
-        let set_search_path_sql = options
-            .schema_search_path
-            .as_ref()
-            .map(|schema| format!("SET search_path = '{schema}'"));
+        let set_search_path_sql = options.schema_search_path.as_ref().map(|schema| {
+            let mut string = "SET search_path = ".to_owned();
+            if schema.starts_with('"') {
+                write!(&mut string, "{schema}").unwrap();
+            } else {
+                for (i, schema) in schema.split(',').enumerate() {
+                    if i > 0 {
+                        write!(&mut string, ",").unwrap();
+                    }
+                    if schema.starts_with('"') {
+                        write!(&mut string, "{schema}").unwrap();
+                    } else {
+                        write!(&mut string, "\"{schema}\"").unwrap();
+                    }
+                }
+            }
+            string
+        });
+        let lazy = options.connect_lazy;
         let mut pool_options = options.sqlx_pool_options();
         if let Some(sql) = set_search_path_sql {
             pool_options = pool_options.after_connect(move |conn, _| {
@@ -76,15 +106,20 @@ impl SqlxPostgresConnector {
                 })
             });
         }
-        match pool_options.connect_with(opt).await {
-            Ok(pool) => Ok(DatabaseConnection::SqlxPostgresPoolConnection(
-                SqlxPostgresPoolConnection {
-                    pool,
-                    metric_callback: None,
-                },
-            )),
-            Err(e) => Err(sqlx_error_to_conn_err(e)),
-        }
+        let pool = if lazy {
+            pool_options.connect_lazy_with(opt)
+        } else {
+            pool_options
+                .connect_with(opt)
+                .await
+                .map_err(sqlx_error_to_conn_err)?
+        };
+        Ok(DatabaseConnection::SqlxPostgresPoolConnection(
+            SqlxPostgresPoolConnection {
+                pool,
+                metric_callback: None,
+            },
+        ))
     }
 }
 
@@ -233,8 +268,14 @@ impl SqlxPostgresPoolConnection {
         }
     }
 
-    /// Explicitly close the Postgres connection
+    /// Explicitly close the Postgres connection.
+    /// See [`Self::close_by_ref`] for usage with references.
     pub async fn close(self) -> Result<(), DbErr> {
+        self.close_by_ref().await
+    }
+
+    /// Explicitly close the Postgres connection
+    pub async fn close_by_ref(&self) -> Result<(), DbErr> {
         self.pool.close().await;
         Ok(())
     }

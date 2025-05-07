@@ -4,5 +4,6 @@ use todolist::app::App;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    cli::main::<App, Migrator>().await
+    cli::main::<App, Migrator>().await?;
+    Ok(())
 }

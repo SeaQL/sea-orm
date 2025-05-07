@@ -35,13 +35,32 @@ where
     pub(crate) entity: PhantomData<(E, F)>,
 }
 
+/// Defines a structure to perform a SELECT operation on two Models
+#[derive(Clone, Debug)]
+pub struct SelectThree<E, F, G>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+{
+    pub(crate) query: SelectStatement,
+    pub(crate) entity: PhantomData<(E, F, G)>,
+}
+
 /// Performs a conversion to [SimpleExpr]
 pub trait IntoSimpleExpr {
     /// Method to perform the conversion
     fn into_simple_expr(self) -> SimpleExpr;
 }
 
-macro_rules! impl_trait {
+/// Extending [IntoSimpleExpr] to support casting ActiveEnum as TEXT in select expression
+pub trait ColumnAsExpr: IntoSimpleExpr {
+    /// Casting ActiveEnum as TEXT in select expression,
+    /// otherwise same as [IntoSimpleExpr::into_simple_expr]
+    fn into_column_as_expr(self) -> SimpleExpr;
+}
+
+macro_rules! impl_query_trait {
     ( $trait: ident ) => {
         impl<E> $trait for Select<E>
         where
@@ -77,12 +96,46 @@ macro_rules! impl_trait {
                 &mut self.query
             }
         }
+
+        impl<E, F, G> $trait for SelectThree<E, F, G>
+        where
+            E: EntityTrait,
+            F: EntityTrait,
+            G: EntityTrait,
+        {
+            type QueryStatement = SelectStatement;
+
+            fn query(&mut self) -> &mut SelectStatement {
+                &mut self.query
+            }
+        }
     };
 }
 
-impl_trait!(QuerySelect);
-impl_trait!(QueryFilter);
-impl_trait!(QueryOrder);
+impl_query_trait!(QuerySelect);
+impl_query_trait!(QueryFilter);
+impl_query_trait!(QueryOrder);
+
+impl<C> ColumnAsExpr for C
+where
+    C: ColumnTrait,
+{
+    fn into_column_as_expr(self) -> SimpleExpr {
+        self.select_as(Expr::expr(self.as_column_ref().into_column_ref()))
+    }
+}
+
+impl ColumnAsExpr for Expr {
+    fn into_column_as_expr(self) -> SimpleExpr {
+        self.into_simple_expr()
+    }
+}
+
+impl ColumnAsExpr for SimpleExpr {
+    fn into_column_as_expr(self) -> SimpleExpr {
+        self.into_simple_expr()
+    }
+}
 
 impl<C> IntoSimpleExpr for C
 where
@@ -174,3 +227,21 @@ macro_rules! select_two {
 
 select_two!(SelectTwo);
 select_two!(SelectTwoMany);
+
+impl<E, F, G> QueryTrait for SelectThree<E, F, G>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+{
+    type QueryStatement = SelectStatement;
+    fn query(&mut self) -> &mut SelectStatement {
+        &mut self.query
+    }
+    fn as_query(&self) -> &SelectStatement {
+        &self.query
+    }
+    fn into_query(self) -> SelectStatement {
+        self.query
+    }
+}

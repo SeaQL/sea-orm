@@ -2,7 +2,7 @@ use crate::{
     debug_print, error::*, DatabaseConnection, DbBackend, ExecResult, MockDatabase, QueryResult,
     Statement, Transaction,
 };
-use futures::Stream;
+use futures_util::Stream;
 use std::{
     fmt::Debug,
     pin::Pin,
@@ -170,8 +170,8 @@ impl MockDatabaseConnection {
         statement: &Statement,
     ) -> Pin<Box<dyn Stream<Item = Result<QueryResult, DbErr>> + Send>> {
         match self.query_all(statement.clone()) {
-            Ok(v) => Box::pin(futures::stream::iter(v.into_iter().map(Ok))),
-            Err(e) => Box::pin(futures::stream::iter(Some(Err(e)).into_iter())),
+            Ok(v) => Box::pin(futures_util::stream::iter(v.into_iter().map(Ok))),
+            Err(e) => Box::pin(futures_util::stream::iter(Some(Err(e)).into_iter())),
         }
     }
 
@@ -231,7 +231,7 @@ impl crate::DatabaseTransaction {
         inner: Arc<crate::MockDatabaseConnection>,
         metric_callback: Option<crate::metric::Callback>,
     ) -> Result<crate::DatabaseTransaction, DbErr> {
-        use futures::lock::Mutex;
+        use futures_util::lock::Mutex;
         let backend = inner.get_database_backend();
         Self::begin(
             Arc::new(Mutex::new(crate::InnerConnection::Mock(inner))),

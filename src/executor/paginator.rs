@@ -1,9 +1,9 @@
 use crate::{
     error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, Select, SelectModel,
-    SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait,
+    SelectThree, SelectThreeModel, SelectTwo, SelectTwoModel, Selector, SelectorRaw, SelectorTrait,
 };
 use async_stream::stream;
-use futures::Stream;
+use futures_util::Stream;
 use sea_query::{Alias, Expr, SelectStatement};
 use std::{marker::PhantomData, pin::Pin};
 
@@ -300,6 +300,23 @@ where
     }
 }
 
+impl<'db, C, M, N, O, E, F, G> PaginatorTrait<'db, C> for SelectThree<E, F, G>
+where
+    C: ConnectionTrait,
+    E: EntityTrait<Model = M>,
+    F: EntityTrait<Model = N>,
+    G: EntityTrait<Model = O>,
+    M: FromQueryResult + Sized + Send + Sync + 'db,
+    N: FromQueryResult + Sized + Send + Sync + 'db,
+    O: FromQueryResult + Sized + Send + Sync + 'db,
+{
+    type Selector = SelectThreeModel<M, N, O>;
+
+    fn paginate(self, db: &'db C, page_size: u64) -> Paginator<'db, C, Self::Selector> {
+        self.into_model().paginate(db, page_size)
+    }
+}
+
 #[cfg(test)]
 #[cfg(feature = "mock")]
 mod tests {
@@ -307,12 +324,12 @@ mod tests {
     use crate::entity::prelude::*;
     use crate::{tests_cfg::*, ConnectionTrait, Statement};
     use crate::{DatabaseConnection, DbBackend, MockDatabase, Transaction};
-    use futures::TryStreamExt;
-    use once_cell::sync::Lazy;
+    use futures_util::TryStreamExt;
     use pretty_assertions::assert_eq;
     use sea_query::{Alias, Expr, SelectStatement, Value};
+    use std::sync::LazyLock;
 
-    static RAW_STMT: Lazy<Statement> = Lazy::new(|| {
+    static RAW_STMT: LazyLock<Statement> = LazyLock::new(|| {
         Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"SELECT "fruit"."id", "fruit"."name", "fruit"."cake_id" FROM "fruit""#,
@@ -329,7 +346,7 @@ mod tests {
             },
             fruit::Model {
                 id: 2,
-                name: "Rasberry".into(),
+                name: "Raspberry".into(),
                 cake_id: Some(1),
             },
         ];

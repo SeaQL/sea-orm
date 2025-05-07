@@ -1,10 +1,10 @@
 use crate::{
     error::*, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult, IdenStatic, Iterable,
     ModelTrait, PartialModelTrait, PrimaryKeyArity, PrimaryKeyToColumn, PrimaryKeyTrait,
-    QueryResult, QuerySelect, Select, SelectA, SelectB, SelectTwo, SelectTwoMany, Statement,
-    StreamTrait, TryGetableMany,
+    QueryResult, QuerySelect, Select, SelectA, SelectB, SelectC, SelectThree, SelectTwo,
+    SelectTwoMany, Statement, StreamTrait, TryGetableMany,
 };
-use futures::{Stream, TryStreamExt};
+use futures_util::{Stream, TryStreamExt};
 use sea_query::{SelectStatement, Value};
 use std::collections::HashMap;
 use std::{hash::Hash, marker::PhantomData, pin::Pin};
@@ -62,7 +62,7 @@ where
     model: PhantomData<T>,
 }
 
-/// Defines a type to get a Model
+/// Helper class to handle query result for 1 Model
 #[derive(Debug)]
 pub struct SelectModel<M>
 where
@@ -71,7 +71,7 @@ where
     model: PhantomData<M>,
 }
 
-/// Defines a type to get two Models
+/// Helper class to handle query result for 2 Models
 #[derive(Clone, Debug)]
 pub struct SelectTwoModel<M, N>
 where
@@ -79,6 +79,17 @@ where
     N: FromQueryResult,
 {
     model: PhantomData<(M, N)>,
+}
+
+/// Helper class to handle query result for 3 Models
+#[derive(Clone, Debug)]
+pub struct SelectThreeModel<M, N, O>
+where
+    M: FromQueryResult,
+    N: FromQueryResult,
+    O: FromQueryResult,
+{
+    model: PhantomData<(M, N, O)>,
 }
 
 impl<T, C> SelectorTrait for SelectGetableValue<T, C>
@@ -127,6 +138,23 @@ where
         Ok((
             M::from_query_result(&res, SelectA.as_str())?,
             N::from_query_result_optional(&res, SelectB.as_str())?,
+        ))
+    }
+}
+
+impl<M, N, O> SelectorTrait for SelectThreeModel<M, N, O>
+where
+    M: FromQueryResult + Sized,
+    N: FromQueryResult + Sized,
+    O: FromQueryResult + Sized,
+{
+    type Item = (M, Option<N>, Option<O>);
+
+    fn from_raw_query_result(res: QueryResult) -> Result<Self::Item, DbErr> {
+        Ok((
+            M::from_query_result(&res, SelectA.as_str())?,
+            N::from_query_result_optional(&res, SelectB.as_str())?,
+            O::from_query_result_optional(&res, SelectC.as_str())?,
         ))
     }
 }
@@ -183,7 +211,7 @@ where
     ///         .into_partial_model::<PartialCake>()
     ///         .into_statement(DbBackend::Sqlite)
     ///         .to_string(),
-    ///     r#"SELECT "cake"."name", UPPER("cake"."name") AS "name_upper" FROM "cake""#
+    ///     r#"SELECT "cake"."name" AS "name", UPPER("cake"."name") AS "name_upper" FROM "cake""#
     /// );
     /// # }
     /// ```
@@ -412,7 +440,7 @@ where
     }
 
     /// Get one Model from the SELECT query
-    pub async fn one<'a, C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
+    pub async fn one<C>(self, db: &C) -> Result<Option<E::Model>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -420,7 +448,7 @@ where
     }
 
     /// Get all Models from the SELECT query
-    pub async fn all<'a, C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
+    pub async fn all<C>(self, db: &C) -> Result<Vec<E::Model>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -490,7 +518,7 @@ where
     }
 
     /// Get one Model from the Select query
-    pub async fn one<'a, C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
+    pub async fn one<C>(self, db: &C) -> Result<Option<(E::Model, Option<F::Model>)>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -498,7 +526,7 @@ where
     }
 
     /// Get all Models from the Select query
-    pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr>
+    pub async fn all<C>(self, db: &C) -> Result<Vec<(E::Model, Option<F::Model>)>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -600,7 +628,7 @@ where
     /// > then use [`ModelTrait::find_related`] on the model.
     /// >
     /// > See https://www.sea-ql.org/SeaORM/docs/basic-crud/select#lazy-loading for details.
-    pub async fn all<'a, C>(self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>
+    pub async fn all<C>(self, db: &C) -> Result<Vec<(E::Model, Vec<F::Model>)>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -616,6 +644,98 @@ where
 
     // pub fn count()
     // we should only count the number of items of the parent model
+}
+
+impl<E, F, G> SelectThree<E, F, G>
+where
+    E: EntityTrait,
+    F: EntityTrait,
+    G: EntityTrait,
+{
+    /// Perform a conversion into a [SelectThreeModel]
+    pub fn into_model<M, N, O>(self) -> Selector<SelectThreeModel<M, N, O>>
+    where
+        M: FromQueryResult,
+        N: FromQueryResult,
+        O: FromQueryResult,
+    {
+        Selector {
+            query: self.query,
+            selector: SelectThreeModel { model: PhantomData },
+        }
+    }
+
+    /// Perform a conversion into a [SelectThreeModel] with [PartialModel](PartialModelTrait)
+    pub fn into_partial_model<M, N, O>(self) -> Selector<SelectThreeModel<M, N, O>>
+    where
+        M: PartialModelTrait,
+        N: PartialModelTrait,
+        O: PartialModelTrait,
+    {
+        let select = QuerySelect::select_only(self);
+        let select = M::select_cols(select);
+        let select = N::select_cols(select);
+        select.into_model::<M, N, O>()
+    }
+
+    /// Convert the Models into JsonValue
+    #[cfg(feature = "with-json")]
+    pub fn into_json(self) -> Selector<SelectThreeModel<JsonValue, JsonValue, JsonValue>> {
+        Selector {
+            query: self.query,
+            selector: SelectThreeModel { model: PhantomData },
+        }
+    }
+
+    /// Get one Model from the Select query
+    pub async fn one<C>(
+        self,
+        db: &C,
+    ) -> Result<Option<(E::Model, Option<F::Model>, Option<G::Model>)>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().one(db).await
+    }
+
+    /// Get all Models from the Select query
+    pub async fn all<C>(
+        self,
+        db: &C,
+    ) -> Result<Vec<(E::Model, Option<F::Model>, Option<G::Model>)>, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        self.into_model().all(db).await
+    }
+
+    /// Stream the results of a Select operation on a Model
+    pub async fn stream<'a: 'b, 'b, C>(
+        self,
+        db: &'a C,
+    ) -> Result<
+        impl Stream<Item = Result<(E::Model, Option<F::Model>, Option<G::Model>), DbErr>> + 'b,
+        DbErr,
+    >
+    where
+        C: ConnectionTrait + StreamTrait + Send,
+    {
+        self.into_model().stream(db).await
+    }
+
+    /// Stream the result of the operation with PartialModel
+    pub async fn stream_partial_model<'a: 'b, 'b, C, M, N, O>(
+        self,
+        db: &'a C,
+    ) -> Result<impl Stream<Item = Result<(M, Option<N>, Option<O>), DbErr>> + 'b + Send, DbErr>
+    where
+        C: ConnectionTrait + StreamTrait + Send,
+        M: PartialModelTrait + Send + 'b,
+        N: PartialModelTrait + Send + 'b,
+        O: PartialModelTrait + Send + 'b,
+    {
+        self.into_partial_model().stream(db).await
+    }
 }
 
 impl<S> Selector<S>
@@ -667,7 +787,7 @@ where
     }
 
     /// Get an item from the Select query
-    pub async fn one<'a, C>(mut self, db: &C) -> Result<Option<S::Item>, DbErr>
+    pub async fn one<C>(mut self, db: &C) -> Result<Option<S::Item>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -676,7 +796,7 @@ where
     }
 
     /// Get all items from the Select query
-    pub async fn all<'a, C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
+    pub async fn all<C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -911,7 +1031,7 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn one<'a, C>(self, db: &C) -> Result<Option<S::Item>, DbErr>
+    pub async fn one<C>(self, db: &C) -> Result<Option<S::Item>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -962,7 +1082,7 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn all<'a, C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
+    pub async fn all<C>(self, db: &C) -> Result<Vec<S::Item>, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -986,7 +1106,7 @@ where
     {
         let stream = db.stream(self.stmt).await?;
         Ok(Box::pin(stream.and_then(|row| {
-            futures::future::ready(S::from_raw_query_result(row))
+            futures_util::future::ready(S::from_raw_query_result(row))
         })))
     }
 }

@@ -1,4 +1,4 @@
-use futures::lock::Mutex;
+use futures_util::lock::Mutex;
 use log::LevelFilter;
 use sea_query::Values;
 use std::{future::Future, pin::Pin, sync::Arc};
@@ -37,6 +37,21 @@ impl std::fmt::Debug for SqlxSqlitePoolConnection {
     }
 }
 
+impl From<SqlitePool> for SqlxSqlitePoolConnection {
+    fn from(pool: SqlitePool) -> Self {
+        SqlxSqlitePoolConnection {
+            pool,
+            metric_callback: None,
+        }
+    }
+}
+
+impl From<SqlitePool> for DatabaseConnection {
+    fn from(pool: SqlitePool) -> Self {
+        DatabaseConnection::SqlxSqlitePoolConnection(pool.into())
+    }
+}
+
 impl SqlxSqliteConnector {
     /// Check if the URI provided corresponds to `sqlite:` for a SQLite database
     pub fn accepts(string: &str) -> bool {
@@ -66,26 +81,33 @@ impl SqlxSqliteConnector {
                 );
             }
         }
+
         if options.get_max_connections().is_none() {
             options.max_connections(1);
         }
-        match options.sqlx_pool_options().connect_with(opt).await {
-            Ok(pool) => {
-                let pool = SqlxSqlitePoolConnection {
-                    pool,
-                    metric_callback: None,
-                };
 
-                #[cfg(feature = "sqlite-use-returning-for-3_35")]
-                {
-                    let version = get_version(&pool).await?;
-                    ensure_returning_version(&version)?;
-                }
+        let pool = if options.connect_lazy {
+            options.sqlx_pool_options().connect_lazy_with(opt)
+        } else {
+            options
+                .sqlx_pool_options()
+                .connect_with(opt)
+                .await
+                .map_err(sqlx_error_to_conn_err)?
+        };
 
-                Ok(DatabaseConnection::SqlxSqlitePoolConnection(pool))
-            }
-            Err(e) => Err(sqlx_error_to_conn_err(e)),
+        let pool = SqlxSqlitePoolConnection {
+            pool,
+            metric_callback: None,
+        };
+
+        #[cfg(feature = "sqlite-use-returning-for-3_35")]
+        {
+            let version = get_version(&pool).await?;
+            ensure_returning_version(&version)?;
         }
+
+        Ok(DatabaseConnection::SqlxSqlitePoolConnection(pool))
     }
 }
 
@@ -234,8 +256,14 @@ impl SqlxSqlitePoolConnection {
         }
     }
 
-    /// Explicitly close the SQLite connection
+    /// Explicitly close the SQLite connection.
+    /// See [`Self::close_by_ref`] for usage with references.
     pub async fn close(self) -> Result<(), DbErr> {
+        self.close_by_ref().await
+    }
+
+    /// Explicitly close the SQLite connection
+    pub async fn close_by_ref(&self) -> Result<(), DbErr> {
         self.pool.close().await;
         Ok(())
     }

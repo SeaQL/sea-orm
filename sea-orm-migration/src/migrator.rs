@@ -1,13 +1,13 @@
-use futures::Future;
 use std::collections::HashSet;
 use std::fmt::Display;
+use std::future::Future;
 use std::pin::Pin;
 use std::time::SystemTime;
 use tracing::info;
 
 use sea_orm::sea_query::{
-    self, extension::postgres::Type, Alias, Expr, ForeignKey, IntoIden, JoinType, Order, Query,
-    SelectStatement, SimpleExpr, Table,
+    self, extension::postgres::Type, Alias, Expr, ExprTrait, ForeignKey, IntoIden, JoinType, Order,
+    Query, SelectStatement, SimpleExpr, Table,
 };
 use sea_orm::{
     ActiveModelTrait, ActiveValue, Condition, ConnectionTrait, DbBackend, DbErr, DeriveIden,
@@ -487,7 +487,7 @@ where
     ))
     .cond_where(
         Condition::all()
-            .add(Expr::expr(get_current_schema(db)).equals((
+            .add(get_current_schema(db).equals((
                 InformationSchema::TableConstraints,
                 InformationSchema::TableSchema,
             )))
@@ -532,10 +532,7 @@ where
         )
         .cond_where(
             Condition::all()
-                .add(
-                    Expr::expr(get_current_schema(db))
-                        .equals((PgNamespace::Table, PgNamespace::Nspname)),
-                )
+                .add(get_current_schema(db).equals((PgNamespace::Table, PgNamespace::Nspname)))
                 .add(Expr::col((PgType::Table, PgType::Typelem)).eq(0)),
         );
     stmt

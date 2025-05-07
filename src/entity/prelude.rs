@@ -83,3 +83,9 @@ pub use bigdecimal::BigDecimal;
 
 #[cfg(feature = "with-uuid")]
 pub use uuid::Uuid;
+
+#[cfg(feature = "postgres-vector")]
+pub use pgvector::Vector as PgVector;
+
+#[cfg(feature = "with-ipnetwork")]
+pub use ipnetwork::IpNetwork;

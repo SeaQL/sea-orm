@@ -3,6 +3,7 @@ pub mod derive_attr {
 
     /// Attributes for Models and ActiveModels
     #[derive(Default, FromAttributes)]
+    #[allow(dead_code)]
     pub struct SeaOrm {
         pub column: Option<syn::Ident>,
         pub entity: Option<syn::Ident>,
@@ -14,6 +15,7 @@ pub mod derive_attr {
         pub table_name: Option<syn::Lit>,
         pub comment: Option<syn::Lit>,
         pub table_iden: Option<()>,
+        pub rename_all: Option<syn::Lit>,
     }
 }
 
@@ -36,6 +38,7 @@ pub mod field_attr {
     }
 }
 
+#[cfg(feature = "seaography")]
 pub mod related_attr {
     use bae::FromAttributes;
 

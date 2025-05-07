@@ -43,9 +43,9 @@ async fn start() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/", get(list_posts).post(create_post))
-        .route("/:id", get(edit_post).post(update_post))
+        .route("/{id}", get(edit_post).post(update_post))
         .route("/new", get(new_post))
-        .route("/delete/:id", post(delete_post))
+        .route("/delete/{id}", post(delete_post))
         .nest_service(
             "/static",
             get_service(ServeDir::new(concat!(
@@ -139,7 +139,7 @@ async fn create_post(
 
     let data = FlashData {
         kind: "success".to_owned(),
-        message: "Post succcessfully added".to_owned(),
+        message: "Post successfully added".to_owned(),
     };
 
     Ok(post_response(&mut cookies, data))
@@ -179,7 +179,7 @@ async fn update_post(
 
     let data = FlashData {
         kind: "success".to_owned(),
-        message: "Post succcessfully updated".to_owned(),
+        message: "Post successfully updated".to_owned(),
     };
 
     Ok(post_response(&mut cookies, data))
@@ -196,7 +196,7 @@ async fn delete_post(
 
     let data = FlashData {
         kind: "success".to_owned(),
-        message: "Post succcessfully deleted".to_owned(),
+        message: "Post successfully deleted".to_owned(),
     };
 
     Ok(post_response(&mut cookies, data))
