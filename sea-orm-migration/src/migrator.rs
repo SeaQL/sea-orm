@@ -464,7 +464,7 @@ where
         #[cfg(feature = "sqlx-postgres")]
         DbBackend::Postgres => sea_schema::postgres::Postgres::get_current_schema(),
         #[cfg(feature = "sqlx-sqlite")]
-        DbBackend::Sqlite => sea_sqlite::Sqlite::get_current_schema(),
+        DbBackend::Sqlite => sea_schema::sqlite::Sqlite::get_current_schema(),
         #[allow(unreachable_patterns)]
         other => panic!("{other:?} feature is off"),
     }
