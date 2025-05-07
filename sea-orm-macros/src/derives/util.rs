@@ -230,5 +230,11 @@ mod tests {
             camel_case_with_escaped_non_uax31("1 2 3"),
             "_0x310x2020x203"
         );
+
+        assert_eq!(camel_case_with_escaped_non_uax31("씨오알엠"), "씨오알엠");
+
+        assert_eq!(camel_case_with_escaped_non_uax31("A_B"), "A0x5Fb");
+
+        assert_eq!(camel_case_with_escaped_non_uax31("AB"), "Ab");
     }
 }
