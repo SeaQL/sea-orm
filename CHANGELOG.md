@@ -53,6 +53,7 @@ assert_eq!(
 
 * Upgrade `heck` to `0.5` https://github.com/SeaQL/sea-orm/pull/2218
 * Upgrade `sea-query` to `0.32.5`
+* Upgrade `sea-schema` to `0.16.2`
 
 ## 1.1.10 - 2025-04-14
 
