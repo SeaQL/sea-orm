@@ -255,6 +255,8 @@ impl EntityTransformer {
 
 #[cfg(test)]
 mod tests {
+    use crate::{DateTimeCrate, EntityWriterContext, WithSerde};
+
     use super::*;
     use pretty_assertions::assert_eq;
     use proc_macro2::TokenStream;
@@ -380,6 +382,13 @@ mod tests {
             .map(|entity| (entity.table_name.clone(), entity))
             .collect();
 
+        let context = EntityWriterContext {
+            date_time_crate: DateTimeCrate::Chrono,
+            with_serde: WithSerde::None,
+            impl_active_model_behavior: true,
+            ..Default::default()
+        };
+
         for (entity_name, file_content) in files {
             let entity = entities
                 .get(entity_name)
@@ -387,25 +396,14 @@ mod tests {
 
             assert_eq!(
                 parse_from_file(file_content.as_bytes())?.to_string(),
-                EntityWriter::gen_compact_code_blocks(
-                    entity,
-                    &crate::WithSerde::None,
-                    &crate::DateTimeCrate::Chrono,
-                    &None,
-                    false,
-                    false,
-                    &Default::default(),
-                    &Default::default(),
-                    false,
-                    true,
-                )
-                .into_iter()
-                .skip(1)
-                .fold(TokenStream::new(), |mut acc, tok| {
-                    acc.extend(tok);
-                    acc
-                })
-                .to_string()
+                EntityWriter::gen_compact_code_blocks(entity, &context,)
+                    .into_iter()
+                    .skip(1)
+                    .fold(TokenStream::new(), |mut acc, tok| {
+                        acc.extend(tok);
+                        acc
+                    })
+                    .to_string()
             );
         }
 
